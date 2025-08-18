@@ -559,7 +559,7 @@
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
 
-(deftest ^:parallel uniqe-alias-index-test
+(deftest ^:parallel unique-alias-index-test
   (mt/test-driver
     :mongo
     (testing "Field aliases have deterministic unique indices"
@@ -586,7 +586,7 @@
             indices (reduce (fn [acc lookup-stage]
                               (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                    ;; Following expression ensures index is an integer.
-                                    index (Integer/parseInt (re-find #"\d+$" let-var-name))]
+                                    index (parse-long (re-find #"\d+$" let-var-name))]
                                ;; Following expression tests that index is unique.
                                 (is (not (contains? acc index)))
                                 (conj acc index)))
@@ -614,21 +614,61 @@
            (qp/process-query
             (mt/mbql-query times {:fields [$t]})))))))
 
+(deftest ^:parallel join-preserves-$$-variable-prefix-test
+  (mt/test-driver :mongo
+    (testing "$$variable references in join conditions are preserved when rhs is a literal value (QUE-1500)"
+      (let [query (mt/mbql-query users
+                    {:joins    [{:condition    [:and
+                                                [:= $id &c.checkins.user_id]
+                                                [:= $name [:value "Felipinho Asklepios" {:base_type :type/Text}]]]
+                                 :source-table $$checkins
+                                 :alias        "c"
+                                 :fields       [&c.checkins.date]}]
+                     :fields   [$id $name &c.checkins.date]
+                     :order-by [[:asc $id]
+                                [:asc &c.checkins.id]]
+                     :limit    3})]
+        (testing "qp.compile"
+          (is (= [{"$lookup"
+                   {:as "join_alias_c"
+                    :from "checkins"
+                    :let {"let__id___1" "$_id",
+                          "let_name___2" "$name"}
+                    :pipeline
+                    [{"$project" {"_id" "$_id", "date" "$date", "user_id" "$user_id", "venue_id" "$venue_id"}}
+                     {"$match"
+                      {"$and" [{"$expr" {"$eq" ["$$let__id___1" "$user_id"]}}
+                               {"$expr" {"$eq" ["$$let_name___2" "Felipinho Asklepios"]}}]}}]}}
+                  {"$unwind" {:path "$join_alias_c"
+                              :preserveNullAndEmptyArrays true}}
+                  {"$sort" {"_id" 1
+                            "join_alias_c._id" 1}}
+                  {"$project" {"_id" "$_id"
+                               "c__date" "$join_alias_c.date"
+                               "name" "$name"}}
+                  {"$limit" 3}]
+                 (:query (qp.compile/compile query)))))
+        (testing "qp.process-query"
+          (is (= [[1 "Plato Yeshua" nil]
+                  [2 "Felipinho Asklepios" "2013-11-19T00:00:00Z"]
+                  [2 "Felipinho Asklepios" "2015-03-06T00:00:00Z"]]
+                 (mt/rows (qp/process-query query)))))))))
+
 (deftest ^:parallel mongo-multiple-joins-test
   (testing "should be able to join multiple mongo collections"
     (mt/test-driver :mongo
       (mt/dataset (mt/dataset-definition "multi-join-db"
-                                         ["table_a"
-                                          [{:field-name "a_id" :base-type :type/Text}
-                                           {:field-name "b_id" :base-type :type/Text}]
-                                          [["a_id" "b_id"]]]
-                                         ["table_b"
-                                          [{:field-name "b_id" :base-type :type/Text}
-                                           {:field-name "c_id" :base-type :type/Text}]
-                                          [["b_id" "c_id"]]]
-                                         ["table_c"
-                                          [{:field-name "c_id" :base-type :type/Text}]
-                                          [["c_id"]]])
+                                         [["table_a"
+                                           [{:field-name "a_id" :base-type :type/Text}
+                                            {:field-name "b_id" :base-type :type/Text}]
+                                           [["a_id" "b_id"]]]
+                                          ["table_b"
+                                           [{:field-name "b_id" :base-type :type/Text}
+                                            {:field-name "c_id" :base-type :type/Text}]
+                                           [["b_id" "c_id"]]]
+                                          ["table_c"
+                                           [{:field-name "c_id" :base-type :type/Text}]
+                                           [["c_id"]]]])
         (let [mp (mt/metadata-provider)
               table-a (lib.metadata/table mp (mt/id :table_a))
               table-b (lib.metadata/table mp (mt/id :table_b))

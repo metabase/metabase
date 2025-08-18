@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 
+import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
+
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
+import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
 import type { UserId } from "./user";
 
@@ -28,11 +31,39 @@ export interface CurrencyFormattingSettings {
   currency_in_header?: boolean;
 }
 
+export const engineKeys = [
+  "athena",
+  "bigquery-cloud-sdk",
+  "clickhouse",
+  "databricks",
+  "druid",
+  "druid-jdbc",
+  "databricks",
+  "mysql",
+  "oracle",
+  "postgres",
+  "presto-jdbc",
+  "redshift",
+  "snowflake",
+  "sparksql",
+  "sqlite",
+  "sqlserver",
+  "starburst",
+  "vertica",
+] as const;
+
+export type EngineKey = (typeof engineKeys)[number];
+
 export interface Engine {
   "driver-name": string;
   "details-fields"?: EngineField[];
   source: EngineSource;
   "superseded-by": string | null;
+  "extra-info": {
+    "db-routing-info": {
+      text: string;
+    };
+  } | null;
 }
 
 export interface EngineField {
@@ -174,7 +205,7 @@ const tokenStatusFeatures = [
   "email-restrict-recipients",
   "embedding-sdk",
   "embedding",
-  "embedding-iframe-sdk",
+  "embedding-simple",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -222,12 +253,13 @@ export const tokenFeatures = [
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
+  "cloud_custom_smtp",
   "content_translation",
   "content_verification",
   "disable_password_login",
   "embedding",
   "embedding_sdk",
-  "embedding_iframe_sdk",
+  "embedding_simple",
   "hosting",
   "official_collections",
   "sandboxes",
@@ -251,7 +283,12 @@ export const tokenFeatures = [
   "ai_sql_generation",
   "ai_entity_analysis",
   "database_routing",
-  "development-mode",
+  "development_mode",
+  "etl_connections",
+  "etl_connections_pg",
+  "documents",
+  "semantic_search",
+  "transforms",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -283,8 +320,6 @@ export type SettingDefinitionMap<
   [K in T]: SettingDefinition<K>;
 };
 
-export type UpdateChannel = "latest" | "beta" | "nightly";
-
 export interface OpenAiModel {
   id: string;
   owned_by: string;
@@ -311,23 +346,31 @@ export type CustomGeoJSONMap = {
 export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 interface InstanceSettings {
-  "admin-email": string;
+  "admin-email": string | null;
+  "email-from-address-override": string | null;
+  "email-smtp-host-override": string | null;
+  "email-smtp-port-override": 465 | 587 | 2525 | null;
+  "email-smtp-security-override": "ssl" | "tls" | "starttls" | null;
+  "email-smtp-username-override": string | null;
+  "email-smtp-password-override": string | null;
   "email-from-name": string | null;
   "email-from-address": string | null;
   "email-reply-to": string[] | null;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
-  "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
+  "email-smtp-security": "none" | "ssl" | "tls" | "starttls" | null;
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
   "enable-embedding-static": boolean;
   "enable-embedding-sdk": boolean;
+  "enable-embedding-simple": boolean;
   "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
+  "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
@@ -336,6 +379,7 @@ interface InstanceSettings {
   "show-homepage-xrays": boolean;
   "site-name": string;
   "site-uuid": string;
+  "smtp-override-enabled": boolean;
   "subscription-allowed-domains": string | null;
   "uploads-settings": UploadsSettings;
   "user-visibility": string | null;
@@ -369,6 +413,7 @@ interface AdminSettings {
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
+  "show-simple-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
@@ -417,7 +462,7 @@ interface PublicSettings {
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
   "enable-sandboxes?": boolean;
-  engines: Record<string, Engine>;
+  engines: Record<EngineKey, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
   "has-user-setup": boolean;
@@ -465,7 +510,6 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
-  "update-channel": UpdateChannel;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
@@ -487,6 +531,10 @@ export type UserSettings = {
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
   "trial-banner-dismissal-timestamp"?: string | null;
+  "sdk-iframe-embed-setup-settings"?: Pick<
+    SdkIframeEmbedSetupSettings,
+    "theme" | "useExistingUserSession"
+  > | null;
 };
 
 /**
@@ -532,6 +580,13 @@ export type ColorSettings = Record<string, string>;
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };
 
+export type SearchEngineSettingValue = "semantic" | "appdb" | "in-place";
+
+export type DatabaseReplicationConnections = Record<
+  DatabaseId,
+  { connection_id: string }
+>;
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
@@ -548,6 +603,7 @@ export interface EnterpriseSettings extends Settings {
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
   "session-timeout": TimeoutValue | null;
+  "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;
@@ -559,6 +615,7 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-email": string | null;
   "jwt-attribute-firstname": string | null;
   "jwt-attribute-lastname": string | null;
+  "jwt-attribute-groups": string | null;
   "jwt-group-sync": boolean | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;
@@ -576,6 +633,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
+  "database-replication-enabled": boolean | null;
+  "database-replication-connections"?: DatabaseReplicationConnections | null;
   /**
    * @deprecated
    */

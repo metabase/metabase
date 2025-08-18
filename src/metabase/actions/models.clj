@@ -13,6 +13,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
+(set! *warn-on-reflection* true)
+
 ;;; -------------------------------------------- Entity & Life Cycle ----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Action [_model] :action)
@@ -123,8 +125,7 @@
       (t2/query-one {:insert-into (t2/table-name model)
                      :values [(-> (apply dissoc action-data action-columns)
                                   (assoc :action_id (:id action))
-                                  (cond->
-                                   (= (:type action) :implicit)
+                                  (cond-> (= (:type action) :implicit)
                                     (dissoc :database_id)
                                     (= (:type action) :http)
                                     (update :template json/encode)
@@ -205,7 +206,7 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (t2/hydrate (t2/select 'Table :id [:in table-ids]) :fields))]
+                 (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
@@ -230,6 +231,8 @@
                                              {:id (u/slugify (:name field))
                                               :display-name (:display_name field)
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
+                                              ;; TODO (Cam 8/12/25) -- Field base type is NOT a valid parameter types!
+                                              ;; See [[metabase.lib.schema.parameter/types]].
                                               :type (:base_type field)
                                               :required (:database_required field)
                                               :is-auto-increment (:database_is_auto_increment field)
@@ -256,7 +259,8 @@
         model-id->implicit-parameters (when (seq implicit-action-models)
                                         (implicit-action-parameters implicit-action-models))]
     (for [action actions]
-      (if (= (:type action) :implicit)
+      (case (:type action)
+        :implicit
         (let [model-id        (:model_id action)
               saved-params    (m/index-by :id (:parameters action))
               action-kind     (:kind action)
@@ -300,6 +304,7 @@
                                            (assoc acc param-id {:id param-id, :hidden false})))
                                        fields
                                        param-ids)))))))
+        (:query :http)
         action))))
 
 (defn select-action
@@ -334,12 +339,15 @@
   "Hydrates actions from DashboardCards. Adds a boolean field `:database-enabled-actions` to each action according to
   the\n `database-enable-actions` setting for the action's database."
   [_model _k dashcards]
-  (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
-                        (->> (select-actions nil :id [:in action-ids])
-                             map-assoc-database-enable-actions
-                             (m/index-by :id)))]
-    (for [dashcard dashcards]
-      (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
+  (let [actions-by-id
+        (when-let [action-ids (seq (keep :action_id dashcards))]
+          (->> (select-actions nil :id [:in action-ids])
+               map-assoc-database-enable-actions
+               (m/index-by :id)))]
+    (for [dashcard dashcards
+          :let [action-id (:action_id dashcard)
+                action    (get actions-by-id action-id)]]
+      (m/assoc-some dashcard :action action))))
 
 (defn dashcard->action
   "Get the action associated with a dashcard if exists, return `nil` otherwise."

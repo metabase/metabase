@@ -62,6 +62,9 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
+ actions/cached-database
+ actions/cached-database-via-table-id
+ actions/cached-table
  actions/cached-value
  actions/incorrect-value-type
  actions/perform-action!*
@@ -94,6 +97,7 @@
  lib.metadata/field
  lib.metadata/fields
  lib.metadata/table
+ lib.metadata/tables
  lib.schema.common/instance-of-class
  lib.schema.temporal-bucketing/date-bucketing-units
  lib.types.isa/temporal?
@@ -217,6 +221,10 @@
 (def schema.actions.row
   "::lib.schema.actions/row"
   ::lib.schema.actions/row)
+
+(def schema.actions.args.row
+  ":metabase.actions.args/row"
+  :metabase.actions.args/row)
 
 (def schema.expression.temporal.timezone-id
   "::lib.schema.expression.temporal/timezone-id"

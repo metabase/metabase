@@ -10,6 +10,7 @@ import {
 import {
   isDateParameter,
   isStringParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -52,7 +53,8 @@ function FormattedParameterValue({
     if (
       isFieldFilterUiParameter(parameter) &&
       hasFields(parameter) &&
-      !isDateParameter(parameter)
+      !isDateParameter(parameter) &&
+      !isTemporalUnitParameter(parameter)
     ) {
       return (
         <ParameterFieldWidgetValue

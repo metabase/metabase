@@ -99,7 +99,6 @@
                       (qp/userland-query
                        query
                        {:card-id        (u/the-id card)
-                        :card-entity-id (:entity_id card)
                         :query-hash     (qp.util/query-hash {})}))]
           (when-not (= :completed (:status result))
             (throw (ex-info "Query failed." result))))
@@ -207,15 +206,13 @@
 
 (deftest ^:parallel metadata-in-results-test
   (testing "make sure that queries come back with metadata"
-    (let [card-eid (u/generate-nano-id)]
-      (is (=? {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
-                           (-> col (update :semantic_type keyword) (update :base_type keyword)))}
-              (-> (qp/process-query
-                   (qp/userland-query
-                    (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
-                    {:card-entity-id card-eid}))
-                  (get-in [:data :results_metadata])
-                  round-to-2-decimals))))))
+    (is (=? {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
+                         (-> col (update :semantic_type keyword) (update :base_type keyword)))}
+            (-> (qp/process-query
+                 (qp/userland-query
+                  (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})))
+                (get-in [:data :results_metadata])
+                round-to-2-decimals)))))
 
 (deftest ^:parallel metadata-in-results-test-2
   (testing "models"
@@ -236,13 +233,11 @@
                                                :base_type)
                                               cols)))]
         (testing "native"
-          (let [card-eid (u/generate-nano-id)
-                fields (str/join ", " (map :name (default-card-results-native)))
+          (let [fields (str/join ", " (map :name (default-card-results-native)))
                 native-query (str "SELECT " fields " FROM VENUES")
                 existing-metadata (add-preserved (default-card-results-native))
                 results (-> (mt/native-query   {:query native-query})
-                            (qp/userland-query {:metadata/model-metadata existing-metadata
-                                                :card-entity-id          card-eid})
+                            (qp/userland-query {:metadata/model-metadata existing-metadata})
                             qp/process-query)]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))
@@ -290,7 +285,7 @@
                 :name         "count"
                 :semantic_type :type/Quantity
                 :fingerprint  {:global {:distinct-count 3
-                                        :nil%           0.0},
+                                        :nil%           0.0}
                                :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.25, :sd 143.5}}}
                 :field_ref    [:aggregation 0]}]
               (-> card
@@ -311,7 +306,6 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "Native queries should come back with valid results metadata (#12265)"
       (let [metadata (-> (mt/mbql-query venues) qp.compile/compile mt/native-query
-                         (assoc-in [:info :card-entity-id] (u/generate-nano-id))
                          results-metadata)]
         (is (seq metadata))
         (is (not (me/humanize (mr/explain qr/ResultsMetadata metadata))))))))
@@ -324,11 +318,10 @@
     ;; PS: the above comment is likely outdated with H2 v2
     ;; TODO: is this still relevant? -jpc
     (let [results (-> (mt/native-query {:query "select date_trunc('day', checkins.\"DATE\") as d FROM checkins"})
-                      (assoc-in [:info :card-entity-id] (u/generate-nano-id))
                       qp/process-query
                       :data)]
       (testing "Sanity check: annotate should infer correct type from `:cols`"
-        (is (=? {:base_type    :type/Date,
+        (is (=? {:base_type    :type/Date
                  :effective_type :type/Date
                  :display_name "D" :name "D"
                  :source       :native
@@ -410,7 +403,7 @@
                                                                      :query    {:source-table (mt/id :orders)
                                                                                 :expressions  {"Tax Rate" [:/
                                                                                                            [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                           [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                                                           [:field (mt/id :orders :total) {:base-type :type/Float}]]}
                                                                                 :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
                                                                                                [:field (mt/id :orders :total) {:base-type :type/Float}]
                                                                                                [:expression "Tax Rate"]]
@@ -420,8 +413,10 @@
                                   :as             _card} {:dataset_query   {:type     :query
                                                                             :database (mt/id)
                                                                             :query    {:source-table (format "card__%s" base-card-id)}}
-                                                          :result_metadata [{:semantic_type :type/Percentage
-                                                                             :name          "Tax Rate"}]}]
+                                                          :result_metadata [{:base_type     :type/Float
+                                                                             :semantic_type :type/Percentage
+                                                                             :name          "Tax Rate"
+                                                                             :display_name  "Tax Rate"}]}]
         (testing "The baseline behavior is for data results_metadata to be independently computed"
           (let [results (qp/process-query dataset-query)]
             ;; :type/Share is the computed semantic type as of 2023-11-30
@@ -460,45 +455,49 @@
                                                    {:name "ID_2"}]}}}
             (mt/process-query query)))))
 
-(deftest ^:parallel comparable-metadata
+(deftest ^:parallel comparable-metadata-test
   (is (= [] (#'middleware.results-metadata/comparable-metadata [])))
   (testing "removes ident and converts keywords to strings"
-    (is (= [{:base_type      "type/Float",
-             :database_type  "DECFLOAT",
-             :display_name   "Sum of Total",
-             :effective_type "type/Float",
-             :field_ref      ["aggregation" 0],
-             :fingerprint    {:global {:distinct-count 1, :nil% 0.0},
+    (is (= [{:base_type      "type/Float"
+             :database_type  "DECFLOAT"
+             :display_name   "Sum of Total"
+             :effective_type "type/Float"
+             :field_ref      ["aggregation" 0]
+             :fingerprint    {:global {:distinct-count 1, :nil% 0.0}
                               :type   #:type
-                                       {:Number {:avg 141761.53790523874,
-                                                 :max 141761.53790523874,
-                                                 :min 141761.53790523874,
-                                                 :q1  141761.53790523874,
-                                                 :q3  141761.53790523874,
-                                                 :sd  nil}}},
-             :name           "sum",
+                                       {:Number {:avg 141761.53790523874
+                                                 :max 141761.53790523874
+                                                 :min 141761.53790523874
+                                                 :q1  141761.53790523874
+                                                 :q3  141761.53790523874
+                                                 :sd  nil}}}
+             :name           "sum"
              :semantic_type  nil}]
-           (#'middleware.results-metadata/comparable-metadata [{:base_type      :type/Float,
-                                                                :database_type  "DECFLOAT",
-                                                                :display_name   "Sum of Total",
-                                                                :effective_type :type/Float,
-                                                                :field_ref      [:aggregation 0],
-                                                                :fingerprint    {:global {:distinct-count 1, :nil% 0.0},
+           (#'middleware.results-metadata/comparable-metadata [{:base_type      :type/Float
+                                                                :database_type  "DECFLOAT"
+                                                                :display_name   "Sum of Total"
+                                                                :effective_type :type/Float
+                                                                :field_ref      [:aggregation 0]
+                                                                :fingerprint    {:global {:distinct-count 1, :nil% 0.0}
                                                                                  :type   #:type
-                                                                                          {:Number {:avg 141761.53790523874,
-                                                                                                    :max 141761.53790523874,
-                                                                                                    :min 141761.53790523874,
-                                                                                                    :q1  141761.53790523874,
-                                                                                                    :q3  141761.53790523874,
-                                                                                                    :sd  nil}}},
-                                                                :ident          "aggregation_skXR69-dlhJST5C7Rd9nR@0__0",
-                                                                :name           "sum",
-                                                                :semantic_type  nil}]))))
+                                                                                          {:Number {:avg 141761.53790523874
+                                                                                                    :max 141761.53790523874
+                                                                                                    :min 141761.53790523874
+                                                                                                    :q1  141761.53790523874
+                                                                                                    :q3  141761.53790523874
+                                                                                                    :sd  nil}}}
+                                                                :name           "sum"
+                                                                :semantic_type  nil}])))))
+
+(deftest ^:parallel comparable-metadata-test-2
   (testing "removes duplicate and nil _ keywords"
-    (is (= [{:description    "The date and time an order was submitted.",
-             :display-name   "Created At: Quarter",
-             :effective-type "type/DateTime"}]
-           (#'middleware.results-metadata/comparable-metadata [{:description    "The date and time an order was submitted.",
-                                                                :display-name   "Created At: Quarter",
-                                                                :display_name   nil,
-                                                                :effective-type "type/DateTime"}])))))
+    (is (= [{:name           "X"
+             :base_type      "type/Integer"
+             :description    "The date and time an order was submitted."
+             :display_name   "Created At: Quarter"
+             :effective_type "type/DateTime"}]
+           (#'middleware.results-metadata/comparable-metadata [{:name           "X"
+                                                                :base_type      :type/Integer
+                                                                :description    "The date and time an order was submitted."
+                                                                :display_name   "Created At: Quarter"
+                                                                :effective_type :type/DateTime}])))))

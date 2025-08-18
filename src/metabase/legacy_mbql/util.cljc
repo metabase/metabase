@@ -6,7 +6,6 @@
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
         [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
@@ -25,26 +24,35 @@
   is-clause?
   check-clause])
 
-(mu/defn normalize-token :- :keyword
+(mu/defn normalize-token :- [:or :keyword :string]
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (-> (u/qualified-name token)
-      str/lower-case
-      (str/replace #"_" "-")
-      keyword))
+  (let [s (u/qualified-name token)]
+    (if (str/starts-with? s "type/")
+      ;; TODO (Cam 8/12/25) -- there's tons of code using incorrect parameter types or normalizing base types
+      ;; incorrectly, for example [[metabase.actions.models/implicit-action-parameters]]. We need to actually start
+      ;; validating parameters against the `:metabase.lib.schema.parameter/parameter` schema. We should probably throw
+      ;; an error here instead of silently correcting it... I was going to do that but it broke too many things
+      (do
+        (log/error "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
+        (keyword s))
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (-> s
+          #?(:clj u/lower-case-en :cljs str/lower-case)
+          (str/replace \_ \-)
+          keyword))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- combine-compound-filters-of-type [compound-type subclauses]
-  (mapcat #(lib.util.match/match-one %
-             [(_ :guard (partial = compound-type)) & args]
+  (mapcat #(lib.util.match/match-lite %
+             [(t :guard (= t compound-type)) & args]
              args
              _
-             [&match])
+             [%])
           subclauses))
 
 (declare simplify-compound-filter)
@@ -378,7 +386,8 @@
   [m]
   (lib.util.match/replace m
     [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
-    (let [temporal-unit (or (lib.util.match/match-one field [:field _ {:temporal-unit temporal-unit}] temporal-unit)
+    (let [temporal-unit (or (lib.util.match/match-lite-recursive field
+                              [:field _ {:temporal-unit temporal-unit}] temporal-unit)
                             :default)]
       (into [clause field] (lib.util.match/replace args
                              [:relative-datetime :current]
@@ -559,10 +568,7 @@
   (let [existing-orderables (into #{}
                                   (map (fn [[_dir orderable]]
                                          orderable))
-                                  (:order-by inner-query))
-        ;; Remove any :ident the orderable might have had. `:ident` in the options of a ref is for clauses that
-        ;; create columns, eg. breakouts; it's not referring to another clause by ident.
-        orderable           (m/update-existing orderable 2 #(not-empty (dissoc % :ident)))]
+                                  (:order-by inner-query))]
     (if (existing-orderables orderable)
       ;; Field already referenced, nothing to do
       inner-query
@@ -592,23 +598,25 @@
 
 (mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
   "Return the expression referenced by a given `expression-name`."
-  [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
-  (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
-    (loop [{:keys [expressions source-query]} inner-query, found #{}]
-      (or
-       ;; look for either string or keyword version of `expression-name` in `expressions`
-       (some (partial get expressions) allowed-names)
-       ;; otherwise, if we have a source query recursively look in that (do we allow that??)
-       (let [found (into found (keys expressions))]
-         (if source-query
-           (recur source-query found)
-           ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
-           ;; were
-           (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
-                           {:type            :invalid-query
-                            :expression-name expression-name
-                            :tried           allowed-names
-                            :found           found}))))))))
+  [inner-query expression-name :- ::lib.schema.common/non-blank-string]
+  (loop [{:keys [expressions source-query]} inner-query, found #{}]
+    (when (seq expressions)
+      (assert (every? string? (keys expressions))
+              (str ":expressions should always use string keys, got: " (pr-str expressions))))
+    (or
+     ;; look for`expression-name` in `expressions`
+     (get expressions expression-name)
+     ;; otherwise, if we have a source query recursively look in that (do we allow that??)
+     (let [found (into found (keys expressions))]
+       (if source-query
+         (recur source-query found)
+         ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
+         ;; were
+         (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
+                         {:type            :invalid-query
+                          :expression-name expression-name
+                          :tried           expression-name
+                          :found           found})))))))
 
 (mu/defn aggregation-at-index :- ::mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
@@ -944,11 +952,11 @@
   [field-form]
   (if (integer? field-form)
     [:field field-form nil]
-    (lib.util.match/match-one field-form :field)))
+    (lib.util.match/match-lite-recursive field-form :field field-form)))
 
 (mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
   "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
   legacy compatibility."
   [field-or-ref-form]
   (or (unwrap-field-clause field-or-ref-form)
-      (lib.util.match/match-one field-or-ref-form :expression)))
+      (lib.util.match/match-lite-recursive field-or-ref-form :expression field-or-ref-form)))

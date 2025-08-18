@@ -119,18 +119,18 @@
               :databricks
               (assoc details :log-level 0)
 
-              (cond-> details
+              (cond
                 ;; swap localhost and 127.0.0.1
                 (and (string? (:host details))
                      (str/includes? (:host details) "localhost"))
-                (update :host str/replace "localhost" "127.0.0.1")
+                (update details :host str/replace "localhost" "127.0.0.1")
 
                 (and (string? (:host details))
                      (str/includes? (:host details) "127.0.0.1"))
-                (update :host str/replace "127.0.0.1" "localhost")
+                (update details :host str/replace "127.0.0.1" "localhost")
 
                 :else
-                (assoc :new-config "something"))))))
+                (assoc details :new-config "something"))))))
 
 (deftest connection-pool-invalidated-on-details-change
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
@@ -218,7 +218,7 @@
     (when config/ee-available?
       (t2/delete! 'Database {:where [:= :is_audit true]})
       (let [status (mbc/ensure-audit-db-installed!)
-            audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]})
+            audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]})
             _ (is (= :metabase-enterprise.audit-app.audit/installed status))
             _ (is (= 13371337 audit-db-id))
             first-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)

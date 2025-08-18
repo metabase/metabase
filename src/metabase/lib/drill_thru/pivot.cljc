@@ -70,7 +70,7 @@
          (filter field-pred))))
 
 (def ^:private pivot-type-predicates
-  {:category (every-pred lib.types.isa/category?
+  {:category (every-pred (some-fn lib.types.isa/category? lib.types.isa/boolean?)
                          (complement lib.types.isa/address?))
    :location lib.types.isa/address?
    :time     lib.types.isa/temporal?})
@@ -80,7 +80,7 @@
     (cond
       (lib.types.isa/temporal? column) :date
       (lib.types.isa/address? column) :address
-      (lib.types.isa/category? column) :category)))
+      ((some-fn lib.types.isa/category? lib.types.isa/boolean?) column) :category)))
 
 (mu/defn- permitted-pivot-types :- [:maybe [:set ::lib.schema.drill-thru/pivot-types]]
   "This captures some complex conditions formerly encoded by `visualizations/click-actions/Mode/*` in the FE.

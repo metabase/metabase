@@ -254,6 +254,16 @@
                                :native   (-> (qp.compile/compile (mt/mbql-query orders {:limit 1}))
                                              (update :query (partial driver/prettify-native-form driver/*driver*)))})))))
 
+(deftest ^:parallel table-exists-test
+  (testing "Make sure checking for table existence works"
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/table-existence-check)
+      (let [venues-table (t2/select-one :model/Table :id (mt/id :venues))
+            fake-table {:name "fake_table_xyz123" :schema (:schema venues-table)}]
+        (is (driver/table-exists? driver/*driver* (mt/db) venues-table)
+            (str "Driver " driver/*driver* " should detect that venues table exists"))
+        (is (not (driver/table-exists? driver/*driver* (mt/db) fake-table))
+            (str "Driver " driver/*driver* " should detect that fake table doesn't exist"))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Begin tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -350,6 +360,20 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; End tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: Uncomment when https://github.com/metabase/metabase/pull/60263 is merged
+#_(deftest data-editing-requires-describe-features-test
+    (testing "Drivers supporting :actions/data-editing must support relevant describe-X features"
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+        (testing "describe-default-expr feature"
+          (is (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
+              (str driver/*driver* " must support :describe-default-expr to support :actions/data-editing")))
+        (testing "describe-is-generated feature"
+          (is (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
+              (str driver/*driver* " must support :describe-is-generated to support :actions/data-editing")))
+        (testing "describe-is-nullable feature"
+          (is (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
+              (str driver/*driver* " must support :describe-is-nullable to support :actions/data-editing"))))))
 
 (deftest query-driver-success-metrics-test
   (mt/test-drivers (mt/normal-drivers)

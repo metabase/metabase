@@ -2,6 +2,8 @@
   "Shared code for all drivers that use SQL under the hood."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
+   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters.parse :as params.parse]
@@ -10,6 +12,7 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
 
@@ -39,6 +42,7 @@
                  :expressions/datetime
                  :expressions/date
                  :expressions/text
+                 :expressions/today
                  :distinct-where
                  :database-routing]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
@@ -106,6 +110,94 @@
 (defmethod default-database-role :default
   [_ _database]
   nil)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Transforms                                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; TODO Although these methods are implemented here, in fact they only work for sql-jdbc drivers, because
+;; execute-raw-queries! is not in implemented for plain sql drivers.
+(defmethod driver/run-transform! [:sql :table]
+  [driver {:keys [connection-details query output-table]} {:keys [overwrite?]}]
+  (let [driver (keyword driver)
+        queries (cond->> [(driver/compile-transform driver
+                                                    {:query query
+                                                     :output-table output-table})]
+                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
+    {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
+
+(defn qualified-name
+  "Return the name of the target table of a transform as a possibly qualified symbol."
+  [{schema :schema, table-name :name}]
+  (if schema
+    (keyword schema table-name)
+    (keyword table-name)))
+
+(defmethod driver/drop-transform-target! [:sql :table]
+  [driver database target]
+  ;; driver/drop-table! takes table-name as a string, but the :sql-jdbc implementation uses
+  ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
+  (driver/drop-table! driver (:id database) (qualified-name target)))
+
+(defmulti normalize-name
+  "Normalizes the (primarily table/column) name passed in.
+
+  Should return a value that matches the name listed in the appdb. Drivers that support any of the `:transforms/...`
+  features must implement this method."
+  {:added "0.57.0" :arglists '([driver name-str])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod normalize-name :sql
+  [_driver name-str]
+  (if (and (= (first name-str) \")
+           (= (last name-str) \"))
+    (-> name-str
+        (subs 1 (dec (count name-str)))
+        (str/replace #"\"\"" "\""))
+    (u/lower-case-en name-str)))
+
+(defmulti default-schema
+  "Returns the default schema for a given database driver.
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-schema :sql
+  [_]
+  "public")
+
+(defmulti find-table
+  "Finds the table matching a given name and schema.
+
+  Names and schemas are potentially taken from a raw sql query and will be normalized accordingly. Drivers that
+  support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver {:keys [table schema]}])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod find-table :sql
+  [driver {:keys [table schema]}]
+  (let [normalized-table (normalize-name driver table)
+        normalized-schema (if (seq schema)
+                            (normalize-name driver schema)
+                            (default-schema driver))]
+    (->> (driver-api/metadata-provider)
+         driver-api/tables
+         (some (fn [{db-table :name db-schema :schema id :id}]
+                 (and (= normalized-table db-table)
+                      (= normalized-schema db-schema)
+                      id))))))
+
+(defmethod driver/native-query-deps :sql
+  [driver query]
+  (->> query
+       macaw/parsed-query
+       macaw/query->components
+       :tables
+       (into #{} (keep #(->> % :component (find-table driver))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

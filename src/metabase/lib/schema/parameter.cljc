@@ -22,6 +22,8 @@
   `:widget-type` in some cases. In these cases, the backend is just supposed to infer the actual type of the parameter
   value."
   (:require
+   #?@(:clj
+       ([flatland.ordered.map :as ordered-map]))
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
 
@@ -64,14 +66,14 @@
 
   Optional, specifies a function `(f clause-without-options options-map-or-nil) => clause-with-options` to be used for
   attaching the options. The default is to `conj` non-nil options on the end."
-  {;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
+  (#?(:clj ordered-map/ordered-map :cljs hash-map) ; for REPL-friendliness
+   ;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
    ;; [[TemplateTag:FieldFilter]] template tags.
    :number  {:type :numeric, :allowed-for #{:number :number/= :id :category :location/zip_code}}
    :text    {:type :string,  :allowed-for #{:text :string/= :id :category
                                             :location/city :location/state :location/zip_code :location/country}}
    :date    {:type :date,    :allowed-for #{:date :date/single :date/all-options :id :category}}
-   ;; I don't think `:boolean` is actually used on the FE at all.
-   :boolean {:type :boolean, :allowed-for #{:boolean :id :category}}
+   :boolean {:type :boolean, :allowed-for #{:boolean :id :category :boolean/=}}
 
    ;; as far as I can tell this is basically just an alias for `:date`... I'm not sure what the difference is TBH
    :date/single {:type :date, :allowed-for #{:date :date/single :date/all-options :id :category}}
@@ -104,7 +106,7 @@
    ;; time being. We'll only allow that if the widget type matches exactly, however.
    :location/city     {:allowed-for #{:location/city}}
    :location/state    {:allowed-for #{:location/state}}
-   :location/zip_code {:allowed-for #{:location/zip_code}}
+   :location/zip_code {:allowed-for #{:location/zip_code}} ; TODO (Cam 8/12/25) -- should use `kebab-case` like literally every other type
    :location/country  {:allowed-for #{:location/country}}
 
    ;; date range types -- these match a range of dates
@@ -138,7 +140,7 @@
    :string/does-not-contain {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/does-not-contain}}
    :string/ends-with        {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/ends-with}}
    :string/starts-with      {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/starts-with}}
-   :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean/=}}})
+   :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean :boolean/=}}))
 
 (mr/def ::type
   (into [:enum {:error/message    "valid parameter type"

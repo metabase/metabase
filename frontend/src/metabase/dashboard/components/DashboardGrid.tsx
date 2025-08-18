@@ -6,11 +6,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
-import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
 import {
   QuestionPickerModal,
+  type QuestionPickerValueItem,
   getQuestionPickerValue,
-} from "metabase/common/components/QuestionPicker";
+} from "metabase/common/components/Pickers/QuestionPicker";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import {
@@ -58,7 +58,6 @@ import {
   setMultipleDashCardAttributes,
   showClickBehaviorSidebar,
   trashDashboardQuestion,
-  undoRemoveCardFromDashboard,
 } from "../actions";
 import { type DashboardContextReturned, useDashboardContext } from "../context";
 import {
@@ -120,7 +119,6 @@ const mapDispatchToProps = {
   markNewCardSeen,
   setMultipleDashCardAttributes,
   setDashCardAttributes,
-  undoRemoveCardFromDashboard,
   replaceCard,
   fetchCardData,
   replaceCardWithVisualization,
@@ -461,15 +459,6 @@ class DashboardGridInner extends Component<
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
       cardId: dc.card_id,
-    });
-
-    this.props.addUndo({
-      message: this.getIsLastDashboardQuestionDashcard(dc)
-        ? t`Trashed and removed card`
-        : t`Removed card`,
-      undo: true,
-      action: () =>
-        this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
     });
   };
 

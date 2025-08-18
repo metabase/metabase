@@ -1,14 +1,29 @@
 import { createRoot } from "react-dom/client";
 
+// Setup CSP nonce for CodeMirror dynamic styles
+import "metabase/lib/csp";
+
+// Import the embedding SDK vendors side-effects
+import "metabase/embedding-sdk/vendors-side-effects";
+
+import {
+  EMBEDDING_SDK_CONFIG,
+  EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
+} from "metabase/embedding-sdk/config";
+
+/**
+ * Configuration overrides for simple embedding.
+ */
+EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
+EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-simple";
+EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-simple";
+EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
+
 // load the embedding_iframe_sdk EE plugin
 import "sdk-iframe-embedding-ee-plugins";
 
-import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
-
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "./plugins";
-
-// Use the iframe embedding auth flow instead of the regular auth flow.
-EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSdkIframeEmbedAuth = true;
 
 function _init() {
   document.body.style.margin = "0";

@@ -50,10 +50,11 @@
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
+  enable-documents?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
-  enable-embedding-iframe-sdk?
+  enable-embedding-simple-feature?
   enable-llm-autodescription?
   enable-metabot-v3?
   enable-official-collections?
@@ -61,6 +62,7 @@
   enable-query-reference-validation?
   enable-sandboxes?
   enable-scim?
+  enable-semantic-search?
   enable-serialization?
   enable-session-timeout-config?
   enable-snippet-collections?
@@ -68,6 +70,7 @@
   enable-sso-jwt?
   enable-sso-ldap?
   enable-sso-saml?
+  enable-transforms?
   enable-upload-management?
   enable-whitelabeling?
   has-attached-dwh?
@@ -75,5 +78,6 @@
   is-hosted?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
+  table-data-editing?
   token-features
   token-status))

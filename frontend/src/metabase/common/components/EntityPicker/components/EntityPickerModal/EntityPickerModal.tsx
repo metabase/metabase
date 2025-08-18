@@ -15,8 +15,15 @@ import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import resizeObserver from "metabase/lib/resize-observer";
-import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import {
+  Box,
+  Flex,
+  Icon,
+  Modal,
+  Repeat,
+  Skeleton,
+  TextInput,
+} from "metabase/ui";
 import type {
   RecentContexts,
   RecentItem,

@@ -19,8 +19,7 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import { FixedSizeIcon, Flex, Icon, Repeat, Skeleton } from "metabase/ui";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {

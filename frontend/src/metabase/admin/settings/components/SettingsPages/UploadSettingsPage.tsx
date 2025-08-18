@@ -19,7 +19,7 @@ export function UploadSettingsPage() {
           <PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable />
         </SettingsSection>
         <Box>
-          <UpsellUploads source="settings-uploads" />
+          <UpsellUploads location="settings-uploads" />
         </Box>
       </Flex>
     </SettingsPageWrapper>

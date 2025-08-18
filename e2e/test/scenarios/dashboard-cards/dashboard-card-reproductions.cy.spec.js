@@ -692,7 +692,7 @@ describe("issues 27020 and 27105: static-viz fails to render for certain date fo
 });
 
 describe("issue 29304", () => {
-  // Couldn't import from `metabase/components/ExplicitSize` because dependency issue.
+  // Couldn't import from `metabase/common/components/ExplicitSize` because dependency issue.
   // It will fail Cypress tests.
   const WAIT_TIME = 300;
 
@@ -1162,7 +1162,7 @@ describe("issue 31628", () => {
 
         previousValue()
           .findByText("35%")
-          .then(($element) => H.assertIsEllipsified($element[0]));
+          .should(($element) => H.assertIsEllipsified($element[0]));
       });
     });
 

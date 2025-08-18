@@ -6,7 +6,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.color :as c]
-   [puget.printer :as puget]))
+   [puget.printer :as puget]
+   [table.core :as table]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,6 +32,11 @@
   "Run a shell command and return the output as a vector of lines."
   [& cmd]
   (-> (apply sh cmd) str/split-lines vec))
+
+(defn node
+  "Run a Node.js command string and print the output as a trimmed string."
+  [& cmd]
+  (apply sh "node" "-p" cmd))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Git Stuff
@@ -150,3 +156,24 @@
 
 (defn pp-line [& xs]
   (doseq [x xs] (puget/cprint x {:width 10e20})))
+
+(defn print-tasks [& _]
+  (let [task+descriptions (->> "bb.edn"
+                               (str project-root-directory "/")
+                               slurp
+                               edn/read-string
+                               :tasks
+                               (filter (fn [[task _v]] (symbol? task)))
+                               (sort-by (fn [[task task-data]]
+                                          (let [task-name (name task)]
+                                            (if (str/starts-with? task-name "-")
+                                              (str "z" task-name)
+                                              task-name))))
+                               (map (fn [[task task-data]]
+                                      {:task (name task)
+                                       :description (:doc task-data)})))]
+    (println "Available" (c/bold ((rand-nth [c/red c/blue c/green]) "Mage")) "Tasks:")
+    (table/table task+descriptions :style :unicode)
+    (println "For" (c/bold "more") "information on a task, run:")
+    (println "  mage <task-name> -h")
+    task+descriptions))

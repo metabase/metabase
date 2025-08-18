@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -122,6 +123,23 @@
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
       (t2/hydrate :creator :collection)))
 
+;;; -------------------------------------------- List of public or embeddable cards -----------------------------------
+
+(api.macros/defendpoint :get "/public"
+  "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
+  []
+  (perms/check-has-application-permission :setting)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
+
+(api.macros/defendpoint :get "/embeddable"
+  "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
+  and a signed JWT."
+  []
+  (perms/check-has-application-permission :setting)
+  (embedding.validation/check-embedding-enabled)
+  (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
+
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 (def ^:private card-filter-options
   "a valid card filter option."
@@ -205,11 +223,12 @@
 (api.macros/defendpoint :get "/:id"
   "Get `Card` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {ignore-view? :ignore_view, :keys [context]} :- [:map
                                                     [:ignore_view {:optional true} [:maybe :boolean]]
                                                     [:context     {:optional true} [:maybe [:enum :collection]]]]]
-  (let [card (get-card id)]
+  (let [resolved-id (eid-translation/->id-or-404 :card id)
+        card (get-card resolved-id)]
     (u/prog1 card
       (when-not ignore-view?
         (events/publish-event! :event/card-read
@@ -244,28 +263,33 @@
 
 (defn- card-columns-from-names
   [card names]
-  (when-let [names (set names)]
+  (when-let [names (not-empty (set names))]
     (filter #(names (:name %)) (:result_metadata card))))
 
 (defn- cols->kebab-case
   [cols]
   (map #(update-keys % u/->kebab-case-en) cols))
 
-(defn- source-cols [card source database-id->metadata-provider]
+(mu/defn- source-cols
+  [card
+   source :- [:enum ::breakouts ::aggregations]
+   database-id->metadata-provider]
   (if-let [names (get-in card [:visualization_settings (case source
-                                                         :source/breakouts :graph.dimensions
-                                                         :source/aggregations :graph.metrics)])]
+                                                         ::breakouts    :graph.dimensions
+                                                         ::aggregations :graph.metrics)])]
     (cols->kebab-case (card-columns-from-names card names))
     (->> (dataset-query->query (get database-id->metadata-provider (:database_id card)) (:dataset_query card))
          lib/returned-columns
-         (filter (comp #{source} :lib/source)))))
+         (filter (case source
+                   ::breakouts    :lib/breakout?
+                   ::aggregations #(= (:lib/source %) :source/aggregations))))))
 
 (defn- area-bar-line-series-are-compatible?
   [first-card second-card database-id->metadata-provider]
   (and (#{:area :line :bar} (:display second-card))
-       (let [initial-dimensions (source-cols first-card :source/breakouts database-id->metadata-provider)
-             new-dimensions     (source-cols second-card :source/breakouts database-id->metadata-provider)
-             new-metrics        (source-cols second-card :source/aggregations database-id->metadata-provider)]
+       (let [initial-dimensions (source-cols first-card ::breakouts database-id->metadata-provider)
+             new-dimensions     (source-cols second-card ::breakouts database-id->metadata-provider)
+             new-metrics        (source-cols second-card ::aggregations database-id->metadata-provider)]
          (cond
            ;; must have at least one dimension and one metric
            (or (zero? (count new-dimensions))
@@ -464,29 +488,33 @@
 
       :else nil)))
 
+(def CardCreateSchema
+  "Schema for creating a new card"
+  [:map
+   [:name                   ms/NonBlankString]
+   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:dataset_query          ms/Map]
+                            ;; TODO: Make entity_id a NanoID regex schema?
+   [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
+   [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
+   [:description            {:optional true} [:maybe ms/NonBlankString]]
+   [:display                ms/NonBlankString]
+   [:visualization_settings ms/Map]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
+   [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
+   [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
+
 (api.macros/defendpoint :post "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [_route-params
    _query-params
    {query         :dataset_query
     card-type     :type
-    :as           body} :- [:map
-                            [:name                   ms/NonBlankString]
-                            [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
-                            [:dataset_query          ms/Map]
-                            ;; TODO: Make entity_id a NanoID regex schema?
-                            [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
-                            [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
-                            [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
-                            [:description            {:optional true} [:maybe ms/NonBlankString]]
-                            [:display                ms/NonBlankString]
-                            [:visualization_settings ms/Map]
-                            [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-                            [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-                            [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
-                            [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
+    :as           body} :- CardCreateSchema]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
   (query-perms/check-run-permissions-for-query query)
@@ -534,6 +562,13 @@
     (check-allowed-to-remove-from-existing-dashboards card-before-update))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
+(defn- check-update-result-metadata-data-perms
+  [card-before-updates card-updates]
+  (when (api/column-will-change? :result_metadata card-before-updates card-updates)
+    (let [database-id (some :database_id [card-before-updates card-updates])
+          result-metadata (:result_metadata card-updates)]
+      (query-perms/check-result-metadata-data-perms database-id result-metadata))))
+
 (def ^:private CardUpdateSchema
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
@@ -552,7 +587,7 @@
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:collection_preview     {:optional true} [:maybe :boolean]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (defn- maybe-populate-collection-id
   "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.
@@ -589,7 +624,8 @@
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
     ;; Do various permissions checks
-    (doseq [f [check-allowed-to-move
+    (doseq [f [check-update-result-metadata-data-perms
+               check-allowed-to-move
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
@@ -651,8 +687,9 @@
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (queries.metadata/batch-fetch-card-metadata [(get-card id)]))
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+    (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -753,7 +790,7 @@
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]
+                         [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id collection_preview]}
    :- [:map
@@ -765,13 +802,14 @@
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
-  (qp.card/process-query-for-card
-   card-id :api
-   :parameters   parameters
-   :ignore-cache ignore_cache
-   :dashboard-id dashboard_id
-   :context      (if collection_preview :collection :question)
-   :middleware   {:process-viz-settings? false}))
+  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
+    (qp.card/process-query-for-card
+     resolved-card-id :api
+     :parameters   parameters
+     :ignore-cache ignore_cache
+     :dashboard-id dashboard_id
+     :context      (if collection_preview :collection :question)
+     :middleware   {:process-viz-settings? false})))
 
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
@@ -842,21 +880,6 @@
               {:public_uuid       nil
                :made_public_by_id nil})
   {:status 204, :body nil})
-
-(api.macros/defendpoint :get "/public"
-  "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
-  []
-  (perms/check-has-application-permission :setting)
-  (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
-
-(api.macros/defendpoint :get "/embeddable"
-  "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
-  and a signed JWT."
-  []
-  (perms/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
-  (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."

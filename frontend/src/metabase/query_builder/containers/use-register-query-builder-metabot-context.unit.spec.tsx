@@ -8,7 +8,7 @@ import type { ComputedVisualizationSettings } from "metabase/visualizations/type
 import Question from "metabase-lib/v1/Question";
 import type {
   RawSeries,
-  Timeline,
+  TimelineEvent,
   TransformedSeries,
 } from "metabase-types/api";
 import {
@@ -16,7 +16,6 @@ import {
   createMockColumn,
   createMockSettings,
   createMockSingleSeries,
-  createMockTimeline,
   createMockTimelineEvent,
   createMockTokenFeatures,
   createMockVisualizationSettings,
@@ -54,7 +53,7 @@ function createMockData(opts: {
   question: Question | undefined;
   series?: RawSeries | TransformedSeries;
   visualizationSettings?: ComputedVisualizationSettings;
-  timelines?: Timeline[];
+  timelineEvents?: TimelineEvent[];
 }) {
   const question = opts.question;
   const card = question?.card();
@@ -86,7 +85,7 @@ function createMockData(opts: {
       }),
     ],
     visualizationSettings: question?.settings() ?? {},
-    timelines: [],
+    timelineEvents: [],
     queryResult: undefined,
     ...opts,
   };
@@ -159,23 +158,24 @@ describe("registerQueryBuilderMetabotContextFn", () => {
         "graph.metrics": ["count"],
       }),
     });
-    const timelineEvents = [
-      createMockTimelineEvent({
-        name: "Third Event",
-        timestamp: "2025-07-13T00:00:00Z",
-      }),
-      createMockTimelineEvent({
-        name: "First Event",
-        timestamp: "2025-07-11T00:00:00Z",
-      }),
-      createMockTimelineEvent({
-        name: "Second Event",
-        description: "This happens second",
-        timestamp: "2025-07-12T00:00:00Z",
-      }),
-    ];
-    const timelines = [createMockTimeline({ events: timelineEvents })];
-    const data = createMockData({ question: new Question(card), timelines });
+    const data = createMockData({
+      question: new Question(card),
+      timelineEvents: [
+        createMockTimelineEvent({
+          name: "Third Event",
+          timestamp: "2025-07-13T00:00:00Z",
+        }),
+        createMockTimelineEvent({
+          name: "First Event",
+          timestamp: "2025-07-11T00:00:00Z",
+        }),
+        createMockTimelineEvent({
+          name: "Second Event",
+          description: "This happens second",
+          timestamp: "2025-07-12T00:00:00Z",
+        }),
+      ],
+    });
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     const chartConfig = getChartConfig(result)!;

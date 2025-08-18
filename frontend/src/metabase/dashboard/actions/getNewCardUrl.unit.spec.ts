@@ -1,10 +1,11 @@
 import {
+  createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockParameter,
 } from "metabase-types/api/mocks";
 
-import { getParametersMappedToDashcard } from "./getNewCardUrl";
+import { getParametersMappedToCard } from "./getNewCardUrl";
 
 describe("getParametersMappedToDashcard", () => {
   const dashboard = createMockDashboard({
@@ -25,15 +26,23 @@ describe("getParametersMappedToDashcard", () => {
     ],
   });
 
+  const card1 = createMockCard({ id: 5 });
+  const card2 = createMockCard({ id: 6 });
+
   const dashcard = createMockDashboardCard({
     parameter_mappings: [
       {
-        card_id: 5,
+        card_id: card1.id,
         parameter_id: "foo",
         target: ["variable", ["template-tag", "abc"]],
       },
       {
-        card_id: 6,
+        card_id: card2.id,
+        parameter_id: "foo",
+        target: ["dimension", ["field", 123, null]],
+      },
+      {
+        card_id: card2.id,
         parameter_id: "bar",
         target: ["dimension", ["field", 123, null]],
       },
@@ -42,22 +51,34 @@ describe("getParametersMappedToDashcard", () => {
 
   const dashcardWithNoMappings = createMockDashboardCard();
 
-  it("should return the subset of the dashboard's parameters that are found in a given dashcard's parameter_mappings", () => {
-    expect(getParametersMappedToDashcard([], dashcard)).toEqual([]);
+  it("should return the subset of the dashboard's parameters for the current dashcard and card", () => {
+    expect(getParametersMappedToCard([], dashcard, card1)).toEqual([]);
+
     expect(
-      getParametersMappedToDashcard(
+      getParametersMappedToCard(
         dashboard.parameters,
         dashcardWithNoMappings,
+        card1,
       ),
     ).toEqual([]);
 
     expect(
-      getParametersMappedToDashcard(dashboard.parameters, dashcard),
+      getParametersMappedToCard(dashboard.parameters, dashcard, card1),
     ).toMatchObject([
       {
         id: "foo",
         type: "text",
         target: ["variable", ["template-tag", "abc"]],
+      },
+    ]);
+
+    expect(
+      getParametersMappedToCard(dashboard.parameters, dashcard, card2),
+    ).toMatchObject([
+      {
+        id: "foo",
+        type: "text",
+        target: ["dimension", ["field", 123, null]],
       },
       {
         id: "bar",

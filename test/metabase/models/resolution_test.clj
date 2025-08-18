@@ -5,7 +5,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
-   [metabase.util.jvm :as u.jvm]
+
    [toucan2.core :as t2]))
 
 (deftest ^:parallel table-name-resolution-test
@@ -16,10 +16,9 @@
 (defn- load-every-metabase-namespace
   "Load all Metabase namespaces so we can make sure all models are accounted for in the map."
   []
-  ;; I know I literally just made this var deprecated last week but we really need the entire system to be loaded for
-  ;; this to work and I don't have a better way of making this happen yet.
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (doseq [nspace u.jvm/metabase-namespace-symbols]
+  ;; Use the model->namespace map which already contains all the model namespaces we need to load.
+  (doseq [[_model nspace] models.resolution/model->namespace
+          :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
     ;; classloader/require for thread safety
     (classloader/require nspace)))
 
@@ -33,8 +32,8 @@
 
 (deftest ^:parallel all-entries-are-valid-test
   (doseq [[model nspace] models.resolution/model->namespace
-          :when          (or config/ee-available?
-                             (not (str/starts-with? nspace "metabase-enterprise")))]
+          :when (or config/ee-available?
+                    (not (str/starts-with? nspace "metabase-enterprise")))]
     (testing model
       (let [e (try
                 (classloader/require nspace)

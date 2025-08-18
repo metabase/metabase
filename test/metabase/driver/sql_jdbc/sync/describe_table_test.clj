@@ -386,10 +386,10 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (mt/dataset (mt/dataset-definition
                    "naked_json"
-                   ["json_table"
-                    [{:field-name "array_col" :base-type :type/JSON}
-                     {:field-name "string_col" :base-type :type/JSON}]
-                    [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]])
+                   [["json_table"
+                     [{:field-name "array_col" :base-type :type/JSON}
+                      {:field-name "string_col" :base-type :type/JSON}]
+                     [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]]])
 
         (testing "there should be no nested fields"
           (is (= #{} (sql-jdbc.sync/describe-nested-field-columns

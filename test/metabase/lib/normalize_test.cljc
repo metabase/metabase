@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -78,7 +79,7 @@
         query             (lib/query metadata-provider {:lib/type :mbql.stage/native
                                                         :native   "SELECT *;"})]
     (is (= {:lib/type     :mbql/query
-            :lib/metadata meta/metadata-provider
+            :lib/metadata (lib.metadata.cached-provider/cached-metadata-provider meta/metadata-provider)
             :database     (meta/id)
             :stages       [{:lib/type :mbql.stage/native
                             :native   "SELECT *;"}]}

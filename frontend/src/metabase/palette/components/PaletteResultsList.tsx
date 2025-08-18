@@ -48,7 +48,6 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
       if (event.isComposing) {
         return;
       }
-
       if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) {
         event.preventDefault();
         event.stopPropagation();

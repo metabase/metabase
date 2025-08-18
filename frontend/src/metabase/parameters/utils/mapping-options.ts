@@ -132,7 +132,15 @@ export function getParameterMappingOptions(
   parameter: Parameter | null | undefined = null,
   card: Card | VirtualCard,
   dashcard: BaseDashboardCard | null | undefined = null,
+  parameterDashcard: BaseDashboardCard | null | undefined = null,
 ): ParameterMappingOption[] {
+  const isInlineParameterOnCardFromOtherTab =
+    parameterDashcard != null &&
+    parameterDashcard.dashboard_tab_id !== dashcard?.dashboard_tab_id;
+  if (isInlineParameterOnCardFromOtherTab) {
+    return [];
+  }
+
   if (dashcard && isVirtualDashCard(dashcard)) {
     if (["heading", "text"].includes(card.display)) {
       const tagNames = tag_names(dashcard.visualization_settings.text || "");

@@ -25,7 +25,6 @@ export type HeaderButtonProps = {
   canManageSubscriptions: boolean;
   formInput: any;
   isAdmin: boolean;
-  isEmbeddingSdk: boolean;
   openSettingsSidebar: () => void;
 } & DashboardHeaderButtonRowProps;
 

@@ -1,8 +1,5 @@
-import type { Location } from "history";
 import { type ComponentType, useEffect, useState } from "react";
 import { withRouter } from "react-router";
-import { replace } from "react-router-redux";
-import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -14,8 +11,11 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
-import { connect, useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_DB_ROUTING } from "metabase/plugins";
+import { connect, useSelector } from "metabase/lib/redux";
+import {
+  PLUGIN_DATABASE_REPLICATION,
+  PLUGIN_DB_ROUTING,
+} from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
 import type {
@@ -28,7 +28,6 @@ import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionI
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
 import { DatabaseModelFeaturesSection } from "../components/DatabaseModelFeaturesSection";
 import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
-import { NewDatabasePermissionsModal } from "../components/NewDatabasePermissionsModal";
 import { deleteDatabase, updateDatabase } from "../database";
 
 interface DatabaseEditAppProps {
@@ -38,7 +37,6 @@ interface DatabaseEditAppProps {
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
   deleteDatabase: (databaseId: DatabaseId) => Promise<void>;
-  location: Location;
 }
 
 const mapDispatchToProps = {
@@ -51,9 +49,7 @@ function DatabaseEditAppInner({
   params,
   updateDatabase,
   deleteDatabase,
-  location,
 }: DatabaseEditAppProps) {
-  const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);
   const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
@@ -78,15 +74,6 @@ function DatabaseEditAppInner({
     [t`Databases`, "/admin/databases"],
     database?.name && [database?.name],
   ]);
-
-  const [isPermissionModalOpened, setIsPermissionModalOpened] = useState(false);
-  useMount(() => {
-    if (location.query.created) {
-      setIsPermissionModalOpened(true);
-      dispatch(replace(location.pathname));
-    }
-  });
-  const onPermissionModalClose = () => setIsPermissionModalOpened(false);
 
   PLUGIN_DB_ROUTING.useRedirectDestinationDatabase(database);
 
@@ -116,6 +103,10 @@ function DatabaseEditAppInner({
                     updateDatabase={updateDatabase}
                   />
 
+                  <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
+                    database={database}
+                  />
+
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection
                     database={database}
                   />
@@ -126,12 +117,6 @@ function DatabaseEditAppInner({
                     deleteDatabase={deleteDatabase}
                   />
                 </Flex>
-
-                <NewDatabasePermissionsModal
-                  opened={isPermissionModalOpened}
-                  onClose={onPermissionModalClose}
-                  database={database}
-                />
               </>
             )}
           </LoadingAndErrorWrapper>

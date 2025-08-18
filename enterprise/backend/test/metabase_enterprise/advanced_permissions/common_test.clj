@@ -800,23 +800,49 @@
                            (mt/user-http-request :rasta :post 200 execute-path
                                                  {:parameters {"id" 1}})))))
                 (testing "Fails with access to the DB blocked"
-                  (mt/with-all-users-data-perms-graph! {(u/the-id (mt/db)) {:view-data      :blocked
-                                                                            :create-queries :no
-                                                                            :details        :yes}}
+                  (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
+                                                                 :create-queries :no
+                                                                 :details        :yes}}
                     (mt/with-actions-enabled
                       (is (partial= {:message "You don't have permissions to do that."}
                                     (mt/user-http-request :rasta :post 403 execute-path
                                                           {:parameters {"id" 1}}))))))))))))))
 
+(defmacro with-all-users-as-settings-managers [& body]
+  `(try
+     (perms/grant-application-permissions! (perms-group/all-users) :setting)
+     (do ~@body)
+     (finally
+       (perms/revoke-application-permissions! (perms-group/all-users) :setting))))
+
 (deftest settings-managers-can-have-uploads-db-access-revoked
-  (perms/grant-application-permissions! (perms-group/all-users) :setting)
-  (testing "Upload DB can be set with the right permission"
-    (mt/with-all-users-data-perms-graph! {(mt/id) {:details :yes}}
-      (mt/user-http-request :rasta :put 204 "setting/" {:uploads-settings {:db_id (mt/id) :schema_name nil :table_prefix nil}})))
-  (testing "Upload DB cannot be set without the right permission"
-    (mt/with-all-users-data-perms-graph! {(mt/id) {:details :no}}
-      (mt/user-http-request :rasta :put 403 "setting/" {:uploads-settings {:db_id (mt/id) :schema_name nil :table_prefix nil}})))
-  (perms/revoke-application-permissions! (perms-group/all-users) :setting))
+  (mt/with-premium-features #{:advanced-permissions}
+    (with-all-users-as-settings-managers
+      (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {}})
+      (testing "Upload DB can be set with the right permission"
+        (mt/with-all-users-data-perms-graph! {(mt/id) {:details :yes}}
+          (mt/user-http-request :rasta :put 204 "setting/" {:uploads-settings {:db_id (mt/id) :schema_name nil :table_prefix nil}})))
+      (testing "Upload DB cannot be set without the right permission"
+        (mt/with-all-users-data-perms-graph! {(mt/id) {:details :no}}
+          (mt/user-http-request :rasta :put 403 "setting/" {:uploads-settings {:db_id (mt/id) :schema_name nil :table_prefix nil}}))))))
+
+(deftest settings-managers-can-enable-and-disable-uploads-on-dwh
+  (mt/with-premium-features #{:advanced-permissions}
+    (with-all-users-as-settings-managers
+      (mt/with-temp [:model/Database {db-id :id} {:is_attached_dwh true}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/User {user-id :id} {}
+                     :model/PermissionsGroupMembership {} {:user_id user-id
+                                                           :group_id group-id}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-restored-data-perms-for-groups! [group-id]
+            (testing "Can enable uploads on DWH"
+              (mt/user-http-request user-id :put 204 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}}))
+            (testing "Can disable uploads on DWH"
+              (mt/user-http-request user-id :put 204 "setting/" {:uploads-settings {}}))
+            (testing "Admins can do this too"
+              (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {:db_id db-id :schema_name nil :table_prefix nil}})
+              (mt/user-http-request :crowberto :put 204 "setting/" {:uploads-settings {}}))))))))
 
 (deftest upload-csv-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
@@ -858,7 +884,7 @@
             [table-a (upload-test/create-upload-table! :schema-name schema-name)]
             (upload-test/with-upload-table!
               [table-b (upload-test/create-upload-table! :schema-name schema-name)]
-              (let [db-id       (u/the-id (mt/db))
+              (let [db-id       (mt/id)
                     append-csv! #(upload-test/update-csv-with-defaults!
                                   action
                                   :table-id (:id table-a)
@@ -885,7 +911,7 @@
                        action)
         (upload-test/with-upload-table!
           [table-a (upload-test/create-upload-table!)]
-          (let [db-id       (u/the-id (mt/db))
+          (let [db-id       (mt/id)
                 append-csv! #(upload-test/update-csv-with-defaults!
                               action
                               :table-id (:id table-a)
@@ -903,7 +929,7 @@
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-model-cleanup [:model/Table]
         (let [schema-name (sql.tx/session-schema driver/*driver*)
-              db-id       (u/the-id (mt/db))]
+              db-id       (mt/id)]
           (upload-test/with-upload-table! [table (upload-test/create-upload-table! :schema-name schema-name)]
             (mt/with-temp [:model/Table {} {:db_id db-id :schema "some_schema"}]
               (doseq [[schema-perms can-upload?] {:query-builder               true

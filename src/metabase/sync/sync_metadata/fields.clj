@@ -92,7 +92,6 @@
                   (partition-by (juxt :table-name :table-schema))
                   (map (fn [table-metadata]
                          (let [{:keys [table-name table-schema]} (first table-metadata)
-
                                table   (->> (t2/select :model/Table
                                                        :db_id (:id database)
                                                        :%lower.name (t2.util/lower-case-en table-name)

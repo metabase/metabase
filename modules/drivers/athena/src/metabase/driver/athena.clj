@@ -47,7 +47,7 @@
                               :identifiers-with-spaces       false
                               :metadata/key-constraints      false
                               :test/jvm-timezone-setting     false
-                              :database-routing              false}]
+                              :database-routing              true}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -310,6 +310,10 @@
   [_driver _semantic-type expr]
   (h2x/->time expr))
 
+(defmethod sql.qp/cast-temporal-string [:athena :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:date_parse expr (h2x/literal "%Y%m%d%H%i%S")])
+
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
   [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver x)
@@ -505,7 +509,7 @@
 ;   #{"database_name"})
 
 ; If we want to limit the initial connection to a specific database/schema, I think we'd have to do that here...
-(defmethod driver/describe-database :athena
+(defmethod driver/describe-database* :athena
   [driver {details :details, :as database}]
   (sql-jdbc.execute/do-with-connection-with-options
    driver

@@ -113,16 +113,20 @@
   [dashboard-id :- ms/PositiveInt
    slug->value  :- :map]
   (let [parameters (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)
-        slug->id   (into {} (map (juxt :slug :id)) parameters)]
+        slug->id (into {} (map (juxt :slug :id)) parameters)
+        slug->type (into {} (map (juxt :slug :type)) parameters)]
     (vec (for [[slug value] slug->value
-               :let         [slug (u/qualified-name slug)]]
-           {:slug  slug
-            :id    (or (get slug->id slug)
-                       (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
-                                       {:status-code          400
-                                        :slug                 slug
-                                        :dashboard-parameters parameters})))
-            :value value}))))
+               :let [slug (u/qualified-name slug)
+                     param-type (get slug->type slug)
+                     default-options (parameters.dashboard/param-type->default-options param-type)]]
+           (cond-> {:slug slug
+                    :id    (or (get slug->id slug)
+                               (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
+                                               {:status-code          400
+                                                :slug                 slug
+                                                :dashboard-parameters parameters})))
+                    :value value}
+             default-options (assoc :options default-options))))))
 
 (mu/defn parse-query-params :- :map
   "Parses parameter values from the query string in a backward compatible way.

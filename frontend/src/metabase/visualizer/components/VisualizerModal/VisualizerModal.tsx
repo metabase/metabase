@@ -64,6 +64,11 @@ export function VisualizerModal({
         withCloseButton={false}
         onClose={onModalClose}
         padding={0}
+        styles={{
+          content: {
+            overflow: "hidden",
+          },
+        }}
       >
         {open && (
           <Visualizer

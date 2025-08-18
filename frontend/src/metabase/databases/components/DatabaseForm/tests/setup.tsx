@@ -85,6 +85,7 @@ export const TEST_ENGINES: Record<string, Engine> = {
     ],
     "driver-name": "H2",
     "superseded-by": null,
+    "extra-info": null,
   },
 };
 
@@ -109,7 +110,11 @@ export const setup = ({
 
   const onSubmit = jest.fn();
   renderWithProviders(
-    <DatabaseForm config={{ isAdvanced: true }} onSubmit={onSubmit} />,
+    <DatabaseForm
+      config={{ isAdvanced: true }}
+      onSubmit={onSubmit}
+      location="admin"
+    />,
     {
       storeInitialState: state,
     },

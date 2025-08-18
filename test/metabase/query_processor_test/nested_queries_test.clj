@@ -72,7 +72,7 @@
                ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
                :cols (mapv (fn [col-name]
                              (-> (qp.test-util/native-query-col :venues col-name)
-                                 (dissoc :database_type :lib/type :lib/source :ident)))
+                                 (dissoc :database_type :lib/type :lib/source)))
                            [:id :longitude :category_id :price :name :latitude])}
               (mt/format-rows-by
                [int 4.0 int int str 4.0]
@@ -207,8 +207,6 @@
                                                               [:aggregation-options
                                                                [:max $rating]
                                                                {:name "max"}]]
-                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                     1 "O7xQpRu8mQfVAnjroblU2"}
                                                 :breakout    [$category]
                                                 :order-by    [[:asc $category]]})])
             (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
@@ -227,9 +225,7 @@
                                                                                 {:name "sum"}]
                                                                                [:aggregation-options
                                                                                 [:count]
-                                                                                {:name "count"}]]
-                                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                                     1 "q0awK8v8lIp1iW_ZhSS_E"}}}
+                                                                                {:name "count"}]]}}
                                                     (when model?
                                                       {:info {:metadata/model-metadata
                                                               (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
@@ -267,14 +263,12 @@
                                              {:fields [$id]
                                               :joins  [{:source-table $$products
                                                         :alias        "P"
-                                                        :ident        "Zh421ECf3-b2l2Ml7s_3P"
                                                         :fields       [&P.products.id &P.products.ean]
                                                         :condition    [:= $product_id &P.products.id]}]})
                                            (mt/mbql-query orders
                                              {:fields [$id]
                                               :joins  [{:source-table "card__1"
                                                         :alias        "RP"
-                                                        :ident        "FGuqyLkhyOtYbUCeFSpfl"
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
           (is (=? {:status :completed}
@@ -356,19 +350,17 @@
        (catch Exception _ nil)))
 
 (deftest card-id-native-source-query-with-long-alias-test
-  (testing "nested card with native query and long column alias (metabase##47584)"
+  (testing "nested card with native query and long column alias (#47584)"
     (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
                                        (descendants driver/hierarchy :sql))
       (let [coun-col-name      "coun"
             long-col-full-name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
-
             ;; Truncate the long column to something the driver can actually execute.
             long-col-name      (subs long-col-full-name
                                      0
                                      (if-let [col-max (col-max-for-driver driver/*driver*)]
                                        (min col-max (count long-col-full-name))
                                        (count long-col-full-name)))
-
             ;; Disable truncate-alias when compiling the native query to ensure we don't further truncate the column.
             ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
             native-sub-query   (with-redefs [lib.util/truncate-alias
@@ -382,7 +374,6 @@
                                         :limit        5})
                                      qp.compile/compile
                                      :query))
-
             query              (query-with-source-card 1)]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                           [(mt/native-query {:query native-sub-query})])
@@ -638,7 +629,6 @@
                (qp/process-query
                 (query-with-source-card 1 (mt/mbql-query checkins
                                             {:aggregation [[:count]]
-                                             :aggregation-idents {0 "vX12AxUR50eQNFNZgdG0m"}
                                              :breakout    [!day.*date]})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::breakout-year-test]
@@ -664,7 +654,7 @@
           (let [[date-col count-col] (for [col (mt/cols (qp/process-query source-query))]
                                        (as-> col col
                                          (assoc col :source :fields)
-                                         (dissoc col :position :ident)
+                                         (dissoc col :position)
                                          (m/filter-keys simple-keyword? col)))]
             ;; since the bucketing is happening in the source query rather than at this level, the field ref should
             ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
@@ -702,7 +692,6 @@
                (-> (query-with-source-card 1
                                            (mt/mbql-query checkins
                                              {:aggregation [[:count]]
-                                              :aggregation-idents {0 "D8bJ476ZFWsYM5G159Ndc"}
                                               :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
                                               :breakout    [!month.*date]}))
                    qp/process-query
@@ -739,8 +728,7 @@
                 [int]
                 (qp/process-query
                  (query-with-source-card 1
-                                         {:aggregation [:count]
-                                          :aggregation-idents {0 "ApWqC4pOyxysqqeiuiPeS"}})))))))))
+                                         {:aggregation [:count]})))))))))
 
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"
@@ -1139,9 +1127,10 @@
                                           (mt/id :products :title))
           (do-test
            (fn [results]
-             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
+             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                      14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
-                     4.0 "2017-12-31T14:41:56.87Z"]
+                     4.0 "2017-12-31T14:41:56.87Z"
+                     "Awesome Concrete Shoes"] ; <- additional remap of ORDERS.PRODUCT_ID => PRODUCTS.TITLE
                     (first (mt/rows results)))))))))))
 
 (deftest ^:parallel inception-metadata-test
@@ -1222,7 +1211,6 @@
                          "ORDERS.DISCOUNT"
                          "ORDERS.CREATED_AT"
                          "ORDERS.QUANTITY"
-                         "PRODUCTS.TITLE"
                          "PRODUCTS.ID"
                          "PRODUCTS.EAN"
                          "PRODUCTS.TITLE"
@@ -1230,11 +1218,13 @@
                          "PRODUCTS.VENDOR"
                          "PRODUCTS.PRICE"
                          "PRODUCTS.RATING"
-                         "PRODUCTS.CREATED_AT"]
+                         "PRODUCTS.CREATED_AT"
+                         "PRODUCTS.TITLE"] ; <- extra remapped column
                         (mapv (comp field-id->name :id) (get-in result [:data :cols]))))
-                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- extra remapped col
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                         14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman"
-                        25.1 4.0 "2017-12-31T14:41:56.87Z"]
+                        25.1 4.0 "2017-12-31T14:41:56.87Z"
+                        "Awesome Concrete Shoes"] ; <- extra remapped col
                        (mt/first-row result)))))))))))
 
 (deftest ^:parallel handle-unwrapped-joined-fields-correctly-test
@@ -1572,7 +1562,8 @@
                                        :condition    [:= *products.id &Reviews.reviews.product_id]
                                        :alias        "Reviews"}]
                        :order-by     [[:asc $product_id->products.id]
-                                      [:asc &Reviews.products.id]]
+                                      [:asc &Reviews.reviews.product_id]
+                                      [:asc &Reviews.reviews.id]]
                        :limit        1})]
           (sql.qp-test-util/with-native-query-testing-context query
             (testing "results"

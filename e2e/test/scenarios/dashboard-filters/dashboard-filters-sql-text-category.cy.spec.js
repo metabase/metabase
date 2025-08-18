@@ -94,3 +94,91 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 });
+
+describe("scenarios > dashboard > filters > SQL > text and multiple values", () => {
+  const questionDetails = {
+    name: "SQL",
+    native: {
+      query: "SELECT ID, CATEGORY FROM products WHERE CATEGORY IN ({{text}})",
+      "template-tags": {
+        text: {
+          id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+          name: "text",
+          "display-name": "Text",
+          type: "text",
+        },
+      },
+    },
+  };
+
+  const parameterDetails = {
+    id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+    type: "string/=",
+    name: "Text",
+    slug: "text",
+    isMultiSelect: true,
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      text: "enabled",
+    },
+  };
+
+  function setFilterAndVerify({ values } = {}) {
+    H.filterWidget().click();
+    H.popover().within(() => {
+      H.multiAutocompleteInput().type(values.join(","));
+      cy.button("Add filter").click();
+    });
+    values.forEach((value) => {
+      H.getDashboardCard().within(() => {
+        cy.findAllByText(value).should("have.length.gte", 1);
+        cy.findAllByText(value).should("have.length.gte", 1);
+      });
+    });
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow multiple values for Number variables", () => {
+    cy.log("create a dashboard");
+    H.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: dashcard }) => {
+      cy.wrap(dashcard.dashboard_id).as("dashboardId");
+    });
+
+    cy.log("set mapping");
+    H.visitDashboard("@dashboardId");
+    H.editDashboard();
+    cy.findByTestId("fixed-width-filters").findByText("Text").click();
+    H.selectDashboardFilter(H.getDashboardCard(), "Text");
+    H.sidebar().findByLabelText("Multiple values").click();
+    H.saveDashboard();
+
+    cy.log("saved dashboard");
+    setFilterAndVerify({ values: ["Gadget", "Widget"] });
+
+    cy.log("public dashboard");
+    cy.get("@dashboardId").then((dashboardId) =>
+      H.visitPublicDashboard(dashboardId),
+    );
+    setFilterAndVerify({ values: ["Gadget", "Widget"] });
+
+    cy.log("embedded dashboard");
+    cy.get("@dashboardId").then((dashboardId) =>
+      H.visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      }),
+    );
+    setFilterAndVerify({ values: ["Gadget", "Widget"] });
+  });
+});

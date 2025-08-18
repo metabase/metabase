@@ -195,8 +195,8 @@ describe("(metabase#46714)", () => {
       cy.findByText("Orders").click();
     });
 
-    //TODO: Fix this shame
-    cy.wait(2000);
+    cy.findByTestId("entity-picker-modal").should("not.exist");
+    cy.findByTestId("segment-editor").findByText("Orders").should("be.visible");
 
     cy.findByTestId("segment-editor")
       .findByText("Add filters to narrow your answer")

@@ -103,8 +103,6 @@ const ORDERS_JOIN_PRODUCTS_QUERY = (function () {
       joinTable,
       [
         Lib.joinConditionClause(
-          query,
-          -1,
           Lib.joinConditionOperators(query, -1)[0],
           Lib.joinConditionLHSColumns(query, -1)[0],
           Lib.joinConditionRHSColumns(query, -1, joinTable)[0],
@@ -161,7 +159,6 @@ describe("ViewOnlyTag", () => {
                 joins: [
                   {
                     alias: "Orders Question",
-                    ident: "Heqv_gfsCdfE95MkLLup_",
                     fields: "all",
                     // This card does not exist
                     "source-table": "card__123",
@@ -229,7 +226,6 @@ describe("ViewOnlyTag", () => {
               joins: [
                 {
                   alias: "Orders Question",
-                  ident: "Heqv_gfsCdfE95MkLLup_",
                   fields: "all",
                   "source-table": `card__${sourceCard.id}`,
                   condition: [

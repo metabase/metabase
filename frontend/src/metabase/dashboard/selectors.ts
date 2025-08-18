@@ -2,11 +2,13 @@ import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
-import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
@@ -19,7 +21,6 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
-  getIsEmbeddingSdk,
 } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -50,6 +51,7 @@ import type {
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
   canResetFilter,
+  findDashCardForInlineParameter,
   getMappedParametersIds,
   hasDatabaseActionsEnabled,
   hasInlineParameters,
@@ -167,6 +169,10 @@ export const getDashboard = createSelector(
 );
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
+
+export const getDashcardList = createSelector([getDashcards], (dashcards) =>
+  Object.values(dashcards),
+);
 
 export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   const dashcards = getDashcards(state);
@@ -365,6 +371,22 @@ export const getEditingParameter = createSelector(
   },
 );
 
+/**
+ * Returns the dashcard id of the dashcard that contains the parameter.
+ * If the parameter is dashboard header parameter, it returns undefined.
+ */
+export const getEditingParameterInlineDashcard = createSelector(
+  [getEditingParameterId, getDashcards],
+  (editingParameterId, dashcards) => {
+    return editingParameterId
+      ? findDashCardForInlineParameter(
+          editingParameterId,
+          Object.values(dashcards),
+        )
+      : undefined;
+  },
+);
+
 const getCard = (state: State, { card }: { card: Card | VirtualCard }) => card;
 const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
   dashcard;
@@ -447,9 +469,9 @@ export const getDashCardInlineValuePopulatedParameters = createSelector(
     if (!dashcard || !hasInlineParameters(dashcard)) {
       return [];
     }
-    const inlineParameters = dashcard.inline_parameters.map((parameterId) =>
-      parameters.find((p) => p.id === parameterId),
-    );
+    const inlineParameters = dashcard.inline_parameters
+      .map((parameterId) => parameters.find((p) => p.id === parameterId))
+      .filter(isNotNull);
     return _getValuePopulatedParameters({
       parameters: inlineParameters,
       values: parameterValues,
@@ -484,17 +506,24 @@ export const getQuestionByCard = createCachedSelector(
     return isQuestionCard(card) ? new Question(card, metadata) : undefined;
   },
 )((_state, props) => {
-  // Sometime card doesn't have an id.
-  // In that case, we use the stringified version of the card as a cache key.
-  // That's nless than ideal, but it avoids flooding the console with warnings
-  // and it's still better than using `undefined` as a cache key.
-  return props.card.id ?? JSON.stringify(props.card).slice(0, 50);
+  // Virtual cards don't have an ID and should not return a question so we use "virtual" as a cache key for all of them
+  return props.card.id == null ? "virtual" : props.card.id;
 });
 
 export const getDashcardParameterMappingOptions = createCachedSelector(
-  [getQuestionByCard, getEditingParameter, getCard, getDashCard],
-  (question, parameter, card, dashcard) => {
-    return _getParameterMappingOptions(question, parameter, card, dashcard);
+  [getQuestionByCard, getEditingParameter, getCard, getDashCard, getDashcards],
+  (question, parameter, card, dashcard, dashcards) => {
+    const parameterDashcard =
+      parameter != null
+        ? findDashCardForInlineParameter(parameter.id, Object.values(dashcards))
+        : null;
+    return _getParameterMappingOptions(
+      question,
+      parameter,
+      card,
+      dashcard,
+      parameterDashcard,
+    );
   },
 )((state, props) => {
   return props.card.id ?? props.dashcard.id;
@@ -517,9 +546,9 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbeddingIframe, getIsEmbeddingSdk, getEmbedOptions],
-  (isEmbeddingIframe, isEmbeddingSdk, embedOptions) =>
-    (isEmbeddingSdk && isEmbeddingIframe) ||
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
+    (isEmbeddingSdk() && isEmbeddingIframe) ||
     !isEmbeddingIframe ||
     !!embedOptions.header,
 );

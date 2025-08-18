@@ -1,4 +1,4 @@
-import AccordionList from "./AccordionList";
+import { AccordionList } from "./AccordionList";
 
 const SECTIONS = [
   {

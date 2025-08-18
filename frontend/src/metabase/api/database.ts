@@ -264,12 +264,16 @@ export const databaseApi = Api.injectEndpoints({
 
 export const {
   useListDatabasesQuery,
+  useLazyListDatabasesQuery,
   useGetDatabaseQuery,
   useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
   useListDatabaseSchemasQuery,
+  useLazyListDatabaseSchemasQuery,
+  usePrefetch: useDatabasePrefetch,
   useListSyncableDatabaseSchemasQuery,
   useListDatabaseSchemaTablesQuery,
+  useLazyListDatabaseSchemaTablesQuery,
   useListVirtualDatabaseTablesQuery,
   useListDatabaseIdFieldsQuery,
   useCreateDatabaseMutation,

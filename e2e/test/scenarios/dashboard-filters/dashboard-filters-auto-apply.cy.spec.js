@@ -89,7 +89,7 @@ describe(
           cy.button("Update filter").click();
         });
         H.assertTableRowsCount(53);
-        H.applyFilterToast().findByText("1 filter updated");
+        H.applyFilterToast().findByText("1 filter changed");
         H.applyFilterButton().click();
 
         cy.wait("@cardQuery");
@@ -154,7 +154,7 @@ describe(
       });
 
       H.applyFilterButton().should("be.visible");
-      H.applyFilterToast().findByText("1 filter added");
+      H.applyFilterToast().findByText("1 filter changed");
 
       cy.log("verify filter value is not saved");
 
@@ -173,7 +173,7 @@ describe(
       });
 
       H.applyFilterButton().should("be.visible");
-      H.applyFilterToast().findByText("1 filter added");
+      H.applyFilterToast().findByText("1 filter changed");
 
       H.cancelFilterButton().click();
       H.applyFilterToast().should("not.exist");

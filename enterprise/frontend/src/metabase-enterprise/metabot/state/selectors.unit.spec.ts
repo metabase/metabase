@@ -42,8 +42,8 @@ describe("metabot selectors", () => {
       const state = setup({
         messages: [
           { id: "1", role: "user", message: "bleh" },
-          { id: "2", role: "agent", type: "reply", message: "blah" },
-          { id: "3", role: "agent", type: "reply", message: "blah" },
+          { id: "2", role: "agent", message: "blah" },
+          { id: "3", role: "agent", message: "blah" },
         ],
       });
       const messages = getLastAgentMessagesByType(state as any);
@@ -52,10 +52,10 @@ describe("metabot selectors", () => {
 
     it("should return latest agent error messages only", () => {
       const state = setup({
-        messages: [
-          { id: "1", role: "agent", type: "reply", message: "blah" },
-          { id: "2", role: "agent", type: "error", message: "BLAH" },
-          { id: "3", role: "agent", type: "error", message: "BLAH" },
+        messages: [{ id: "1", role: "agent", message: "blah" }],
+        errorMessages: [
+          { type: "message", message: "BLAH" },
+          { type: "message", message: "BLAH" },
         ],
       });
       const messages = getLastAgentMessagesByType(state as any);
@@ -68,7 +68,7 @@ describe("metabot selectors", () => {
       const state = setup({
         messages: [
           { id: "1", role: "user", message: "bleh" },
-          { id: "2", role: "agent", type: "reply", message: "blah" },
+          { id: "2", role: "agent", message: "blah" },
         ],
       });
       const message = getUserPromptForMessageId(state as any, "1");
@@ -79,9 +79,9 @@ describe("metabot selectors", () => {
       const state = setup({
         messages: [
           { id: "1", role: "user", message: "bleh" },
-          { id: "2", role: "agent", type: "reply", message: "blah" },
+          { id: "2", role: "agent", message: "blah" },
           { id: "3", role: "user", message: "bleh bleh" },
-          { id: "4", role: "agent", type: "reply", message: "blah blah" },
+          { id: "4", role: "agent", message: "blah blah" },
         ],
       });
       const message1 = getUserPromptForMessageId(state as any, "2");

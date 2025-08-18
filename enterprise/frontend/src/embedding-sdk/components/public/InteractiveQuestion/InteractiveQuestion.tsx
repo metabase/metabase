@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import {
   BackButton,
   Breakout,
@@ -21,119 +19,27 @@ import {
   Summarize,
   SummarizeDropdown,
   Title,
-} from "embedding-sdk/components/private/InteractiveQuestion/components";
-import { VisualizationButton } from "embedding-sdk/components/private/InteractiveQuestion/components/VisualizationButton/VisualizationButton";
+  VisualizationButton,
+} from "embedding-sdk/components/private/SdkQuestion/components";
 import {
-  InteractiveQuestionProvider,
-  type InteractiveQuestionProviderProps,
-} from "embedding-sdk/components/private/InteractiveQuestion/context";
-import {
-  InteractiveQuestionDefaultView,
-  type InteractiveQuestionDefaultViewProps,
-} from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/components/public/InteractiveQuestion/types";
-
-/**
- * @interface
- * @expand
- */
-export type BaseInteractiveQuestionProps =
-  InteractiveQuestionQuestionIdProps & {
-    /**
-     * The children of the MetabaseProvider component.s
-     */
-    children?: ReactNode;
-    plugins?: InteractiveQuestionProviderProps["componentPlugins"];
-  } & Pick<
-      InteractiveQuestionProviderProps,
-      | "onBeforeSave"
-      | "onSave"
-      | "entityTypes"
-      | "isSaveEnabled"
-      | "initialSqlParameters"
-      | "withDownloads"
-      | "targetCollection"
-      | "onRun"
-    >;
-
-/**
- * Props for the drill-through question
- *
- * @interface
- * @expand
- * @category InteractiveQuestion
- */
-export type DrillThroughQuestionProps = Omit<
-  BaseInteractiveQuestionProps,
-  "questionId"
-> &
-  InteractiveQuestionDefaultViewProps;
+  SdkQuestion,
+  type SdkQuestionProps,
+} from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 
 /**
  * @interface
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionProps = BaseInteractiveQuestionProps &
-  InteractiveQuestionDefaultViewProps;
-
-export const _InteractiveQuestion = ({
-  questionId,
-  withResetButton = true,
-  title,
-  plugins,
-  height,
-  width,
-  className,
-  style,
-  children = null,
-  onBeforeSave,
-  onSave,
-  entityTypes,
-  isSaveEnabled,
-  targetCollection,
-  withChartTypeSelector = true,
-  withDownloads = false,
-  initialSqlParameters,
-  onRun,
-}: InteractiveQuestionProps): JSX.Element | null => (
-  <InteractiveQuestionProvider
-    questionId={questionId}
-    componentPlugins={plugins}
-    onBeforeSave={onBeforeSave}
-    onSave={onSave}
-    entityTypes={entityTypes}
-    isSaveEnabled={isSaveEnabled}
-    targetCollection={targetCollection}
-    initialSqlParameters={initialSqlParameters}
-    withDownloads={withDownloads}
-    onRun={onRun}
-  >
-    {children ?? (
-      <InteractiveQuestionDefaultView
-        height={height}
-        width={width}
-        className={className}
-        style={style}
-        title={title}
-        withResetButton={withResetButton}
-        withChartTypeSelector={withChartTypeSelector}
-      />
-    )}
-  </InteractiveQuestionProvider>
-);
+export type InteractiveQuestionProps = Omit<
+  SdkQuestionProps,
+  "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
+>;
 
 /**
- * A component that renders an interactive question.
- *
- * @function
- * @category InteractiveQuestion
- * @param props
+ * @interface
  */
-const InteractiveQuestion = withPublicComponentWrapper(
-  _InteractiveQuestion,
-) as typeof _InteractiveQuestion & {
+export type InteractiveQuestionComponents = {
   BackButton: typeof BackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
@@ -161,28 +67,37 @@ const InteractiveQuestion = withPublicComponentWrapper(
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
 };
 
-InteractiveQuestion.BackButton = BackButton;
-InteractiveQuestion.Filter = Filter;
-InteractiveQuestion.FilterDropdown = FilterDropdown;
-InteractiveQuestion.ResetButton = QuestionResetButton;
-InteractiveQuestion.Title = Title;
-InteractiveQuestion.Summarize = Summarize;
-InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
-InteractiveQuestion.Notebook = Editor;
-InteractiveQuestion.Editor = Editor;
-InteractiveQuestion.NotebookButton = EditorButton;
-InteractiveQuestion.EditorButton = EditorButton;
-InteractiveQuestion.QuestionVisualization = QuestionVisualization;
-InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
-InteractiveQuestion.SaveButton = SaveButton;
-InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
-InteractiveQuestion.QuestionSettings = QuestionSettings;
-InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
-InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
-InteractiveQuestion.Breakout = Breakout;
-InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
-InteractiveQuestion.DownloadWidget = DownloadWidget;
-InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
-InteractiveQuestion.VisualizationButton = VisualizationButton;
+export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
+  <SdkQuestion {...props} />
+);
 
-export { InteractiveQuestion };
+const subComponents: InteractiveQuestionComponents = {
+  BackButton: BackButton,
+  Filter: Filter,
+  FilterDropdown: FilterDropdown,
+  ResetButton: QuestionResetButton,
+  Title: Title,
+  Summarize: Summarize,
+  SummarizeDropdown: SummarizeDropdown,
+  Notebook: Editor,
+  Editor: Editor,
+  NotebookButton: EditorButton,
+  EditorButton: EditorButton,
+  QuestionVisualization: QuestionVisualization,
+  SaveQuestionForm: SdkSaveQuestionForm,
+  SaveButton: SaveButton,
+  ChartTypeSelector: ChartTypeSelector,
+  QuestionSettings: QuestionSettings,
+  QuestionSettingsDropdown: QuestionSettingsDropdown,
+  BreakoutDropdown: BreakoutDropdown,
+  Breakout: Breakout,
+  ChartTypeDropdown: ChartTypeDropdown,
+  DownloadWidget: DownloadWidget,
+  DownloadWidgetDropdown: DownloadWidgetDropdown,
+  VisualizationButton: VisualizationButton,
+};
+
+export const InteractiveQuestion = Object.assign(
+  _InteractiveQuestion,
+  subComponents,
+);

@@ -2,7 +2,8 @@ import type { Moment } from "moment-timezone"; // eslint-disable-line no-restric
 import { msgid, ngettext } from "ttag";
 
 import type { TimeOnlyOptions } from "metabase/lib/formatting/types";
-import { parseTime, parseTimestamp } from "metabase/lib/time";
+import { parseTime } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 import {
@@ -41,8 +42,8 @@ export function formatTimeWithUnit(
   unit: DatetimeUnit,
   options: TimeWithUnitType = {},
 ) {
-  const m = parseTimestamp(value, unit, options.local);
-  if (!m.isValid()) {
+  const d = parseTimestamp(value, unit, options.local);
+  if (!d.isValid()) {
     return String(value);
   }
 
@@ -60,7 +61,7 @@ export function formatTimeWithUnit(
     ? options.time_format
     : getTimeFormatFromStyle(timeStyle, unit, timeEnabled as any);
 
-  return m.format(timeFormat);
+  return d.format(timeFormat);
 }
 
 export function formatTime(

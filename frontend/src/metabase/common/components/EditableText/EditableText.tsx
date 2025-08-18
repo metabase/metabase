@@ -11,16 +11,16 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 
 import Markdown from "metabase/common/components/Markdown";
-import { Box } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
 export type EditableTextAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
-  "onChange" | "onFocus" | "onBlur"
+  "style" | "onChange" | "onFocus" | "onBlur"
 >;
 
-export interface EditableTextProps extends EditableTextAttributes {
+export interface EditableTextProps extends BoxProps, EditableTextAttributes {
   initialValue?: string | null;
   placeholder?: string;
   maxLength?: number;
@@ -62,7 +62,7 @@ const EditableText = forwardRef(function EditableText(
   const previousInitialValue = usePrevious(initialValue);
 
   useEffect(() => {
-    if (initialValue && initialValue !== previousInitialValue) {
+    if (initialValue != null && initialValue !== previousInitialValue) {
       setInputValue(initialValue);
     }
   }, [initialValue, previousInitialValue]);
@@ -103,6 +103,9 @@ const EditableText = forwardRef(function EditableText(
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.nativeEvent.isComposing) {
+        return;
+      }
       if (event.key === "Escape") {
         event.stopPropagation(); // don't close modal
         setInputValue(submitValue ?? "");
@@ -129,7 +132,6 @@ const EditableText = forwardRef(function EditableText(
     <Box
       component={EditableTextRoot}
       onClick={isMarkdown ? handleRootElementClick : undefined}
-      {...props}
       ref={ref}
       isEditing={isEditing}
       isDisabled={isDisabled}
@@ -149,6 +151,7 @@ const EditableText = forwardRef(function EditableText(
         }
       }}
       lh={1.57}
+      {...props}
     >
       {shouldShowMarkdown ? (
         <Markdown>{inputValue}</Markdown>

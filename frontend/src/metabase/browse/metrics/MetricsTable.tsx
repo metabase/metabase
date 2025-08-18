@@ -32,9 +32,9 @@ import {
   Icon,
   type IconName,
   Menu,
+  Repeat,
   Skeleton,
 } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {

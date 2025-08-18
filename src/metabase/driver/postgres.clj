@@ -76,7 +76,9 @@
                               :expressions/integer      true
                               :expressions/float        true
                               :expressions/date         true
-                              :database-routing         true}]
+                              :database-routing         true
+                              :transforms/table         true
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -86,9 +88,11 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
+                 :actions/data-editing
                  :table-privileges
                  ;; Index sync is turned off across the application as it is not used ATM.
-                 #_:index-info]]
+                 #_:index-info
+                 :database-replication]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -280,7 +284,7 @@
                      (map #(dissoc % :type)))
                (get-tables database syncable-schemas nil))))))))))
 
-(defmethod driver/describe-database :postgres
+(defmethod driver/describe-database* :postgres
   [_driver database]
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
   ;; memory in a set like this
@@ -487,6 +491,11 @@
 (defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:convert_from expr (h2x/literal "UTF8")]))
+
+(defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
                                [:convert_from expr (h2x/literal "UTF8")]))
 
 (defn- extract [unit expr]

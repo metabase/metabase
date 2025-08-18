@@ -1,4 +1,4 @@
-import type { DataPickerValue } from "metabase/common/components/DataPicker";
+import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Box } from "metabase/ui";
@@ -17,7 +17,7 @@ export type NotebookProps = {
   reportTimezone: string;
   hasVisualizeButton?: boolean;
   updateQuestion: (question: Question) => Promise<void>;
-  runQuestionQuery: () => Promise<void>;
+  runQuestionQuery?: () => Promise<void>;
   setQueryBuilderMode?: (mode: string) => void;
   readOnly?: boolean;
   modelsFilterList?: DataPickerValue["model"][];
@@ -52,7 +52,7 @@ export const Notebook = ({
           reportTimezone={reportTimezone}
           readOnly={readOnly}
         />
-        {hasVisualizeButton && (
+        {hasVisualizeButton && runQuestionQuery && (
           <VisualizeButton
             question={question}
             isDirty={isDirty}

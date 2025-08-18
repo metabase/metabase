@@ -119,7 +119,7 @@ export const Onboarding = () => {
     });
   };
 
-  // Scroll the last opened item into view when the user navigates back go this page
+  // Scroll the last opened item into view when the user navigates back to this page
   useEffect(() => {
     if (isValidItemKey(lastItemOpened)) {
       const item = itemRefs[lastItemOpened].current;
@@ -515,7 +515,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="subscription-email"
-                          to="/admin/settings/email/smtp"
+                          to="/admin/settings/email"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
@@ -579,7 +579,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="alert-email"
-                          to="/admin/settings/email/smtp"
+                          to="/admin/settings/email"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link

@@ -13,7 +13,7 @@ import {
   CollectionPickerModal,
   type CollectionPickerModel,
   type CollectionPickerValueItem,
-} from "metabase/common/components/CollectionPicker";
+} from "metabase/common/components/Pickers/CollectionPicker";
 import type {
   CollectionId,
   CollectionItem,

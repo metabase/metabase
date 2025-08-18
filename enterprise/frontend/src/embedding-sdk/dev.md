@@ -4,19 +4,16 @@ These docs are for building the sdk locally, if you just want to use the sdk, pl
 
 ## Build
 
-You can build the sdk with `yarn build-embedding-sdk`.
-
-### Watch
-
-If you want to have it build when you change a file there are two options:
-
-#### build-embedding-sdk:watch
-
-`yarn build-embedding-sdk:watch` is the original command, the js output is fast, but the dts output is extremely slow and is not fixed by the dts fixup script on watch so typescript definitions may be broken.
+You can build the SDK NPM package with `yarn build-embedding-sdk-package`.
+You can build the SDK bundle with `build-release:embedding-sdk-bundle`
 
 #### embedding-sdk:dev
 
-This is an _experimental_ command that should be much faster, it uses `tsc --incremental` to to generate the dts files and fixes them automatically by running the fixup script on watch.
+Builds both SDK NPM package and SDK bundle in the `watch` mode.
+
+It runs a local dev server that serves compiled files; the server is used by `Cypress`.
+
+It uses `tsc --incremental` to generate the dts files and fixes them automatically by running the fixup script on watch.
 
 The `tsc` command will output a lot of errors, to keep the terminal output under control you may want to run the three different `embedding-sdk:dev:*` commands on different terminals.
 There is a VS code task named `Run embedding sdk dev commands` that does that
@@ -45,13 +42,14 @@ Storybook will use the source files and not the built package.
 
 E2e tests for the sdk are currently done with cypress component tests, and located in `e2e/test-component/scenarios/embedding-sdk/`.
 
-
 You'll need to have the following ENVs for running EE E2E tests:
 
 ```bash
 MB_EDITION=ee
-CYPRESS_ALL_FEATURES_TOKEN=  ${usual token from password manager}
-CYPRESS_NO_FEATURES_TOKEN=  ${usual token from password manager}
+MB_ALL_FEATURES_TOKEN=${usual token from password manager}
+MB_STARTER_CLOUD_TOKEN=${usual token from password manager}
+MB_PRO_CLOUD_TOKEN=${usual token from password manager}
+MB_PRO_SELF_HOSTED_TOKEN=${usual token from password manager}
 ```
 
 Cypress will use the built package, so you'll have to build the sdk first (see above).
@@ -63,6 +61,8 @@ To start the cypress for the e2e tests:
 TEST_SUITE="component" yarn test-cypress
 ```
 
+Then in a separate terminal run `yarn embedding-sdk:dev` to build SDK NPM package and SDK bundle in the `watch` mode.
+
 ### Sample Apps compatibility with Embedding SDK tests
 
 In order to check compatibility between Sample Apps and Embedding SDK, we have a special test suite for each sample app that pulls this Sample App, starts it and runs its Cypress tests against the local `metabase.jar` and local `@metabase/embedding-sdk-react` package.
@@ -71,12 +71,12 @@ In order to check compatibility between Sample Apps and Embedding SDK, we have a
 
 To run these tests locally, run:
 ```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
 ```
 
 For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
 ```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
 ```
 
 ##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally

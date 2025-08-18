@@ -26,6 +26,9 @@ export function NameInput({
 
   const handleKeyDown = useCallback(
     (evt: KeyboardEvent<HTMLInputElement>) => {
+      if (evt.nativeEvent.isComposing) {
+        return;
+      }
       if (evt.key === "Enter") {
         onSubmit();
       }

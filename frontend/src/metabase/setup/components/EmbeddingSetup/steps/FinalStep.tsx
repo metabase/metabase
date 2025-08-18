@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -20,22 +19,12 @@ import {
 import type { Dashboard } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
-import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 import type { StepProps } from "./embeddingSetupSteps";
 
 export const FinalStep = ({ nextStep }: StepProps) => {
-  useForceLocaleRefresh();
-
   const { url: docsUrl } = useDocsUrl("embedding/interactive-embedding");
-  const { createdDashboardIds } = useEmbeddingSetup();
-
-  const { loading, value: dashboards } = useAsync(async () => {
-    const dashboardPromises = createdDashboardIds.map((id) =>
-      fetch(`/api/dashboard/${id}`).then((res) => res.json()),
-    );
-    return Promise.all(dashboardPromises);
-  }, [createdDashboardIds]);
+  const { createdDashboard2, trackEmbeddingSetupClick } = useEmbeddingSetup();
 
   const getEmbedCode = (url: string) => {
     return `<iframe src="${url}" width="800px" height="500px" />`;
@@ -43,7 +32,7 @@ export const FinalStep = ({ nextStep }: StepProps) => {
 
   const tabs = useMemo(
     () => [
-      ...(dashboards ?? []).map((dashboard: Dashboard) => ({
+      ...createdDashboard2.map((dashboard: Dashboard) => ({
         title: dashboard.name,
         url: `${window.location.origin}/dashboard/${dashboard.id}`,
       })),
@@ -52,18 +41,10 @@ export const FinalStep = ({ nextStep }: StepProps) => {
         url: `${window.location.origin}/question/new`,
       },
     ],
-    [dashboards],
+    [createdDashboard2],
   );
 
-  if (loading) {
-    return (
-      <Center h="500px">
-        <Loader size="lg" />
-      </Center>
-    );
-  }
-
-  if (!dashboards || dashboards.length === 0) {
+  if (!createdDashboard2 || createdDashboard2.length === 0) {
     return (
       <Center h="500px">
         <Text>{t`No dashboards found`}</Text>
@@ -101,7 +82,12 @@ export const FinalStep = ({ nextStep }: StepProps) => {
         {tabs.map((tab) => (
           <Tabs.Panel key={tab.url} value={tab.url}>
             <Box mt="md">
-              <CodeSnippet code={getEmbedCode(tab.url)} />
+              <CodeSnippet
+                code={getEmbedCode(tab.url)}
+                onCopy={() => {
+                  trackEmbeddingSetupClick("snippet-copied");
+                }}
+              />
             </Box>
 
             {/* This shows a loader while the iframe is loading, it's ugly as it's a different loader than the one inside the iframe,
@@ -136,7 +122,10 @@ export const FinalStep = ({ nextStep }: StepProps) => {
         <Button
           variant="subtle"
           color="text-primary"
-          onClick={() => (window.location.href = "/")}
+          onClick={() => {
+            trackEmbeddingSetupClick("ill-do-this-later");
+            nextStep();
+          }}
         >
           {t`I'll do this later`}
         </Button>
@@ -149,7 +138,13 @@ export const FinalStep = ({ nextStep }: StepProps) => {
   );
 };
 
-export const CodeSnippet = ({ code }: { code: string }) => {
+export const CodeSnippet = ({
+  code,
+  onCopy,
+}: {
+  code: string;
+  onCopy?: () => void;
+}) => {
   return (
     <Group
       px="lg"
@@ -162,7 +157,7 @@ export const CodeSnippet = ({ code }: { code: string }) => {
       }}
     >
       <Code flex={1} dangerouslySetInnerHTML={{ __html: highlight(code) }} />
-      <CopyButton value={code} />
+      <CopyButton value={code} onCopy={onCopy} />
     </Group>
   );
 };

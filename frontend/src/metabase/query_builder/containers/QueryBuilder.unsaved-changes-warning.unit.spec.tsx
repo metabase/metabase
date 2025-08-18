@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import {
   setupCardCreateEndpoint,
@@ -6,7 +7,6 @@ import {
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
-  setupGetUserKeyValueEndpoint,
 } from "__support__/server-mocks";
 import {
   act,
@@ -56,21 +56,6 @@ describe("QueryBuilder - unsaved changes warning", () => {
     HTMLElement.prototype.getBoundingClientRect = jest
       .fn()
       .mockReturnValue({ height: 1, width: 1 });
-
-    setupGetUserKeyValueEndpoint({
-      namespace: "user_acknowledgement",
-      key: "turn_into_model_modal",
-      value: false,
-    });
-
-    setupGetUserKeyValueEndpoint({
-      namespace: "last_download_format",
-      key: "download_format_preference",
-      value: {
-        last_download_format: "csv",
-        last_table_download_format: "csv",
-      },
-    });
   });
 
   afterEach(() => {
@@ -78,6 +63,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
     HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
 
     jest.resetAllMocks();
+    setupJestCanvasMock();
   });
 
   describe("creating models", () => {
@@ -274,7 +260,9 @@ describe("QueryBuilder - unsaved changes warning", () => {
           initialRoute: "/",
         });
 
-        history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        act(() => {
+          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        });
         await waitForLoaderToBeRemoved();
 
         await triggerNotebookQueryChange();
@@ -376,7 +364,9 @@ describe("QueryBuilder - unsaved changes warning", () => {
           initialRoute: "/",
         });
 
-        history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        act(() => {
+          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        });
         await waitForLoaderToBeRemoved();
 
         /**
@@ -817,7 +807,9 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/",
       });
 
-      history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
+      act(() => {
+        history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
+      });
       await waitForLoaderToBeRemoved();
 
       await triggerNotebookQueryChange();

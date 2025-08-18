@@ -378,7 +378,7 @@ export const loadingDashCards = createReducer(
         return {
           ...state,
           loadingIds,
-          loadingStatus: loadingIds.length > 0 ? "running" : "idle",
+          loadingStatus: loadingIds.length > 0 ? "running" : "complete",
           startTime: loadingIds.length > 0 ? currentTime : null,
         };
       })

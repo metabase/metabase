@@ -1,18 +1,19 @@
 import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
+import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
+import { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion";
 import {
   InteractiveDashboard,
-  InteractiveQuestion,
-  MetabaseProvider,
   StaticDashboard,
-  StaticQuestion,
-  defineMetabaseAuthConfig,
-} from "embedding-sdk";
+} from "embedding-sdk/components/public/dashboard";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
+import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
@@ -65,11 +66,11 @@ export const SdkIframeEmbedRoute = () => {
   });
 
   return (
-    <MetabaseProvider authConfig={authConfig} theme={theme} locale={locale}>
+    <ComponentProvider authConfig={authConfig} theme={theme} locale={locale}>
       <Box h="100vh" bg={theme?.colors?.background}>
         <SdkIframeEmbedView settings={embedSettings} />
       </Box>
-    </MetabaseProvider>
+    </ComponentProvider>
   );
 };
 
@@ -78,78 +79,79 @@ const SdkIframeEmbedView = ({
 }: {
   settings: SdkIframeEmbedSettings;
 }): ReactNode => {
-  return match(settings)
-    .with({ template: "exploration" }, (settings) => (
-      <InteractiveQuestion
-        questionId="new"
-        height="100%"
-        isSaveEnabled={settings.isSaveEnabled ?? false}
-        targetCollection={settings.targetCollection}
-        entityTypes={settings.entityTypes}
-      />
-    ))
-    .with({ template: "curate-content" }, (_settings) => null)
-    .with({ template: "view-content" }, (_settings) => null)
-    .with(
-      {
-        dashboardId: P.nonNullable,
-        isDrillThroughEnabled: false,
-      },
-      (settings) => (
-        <StaticDashboard
-          dashboardId={settings.dashboardId}
-          withTitle={settings.withTitle}
-          withDownloads={settings.withDownloads}
-          initialParameters={settings.initialParameters}
-          hiddenParameters={settings.hiddenParameters}
-        />
-      ),
-    )
-    .with(
-      {
-        questionId: P.nonNullable,
-        isDrillThroughEnabled: false,
-      },
-      (settings) => (
-        <StaticQuestion
-          questionId={settings.questionId}
-          height="100%"
-          initialSqlParameters={settings.initialSqlParameters}
-        />
-      ),
-    )
-    .with(
-      {
-        dashboardId: P.nonNullable,
-        isDrillThroughEnabled: P.optional(true),
-      },
-      (settings) => (
-        <InteractiveDashboard
-          dashboardId={settings.dashboardId}
-          withTitle={settings.withTitle}
-          withDownloads={settings.withDownloads}
-          initialParameters={settings.initialParameters}
-          hiddenParameters={settings.hiddenParameters}
-          drillThroughQuestionHeight="100%"
-          drillThroughQuestionProps={{ isSaveEnabled: false }}
-        />
-      ),
-    )
-    .with(
-      {
-        questionId: P.nonNullable,
-        isDrillThroughEnabled: P.optional(true),
-      },
-      (settings) => (
-        <InteractiveQuestion
-          questionId={settings.questionId}
-          withDownloads={settings.withDownloads}
-          height="100%"
-          initialSqlParameters={settings.initialSqlParameters}
-          title={settings.withTitle}
-          isSaveEnabled={false}
-        />
-      ),
-    )
-    .otherwise(() => null);
+  const rerenderKey = useParamRerenderKey(settings);
+
+  return (
+    match(settings)
+      // .with({ template: "curate-content" }, (_settings) => null)
+      // .with({ template: "view-content" }, (_settings) => null)
+      .with(
+        {
+          componentName: "metabase-dashboard",
+          dashboardId: P.nonNullable,
+          drills: false,
+        },
+        (settings) => (
+          <StaticDashboard
+            dashboardId={settings.dashboardId}
+            withTitle={settings.withTitle}
+            withDownloads={settings.withDownloads}
+            initialParameters={settings.initialParameters}
+            hiddenParameters={settings.hiddenParameters}
+            key={rerenderKey}
+          />
+        ),
+      )
+      .with(
+        {
+          componentName: "metabase-dashboard",
+          dashboardId: P.nonNullable,
+          drills: P.optional(true),
+        },
+        (settings) => (
+          <InteractiveDashboard
+            dashboardId={settings.dashboardId}
+            withTitle={settings.withTitle}
+            withDownloads={settings.withDownloads}
+            initialParameters={settings.initialParameters}
+            hiddenParameters={settings.hiddenParameters}
+            drillThroughQuestionHeight="100%"
+            drillThroughQuestionProps={{ isSaveEnabled: false }}
+            key={rerenderKey}
+          />
+        ),
+      )
+      .with(
+        {
+          componentName: "metabase-question",
+          questionId: P.nonNullable,
+        },
+        (settings) => {
+          const commonProps = {
+            questionId: settings.questionId,
+            withDownloads: settings.withDownloads,
+            height: "100%",
+            initialSqlParameters: settings.initialSqlParameters,
+            title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
+          };
+
+          // note: to create a new question we need to render InteractiveQuestion
+          if (settings.drills === false && settings.questionId !== "new") {
+            // note: this disable drills but also removes the top toolbar
+            return <StaticQuestion {...commonProps} key={rerenderKey} />;
+          }
+
+          return (
+            <SdkQuestion
+              {...commonProps}
+              isSaveEnabled={settings.isSaveEnabled ?? false}
+              key={rerenderKey}
+              targetCollection={settings.targetCollection}
+              entityTypes={settings.entityTypes}
+            />
+          );
+        },
+      )
+      .otherwise(() => null)
+  );
 };

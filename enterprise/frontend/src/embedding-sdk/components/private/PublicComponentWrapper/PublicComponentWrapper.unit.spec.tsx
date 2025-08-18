@@ -7,27 +7,16 @@ import {
 import type { LoginStatus } from "embedding-sdk/types/user";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { SdkContextProvider } from "../SdkContext";
-
 import { PublicComponentWrapper } from "./PublicComponentWrapper";
 
-const setup = (
-  status: LoginStatus = { status: "uninitialized" },
-  insideProvider = true,
-) => {
+const setup = (status: LoginStatus = { status: "uninitialized" }) => {
   const state = createMockState({
     sdk: createMockSdkState({
       loginStatus: createMockLoginStatusState(status),
     }),
   });
 
-  const jsx = insideProvider ? (
-    <SdkContextProvider>
-      <PublicComponentWrapper>
-        <div>My component</div>
-      </PublicComponentWrapper>
-    </SdkContextProvider>
-  ) : (
+  const jsx = (
     <PublicComponentWrapper>
       <div>My component</div>
     </PublicComponentWrapper>
@@ -40,10 +29,10 @@ const setup = (
 };
 
 describe("PublicComponentWrapper", () => {
-  it("renders Initializing message when loginStatus is uninitialized", () => {
+  it("renders loader message when loginStatus is uninitialized", () => {
     setup();
-    const message = screen.getByText("Initializing…");
-    expect(message).toBeInTheDocument();
+    const loader = screen.getByTestId("loading-indicator");
+    expect(loader).toBeInTheDocument();
   });
 
   it("renders loader when loginStatus is loading", () => {
@@ -65,11 +54,5 @@ describe("PublicComponentWrapper", () => {
     setup({ status: "success" });
     const component = screen.getByText("My component");
     expect(component).toBeInTheDocument();
-  });
-
-  it("should not render children when rendered outside of the provider (metabase#50736)", () => {
-    setup({ status: "success" }, false);
-    const component = screen.queryByText("My component");
-    expect(component).not.toBeInTheDocument();
   });
 });
