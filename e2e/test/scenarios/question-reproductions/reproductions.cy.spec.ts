@@ -1131,7 +1131,7 @@ describe("issue 58628", () => {
     cy.signIn("nodata");
   });
 
-  it("should show the unauthorized page when accessing the notebook editor without data perms", () => {
+  it("should show the unauthorized page when accessing the notebook editor without data perms (metabase#58628)", () => {
     cy.log("should not be able to access the notebook editor");
     cy.visit("/question/notebook");
     cy.url().should("include", "/unauthorized");
