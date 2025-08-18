@@ -8,8 +8,7 @@
    [metabase.search.ingestion :as ingestion]
    [metabase.startup.core :as startup]
    [metabase.task.core :as task]
-   [metabase.util.queue :as queue]
-   [metabase.util.quick-task :as quick-task])
+   [metabase.util.queue :as queue])
   (:import
    (java.time Instant)
    (java.util Date)
