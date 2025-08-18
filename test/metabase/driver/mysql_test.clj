@@ -666,30 +666,30 @@
             (sync/sync-database! database)
             (mt/with-actions-enabled
               (testing "when creating"
-                (is (= {:type        :metabase.actions.error/violate-unique-constraint
-                        :message     "Column1 and Column2 already exist."
-                        :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
-                        :status-code 400}
-                       (sql-jdbc.actions-test/perform-action-ex-data
-                        :model.row/create (mt/$ids {:create-row {"id"      3
-                                                                 "column1" "A"
-                                                                 "column2" "A"}
-                                                    :database   (:id database)
-                                                    :query      {:source-table $$mytable}
-                                                    :type       :query})))))
+                (is (=? {:type        :metabase.actions.error/violate-unique-constraint
+                         :message     "Column1 and Column2 already exist."
+                         :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
+                         :status-code 400}
+                        (sql-jdbc.actions-test/perform-action-ex-data
+                         :model.row/create (mt/$ids {:create-row {"id"      3
+                                                                  "column1" "A"
+                                                                  "column2" "A"}
+                                                     :database   (:id database)
+                                                     :query      {:source-table $$mytable}
+                                                     :type       :query})))))
               (testing "when updating"
-                (is (= {:errors      {"column1" "This Column1 value already exists."
-                                      "column2" "This Column2 value already exists."}
-                        :message     "Column1 and Column2 already exist."
-                        :status-code 400
-                        :type        actions.error/violate-unique-constraint}
-                       (sql-jdbc.actions-test/perform-action-ex-data
-                        :model.row/update (mt/$ids {:update-row {"column1" "A"
-                                                                 "column2" "A"}
-                                                    :database   (:id database)
-                                                    :query      {:source-table $$mytable
-                                                                 :filter       [:= $mytable.id 2]}
-                                                    :type       :query}))))))))))))
+                (is (=? {:errors      {"column1" "This Column1 value already exists."
+                                       "column2" "This Column2 value already exists."}
+                         :message     "Column1 and Column2 already exist."
+                         :status-code 400
+                         :type        actions.error/violate-unique-constraint}
+                        (sql-jdbc.actions-test/perform-action-ex-data
+                         :model.row/update (mt/$ids {:update-row {"column1" "A"
+                                                                  "column2" "A"}
+                                                     :database   (:id database)
+                                                     :query      {:source-table $$mytable
+                                                                  :filter       [:= $mytable.id 2]}
+                                                     :type       :query}))))))))))))
 
 (deftest ^:parallel parse-grant-test
   (testing "`parse-grant` should work correctly"
