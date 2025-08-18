@@ -65,7 +65,7 @@ interface HomeXrayViewProps {
 const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   const isSample = database.is_sample;
   const schemas = candidates.map((d) => d.schema);
-  const [schema, setSchema] = useState(schemas[0]);
+  const [schema, setSchema] = useState(getDefaultSchema(schemas));
   const candidate = candidates.find((d) => d.schema === schema);
   const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
@@ -110,6 +110,12 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   );
 };
 
+const getDefaultSchema = (schemas: string[]) => {
+  return (
+    schemas.find((schema) => schema.toLowerCase() === "public") || schemas[0]
+  );
+};
+
 interface SchemaSelectProps {
   schema: string;
   schemas: string[];
@@ -119,7 +125,9 @@ interface SchemaSelectProps {
 const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
   const trigger = (
     <SchemaTrigger>
-      <SchemaTriggerText>{schema}</SchemaTriggerText>
+      <SchemaTriggerText data-testid="xray-schema-name">
+        {schema}
+      </SchemaTriggerText>
       <SchemaTriggerIcon name="chevrondown" />
     </SchemaTrigger>
   );
