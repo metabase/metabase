@@ -50,14 +50,14 @@
     (simple-select-probe-query :postgres \"public\" \"my_table\")
     ;; -> [\"SELECT TRUE FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
   [driver :- :keyword
-   schema :- [:maybe :string] ; I think technically some DBs like SQL Server support empty schema and table names
-   table :- :string]
+   schema :- [:maybe :string]        ; I think technically some DBs like SQL Server support empty schema and table names
+   table  :- :string]
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
-  (let [tru (sql.qp/->honeysql driver true)
-        table (sql.qp/->honeysql driver (h2x/identifier :table schema table))
+  (let [tru      (sql.qp/->honeysql driver true)
+        table    (sql.qp/->honeysql driver (h2x/identifier :table schema table))
         honeysql {:select [[tru :_]]
-                  :from [[table]]
-                  :where [:inline [:not= 1 1]]}
+                  :from   [[table]]
+                  :where  [:inline [:not= 1 1]]}
         honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
     (sql.qp/format-honeysql driver honeysql)))
 
@@ -140,12 +140,12 @@
              schema (.getString rset "TABLE_SCHEM")
              ttype (.getString rset "TABLE_TYPE")]
          (log/debugf "jdbc-get-tables: Fetched object: schema `%s` name `%s` type `%s`" schema name ttype)
-         {:name name
-          :schema schema
+         {:name        name
+          :schema      schema
           :description (when-let [remarks (.getString rset "REMARKS")]
                          (when-not (str/blank? remarks)
                            remarks))
-          :type ttype})))))
+          :type        ttype})))))
 
 (defn db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
@@ -215,10 +215,10 @@
   vs 60)."
   [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
-  (let [metadata (.getMetaData conn)
+  (let [metadata         (.getMetaData conn)
         syncable-schemas (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
                                                                             schema-inclusion-filters schema-exclusion-filters)
-        privilege-fn (have-privilege-fn driver conn)]
+        privilege-fn     (have-privilege-fn driver conn)]
     (eduction (mapcat (fn [schema]
                         (eduction
                          (comp (filter #(privilege-fn % :select))
@@ -267,7 +267,7 @@
 
 (mu/defn describe-database
   "Default implementation of [[metabase.driver/describe-database]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver :- :keyword
+  [driver           :- :keyword
    db-or-id-or-spec :- [:or :int :map]]
   {:tables
    (sql-jdbc.execute/do-with-connection-with-options
@@ -275,8 +275,8 @@
     db-or-id-or-spec
     nil
     (fn [^Connection conn]
-      (let [schema-filter-prop (driver.u/find-schema-filters-prop driver)
-            database (db-or-id-or-spec->database db-or-id-or-spec)
+      (let [schema-filter-prop   (driver.u/find-schema-filters-prop driver)
+            database             (db-or-id-or-spec->database db-or-id-or-spec)
             [inclusion-patterns
              exclusion-patterns] (when (some? schema-filter-prop)
                                    (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]
