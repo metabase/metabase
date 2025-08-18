@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "1321b75fffa3ad2938bae3ad45c82d664f366808"
+    "hash": "4579edafa0ff3e2283db665f7a22c23cad39916e"
   },
   "upstream": {
     "branch": "emb-605-add-view-content-and-curate-content-templates-for-new-iframe"
