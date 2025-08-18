@@ -10,7 +10,7 @@ import {
 import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
 import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
 
-import Styles from "./SdkDebugInfo.module.css";
+import S from "./SdkDebugInfo.module.css";
 
 type BuildTimeData = {
   formattedDate: string;
@@ -115,7 +115,7 @@ export const SdkDebugInfo = (props: HTMLAttributes<HTMLDivElement>) => {
   return (
     <div
       {...props}
-      className={cx("mb-wrapper", Styles.sdkDebugInfo, props.className)}
+      className={cx("mb-wrapper", S.sdkDebugInfo, props.className)}
       style={props.style}
     >
       <DebugTable titlePrefix="SDK Package" {...sdkPackageInfo} />
