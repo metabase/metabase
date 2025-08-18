@@ -15,7 +15,7 @@
 (deftest ^:parallel simplify-compound-filter-test
   (testing "can `simplify-compound-filter` fix `and` or `or` with only one arg?"
     (is (=? [:= {} [:field {} 1] 2]
-           (simplify-compound-filter [:and (opts) [:= (opts) [:field (opts) 1] 2]])))))
+            (simplify-compound-filter [:and (opts) [:= (opts) [:field (opts) 1] 2]])))))
 
 (deftest ^:parallel simplify-compound-filter-test-2
   (testing "can `simplify-compound-filter` unnest nested `and`s or `or`s?"

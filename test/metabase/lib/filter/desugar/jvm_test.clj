@@ -109,17 +109,17 @@
     (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/host-regex)]
             (#'lib.filter.desugar/desugar-expression [:host (opts) [:field (opts) 1]])))))
 
- (deftest ^:parallel desugar-host-and-domain-test-2
-   (testing "`domain` should desugar to a `regex-match-first` clause with the domain regex"
-     (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/domain-regex)]
+(deftest ^:parallel desugar-host-and-domain-test-2
+  (testing "`domain` should desugar to a `regex-match-first` clause with the domain regex"
+    (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/domain-regex)]
             (#'lib.filter.desugar/desugar-expression [:domain (opts) [:field (opts) 1]])))))
 
- (deftest ^:parallel desugar-host-and-domain-test-3
-   (testing "`subdomain` should desugar to a `regex-match-first` clause with the subdomain regex"
-     (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/subdomain-regex)]
-             (#'lib.filter.desugar/desugar-expression [:subdomain (opts) [:field (opts) 1]])))))
+(deftest ^:parallel desugar-host-and-domain-test-3
+  (testing "`subdomain` should desugar to a `regex-match-first` clause with the subdomain regex"
+    (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/subdomain-regex)]
+            (#'lib.filter.desugar/desugar-expression [:subdomain (opts) [:field (opts) 1]])))))
 
- (deftest ^:parallel desugar-host-and-domain-test-4
-   (testing "`path` should desugar to a `regex-match-first` clause with the path regex"
-     (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/path-regex)]
-             (#'lib.filter.desugar/desugar-expression [:path (opts) [:field (opts) 1]])))))
+(deftest ^:parallel desugar-host-and-domain-test-4
+  (testing "`path` should desugar to a `regex-match-first` clause with the path regex"
+    (is (=? [:regex-match-first {} [:field {} 1] (str @#'lib.filter.desugar.jvm/path-regex)]
+            (#'lib.filter.desugar/desugar-expression [:path (opts) [:field (opts) 1]])))))

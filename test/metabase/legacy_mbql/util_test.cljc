@@ -589,10 +589,10 @@
   (t/testing "desugaring :get-year, :get-month, etc"
     (doseq [[[op mode] unit] @#'mbql.u/temporal-extract-ops->unit]
       (t/is (= [:temporal-extract [:field 1 nil] unit]
-               (mbql.u/desugar-temporal-extract [op [:field 1 nil] mode])))
+               (#'mbql.u/desugar-temporal-extract [op [:field 1 nil] mode])))
 
       (t/is (= [:+ [:temporal-extract [:field 1 nil] unit] 1]
-               (mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil] mode] 1]))))))
+               (#'mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil] mode] 1]))))))
 
 (t/deftest ^:parallel desugar-divide-with-extra-args-test
   (t/testing `mbql.u/desugar-expression

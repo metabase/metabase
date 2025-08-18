@@ -422,7 +422,7 @@
   (testing "desugaring does-not-contain"
     (testing "*with* options"
       (is (=? [:not {}
-               [:contains {:case-sensitive false} [:field {} 1] "ABC" ]]
+               [:contains {:case-sensitive false} [:field {} 1] "ABC"]]
               (lib.filter.desugar/desugar-filter-clause
                [:does-not-contain (opts :case-sensitive false)
                 [:field (opts) 1]
