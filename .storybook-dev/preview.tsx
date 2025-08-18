@@ -1,18 +1,16 @@
-import React, { useMemo, useEffect } from "react";
-// import { Provider } from "react-redux";
+import { useMemo, useEffect } from "react";
 import { ThemeProvider } from "metabase/ui";
 import { getStore } from "metabase/store";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import type { Store } from "@reduxjs/toolkit";
 import { makeMainReducers } from "metabase/reducers-main";
 import { Api } from "metabase/api";
-import { routerMiddleware, routerReducer } from "react-router-redux";
+import { routerMiddleware } from "react-router-redux";
 import { createMemoryHistory } from "history";
 import type { State } from "metabase-types/store";
 import _ from "underscore";
-// import { createMockEntitiesState } from "frontend/test/__support__/store";
+import type { StoryFn } from "@storybook/react";
 
-// @ts-expect-error: See metabase/lib/delay
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
 
@@ -56,7 +54,7 @@ const globalStyles = css`
 `;
 
 const decorators = [
-  (Story, { parameters }) => {
+  (Story: StoryFn, { parameters }) => {
     if (!document.body.classList.contains("mb-wrapper")) {
       document.body.classList.add("mb-wrapper");
     }

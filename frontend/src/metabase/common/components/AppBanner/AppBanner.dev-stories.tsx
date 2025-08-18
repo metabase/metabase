@@ -6,6 +6,7 @@ import type { ChangeEvent } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { useGetSessionPropertiesQuery } from "metabase/api";
 import Alert from "metabase/common/components/Alert";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import { Box, Stack, Switch, Text } from "metabase/ui";
@@ -80,6 +81,11 @@ function EnterpriseToggleDecorator(
   );
 }
 
+function SessionPropertiesLoader(Story: StoryFn) {
+  useGetSessionPropertiesQuery();
+  return <Story />;
+}
+
 export default {
   title: "AppBanner",
   component: AppBanner,
@@ -87,20 +93,24 @@ export default {
     layout: "centered",
     isEnterprise: false,
   },
-  decorators: [EnterpriseToggleDecorator],
+  decorators: [EnterpriseToggleDecorator, SessionPropertiesLoader],
 };
 
 const Template: StoryFn<typeof AppBanner> = () => {
   return <AppBanner />;
 };
 
+let data: null | string[] = null;
+
 export const AppBannerStory = Template.bind({});
+
 AppBannerStory.args = {};
 AppBannerStory.parameters = {
   state: createMockState({
     settings: mockSettings({
       "site-name": "Basemeta",
       "store-url": "https://test-store.metabase.com",
+      "license-token-missing-banner-dismissal-timestamp": [],
     }),
     currentUser: createMockUser({
       is_superuser: true,
@@ -109,9 +119,28 @@ AppBannerStory.parameters = {
   isEnterprise: true,
   msw: {
     handlers: [
+      http.get("/api/session/properties", () => {
+        return HttpResponse.json(
+          {
+            ...mockSettings({
+              "site-name": "Basemeta",
+              "store-url": "https://test-store.metabase.com",
+              "license-token-missing-banner-dismissal-timestamp": data ?? [],
+            }).values,
+          },
+          { status: 200 },
+        );
+      }),
       http.put(
         "/api/setting/license-token-missing-banner-dismissal-timestamp",
-        () => {
+        async (request) => {
+          const requestBody = await request.request.json();
+          data =
+            typeof requestBody === "object" &&
+            requestBody !== null &&
+            "value" in requestBody
+              ? requestBody.value
+              : null;
           return HttpResponse.json(null, { status: 204 });
         },
       ),
