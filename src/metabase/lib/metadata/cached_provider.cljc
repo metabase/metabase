@@ -55,31 +55,31 @@
 (defn- database [cache metadata-provider]
   (get-in-cache-or-fetch cache [:metadata/database] #(lib.metadata.protocols/database metadata-provider)))
 
-(defn- metadatas [cache uncached-provider metadata-type ids]
-  (when (seq ids)
-    (log/tracef "Getting %s metadata with IDs %s" metadata-type (pr-str (sort ids)))
+(defn- metadatas [inner-fn key cache uncached-provider metadata-type values]
+  (when (seq values)
+    (log/tracef "Getting %s metadata with Values %s" metadata-type (pr-str (sort values)))
     (let [metadata-cache (get @cache metadata-type)]
-      (when-not (every? #(contains? metadata-cache %) ids)
-        (let [existing-ids (set (keys metadata-cache))
-              missing-ids  (set/difference (set ids) existing-ids)]
-          (log/tracef "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set ids) existing-ids))))
-          (when (seq missing-ids)
-            (log/tracef "Need to fetch %s: %s" metadata-type (pr-str (sort missing-ids)))
-            (let [fetched-metadatas (lib.metadata.protocols/metadatas uncached-provider metadata-type missing-ids)
-                  fetched-ids       (map :id fetched-metadatas)
-                  unfetched-ids     (set/difference (set missing-ids) (set fetched-ids))]
-              (when (seq fetched-ids)
-                (log/tracef "Fetched %s: %s" metadata-type (pr-str (sort fetched-ids)))
+      (when-not (every? #(contains? metadata-cache %) values)
+        (let [existing-values (set (keys metadata-cache))
+              missing-values  (set/difference (set values) existing-values)]
+          (log/tracef "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set values) existing-values))))
+          (when (seq missing-values)
+            (log/tracef "Need to fetch %s: %s" metadata-type (pr-str (sort missing-values)))
+            (let [fetched-metadatas (inner-fn uncached-provider metadata-type missing-values)
+                  fetched-values       (map key fetched-metadatas)
+                  unfetched-values     (set/difference (set missing-values) (set fetched-values))]
+              (when (seq fetched-values)
+                (log/tracef "Fetched %s: %s" metadata-type (pr-str (sort fetched-values)))
                 (doseq [instance fetched-metadatas]
-                  (store-in-cache! cache [metadata-type (:id instance)] instance)))
-              (when (seq unfetched-ids)
-                (log/tracef "Failed to fetch %s: %s" metadata-type (pr-str (sort unfetched-ids)))
-                (doseq [unfetched-id unfetched-ids]
+                  (store-in-cache! cache [metadata-type (key instance)] instance)))
+              (when (seq unfetched-values)
+                (log/tracef "Failed to fetch %s: %s" metadata-type (pr-str (sort unfetched-values)))
+                (doseq [unfetched-id unfetched-values]
                   (store-in-cache! cache [metadata-type unfetched-id] ::nil))))))))
     (into []
-          (keep (fn [id]
-                  (get-in-cache cache [metadata-type id])))
-          ids)))
+          (keep (fn [value]
+                  (get-in-cache cache [metadata-type value])))
+          values)))
 
 (defn- cached-metadatas [cache metadata-type metadata-ids]
   (into []
@@ -124,7 +124,9 @@
   (database [_this]
     (database cache metadata-provider))
   (metadatas [_this metadata-type ids]
-    (metadatas cache metadata-provider metadata-type ids))
+    (metadatas lib.metadata.protocols/metadatas :id cache metadata-provider metadata-type ids))
+  (metadatas-for-names [_this metadata-type names]
+    (metadatas lib.metadata.protocols/metadatas-for-names :name cache metadata-provider metadata-type names))
   (tables [_this]
     (get-in-cache-or-fetch cache [::database-tables] #(tables metadata-provider cache)))
   (metadatas-for-table [_this metadata-type table-id]

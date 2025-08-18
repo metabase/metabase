@@ -101,6 +101,12 @@
    snippet-id            :- ::lib.schema.id/native-query-snippet]
   (lib.metadata.protocols/native-query-snippet (->metadata-provider metadata-providerable) snippet-id))
 
+(mu/defn native-query-snippet-for-name :- [:maybe ::lib.schema.metadata/native-query-snippet]
+  "Get metadata for a NativeQuerySnippet with `snippet-name` if it can be found."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   snippet-name          :- :string]
+  (lib.metadata.protocols/native-query-snippet-for-name (->metadata-provider metadata-providerable) snippet-name))
+
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Get metadata for the Segment with `segment-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable

@@ -49,6 +49,8 @@
     (lib.metadata.protocols/database metadata-provider))
   (metadatas [_this metadata-type ids]
     (metadatas tracker metadata-provider metadata-type ids))
+  (metadatas-for-names [_this metadata-type names]
+    (lib.metadata.protocols/metadatas-for-names metadata-provider metadata-type names))
   (tables [_this]
     (lib.metadata.protocols/tables metadata-provider))
   (metadatas-for-table [_this metadata-type table-id]

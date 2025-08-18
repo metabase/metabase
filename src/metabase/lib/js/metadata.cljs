@@ -455,6 +455,14 @@
   [_object-type]
   "segments")
 
+(defmethod lib-type :snippet
+  [_object-type]
+  :metadata/nativeQuerySnippet)
+
+(defmethod parse-objects-default-key :snippet
+  [_object-type]
+  "nativeQuerySnippets")
+
 (defn- parse-objects-delay [object-type metadata]
   (delay
     (try
@@ -484,6 +492,7 @@
     {:databases (parse-objects-delay :database metadata)
      :tables    (parse-objects-delay :table    metadata)
      :fields    (parse-objects-delay :field    metadata)
+     :snippets  (parse-objects-delay :snippet  metadata)
      :cards     delayed-cards
      :metrics   (delay (metric-cards delayed-cards))
      :segments  (parse-objects-delay :segment  metadata)}))
@@ -493,15 +502,32 @@
 
 (defn- metadatas [metadata metadata-type ids]
   (let [k          (case metadata-type
-                     :metadata/table         :tables
-                     :metadata/column        :fields
-                     :metadata/card          :cards
-                     :metadata/segment       :segments)
+                     :metadata/table                :tables
+                     :metadata/column               :fields
+                     :metadata/card                 :cards
+                     :metadata/segment              :segments
+                     :metadata/native-query-snippet :snippets)
         metadatas* (some-> metadata k deref)]
     (into []
           (keep (fn [id]
                   (some-> metadatas* (get id) deref)))
           ids)))
+
+(defn- metadatas-for-names [metadata metadata-type names]
+  (let [names (into #{} names)
+        k          (case metadata-type
+                     :metadata/table                :tables
+                     :metadata/column               :fields
+                     :metadata/card                 :cards
+                     :metadata/segment              :segments
+                     :metadata/native-query-snippet :snippets)
+        metadatas* (some-> metadata k deref)]
+    (into []
+          (keep (fn [[id value-ref]]
+                  (let [value (deref value-ref)]
+                    (when (names (:name value))
+                      value))))
+          metadatas*)))
 
 (defn- tables [metadata database-id]
   (into []
@@ -552,6 +578,8 @@
         (database metadata database-id))
       (metadatas [_this metadata-type ids]
         (metadatas metadata metadata-type ids))
+      (metadatas-for-names [_this metadata-type names]
+        (metadatas-for-names metadata metadata-type names))
       (tables [_this]
         (tables metadata database-id))
       (metadatas-for-table [_this metadata-type table-id]

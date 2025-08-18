@@ -36,22 +36,6 @@
    :name tag-name
    :id   (str (random-uuid))})
 
-(defn- recognize-template-tags [query-text]
-  (let [parsed (lib.parse/parse {} query-text)]
-    (loop [found {}
-           [current & more] (vec parsed)]
-      (match [current]
-        [nil] found
-        [_ :guard string?] (recur found more)
-        [{:type ::lib.parse/param
-          :name tag-name}] (let [full-tag         (str "{{" tag-name "}}")
-                                 [_ matched-name] (some #(re-matches % full-tag) tag-regexes)]
-                             (recur (cond-> found
-                                      (and matched-name (not (found matched-name))) (assoc matched-name (fresh-tag matched-name)))
-                                    more))
-        [{:type ::lib.parse/optional
-          :contents contents}] (recur found (apply conj more contents))))))
-
 (defn- tag-name->card-id [tag-name]
   (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
     (parse-long id-str)))
@@ -59,6 +43,30 @@
 (defn- tag-name->snippet-name [tag-name]
   (when (str/starts-with? tag-name "snippet:")
     (str/trim (subs tag-name (count "snippet:")))))
+
+(defn- recognize-template-tags [metadata-providerable query-text]
+  (let [parsed (lib.parse/parse {} query-text)]
+    (loop [found {}
+           [current & more] (vec parsed)]
+      (match [current]
+        [nil] found
+        [_ :guard string?] (recur found more)
+        [{:type ::lib.parse/optional
+          :contents contents}] (recur found (apply conj more contents))
+
+        [{:type ::lib.parse/param
+          :name tag-name}]
+        (let [full-tag         (str "{{" tag-name "}}")
+              [_ matched-name] (some #(re-matches % full-tag) tag-regexes)
+              snippet (when-let [snippet-name (tag-name->snippet-name tag-name)]
+                        (prn "snippet" snippet-name)
+                        (->> snippet-name
+                             (lib.metadata/native-query-snippet-for-name metadata-providerable)
+                             :content
+                             (lib.parse/parse {})))]
+          (recur (cond-> found
+                   (and matched-name (not (found matched-name))) (assoc matched-name (fresh-tag matched-name)))
+                 (into more snippet)))))))
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
@@ -112,11 +120,11 @@
   And for card references either `{{ #123 }}` or with the optional human label `{{ #123-card-title-slug }}`.
 
   Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded."
-  ([query-text :- ::common/non-blank-string]
-   (extract-template-tags query-text nil))
-  ([query-text    :- ::common/non-blank-string
+  ([metadata-providerable query-text :- ::common/non-blank-string]
+   (extract-template-tags metadata-providerable query-text nil))
+  ([metadata-providerable query-text    :- ::common/non-blank-string
     existing-tags :- [:maybe ::lib.schema.template-tag/template-tag-map]]
-   (let [query-tags         (recognize-template-tags query-text)
+   (let [query-tags         (recognize-template-tags metadata-providerable query-text)
          query-tag-names    (not-empty (set (keys query-tags)))
          existing-tag-names (not-empty (set (keys existing-tags)))]
      (if (or query-tag-names existing-tag-names)
@@ -174,7 +182,7 @@
     sql-or-other-native-query :- ::common/non-blank-string
     results-metadata          :- [:maybe ::lib.schema.metadata/stage]
     native-extras             :- [:maybe ::native-extras]]
-   (let [tags (extract-template-tags sql-or-other-native-query)]
+   (let [tags (extract-template-tags metadata-providerable sql-or-other-native-query)]
      (-> (lib.query/query-with-stages metadata-providerable
                                       [{:lib/type           :mbql.stage/native
                                         :lib/stage-metadata results-metadata
@@ -209,7 +217,7 @@
      (assert-native-query stage)
      (assoc stage
             :native inner-query
-            :template-tags (extract-template-tags inner-query existing-tags)))))
+            :template-tags (extract-template-tags query inner-query existing-tags)))))
 
 ;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
 ;;; `with-replaced-template-tags`
