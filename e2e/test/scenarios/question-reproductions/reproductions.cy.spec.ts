@@ -953,6 +953,12 @@ describe("issue 55631", () => {
   });
 });
 
+describe("issue 58371", () => {
+  it("should allow expression names with hyphens (metabase#58371)", () => {
+    cy.log("TBD");
+  });
+});
+
 describe.skip("issue 39033", () => {
   const question1Name = "Q1";
   const question1Details: NativeQuestionDetails = {
