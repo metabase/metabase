@@ -79,7 +79,7 @@
   (when-let [[_match constraint-name]
              (re-find #"violates check constraint \"([^\"]+)\"" error-message)]
     {:type    error-type
-     :message (tru "The value provided violates the constraint: {0}" constraint-name)
+     :message (tru "Some of your values violate the constraint: {0}" constraint-name)
      :errors  {}}))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :postgres

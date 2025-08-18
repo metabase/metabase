@@ -420,7 +420,7 @@
 (deftest ^:parallel actions-maybe-parse-sql-violate-check-constraint-test
   (testing "violate check constraint"
     (is (= {:type :metabase.actions.error/violate-check-constraint,
-            :message "The value provided violates the constraint: users_email_check"
+            :message "Some of your values violate the constraint: users_email_check"
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-check-constraint nil :model.row/create

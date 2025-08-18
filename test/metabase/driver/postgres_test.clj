@@ -1139,7 +1139,7 @@
             (mt/with-actions-enabled
               (testing "when creating with invalid email"
                 (is (= {:errors      {}
-                        :message     "The value provided violates the constraint: email_format_check"
+                        :message     "Some of your values violate the constraint: email_format_check"
                         :status-code 400
                         :type        actions.error/violate-check-constraint}
                        (sql-jdbc.actions-test/perform-action-ex-data

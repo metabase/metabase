@@ -116,7 +116,7 @@
   (when-let [[_match constraint-name]
              (re-find #"Check constraint '([^']+)' is violated" error-message)]
     {:type    error-type
-     :message (tru "The value provided violates the constraint: {0}" constraint-name)
+     :message (tru "Some of your values violate the constraint: {0}" constraint-name)
      :errors  {}}))
 
 ;;; There is a huge discrepancy between the types used in DDL statements and
