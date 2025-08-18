@@ -77,7 +77,7 @@ export function CreateTransformMenu() {
             }
 
             if (item.model === "dashboard") {
-              return false;
+              return true;
             }
 
             return false;
