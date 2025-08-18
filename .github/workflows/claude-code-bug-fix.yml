@@ -1,10 +1,9 @@
 name: "Claude Code Bug Fix"
 
 on:
-  # TEMPORARILY DISABLED FOR TESTING - uncomment when ready for production
-  # issues:
-  #   types:
-  #     - labeled
+  issues:
+    types:
+      - labeled
   workflow_dispatch:
     inputs:
       issue_number:
@@ -20,7 +19,7 @@ jobs:
       contents: read
       issues: read
     if: |
-      (github.event_name == 'issues' && github.event.label.name == 'claude:fix-issue-ci' && github.event.issue.state == 'open') ||
+      (github.event_name == 'issues' && github.event.label.name == 'Claude Bug Fix' && github.event.issue.state == 'open') ||
       (github.event_name == 'workflow_dispatch')
     outputs:
       is_employee: ${{ steps.check_employee.outputs.is_employee }}
@@ -152,10 +151,10 @@ jobs:
         run: |
           # Check for existing branches with the same base name
           BASE_NAME="${{ env.BASE_BRANCH_NAME }}"
-          
+
           # Use git to efficiently filter branches by pattern
           EXISTING_BRANCHES=$(git branch -r --list "origin/${BASE_NAME}*" 2>/dev/null || true)
-          
+
           if [ -z "$EXISTING_BRANCHES" ]; then
             # No existing branches, use base name
             FINAL_BRANCH_NAME="$BASE_NAME"
@@ -173,7 +172,7 @@ jobs:
               COUNTER=$((COUNTER + 1))
             done
           fi
-          
+
           # Export the final branch name
           echo "BRANCH_NAME=$FINAL_BRANCH_NAME" >> $GITHUB_ENV
 
@@ -359,80 +358,6 @@ jobs:
             automated-fix
             ci skip
           reviewers: ${{ steps.prepare_reviewers.outputs.reviewers }}
-
-      # TEMPORARILY DISABLED FOR TESTING - uncomment when ready for production
-      # - name: Comment on issue
-      #   if: steps.check_changes.outputs.has_changes == 'true'
-      #   uses: actions/github-script@v7
-      #   with:
-      #     script: |
-      #       await github.rest.issues.createComment({
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         issue_number: '${{ env.ISSUE_NUMBER }}',
-      #         body: `🤖 **Automated Fix Created**
-      #
-      #         I've analyzed this bug report and created a potential fix. Please review the automatically generated PR that should appear shortly.
-      #
-      #         If the automated fix doesn't fully address the issue, feel free to provide additional details or close the generated PR.
-      #
-      #         ---
-      #         🤖 Generated with [Claude Code](https://claude.ai/code)`
-      #       });
-
-      # TEMPORARILY DISABLED FOR TESTING - uncomment when ready for production
-      # - name: Handle no changes
-      #   if: steps.check_changes.outputs.has_changes == 'false'
-      #   uses: actions/github-script@v7
-      #   with:
-      #     script: |
-      #       let analysisContent = '';
-      #
-      #       // Check if Claude provided a detailed analysis
-      #       if ('${{ steps.check_changes.outputs.has_analysis }}' === 'true') {
-      #         try {
-      #           // Decode the base64-encoded analysis content
-      #           const analysisBase64 = '${{ steps.check_changes.outputs.analysis_content }}';
-      #           analysisContent = Buffer.from(analysisBase64, 'base64').toString('utf8');
-      #         } catch (error) {
-      #           console.log('Could not decode analysis content:', error);
-      #         }
-      #       }
-      #
-      #       let commentBody = `🤖 **Automated Fix Analysis**
-      #
-      #       I analyzed this bug report but wasn't able to generate a code fix automatically.`;
-      #
-      #       if (analysisContent) {
-      #         commentBody += `
-      #
-      #       ## Analysis Details
-      #
-      #       ${analysisContent}`;
-      #       } else {
-      #         commentBody += `
-      #
-      #       This could be because:
-      #
-      #       - The issue requires more context or clarification
-      #       - The fix is complex and requires human judgment
-      #       - The issue is not a straightforward code bug
-      #       - I couldn't locate the relevant code to modify
-      #
-      #       A human developer should review this issue for manual investigation.`;
-      #       }
-      #
-      #       commentBody += `
-      #
-      #       ---
-      #       🤖 Generated with [Claude Code](https://claude.ai/code)`;
-      #
-      #       await github.rest.issues.createComment({
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         issue_number: '${{ env.ISSUE_NUMBER }}',
-      #         body: commentBody
-      #       });
 
       - name: Log analysis for no changes
         if: steps.check_changes.outputs.has_changes == 'false'
