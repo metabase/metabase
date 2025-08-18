@@ -96,7 +96,7 @@ export interface BrowserEmbedOptions {
   /** Whether the content manager is in read-only mode. Defaults to true. */
   readOnly?: boolean;
 
-  /** Which collections to show on the collection browser */
+  /** Which columns to show on the collection browser */
   collectionVisibleColumns?: CollectionBrowserListColumns[];
 
   /** How many items to show per page in the collection browser */
