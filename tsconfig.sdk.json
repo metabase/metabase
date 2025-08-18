@@ -10,7 +10,11 @@
     "emitDeclarationOnly": true,
     "outDir": "./resources/embedding-sdk/dist",
     "paths": {
-      "*": ["./frontend/src/*", "./enterprise/frontend/src/*"],
+      "*": [
+        "./frontend/src/*",
+        "./enterprise/frontend/src/*"
+      ],
+      "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_release/*"]
     },
     "stripInternal": true

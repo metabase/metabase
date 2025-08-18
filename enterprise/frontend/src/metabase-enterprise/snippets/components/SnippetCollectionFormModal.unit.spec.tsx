@@ -25,35 +25,31 @@ type SetupOpts = {
 
 async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
   if (folder.id) {
-    fetchMock.get(
-      {
-        url: `path:/api/collection/${folder.id}`,
-      },
-      folder,
-    );
+    fetchMock.get(`path:/api/collection/${folder.id}`, folder);
 
-    fetchMock.put(`path:/api/collection/${folder.id}`, async (url) => {
+    fetchMock.put(`path:/api/collection/${folder.id}`, async (call) => {
       return createMockCollection(
-        await fetchMock.lastCall(url)?.request?.json(),
+        await fetchMock.callHistory.lastCall(call.url)?.request?.json(),
       );
     });
   }
 
-  fetchMock.get(
-    { url: "path:/api/collection/root", query: { namespace: "snippets" } },
-    TOP_SNIPPETS_FOLDER,
-  );
+  fetchMock.get({
+    url: "path:/api/collection/root",
+    query: { namespace: "snippets" },
+    response: TOP_SNIPPETS_FOLDER,
+  });
 
-  fetchMock.get(
-    {
-      url: "path:/api/collection",
-      query: { namespace: "snippets" },
-    },
-    [TOP_SNIPPETS_FOLDER],
-  );
+  fetchMock.get({
+    url: "path:/api/collection",
+    query: { namespace: "snippets" },
+    response: [TOP_SNIPPETS_FOLDER],
+  });
 
-  fetchMock.post("path:/api/collection", async (url) => {
-    return createMockCollection(await fetchMock.lastCall(url)?.request?.json());
+  fetchMock.post("path:/api/collection", async (call) => {
+    return createMockCollection(
+      await fetchMock.callHistory.lastCall(call.url)?.request?.json(),
+    );
   });
 
   renderWithProviders(

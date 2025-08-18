@@ -7,10 +7,10 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import {
-  MetabaseProvider,
-  type MetabaseProviderProps,
+  ComponentProvider,
   StaticQuestion,
 } from "embedding-sdk/components/public";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -52,15 +52,17 @@ export const setup = ({
   });
 
   const getLastUserApiCall = () =>
-    fetchMock.lastCall(`${MOCK_INSTANCE_URL}/api/user/current`);
+    fetchMock.callHistory.lastCall(`${MOCK_INSTANCE_URL}/api/user/current`);
   const getLastCardQueryApiCall = () =>
-    fetchMock.lastCall(`${MOCK_INSTANCE_URL}/api/card/${MOCK_CARD.id}/query`);
+    fetchMock.callHistory.lastCall(
+      `${MOCK_INSTANCE_URL}/api/card/${MOCK_CARD.id}/query`,
+    );
 
   return {
     ...renderWithProviders(
-      <MetabaseProvider authConfig={authConfig} locale={locale}>
+      <ComponentProvider authConfig={authConfig} locale={locale}>
         <StaticQuestion questionId={1} />
-      </MetabaseProvider>,
+      </ComponentProvider>,
       {
         storeInitialState: state,
       },

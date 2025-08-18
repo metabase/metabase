@@ -128,6 +128,7 @@ export interface VisualizationProps {
   isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
+  isDocument: boolean;
   isVisualizerViz: boolean;
   isEditing: boolean;
   isMobile: boolean;

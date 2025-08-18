@@ -39,6 +39,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_DOCUMENTS,
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
@@ -178,8 +179,10 @@ export const getRoutes = (store) => {
             component={TrashCollectionLanding}
           />
 
+          {PLUGIN_DOCUMENTS.getRoutes()}
+
           <Route
-            path="embed-iframe"
+            path="embed-js"
             component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
           />
 

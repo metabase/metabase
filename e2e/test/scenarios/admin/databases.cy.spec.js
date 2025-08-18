@@ -9,7 +9,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-import { visitDatabase } from "./helpers/e2e-database-helpers";
+import { visitDatabase, waitForDbSync } from "./helpers/e2e-database-helpers";
 
 const { H } = cy;
 const { IS_ENTERPRISE } = Cypress.env();
@@ -77,20 +77,6 @@ describe("admin > database > add", () => {
 
     cy.button("Save").click();
     return cy.wait("@createDatabase");
-  }
-
-  // we need to check for an indefinite number of these requests because we don't know how many polls it's going to take
-  function waitForDbSync(maxRetries = 10) {
-    if (maxRetries === 0) {
-      throw new Error("Timed out waiting for database sync");
-    }
-    cy.wait("@getDatabases").then(({ response }) => {
-      if (
-        response.body.data.some((db) => db.initial_sync_status !== "complete")
-      ) {
-        waitForDbSync(maxRetries - 1);
-      }
-    });
   }
 
   beforeEach(() => {
@@ -228,16 +214,14 @@ describe("admin > database > add", () => {
       });
 
       it("should add Postgres database and redirect to db info page (metabase#12972, metabase#14334, metabase#17450)", () => {
-        cy.findByRole("dialog").within(() => {
-          cy.findByText(
-            "Your database was added! Want to configure permissions?",
-          ).should("exist");
-          cy.button("Maybe later").click();
-        });
-
         cy.findByRole("status").within(() => {
           cy.findByText("Done!");
         });
+
+        cy.findByRole("link", { name: "Manage permissions" }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
 
         cy.findByTestId("database-header-section").should(
           "contain.text",
@@ -261,19 +245,6 @@ describe("admin > database > add", () => {
           "aria-selected",
           "true",
         );
-      });
-
-      it("should show a modal allowing you to redirect to the permissions page", () => {
-        cy.findByRole("dialog").within(() => {
-          cy.findByText(
-            "Your database was added! Want to configure permissions?",
-          ).should("exist");
-          cy.findByRole("link", { name: "Configure permissions" }).click();
-        });
-
-        cy.findByTestId("permissions-editor")
-          .findByText(/QA Postgres12/)
-          .should("exist");
       });
     });
 
@@ -304,13 +275,6 @@ describe("admin > database > add", () => {
 
         cy.url().should("match", /\/admin\/databases\/\d/);
 
-        cy.findByRole("dialog").within(() => {
-          cy.findByText(
-            "Your database was added! Want to configure permissions?",
-          ).should("exist");
-          cy.button("Maybe later").click();
-        });
-
         cy.findByTestId("database-header-section").should(
           "contain.text",
           "QA Mongo",
@@ -320,6 +284,11 @@ describe("admin > database > add", () => {
           cy.findByText("Syncing…");
           cy.findByText("Done!");
         });
+
+        cy.findByRole("link", { name: "Manage permissions" }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
       },
     );
 
@@ -368,13 +337,6 @@ describe("admin > database > add", () => {
 
         cy.url().should("match", /\/admin\/databases\/\d/);
 
-        cy.findByRole("dialog").within(() => {
-          cy.findByText(
-            "Your database was added! Want to configure permissions?",
-          ).should("exist");
-          cy.button("Maybe later").click();
-        });
-
         cy.findByTestId("database-header-section").should(
           "contain.text",
           "QA Mongo",
@@ -384,6 +346,11 @@ describe("admin > database > add", () => {
           cy.findByText("Syncing…");
           cy.findByText("Done!");
         });
+
+        cy.findByRole("link", { name: "Manage permissions" }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
       },
     );
 
@@ -416,13 +383,6 @@ describe("admin > database > add", () => {
 
       cy.url().should("match", /\/admin\/databases\/\d/);
 
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(
-          "Your database was added! Want to configure permissions?",
-        ).should("exist");
-        cy.button("Maybe later").click();
-      });
-
       cy.findByTestId("database-header-section").should(
         "contain.text",
         "QA MySQL8",
@@ -430,6 +390,11 @@ describe("admin > database > add", () => {
       cy.findByRole("status").findByText("Syncing…").should("be.visible");
       cy.findByRole("status").findByText("Syncing…").should("not.exist");
       cy.findByRole("status").findByText("Done!").should("be.visible");
+
+      cy.findByRole("link", { name: "Manage permissions" }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
     });
   });
 

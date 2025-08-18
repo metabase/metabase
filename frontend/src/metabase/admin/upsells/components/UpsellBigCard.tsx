@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMount } from "react-use";
 import { P, match } from "ts-pattern";
 
@@ -6,9 +7,10 @@ import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
 
+import S from "./UpsellBigCard.module.css";
+import StylesUpsellCtaLink from "./UpsellCta.module.css";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
@@ -55,6 +57,11 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
     trackUpsellViewed({ location, campaign });
   });
 
+  const ctaClassnames = cx(
+    StylesUpsellCtaLink.UpsellCTALink,
+    StylesUpsellCtaLink.Large,
+  );
+
   return (
     <Box
       data-testid="upsell-big-card"
@@ -75,7 +82,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
             .with(P.nonNullable, () => (
               <Box
                 component="button"
-                className={S.UpsellCTALink}
+                className={ctaClassnames}
                 onClickCapture={() =>
                   trackUpsellClicked({ location, campaign })
                 }
@@ -86,7 +93,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
             ))
             .otherwise(() => (
               <ExternalLink
-                className={S.UpsellCTALink}
+                className={ctaClassnames}
                 href={url}
                 onClickCapture={() =>
                   trackUpsellClicked({ location, campaign })

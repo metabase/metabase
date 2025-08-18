@@ -1,3 +1,5 @@
+import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+
 import {
   codeBlock,
   getEmbedSidebar,
@@ -23,6 +25,8 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+    mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
@@ -168,6 +172,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByText("See these Orders").should("not.exist");
     });
 
+    cy.log("allow downloads should be visible when drills are off (EMB-712)");
+    getEmbedSidebar().findByLabelText("Allow downloads").should("be.visible");
+
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
     codeBlock().should("contain", 'drills="false"');
@@ -290,30 +297,32 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     getEmbedSidebar()
       .findByLabelText("Allow users to save new questions")
-      .should("be.checked");
+      .should("not.be.checked");
 
-    cy.log("save button should be visible by default");
-    H.getSimpleEmbedIframeContent().findByText("Save").should("be.visible");
+    cy.log("save button should be hidden by default");
+    H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
 
-    cy.log("turn off save option");
+    cy.log("turn on save option");
     getEmbedSidebar()
       .findByLabelText("Allow users to save new questions")
       .click()
-      .should("not.be.checked");
+      .should("be.checked");
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_option_changed",
       event_detail: "isSaveEnabled",
     });
 
-    H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Save").should("be.visible");
+    });
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", 'is-save-enabled="false"');
+    codeBlock().should("contain", 'is-save-enabled="true"');
   });
 
-  it("can change brand color", () => {
+  it("can change brand color and reset colors", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -323,6 +332,9 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.findByText("Brand Color").should("be.visible");
     });
+
+    cy.log("reset button should not be visible initially");
+    getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
 
     cy.log("click on brand color picker");
     cy.findByLabelText("#509EE3").click();
@@ -346,11 +358,38 @@ H.describeWithSnowplow(suiteTitle, () => {
       .first()
       .should("have.css", "color", "rgb(255, 0, 0)");
 
+    cy.log("reset button should now be visible");
+    getEmbedSidebar().findByLabelText("Reset colors").should("be.visible");
+
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
 
     codeBlock().should("contain", '"theme": {');
     codeBlock().should("contain", '"colors": {');
     codeBlock().should("contain", '"brand": "#FF0000"');
+
+    cy.log("go back to embed options step");
+    getEmbedSidebar().findByText("Back").click();
+
+    cy.log("click reset button");
+    getEmbedSidebar().findByLabelText("Reset colors").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "theme",
+    });
+
+    cy.log("table header should be back to default blue");
+    H.getSimpleEmbedIframeContent()
+      .findAllByTestId("cell-data")
+      .first()
+      .should("have.css", "color", "rgb(80, 158, 227)");
+
+    cy.log("reset button should be hidden again");
+    getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
+
+    cy.log("snippet should not contain theme colors");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("not.contain", '"theme": {');
   });
 });
