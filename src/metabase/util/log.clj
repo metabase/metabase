@@ -30,7 +30,7 @@
                                                  ;; reversed to make inner context override outer context
                                                  (reverse (.getSuppressed t))))
                                        (keep #(when (= suppressed-exception-context-message (ex-message %))
-                                                (ex-data %))))]
+                                                (::context (ex-data %)))))]
     (into {} suppressed-exception-data)))
 
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
@@ -278,11 +278,11 @@
 
 (defn- suppressed-exception
   [context-map]
-  (ex-info suppressed-exception-context-message context-map))
+  (ex-info suppressed-exception-context-message {::context context-map}))
 
 (defn- annotate-ex-info [e context-map]
   (let [new-e (copy-ex-info e
-                            (merge {} context-map (ex-data e))
+                            (assoc (ex-data e) ::context (merge {} context-map (::context (ex-data e))))
                             (ex-cause e))]
     (.addSuppressed new-e (suppressed-exception context-map))
     new-e))
