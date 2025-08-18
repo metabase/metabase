@@ -871,7 +871,10 @@
                     boolean)}
    {:name      :table-data-editing
     :available (premium-features/table-data-editing?)
-    :enabled   (premium-features/table-data-editing?)}])
+    :enabled   (premium-features/table-data-editing?)}
+   {:name      :transforms
+    :available (premium-features/enable-transforms?)
+    :enabled   (premium-features/enable-transforms?)}])
 
 (defn- snowplow-features
   []

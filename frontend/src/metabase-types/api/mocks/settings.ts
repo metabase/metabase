@@ -136,6 +136,7 @@ export const createMockTokenFeatures = (
   development_mode: false,
   documents: false,
   semantic_search: false,
+  transforms: false,
   ...opts,
 });
 

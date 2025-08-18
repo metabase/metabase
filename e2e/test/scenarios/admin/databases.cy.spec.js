@@ -42,7 +42,7 @@ describe(
 
 describe("admin > database > add", () => {
   function toggleFieldWithDisplayName(displayName) {
-    cy.findByLabelText(displayName).click();
+    cy.findByLabelText(new RegExp(displayName)).click({ force: true });
   }
 
   function selectFieldOption(fieldName, option) {
@@ -110,17 +110,17 @@ describe("admin > database > add", () => {
 
         cy.findByTestId("database-form").within(() => {
           cy.findByText("Show advanced options").click();
-          cy.findByLabelText("Rerun queries for simple explorations").should(
+          cy.findByLabelText(/Rerun queries for simple explorations/).should(
             "have.attr",
-            "aria-checked",
+            "data-checked",
             "true",
           );
           // Reproduces (metabase#14334)
           cy.findByText("Additional JDBC connection string options");
           // Reproduces (metabase#17450)
-          cy.findByLabelText("Choose when syncs and scans happen")
-            .click()
-            .should("have.attr", "aria-checked", "true");
+          cy.findByLabelText(/Choose when syncs and scans happen/)
+            .click({ force: true })
+            .should("have.attr", "data-checked", "true");
 
           cy.findByLabelText(
             "Never, I'll do this manually if I need to",
@@ -154,16 +154,18 @@ describe("admin > database > add", () => {
         });
 
         const confirmSSLFields = (visible, hidden) => {
-          visible.forEach((field) => cy.findByText(field));
-          hidden.forEach((field) => cy.findByText(field).should("not.exist"));
+          visible.forEach((field) => cy.findByText(new RegExp(field)));
+          hidden.forEach((field) =>
+            cy.findByText(new RegExp(field)).should("not.exist"),
+          );
         };
 
-        const ssl = "Use a secure connection (SSL)",
+        const ssl = "Use a secure connection \\(SSL\\)",
           sslMode = "SSL Mode",
           useClientCert = "Authenticate client certificate?",
-          clientPemCert = "SSL Client Certificate (PEM)",
-          clientPkcsCert = "SSL Client Key (PKCS-8/DER)",
-          sslRootCert = "SSL Root Certificate (PEM)";
+          clientPemCert = "SSL Client Certificate \\(PEM\\)",
+          clientPkcsCert = "SSL Client Key \\(PKCS-8/DER\\)",
+          sslRootCert = "SSL Root Certificate \\(PEM\\)";
 
         // initially, all SSL sub-properties should be hidden
         confirmSSLFields(
@@ -234,9 +236,9 @@ describe("admin > database > add", () => {
           "Connected",
         );
 
-        cy.findByLabelText("Choose when syncs and scans happen").should(
+        cy.findByLabelText(/Choose when syncs and scans happen/).should(
           "have.attr",
-          "aria-checked",
+          "data-checked",
           "true",
         );
 
@@ -571,7 +573,7 @@ describe("scenarios > admin > databases > sample database", () => {
       "should not be possible to change database type for the Sample Database (metabase#16382)",
     );
     cy.findByLabelText("Database type")
-      .should("have.text", "H2")
+      .should("have.value", "H2")
       .and("be.disabled");
 
     cy.log("should correctly display connection settings");
@@ -584,21 +586,22 @@ describe("scenarios > admin > databases > sample database", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show advanced options").click();
     // `auto_run_queries` toggle should be ON by default
-    cy.findByLabelText("Rerun queries for simple explorations")
-      .should("have.attr", "aria-checked", "true")
-      .click();
+    cy.findByLabelText(/Rerun queries for simple explorations/)
+      .should("have.attr", "data-checked", "true")
+      .click({ force: true });
     // Reported failing in v0.36.4
     cy.log(
       "should respect the settings for automatic query running (metabase#13187)",
     );
-    cy.findByLabelText("Rerun queries for simple explorations").should(
-      "have.attr",
-      "aria-checked",
-      "false",
+    cy.findByLabelText(/Rerun queries for simple explorations/).should(
+      "not.have.attr",
+      "data-checked",
     );
 
     cy.log("change the metadata_sync period");
-    cy.findByLabelText("Choose when syncs and scans happen").click();
+    cy.findByLabelText(/Choose when syncs and scans happen/).click({
+      force: true,
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Hourly").click();
     H.popover().within(() => {
@@ -652,7 +655,9 @@ describe("scenarios > admin > databases > sample database", () => {
     visitDatabase(SAMPLE_DB_ID);
     editDatabase();
     H.modal().findByText("Show advanced options").click();
-    cy.findByLabelText("Choose when syncs and scans happen").click();
+    cy.findByLabelText(/Choose when syncs and scans happen/).click({
+      force: true,
+    });
     cy.button("Save changes").click();
     cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
       expect(body.is_full_sync).to.equal(false);

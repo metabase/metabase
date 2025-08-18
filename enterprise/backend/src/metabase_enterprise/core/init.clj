@@ -18,4 +18,5 @@
    [metabase-enterprise.scim.init]
    [metabase-enterprise.semantic-search.init]
    [metabase-enterprise.sso.init]
-   [metabase-enterprise.stale.init]))
+   [metabase-enterprise.stale.init]
+   [metabase-enterprise.transforms.init]))

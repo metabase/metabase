@@ -62,6 +62,7 @@ type OwnProps = {
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
   viewHeight: number;
+  placeholder?: string;
   highlightedLineNumbers?: number[];
 
   isInitiallyOpen?: boolean;
@@ -79,6 +80,7 @@ type OwnProps = {
   hasTopBar?: boolean;
   hasParametersList?: boolean;
   hasEditingSidebar?: boolean;
+  hasRunButton?: boolean;
   sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
   resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
@@ -235,6 +237,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       },
       hasTopBar = true,
       hasEditingSidebar = true,
+      hasRunButton = hasEditingSidebar,
       resizableBoxProps = {},
       snippetCollections = [],
       question,
@@ -248,6 +251,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       forwardedRef,
       runQuery,
       highlightedLineNumbers,
+      placeholder,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -335,6 +339,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 ref={this.editor}
                 query={question.query()}
                 readOnly={readOnly}
+                placeholder={placeholder}
                 highlightedLineNumbers={highlightedLineNumbers}
                 onChange={this.onChange}
                 onRunQuery={runQuery}
@@ -346,7 +351,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 }
               />
 
-              {hasEditingSidebar && !readOnly && (
+              {hasRunButton && !readOnly && (
                 <NativeQueryEditorRunButton
                   cancelQuery={this.props.cancelQuery}
                   isResultDirty={this.props.isResultDirty}

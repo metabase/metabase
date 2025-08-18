@@ -313,6 +313,35 @@
        :time_matters true
        :creator_id (rasta-id)}))
 
+   :model/Transform
+   (fn [_]
+     {:name (str "Test Transform " (u/generate-nano-id))
+      :source {:type  "query"
+               :query {:database (data/id)
+                       :type     "native"
+                       :native   {:query         "SELECT 1 as num"
+                                  :template-tags {}}}}
+      :target {:type "table"
+               :name (str "test_table_" (u/generate-nano-id))}})
+
+   :model/TransformJob
+   (fn [_]
+     (default-timestamped
+      {:name (str "Test Transform Job " (u/generate-nano-id))
+       :schedule "0 0 * * * ?"}))
+
+   :model/TransformRun
+   (fn [_]
+     {:status     "succeeded"
+      :run_method "manual"
+      :start_time (t/instant)
+      :end_time   (t/instant)})
+
+   :model/TransformTag
+   (fn [_]
+     (default-timestamped
+      {:name (str "test-tag-" (u/generate-nano-id))}))
+
    :model/User
    (fn [_] {:first_name (u.random/random-name)
             :last_name (u.random/random-name)

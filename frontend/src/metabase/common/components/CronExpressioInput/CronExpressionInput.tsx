@@ -1,32 +1,35 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { validateCronExpression } from "metabase/lib/cron";
+import {
+  getScheduleExplanation,
+  validateCronExpression,
+} from "metabase/lib/cron";
 import {
   Flex,
   type FlexProps,
   Icon,
   Text,
   TextInput,
+  type TextProps,
   Tooltip,
 } from "metabase/ui";
 
 import S from "./CronExpressionInput.module.css";
-import { CustomScheduleExplainer } from "./CustomScheduleExplainer";
 
 type CronExpressionInputProps = Omit<FlexProps, "onChange"> & {
   value: string;
   onChange: (value: string) => void;
   onBlurChange: (value: string) => void;
-  showExplainer?: boolean;
+  getExplainMessage?: (cronExplanation: string) => string;
 };
 
 export function CronExpressionInput({
   onChange,
   onBlurChange,
   value,
-  showExplainer = true,
+  getExplainMessage,
   ...flexProps
 }: CronExpressionInputProps) {
   const [error, setError] = useState<string | null>(null);
@@ -70,8 +73,11 @@ export function CronExpressionInput({
         rightSection={<CronFormatTooltip />}
       />
 
-      {showExplainer && value && !error && (
-        <CustomScheduleExplainer cronExpression={value} />
+      {getExplainMessage && value && !error && (
+        <CustomScheduleExplainer
+          cronExpression={value}
+          getExplainMessage={getExplainMessage}
+        />
       )}
     </Flex>
   );
@@ -127,4 +133,26 @@ function CronFormatTooltip() {
       <Icon name="info" className={S.infoIcon} />
     </Tooltip>
   );
+}
+
+interface ScheduleExplanationProps {
+  cronExpression: string;
+  getExplainMessage: (cronExplanation: string) => string;
+}
+
+function CustomScheduleExplainer({
+  cronExpression,
+  getExplainMessage,
+  ...props
+}: ScheduleExplanationProps & TextProps) {
+  const explanation = useMemo(
+    () => getScheduleExplanation(cronExpression),
+    [cronExpression],
+  );
+
+  if (!explanation) {
+    return null;
+  }
+
+  return <Text {...props}>{getExplainMessage(explanation)}</Text>;
 }
