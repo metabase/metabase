@@ -12,6 +12,7 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
+   [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
@@ -238,6 +239,19 @@
        (catch Exception e
          (log/error e "Warning: failed to clean up test table" table-name))))))
 
+(declare cleanup-index-metadata!)
+
+(defn open-temp-index-and-metadata! ^Closeable []
+  (closeable
+   (do (cleanup-index-metadata! db mock-index-metadata)
+       (semantic.pgvector-api/init-semantic-search! db mock-index-metadata mock-embedding-model)
+       mock-index-metadata)
+   (fn cleanup-temp-index-and-metadata! [index-metadata]
+     (try
+       (cleanup-index-metadata! db index-metadata)
+       (catch Exception e
+         (log/error e "Warning: failed to clean up index and metadata" index-metadata))))))
+
 (defmacro with-indexable-documents!
   "Add a collection of test documents to that can be indexed to the appdb."
   [& body]
@@ -308,7 +322,7 @@
   `(with-indexable-documents!
      (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
                    semantic.index-metadata/default-index-metadata mock-index-metadata]
-       (with-open [_# (open-temp-index!)]
+       (with-open [_# (open-temp-index-and-metadata!)]
          (binding [search.ingestion/*force-sync* true]
            (blocking-index!
             (search.core/reindex! :search.engine/semantic {:force-reset true}))
