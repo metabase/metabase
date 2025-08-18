@@ -6,7 +6,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabaseForm } from "../DatabaseForm";
 
-import { postgresFormConfig } from "./postgres-form-config";
+import { postgresFormConfig } from "./postgres-form-config.mock";
 
 export const TEST_ENGINES: Record<string, Engine> = {
   h2: {
