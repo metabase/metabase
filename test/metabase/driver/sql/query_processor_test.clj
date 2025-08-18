@@ -1441,3 +1441,28 @@
                          "  20"]}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+(deftest ^:parallel column-alias-in-same-select-clause-test
+  (testing "Field references in expressions should not use aliases from the same SELECT clause (#62191)"
+    (let [query {:database (meta/id)
+                 :type     :query
+                 :query    {:source-query {:source-table (meta/id :products)
+                                           :aggregation  [[:count]]
+                                           :breakout     [[:field (meta/id :products :category) nil]]}
+                            :expressions  {"custom_column" [:case
+                                                           [[[:is-null
+                                                             [:field (meta/id :products :category) nil]]
+                                                           "null category"]]
+                                                           {:default "has category"}]}
+                            :fields      [[:field (meta/id :products :category) nil]
+                                          [:aggregation 0]
+                                          [:expression "custom_column"]]}}]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (testing "should reference the original column name, not the alias in the same SELECT"
+          (let [compiled (-> (qp.compile/compile query)
+                            (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))]
+            ;; The generated SQL should reference "source"."CATEGORY", not "source"."column alias"
+            (is (some #(str/includes? % "\"source\".\"CATEGORY\" IS NULL")
+                      (:query compiled))
+                (str "Query should reference original column name in CASE expression, got: "
+                     (pr-str (:query compiled))))))))))
