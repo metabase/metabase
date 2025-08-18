@@ -52,7 +52,11 @@
                       final-count threshold raw-count fallback)
           (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
           (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
-          (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
+          (let [fallback-results (try
+                                   (search.engine/results (assoc search-ctx :search-engine fallback))
+                                   (catch Throwable t
+                                     (log/warn t "Semantic search fallback errored, ignoring")
+                                     []))
                 combined-results (concat results fallback-results)
                 deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
             (take (semantic.settings/semantic-search-results-limit) deduped-results)))))
