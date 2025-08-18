@@ -183,7 +183,9 @@ export const DatabaseReplicationForm = ({
                 <Skeleton height="1.5em" width="10em" />
               )}
             </Box>
+
             {previewResponseLoading && <Loader />}
+
             <Box ta="right">
               <Text c="text-light">{t`Available Cloud Storage`}</Text>
               {!previewResponseLoading &&
