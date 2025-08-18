@@ -258,6 +258,12 @@ export type TransformTriggerManualRunEvent = ValidateEvent<{
   target_id: number;
 }>;
 
+export type TransformCreateEvent = ValidateEvent<{
+  event: "transform_create";
+  triggered_from: "transform-page-create-menu";
+  event_detail: "query" | "native" | "saved-question";
+}>;
+
 export type TransformCreatedEvent = ValidateEvent<{
   event: "transform_created";
   target_id: number;
@@ -303,4 +309,5 @@ export type SimpleEvent =
   | ConnectionStringParsedSuccessEvent
   | ConnectionStringParsedFailedEvent
   | TransformTriggerManualRunEvent
-  | TransformCreatedEvent;
+  | TransformCreatedEvent
+  | TransformCreateEvent;

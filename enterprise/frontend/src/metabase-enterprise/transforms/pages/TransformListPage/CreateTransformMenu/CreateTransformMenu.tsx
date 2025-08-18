@@ -7,6 +7,7 @@ import {
   QuestionPickerModal,
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Icon, Menu } from "metabase/ui";
 
@@ -19,6 +20,15 @@ export function CreateTransformMenu() {
   const dispatch = useDispatch();
   const [isPickerOpened, { open: openPicker, close: closePicker }] =
     useDisclosure();
+
+  const handleSavedQuestionClick = () => {
+    openPicker();
+    trackSimpleEvent({
+      event: "transform_create",
+      triggered_from: "transform-page-create-menu",
+      event_detail: "saved-question",
+    });
+  };
 
   const handlePickerChange = (item: QuestionPickerValueItem) => {
     dispatch(push(getNewTransformFromCardUrl(item.id)));
@@ -41,6 +51,13 @@ export function CreateTransformMenu() {
             component={ForwardRefLink}
             to={getNewTransformFromTypeUrl("query")}
             leftSection={<Icon name="notebook" />}
+            onClick={() => {
+              trackSimpleEvent({
+                event: "transform_create",
+                triggered_from: "transform-page-create-menu",
+                event_detail: "query",
+              });
+            }}
           >
             {t`Query builder`}
           </Menu.Item>
@@ -48,10 +65,20 @@ export function CreateTransformMenu() {
             component={ForwardRefLink}
             to={getNewTransformFromTypeUrl("native")}
             leftSection={<Icon name="sql" />}
+            onClick={() => {
+              trackSimpleEvent({
+                event: "transform_create",
+                triggered_from: "transform-page-create-menu",
+                event_detail: "native",
+              });
+            }}
           >
             {t`SQL query`}
           </Menu.Item>
-          <Menu.Item leftSection={<Icon name="folder" />} onClick={openPicker}>
+          <Menu.Item
+            leftSection={<Icon name="folder" />}
+            onClick={handleSavedQuestionClick}
+          >
             {t`A saved question`}
           </Menu.Item>
         </Menu.Dropdown>
