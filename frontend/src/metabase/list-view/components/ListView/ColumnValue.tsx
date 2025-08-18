@@ -4,6 +4,7 @@ import { Box, Flex, Text } from "metabase/ui";
 import type { DatasetColumn } from "metabase-types/api";
 
 import styles from "./ListView.module.css";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 
 // Light background colors for category values
 const CATEGORY_COLORS = [
@@ -76,16 +77,16 @@ export function ColumnValue({ column, value, rawValue }: ColumnValueProps) {
         className={styles.categoryValue}
         style={{ backgroundColor: getCategoryColor(rawValue, column.name) }}
       >
-        <Text fw="bold" size="sm" c="text-secondary">
+        <Ellipsified fw="bold" size="sm" c="text-secondary">
           {value}
-        </Text>
+        </Ellipsified>
       </Box>
     );
   }
 
   return (
-    <Text fw="bold" size="sm" c="text-secondary" truncate>
+    <Ellipsified fw="bold" size="sm" c="text-secondary" truncate>
       {value}
-    </Text>
+    </Ellipsified>
   );
 }
