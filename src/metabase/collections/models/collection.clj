@@ -614,7 +614,7 @@
                                                                        [:= :p.perm_value (h2x/literal "read")])]]}]}
                                           {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                            :from   [[:collection :c]]
-                                           :where  [:= :type (h2x/literal "trash")]}
+                                           :where  [:= :type (h2x/literal trash-collection-type)]}
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
                                             {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
