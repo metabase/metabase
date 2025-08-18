@@ -16,7 +16,7 @@ import { Value } from "./Value";
 interface Props {
   columns: DatasetColumn[];
   row: RowValues;
-  table: Table | undefined;
+  table: Table;
 }
 
 export const DetailsGroup = ({ columns, row, table }: Props) => {
@@ -26,7 +26,7 @@ export const DetailsGroup = ({ columns, row, table }: Props) => {
   return (
     <Stack gap="lg">
       {bodyColumns.map((column, index) => {
-        const field = table?.fields?.find((f) => f.id === column.id);
+        const field = table?.fields?.find((field) => field.id === column.id);
         const value = getRowValue(columns, column, row);
 
         return (

@@ -63,7 +63,7 @@ export function DetailView({ dataset, rowId, table, tableForeignKeys }: Props) {
           </Stack>
         </Group>
 
-        {table && tableForeignKeys && tableForeignKeys.length > 0 && (
+        {tableForeignKeys && tableForeignKeys.length > 0 && (
           <Box flex="0 0 auto" px={rem(40)} py="xl" w={rem(440)}>
             <Relationships
               columns={columns}

@@ -72,16 +72,18 @@ export const useObjectDetail = (
         objectId = rowIndexToPkMap?.[rowIndex] ?? rowIndex;
       }
 
-      if (isRawTable && primaryKeyColumn) {
-        dispatch(closeNavbar());
-        dispatch(push(`/table/${tableId}/detail/${objectId}`));
-        return;
-      }
+      if (primaryKeyColumn) {
+        if (isRawTable) {
+          dispatch(closeNavbar());
+          dispatch(push(`/table/${tableId}/detail/${objectId}`));
+          return;
+        }
 
-      if (isModel && primaryKeyColumn) {
-        dispatch(closeNavbar());
-        dispatch(push(`/model/${card.id}/detail/${objectId}`));
-        return;
+        if (isModel) {
+          dispatch(closeNavbar());
+          dispatch(push(`/model/${card.id}/detail/${objectId}`));
+          return;
+        }
       }
 
       dispatch(zoomInRow({ objectId }));
