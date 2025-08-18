@@ -1,3 +1,12 @@
+.modalContent {
+  position: fixed;
+  width: 45rem;
+  height: 100dvh;
+  max-height: 100dvh;
+  inset-inline-end: 0;
+  border-radius: 0;
+}
+
 .modalHeader {
   background-color: var(--mb-color-background);
   border-bottom: 1px solid var(--mb-color-border);
@@ -8,23 +17,16 @@
 }
 
 .modalBody {
-  background-color: var(--mb-base-color-orion-5);
   display: grid;
-  grid-template-columns: 45% auto;
+  grid-template-columns: 35% auto;
+  grid-template-rows: repeat(auto-fill, rem(40));
   row-gap: rem(24);
-  max-height: calc(
-    100vh - (var(--modal-y-offset) * 2) - rem(80) - rem(72)
-      /* header + footer */
-  );
+  height: calc(100dvh - rem(80) - rem(72) /* header + footer */);
   overflow-y: scroll;
 }
 
 .modalBodyLoader {
   grid-column: 1 / -1;
-}
-
-.modalBodyEditing {
-  max-height: calc(100vh - (var(--modal-y-offset) * 2) - rem(80) /* header */);
 }
 
 .modalBodyColumn {

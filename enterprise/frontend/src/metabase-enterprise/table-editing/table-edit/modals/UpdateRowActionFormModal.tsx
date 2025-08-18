@@ -1,19 +1,10 @@
 import cx from "classnames";
 import { useFormik } from "formik";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
-import {
-  ActionIcon,
-  Button,
-  Center,
-  Flex,
-  Group,
-  Icon,
-  Loader,
-  Modal,
-  rem,
-} from "metabase/ui";
+import Animation from "metabase/css/core/animation.module.css";
+import { Button, Center, Flex, Loader, Modal } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import type {
@@ -22,7 +13,6 @@ import type {
   TableActionFormParameter,
 } from "../../api/types";
 
-import { DeleteRowConfirmationModal } from "./DeleteRowConfirmationModal";
 import { ModalParameterActionInput } from "./ModalParameterActionInput";
 import S from "./TableActionFormModal.module.css";
 import { TableActionFormModalParameter } from "./TableActionFormModalParameter";
@@ -38,46 +28,14 @@ interface UpdateRowActionFormModalProps {
   onDelete: () => Promise<boolean>;
 }
 
-enum ModalState {
-  Opened,
-  DeleteRequested,
-  Closed,
-}
-
 export function UpdateRowActionFormModal({
   opened,
   description,
   isLoading,
-  isDeleting,
   initialValues,
   onClose,
   onSubmit,
-  onDelete,
 }: UpdateRowActionFormModalProps) {
-  const [modalState, setModalState] = useState<ModalState>(ModalState.Closed);
-
-  useEffect(() => {
-    setModalState(opened ? ModalState.Opened : ModalState.Closed);
-  }, [opened]);
-
-  const requestDeletion = useCallback(
-    () => setModalState(ModalState.DeleteRequested),
-    [],
-  );
-
-  const closeDeletionModal = useCallback(
-    () => setModalState(ModalState.Opened),
-    [],
-  );
-
-  const handleDeleteConfirmation = useCallback(async () => {
-    const result = await onDelete();
-
-    if (result) {
-      onClose();
-    }
-  }, [onDelete, onClose]);
-
   const validateForm = useCallback(
     (values: RowCellsWithPkValue) => {
       const errors: Record<string, string> = {};
@@ -132,38 +90,18 @@ export function UpdateRowActionFormModal({
     }
   }, [opened, resetForm, revalidateForm]);
 
-  if (modalState === ModalState.DeleteRequested) {
-    return (
-      <DeleteRowConfirmationModal
-        isLoading={isDeleting}
-        onCancel={closeDeletionModal}
-        onConfirm={handleDeleteConfirmation}
-      />
-    );
-  }
-
   return (
     <Modal.Root opened={opened} onClose={onClose}>
       <Modal.Overlay />
-      <Modal.Content>
+      <Modal.Content
+        transitionProps={{ transition: "slide-left" }}
+        classNames={{
+          content: cx(S.modalContent, Animation.slideLeft),
+        }}
+      >
         <form onSubmit={handleSubmit}>
           <Modal.Header px="xl" pb="0" className={S.modalHeader}>
             <Modal.Title>{t`Edit record`}</Modal.Title>
-            <Group
-              gap="xs"
-              mr={rem(-5) /* aligns cross with modal right padding */}
-            >
-              <ActionIcon
-                variant="subtle"
-                onClick={requestDeletion}
-                data-testid="delete-row-icon"
-              >
-                <Icon name="trash" />
-              </ActionIcon>
-              <ActionIcon variant="subtle" onClick={onClose}>
-                <Icon name="close" />
-              </ActionIcon>
-            </Group>
           </Modal.Header>
           <Modal.Body px="xl" py="lg" className={cx(S.modalBody)}>
             {!description ? (
@@ -197,7 +135,7 @@ export function UpdateRowActionFormModal({
               type="submit"
               data-testid="update-row-save-button"
             >
-              {t`Save`}
+              {t`Save changes`}
             </Button>
           </Flex>
         </form>

@@ -3,17 +3,8 @@ import { useFormik } from "formik";
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
-import {
-  ActionIcon,
-  Button,
-  Center,
-  Flex,
-  Group,
-  Icon,
-  Loader,
-  Modal,
-  rem,
-} from "metabase/ui";
+import Animation from "metabase/css/core/animation.module.css";
+import { Button, Center, Flex, Loader, Modal } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import type {
@@ -93,18 +84,15 @@ export function CreateRowActionFormModal({
   return (
     <Modal.Root opened={opened} onClose={onClose}>
       <Modal.Overlay />
-      <Modal.Content>
+      <Modal.Content
+        transitionProps={{ transition: "slide-left" }}
+        classNames={{
+          content: cx(S.modalContent, Animation.slideLeft),
+        }}
+      >
         <form onSubmit={handleSubmit}>
           <Modal.Header px="xl" pb="0" className={S.modalHeader}>
             <Modal.Title>{t`Create a new record`}</Modal.Title>
-            <Group
-              gap="xs"
-              mr={rem(-5) /* aligns cross with modal right padding */}
-            >
-              <ActionIcon variant="subtle" onClick={onClose}>
-                <Icon name="close" />
-              </ActionIcon>
-            </Group>
           </Modal.Header>
           <Modal.Body px="xl" py="lg" className={cx(S.modalBody)}>
             {!description ? (
