@@ -252,6 +252,12 @@ export type ConnectionStringParsedFailedEvent = ValidateEvent<{
   triggered_from: "admin" | "setup" | "embedding_setup";
 }>;
 
+export type TransformTriggerManualRunEvent = ValidateEvent<{
+  event: "transform_trigger_manual_run";
+  triggered_from: "transform-page";
+  target_id: number;
+}>;
+
 export type EmbedWizardEvent =
   | EmbedWizardExperienceSelectedEvent
   | EmbedWizardResourceSelectedEvent
@@ -290,4 +296,5 @@ export type SimpleEvent =
   | DashboardFilterMovedEvent
   | EmbedWizardEvent
   | ConnectionStringParsedSuccessEvent
-  | ConnectionStringParsedFailedEvent;
+  | ConnectionStringParsedFailedEvent
+  | TransformTriggerManualRunEvent;

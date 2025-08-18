@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
@@ -140,6 +141,12 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
+    trackSimpleEvent({
+      event: "transform_trigger_manual_run",
+      target_id: transform.id,
+      triggered_from: "transform-page",
+    });
+
     const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);
