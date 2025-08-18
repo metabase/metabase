@@ -189,16 +189,14 @@ export async function resolveCards({
       );
 }
 
-async function redirectIfNoDataAccess(dispatch: any) {
+async function loadDatabases(dispatch: any) {
   const action = databaseApi.endpoints.listDatabases.initiate();
   try {
     const { data } = await dispatch(action).unwrap();
-    if (!getHasDataAccess(data)) {
-      dispatch(replace("/unauthorized"));
-    }
+    return data;
   } catch (error) {
     console.error("error loading databases", error);
-    throw error;
+    return [];
   }
 }
 
@@ -274,7 +272,11 @@ async function handleQBInit(
   const currentUser = getUser(getState());
 
   if (uiControls.queryBuilderMode === "notebook") {
-    await redirectIfNoDataAccess(dispatch);
+    const databases = await loadDatabases(dispatch);
+    if (!getHasDataAccess(databases)) {
+      dispatch(replace("/unauthorized"));
+      return;
+    }
   }
 
   const deserializedCard = serializedCard
