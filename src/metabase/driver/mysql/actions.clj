@@ -113,16 +113,16 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-check-constraint]
   [_driver error-type _database _action-type error-message]
-  (when-let [[_match constraint-name]
-             (re-find #"Check constraint '([^']+)' is violated" error-message)]
-    {:type    error-type
-     :message (tru "Some of your values violate the constraint: {0}" constraint-name)
-     :errors  {}})
-  (when-let [[_match constraint-name]
-             (re-find #"CONSTRAINT `([^']+)` failed for" error-message)]
-    {:type    error-type
-     :message (tru "Some of your values violate the constraint: {0}" constraint-name)
-     :errors  {}}))
+  (or (when-let [[_match constraint-name]
+                 (re-find #"Check constraint '([^']+)' is violated" error-message)]
+        {:type    error-type
+         :message (tru "Some of your values violate the constraint: {0}" constraint-name)
+         :errors  {}})
+      (when-let [[_match constraint-name]
+                 (re-find #"CONSTRAINT `([^']+)` failed for" error-message)]
+        {:type    error-type
+         :message (tru "Some of your values violate the constraint: {0}" constraint-name)
+         :errors  {}})))
 
 ;;; There is a huge discrepancy between the types used in DDL statements and
 ;;; types that can be used in CAST:
