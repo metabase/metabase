@@ -246,9 +246,9 @@
 
 (defmethod normalize-mbql-clause-tokens :offset
   [[_tag opts expr n, :as clause]]
-  {:pre [(= (count clause) 4)]}
-  (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
-    [:offset opts (normalize-tokens expr nil) n]))
+  (when (= (count clause) 4)
+    (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
+      [:offset opts (normalize-tokens expr nil) n])))
 
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default are recursively normalized.
