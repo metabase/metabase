@@ -12,7 +12,10 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
 (def ^:private test-id "abcde12345")
