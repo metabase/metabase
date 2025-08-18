@@ -59,8 +59,11 @@
              :set    {:indexer_stalled_at nil}
              :where  [:and [:= :table_name (:table-name index)] [:!= nil :indexer_stalled_at]]}
         sql (sql/format dml :quoted true)
-        {update-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)]
-    (pos? update-count)))
+        {update-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)
+        cleared (pos? update-count)]
+    (when cleared
+      (log/debugf "Cleared stall marker for index %s" (:table-name index)))
+    cleared))
 
 (defn- mark-stalled!
   "Marks the indexer as stalled in the index metadata table.
@@ -80,8 +83,11 @@
                       ;; do not overwrite existing (earlier) timestamps
                       [:= nil :indexer_stalled_at]]}
         sql (sql/format dml :quoted true)
-        {update-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)]
-    (when (pos? update-count) now)))
+        {update-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)
+        timestamp (when (pos? update-count) now)]
+    (when timestamp
+      (log/debugf "Marked indexer as stalled for index %s at %s" (:table-name index) timestamp))
+    timestamp))
 
 (defn indexing-step
   "Runs a single blocking step of the indexing loop."
@@ -132,7 +138,8 @@
         (empty? gate-docs)
         (do
           (clear-stall-if-needed)
-          (move-to-next-watermark poll-result))
+          (move-to-next-watermark poll-result)
+          (log/debugf "No gate documents to process for index %s" (:table-name index)))
 
         ;; NORMAL MODE: Not stalled, or still within grace period
         ;; This is the default behavior when the indexer is healthy. Any failures
@@ -147,13 +154,19 @@
          (nil? (:next-dlq-run @indexing-state)))
         (try
           (when (seq updates)
+            (log/debugf "Processing %d index updates in normal mode for index %s" (count updates) (:table-name index))
             (semantic.index/upsert-index! pgvector index (map semantic.gate/gate-doc->search-doc updates)))
           (doseq [[model deletes] (group-by :model deletes)]
+            (when (seq deletes)
+              (log/debugf "Processing %d index deletes for model %s in normal mode for index %s" (count deletes) model (:table-name index)))
             (semantic.index/delete-from-index! pgvector index model (map :model_id deletes)))
           (clear-stall-if-needed)
           (move-to-next-watermark poll-result)
+          (log/debugf "Processed %d gate documents successfully in normal mode for index %s" (count gate-docs) (:table-name index))
           (catch InterruptedException ie (throw ie))
           (catch Throwable t
+            (log/debug t "Indexing failure caught in normal mode")
+            (log/warnf "Indexing failed in normal mode for index %s, marking as stalled: %s" (:table-name index) (.getMessage t))
             (mark-stalled! pgvector index-metadata index)
             (throw t)))
 
@@ -173,21 +186,24 @@
         ;; continues to make progress on processable documents while retrying failures
         ;; according to appropriate policies.
         :else
-        (let [{:keys [failures]} (semantic.dlq/try-batch! pgvector index gate-docs)]
-          (when (seq failures)
-            (log/warnf "Adding %d indexing failures to the dead letter queue" (count failures))
-            (semantic.dlq/add-entries! pgvector index-metadata (:index-id @indexing-state) (map :dlq-entry failures)))
+        (do
+          (log/debugf "Processing %d documents in stalled mode (using DLQ) for index %s" (count gate-docs) (:table-name index))
+          (let [{:keys [failures]} (semantic.dlq/try-batch! pgvector index gate-docs)]
+            (when (seq failures)
+              (log/warnf "Adding %d indexing failures to the dead letter queue" (count failures))
+              (semantic.dlq/add-entries! pgvector index-metadata (:index-id @indexing-state) (map :dlq-entry failures)))
 
-          ;; once no longer failing, clear any stall from index_metadata
-          ;; this will cause the 'healthy' branch to be used again.
-          (when (empty? failures)
-            (let [stalled-at (.toInstant ^Timestamp (:stalled-at @indexing-state))
-                  stall-duration (Duration/between stalled-at (.instant clock))]
-              (log/info "Indexer recovered from stall in" stall-duration))
-            (clear-stall-if-needed))
+            ;; once no longer failing, clear any stall from index_metadata
+            ;; this will cause the 'healthy' branch to be used again.
+            (when (empty? failures)
+              (let [stalled-at (.toInstant ^Timestamp (:stalled-at @indexing-state))
+                    stall-duration (Duration/between stalled-at (.instant clock))]
+                (log/info "Indexer recovered from stall in" stall-duration))
+              (clear-stall-if-needed))
 
-          ;; we progress the watermark regardless of success when stalled
-          (move-to-next-watermark poll-result)))
+            ;; we progress the watermark regardless of success when stalled
+            (move-to-next-watermark poll-result)
+            (log/debugf "Processed %d gate documents in stalled mode for index %s, %d failed and moved to DLQ" (count gate-docs) (:table-name index) (count failures)))))
 
       ;; we set :last-seen-candidates
       ;; to filter redundant entries from the last poll (duplicate delivery is expected and intended when
@@ -312,6 +328,9 @@
 
         now (.instant clock)]
 
+    (log/debugf "DLQ step completed for index %s: exit-reason=%s, run-time=%s, successes=%d, failures=%d"
+                (:table-name index) exit-reason run-time success-count failure-count)
+
     (when (or (pos? success-count) (pos? failure-count))
       (log/infof "Dead letter queue loop completed in %.2f seconds, %d successes, %d failures."
                  (/ (.toMillis run-time) 1e3)
@@ -327,6 +346,9 @@
     (let [next-run (if (and (pos? success-count) (= :ran-out-of-time exit-reason))
                      now
                      (.plus now dlq-frequency))]
+      (if (= now next-run)
+        (log/debugf "Scheduling next DLQ run for index %s immediately as there is more to retry" (:table-name index))
+        (log/debugf "Scheduling next DLQ run for index %s at %s" (:table-name index) next-run))
       (vswap! indexing-state assoc :next-dlq-run next-run))
 
     nil))
@@ -346,10 +368,10 @@
       (on-indexing-interrupted)
 
       (max-run-time-elapsed? @indexing-state (.instant clock))
-      (log/debug "Indexer run time elapsed. Indexer exiting, quartz will reschedule.")
+      (log/debugf "Indexer run time elapsed for index %s. Indexer exiting, quartz will reschedule." (:table-name index))
 
       (exit-early-due-to-cold-data? @indexing-state (.instant clock))
-      (log/debug "Indexer not seen any recent change, Indexer exiting, quartz will reschedule.")
+      (log/debugf "Indexer not seen any recent change for index %s, Indexer exiting, quartz will reschedule." (:table-name index))
 
       :else
       (let [interrupted (or
@@ -363,6 +385,7 @@
                          ;; run dead letter queue processing if it is time to do so
                          (when-some [^Instant next-dlq-run (:next-dlq-run @indexing-state)]
                            (when (.isAfter (.instant clock) next-dlq-run)
+                             (log/debugf "Starting DLQ processing for index %s" (:table-name index))
                              (try
                                (dlq-step pgvector index-metadata index indexing-state)
                                false
@@ -418,12 +441,16 @@
   (let [{:keys [index metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
     (when-not index (log/debug "No active semantic search index"))
     (when index
+      (log/debugf "Starting indexer loop for index %s (ID: %s)" (:table_name metadata-row) (:id metadata-row))
       (let [indexing-state (init-indexing-state metadata-row)]
 
         ;; if the DLQ table exists, schedule runs to happen during indexing
         ;; note: we might remove the table-exists? condition once schema solidifies
-        (when (semantic.dlq/dlq-table-exists? pgvector index-metadata (:id metadata-row))
-          (vswap! indexing-state assoc :next-dlq-run (.plus (.instant clock) dlq-frequency)))
+        (if (semantic.dlq/dlq-table-exists? pgvector index-metadata (:id metadata-row))
+          (do
+            (log/debugf "DLQ table exists for index %s, scheduling DLQ processing" (:table-name index))
+            (vswap! indexing-state assoc :next-dlq-run (.plus (.instant clock) dlq-frequency)))
+          (log/warnf "DLQ table does not exist for index %s" (:table-name index)))
 
         (try
           (indexing-loop
@@ -434,5 +461,5 @@
 
           (catch InterruptedException ie (throw ie))
           (catch Throwable t
-            (log/error t "An exception was caught during the indexing loop")
+            (log/errorf t "An exception was caught during the indexing loop for index %s" (:table-name metadata-row))
             (throw t)))))))

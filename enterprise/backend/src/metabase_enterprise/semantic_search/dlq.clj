@@ -23,6 +23,7 @@
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
@@ -58,6 +59,7 @@
   "Creates the DLQ table for the specified index if it doesn't already exist."
   [pgvector index-metadata index-id]
   (let [dlq-table (dlq-table-name-kw index-metadata index-id)]
+    (log/debugf "Creating DLQ table %s for index %s" dlq-table index-id)
     ;; create table
     (let [ddl {:create-table [dlq-table :if-not-exists]
                :with-columns dlq-table-schema}
@@ -208,6 +210,7 @@
                                         :excluded.error_gated_at]}}
           sql (sql/format dml :quoted true)
           {upsert-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)]
+      (log/debugf "Added/updated %d DLQ entries for index %s" upsert-count index-id)
       upsert-count)))
 
 (defn delete-entries!
@@ -232,6 +235,8 @@
                                [id gated_at])]}
           sql (sql/format dml :quoted true)
           {delete-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)]
+      (when (pos? delete-count)
+        (log/debugf "Deleted %d DLQ entries for index %s" delete-count index-id))
       delete-count)))
 
 (def ^InstantSource clock
@@ -287,8 +292,11 @@
              :left-join [[(keyword (:gate-table-name index-metadata)) :g] [:= :d.gate_id :g.id]]
              :where     [:<= :d.attempt_at (.instant clock)]
              :limit     poll-limit}
-        sql (sql/format q :quoted true)]
-    (jdbc/execute! pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+        sql (sql/format q :quoted true)
+        results (jdbc/execute! pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (when (seq results)
+      (log/debugf "Polled %d DLQ entries ready for retry from index %s" (count results) index-id))
+    results))
 
 (def ^Duration initial-backoff
   "Used to schedule the initial retry attempt - no jitter, will assume the whole batch of failures
@@ -450,6 +458,7 @@
              poll-limit       default-poll-limit}}]
   (let [loop-start (u/start-timer)
         max-run-ms (.toMillis max-run-duration)]
+    (log/debugf "Starting DLQ retry loop for index %s with max-run-duration %s, max-batch-size %d" index-id max-run-duration max-batch-size)
     (loop [poll-results  []
            batch-size    max-batch-size                     ;; assumes success is more likely that not.
            success-count 0
@@ -463,19 +472,23 @@
 
         ;; ran out of time
         (< max-run-ms (u/since-ms loop-start))
-        {:exit-reason   :ran-out-of-time
-         :run-time      (Duration/ofMillis (u/since-ms loop-start))
-         :success-count success-count
-         :failure-count failure-count}
+        (do
+          (log/debugf "DLQ retry loop for index %s exceeded max run time (took %s)" index-id (Duration/ofMillis (u/since-ms loop-start)))
+          {:exit-reason   :ran-out-of-time
+           :run-time      (Duration/ofMillis (u/since-ms loop-start))
+           :success-count success-count
+           :failure-count failure-count})
 
         ;; ran out of data
         (empty? poll-results)
         (let [new-results (poll pgvector index-metadata index-id poll-limit)]
           (if (empty? new-results)
-            {:exit-reason   :no-more-data
-             :run-time      (Duration/ofMillis (u/since-ms loop-start))
-             :success-count success-count
-             :failure-count failure-count}
+            (do
+              (log/debugf "DLQ retry loop completed - no more data ready for retry in index %s" index-id)
+              {:exit-reason   :no-more-data
+               :run-time      (Duration/ofMillis (u/since-ms loop-start))
+               :success-count success-count
+               :failure-count failure-count})
             (recur new-results
                    ; you would think you might be able to reset to initial, but at the edge when you have lots of retries together it will slow down isolating poisoned docs
                    ; so if the batch size has shrunk - keep it to start with (it will soon grow)
@@ -488,6 +501,10 @@
               ;; filter out (and delete from the dlq) orphaned batch entries (that no longer reflect the latest gate record)
               [orphaned valid-batch] ((juxt filter remove) #(not= (:gated_at %) (:new_gated_at %)) dlq-batch)
               _              (some->> orphaned seq (delete-entries! pgvector index-metadata index-id))
+              _              (when (seq orphaned)
+                               (log/debugf "Removed %d orphaned DLQ entries from index %s" (count orphaned) index-id))
+              _              (when (seq valid-batch)
+                               (log/debugf "Retrying DLQ batch of %d documents for index %s" (count valid-batch) index-id))
               outcome        (try-batch! pgvector index valid-batch)
               ;; outcome applies only to the valid batch entries
               _              (update-dlq-with-retry-outcome! pgvector index-metadata index-id outcome)
