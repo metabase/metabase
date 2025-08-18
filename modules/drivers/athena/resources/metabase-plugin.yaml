@@ -36,15 +36,9 @@ driver:
         - name: secret_key
           display-name: Secret key
           helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
-    - name: use-specific-db
-      display-name: Use specific database
-      type: boolean
-      default: false
-      description: Use a specific database to enable features like DB routing
     - name: dbname
-      visible-if:
-        use-specific-db: true
       display-name: Specific database
+      helper-text: Specify a single database to enable features like DB routing
     - advanced-options-start
     - merge:
         - additional-options

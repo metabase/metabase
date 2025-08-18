@@ -47,7 +47,7 @@
    :access_key                    (tx/db-test-env-var-or-throw :athena :access-key)
    :secret_key                    (tx/db-test-env-var-or-throw :athena :secret-key)
    :s3_staging_dir                (tx/db-test-env-var-or-throw :athena :s3-staging-dir)
-   :dbname                         (some->> database-name (ddl.i/format-name driver))
+   :dbname                        (some->> database-name (ddl.i/format-name driver))
    :catalog                       "AwsDataCatalog"
    :workgroup                     "primary"})
 
