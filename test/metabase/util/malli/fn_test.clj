@@ -363,3 +363,23 @@
                     (f)))
              (catch Exception _e
                (is false "it threw a schema error")))))))
+
+(defn- pass-fn [_] true)
+(defn- fail-fn [_] true)
+
+(deftest ^:parallel function-schemas-in-mufn-are-cachable
+  (let [naughty-list (atom [])]
+    (binding [mr/*fn-in-schema-hook* (fn [form] (swap! naughty-list conj (pr-str form)))]
+      (let [random-name (mt/random-name)
+            passer (mu.fn/fn
+                     [x :- [:fn {:name random-name} pass-fn]]
+                     x)
+            var-passer (mu.fn/fn
+                         [x :- [:fn {:name random-name} #'pass-fn]]
+                         x)]
+        (dotimes [_ 3]
+          (is (= 1 (passer 1)) "defd function schema")
+          (is (= 1 ((mu.fn/fn [x :- [:fn {:name random-name} pass-fn]] x) 1)) "inlined function schema")
+          (is (= 1 (var-passer 1)) "defd function-var schema")
+          (is (= 1 ((mu.fn/fn [x :- [:fn {:name random-name} #'pass-fn]] x) 1)) "inlined function-var schema"))
+        (is (= [] @naughty-list))))))

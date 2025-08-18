@@ -11,6 +11,18 @@
 
 (defonce ^:private cache (atom {}))
 
+(def ^:dynamic *fn-in-schema-hook*
+  "A hook that is called whenever a function is encountered in a schema, for side effects.
+  This is used in tests or to monitor functions in schemas."
+  ;; (fn [form] nil)
+  nil)
+
+(def ^:private known-fxns
+  (into #{} (filter fn?) (keys (mc/default-schemas))))
+
+(defn function-ok? [f]
+  (contains? known-fxns f))
+
 (defn- schema-cache-key
   "Make schemas that aren't `=` to identical ones e.g.
 
@@ -21,6 +33,10 @@
   [x]
   (walk/postwalk
    (fn [form]
+     (when (and *fn-in-schema-hook*
+                (fn? form)
+                (not (function-ok? form)))
+       (*fn-in-schema-hook* form))
      (cond-> form
        (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
        str))

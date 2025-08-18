@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [fn])
   (:require
    [clojure.core :as core]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.destructure :as md]
    [malli.error :as me]
@@ -243,6 +244,23 @@
                                              :varargs/map        {:as (last arg-names)})])
            arg-names))))
 
+(defn- var-ize-functions [schema]
+  (walk/postwalk
+   ;; might not need to do it inside :fn forms,
+   ;; can we just do it on the function itself?
+   (core/fn [x]
+     (if (and (vector? x)
+              (= :fn (first x)))
+       (cond
+         ;; no properties:
+         (symbol? (second x)) [:fn `(var ~(second x))]
+         ;; properties:
+         (symbol? (nth x 2))  [:fn (second x) `(var ~(nth x 2))]
+         ;; no match (impossible w/ valid schemas?)
+         :else                x)
+       x))
+   schema))
+
 (defn- input-schema->validation-forms [error-context [_cat & schemas :as input-schema]]
   (let [arg-names (input-schema-arg-names input-schema)
         schemas   (if (= (varargs-type input-schema) :varargs/sequential)
@@ -257,7 +275,9 @@
                                       'more [:maybe [:* :any]]
                                       'kvs  [:* :any]
                                       :any))
-                  `(validate-input ~error-context ~schema ~arg-name)))
+                  `(validate-input ~error-context
+                                   ~(var-ize-functions schema)
+                                   ~arg-name)))
               arg-names
               schemas)
          (filter some?))))
@@ -295,7 +315,8 @@
         result-form            (if (and output-schema
                                         (not= output-schema :any))
                                  `(->> ~result-form
-                                       (validate-output ~error-context ~output-schema))
+                                       (validate-output ~error-context
+                                                        ~(var-ize-functions output-schema)))
                                  result-form)]
     `(~arglist
       (try
