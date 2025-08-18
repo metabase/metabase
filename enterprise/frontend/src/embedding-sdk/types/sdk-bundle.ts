@@ -9,15 +9,15 @@ import type { EditableDashboard } from "embedding-sdk/components/public/dashboar
 import type { InteractiveDashboard } from "embedding-sdk/components/public/dashboard/InteractiveDashboard";
 import type { StaticDashboard } from "embedding-sdk/components/public/dashboard/StaticDashboard";
 import type { SdkDebugInfo } from "embedding-sdk/components/public/debug/SdkDebugInfo";
-import type { useInitData } from "embedding-sdk/hooks/private/use-init-data";
-import type { useLogVersionInfo } from "embedding-sdk/hooks/private/use-log-version-info";
-import type { getSdkStore } from "embedding-sdk/store";
 import type { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";
-import type { getLoginStatus } from "embedding-sdk/store/selectors";
+import type { SdkStore, SdkStoreState } from "embedding-sdk/store/types";
+import type { LoginStatus } from "embedding-sdk/types/user";
 import type { createDashboard } from "metabase/api/dashboard";
-import type { getSetting } from "metabase/selectors/settings";
-import type { getUser } from "metabase/selectors/user";
-import type { getApplicationName } from "metabase/selectors/whitelabel";
+import type { User } from "metabase-types/api";
+
+type HookFunction = () => void;
+type ReduxStoreFactory = () => SdkStore;
+type ReduxStoreSelector<T> = (state: SdkStoreState) => T;
 
 /**
  * IMPORTANT!
@@ -46,7 +46,7 @@ export type MetabaseEmbeddingSdkBundlePublicExports = {
 };
 
 export type MetabaseEmbeddingSdkBundleReduxStoreExports = {
-  getSdkStore: typeof getSdkStore;
+  getSdkStore: ReduxStoreFactory;
 };
 
 export type MetabaseEmbeddingSdkBundleStoreMutationsExports = {
@@ -54,14 +54,14 @@ export type MetabaseEmbeddingSdkBundleStoreMutationsExports = {
 };
 
 export type MetabaseEmbeddingSdkBundleStoreSelectorsExports = {
-  getApplicationName: typeof getApplicationName;
+  getApplicationName: ReduxStoreSelector<string>;
+  getAvailableFonts: ReduxStoreSelector<string[]>;
   getCollectionNumericIdFromReference: typeof getCollectionNumericIdFromReference;
-  getLoginStatus: typeof getLoginStatus;
-  getSetting: typeof getSetting;
-  getUser: typeof getUser;
+  getLoginStatus: ReduxStoreSelector<LoginStatus>;
+  getUser: ReduxStoreSelector<User | null>;
 };
 
 export type MetabaseEmbeddingSdkBundleInternalHooksExports = {
-  useInitData: typeof useInitData;
-  useLogVersionInfo: typeof useLogVersionInfo;
+  useInitData: HookFunction;
+  useLogVersionInfo: HookFunction;
 };
