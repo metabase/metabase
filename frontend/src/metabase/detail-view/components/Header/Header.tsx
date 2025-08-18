@@ -56,7 +56,7 @@ export const Header = ({ columns, row, table }: Props) => {
         )}
       </Box>
 
-      <Stack gap="md">
+      <Stack gap="sm">
         {titleColumn && title && (
           <Text
             c="text-primary"
