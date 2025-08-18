@@ -103,7 +103,7 @@ export const DatabaseReplicationModal = ({
       closeOnClickOutside={!canCloseModal}
       closeOnEscape={!canCloseModal}
       withCloseButton={!canCloseModal}
-      size={isErrorStep ? "80%" : "30rem"}
+      size={isErrorStep ? "40rem" : "30rem"}
       padding="2.5rem"
       title={
         isProgressStep
@@ -113,7 +113,6 @@ export const DatabaseReplicationModal = ({
             : t`Set up database replication`
       }
       mah="80%"
-      maw={isErrorStep ? 640 : undefined}
     >
       {setupStep === "form" ? (
         <DatabaseReplicationForm
