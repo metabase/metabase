@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "emb-624-add-top-level-breadcrumb-navigation-for-embed-js",
-    "hash": "efc4f1c66b1cf187e358aea3f394714e3a6e42aa"
+    "name": "master",
+    "hash": "1321b75fffa3ad2938bae3ad45c82d664f366808"
   },
   "upstream": {
     "branch": "emb-605-add-view-content-and-curate-content-templates-for-new-iframe"
