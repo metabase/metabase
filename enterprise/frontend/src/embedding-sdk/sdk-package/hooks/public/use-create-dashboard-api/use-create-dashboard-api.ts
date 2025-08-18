@@ -22,7 +22,9 @@ export const useCreateDashboardApi = () => {
     },
   } = useMetabaseProviderPropsStore();
 
-  const loginStatus = useLazySelector((state) => state.sdk.loginStatus);
+  const loginStatus = useLazySelector(
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getLoginStatus,
+  );
 
   /**
    * @function
