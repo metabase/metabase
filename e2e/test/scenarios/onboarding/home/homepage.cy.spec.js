@@ -315,7 +315,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
-        "Select a dashboard",
+        "Pick a dashboard",
       );
 
       cy.findByTestId("custom-homepage-dashboard-setting")
@@ -370,8 +370,8 @@ describe("scenarios > home > custom homepage", () => {
       cy.get("main").findByText("Customize").click();
 
       H.modal().within(() => {
-        cy.findByRole("button", { name: "Save" }).should("be.disabled");
-        cy.findByText(/Select a dashboard/i).click();
+        cy.findByRole("button", { name: "Done" }).should("be.disabled");
+        cy.findByText("Pick a dashboard").click();
       });
 
       H.entityPickerModal().within(() => {
@@ -390,7 +390,7 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText("Orders in a dashboard").click();
       });
 
-      H.modal().findByRole("button", { name: "Save" }).click();
+      H.modal().findByRole("button", { name: "Done" }).click();
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -603,9 +603,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
   it("should send snowplow events through homepage", () => {
     cy.visit("/");
     cy.get("main").findByText("Customize").click();
-    H.modal()
-      .findByText(/Select a dashboard/i)
-      .click();
+    H.modal().findByText("Pick a dashboard").click();
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
     H.modal().findByText("Save").click();
