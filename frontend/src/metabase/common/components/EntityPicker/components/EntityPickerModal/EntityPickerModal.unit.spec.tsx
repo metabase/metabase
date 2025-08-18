@@ -85,7 +85,6 @@ const mockSearchResults = createMockSearchResults({
 });
 
 const setup = ({
-  title = "Pick a thing",
   onItemSelect = jest.fn(),
   onClose = jest.fn(),
   onConfirm = jest.fn(),
@@ -108,7 +107,7 @@ const setup = ({
 
   renderWithProviders(
     <EntityPickerModal
-      title={title}
+      title={"Pick a thing"}
       onItemSelect={onItemSelect}
       canSelectItem={true}
       onClose={onClose}

@@ -8,8 +8,10 @@ export function setupSegmentEndpoint(segment: Segment) {
 }
 
 export function setupSegmentsEndpoints(segments: Segment[]) {
-  fetchMock.post("path:/api/segment", async (url) => {
-    const metric = await fetchMock.lastCall(url)?.request?.json();
+  fetchMock.post("path:/api/segment", async (call) => {
+    const metric = await fetchMock.callHistory
+      .lastCall(call.url)
+      ?.request?.json();
     return createMockSegment(metric);
   });
   fetchMock.get("path:/api/segment", segments);

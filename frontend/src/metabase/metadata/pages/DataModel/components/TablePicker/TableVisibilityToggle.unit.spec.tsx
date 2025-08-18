@@ -48,17 +48,18 @@ describe("TableVisibilityToggle", () => {
       await userEvent.click(toggle);
 
       expect(
-        fetchMock.calls(`path:/api/table/${VISIBLE_TABLE.id}`, {
+        fetchMock.callHistory.calls(`path:/api/table/${VISIBLE_TABLE.id}`, {
           method: "PUT",
         }),
       ).toHaveLength(1);
 
-      const body = await (fetchMock.calls(
+      const call = fetchMock.callHistory.calls(
         `path:/api/table/${VISIBLE_TABLE.id}`,
         {
           method: "PUT",
         },
-      )[0][1]?.body as unknown as Promise<string>);
+      )[0];
+      const body = await (call.options?.body as unknown as Promise<string>);
 
       expect(JSON.parse(body)).toEqual({ visibility_type: "hidden" });
 
@@ -73,18 +74,16 @@ describe("TableVisibilityToggle", () => {
         table: VISIBLE_TABLE,
       });
 
-      fetchMock.put(
-        `path:/api/table/${VISIBLE_TABLE.id}`,
-        { status: 500 },
-        { overwriteRoutes: true },
-      );
+      fetchMock.modifyRoute(`table-${VISIBLE_TABLE.id}-put`, {
+        response: { status: 500 },
+      });
 
       const toggle = screen.getByLabelText("eye icon");
       expect(toggle).toBeInTheDocument();
       await userEvent.click(toggle);
 
       expect(
-        fetchMock.calls(`path:/api/table/${VISIBLE_TABLE.id}`, {
+        fetchMock.callHistory.calls(`path:/api/table/${VISIBLE_TABLE.id}`, {
           method: "PUT",
         }),
       ).toHaveLength(1);
@@ -125,17 +124,18 @@ describe("TableVisibilityToggle", () => {
       await userEvent.click(toggle);
 
       expect(
-        fetchMock.calls(`path:/api/table/${HIDDEN_TABLE.id}`, {
+        fetchMock.callHistory.calls(`path:/api/table/${HIDDEN_TABLE.id}`, {
           method: "PUT",
         }),
       ).toHaveLength(1);
 
-      const body = await (fetchMock.calls(
+      const call = fetchMock.callHistory.calls(
         `path:/api/table/${HIDDEN_TABLE.id}`,
         {
           method: "PUT",
         },
-      )[0][1]?.body as unknown as Promise<string>);
+      )[0];
+      const body = await (call.options?.body as unknown as Promise<string>);
 
       expect(JSON.parse(body)).toEqual({ visibility_type: null });
 
@@ -150,10 +150,11 @@ describe("TableVisibilityToggle", () => {
         table: HIDDEN_TABLE,
       });
 
+      fetchMock.removeRoute(`table-${HIDDEN_TABLE.id}-put`);
       fetchMock.put(
         `path:/api/table/${HIDDEN_TABLE.id}`,
         { status: 500 },
-        { overwriteRoutes: true },
+        { name: `table-${HIDDEN_TABLE.id}-put` },
       );
 
       const toggle = screen.getByLabelText("eye_crossed_out icon");
@@ -161,7 +162,7 @@ describe("TableVisibilityToggle", () => {
       await userEvent.click(toggle);
 
       expect(
-        fetchMock.calls(`path:/api/table/${HIDDEN_TABLE.id}`, {
+        fetchMock.callHistory.calls(`path:/api/table/${HIDDEN_TABLE.id}`, {
           method: "PUT",
         }),
       ).toHaveLength(1);

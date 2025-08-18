@@ -75,15 +75,19 @@
     ;;
     ;; TODO -- parameters??
     ]
-   [:fn
-    {:error/message ":source-table is not allowed in a native query stage."}
-    #(not (contains? % :source-table))]
-   [:fn
-    {:error/message ":source-card is not allowed in a native query stage."}
-    #(not (contains? % :source-card))]
-   [:fn
-    {:error/message ":query is not allowed in a native query stage, you probably meant to use :native instead."}
-    (complement :query)]])
+   (common/disallowed-keys
+    {:query        ":query is not allowed in a native query stage, you probably meant to use :native instead."
+     :source-table "MBQL stage keys like :source-table are not allowed in a native query stage."
+     :source-card  "MBQL stage keys like :source-card are not allowed in a native query stage."
+     :fields       "MBQL stage keys like :fields are not allowed in a native query stage."
+     :filter       "MBQL stage keys like :filter are not allowed in a native query stage."
+     :filters      "MBQL stage keys like :filters are not allowed in a native query stage."
+     :breakout     "MBQL stage keys like :breakout are not allowed in a native query stage."
+     :aggregation  "MBQL stage keys like :aggregation are not allowed in a native query stage."
+     :limit        "MBQL stage keys like :limit are not allowed in a native query stage."
+     :order-by     "MBQL stage keys like :order-by are not allowed in a native query stage."
+     :offset       "MBQL stage keys like :offset are not allowed in a native query stage."
+     :page         "MBQL stage keys like :page are not allowed in a native query stage."})])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -123,7 +127,9 @@
 (defn- expression-ref-errors-for-stage [stage]
   (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))
         pred #(bad-ref-clause? :expression expression-names %)
-        form (stage-with-joins-and-namespaced-keys-removed stage)]
+        form (-> (stage-with-joins-and-namespaced-keys-removed stage)
+                 ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.
+                 (dissoc :parameters))]
     (when (mbql.u/pred-matches-form? form pred)
       (mbql.u/matching-locations form pred))))
 
@@ -197,21 +203,15 @@
     [:source-card        {:optional true} [:ref ::id/card]]
     [:page               {:optional true} [:ref ::page]]]
    [:fn
-    {:error/message ":source-query is not allowed in pMBQL queries."}
-    #(not (contains? % :source-query))]
-   [:fn
-    {:error/message ":native is not allowed in an MBQL stage."}
-    #(not (contains? % :native))]
-   [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
    [:ref ::stage.valid-refs]
-   (into [:and]
-         (map (fn [k]
-                [:fn
-                 {:error/message (str k " is deprecated and should not be used")}
-                 (complement k)]))
-         [:aggregation-idents :breakout-idents :expression-idents])])
+   (common/disallowed-keys
+    {:native             ":native is not allowed in an MBQL stage."
+     :aggregation-idents ":aggregation-idents is deprecated and should not be used"
+     :breakout-idents    ":breakout-idents is deprecated and should not be used"
+     :expression-idents  ":expression-idents is deprecated and should not be used"
+     :filter             ":filter is not allowed in an MBQL 5 stage, use :filters instead"})])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
@@ -224,16 +224,36 @@
   (when (map? x)
     (keyword (some #(get x %) [:lib/type "lib/type"]))))
 
+(defn- normalize-stage [stage]
+  (when (map? stage)
+    (let [stage (common/normalize-map stage)]
+      ;; infer stage type
+      (cond
+        (:lib/type stage)
+        stage
+
+        ((some-fn :source-table :source-card) stage)
+        (assoc stage :lib/type :mbql.stage/mbql)
+
+        (:native stage)
+        (assoc stage :lib/type :mbql.stage/native)
+
+        :else
+        stage))))
+
 ;;; TODO -- enforce all kebab-case keys
 (mr/def ::stage
   [:and
-   {:default          {}
-    :decode/normalize common/normalize-map
+   {:default          {:lib/type :mbql.stage/mbql}
+    :decode/normalize normalize-stage
     :encode/serialize #(dissoc %
                                ;; this stuff is all added at runtime by QP middleware.
                                :params
                                :parameters
                                :lib/stage-metadata
+                               ;; TODO (Cam 8/7/25) -- wait a minute, `:middleware` is not supposed to be added here,
+                               ;; it's supposed to be added to the top level. Investigate whether this was just a
+                               ;; mistake or what.
                                :middleware)}
    [:map
     [:lib/type [:ref ::stage.type]]]
@@ -241,9 +261,10 @@
             :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
     [:mbql.stage/mbql   [:ref ::stage.mbql]]]
-   [:fn
-    {:error/message "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"}
-    (complement :source-metadata)]])
+   (common/disallowed-keys
+    {:source-metadata "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"
+     :source-query    ":source-query is not allowed in MBQL 5 queries."
+     :type            ":type is not allowed in a query stage in any version of MBQL"})])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type
@@ -316,9 +337,26 @@
                      (ref-error-for-stages stages))}
    (complement ref-error-for-stages)])
 
+(defn- normalize-stages [stages]
+  (when (sequential? stages)
+    (if (every? :lib/type stages)
+      stages
+      (into [(first stages)]
+            (comp
+             ;; make sure stage has keywordized keys so we can check `:lib/type`
+             (map normalize-stage)
+             ;; subsequent stages have to be MBQL, so add `:lib/type` if it is missing.
+             (map (fn [subsequent-stage]
+                    (cond-> subsequent-stage
+                      (not (:lib/type subsequent-stage)) (assoc :lib/type :mbql.stage/mbql)))))
+            (rest stages)))))
+
 (mr/def ::stages
   [:and
-   [:sequential {:min 1} [:ref ::stage]]
+   [:sequential {:min              1
+                 :decode/normalize normalize-stages
+                 :default          []}
+    [:ref ::stage]]
    [:cat
     [:schema [:ref ::stage.initial]]
     [:* [:schema [:ref ::stage.additional]]]]
@@ -397,4 +435,5 @@
    [:ref ::lib.schema.util/unique-uuids]
    [:fn
     {:error/message ":expressions is not allowed in the top level of a query -- it is only allowed in MBQL stages"}
-    #(not (contains? % :expressions))]])
+    #(not (when (map? %)
+            (contains? % :expressions)))]])

@@ -1,8 +1,13 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
-  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys])
-  #?@(:clj [(:import (clojure.lang LazilyPersistentVector RT)
+  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys #?(:cljs clj->js)])
+  (:require
+   #?@(:clj [[potemkin :as p]
+             [metabase.util.performance.jvm]]
+       :cljs [[cljs.core :as core]
+              [goog.object :as gobject]]))
+  #?@(:clj [(:import (clojure.lang ITransientCollection LazilyPersistentVector RT)
                      java.util.Iterator)]
       :default ()))
 
@@ -74,13 +79,8 @@
 ;; accumulator instead of transients, and then build a vector from it.
 
 #?(:clj
-   (definterface ISmallTransient
-     (conj [x])
-     (persistent [])))
-
-#?(:clj
-   (deftype SmallTransientImpl [^objects arr, ^:unsynchronized-mutable ^long cnt]
-     ISmallTransient
+   (deftype SmallTransientImpl [^objects arr, ^:unsynchronized-mutable ^long cnt, f]
+     ITransientCollection
      (conj [this x]
        (RT/aset arr (unchecked-int cnt) x)
        (set! cnt (unchecked-inc cnt))
@@ -92,38 +92,32 @@
    :cljs
    (deftype SmallTransientImpl [^:mutable arr, ^:mutable cnt, f]))
 
-#?(:clj
-   (defn- small-transient [n]
-     (SmallTransientImpl. (object-array n) 0))
+(defn- small-transient [n f]
+  ;; Storing `f` in the transient itself is a hack to reduce lambda generation.
+  (SmallTransientImpl. (object-array n) 0 f))
 
-   :cljs
-   ;; Storing `f` in the transient itself is a hack to reduce lambda generation because we only use small-transients
-   ;; in CLJS for a single arity in `mapv`.
-   (defn- small-transient [n f]
-     (SmallTransientImpl. (object-array n) 0 f)))
+(defn- apply-and-small-conj!
+  ([^SmallTransientImpl st a]
+   #?(:clj (.conj st ((.-f st) a))
+      :cljs (let [cnt (.-cnt st)]
+              (do (aset (.-arr st) cnt ((.-f st) a))
+                  (set! (.-cnt st) (inc cnt))
+                  st))))
+  #?@(:clj [([^SmallTransientImpl st a b]
+             (let [f (.-f st)]
+               (.conj st (f a b))))
+            ([^SmallTransientImpl st a b c]
+             (let [f (.-f st)]
+               (.conj st (f a b c))))
+            ([^SmallTransientImpl st a b c d]
+             (let [f (.-f st)]
+               (.conj st (f a b c d))))]))
 
-#?(:clj
-   (defn- small-conj!
-     {:inline (fn [st x] `(.conj ~(with-meta st {:tag `ISmallTransient}) ~x))}
-     [^ISmallTransient st x]
-     (.conj st x))
-
-   :cljs
-   (defn- small-conj-with-f! [st x]
-     (let [cnt (.-cnt st)]
-       (do (aset (.-arr st) cnt ((.-f st) x))
-           (set! (.-cnt st) (inc cnt))
-           st))))
-
-#?(:clj
-   (defn- small-persistent! [^ISmallTransient st]
-     (.persistent st))
-
-   :cljs
-   (defn- small-persistent! [st]
-     (let [cnt (.-cnt st)
-           arr (.-arr st)]
-       (PersistentVector. nil cnt 5 (.-EMPTY-NODE PersistentVector) arr nil))))
+(defn- small-persistent! [^SmallTransientImpl st]
+  #?(:clj (.persistent st)
+     :cljs (let [cnt (.-cnt st)
+                 arr (.-arr st)]
+             (PersistentVector. nil cnt 5 (.-EMPTY-NODE PersistentVector) arr nil))))
 
 #?(:clj
    (defn- smallest-count
@@ -131,38 +125,38 @@
      (^long [c1 c2 c3] (min (count c1) (count c2) (count c3)))
      (^long [c1 c2 c3 c4] (min (count c1) (count c2) (count c3) (count c4)))))
 
-#?(:clj
-   (defn mapv
-     "Like `clojure.core/mapv`, but iterates multiple collections more efficiently and uses Java iterators under the hood."
-     ([f coll1]
-      (let [n (count coll1)]
-        (cond (= n 0) []
-              (<= n 32) (small-persistent! (reduce #(small-conj! %1 (f %2)) (small-transient n) coll1))
-              :else (persistent! (reduce #(conj! %1 (f %2)) (transient []) coll1)))))
-     ([f coll1 coll2]
+(defn mapv
+  "Like `clojure.core/mapv`, but iterates multiple collections more efficiently and uses Java iterators under the
+  hood (the CLJ version). CLJS version is only optimized for a single collection arity."
+  ([f coll1]
+   (let [n (count coll1)]
+     (cond (= n 0) []
+           (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1))
+           :else (persistent! (reduce #(conj! %1 (f %2)) (transient []) coll1)))))
+  ([f coll1 coll2]
+   #?(:clj
       (let [n (smallest-count coll1 coll2)]
         (cond (= n 0) []
-              (<= n 32) (small-persistent! (reduce #(small-conj! %1 (f %2 %3)) (small-transient n) coll1 coll2))
-              :else (persistent! (reduce #(conj! %1 (f %2 %3)) (transient []) coll1 coll2)))))
-     ([f coll1 coll2 coll3]
+              (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1 coll2))
+              :else (persistent! (reduce #(conj! %1 (f %2 %3)) (transient []) coll1 coll2))))
+      :cljs
+      (core/mapv f coll1 coll2)))
+  ([f coll1 coll2 coll3]
+   #?(:clj
       (let [n (smallest-count coll1 coll2 coll3)]
         (cond (= n 0) []
-              (<= n 32) (small-persistent! (reduce #(small-conj! %1 (f %2 %3 %4)) (small-transient n) coll1 coll2 coll3))
-              :else (persistent! (reduce #(conj! %1 (f %2 %3 %4)) (transient []) coll1 coll2 coll3)))))
-     ([f coll1 coll2 coll3 coll4]
+              (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1 coll2 coll3))
+              :else (persistent! (reduce #(conj! %1 (f %2 %3 %4)) (transient []) coll1 coll2 coll3))))
+      :cljs
+      (core/mapv f coll1 coll2 coll3)))
+  ([f coll1 coll2 coll3 coll4]
+   #?(:clj
       (let [n (smallest-count coll1 coll2 coll3 coll4)]
         (cond (= n 0) []
-              (<= n 32) (small-persistent! (reduce #(small-conj! %1 (f %2 %3 %4 %5)) (small-transient n) coll1 coll2 coll3 coll4))
-              :else (persistent! (reduce #(conj! %1 (f %2 %3 %4 %5)) (transient []) coll1 coll2 coll3 coll4))))))
-
-   :cljs
-   (defn mapv
-     "Like `clojure.core/mapv`, but is more efficient for small vectors."
-     ([f coll1]
-      (let [n (count coll1)]
-        (cond (= n 0) []
-              (<= n 32) (small-persistent! (reduce small-conj-with-f! (small-transient n f) coll1))
-              :else (persistent! (reduce #(conj! %1 (f %2)) (transient []) coll1)))))))
+              (<= n 32) (small-persistent! (reduce apply-and-small-conj! (small-transient n f) coll1 coll2 coll3 coll4))
+              :else (persistent! (reduce #(conj! %1 (f %2 %3 %4 %5)) (transient []) coll1 coll2 coll3 coll4))))
+      :cljs
+      (core/mapv f coll1 coll2 coll3 coll4))))
 
 (defn run!
   "Like `clojure.core/run!`, but iterates collections more efficiently and uses Java iterators under the hood."
@@ -354,3 +348,38 @@
                                acc
                                (assoc! acc k v))))
                          (transient {}) keyseq))))
+
+#?(:clj (p/import-vars [metabase.util.performance.jvm keywordize-keys postwalk prewalk walk]))
+
+;;;; Faster clj->js implementation
+
+#?(:cljs
+   (defn clj->js
+     "Optimized implementation of `cljs.core/clj->js`. The main distinction is using `reduce` to iterate through
+     collections and thus reduce allocation pressure."
+     [x]
+     (letfn [(keyfn [k] (cond
+                          (satisfies? IEncodeJS k) (-clj->js k)
+                          (string? k) k
+                          (number? k) k
+                          (keyword? k) (name k)
+                          (symbol? k) (str k)
+                          :else (pr-str k)))
+             (thisfn [x] (cond
+                           (nil? x) nil
+                           (satisfies? IEncodeJS x) (-clj->js x)
+                           (keyword? x) (name x)
+                           (symbol? x) (str x)
+                           (map? x) (let [m (js-obj)]
+                                      (reduce-kv (fn [_ k v]
+                                                   (gobject/set m (keyfn k) (thisfn v))
+                                                   nil)
+                                                 nil x)
+                                      m)
+                           (coll? x) (let [arr (array)]
+                                       (reduce (fn [_ y]
+                                                 (.push arr (thisfn y)))
+                                               nil x)
+                                       arr)
+                           :else x))]
+       (thisfn x))))

@@ -152,6 +152,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     renderEmptyMessage,
     queryBuilderMode,
     isDashboard,
+    isDocument,
     isSettings,
     isRawTable,
     isEmbeddingSdk,
@@ -621,8 +622,13 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     const isNotebookPreview = queryBuilderMode === "notebook";
     const isModelEditor = queryBuilderMode === "dataset";
     const hasObjectDetail =
-      !(isPivoted || hasAggregation || isNotebookPreview || isModelEditor) &&
-      !isEmbeddingSdk;
+      !(
+        isPivoted ||
+        hasAggregation ||
+        isNotebookPreview ||
+        isModelEditor ||
+        isDocument
+      ) && !isEmbeddingSdk;
 
     const shouldShowRowIndex =
       settings["table.row_index"] && !isNotebookPreview && !isModelEditor;
@@ -650,6 +656,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     queryBuilderMode,
     settings,
     isDashboard,
+    isDocument,
   ]);
 
   const backgroundColor = useMemo(() => {

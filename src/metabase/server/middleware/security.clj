@@ -233,7 +233,7 @@
         "Vary"                        "Origin"})
      {"Access-Control-Allow-Headers"  "*"
       "Access-Control-Allow-Methods"  "*"
-      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"
+      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
       ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
       "Access-Control-Max-Age"  "60"})))
 
@@ -263,13 +263,26 @@
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
     "X-Content-Type-Options"            "nosniff"}))
 
+(defn- always-allow-cors?
+  "Returns true if the request/response should have CORS headers added."
+  [request response]
+  ;; Needed for showing errors in the SDK when embedding or SSO is disabled.
+  (and (= (:uri request) "/auth/sso")
+       (or (= (:request-method request) :options)
+           (contains? #{400 402} (:status response)))))
+
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
-  (update response :headers #(merge %2 %1) (security-headers
-                                            :origin         (get (:headers request) "origin")
-                                            :nonce          (:nonce request)
-                                            :allow-iframes? ((some-fn request/public? request/embed?) request)
-                                            :allow-cache?   (request/cacheable? request))))
+  (let [headers (security-headers
+                 :origin         (get (:headers request) "origin")
+                 :nonce          (:nonce request)
+                 :allow-iframes? ((some-fn request/public? request/embed?) request)
+                 :allow-cache?   (request/cacheable? request))
+        cors-headers (when (always-allow-cors? request response)
+                       {"Access-Control-Allow-Origin" "*"
+                        "Access-Control-Allow-Headers" "*"
+                        "Access-Control-Allow-Methods" "*"})]
+    (update response :headers #(merge %2 %1 cors-headers) headers)))
 
 (defn add-security-headers
   "Middleware that adds HTTP security and cache-busting headers."

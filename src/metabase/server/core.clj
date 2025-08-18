@@ -5,6 +5,7 @@
   (:require
    [metabase.server.handler]
    [metabase.server.instance]
+   [metabase.server.middleware.json]
    [metabase.server.protocols]
    [metabase.server.routes]
    [potemkin :as p]))
@@ -26,4 +27,7 @@
  [metabase.server.protocols
   Respond]
  [metabase.server.routes
-  make-routes])
+  make-routes]
+ [metabase.server.middleware.json
+  wrap-json-body
+  wrap-streamed-json-response])

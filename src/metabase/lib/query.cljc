@@ -286,10 +286,10 @@
   "Ensure `a-query` has a cached metadata provider (needed so we can use the general `cached-value` and `cache-value!`
   facilities; wrap the current metadata in one that adds caching if needed."
   [a-query]
-  (cond-> a-query
-    (and (:lib/metadata a-query)
-         (not (lib.metadata.protocols/cached-metadata-provider? (:lib/metadata a-query))))
-    (update :lib/metadata lib.metadata.cached-provider/cached-metadata-provider)))
+  (let [mp         (:lib/metadata a-query)
+        cached-mp? (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)]
+    (cond-> a-query
+      (and mp (not cached-mp?)) (update :lib/metadata lib.metadata.cached-provider/cached-metadata-provider))))
 
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
@@ -491,8 +491,8 @@
       (cond-> graph
         card-id  (dep/depend [:card from-id] [:card  card-id])
         table-id (dep/depend [:card from-id] [:table table-id]))
-      (catch #?(:clj Exception :cljs :default) _e
-        (throw (ex-info (i18n/tru "Cannot save card with cycles.") {}))))))
+      (catch #?(:clj Exception :cljs :default) e
+        (throw (ex-info (i18n/tru "Cannot save card with cycles.") {} e))))))
 
 (defn- build-graph [source-id metadata-provider a-query]
   (loop [graph (dep/graph)
