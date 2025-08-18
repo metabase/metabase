@@ -57,6 +57,8 @@ export const RecentsListContent = ({
     );
   }
 
+  console.log("RecentsListContent", results);
+
   return (
     <Stack
       gap="sm"

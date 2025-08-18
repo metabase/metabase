@@ -41,6 +41,8 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
     }
   };
 
+  console.log("recentlist", data)
+
   return (
     <Paper withBorder className={className}>
       <RecentsListContent
