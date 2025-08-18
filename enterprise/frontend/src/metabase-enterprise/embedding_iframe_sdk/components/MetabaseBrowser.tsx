@@ -14,7 +14,7 @@ import {
 import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import type { SdkCollectionId } from "embedding-sdk/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk/types/breadcrumb";
-import { Button, Group, Stack } from "metabase/ui";
+import { Box, Button, Group, Stack } from "metabase/ui";
 
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
@@ -30,6 +30,8 @@ type MetabaseBrowserView =
   | { type: "question" | "metric" | "model"; id: number | string }
   | { type: "exploration" }
   | { type: "create-dashboard" };
+
+const BREADCRUMB_HEIGHT = "3.5rem";
 
 export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
   const { initialCollection } = settings;
@@ -63,14 +65,16 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
   const viewContent = match(currentView)
     .with({ type: "exploration" }, () => (
-      <InteractiveQuestion
-        questionId="new"
-        height="100%"
-        withDownloads
-        isSaveEnabled={!isReadOnly}
-        entityTypes={settings.dataPickerEntityTypes}
-        targetCollection={targetCollection}
-      />
+      <Box px="xl" h="100%">
+        <InteractiveQuestion
+          questionId="new"
+          height="100%"
+          withDownloads
+          isSaveEnabled={!isReadOnly}
+          entityTypes={settings.dataPickerEntityTypes}
+          targetCollection={targetCollection}
+        />
+      </Box>
     ))
     .with({ type: "create-dashboard" }, () => (
       <CreateDashboardModal
@@ -93,7 +97,7 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
       />
     ))
     .with({ type: "dashboard", id: P.nonNullable }, ({ id }) => {
-      return isReadOnly ? (
+      const dashboardView = isReadOnly ? (
         <InteractiveDashboard
           dashboardId={id}
           withDownloads
@@ -107,35 +111,41 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
           style={{ height: "100%" }}
         />
       );
+
+      return <Group h="100%">{dashboardView}</Group>;
     })
     .with(
       { type: P.union("question", "metric", "model"), id: P.nonNullable },
       ({ id }) => (
-        <InteractiveQuestion
-          questionId={id}
-          height="100%"
-          withDownloads
-          isSaveEnabled={!isReadOnly}
-          targetCollection={targetCollection}
-        />
+        <Box px="xl" h="100%">
+          <InteractiveQuestion
+            questionId={id}
+            height="100%"
+            withDownloads
+            isSaveEnabled={!isReadOnly}
+            targetCollection={targetCollection}
+          />
+        </Box>
       ),
     )
     .with({ type: "collection" }, (view) => (
-      <CollectionBrowser
-        collectionId={view.id}
-        visibleColumns={settings.collectionVisibleColumns}
-        visibleEntityTypes={settings.collectionEntityTypes}
-        pageSize={settings.collectionPageSize}
-        onClick={(item) => {
-          const type = match<string, SdkBreadcrumbItemType>(item.model)
-            .with("card", () => "question")
-            .with("dataset", () => "model")
-            .otherwise((model) => model as SdkBreadcrumbItemType);
+      <Box px="xl" pt="lg" style={{ overflowY: "scroll" }}>
+        <CollectionBrowser
+          collectionId={view.id}
+          visibleColumns={settings.collectionVisibleColumns}
+          visibleEntityTypes={settings.collectionEntityTypes}
+          pageSize={settings.collectionPageSize}
+          onClick={(item) => {
+            const type = match<string, SdkBreadcrumbItemType>(item.model)
+              .with("card", () => "question")
+              .with("dataset", () => "model")
+              .otherwise((model) => model as SdkBreadcrumbItemType);
 
-          setCurrentView({ type, id: item.id });
-        }}
-        style={{ overflowY: "scroll" }}
-      />
+            setCurrentView({ type, id: item.id });
+          }}
+          style={{ overflowY: "scroll" }}
+        />
+      </Box>
     ))
     .otherwise(() => null);
 
@@ -145,34 +155,46 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
   };
 
   return (
-    <Stack px="xl" py="lg" h="100%" style={{ overflowY: "hidden" }}>
-      {/* Fixes the height to avoid layout shift when hiding buttons */}
-      <Group justify="space-between" align="center" gap="sm">
-        <Group h="2.5rem">
-          <SdkBreadcrumbs />
-        </Group>
-
-        {currentView.type === "collection" && (
-          <Group gap="sm">
-            {(settings.withNewQuestion ?? true) && (
-              <Button justify="center" onClick={handleNewExploration}>
-                {t`New Exploration`}
-              </Button>
-            )}
-
-            {!isReadOnly && (settings.withNewDashboard ?? true) && (
-              <Button
-                justify="center"
-                onClick={() => setCurrentView({ type: "create-dashboard" })}
-              >
-                {t`New Dashboard`}
-              </Button>
-            )}
+    <Stack pos="relative" h="100%">
+      <Box pos="absolute" top={0} left={0} w="100%">
+        {/* Fixes the height to avoid layout shift when hiding buttons */}
+        <Group
+          justify="space-between"
+          align="flex-start"
+          gap="sm"
+          h={BREADCRUMB_HEIGHT}
+          px="xl"
+          py="lg"
+          w="100%"
+        >
+          <Group>
+            <SdkBreadcrumbs />
           </Group>
-        )}
-      </Group>
 
-      {viewContent}
+          {currentView.type === "collection" && (
+            <Group gap="sm">
+              {(settings.withNewQuestion ?? true) && (
+                <Button justify="center" onClick={handleNewExploration}>
+                  {t`New Exploration`}
+                </Button>
+              )}
+
+              {!isReadOnly && (settings.withNewDashboard ?? true) && (
+                <Button
+                  justify="center"
+                  onClick={() => setCurrentView({ type: "create-dashboard" })}
+                >
+                  {t`New Dashboard`}
+                </Button>
+              )}
+            </Group>
+          )}
+        </Group>
+      </Box>
+
+      <Stack mt={BREADCRUMB_HEIGHT} h="100%" style={{ overflowY: "hidden" }}>
+        {viewContent}
+      </Stack>
     </Stack>
   );
 }
