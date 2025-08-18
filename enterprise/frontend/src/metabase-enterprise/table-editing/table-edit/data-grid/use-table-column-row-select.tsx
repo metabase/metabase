@@ -6,6 +6,7 @@ import { Checkbox, Flex, Group, Icon, Tooltip, rem } from "metabase/ui";
 import type { RowValue, RowValues } from "metabase-types/api";
 
 import S from "./EditTableDataGrid.module.css";
+import CellS from "./TableEditingCell.module.css";
 
 export const ROW_SELECT_COLUMN_ID = "__MB_ROW_SELECT";
 
@@ -52,7 +53,7 @@ export function getRowSelectColumn({
       </Flex>
     ),
     cell: ({ row }: { row: Row<RowValues> }) => (
-      <BaseCell>
+      <BaseCell className={CellS.cell}>
         <Group align="center" justify="flex-start" h="100%">
           <Checkbox
             size={rem(16)}

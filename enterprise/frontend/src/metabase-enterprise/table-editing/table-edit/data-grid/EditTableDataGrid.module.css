@@ -41,7 +41,7 @@
 
 .tableBodyCell {
   background-color: var(--mb-color-bg-white);
-  border-right: 1px solid var(--mb-color-border-alpha-30);
+  border-right: 1px solid var(--mb-color-border);
 }
 
 .headerCellContainer {

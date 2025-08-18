@@ -4,7 +4,6 @@
   outline-offset: -2px;
   border-color: transparent;
   box-sizing: border-box;
-  font-weight: 700;
   background-color: var(--mb-base-color-white);
   border-radius: 0;
   text-overflow: ellipsis;
@@ -28,9 +27,16 @@
   font-size: 12.5px;
 }
 
+.cell {
+  font-weight: normal;
+  border-bottom-color: var(--mb-color-border);
+}
+
 .readonlyCell {
+  font-weight: normal;
   color: var(--mb-color-text-disabled);
   cursor: not-allowed;
+  border-bottom-color: var(--mb-color-border);
 }
 
 .errorCell {
