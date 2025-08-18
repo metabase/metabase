@@ -98,18 +98,33 @@
   ([]
    (localize-jobs (i18n/user-locale)))
   ([locale]
-   (doseq [[name description built-in]
-           [[(i18n/translate locale "Hourly job")  (i18n/translate locale "Executes transforms tagged with 'hourly' every hour")      "hourly"]
-            [(i18n/translate locale "Daily job")   (i18n/translate locale "Executes transforms tagged with 'daily' once per day")     "daily"]
-            [(i18n/translate locale "Weekly job")  (i18n/translate locale "Executes transforms tagged with 'weekly' once per week")   "weekly"]
-            [(i18n/translate locale "Monthly job") (i18n/translate locale "Executes transforms tagged with 'monthly' once per month") "monthly"]]]
-     (let [res (t2/update! :model/TransformJob
-                           :built_in_type built-in
-                           {:name name
-                            :description description
-                            :built_in_type nil})]
-       (when (pos? res)
-         (log/info (str "Localized " built-in " job for locale " locale ".")))))))
+   (let [un-localized (t2/select :model/TransformJob :built_in_type [:is-not nil])]
+     (when (seq un-localized)
+       (log/info (str "Localizing jobs for locale " locale "."))
+       (let [values {"hourly"
+                     [(i18n/translate locale "Hourly job")
+                      (i18n/translate locale "Executes transforms tagged with 'hourly' every hour")]
+
+                     "daily"
+                     [(i18n/translate locale "Daily job")
+                      (i18n/translate locale "Executes transforms tagged with 'daily' once per day")]
+
+                     "weekly"
+                     [(i18n/translate locale "Weekly job")
+                      (i18n/translate locale "Executes transforms tagged with 'weekly' once per week")]
+
+                     "monthly"
+                     [(i18n/translate locale "Monthly job")
+                      (i18n/translate locale "Executes transforms tagged with 'monthly' once per month")]}]
+         (doseq [{:keys [built_in_type]} un-localized
+                 :let [[name description] (get values built_in_type)]
+                 :when name
+                 :when (pos? (t2/update! :model/TransformJob
+                                         :built_in_type built_in_type
+                                         {:name name
+                                          :description description
+                                          :built_in_type nil}))]
+           (log/info (str "Localized " built_in_type " job for locale " locale "."))))))))
 
 (defmethod task/init! ::LocalizeJobs [_]
   (when (setup/has-user-setup)

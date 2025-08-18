@@ -29,16 +29,21 @@
   ([]
    (localize-tags (i18n/user-locale)))
   ([locale]
-   (doseq [[name built-in] [[(i18n/translate locale "hourly")  "hourly"]
-                            [(i18n/translate locale "daily")   "daily"]
-                            [(i18n/translate locale "weekly")  "weekly"]
-                            [(i18n/translate locale "monthly") "monthly"]]]
-     (let [res (t2/update! :model/TransformTag
-                           :built_in_type built-in
-                           {:name name
-                            :built_in_type nil})]
-       (when (pos? res)
-         (log/info (str "Localized " built-in " tag for locale " locale ".")))))))
+   (let [un-localized (t2/select :model/TransformTag :built_in_type [:is-not nil])]
+     (when (seq un-localized)
+       (log/info (str "Localizing initial tags for locale " locale "."))
+       (let [values {"hourly"  (i18n/translate locale "hourly")
+                     "daily"   (i18n/translate locale "daily")
+                     "weekly"  (i18n/translate locale "weekly")
+                     "monthly" (i18n/translate locale "monthly")}]
+         (doseq [{:keys [built_in_type]} un-localized
+                 :let [name (get values built_in_type)]
+                 :when name
+                 :when (pos? (t2/update! :model/TransformTag
+                                         :built_in_type built_in_type
+                                         {:name name
+                                          :built_in_type nil}))]
+           (log/info (str "Localized " built_in_type " tag for locale " locale "."))))))))
 
 (defmethod task/init! ::LocalizeTags [_]
   (when (setup/has-user-setup)
