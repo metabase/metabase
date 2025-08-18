@@ -87,7 +87,7 @@ export interface ExplorationEmbedOptions {
   questionId?: never;
 }
 
-export interface ManageContentEmbedOptions {
+export interface BrowserEmbedOptions {
   componentName: "metabase-browser";
 
   /** Which collection to start from? */
@@ -143,7 +143,7 @@ export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
-  | ManageContentEmbedOptions;
+  | BrowserEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
@@ -159,4 +159,4 @@ export type SdkIframeEmbedSettingKey =
   | keyof DashboardEmbedOptions
   | keyof QuestionEmbedOptions
   | keyof ExplorationEmbedOptions
-  | keyof ManageContentEmbedOptions;
+  | keyof BrowserEmbedOptions;
