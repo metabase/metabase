@@ -46,22 +46,36 @@
   width: 100%;
   max-width: 75rem;
   cursor: pointer;
+  padding-bottom: 0.5rem;
+}
+
+.listCard {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 2fr;
+  gap: var(--mantine-spacing-md);
+  align-items: center;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background: var(--mb-color-bg-white);
   padding: var(--mantine-spacing-md) var(--item-padding);
-
-  &:hover {
-    background-color: var(--mb-color-brand-lighter);
-  }
 }
 
-.listHeader,
-.listItem {
+.listCard:hover {
+  background-color: var(--mb-color-brand-lighter);
+}
+
+.listHeader {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) repeat(var(--grid-columns), 14%);
+  grid-template-columns: 32px minmax(0, 1fr) 2fr;
   gap: var(--mantine-spacing-md);
   align-items: center;
+}
+
+.rightGrid {
+  display: grid;
+  grid-template-columns: repeat(var(--subgrid-columns, 3), minmax(0, 1fr));
+  gap: var(--mantine-spacing-md);
+  align-items: start;
 }
 
 .categoryValue {

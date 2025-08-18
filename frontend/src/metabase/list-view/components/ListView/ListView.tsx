@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type CSSProperties, useMemo, useRef } from "react";
-import { t } from "ttag";
+import { useMount } from "react-use";
 
 import { formatValue } from "metabase/lib/formatting";
 import { Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
@@ -12,7 +12,6 @@ import type { Card, DatasetColumn, DatasetData } from "metabase-types/api";
 
 import { ColumnValue } from "./ColumnValue";
 import styles from "./ListView.module.css";
-import { useMount } from "react-use";
 
 export interface ListViewProps {
   data: DatasetData;
@@ -29,9 +28,9 @@ export interface ListViewProps {
 export function ListView({
   data,
   settings,
-  sortedColumnName,
-  sortingDirection,
-  onSortClick,
+  sortedColumnName: _sortedColumnName,
+  sortingDirection: _sortingDirection,
+  onSortClick: _onSortClick,
   entityType,
   card,
   metadata,
@@ -43,7 +42,12 @@ export function ListView({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 80,
+    estimateSize: () => 70,
+    // Allow dynamic row heights when content wraps in the right subgrid
+    measureElement: (el) => {
+      console.log("measureElement");
+      return el.getBoundingClientRect().height;
+    },
     overscan: 10,
   });
   const virtualRows = virtualizer.getVirtualItems();
@@ -82,44 +86,8 @@ export function ListView({
   const entityIcon = getEntityIcon(entityType);
 
   return (
-    <Stack
-      className={styles.listViewContainer}
-      style={{ "--grid-columns": Math.max(rightColumns.length, 1) }}
-    >
+    <Stack className={styles.listViewContainer}>
       <Stack className={styles.listContainer}>
-        <div className={styles.listHeader}>
-          {/* Entity Type Icon Column Header */}
-          <div style={{ width: 32, flexShrink: 0 }} />
-
-          {/* Title and Subtitle Column */}
-          <div>
-            {!!titleColumn && (
-              <ColumnHeader
-                column={titleColumn}
-                subtitleColumn={subtitleColumn}
-                sortedColumnName={sortedColumnName}
-                sortingDirection={sortingDirection}
-                onSortClick={onSortClick}
-              />
-            )}
-          </div>
-
-          {/* Right Columns */}
-          {rightColumns.map((col, colIndex) => (
-            <div key={colIndex}>
-              <ColumnHeader
-                column={col}
-                sortedColumnName={sortedColumnName}
-                sortingDirection={sortingDirection}
-                onSortClick={onSortClick}
-                style={{
-                  flexShrink: 0,
-                }}
-              />
-            </div>
-          ))}
-        </div>
-
         <div
           style={{
             height: "100%",
@@ -140,31 +108,37 @@ export function ListView({
                   <Box
                     key={key}
                     className={styles.listItem}
+                    ref={virtualizer.measureElement}
+                    data-index={index}
                     onClick={() => openObjectDetail(index)}
                     style={{
                       transform: `translateY(${start}px)`,
                     }}
                   >
-                    {/* Entity Type Icon */}
-                    <Box
-                      w={32}
-                      h={32}
-                      style={{
-                        border: "1px solid var(--mb-color-border)",
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        backgroundColor: "var(--mb-color-background-light)",
-                      }}
-                    >
-                      <Icon name={entityIcon} size={16} c="text-light" />
-                    </Box>
+                    <div className={styles.listCard}>
+                      {/* Entity Type Icon */}
+                      <Box
+                        w={32}
+                        h={32}
+                        style={{
+                          border: "1px solid var(--mb-color-border)",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          backgroundColor: "var(--mb-color-background-light)",
+                        }}
+                      >
+                        <Icon name={entityIcon} size={16} c="text-light" />
+                      </Box>
 
-                    {/* Title and Subtitle Content */}
-                    <div>
-                      <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
+                      {/* Title and Subtitle Content */}
+                      <Flex
+                        align="flex-start"
+                        gap="md"
+                        style={{ flexShrink: 0 }}
+                      >
                         {imageColumn && (
                           <Image
                             src={row[cols.indexOf(imageColumn)]}
@@ -205,27 +179,54 @@ export function ListView({
                           )}
                         </div>
                       </Flex>
+
+                      {/* Right Columns Subgrid */}
+                      {(() => {
+                        const subgridColumns = Math.max(
+                          3,
+                          Math.min(4, rightColumns.length),
+                        );
+                        const rightGridStyle = {
+                          ["--subgrid-columns" as any]: subgridColumns,
+                        } as CSSProperties;
+                        return (
+                          <div
+                            className={styles.rightGrid}
+                            style={rightGridStyle}
+                          >
+                            {rightColumns.map((col, colIndex) => {
+                              const rawValue = row[cols.indexOf(col)];
+                              const value = formatValue(rawValue, {
+                                ...(settings.column?.(col) || {}),
+                                jsx: true,
+                                rich: true,
+                              });
+
+                              return (
+                                <div key={colIndex}>
+                                  <Text
+                                    size="xs"
+                                    c="text-light"
+                                    fw={500}
+                                    style={{
+                                      marginBottom:
+                                        "calc(var(--mantine-spacing-xs) / 2)",
+                                    }}
+                                  >
+                                    {col.display_name}
+                                  </Text>
+                                  <ColumnValue
+                                    column={col}
+                                    value={value}
+                                    rawValue={rawValue}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
-
-                    {/* Right Columns */}
-                    {rightColumns.map((col, colIndex) => {
-                      const rawValue = row[cols.indexOf(col)];
-                      const value = formatValue(rawValue, {
-                        ...(settings.column?.(col) || {}),
-                        jsx: true,
-                        rich: true,
-                      });
-
-                      return (
-                        <div key={colIndex}>
-                          <ColumnValue
-                            column={col}
-                            value={value}
-                            rawValue={rawValue}
-                          />
-                        </div>
-                      );
-                    })}
                   </Box>
                 );
               })}
@@ -234,44 +235,6 @@ export function ListView({
         </div>
       </Stack>
     </Stack>
-  );
-}
-
-interface ColumnHeaderProps {
-  column: DatasetColumn;
-  subtitleColumn?: DatasetColumn | null;
-  sortedColumnName?: string;
-  sortingDirection?: "asc" | "desc";
-  onSortClick: (column: DatasetColumn) => void;
-  style?: CSSProperties;
-}
-
-function ColumnHeader({
-  column,
-  subtitleColumn,
-  sortedColumnName,
-  sortingDirection,
-  style,
-  onSortClick,
-}: ColumnHeaderProps) {
-  return (
-    <button
-      onClick={() => onSortClick(column)}
-      style={{ ...style, cursor: "pointer", textAlign: "left" }}
-    >
-      <Text fw="bold" size="sm" c="text-medium" style={{ display: "inline" }}>
-        {column.display_name}
-        {subtitleColumn && " " + t`and` + " " + subtitleColumn.display_name}
-      </Text>
-      {sortedColumnName === column.name && (
-        <Icon
-          name={sortingDirection === "asc" ? "arrow_up" : "arrow_down"}
-          c="text-medium"
-          size={12}
-          style={{ display: "inline", marginLeft: 4 }}
-        />
-      )}
-    </button>
   );
 }
 
@@ -304,7 +267,7 @@ function useListColumns(cols: DatasetColumn[]) {
       [titleColumn, subtitleColumn, imageColumn].filter(Boolean),
     );
 
-    return cols.filter((col) => !usedColumns.has(col)).slice(0, 4);
+    return cols.filter((col) => !usedColumns.has(col));
   }, [cols, titleColumn, subtitleColumn, imageColumn]);
 
   return {
