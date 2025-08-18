@@ -7,6 +7,7 @@ import {
   useCreateDatabaseReplicationMutation,
   usePreviewDatabaseReplicationMutation,
 } from "metabase-enterprise/api/database-replication";
+import { DatabaseReplicationError } from "metabase-enterprise/database_replication/DatabaseReplicationError";
 import { DatabaseReplicationSettingUp } from "metabase-enterprise/database_replication/DatabaseReplicationSettingUp";
 import type { Database } from "metabase-types/api";
 
@@ -44,9 +45,11 @@ export const DatabaseReplicationModal = ({
 }: Pick<ModalProps, "opened" | "onClose"> & {
   database: Database;
 }) => {
-  const [setupStep, setSetupStep] = useState<"form" | "setting-up" | "success">(
-    "form",
-  );
+  const [setupStep, setSetupStep] = useState<
+    "form" | "setting-up" | "success" | "error"
+  >("form");
+  const [error, setError] = useState<string>();
+
   const [createDatabaseReplication] = useCreateDatabaseReplicationMutation();
   const [previewDatabaseReplication] = usePreviewDatabaseReplicationMutation();
   const preview = useCallback(
@@ -79,8 +82,10 @@ export const DatabaseReplicationModal = ({
         .unwrap()
         .then(() => setSetupStep("success"))
         .catch((error: unknown) => {
-          setSetupStep("form");
-          isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
+          setSetupStep("error");
+          isRTKQueryError(error) &&
+            typeof error.data === "string" &&
+            setError(error.data);
         });
     },
     [createDatabaseReplication, database.id, setSetupStep],
@@ -115,6 +120,8 @@ export const DatabaseReplicationModal = ({
         <DatabaseReplicationSettingUp />
       ) : setupStep === "success" ? (
         <DatabaseReplicationSuccess onClose={onClose} />
+      ) : setupStep === "error" ? (
+        <DatabaseReplicationError error={error} onClose={onClose} />
       ) : undefined}
     </Modal>
   );

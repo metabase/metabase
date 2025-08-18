@@ -198,7 +198,13 @@ ORDER BY
       (api/check-400 (not (database-id->connection-id conns database-id)) "Database already has an active replication connection.")
       (let [secret (->secret database schemaFilters)]
         (if (:can-set-replication (token-check-quotas-info secret))
-          (let [{:keys [id]} (hm.client/call :create-connection, :type "pg_replication", :secret secret)
+          (let [{:keys [id]} (try
+                               (hm.client/call :create-connection, :type "pg_replication", :secret secret)
+                               (catch Exception e
+                                 (let [{:keys [error error-detail]} (ex-data e)]
+                                   (when (not= "incorrect" error)
+                                     (throw e))
+                                   (api/check-400 false error-detail))))
                 conn         {:connection-id id}]
             (database-replication.settings/database-replication-connections! (assoc conns (kw-id database-id) conn))
             conn)
