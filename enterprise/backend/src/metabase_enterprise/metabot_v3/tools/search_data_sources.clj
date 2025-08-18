@@ -70,7 +70,7 @@
                        entity-types
                        ["table" "model" "question" "dashboard" "metric"])
         normalized-description (if (and (string? description) (str/blank? description)) nil description)
-        search-terms (concat (or keywords []) (when normalized-description [normalized-description]))
+        search-terms (distinct (concat (or keywords []) (when normalized-description [normalized-description])))
         search-models (set (keep entity-type->search-model entity-types))
         ;; Run a search for each term in the search terms
         all-results (mapcat
