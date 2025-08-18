@@ -160,19 +160,18 @@
                    ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
                     "EXTERNAL TABLE" "DYNAMIC_TABLE"]))
 
-(defn- schema+table-with-privileges
-  "Get set of [schema table] pairs that have the specified privilege.
-   privilege-type can be :select or :write"
-  [driver conn privilege-type]
-  (let [privilege-predicate (case privilege-type
-                              :select #(true? (:select %))
-                              :write (fn [{:keys [insert update delete]}]
-                                       (and insert update delete)))]
-    (->> (sql-jdbc.sync.interface/current-user-table-privileges driver {:connection conn})
-         (filter privilege-predicate)
-         (map (fn [{:keys [schema table]}]
-                [schema table]))
-         set)))
+(defn- build-privilege-map
+  "Build a nested map of schema -> table -> set of permissions from current user table privileges."
+  [driver conn]
+  (->> (sql-jdbc.sync.interface/current-user-table-privileges driver {:connection conn})
+       (reduce (fn [acc {:keys [schema table select insert update delete]}]
+                 (assoc-in acc [schema table]
+                           (cond-> #{}
+                             select (conj :select)
+                             insert (conj :insert)
+                             update (conj :update)
+                             delete (conj :delete))))
+               {})))
 
 (defn have-privilege-fn
   "Returns a function that takes a map with 3 keys [:schema, :name, :type] and a privilege type,
@@ -180,7 +179,7 @@
 
    Privilege types:
    - :select - Can read from the table
-   - :write  - Can insert, update, and delete from the table (all three required)
+   - :insert, :update, :delete - Individual write permissions
 
   This function shouldn't be called with `map` or anything alike, instead use it as a cache function like so:
 
@@ -191,8 +190,7 @@
   ;; `sql-jdbc.sync.interface/have-select-privilege?` is slow because we're doing a SELECT query on each table
   ;; It's basically a N+1 operation where N is the number of tables in the database
   (if (driver/database-supports? driver :table-privileges nil)
-    (let [select-privileges (schema+table-with-privileges driver conn :select)
-          write-privileges (schema+table-with-privileges driver conn :write)]
+    (let [privilege-map (build-privilege-map driver conn)]
       (fn [{schema :schema table :name ttype :type} privilege]
         ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
         ;; table on postgres, so we need to use the select method on them
@@ -202,14 +200,12 @@
              [driver ttype])
           (case privilege
             :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-            :write false) ; Foreign tables typically don't support write operations
-          (case privilege
-            :select (contains? select-privileges [schema table])
-            :write (contains? write-privileges [schema table])))))
+            (:insert :update :delete) false) ; Foreign tables typically don't support write operations
+          (contains? (get-in privilege-map [schema table] #{}) privilege))))
     (fn [{schema :schema table :name} privilege]
       (case privilege
         :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-        :write  nil))))
+        (:insert :update :delete) false))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -229,7 +225,7 @@
                                (map (fn [table]
                                       (-> table
                                           (dissoc :type)
-                                          (assoc :is_writable (privilege-fn table :write))))))
+                                          (assoc :is_writable (every? (partial privilege-fn table) [:insert :update :delete]))))))
                          (db-tables driver metadata schema db-name-or-nil))))
               syncable-schemas)))
 
@@ -253,7 +249,7 @@
       (map (fn [table]
              (-> table
                  (dissoc :type)
-                 (assoc :is_writable (privilege-fn table :write))))))
+                 (assoc :is_writable (every? (partial privilege-fn table) [:insert :update :delete]))))))
      (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
 (defn db-or-id-or-spec->database
