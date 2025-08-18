@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
+import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { initAuth } from "embedding-sdk/store/auth";
 import {
   setFetchRefreshTokenFn,
@@ -24,7 +25,27 @@ interface InitDataLoaderParameters {
   authConfig: MetabaseAuthConfig;
 }
 
-export const useInitData = ({
+export const useInitData = () => {
+  const {
+    state: { props, internalProps },
+  } = useMetabaseProviderPropsStore();
+
+  const reduxStore = internalProps.reduxStore;
+  const authConfig = props?.authConfig;
+
+  if (!reduxStore || !authConfig) {
+    throw new Error(
+      "`useInitData` hook has missing values for some required parameters",
+    );
+  }
+
+  useInitDataInternal({
+    reduxStore,
+    authConfig,
+  });
+};
+
+export const useInitDataInternal = ({
   reduxStore,
   authConfig,
 }: InitDataLoaderParameters) => {
