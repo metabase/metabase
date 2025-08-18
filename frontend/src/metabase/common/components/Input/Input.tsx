@@ -10,7 +10,6 @@ import type { InputSize } from "../../style/types";
 import {
   InputField,
   InputLeftButton,
-  InputLeftSection,
   InputResetButton,
   InputRightButton,
   InputRoot,
@@ -31,7 +30,6 @@ export interface InputProps extends InputAttributes {
   fullWidth?: boolean;
   leftIcon?: IconName;
   leftIconTooltip?: ReactNode;
-  leftSection?: ReactNode;
   rightIcon?: IconName;
   rightIconTooltip?: string;
   subtitle?: string;
@@ -51,7 +49,6 @@ const BaseInput = forwardRef(function Input(
     fullWidth,
     leftIcon,
     leftIconTooltip,
-    leftSection,
     rightIcon,
     rightIconTooltip,
     subtitle,
@@ -84,7 +81,7 @@ const BaseInput = forwardRef(function Input(
         hasError={error}
         fullWidth={fullWidth}
         hasSubtitle={Boolean(subtitle)}
-        hasLeftIcon={Boolean(leftIcon) || Boolean(leftSection)}
+        hasLeftIcon={Boolean(leftIcon)}
         hasRightIcon={Boolean(rightIcon)}
         hasClearButton={showResetButton}
         colorScheme={colorScheme}
@@ -107,7 +104,6 @@ const BaseInput = forwardRef(function Input(
           </InputLeftButton>
         </Tooltip>
       )}
-      {leftSection && <InputLeftSection>{leftSection}</InputLeftSection>}
       {rightIcon && (
         <Tooltip
           disabled={!rightIconTooltip}
