@@ -108,7 +108,7 @@
              (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)"  error-message)]
     (let [column (-> column (str/replace #"^'(.*)'$" "$1") remove-backticks)]
       {:type    error-type
-       :message (tru "Some of your values aren't of the correct type for the database.")
+       :message (tru "Some of your values aren’t of the correct type for the database.")
        :errors  {column (tru "This value should be of type {0}." (str/capitalize expected-type))}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-check-constraint]

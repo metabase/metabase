@@ -71,7 +71,7 @@
   [_driver error-type _database _action-type error-message]
   (when-let [[_] (re-find #"invalid input syntax for .*" error-message)]
     {:type    error-type
-     :message (tru "Some of your values aren't of the correct type for the database.")
+     :message (tru "Some of your values aren’t of the correct type for the database.")
      :errors  {}}))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres driver-api/violate-check-constraint]
