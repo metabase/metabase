@@ -18,27 +18,27 @@ import { Button, Group, Stack } from "metabase/ui";
 
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
-interface ContentManagerProps {
+interface MetabaseBrowserProps {
   settings: SdkIframeEmbedSettings & {
     componentName: "metabase-browser";
   };
 }
 
-type ContentManagerView =
+type MetabaseBrowserView =
   | { type: "collection"; id: SdkCollectionId }
   | { type: "dashboard"; id: number | string }
   | { type: "question" | "metric" | "model"; id: number | string }
   | { type: "exploration" }
   | { type: "create-dashboard" };
 
-export function ContentManager({ settings }: ContentManagerProps) {
+export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
   const { initialCollection } = settings;
 
   const isReadOnly = settings.readOnly ?? true;
 
   const { breadcrumbs, currentLocation, reportLocation } = useSdkBreadcrumbs();
 
-  const [currentView, setCurrentView] = useState<ContentManagerView>({
+  const [currentView, setCurrentView] = useState<MetabaseBrowserView>({
     type: "collection",
     id: initialCollection,
   });

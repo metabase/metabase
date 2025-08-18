@@ -18,7 +18,7 @@ import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
-import { ContentManager } from "./ContentManager";
+import { MetabaseBrowser } from "./MetabaseBrowser";
 import {
   SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
@@ -90,7 +90,7 @@ const SdkIframeEmbedView = ({
       },
       (settings) => (
         <SdkBreadcrumbsProvider>
-          <ContentManager settings={settings} />
+          <MetabaseBrowser settings={settings} />
         </SdkBreadcrumbsProvider>
       ),
     )
