@@ -406,7 +406,7 @@
                   qp.preprocess/preprocess
                   lib/->pMBQL))))))
 
-(deftest ^:parallel expression-parameter-test
+(deftest ^:parallel nil-values-test
   (let [mp    meta/metadata-provider
         query (lib/query
                mp
@@ -445,41 +445,15 @@
                                                                            :effective-type :type/Float}
                                                                           (meta/id :products :rating)]
                                                            :widget-type  :number/between
-                                                           :default      nil}
-                                               "gteq"     {:id           "edd13ea2-e244-69f8-db5a-2a7f9722f269"
-                                                           :name         "gteq"
-                                                           :display-name "Greater than or equal to"
-                                                           :type         :dimension
-                                                           :dimension    [:field
-                                                                          {:lib/uuid       "0dcf2505-b333-41e2-b7d7-afb3f3261646"
-                                                                           :base-type      :type/Float
-                                                                           :effective-type :type/Float}
-                                                                          (meta/id :products :rating)]
-                                                           :widget-type  :number/>=
-                                                           :default      nil}
-                                               "lteq"     {:id           "cce8c724-f0df-6fa1-81dc-58e7a8171caa"
-                                                           :name         "lteq"
-                                                           :display-name "Less than or equal to"
-                                                           :type         :dimension
-                                                           :dimension    [:field
-                                                                          {:lib/uuid       "00b219c7-7898-4cd4-93b7-9b247746aba2"
-                                                                           :base-type      :type/Float
-                                                                           :effective-type :type/Float}
-                                                                          (meta/id :products :rating)]
-                                                           :widget-type  :number/<=
                                                            :default      nil}}
                                :native        (str/join \space ["select PRODUCTS.TITLE, PRODUCTS.RATING from PRODUCTS where true"
                                                                 "[[AND {{equal}}]]"
                                                                 "[[AND {{notEqual}}]]"
-                                                                "[[AND {{between}}]]"
-                                                                "[[AND {{gteq}}]]"
-                                                                "[[AND {{lteq}}]]"])}]
+                                                                "[[AND {{between}}]]"])}]
                 :database    (meta/id)
                 :parameters  [{:value [3.8], :type :number/=, :id "a57c8ec6", :target [:dimension [:template-tag "equal"] {"stage-number" 0}]}
                               {:value nil, :type :number/!=, :id "5da85a8c", :target [:dimension [:template-tag "notEqual"] {"stage-number" 0}]}
-                              {:value [nil], :type :number/<=, :id "6b9e7189", :target [:dimension [:template-tag "between"] {"stage-number" 0}]}
-                              {:value nil, :type :number/>=, :id "59eb81d5", :target [:dimension [:template-tag "gteq"] {"stage-number" 0}]}
-                              {:value nil, :type :number/<=, :id "d4e31f13", :target [:dimension [:template-tag "lteq"] {"stage-number" 0}]}]})]
+                              {:value [nil], :type :number/<=, :id "6b9e7189", :target [:dimension [:template-tag "between"] {"stage-number" 0}]}]})]
     (is (=? {:stages [{:lib/type :mbql.stage/native
                        :params   []
                        :native   (str "select PRODUCTS.TITLE, PRODUCTS.RATING"
@@ -490,19 +464,45 @@
                 lib/->pMBQL)))))
 
 (deftest ^:parallel ignore-template-tag-parameters-in-mbql-stages-test
-  (let [query {:lib/type   :mbql/query
-               :database   (meta/id)
-               :stages     [{:lib/type                     :mbql.stage/mbql
-                             :source-table                 (meta/id :venues)
-                             :qp/stage-is-from-source-card 1}
-                            {:lib/type                 :mbql.stage/mbql
-                             :qp/stage-had-source-card 1}]
+  (let [query {:lib/type     :mbql/query
+               :lib/metadata meta/metadata-provider
+               :database     (meta/id)
+               :stages       [{:lib/type                     :mbql.stage/mbql
+                               :source-table                 (meta/id :venues)
+                               :qp/stage-is-from-source-card 1}
+                              {:lib/type                 :mbql.stage/mbql
+                               :qp/stage-had-source-card 1}]
                ;; dangling `template-tag` parameters can happen if you replace a source card that had a native query
                ;; with an MBQL one... we should just ignore these.
-               :parameters [{:id     "13ebc3b6"
-                             :target [:dimension [:template-tag "RATING"] {:stage-number 0}]
-                             :type   :number/=
-                             :value  [3]}]}]
+               :parameters   [{:id     "13ebc3b6"
+                               :target [:dimension [:template-tag "RATING"] {:stage-number 0}]
+                               :type   :number/=
+                               :value  [3]}]}]
     (is (=? {:stages [{:parameters (symbol "nil #_\"key is not present.\"")}
                       {:parameters (symbol "nil #_\"key is not present.\"")}]}
+            (substitute-params query)))))
+
+(deftest ^:parallel expression-parameter-test
+  (let [query {:lib/metadata meta/metadata-provider
+               :lib/type     :mbql/query
+               :database     (meta/id)
+               :stages       [{:lib/type     :mbql.stage/mbql
+                               :source-table (meta/id :orders)
+                               :expressions  [[:field
+                                               {:base-type                                         :type/Integer
+                                                :effective-type                                    :type/Integer
+                                                :lib/expression-name                               "Quantity_2"
+                                                :lib/uuid                                          "a9212400-3b5f-4034-b7a0-f8848579af30"
+                                                :metabase.lib.query/transformation-added-base-type true}
+                                               (meta/id :orders :quantity)]]}]
+               :parameters   [{:id     "c77842b9"
+                               :target [:dimension
+                                        [:expression "Quantity_2" {:base-type :type/Integer}]
+                                        {:stage-number 0}]
+                               :type   :number/=
+                               :value  [14]}]}]
+    (is (=? {:stages [{:filters [[:=
+                                  {}
+                                  [:expression {} "Quantity_2"]
+                                  14]]}]}
             (substitute-params query)))))

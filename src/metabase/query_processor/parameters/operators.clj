@@ -29,7 +29,7 @@
   (boolean (operator-arity param-type)))
 
 (mu/defn- verify-type-and-arity
-  [field       :- :mbql.clause/field
+  [field       :- [:or :mbql.clause/field :mbql.clause/expression]
    param-type
    param-value]
   (letfn [(maybe-arity-error [n]
@@ -79,7 +79,7 @@
   [param]
   (let [{param-type :type, [a b :as param-value] :value, target :target, options :options} (normalize-param param)
         field-ref (or (lib.util.match/match-one target
-                        :field
+                        #{:field :expression}
                         (lib/->pMBQL &match))
                       (throw (ex-info (format "Invalid target: expected :field ref, got: %s" (pr-str target))
                                       {:target target, :type qp.error-type/invalid-parameter})))
