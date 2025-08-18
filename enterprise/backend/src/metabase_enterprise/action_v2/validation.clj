@@ -47,19 +47,11 @@
                       "Must be an integer")
     :else "Must be an integer"))
 
-(defmethod validate-type :type/Float
-  [_ttype value]
-  (cond
-    (number? value) nil
-    (string? value) (when-not (can-parse? Double/parseDouble value)
-                      "Must be a number")
-    :else "Must be a number"))
-
 (defmethod validate-type :type/BigInteger
   [_ttype value]
   (cond
     (integer? value) nil
-    (string? value) (when-not (can-parse? #(BigInteger. %) value)
+    (string? value) (when-not (can-parse? #(BigInteger. ^String %) value)
                       "Must be an integer")
     :else "Must be an integer"))
 
@@ -67,7 +59,7 @@
   [_ttype value]
   (cond
     (number? value) nil
-    (string? value) (when-not (can-parse? #(BigDecimal. %) value)
+    (string? value) (when-not (can-parse? #(BigDecimal. ^String %) value)
                       "Must be a number")
     :else "Must be a number"))
 
@@ -88,7 +80,7 @@
                    true
                    (catch DateTimeParseException _
                      false)))
-    "Must be a date in format YYYY-MM-DD"))
+    "Must be a valid date in format YYYY-MM-DD"))
 
 (defmethod validate-type :type/Time
   [_ttype value]
@@ -98,22 +90,28 @@
                    true
                    (catch DateTimeParseException _
                      false)))
-    "Must be a time in format HH:mm:ss"))
+    "Must be a valid time in format HH:mm:ss"))
+
+(def ^:private datetime-regex
+  #"^(\d{4}-\d{2}-\d{2})([ T])(\d{2}:\d{2}:\d{2})(Z)?$")
 
 (defmethod validate-type :type/DateTime
   [_ttype value]
   (when-not (and (string? value)
-                 (some (fn [formatter]
-                         (try
-                           (LocalDateTime/parse value formatter)
-                           true
-                           (catch DateTimeParseException _
-                             false)))
-                       [(DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss")
-                        (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss'Z'")
-                        (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss")
-                        (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")]))
-    "Must be a datetime in format YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"))
+                 (when-let [[_ _ sep _ z-suffix] (re-matches datetime-regex value)]
+                   (try
+                     (let [formatter (if (= sep "T")
+                                       (if z-suffix
+                                         (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")
+                                         (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss"))
+                                       (if z-suffix
+                                         (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss'Z'")
+                                         (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss")))]
+                       (LocalDateTime/parse value formatter)
+                       true)
+                     (catch DateTimeParseException _
+                       false))))
+    "Must be a valid datetime in format YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"))
 
 (defmethod validate-type :type/Boolean
   [_ttype value]
@@ -134,10 +132,9 @@
 (defn- validate-input
   [row field-name->fields]
   (not-empty (reduce (fn [errors [column value]]
-                       (if-let [field (get field-name->fields column)]
-                         (if-let [error-msg (validate-value* value field)]
-                           (merge errors {column error-msg})
-                           errors)
+                       (if-let [error-msg (some-> (get field-name->fields column)
+                                                  (->> (validate-value* value)))]
+                         (assoc errors column error-msg)
                          errors))
                      {}
                      row)))
@@ -148,7 +145,6 @@
   (let [fields (if (int? table-id-or-fields)
                  (t2/select-fn->fn :name identity [:model/Field :name :database_required :base_type] :table_id table-id-or-fields)
                  (u/index-by :name table-id-or-fields))
-        errors (reduce (fn [errors input]
-                         (conj errors (validate-input input fields))) [] inputs)]
+        errors (mapv #(validate-input % fields) inputs)]
     (when (some some? errors)
       errors)))

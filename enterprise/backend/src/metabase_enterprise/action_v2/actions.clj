@@ -34,7 +34,7 @@
 
 (defmethod actions/validate-inputs! :data-grid.row/common
   [_action inputs]
-  (let [target-dbs (distinct (map :database inputs))
+  (let [target-dbs       (distinct (map :database inputs))
         unsupported-dbs (->> target-dbs
                              (map actions/cached-database)
                              (remove #(driver.u/supports? (:engine %) :actions/data-editing %)))]
@@ -79,16 +79,16 @@
                             :when errors]
                   [table-id errors]))]
     (when errors
-      (throw (ex-info "Failed validation" {:errors errors
+      (throw (ex-info "Failed validation" {:errors      errors
                                            :status-code 400
-                                           :error-code ::invalid-input})))))
+                                           :error-code  ::invalid-input})))))
 
 (defn- coerce-inputs [inputs]
   (let [table-id->inputs (group-by :table-id inputs)
-        input->coerced (u/for-map [[table-id inputs] table-id->inputs
-                                   :let [coerced (data-editing/apply-coercions table-id (map :row inputs))]
-                                   input+row (map vector inputs coerced)]
-                         input+row)]
+        input->coerced   (u/for-map [[table-id inputs] table-id->inputs
+                                     :let [coerced (data-editing/apply-coercions table-id (map :row inputs))]
+                                     input+row (map vector inputs coerced)]
+                           input+row)]
     (for [input inputs]
       (u/prog1 (assoc input :row (input->coerced input))
         (log/tracef "coerce row %s => %s" (:row input) (:row <>))))))
