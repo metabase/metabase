@@ -103,7 +103,7 @@ export const CustomHomePageModal = ({
       </Box>
 
       <Flex mt="lg" justify="flex-end" gap="0.5rem">
-        <Button variant="subtle" onClick={onClose}>
+        <Button variant="subtle" onClick={handleClose}>
           {t`Cancel`}
         </Button>
         <Button variant="filled" disabled={!dashboardId} onClick={handleSave}>
