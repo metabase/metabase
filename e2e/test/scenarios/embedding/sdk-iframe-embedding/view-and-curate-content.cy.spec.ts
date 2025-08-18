@@ -33,7 +33,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("be.visible")
         .click();
 
-      cy.log("Should show question view");
+      cy.log("should show question view");
       H.getSimpleEmbedIframeContent()
         .findByTestId("query-visualization-root")
         .should("be.visible");
@@ -63,18 +63,21 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       H.getSimpleEmbedIframeContent().should("contain", "Name");
       H.getSimpleEmbedIframeContent().should("contain", "Type");
       H.getSimpleEmbedIframeContent().should("not.contain", "Last edited by");
+      H.getSimpleEmbedIframeContent().should("not.contain", "Last edited at");
     });
 
     it("should pass through collection-page-size parameter", () => {
       setupEmbed(`
         <metabase-view-content
           initial-collection="root"
-          collection-page-size="10"
+          collection-page-size="5"
         />
       `);
 
-      cy.log("Should show collection browser");
-      H.getSimpleEmbedIframeContent().should("contain", "Name");
+      cy.log("should show exactly 5 collection entries");
+      H.getSimpleEmbedIframeContent()
+        .findAllByTestId("collection-entry-type")
+        .should("have.length", 5);
     });
 
     it("should hide New Exploration button when with-new-question is false", () => {
@@ -100,7 +103,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("be.visible")
         .click();
 
-      cy.log("Should show create dashboard modal");
+      cy.log("should show create dashboard modal");
       H.getSimpleEmbedIframeContent()
         .findByText("New dashboard")
         .should("be.visible");
@@ -114,7 +117,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("be.visible")
         .click();
 
-      cy.log("Should show data picker");
+      cy.log("should show data picker");
       H.getSimpleEmbedIframeContent()
         .findByText("Pick your starting data")
         .should("be.visible");
@@ -125,16 +128,16 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
       H.getSimpleEmbedIframeContent().findByText("New Exploration").click();
 
-      cy.log("Select data model");
+      cy.log("select data model");
       H.getSimpleEmbedIframeContent().findByText("Orders").click();
 
-      cy.log("Should show Save button");
+      cy.log("should show Save button");
       H.getSimpleEmbedIframeContent()
         .findByText("Save")
         .should("be.visible")
         .click();
 
-      cy.log("Should show save modal without entity picker");
+      cy.log("should show save modal without entity picker");
       H.getSimpleEmbedIframeContent().within(() => {
         cy.findByRole("dialog").within(() => {
           cy.findByText("Save new question").should("be.visible");
@@ -179,12 +182,12 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
       H.getSimpleEmbedIframeContent().findByText("New Exploration").click();
 
-      cy.log("Should show data picker with limited entity types");
+      cy.log("should show data picker with limited entity types");
       H.getSimpleEmbedIframeContent()
         .findByText("Pick your starting data")
         .should("be.visible");
 
-      cy.log("Should show Orders table but not Orders model");
+      cy.log("should show Orders table but not Orders model");
       H.getSimpleEmbedIframeContent().should("contain", "Orders");
       H.getSimpleEmbedIframeContent().should("not.contain", "Orders model");
     });
@@ -194,19 +197,19 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
     it("should show breadcrumbs when navigating between content", () => {
       setupEmbed('<metabase-view-content initial-collection="root" />');
 
-      cy.log("Should show initial breadcrumb");
+      cy.log("should show initial breadcrumb");
       H.getSimpleEmbedIframeContent()
         .findByText("Our analytics")
         .should("be.visible");
 
       H.getSimpleEmbedIframeContent().findAllByText("Orders").first().click();
 
-      cy.log("Should show breadcrumb for the question");
+      cy.log("should show breadcrumb for the question");
       H.getSimpleEmbedIframeContent().should("contain", "Orders");
 
       H.getSimpleEmbedIframeContent().findByText("Our analytics").click();
 
-      cy.log("Should be back at collection browser");
+      cy.log("should be back at collection browser");
       H.getSimpleEmbedIframeContent().should("contain", "Name");
     });
   });
