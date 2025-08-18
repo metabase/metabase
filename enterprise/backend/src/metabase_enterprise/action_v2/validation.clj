@@ -92,26 +92,18 @@
                      false)))
     "Must be a valid time in format HH:mm:ss"))
 
-(def ^:private datetime-regex
-  #"^(\d{4}-\d{2}-\d{2})([ T])(\d{2}:\d{2}:\d{2})(Z)?$")
-
 (defmethod validate-type :type/DateTime
   [_ttype value]
   (when-not (and (string? value)
-                 (when-let [[_ _ sep _ z-suffix] (re-matches datetime-regex value)]
-                   (try
-                     (let [formatter (if (= sep "T")
-                                       (if z-suffix
-                                         (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")
-                                         (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss"))
-                                       (if z-suffix
-                                         (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss'Z'")
-                                         (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss")))]
-                       (LocalDateTime/parse value formatter)
-                       true)
-                     (catch DateTimeParseException _
-                       false))))
-    "Must be a valid datetime in format YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"))
+                 (some (fn [formatter]
+                         (try
+                           (LocalDateTime/parse value formatter)
+                           true
+                           (catch DateTimeParseException _
+                             false)))
+                       [(DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss")
+                        (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")]))
+    "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ssZ"))
 
 (defmethod validate-type :type/Boolean
   [_ttype value]

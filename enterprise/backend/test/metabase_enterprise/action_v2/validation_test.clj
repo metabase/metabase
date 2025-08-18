@@ -188,6 +188,7 @@
              [nil [{"birth_date" nil}] [date-field]]
 
              ;; Invalid cases
+             [[{"birth_date" "Must be a valid date in format YYYY-MM-DD"}] [{"birth_date" "2024-13-15"}] [date-field]]
              [[{"birth_date" "Must be a valid date in format YYYY-MM-DD"}] [{"birth_date" "2024-3-15"}] [date-field]]
              [[{"birth_date" "Must be a valid date in format YYYY-MM-DD"}] [{"birth_date" "2024-03-5"}] [date-field]]
              [[{"birth_date" "Must be a valid date in format YYYY-MM-DD"}] [{"birth_date" "03/15/2024"}] [date-field]]
@@ -229,23 +230,26 @@
   (testing "DateTime type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases
-             [nil [{"created_at" "2024-03-15 14:30:00"}] [datetime-field]]
+             [nil [{"created_at" "2024-03-15T14:30:00Z"}] [datetime-field]]
+             [nil [{"created_at" "2024-03-15T14:30:00"}] [datetime-field]]
              [nil [{"created_at" nil}] [datetime-field]]
 
              ;; Invalid cases
-             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"}]
+             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ssZ"}]
               [{"created_at" "2024-03-15"}] [datetime-field]]
-             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"}]
+             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ssZ"}]
+              [{"created_at" "2024-13-13"}] [datetime-field]]
+             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ssZ"}]
               [{"created_at" "2024-3-15 14:30:00"}] [datetime-field]]
-             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"}]
+             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ssZ"}]
               [{"created_at" "2024-03-15 2:30:00"}] [datetime-field]]
-             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"}]
+             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ssZ"}]
               [{"created_at" "03/15/2024 14:30:00"}] [datetime-field]]
-             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"}]
+             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ssZ"}]
               [{"created_at" "2024-03-15T14:30"}] [datetime-field]]
-             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"}]
+             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ssZ"}]
               [{"created_at" ""}] [datetime-field]]
-             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ssZ"}]
+             [[{"created_at" "Must be a valid datetime in format YYYY-MM-DDTHH:mm:ssZ"}]
               [{"created_at" 1234567890}] [datetime-field]]
              [[{"created_at" "This field is required"}]
               [{"created_at" nil}] [datetime-field-required]]]]
