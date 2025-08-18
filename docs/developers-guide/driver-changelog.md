@@ -19,10 +19,10 @@ title: Driver interface changelog
   metabase.driver/connection-details, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
   metabase.driver.sql/default-schema, and metabase.driver.sql/find-table to implement sql transforms.
 
-- Added the driver multi-method `driver/describe-database*` for drivers to prefer implementing over `driver/describe-database`.
-  This allows drivers to opt-in to the automatic resilient connection mechanism, which provides better error recovery
-  when database connections are closed during metadata sync operations. Existing drivers implementing `describe-database`
-  will continue to work but won't benefit from the resilient connection handling and are engouraged to migrate to `driver/describe-database*`.
+- Added the driver multi-method `driver/describe-database*` that drivers should now implement instead of `driver/describe-database`.
+  This provides automatic resilient connection handling for better error recovery when database connections are closed
+  during metadata sync operations. Existing drivers implementing `describe-database` will continue to work but should
+  migrate to `describe-database*` to benefit from the resilient connection handling.
 
 ## Metabase 0.56.0
 
