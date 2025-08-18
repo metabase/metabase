@@ -387,6 +387,7 @@
     "webpack-dev-server": "^5.2.1"
   },
   "scripts": {
+    "sdk": "yarn --cwd enterprise/frontend/src/embedding-sdk",
     "mage": "./bin/mage",
     "build": "yarn build:cljs && yarn build:js",
     "build-embedding-sdk-package": "yarn && yarn build-release:cljs && yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-release:embedding-sdk-package && yarn build-embedding-sdk-cli && yarn embedding-sdk:fixup-types-imports",
