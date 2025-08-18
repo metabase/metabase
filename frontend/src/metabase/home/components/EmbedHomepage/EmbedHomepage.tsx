@@ -89,7 +89,7 @@ export const EmbedHomepage = () => {
       <EmbedHomepageView
         onDismiss={onDismiss}
         exampleDashboardId={exampleDashboardId}
-        embedJsDocsUrl={embedJsDocsUrl}
+        embedJsDocsUrl={embedJsDocsUrl + utmTags}
         variant={variant}
         hasEmbeddingFeature={hasEmbeddingFeature}
         embeddingDocsUrl={embeddingDocsUrl + utmTags}

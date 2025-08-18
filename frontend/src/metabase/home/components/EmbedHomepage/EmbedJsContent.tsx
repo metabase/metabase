@@ -34,12 +34,13 @@ export const EmbedJsContent = ({
     .otherwise(() => null);
 
   return (
-    <Box>
+    <Box component="section" aria-labelledby="embed-js-title">
       <Text
         fw="bold"
         mb="sm"
         size="lg"
         color="text-medium"
+        id="embed-js-title"
       >{t`Embedded analytics JS`}</Text>
       <Text mb="md">
         {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}

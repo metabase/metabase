@@ -19,12 +19,13 @@ export const StaticEmbedContent = ({
   learnMoreStaticEmbedUrl,
   showImage,
 }: StaticEmbedContentProps) => (
-  <Box>
+  <Box component="section" aria-labelledby="static-embed-title">
     <Text
       fw="bold"
       mb="sm"
       size="lg"
       color="text-medium"
+      id="static-embed-title"
     >{t`Static embedding`}</Text>
     <Text mb="md">
       {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
