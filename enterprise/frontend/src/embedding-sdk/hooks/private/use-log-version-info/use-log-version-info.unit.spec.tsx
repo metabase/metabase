@@ -1,10 +1,9 @@
 import { renderHook } from "@testing-library/react";
 import "embedding-sdk/bundle";
 
-import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/sdk-shared/lib/get-embedding-sdk-package-build-data";
+import { useLogVersionInfo } from "embedding-sdk/hooks/private/use-log-version-info";
+import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
-
-import { useLogVersionInfo } from "./use-log-version-info";
 
 jest.mock("embedding-sdk/sdk-shared/hooks/use-lazy-selector", () => ({
   useLazySelector: jest.fn((selector) => selector()),

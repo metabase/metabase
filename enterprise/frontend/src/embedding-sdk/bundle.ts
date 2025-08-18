@@ -17,6 +17,7 @@ import "sdk-specific-imports";
 
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
+// Components
 import { CollectionBrowser } from "./components/public/CollectionBrowser";
 import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
 import { CreateQuestion } from "./components/public/CreateQuestion";
@@ -30,6 +31,12 @@ import {
   StaticDashboard,
 } from "./components/public/dashboard";
 import { SdkDebugInfo } from "./components/public/debug/SdkDebugInfo";
+
+// Hooks
+import { useInitData } from "./hooks/private/use-init-data";
+import { useLogVersionInfo } from "embedding-sdk/hooks/private/use-log-version-info";
+
+// Exports needed for public Hooks that use sdk redux store
 import { createDashboard } from "metabase/api/dashboard";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";
@@ -37,7 +44,6 @@ import { getSdkStore } from "./store/index";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { useInitData } from "./hooks/private/use-init-data";
 
 /**
  * IMPORTANT!
@@ -64,6 +70,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   getSetting,
   getUser,
   useInitData,
+  useLogVersionInfo,
 };
 
 window.MetabaseEmbeddingSDK = sdkBundleExports;

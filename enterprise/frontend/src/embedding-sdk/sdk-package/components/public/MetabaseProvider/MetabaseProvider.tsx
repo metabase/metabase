@@ -5,7 +5,6 @@ import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { useInitializeMetabaseProviderPropsStore } from "embedding-sdk/sdk-package/hooks/private/use-initialize-metabase-provider-props-store";
 import { useLoadSdkBundle } from "embedding-sdk/sdk-package/hooks/private/use-load-sdk-bundle";
-import { useLogVersionInfo } from "embedding-sdk/sdk-package/hooks/private/use-log-version-info";
 import { EnsureSingleInstance } from "embedding-sdk/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk/sdk-shared/hooks/use-sdk-loading-state";
@@ -31,8 +30,10 @@ const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper({
   reduxStore,
 }: MetabaseProviderInitDataWrapperProps) {
   const useInitData = getWindow()?.MetabaseEmbeddingSDK?.useInitData;
+  const useLogVersionInfo =
+    getWindow()?.MetabaseEmbeddingSDK?.useLogVersionInfo;
 
-  if (!reduxStore || !useInitData) {
+  if (!reduxStore || !useInitData || !useLogVersionInfo) {
     throw new Error("Embedding SDK Bundle is not available");
   }
 
