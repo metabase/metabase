@@ -215,9 +215,9 @@
           (sync/sync-database! (mt/db) {:scan :schema})
           (is (= [[42]]
                  (mt/rows (qp/process-query
-                           {:database (u/the-id (mt/db))
+                           {:database (mt/id)
                             :type     :query
-                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (:id (mt/db)))}})))))))))
+                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}})))))))))
 
 (mt/defdataset duplicate-names
   [["birds"

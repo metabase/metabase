@@ -3,7 +3,7 @@ import type * as React from "react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
+import { ComponentProviderInternal } from "embedding-sdk/components/public/ComponentProvider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { sdkReducers } from "embedding-sdk/store";
 import type { SdkStore, SdkStoreState } from "embedding-sdk/store/types";
@@ -18,7 +18,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 export interface RenderWithSDKProvidersOptions {
   storeInitialState?: Partial<State>;
-  sdkProviderProps?: Partial<MetabaseProviderProps> | null;
+  componentProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
   sdkBundleExports?: Partial<typeof window.MetabaseEmbeddingSDK>;
 }
@@ -27,7 +27,7 @@ export function renderWithSDKProviders(
   ui: React.ReactElement,
   {
     storeInitialState = {},
-    sdkProviderProps = null,
+    componentProviderProps = null,
     theme,
     sdkBundleExports,
     ...options
@@ -58,8 +58,8 @@ export function renderWithSDKProviders(
   ) as unknown as SdkStore;
 
   // Prevent spamming the console during tests
-  if (sdkProviderProps) {
-    sdkProviderProps.allowConsoleLog = false;
+  if (componentProviderProps) {
+    componentProviderProps.allowConsoleLog = false;
   }
 
   if (sdkBundleExports) {
@@ -76,9 +76,9 @@ export function renderWithSDKProviders(
       <MetabaseReduxProvider store={store}>
         {/* If we try to inject CSS variables to `.mb-wrapper`, it will slow the Jest tests down like crazy. */}
         <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
-          <MetabaseProviderInternal
+          <ComponentProviderInternal
             {...props}
-            {...sdkProviderProps}
+            {...componentProviderProps}
             reduxStore={store}
           />
         </ThemeProviderContext.Provider>

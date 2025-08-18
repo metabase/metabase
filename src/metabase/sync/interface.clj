@@ -48,7 +48,8 @@
    [:pk?                        {:optional true} :boolean] ; optional for databases that don't support PKs
    [:nested-fields              {:optional true} [:set [:ref ::TableMetadataField]]]
    [:json-unfolding             {:optional true} :boolean]
-   [:nfc-path                   {:optional true} [:any]]
+   ;; TODO (Cam 8/11/25) -- this should be required to be a sequence of strings but we'll need to go fix some code
+   [:nfc-path                   {:optional true} [:maybe [:sequential [:or :keyword :string]]]]
    [:custom                     {:optional true} :map]
    [:database-is-auto-increment {:optional true} :boolean]
    ;; nullable for databases that don't support field partition

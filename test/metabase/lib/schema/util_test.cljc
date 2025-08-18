@@ -10,19 +10,19 @@
    :database 1
    :stages   [{:lib/type     :mbql.stage/mbql
                :source-table 2
-               :filter       [:=
-                              {:lib/uuid "00000000-0000-0000-0000-000000000010"}
-                              [:field
-                               {:lib/uuid uuid-1, :base-type :type/Text}
-                               3]
-                              4]}
+               :filters      [[:=
+                               {:lib/uuid "00000000-0000-0000-0000-000000000010"}
+                               [:field
+                                {:lib/uuid uuid-1, :base-type :type/Text}
+                                3]
+                               4]]}
               {:lib/type :mbql.stage/mbql
-               :filter   [:=
-                          {:lib/uuid "00000000-0000-0000-0000-000000000020"}
-                          [:field
-                           {:lib/uuid uuid-2, :base-type :type/Text}
-                           "my_field"]
-                          4]}]})
+               :filters  [[:=
+                           {:lib/uuid "00000000-0000-0000-0000-000000000020"}
+                           [:field
+                            {:lib/uuid uuid-2, :base-type :type/Text}
+                            "my_field"]
+                           4]]}]})
 
 (def query-with-no-duplicate-uuids
   (query "00000000-0000-0000-0000-000000000001"

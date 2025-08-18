@@ -14,9 +14,12 @@
     Base64$Encoder
     Locale
     PriorityQueue)
-   (java.util.concurrent TimeoutException)))
+   (java.util.concurrent Executors ExecutorService TimeoutException)))
 
 (set! *warn-on-reflection* true)
+
+(defonce ^:private ^ExecutorService virtual-thread-executor
+  (Executors/newVirtualThreadPerTaskExecutor))
 
 (defmacro varargs
   "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
@@ -334,3 +337,13 @@
        [#","                  "."]
        ;; move minus sign at end to front
        [#"(^[^-]+)-$"         "-$1"]]))))
+
+(defn run-in-virtual-thread
+  "Run `thunk` in a virtual thread. Returns the j.u.concurrent.Future immediately. The Future will contain the return value."
+  [thunk]
+  (.submit virtual-thread-executor ^Runnable thunk))
+
+(defmacro in-virtual-thread*
+  "Run body once in a virtual thread. Uses ^:once metadata and `bound-fn*` to define the function."
+  [& body]
+  `(run-in-virtual-thread (bound-fn* (^:once fn [] ~@body))))
