@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -39,6 +39,10 @@ interface ColumnPickerSidebarProps {
   onToggle: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
   onSelectAll: () => void;
   onSelectNone: () => void;
+  onColumnDisplayNameChange: (
+    column: Lib.ColumnMetadata,
+    newDisplayName: string,
+  ) => void;
 }
 
 export function ColumnPickerSidebar({
@@ -53,9 +57,13 @@ export function ColumnPickerSidebar({
   onToggle,
   onSelectAll,
   onSelectNone,
+  onColumnDisplayNameChange,
 }: ColumnPickerSidebarProps) {
   const [localColumns, setLocalColumns] = useState<Lib.ColumnMetadata[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [columnDisplayNames, setColumnDisplayNames] = useState<
+    Map<string, string>
+  >(new Map());
 
   useEffect(() => {
     setLocalColumns(columns);
@@ -80,7 +88,9 @@ export function ColumnPickerSidebar({
     }
     const searchLower = searchText.toLowerCase();
     return items.filter((item) => {
-      const displayName = item.columnInfo.displayName.toLowerCase();
+      const displayName =
+        columnDisplayNames.get(item.columnInfo.longDisplayName) ??
+        item.columnInfo.displayName.toLowerCase();
       const longDisplayName = item.columnInfo.longDisplayName.toLowerCase();
 
       return (
@@ -88,7 +98,7 @@ export function ColumnPickerSidebar({
         longDisplayName.includes(searchLower)
       );
     });
-  }, [items, searchText]);
+  }, [columnDisplayNames, items, searchText]);
 
   const isAll = filteredItems.every((item) => item.isSelected);
   const isNone = filteredItems.every((item) => !item.isSelected);
@@ -100,6 +110,27 @@ export function ColumnPickerSidebar({
       onSelectAll();
     }
   };
+
+  const handleDisplayNameChange = useCallback(
+    (column: Lib.ColumnMetadata, newDisplayName: string) => {
+      const columnInfo = Lib.displayInfo(query, stageIndex, column);
+      setColumnDisplayNames(
+        (prev) => new Map(prev.set(columnInfo.longDisplayName, newDisplayName)),
+      );
+      onColumnDisplayNameChange(column, newDisplayName);
+    },
+    [onColumnDisplayNameChange, query, stageIndex],
+  );
+
+  const getDisplayName = useCallback(
+    (item: FieldPickerItem) => {
+      return (
+        columnDisplayNames.get(item.columnInfo.longDisplayName) ||
+        item.columnInfo.displayName
+      );
+    },
+    [columnDisplayNames],
+  );
 
   return (
     <Sidesheet
@@ -153,6 +184,8 @@ export function ColumnPickerSidebar({
                   query={query}
                   stageIndex={stageIndex}
                   onToggle={onToggle}
+                  displayName={getDisplayName(item)}
+                  onDisplayNameChange={handleDisplayNameChange}
                 />
               );
             })}
@@ -174,17 +207,53 @@ interface ColumnPickerItemProps {
   stageIndex: number;
   item: FieldPickerItem & { isSelected: boolean; isDisabled: boolean };
   onToggle: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
+  displayName: string;
+  onDisplayNameChange: (
+    column: Lib.ColumnMetadata,
+    newDisplayName: string,
+  ) => void;
 }
 
 function ColumnPickerItem({
   query,
   stageIndex,
   item,
+  displayName,
   onToggle,
+  onDisplayNameChange,
 }: ColumnPickerItemProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingName, setEditingName] = useState(displayName);
+
+  const handleStartEdit = () => {
+    setIsEditing(true);
+    setEditingName(displayName);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingName.trim() && editingName !== displayName) {
+      onDisplayNameChange(item.column, editingName.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingName(displayName);
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    event.stopPropagation();
+    if (event.key === "Enter") {
+      handleSaveEdit();
+    } else if (event.key === "Escape") {
+      handleCancelEdit();
+    }
+  };
+
   return (
     <li key={item.columnInfo.displayName}>
-      <HoverParent className={S.Label} as="label">
+      <HoverParent className={S.Label} as="div">
         <Flex align="center" gap="xs" w="100%">
           <Checkbox
             checked={item.isSelected}
@@ -199,11 +268,26 @@ function ColumnPickerItem({
             position="top-start"
             size={16}
           />
-          {/* <Box flex={1}> */}
-          <Text title={t`Click to edit display name`}>
-            {item.columnInfo.longDisplayName}
-          </Text>
-          {/* </Box> */}
+          <Box flex={1}>
+            {isEditing ? (
+              <TextInput
+                value={editingName}
+                onChange={(event) => setEditingName(event.currentTarget.value)}
+                onBlur={handleSaveEdit}
+                onKeyDown={handleKeyDown}
+                size="md"
+                autoFocus
+                onFocus={(e) => e.target.select()}
+              />
+            ) : (
+              <Text
+                title={t`Click to edit display name`}
+                onDoubleClick={handleStartEdit}
+              >
+                {displayName ?? item.columnInfo.longDisplayName}
+              </Text>
+            )}
+          </Box>
         </Flex>
       </HoverParent>
     </li>

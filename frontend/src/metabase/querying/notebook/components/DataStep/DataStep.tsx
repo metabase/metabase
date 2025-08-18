@@ -4,6 +4,7 @@ import { t } from "ttag";
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { ColumnPickerSidebar } from "metabase/query_builder/components/ColumnPickerSidebar/ColumnPickerSidebar";
 import { Icon, Tooltip } from "metabase/ui";
+import { updateSettings } from "metabase/visualizations/lib/settings";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
@@ -20,6 +21,7 @@ export const DataStep = ({
   readOnly = false,
   color,
   updateQuery,
+  updateVisualizationSettings,
 }: NotebookStepProps) => {
   const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
@@ -71,6 +73,32 @@ export const DataStep = ({
   const handleSelectNone = () => {
     const nextQuery = Lib.withFields(query, stageIndex, [columns[0]]);
     updateQuery(nextQuery);
+  };
+
+  const handleColumnDisplayNameChange = (
+    column: Lib.ColumnMetadata,
+    newDisplayName: string,
+  ) => {
+    // Use the existing visualization settings system to rename columns
+    // This updates the column_title setting which is used throughout the system
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    const columnKey = columnInfo.name;
+    const currentSettings = question.card().visualization_settings || {};
+
+    const diff = {
+      column_settings: {
+        ...currentSettings.column_settings,
+        [JSON.stringify(["name", columnKey])]: {
+          column_title: newDisplayName,
+        },
+      },
+    };
+
+    const newSettings = updateSettings(currentSettings, diff);
+    // Create a new question with updated visualization settings
+    const updatedQuestion = question.updateSettings(newSettings);
+
+    updateVisualizationSettings(updatedQuestion);
   };
 
   return (
@@ -128,7 +156,7 @@ export const DataStep = ({
           onToggle={handleToggle}
           onSelectAll={handleSelectAll}
           onSelectNone={handleSelectNone}
-          // onReorderColumns={handleReorderColumns}
+          onColumnDisplayNameChange={handleColumnDisplayNameChange}
           data-testid="data-step-column-picker"
         />
       )}

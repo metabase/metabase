@@ -81,6 +81,13 @@ export function NotebookStepList({
     [question, updateQuestion, handleStepClose],
   );
 
+  const handleVisualizationSettingsChange = useCallback(
+    async (updatedQuestion: Question) => {
+      await updateQuestion(updatedQuestion);
+    },
+    [updateQuestion],
+  );
+
   if (!question) {
     return null;
   }
@@ -102,6 +109,7 @@ export function NotebookStepList({
             isLastOpened={isLastOpened}
             reportTimezone={reportTimezone}
             updateQuery={onChange}
+            updateVisualizationSettings={handleVisualizationSettingsChange}
             openStep={handleStepOpen}
             readOnly={readOnly}
           />

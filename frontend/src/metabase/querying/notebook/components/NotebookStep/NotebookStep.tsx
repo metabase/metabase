@@ -8,6 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { color as c } from "metabase/lib/colors";
 import { Box, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import type {
   NotebookStep as INotebookStep,
@@ -31,6 +32,10 @@ interface NotebookStepProps {
   readOnly?: boolean;
   openStep: (id: string) => void;
   updateQuery: (query: Lib.Query) => Promise<void>;
+  updateVisualizationSettings: (
+    updatedQuestion: Question,
+    step: INotebookStep,
+  ) => Promise<void>;
 }
 
 export function NotebookStep({
@@ -40,6 +45,7 @@ export function NotebookStep({
   reportTimezone,
   openStep,
   updateQuery,
+  updateVisualizationSettings,
   readOnly = false,
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
@@ -123,6 +129,7 @@ export function NotebookStep({
               isLastOpened={isLastOpened}
               reportTimezone={reportTimezone}
               readOnly={readOnly}
+              updateVisualizationSettings={updateVisualizationSettings}
             />
           </Box>
           {!readOnly && (

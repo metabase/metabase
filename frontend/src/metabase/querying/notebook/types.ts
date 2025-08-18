@@ -51,6 +51,7 @@ export interface NotebookStepProps {
   reportTimezone: string;
   readOnly?: boolean;
   updateQuery: (query: Lib.Query) => Promise<void>;
+  updateVisualizationSettings: (updatedQuestion: Question) => Promise<void>;
 }
 
 export interface NotebookStepHeaderProps {
