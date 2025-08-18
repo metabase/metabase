@@ -4,10 +4,12 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase.models.interface :as mi]
+   [metabase.setup.core :as setup]
+   [metabase.task.core :as task]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/TransformJob [_model] :transform_job)
 
@@ -90,3 +92,23 @@
                         {:job_id   job-id
                          :tag_id   tag-id
                          :position (get new-positions tag-id)})))))))
+
+(defn localize-jobs
+  "Localize the initial jobs in the transform_job table."
+  ([]
+   (localize-jobs (i18n/user-locale)))
+  ([locale]
+   (doseq [[name built-in] [[(i18n/translate locale "Hourly job")  "hourly"]
+                            [(i18n/translate locale "Daily job")   "daily"]
+                            [(i18n/translate locale "Weekly job")  "weekly"]
+                            [(i18n/translate locale "Monthly job") "monthly"]]]
+     (let [res (t2/update! :model/TransformJob
+                           :built_in_type built-in
+                           {:name name
+                            :built_in_type nil})]
+       (when (pos? res)
+         (log/info (str "Localized " built-in " job for locale " locale ".")))))))
+
+(defmethod task/init! ::LocalizeJobs [_]
+  (when (setup/has-user-setup)
+    (localize-jobs)))

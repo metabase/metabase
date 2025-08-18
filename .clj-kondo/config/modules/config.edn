@@ -1154,6 +1154,7 @@
            app-db
            appearance
            channel
+           classloader
            config
            events
            permissions
@@ -1928,6 +1929,7 @@
            query-processor
            request
            settings
+           setup
            sync
            task
            task-history

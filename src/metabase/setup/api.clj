@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
    [metabase.channel.settings :as channel.settings]
+   [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
@@ -88,6 +89,14 @@
   ;; default to `true` the setting will set itself correctly whether a boolean or boolean string is specified
   (analytics/anon-tracking-enabled! true))
 
+(defn- call-enterprise [symb & args]
+  (when-some [f (try
+                  (classloader/require (symbol (namespace symb)))
+                  (resolve symb)
+                  (catch Throwable _e
+                    nil))]
+    (apply f args)))
+
 (api.macros/defendpoint :post "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
@@ -128,6 +137,8 @@
                                                         :last_name invited-last-name}
                                                        {:email email, :first_name first-name})
                   (setup-set-settings! {:email email :site-name site-name :site-locale site-locale})
+                  (call-enterprise 'metabase-enterprise.transforms.models.transform-job/localize-jobs site-locale)
+                  (call-enterprise 'metabase-enterprise.transforms.models.transform-tag/localize-tags site-locale)
                   user-info))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
