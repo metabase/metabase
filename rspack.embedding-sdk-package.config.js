@@ -7,9 +7,6 @@ const rspack = require("@rspack/core");
 
 const mainConfig = require("./rspack.main.config");
 const {
-  TypescriptConvertErrorsToWarnings,
-} = require("./frontend/build/embedding-sdk/rspack/typescript-convert-errors-to-warnings");
-const {
   OPTIMIZATION_CONFIG,
 } = require("./frontend/build/embedding-sdk/rspack/shared");
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
@@ -92,7 +89,6 @@ const config = {
       maxChunks: 1,
     }),
     new rspack.BannerPlugin(getBannerOptions(SDK_PACKAGE_BANNER)),
-    new TypescriptConvertErrorsToWarnings(),
   ].filter(Boolean),
 };
 
