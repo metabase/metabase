@@ -17,7 +17,6 @@ import "sdk-specific-imports";
 
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
-// Components
 import { CollectionBrowser } from "./components/public/CollectionBrowser";
 import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
 import { CreateQuestion } from "./components/public/CreateQuestion";
@@ -31,8 +30,6 @@ import {
   StaticDashboard,
 } from "./components/public/dashboard";
 import { SdkDebugInfo } from "./components/public/debug/SdkDebugInfo";
-
-// Exports needed for public Hooks that use sdk redux store
 import { createDashboard } from "metabase/api/dashboard";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";
@@ -41,6 +38,7 @@ import { getLoginStatus } from "embedding-sdk/store/selectors";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { useInitData } from "./hooks/private/use-init-data";
+import { useLogVersionInfo } from "embedding-sdk/hooks/private/use-log-version-info";
 
 /**
  * IMPORTANT!
@@ -48,25 +46,26 @@ import { useInitData } from "./hooks/private/use-init-data";
  * and should be done via the deprecation of the field first.
  */
 const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
-  CollectionBrowser: CollectionBrowser,
-  CreateDashboardModal: CreateDashboardModal,
-  CreateQuestion: CreateQuestion,
-  EditableDashboard: EditableDashboard,
-  InteractiveDashboard: InteractiveDashboard,
-  InteractiveQuestion: InteractiveQuestion,
-  ComponentProvider: ComponentProvider,
-  MetabotQuestion: MetabotQuestion,
-  SdkDebugInfo: SdkDebugInfo,
-  StaticDashboard: StaticDashboard,
-  StaticQuestion: StaticQuestion,
-  createDashboard: createDashboard,
-  getApplicationName: getApplicationName,
-  getCollectionNumericIdFromReference: getCollectionNumericIdFromReference,
-  getLoginStatus: getLoginStatus,
-  getSdkStore: getSdkStore,
-  getSetting: getSetting,
-  getUser: getUser,
-  useInitData: useInitData,
+  CollectionBrowser,
+  CreateDashboardModal,
+  CreateQuestion,
+  EditableDashboard,
+  InteractiveDashboard,
+  InteractiveQuestion,
+  ComponentProvider,
+  MetabotQuestion,
+  SdkDebugInfo,
+  StaticDashboard,
+  StaticQuestion,
+  createDashboard,
+  getApplicationName,
+  getCollectionNumericIdFromReference,
+  getLoginStatus,
+  getSdkStore,
+  getSetting,
+  getUser,
+  useInitData,
+  useLogVersionInfo,
 };
 
 window.MetabaseEmbeddingSDK = sdkBundleExports;

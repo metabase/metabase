@@ -149,7 +149,7 @@
        (filter not-inner-mv-table?)
        (tables-set)))
 
-(defmethod driver/describe-database :clickhouse
+(defmethod driver/describe-database* :clickhouse
   [driver {{:keys [scan-all-databases]}
            :details :as db}]
   {:tables
