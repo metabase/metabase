@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type {
   CardType,
   ListTransformRunsResponse,
@@ -150,6 +150,73 @@ describe("scenarios > admin > transforms", () => {
           "be.visible",
         );
       });
+    });
+
+    it("should not be possible to create an mbql transform from a table from an unsupported database", () => {
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findAllByTestId("picker-item")
+          .contains("Sample Database")
+          .should("have.attr", "data-disabled", "true");
+
+        cy.findAllByTestId("picker-item")
+          .contains("Orders")
+          .should("have.attr", "data-disabled", "true");
+      });
+    });
+
+    it("should not be possible to create a sql transform from a table from an unsupported database", () => {
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("SQL query").click();
+
+      H.popover()
+        .findByRole("option", { name: "Sample Database" })
+        .should("have.attr", "aria-disabled", "true")
+        .click();
+
+      cy.log("Clicking the disabled item does not close the popover");
+      H.popover().should("be.visible");
+    });
+
+    it("should not be possible to create a transform from a question or a model that is based of an unsupported database", () => {
+      function testCardSource({
+        type,
+        label,
+      }: {
+        type: CardType;
+        label: string;
+      }) {
+        cy.log("create a query in the target database");
+        H.getTableId({ name: "ORDERS", databaseId: SAMPLE_DB_ID }).then(
+          (tableId) =>
+            H.createQuestion({
+              name: "Test",
+              type,
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": tableId,
+              },
+            }),
+        );
+
+        cy.log("create a new transform");
+        visitTransformListPage();
+        getTransformListPage().button("Create a transform").click();
+        H.popover().findByText("A saved question").click();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab(label);
+          cy.findAllByTestId("picker-item")
+            .contains("Test")
+            .should("have.attr", "data-disabled", "true");
+        });
+      }
+
+      testCardSource({ type: "question", label: "Questions" });
+      testCardSource({ type: "model", label: "Models" });
     });
   });
 
