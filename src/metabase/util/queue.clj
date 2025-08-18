@@ -197,6 +197,8 @@
     (do
       (log/infof "Stopping listener %s..." listener-name)
       (cp/shutdown! executor)
+      ;; wait up to 10 seconds for executor to stop. Largely for CI/tests FAIL in (listener-handler-test) (queue_test.clj:178)
+      (java.util.concurrent.ExecutorService/.awaitTermination executor 10 java.util.concurrent.TimeUnit/SECONDS)
 
       (swap! listeners dissoc listener-name)
       (log/infof "Stopping listener %s...done" listener-name))
