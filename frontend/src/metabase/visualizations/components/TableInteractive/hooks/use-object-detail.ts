@@ -58,6 +58,7 @@ export const useObjectDetail = (
   const onOpenObjectDetail = useCallback(
     (rowIndex: number) => {
       const isRawTable = typeof tableId === "number";
+      const isModel = card.type === "model";
 
       let objectId: number | string;
 
@@ -71,14 +72,21 @@ export const useObjectDetail = (
         objectId = rowIndexToPkMap?.[rowIndex] ?? rowIndex;
       }
 
-      if (!isRawTable || !primaryKeyColumn) {
-        dispatch(zoomInRow({ objectId }));
-      } else {
+      if (isRawTable && primaryKeyColumn) {
         dispatch(closeNavbar());
         dispatch(push(`/table/${tableId}/detail/${objectId}`));
+        return;
       }
+
+      if (isModel && primaryKeyColumn) {
+        dispatch(closeNavbar());
+        dispatch(push(`/model/${card.id}/detail/${objectId}`));
+        return;
+      }
+
+      dispatch(zoomInRow({ objectId }));
     },
-    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, tableId],
+    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, tableId, card],
   );
 
   return onOpenObjectDetail;

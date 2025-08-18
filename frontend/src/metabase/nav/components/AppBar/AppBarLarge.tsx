@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view";
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
+import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import type { CollectionId } from "metabase-types/api";
 import type { DetailViewState } from "metabase-types/store";
