@@ -8,6 +8,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.native :as lib-native]
    [metabase.lib.test-util :as lib.tu]
@@ -707,3 +708,44 @@
                            (mt/formatted-rows
                             [int str]
                             (qp/process-query query))))))))))))))
+
+(deftest ^:parallel x-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [query (lib/query
+                 (mt/application-database-metadata-provider (mt/id))
+                 {:lib/type   :mbql/query
+                  :database   (mt/id)
+                  :stages     [{:lib/type     :mbql.stage/mbql
+                                :source-table (mt/id :orders)
+                                :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                                (mt/id :orders :id)]
+                                               [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                                                (mt/id :orders :tax)]]
+                                :order-by     [[:asc {:lib/uuid "00000000-0000-0000-0000-000000000002"}
+                                                [:field {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+                                                 (mt/id :orders :id)]]]
+                                :limit        2}]
+                  :parameters [{:value  [2.07]
+                                :type   :number/=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  nil
+                                :type   :number/=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  nil
+                                :type   :number/!=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  nil
+                                :type   :number/!=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  [nil]
+                                :type   :number/<=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  nil
+                                :type   :number/>=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  nil
+                                :type   :number/<=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}]})]
+      (is (= [[1   2.07]
+              [212 2.07]]
+             (mt/formatted-rows [int 2.0] (qp/process-query query)))))))
