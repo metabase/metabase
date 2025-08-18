@@ -74,9 +74,18 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
     ))
     .with({ type: "create-dashboard" }, () => (
       <CreateDashboardModal
-        onCreate={(dashboard) =>
-          setCurrentView({ type: "dashboard", id: dashboard.id })
-        }
+        onCreate={(dashboard) => {
+          // Update the breadcrumbs to reflect the collection where the dashboard was saved
+          if (dashboard.collection) {
+            reportLocation({
+              type: "collection",
+              id: dashboard.collection.id,
+              name: dashboard.collection.name,
+            });
+          }
+
+          setCurrentView({ type: "dashboard", id: dashboard.id });
+        }}
         onClose={() =>
           setCurrentView({ type: "collection", id: targetCollection })
         }
