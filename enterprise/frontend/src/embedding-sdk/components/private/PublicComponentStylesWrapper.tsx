@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import type React from "react";
 import { forwardRef } from "react";
 
-import { isTest } from "metabase/env";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 /**
@@ -63,7 +62,7 @@ export const PublicComponentStylesWrapper = forwardRef<
  * - -> our other code with specificity (0,1,0) will override this as they're loaded after
  */
 // note: if we move this to  css.module, remember to add :global to .mb-wrapper
-const BASE_SCOPED_CSS_RESET = css`
+export const SCOPED_CSS_RESET = css`
   :where(.mb-wrapper) *:where(button) {
     border: 0;
     background-color: transparent;
@@ -79,16 +78,3 @@ const BASE_SCOPED_CSS_RESET = css`
     display: inline;
   }
 `;
-
-// For test env we don't use layers, because the current version of jsdom does not support it,
-// and upgrading it introduces other issues in tests.
-
-export const SCOPED_CSS_RESET = isTest
-  ? BASE_SCOPED_CSS_RESET
-  : css`
-      @layer embedding-sdk {
-        @layer reset {
-          ${BASE_SCOPED_CSS_RESET}
-        }
-      }
-    `;
