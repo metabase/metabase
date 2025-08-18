@@ -111,6 +111,49 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("be.visible");
     });
 
+    it("should update breadcrumbs when creating dashboard in different collection", () => {
+      setupEmbed(
+        '<metabase-browser initial-collection="root" read-only="false" />',
+      );
+
+      cy.log("verify initial breadcrumb");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Our analytics")
+        .should("be.visible");
+
+      H.getSimpleEmbedIframeContent().findByText("New Dashboard").click();
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.log("change collection to save dashboard in");
+        cy.findByRole("dialog").within(() => {
+          cy.findByText("Which collection should this go in?").should(
+            "be.visible",
+          );
+
+          cy.findByText("Our analytics").click();
+        });
+
+        cy.findByText("First collection", { timeout: 20_000 }).click();
+        cy.findByText("Select").click();
+
+        cy.log("create the dashboard");
+        cy.findByRole("dialog").within(() => {
+          cy.findByPlaceholderText("What is the name of your dashboard?").type(
+            "Test Dashboard",
+          );
+          cy.findByText("Create").click();
+        });
+      });
+
+      cy.log(
+        "verify breadcrumbs are updated to reflect the selected collection",
+      );
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("sdk-breadcrumbs")
+        .findByText("First collection")
+        .should("be.visible");
+    });
+
     it("should show New Exploration button and open data picker when clicked", () => {
       setupEmbed(
         '<metabase-browser initial-collection="root" read-only="false" />',
