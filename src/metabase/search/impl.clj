@@ -54,6 +54,13 @@
     ;; We filter what we can (i.e., everything in a collection) out already when querying
     true))
 
+(defmethod check-permissions-for-model :document
+  [search-ctx instance]
+  (and (premium-features/enable-documents?)
+       (if (:archived? search-ctx)
+         (can-write? search-ctx instance)
+         true)))
+
 ;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
 ;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table

@@ -61,7 +61,6 @@ You can use a question to filter tables to:
 
 - [Display an edited column instead of hiding the column](#displaying-edited-columns).
 - [Pass a user attribute to a SQL parameter](#restricting-rows-with-user-attributes-using-a-sql-variable).
-- [Pass a user attribute to a Markdown parameter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/markdown#custom-url-with-a-sandboxing-attribute).
 
 ## Prerequisites for row security
 
@@ -87,7 +86,6 @@ Examples of user attributes in play:
 
 - [Row security](./row-and-column-security-examples.md#filtering-rows-based-on-user-attributes)
 - [Restricting rows and columns](./row-and-column-security-examples.md#custom-example-2-filtering-rows-and-columns)
-- [Displaying custom text in Markdown dashboard cards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/markdown#custom-url-with-a-sandboxing-attribute)
 
 ## Adding row-level security
 

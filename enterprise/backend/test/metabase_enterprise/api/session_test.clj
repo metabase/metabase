@@ -19,6 +19,7 @@
                               :disable-password-login
                               :database-auth-providers
                               :development-mode
+                              :documents
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
@@ -43,6 +44,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :transforms
                               :upload-management
                               :whitelabel
                               :collection-cleanup
@@ -60,6 +62,7 @@
             :disable_password_login         true
             :database_auth_providers        true
             :development_mode               true
+            :documents                      true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
@@ -84,6 +87,7 @@
             :sso_ldap                       true
             :sso_saml                       true
             :table_data_editing             false
+            :transforms                     true
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true

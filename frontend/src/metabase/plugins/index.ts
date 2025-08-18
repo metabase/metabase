@@ -69,6 +69,7 @@ import type {
   DashboardId,
   Database as DatabaseType,
   Dataset,
+  Document,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -452,11 +453,13 @@ export const PLUGIN_REDUCERS: {
   sandboxingPlugin: any;
   shared: any;
   metabotPlugin: any;
+  documents: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
   metabotPlugin: () => null,
+  documents: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -805,6 +808,27 @@ export const PLUGIN_SMTP_OVERRIDE: {
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
 
+export const PLUGIN_DOCUMENTS = {
+  getRoutes: () => null as React.ReactElement | null,
+  shouldShowDocumentInNewItemMenu: () => false,
+  DocumentBackButton: PluginPlaceholder as React.ComponentType<any>,
+  getCurrentDocument: (_state: any) => null as Document | null,
+};
+
+export const PLUGIN_ENTITIES = {
+  entities: {} as Record<string, any>,
+};
+
 export const PLUGIN_SEMANTIC_SEARCH = {
   SearchSettingsWidget: PluginPlaceholder,
+};
+
+export type TransformsPlugin = {
+  getAdminPaths(): AdminPath[];
+  getAdminRoutes(): ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  getAdminPaths: () => [],
+  getAdminRoutes: () => null,
 };

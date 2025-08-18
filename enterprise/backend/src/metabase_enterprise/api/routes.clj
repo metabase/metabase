@@ -18,6 +18,7 @@
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
+   [metabase-enterprise.documents.api]
    [metabase-enterprise.email.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
@@ -29,6 +30,7 @@
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
+   [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
@@ -46,6 +48,7 @@
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
+   :documents                  (deferred-tru "Documents")
    :etl-connections            (deferred-tru "ETL Connections")
    :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
@@ -54,6 +57,7 @@
    :semantic-search            (deferred-tru "Semantic Search")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
+   :transforms                 (deferred-tru "Transforms")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")})
@@ -92,6 +96,7 @@
                                        (premium-handler :etl-connections)
                                        (premium-handler :etl-connections-pg))
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
+   "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
@@ -104,6 +109,9 @@
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
+   "/transform"                    (premium-handler metabase-enterprise.transforms.api/routes :transforms)
+   "/transform-job"                (premium-handler metabase-enterprise.transforms.api/transform-job-routes :transforms)
+   "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 

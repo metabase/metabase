@@ -286,7 +286,9 @@ export const tokenFeatures = [
   "development_mode",
   "etl_connections",
   "etl_connections_pg",
+  "documents",
   "semantic_search",
+  "transforms",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];

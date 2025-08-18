@@ -11,10 +11,12 @@
    [metabase-enterprise.audit-app.init]
    [metabase-enterprise.cache.init]
    [metabase-enterprise.database-replication.init]
+   [metabase-enterprise.documents.init]
    [metabase-enterprise.gsheets.init]
    [metabase-enterprise.llm.init]
    [metabase-enterprise.metabot-v3.init]
    [metabase-enterprise.scim.init]
    [metabase-enterprise.semantic-search.init]
    [metabase-enterprise.sso.init]
-   [metabase-enterprise.stale.init]))
+   [metabase-enterprise.stale.init]
+   [metabase-enterprise.transforms.init]))

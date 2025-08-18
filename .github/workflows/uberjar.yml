@@ -4,16 +4,14 @@ name: Build Uberjar
 # or automatically for the listed branches
 
 concurrency:
-  group: uberjar-${{ github.ref }}
+  group: uberjar-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: false
 
 on:
   push:
     branches:
       - master
-      - feature-visualizer
       - internal-tools
-      - nm-semantic-search-in-metabase
     paths-ignore:
       # config files
       - ".**"
@@ -29,11 +27,6 @@ on:
       commit:
         description: "Optional full-length commit SHA-1 hash"
   workflow_call:
-    inputs:
-      source_changed:
-        description: "Whether source code has changed"
-        type: boolean
-        default: true
 
 jobs:
   check-existing-artifacts:
@@ -65,21 +58,20 @@ jobs:
       - name: Decide if build is needed
         id: decide
         run: |
-          SOURCE_CHANGED="${{ inputs.source_changed == true }}"
           EE_EXISTS="${{ steps.check-ee.outcome == 'success' }}"
           OSS_EXISTS="${{ steps.check-oss.outcome == 'success' }}"
 
-          echo "Source changed: $SOURCE_CHANGED"
           echo "EE exists: $EE_EXISTS"
           echo "OSS exists: $OSS_EXISTS"
 
-          # Build if source changed OR artifacts don't exist
-          if [[ "$SOURCE_CHANGED" == "true" ]] || [[ "$EE_EXISTS" == "false" ]] || [[ "$OSS_EXISTS" == "false" ]]; then
+          # Build only if artifacts don't exist for this commit hash
+          # Since we build by hash, if artifacts exist for this hash, we don't need to rebuild
+          if [[ "$EE_EXISTS" == "false" ]] || [[ "$OSS_EXISTS" == "false" ]]; then
             SHOULD_BUILD="true"
-            echo "Will build: source_changed=$SOURCE_CHANGED, ee_exists=$EE_EXISTS, oss_exists=$OSS_EXISTS"
+            echo "Will build: ee_exists=$EE_EXISTS, oss_exists=$OSS_EXISTS"
           else
             SHOULD_BUILD="false"
-            echo "Skipping build: artifacts exist and no source changes"
+            echo "Skipping build: artifacts exist for this commit hash"
           fi
 
           echo "should_build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
