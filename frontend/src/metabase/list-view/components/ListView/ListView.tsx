@@ -10,39 +10,9 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card, DatasetColumn, DatasetData } from "metabase-types/api";
 
+import { ColumnValue } from "./ColumnValue";
 import styles from "./ListView.module.css";
 import { useMount } from "react-use";
-
-// Light background colors for category values
-const CATEGORY_COLORS = [
-  "color-mix(in srgb, var(--mb-color-brand) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-success) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-warning) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-error) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-filter) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-summarize) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-focus) 8%, white)",
-  "color-mix(in srgb, var(--mb-color-text-medium) 8%, white)",
-];
-
-// Get a consistent color for a category value based on its hash
-const getCategoryColor = (value: any, columnName: string) => {
-  if (value == null || value === "") {
-    return "var(--mb-color-background-light)";
-  }
-
-  const stringValue = String(value);
-
-  // Use a combination of column name and value for more consistent colors
-  const combinedString = `${columnName}:${stringValue}`;
-  const hash = combinedString.split("").reduce((a, b) => {
-    a = (a << 5) - a + b.charCodeAt(0);
-    return a & a;
-  }, 0);
-
-  const colorIndex = Math.abs(hash) % CATEGORY_COLORS.length;
-  return CATEGORY_COLORS[colorIndex];
-};
 
 export interface ListViewProps {
   data: DatasetData;
@@ -239,73 +209,16 @@ export function ListView({
 
                     {/* Right Columns */}
                     {rightColumns.map((col, colIndex) => {
-                      const value = formatValue(row[cols.indexOf(col)], {
+                      const rawValue = row[cols.indexOf(col)];
+                      const value = formatValue(rawValue, {
                         ...(settings.column?.(col) || {}),
                         jsx: true,
                         rich: true,
                       });
 
-                      // Check if this is a boolean column
-                      const isBooleanColumn = col.base_type === "type/Boolean";
-                      const rawValue = row[cols.indexOf(col)];
-
-                      // Check if this is a category column
-                      const isCategoryColumn =
-                        col.semantic_type === "type/Category";
-
-                      // Check if this is a score column
-                      const isScoreColumn = col.semantic_type === "type/Score";
-
-                      // Check if this should get category-like styling
-                      const shouldGetCategoryStyling =
-                        isCategoryColumn || isScoreColumn;
-
                       return (
                         <div key={colIndex}>
-                          {isBooleanColumn ? (
-                            <Flex align="center" gap="xs">
-                              <Box
-                                w={8}
-                                h={8}
-                                style={{
-                                  borderRadius: "50%",
-                                  backgroundColor:
-                                    rawValue === true
-                                      ? "var(--mb-color-success)"
-                                      : "var(--mb-color-error)",
-                                  flexShrink: 0,
-                                }}
-                              />
-                              <Text fw="bold" size="sm" c="text-secondary">
-                                {value}
-                              </Text>
-                            </Flex>
-                          ) : shouldGetCategoryStyling &&
-                            rawValue != null &&
-                            rawValue !== "" ? (
-                            <Box
-                              className={styles.categoryValue}
-                              style={{
-                                backgroundColor: getCategoryColor(
-                                  rawValue,
-                                  col.name,
-                                ),
-                              }}
-                            >
-                              <Text fw="bold" size="sm" c="text-secondary">
-                                {value}
-                              </Text>
-                            </Box>
-                          ) : (
-                            <Text
-                              fw="bold"
-                              size="sm"
-                              c="text-secondary"
-                              truncate
-                            >
-                              {value}
-                            </Text>
-                          )}
+                          <ColumnValue column={col} value={value} rawValue={rawValue} />
                         </div>
                       );
                     })}
