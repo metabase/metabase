@@ -62,8 +62,7 @@ export const EditTableDataGrid = ({
   });
 
   const columnRowSelectOptions = useTableColumnRowSelect({
-    onRowEdit: onRowExpandClick,
-    hasRowSelection: true,
+    onRowEditClick: onRowExpandClick,
   });
 
   const handleBodyCellClick = useCallback(

@@ -10,23 +10,21 @@ import S from "./EditTableDataGrid.module.css";
 export const ROW_SELECT_COLUMN_ID = "__MB_ROW_SELECT";
 
 type UseTableColumnRowSelectProps = {
-  onRowEdit: (rowIndex: number) => void;
-  hasRowSelection: boolean;
+  onRowEditClick: (rowIndex: number) => void;
 };
 
 export function useTableColumnRowSelect({
-  onRowEdit,
-  hasRowSelection,
+  onRowEditClick,
 }: UseTableColumnRowSelectProps) {
   return useMemo<ColumnOptions<RowValues, RowValue> | undefined>(
-    () => (hasRowSelection ? getRowSelectColumn({ onRowEdit }) : undefined),
-    [hasRowSelection, onRowEdit],
+    () => getRowSelectColumn({ onRowEditClick }),
+    [onRowEditClick],
   );
 }
 
 export function getRowSelectColumn({
-  onRowEdit,
-}: Pick<UseTableColumnRowSelectProps, "onRowEdit">) {
+  onRowEditClick,
+}: UseTableColumnRowSelectProps) {
   return {
     id: ROW_SELECT_COLUMN_ID,
     name: "",
@@ -74,7 +72,7 @@ export function getRowSelectColumn({
             <Icon
               name="pencil"
               className={S.pencilIcon}
-              onClick={() => onRowEdit(row.index)}
+              onClick={() => onRowEditClick(row.index)}
             />
           </Tooltip>
         </Group>
