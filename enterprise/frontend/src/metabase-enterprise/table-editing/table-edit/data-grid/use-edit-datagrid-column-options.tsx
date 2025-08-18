@@ -50,7 +50,7 @@ export function useEditDataDridColumnOptions({
   const getCellClassName = useCallback(
     (_value: RowValue, rowIndex: number, columnId: string) => {
       const cellState = getCellState(columnId, rowIndex);
-      return cx({
+      return cx(S.cell, {
         [S.updatingCell]: cellState === EditDataGridCellState.Updating,
         [S.errorCell]: cellState === EditDataGridCellState.Error,
       });
