@@ -33,16 +33,12 @@ const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper({
   const useLogVersionInfo =
     getWindow()?.MetabaseEmbeddingSDK?.useLogVersionInfo;
 
-  if (!reduxStore || !useInitData || !useLogVersionInfo) {
-    throw new Error("Embedding SDK Bundle is not available");
-  }
-
-  useInitData({
+  useInitData?.({
     reduxStore,
     authConfig,
   });
 
-  useLogVersionInfo({ allowConsoleLog });
+  useLogVersionInfo?.({ allowConsoleLog });
 
   return null;
 });
