@@ -371,8 +371,7 @@
                                          ;; Empty stage added by resolved-source-cards to nest join
                                          (=?/exactly {:lib/type                 :mbql.stage/mbql
                                                       :qp/stage-had-source-card (:id question)
-                                                      :source-query/model?      false
-                                                      :source-query/entity-id   (:entity-id question)})]}]}]}
+                                                      :source-query/model?      false})]}]}]}
             (adjust query)))))
 
 (defn- model-based-metric-question

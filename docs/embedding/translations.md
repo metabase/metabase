@@ -5,15 +5,17 @@ summary: Upload a translation dictionary to translate questions and dashboards i
 
 # Translate embedded dashboards and questions
 
-> For now, translations are only available for [static embeds](./static-embedding.md), not Interactive embedding or the Embedded analytics SDK.
+{% include plans-blockquote.html feature="Content translation for static embeds" convert_pro_link_to_embbedding=true %}
 
-You can upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values). 
+For now, translations are only available for [static embeds](./static-embedding.md), not Interactive embedding or the Embedded analytics SDK.
+
+You can upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).
 
 The dictionary must be a CSV with these columns:
 
-- Locale Code
-- String
-- Translation
+- **Language** with the locale code 
+- **String** with the string to be translated
+- **Translation**
 
 > Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.
 
@@ -27,11 +29,11 @@ Metabase uses these dictionaries to translate user-generated content, like dashb
 
 | Language | String      | Translation  |
 | -------- | ----------- | ------------ |
-| pt_BR    | Examples    | Exemplos     |
-| pt_BR    | First tab   | Primeira aba |
-| pt_BR    | Another tab | Outra aba    |
-| pt_BR    | Title       | Título       |
-| pt_BR    | Vendor      | Vendedor     |
+| pt-BR    | Examples    | Exemplos     |
+| pt-BR    | First tab   | Primeira aba |
+| pt-BR    | Another tab | Outra aba    |
+| pt-BR    | Title       | Título       |
+| pt-BR    | Vendor      | Vendedor     |
 
 [See a list of supported locales](../configuring-metabase/localization.md#supported-languages)
 

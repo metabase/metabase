@@ -11,7 +11,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -21,19 +20,6 @@
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
   Card [Collection] perms checking rather than ad-hoc perms checking."
   nil)
-
-(defn perms-exception
-  "Returns an ExceptionInfo instance containing data relevant for a permissions error."
-  ([required-perms]
-   (perms-exception (tru "You do not have permissions to run this query.") required-perms))
-
-  ([message required-perms & [additional-ex-data]]
-   (ex-info message
-            (merge {:type                 qp.error-type/missing-required-permissions
-                    :required-permissions required-perms
-                    :actual-permissions   (perms/permissions-for-user *current-user-id*)
-                    :permissions-error?   true}
-                   additional-ex-data))))
 
 (defenterprise check-block-permissions
   "OSS implementation always returns `nil` because block permissions are an EE-only feature."
@@ -123,7 +109,8 @@
         ;; if card-id is bound this means that this is not an ad hoc query and we can just
         ;; check that the user has permission to read this card
         *card-id*
-        (query-perms/check-card-read-perms database-id *card-id*)
+        (do (query-perms/check-card-read-perms database-id *card-id*)
+            (query-perms/check-card-result-metadata-data-perms database-id *card-id*))
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
@@ -141,6 +128,10 @@
 
           ;; Check that we have the data permissions to run this card
           (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
+
+          ;; Check that all columns from source cards result_metadata are accessible
+          (doseq [card-id source-card-ids]
+            (query-perms/check-card-result-metadata-data-perms database-id card-id))
 
           ;; Recursively check permissions for any Cards referenced by this query via template tags
           (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
@@ -203,4 +194,4 @@
   to native.)"
   [{database-id :database, :as query}]
   (when-not (current-user-has-adhoc-native-query-perms? query)
-    (throw (perms-exception {database-id {:perms/create-queries :query-builder-and-native}}))))
+    (throw (query-perms/perms-exception {database-id {:perms/create-queries :query-builder-and-native}}))))

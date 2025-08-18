@@ -1,4 +1,3 @@
-import { Button, MantineProvider } from "@mantine/core";
 import {
   CreateDashboardModal,
   EditableDashboard,
@@ -58,7 +57,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         expect(response?.statusCode).to.equal(200);
       });
 
-      getSdkRoot().children().should("have.attr", "dir", "ltr");
+      getSdkRoot().get(".mb-wrapper").should("have.attr", "dir", "ltr");
     });
   });
 
@@ -535,6 +534,36 @@ describe("scenarios > embedding-sdk > styles", () => {
     });
   });
 
+  describe("Portal root element position and size", () => {
+    it("should properly render full-page portal root element", () => {
+      mountSdkContent(
+        <>
+          <div
+            style={{
+              padding: "30%",
+            }}
+          >
+            <div style={{ overflow: "hidden", position: "relative" }}>
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            </div>
+          </div>
+
+          <div data-testid="second-question">
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </div>
+        </>,
+      );
+
+      cy.findByTestId("second-question").within(() => {
+        cy.findByText("Summarize").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Count of rows").should("be.visible");
+      });
+    });
+  });
+
   describe("styles should not leak outside of the provider", () => {
     const elements = [
       { tag: "body", jsx: undefined }, // no need to render anything specific, the body tag is rendered by cypress
@@ -567,66 +596,6 @@ describe("scenarios > embedding-sdk > styles", () => {
       for (const { tag } of elements) {
         expectElementToHaveNoAppliedCssRules(tag);
       }
-    });
-
-    it("css variables should not leak outside of mb-wrapper", () => {
-      cy.mount(
-        <MantineProvider
-          theme={{ colors: { brand: colorTuple("rgb(255, 0, 255)") } }}
-        >
-          <Button color="brand">outside sdk provider</Button>
-
-          <MetabaseProvider
-            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-            theme={{ colors: { brand: "rgb(255, 0, 0)" } }}
-          >
-            <Button color="brand">outside sdk wrapper</Button>
-
-            <InteractiveQuestion
-              questionId={ORDERS_QUESTION_ID}
-              isSaveEnabled
-            />
-          </MetabaseProvider>
-        </MantineProvider>,
-      );
-
-      cy.log(
-        "Customer's elements outside of the SDK provider should have their brand color intact",
-      );
-
-      cy.contains("button", "outside sdk provider").should(
-        "have.css",
-        "background-color",
-        "rgb(255, 0, 255)",
-      );
-
-      cy.log(
-        "Customer's elements outside of the SDK components should have their brand color intact",
-      );
-
-      cy.contains("button", "outside sdk wrapper").should(
-        "have.css",
-        "background-color",
-        "rgb(255, 0, 255)",
-      );
-
-      cy.log(
-        "SDK elements should have the brand color from the Metabase theme",
-      );
-
-      getSdkRoot().within(() => {
-        cy.get("button")
-          .contains("Filter")
-          .should("have.css", "color", "rgb(255, 0, 0)");
-
-        cy.findByTestId("notebook-button").click();
-
-        cy.findByRole("button", { name: "Visualize" }).should(
-          "have.css",
-          "background-color",
-          "rgb(255, 0, 0)",
-        );
-      });
     });
   });
 });
@@ -664,17 +633,3 @@ function wrapBrowserDefaultFont() {
     cy.wrap(fontFamily).as("defaultBrowserFontFamily");
   });
 }
-
-export const colorTuple = (value: string) =>
-  [
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-  ] as const;

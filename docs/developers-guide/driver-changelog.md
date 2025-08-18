@@ -4,6 +4,19 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.57.0
+
+- `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
+
+- The key `metabase.driver-api.core/qp.add.nfc-path` is now more consistently populated; other `qp.add.*` keys no
+  longer include parent column names for drivers like MongoDB -- use `qp.add.nfc-path` instead to qualify the
+  `qp.add.source-column-alias` with parent column names as needed.
+
+- Added metabase.driver/compile-transform, metabase.driver/compile-drop-table, metabase.driver/execute-raw-queries!,
+  metabase.driver/run-transform!, metabase.driver/drop-transform-target!, metabase.driver/native-query-deps,
+  metabase.driver/connection-details, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
+  metabase.driver.sql/default-schema, and metabase.driver.sql/find-table to implement sql transforms.
+
 ## Metabase 0.56.0
 
 - Add the testing multi-method `tx/track-dataset` for shared cloud dbs to track loaded datasets for more efficient sharing.
@@ -27,10 +40,13 @@ title: Driver interface changelog
 
 - Added a feature `:expressions/today` for drivers that support generating a date for the current day.
 
+- Added the driver multi-method `driver/set-database-used!` for drivers to set a database on the connection with statements like `USE DATABASE`.
+
+- Added the driver feature `:transforms/table` for drivers that supports transforms with table as target
+
 ## Metabase 0.55.9
 
 - Add multi-method `driver/do-with-resilient-connection` for executing functions in a context where closed connections may be automatically reopened
-
 
 ## Metabase 0.55.0
 
@@ -95,17 +111,15 @@ title: Driver interface changelog
 
 - The function `metabase.driver.sql-jdbc.sync/describe-table-fields-xf` now takes a table instead of a database
 
-
 ## Metabase 0.54.11
 
 - The multimethods `metabase.driver.sql-jdbc.sync.interface/active-tables` and `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas`, aswell as the functions
-`metabase.driver.sql-jdbc.sync.describe_database/fast-active-tables`, `metabase.driver.sql-jdbc.sync.describe_database/have-select-privilege-fn` and `metabase.driver.sql-jdbc.sync.describe_database/db-tables` now take a database spec instead of a `java.sql.Connection` object.
+  `metabase.driver.sql-jdbc.sync.describe_database/fast-active-tables`, `metabase.driver.sql-jdbc.sync.describe_database/have-select-privilege-fn` and `metabase.driver.sql-jdbc.sync.describe_database/db-tables` now take a database spec instead of a `java.sql.Connection` object.
 
 ## Metabase 0.54.10
 
 - Add `metabase.driver/table-known-to-not-exist?` for drivers to test if an exception is due to a query on a table that no longer exists
 - Add `metabase.driver.sql-jdbc/impl-table-known-to-not-exist?` for JDBC drivers. This is the implemenation of table-known-to-not-exist for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
-
 
 ## Metabase 0.54.0
 

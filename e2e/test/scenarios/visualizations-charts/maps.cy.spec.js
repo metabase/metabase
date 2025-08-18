@@ -132,6 +132,48 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });
 
+  it("should display a pins when a breakout column sets a base-type (metabase#59984)", () => {
+    cy.intercept("/api/tiles/**").as("tiles");
+
+    H.visitQuestionAdhoc({
+      display: "map",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PEOPLE_ID,
+          aggregation: ["count"],
+          breakout: [
+            [
+              "field",
+              PEOPLE.LONGITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+            [
+              "field",
+              PEOPLE.LATITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        },
+      },
+      visualization_settings: {
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    });
+
+    // this should not create a 400 error
+    cy.wait("@tiles").then((xhr) => {
+      expect(xhr.response.statusCode).to.equal(200);
+    });
+  });
+
   it("should display a tooltip for a grid map without a metric column (metabase#17940)", () => {
     H.visitQuestionAdhoc({
       display: "map",

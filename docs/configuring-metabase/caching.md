@@ -74,7 +74,7 @@ If you select "Don't cache results" for a question, dashboard, or database, Meta
 
 {% include plans-blockquote.html feature="Refresh cache automatically" %}
 
-> **Refreshing the cache automatically doesn't apply when [data sandboxing](../permissions/data-sandboxes.md) or [connection impersonation](../permissions/impersonation.md) permissions are in effect.** In those permissions setups, Metabase ignores the automatically generated cache and runs a fresh query (which it will then cache). So _caching_ still works for sandboxing and impersonation, it's just that this preemptive, automatic caching doesn't apply in these cases, as those permissions setups filter data specific to each viewer. 
+> **Refreshing the cache automatically doesn't apply when [row and column security](../permissions/row-and-column-security.md) or [connection impersonation](../permissions/impersonation.md) permissions are in effect.** In those permissions setups, Metabase ignores the automatically generated cache and runs a fresh query (which it will then cache). So _caching_ still works for row and column security and impersonation, it's just that this preemptive, automatic caching doesn't apply in these cases, as those permissions setups filter data specific to each viewer.
 
 If you turn on refresh cache automatically for a question or dashboard, Metabase will rerun the query/queries as soon as the cache is invalidated by whichever caching policy you've set. Normally, Metabase only refreshes the cache when someone views the item _after_ its cache has expired. So, normally, when the cache has expired, the next person to view the question will be stuck waiting for the query to run and refresh the cache. But by automatically refreshing results to update the cache, the loading times will always be as fast as possible, and people will always get valid, cached results.
 
@@ -137,8 +137,8 @@ To set a caching policy for a question, you must have [curate access](../permiss
 1. Go to your question.
 2. Click on the three-dot menu **...** and select **Edit settings**.
 3. Under **Caching**, select the [caching invalidation policy](#cache-invalidation-policies).
-5. Optional: if you select a Duration or Schedule policy, you'll have the option to [refresh cache automatically](#refresh-cache-automatically).
-6. Save your changes.
+4. Optional: if you select a Duration or Schedule policy, you'll have the option to [refresh cache automatically](#refresh-cache-automatically).
+5. Save your changes.
 
 ## How dashboard, question, database, and default caching policies interact
 

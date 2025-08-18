@@ -259,6 +259,22 @@ Maximum number of rows to render in an alert or subscription image.
 Range: 1-100. To limit the total number of rows included in the file attachment
         for an email dashboard subscription, use MB_ATTACHMENT_ROW_LIMIT.
 
+### `MB_AUDIT_MAX_RETENTION_DAYS`
+
+- Type: string
+- Default: `null`
+
+Number of days to retain data in audit-related tables. Minimum value is 30; set to 0 to retain data indefinitely.
+
+Sets the maximum number of days Metabase preserves rows for the following application database tables:
+
+- `query_execution`
+- `audit_log`
+- `view_log`
+
+Twice a day, Metabase will delete rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
+If set to 0, Metabase will keep all rows.
+
 ### `MB_BCC_ENABLED`
 
 - Type: boolean
@@ -430,6 +446,16 @@ This feature is experimental.
 
 The email address you want to use for the sender of emails.
 
+### `MB_EMAIL_FROM_ADDRESS_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `notifications@metabase.com`
+- [Configuration file name](./config-file.md): `email-from-address-override`
+
+The email address you want to use for the sender of emails from your custom SMTP server.
+
 ### `MB_EMAIL_FROM_NAME`
 
 - Type: string
@@ -464,6 +490,16 @@ The email address you want the replies to go to, if different from the from addr
 
 The address of the SMTP server that handles your emails.
 
+### `MB_EMAIL_SMTP_HOST_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-host-override`
+
+The address of the custom SMTP server that handles your emails.
+
 ### `MB_EMAIL_SMTP_PASSWORD`
 
 - Type: string
@@ -471,6 +507,16 @@ The address of the SMTP server that handles your emails.
 - [Configuration file name](./config-file.md): `email-smtp-password`
 
 SMTP password.
+
+### `MB_EMAIL_SMTP_PASSWORD_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-password-override`
+
+Custom SMTP server password.
 
 ### `MB_EMAIL_SMTP_PORT`
 
@@ -480,6 +526,16 @@ SMTP password.
 
 The port your SMTP server uses for outgoing emails.
 
+### `MB_EMAIL_SMTP_PORT_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: integer
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-port-override`
+
+The port your custom SMTP server uses for outgoing emails. Only ports 465, 587, and 2525 are supported.
+
 ### `MB_EMAIL_SMTP_SECURITY`
 
 - Type: keyword
@@ -488,6 +544,16 @@ The port your SMTP server uses for outgoing emails.
 
 SMTP secure connection protocol. (tls, ssl, starttls, or none).
 
+### `MB_EMAIL_SMTP_SECURITY_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: keyword
+- Default: `:ssl`
+- [Configuration file name](./config-file.md): `email-smtp-security-override`
+
+SMTP secure connection protocol for your custom server. (tls, ssl, or starttls).
+
 ### `MB_EMAIL_SMTP_USERNAME`
 
 - Type: string
@@ -495,6 +561,16 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 - [Configuration file name](./config-file.md): `email-smtp-username`
 
 SMTP username.
+
+### `MB_EMAIL_SMTP_USERNAME_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-username-override`
+
+Custom SMTP server username.
 
 ### `MB_EMBEDDING_APP_ORIGIN [DEPRECATED]`
 
@@ -571,6 +647,14 @@ Allow admins to embed Metabase via interactive embedding?
 - [Configuration file name](./config-file.md): `enable-embedding-sdk`
 
 Allow admins to embed Metabase via the SDK?
+
+### `MB_ENABLE_EMBEDDING_SIMPLE`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-embedding-simple`
+
+Allow admins to embed Metabase via Embedded Analytics JS?
 
 ### `MB_ENABLE_EMBEDDING_STATIC`
 
@@ -691,6 +775,18 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 
 Custom URL for the help link.
 
+### `MB_HTTP_CHANNEL_HOST_STRATEGY`
+
+- Type: keyword
+- Default: `:external-only`
+
+Controls which types of hosts are allowed as HTTP channel destinations.
+Options:
+- external-only (default - only external hosts)
+- allow-private (external + private networks but NOT localhost)
+- allow-all (no restrictions including localhost).
+.
+
 ### `MB_HUMANIZATION_STRATEGY`
 
 - Type: keyword
@@ -699,6 +795,16 @@ Custom URL for the help link.
 - [Configuration file name](./config-file.md): `humanization-strategy`
 
 To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’.
+
+### `MB_INSTALL_ANALYTICS_DATABASE`
+
+- Type: boolean
+- Default: `true`
+
+Whether or not we should install the Metabase analytics database on startup. Defaults to true, but can be disabled
+  via environmment variable.
+
+Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.
 
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
@@ -1003,6 +1109,16 @@ don't have one.
 - [Configuration file name](./config-file.md): `license-token-missing-banner-dismissal-timestamp`
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
+
+### `MB_LOAD_ANALYTICS_CONTENT`
+
+- Type: boolean
+- Default: `true`
+
+Whether or not we should load Metabase analytics content on startup. Defaults to match `install-analytics-database`,
+  which defaults to true, but can be disabled via environment variable.
+
+Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
 
 ### `MB_LOADING_MESSAGE`
 
@@ -1471,6 +1587,18 @@ When using the appdb engine against postgresql, override the language used for s
 
 Enable typeahead search in the Metabase navbar?
 
+### `MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE`
+
+- Type: boolean
+- Default: `true`
+
+Should we send users a notification email the first time they log in from a new device? (Default: true). This is
+  currently only configurable via environment variable so users who gain access to an admin's credentials cannot
+  disable this Setting and access their account without them knowing.
+
+This variable also controls the geocoding service that Metabase uses to know the location of your logged in users.
+        Setting this variable to false also disables this reverse geocoding functionality.
+
 ### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
 
 - Type: boolean
@@ -1538,6 +1666,16 @@ Indicates if at the end of the setup a valid license was active.
 - [Configuration file name](./config-file.md): `show-database-syncing-modal`
 
 Whether an introductory modal should be shown after the next database connection is added. Defaults to false if any non-default database has already finished syncing for this instance.
+
+### `MB_SHOW_GOOGLE_SHEETS_INTEGRATION`
+
+- Type: boolean
+- Default: `null`
+- [Configuration file name](./config-file.md): `show-google-sheets-integration`
+
+Whether or not to show the user a button that sets up Google Sheets integration.
+
+When enabled, we show users a button to authenticate with Google to import data from Google Sheets.
 
 ### `MB_SHOW_HOMEPAGE_DATA`
 
@@ -1643,6 +1781,16 @@ The name of the channel where bug reports should be posted.
 
 The name of the channel to which Metabase files should be initially uploaded.
 
+### `MB_SMTP_OVERRIDE_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `smtp-override-enabled`
+
+Whether to use the custom SMTP server rather than the standard settings.
+
 ### `MB_SOURCE_ADDRESS_HEADER`
 
 - Type: string
@@ -1694,6 +1842,14 @@ Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To s
 - Default: `true`
 
 Enable or disable surveys.
+
+### `MB_SYNC_LEAF_FIELDS_LIMIT`
+
+- Type: integer
+- Default: `1000`
+- [Exported as](../installation-and-operation/serialization.md): `sync-leaf-fields-limit`.
+
+Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo. Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields from root to leaf are synced as well.
 
 ### `MB_SYNCHRONOUS_BATCH_UPDATES`
 

@@ -25,7 +25,7 @@ Cloud customers can request an early upgrade by emailing support at help@metabas
 
 ### Instances using the Embedded analtyics SDK on Metabase Cloud must request an upgrade
 
-If you're using the [Embedded analytics SDK](../embedding/sdk/introduction.md) on Metabase Cloud, we pin your version so that it doesn't upgrade automatically, as you should test the changes before upgrading. 
+If you're using the [Embedded analytics SDK](../embedding/sdk/introduction.md) on Metabase Cloud, we pin your version so that it doesn't upgrade automatically, as you should test the changes before upgrading.
 
 To upgrade your Metabase, you'll need to request an upgrade by [contacting support](https://www.metabase.com/help-premium).
 
@@ -132,7 +132,7 @@ During a **major version** upgrade (e.g., 53.1 or 54.1), Metabase will:
 - Perform all the migrations needed to upgrade to the new version, such as any schema changes to the application database between the two versions.
 - Keep all the metadata it needs to work on the application database.
 
-Metabase will do all this automatically. 
+Metabase will do all this automatically.
 
 If you need to downgrade after a major version upgrade, you'll either need to restore from a backup, or manually migrate to a lower version, otherwise Metabase may refuse to start (see the next section).
 

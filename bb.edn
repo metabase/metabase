@@ -109,11 +109,15 @@
   {:doc      "Starts the babashka nrepl: helpful for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
-   :examples [["./bin/mage nrepl" "Starts the nrepl server"]]
+   :examples [["./bin/mage nrepl" "Starts the nrepl server"]
+              ["./bin/mage nrepl --port 50506" "Starts the nrepl server"]
+              ["./bin/mage nrepl -p 50506" "Starts the nrepl server"]]
+   :options  [["-p" "--port PORT" "optionally provide a port to run the nrepl server on" :default 1667 :parse-fn Integer/parseInt]]
    :task     (task!
-               (spit ".nrepl-port" 1667)
-               (nrepl.server/start-server!)
-               (deref (promise)))}
+              (let [{:keys [port]} (:options parsed)]
+                (spit ".nrepl-port" port)
+                (nrepl.server/start-server! {:port port})
+                (deref (promise))))}
 
   lint-migrations
   {:doc        "Lint migrations files"
@@ -130,7 +134,8 @@
                 ["./bin/mage jar-download 1.45.2 -r" "Download and run metabase_1.45.2.jar"]
                 ["./bin/mage jar-download 1.45.2 -d ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars, deleting if it exists"]
                 ["./bin/mage jar-download master --run --port 3001" "Download and run the latest master branch jar on port 3001"]
-                ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
+                ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]
+                ["./bin/mage jar-download v1.56.0-beta -r" "Download and run metabase_1.56.0-beta.jar"]]
    :requires   [[mage.jar-download :as jar-download]]
    :options    [["-r" "--run" "run the new jar after downloading it"]
                 ["-e" "--env-file FILE" "you can optionally provide a lein-env file to specify the environment to use when running the jar."]
@@ -145,6 +150,7 @@
                     (str "\n  -" (c/green "1.45.2")  " for a specific version")
                     (str "\n  -" (c/green "master")  " for the latest jar created for master")
                     (str "\n  -" (c/green "any-branch-with-a-pr")  " for the latest uberjar created for that branch")
+                    (str "\n  -" (c/green "1.56.0-beta") " for a specific beta version")
                     (str "\n\nnote: If you get an error about 'Invalid or corrupt jarfile', run this command again with --delete.")))
    :task       (task! (jar-download/jar-download parsed))}
 
@@ -153,6 +159,11 @@
    :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
+
+  ls {:doc      "List all mage public and private tasks"
+      :examples [["./bin/mage ls" "List all tasks"]]
+      :requires [[mage.util :as u]]
+      :task     (task! (u/print-tasks parsed))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
@@ -258,4 +269,11 @@
   {:doc      "Print a day's PR summary for the metabase/metabase repo"
    :requires [[mage.escherize.pr-summary :as eps]]
    :examples [["./bin/mage -escherize-pr-summary | pbcopy" "Copy your daily"]]
-   :task     (task! (eps/summarize-prs parsed))}}}
+   :task     (task! (eps/summarize-prs parsed))}
+
+  -escherize-fix-whitespace
+  {:doc "Removes all lines like '^<space>+$' from files in glob pattern."
+   :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
+   :examples [["mage -escherize-fix-whitespace '**/*.clj'" "Removes all lines like '  ' from all clj files"]]
+   :arg-schema [:sequential [:string {:description "Glob pattern to match files"}]]
+   :task     (task! (fix-whitespace/run-clean parsed))}}}

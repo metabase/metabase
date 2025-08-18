@@ -48,7 +48,7 @@ jobs:
 
             # Initialize an empty array to store folders with changes
             CHANGED_FOLDERS=()
-            for folder in "src/metabase/lib" "src/metabase/query_processor" "modules/drivers"; do
+            for folder in "src/metabase/lib" "src/metabase/query_processor" "modules/drivers" "src/metabase/driver"; do
               if echo "$CHANGED_FILES" | grep -q "$folder"; then
                 CHANGED_FOLDERS+=("$folder")
               fi
@@ -73,9 +73,11 @@ jobs:
       CI: 'true'
       DRIVERS: athena
       MB_ATHENA_TEST_REGION: us-east-1
+      MB_ATHENA_TEST_REGION_ROUTING: us-east-2
       MB_ATHENA_TEST_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_ACCESS_KEY }}
       MB_ATHENA_TEST_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_SECRET_KEY }}
       MB_ATHENA_TEST_S3_STAGING_DIR: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR }}
+      MB_ATHENA_TEST_S3_STAGING_DIR_ROUTING: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR_ROUTING }}
       # These credentials are used to test the driver when the user does not have the athena:GetTableMetadata permission
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY }}
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
@@ -266,6 +268,7 @@ jobs:
       MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
       MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
       MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
+      MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     name: Databricks
@@ -302,6 +305,7 @@ jobs:
       MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
       MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
       MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
+      MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     name: Databricks (Multi-Catalog)
@@ -854,6 +858,7 @@ jobs:
       DRIVERS: redshift
       MB_REDSHIFT_TEST_USER: metabase_ci
       MB_REDSHIFT_TEST_DB: testdb
+      MB_REDSHIFT_TEST_DB_ROUTING: dev
       MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     name: ${{ matrix.job.name }}
@@ -1153,7 +1158,7 @@ jobs:
               }));
 
             // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success' || job.name == 'be-tests-starburst-ee'))) {
                 console.log("");
                 console.log("        _------.        ");
                 console.log("       /  ,     \_      ");

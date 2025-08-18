@@ -261,7 +261,7 @@
                          (if (and (= (lib.util/source-table-id query) (lib.util/source-table-id metric-query))
                                   (or (= (lib/stage-count metric-query) 1)
                                       (= (:qp/stage-had-source-card (last (:stages metric-query)))
-                                         (:qp/stage-had-source-card (lib.util/query-stage query agg-stage-index)))))
+                                         (:qp/stage-had-source-card (lib/query-stage query agg-stage-index)))))
                            (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)
                                  lookup (-> lookup
                                             (assoc-in [metric-id :query] metric-query)
@@ -322,14 +322,14 @@
                                    (dissoc stage :breakout :order-by :aggregation :fields :lib/stage-metadata)))
           ;; Needed for field references to resolve further in the pipeline
           stage-query (lib/with-fields stage-query last-metric-stage-number (lib/fieldable-columns stage-query last-metric-stage-number))
-          new-metric-stage (lib.util/query-stage stage-query last-metric-stage-number)
+          new-metric-stage (lib/query-stage stage-query last-metric-stage-number)
           lookup {(:id metric-metadata)
                   {:name metric-name :aggregation metric-aggregation}}
           stage-query (replace-metric-aggregation-refs
                        stage-query
                        (inc last-metric-stage-number)
                        lookup)
-          new-following-stage (lib.util/query-stage stage-query (inc last-metric-stage-number))
+          new-following-stage (lib/query-stage stage-query (inc last-metric-stage-number))
           combined-stages (vec (remove nil? (concat pre-transition-stages
                                                     [new-metric-stage new-following-stage]
                                                     following-stages)))]

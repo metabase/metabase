@@ -1,12 +1,11 @@
 import { render } from "@testing-library/react";
-import fetchMock from "fetch-mock";
 
 import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
-import { MetabaseProvider } from "embedding-sdk/components/public";
+import { ComponentProvider } from "embedding-sdk/components/public";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -46,9 +45,9 @@ const setup = async ({
   setupCurrentUserEndpoint(createMockUser({ id: 1 }));
 
   render(
-    <MetabaseProvider authConfig={defaultAuthConfig}>
+    <ComponentProvider authConfig={defaultAuthConfig}>
       <div>Hello</div>
-    </MetabaseProvider>,
+    </ComponentProvider>,
   );
   await waitForLoaderToBeRemoved();
 };
@@ -60,8 +59,6 @@ const getWarnMessages = (): string[] =>
 
 describe("SDK auth errors", () => {
   beforeEach(() => {
-    fetchMock.reset();
-
     consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
     (getEmbeddingSdkVersion as jest.Mock).mockClear();
   });

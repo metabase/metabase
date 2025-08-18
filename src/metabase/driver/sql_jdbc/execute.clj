@@ -362,20 +362,21 @@
    db-or-id-or-spec
    ^Connection conn                                       :- (driver-api/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
+  (when-let [db (cond
+                  ;; id?
+                  (integer? db-or-id-or-spec)
+                  (driver-api/with-metadata-provider db-or-id-or-spec
+                    (driver-api/database (driver-api/metadata-provider)))
+                  ;; db?
+                  (u/id db-or-id-or-spec)     db-or-id-or-spec
+                  ;; otherwise it's a spec and we can't get the db
+                  :else nil)]
+    (set-role-if-supported! driver conn db)
+    (driver/set-database-used! driver conn db))
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (when-let [db (cond
-                    ;; id?
-                    (integer? db-or-id-or-spec)
-                    (driver-api/with-metadata-provider db-or-id-or-spec
-                      (driver-api/database (driver-api/metadata-provider)))
-                    ;; db?
-                    (u/id db-or-id-or-spec)     db-or-id-or-spec
-                    ;; otherwise it's a spec and we can't get the db
-                    :else nil)]
-      (set-role-if-supported! driver conn db))
     (let [read-only? (not write?)]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
@@ -616,11 +617,17 @@
   [_ rs _ i]
   (get-object-of-class-thunk rs i java.time.LocalDateTime))
 
+(defn- arrays->vectors
+  [obj]
+  (if (.isArray (class obj))
+    (mapv arrays->vectors obj)
+    obj))
+
 (defmethod read-column-thunk [:sql-jdbc Types/ARRAY]
   [_driver ^java.sql.ResultSet rs _rsmeta ^Integer i]
   (fn []
-    (when-let [obj (.getObject rs i)]
-      (vec (.getArray ^java.sql.Array obj)))))
+    (when-let [sql-arr (.getObject rs i)]
+      (arrays->vectors (.getArray ^java.sql.Array sql-arr)))))
 
 (defmethod read-column-thunk [:sql-jdbc Types/TIMESTAMP_WITH_TIMEZONE]
   [_ rs _ i]
@@ -842,6 +849,39 @@
     (catch Throwable e
       (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
                       {:sql sql, :params params, :type driver-api/qp.error-type.invalid-query}
+                      e)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Transform Stuff                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- create-and-execute-statement!
+  [driver conn sql params]
+  (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
+    {:rows-affected (if (instance? PreparedStatement stmt)
+                      (.executeUpdate ^PreparedStatement stmt)
+                      (.executeUpdate stmt sql))}))
+
+(defmethod driver/execute-raw-queries! :sql-jdbc
+  [driver connection-details queries]
+  (try
+    (do-with-connection-with-options
+     driver
+     connection-details
+     {:write? true}
+     (fn [^Connection conn]
+       (.setAutoCommit conn false)
+       (try
+         (let [result (doall (for [[sql params] queries]
+                               (create-and-execute-statement! driver conn sql params)))]
+           (.commit conn)
+           result)
+         (catch Throwable t
+           (.rollback conn)
+           (throw t)))))
+    (catch Throwable e
+      (throw (ex-info (tru "Error executing raw queries: {0}" (ex-message e))
+                      {:queries queries, :type driver-api/qp.error-type.invalid-query}
                       e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
