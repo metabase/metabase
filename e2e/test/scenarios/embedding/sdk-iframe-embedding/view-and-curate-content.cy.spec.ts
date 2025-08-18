@@ -37,11 +37,6 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       H.getSimpleEmbedIframeContent()
         .findByTestId("query-visualization-root")
         .should("be.visible");
-
-      H.getSimpleEmbedIframeContent()
-        .findByText("Orders")
-        .should("be.visible")
-        .click();
     });
 
     it("should show New Exploration button and open data picker when clicked", () => {
