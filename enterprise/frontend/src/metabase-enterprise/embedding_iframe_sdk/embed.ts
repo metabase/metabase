@@ -487,20 +487,8 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "entity-types",
 ]);
 
-const MetabaseViewContentElement = createCustomElement(
-  "metabase-view-content",
-  [
-    "initial-collection",
-    "collection-visible-columns",
-    "collection-page-size",
-    "collection-entity-types",
-    "data-picker-entity-types",
-    "with-new-question",
-  ],
-);
-
-const MetabaseCurateContentElement = createCustomElement(
-  "metabase-curate-content",
+const MetabaseManageContentElement = createCustomElement(
+  "metabase-manage-content",
   [
     "initial-collection",
     "collection-visible-columns",
@@ -509,6 +497,7 @@ const MetabaseCurateContentElement = createCustomElement(
     "data-picker-entity-types",
     "with-new-question",
     "with-new-dashboard",
+    "read-only",
   ],
 );
 
@@ -522,6 +511,5 @@ if (typeof window !== "undefined") {
 export {
   MetabaseDashboardElement,
   MetabaseQuestionElement,
-  MetabaseViewContentElement,
-  MetabaseCurateContentElement,
+  MetabaseManageContentElement,
 };

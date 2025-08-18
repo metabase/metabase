@@ -86,10 +86,7 @@ const SdkIframeEmbedView = ({
   return match(settings)
     .with(
       {
-        componentName: P.union(
-          "metabase-curate-content",
-          "metabase-view-content",
-        ),
+        componentName: "metabase-manage-content",
       },
       (settings) => (
         <SdkBreadcrumbsProvider>

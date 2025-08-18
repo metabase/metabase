@@ -19,7 +19,7 @@ import type { SdkIframeEmbedSettings } from "../types/embed";
 
 interface ContentManagerProps {
   settings: SdkIframeEmbedSettings & {
-    componentName: "metabase-view-content" | "metabase-curate-content";
+    componentName: "metabase-manage-content";
   };
 }
 
@@ -31,9 +31,9 @@ type ContentManagerView =
   | { type: "create-dashboard" };
 
 export function ContentManager({ settings }: ContentManagerProps) {
-  const { componentName, initialCollection } = settings;
+  const { initialCollection } = settings;
 
-  const isReadOnly = componentName === "metabase-view-content";
+  const isReadOnly = settings.readOnly ?? true;
 
   const { breadcrumbs, currentLocation, reportLocation } = useSdkBreadcrumbs();
 

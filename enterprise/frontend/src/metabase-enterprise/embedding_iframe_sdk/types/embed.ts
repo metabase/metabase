@@ -87,9 +87,14 @@ export interface ExplorationEmbedOptions {
   questionId?: never;
 }
 
-/** Shared properties between the content manager templates. */
-export interface ContentManagerCommonEmbedOptions {
+export interface ManageContentEmbedOptions {
+  componentName: "metabase-manage-content";
+
+  /** Which collection to start from? */
   initialCollection: CollectionId;
+
+  /** Whether the content manager is in read-only mode. Defaults to true. */
+  readOnly?: boolean;
 
   /** Which collections to show on the collection browser */
   collectionVisibleColumns?: CollectionBrowserListColumns[];
@@ -106,22 +111,12 @@ export interface ContentManagerCommonEmbedOptions {
   /** Whether to show the "New Exploration" button. Defaults to true. */
   withNewQuestion?: boolean;
 
+  /** Whether to show the "New Dashboard" button. Defaults to true. Only applies when readOnly is false. */
+  withNewDashboard?: boolean;
+
   template?: never;
   questionId?: never;
   dashboardId?: never;
-}
-
-export interface CurateContentEmbedOptions
-  extends ContentManagerCommonEmbedOptions {
-  componentName: "metabase-curate-content";
-
-  /** Whether to show the "New Dashboard" button. Defaults to true. */
-  withNewDashboard?: boolean;
-}
-
-export interface ViewContentEmbedOptions
-  extends ContentManagerCommonEmbedOptions {
-  componentName: "metabase-view-content";
 }
 
 type CollectionBrowserEntityTypes =
@@ -148,8 +143,7 @@ export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
-  | CurateContentEmbedOptions
-  | ViewContentEmbedOptions;
+  | ManageContentEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
@@ -165,5 +159,4 @@ export type SdkIframeEmbedSettingKey =
   | keyof DashboardEmbedOptions
   | keyof QuestionEmbedOptions
   | keyof ExplorationEmbedOptions
-  | keyof CurateContentEmbedOptions
-  | keyof ViewContentEmbedOptions;
+  | keyof ManageContentEmbedOptions;
