@@ -38,12 +38,14 @@ export type MetabaseEmbeddingSdkBundleExports = {
   StaticDashboard: typeof StaticDashboard;
   StaticQuestion: typeof StaticQuestion;
 
+  // Redux store factory
+  getSdkStore: typeof getSdkStore;
+
   // Exports needed for public Hooks that use sdk redux store
   createDashboard: typeof createDashboard;
   getApplicationName: typeof getApplicationName;
   getCollectionNumericIdFromReference: typeof getCollectionNumericIdFromReference;
   getLoginStatus: typeof getLoginStatus;
-  getSdkStore: typeof getSdkStore;
   getSetting: typeof getSetting;
   getUser: typeof getUser;
 
