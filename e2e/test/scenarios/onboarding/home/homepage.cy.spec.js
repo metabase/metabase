@@ -606,7 +606,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     H.modal().findByText("Pick a dashboard").click();
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
-    H.modal().findByText("Save").click();
+    H.modal().findByText("Done").click();
     H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "homepage",
