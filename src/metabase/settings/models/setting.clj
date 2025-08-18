@@ -1246,8 +1246,13 @@
 
   Function which takes a specific database, and returns true if this setting should be enabled for it.
   This is only valid for database-local settings. When setting a database-local setting, the system will call this
-  function with the database. If it returns false, an exception will be thrown. Useful for disabling settings based
-  on database-specific conditions like routing configuration.
+  function with the database. If it returns false, an exception will be thrown.
+
+  Useful for disabling settings based on database-specific conditions like routing configuration.
+
+  The [[custom-disabled-reasons!]] method can be used to override this exception with explicit reasons, in the case that
+  we want to communicate them within the admin panel. This supports multiple reasons so that the frontend can be
+  authoritative over their \n  precedence.
 
   ###### `:user-local`
 
