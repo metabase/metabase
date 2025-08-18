@@ -23,7 +23,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang Keyword)
+   (clojure.lang ExceptionInfo Keyword)
    (com.fasterxml.jackson.core JsonParseException)
    (com.fasterxml.jackson.core.io JsonEOFException)
    (java.io StringWriter)
@@ -234,6 +234,10 @@
 
    ;; Function that takes a database and returns true if this setting should be enabled for that specific database.
    ;; This is only valid for database-local settings. If the function returns false, setting this will throw an exception.
+   ;;
+   ;; In cases where the admin panel cares needs to communicate the reasons it is disabled to the user, this function
+   ;; can use [[custom-disabled-reasons!]] to override the explanation. This supports multiple reasons so that the
+   ;; frontend can be authoritative over which explanations have higher precedence.
    [:enabled-for-db? [:maybe ifn?]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
@@ -882,10 +886,26 @@
        (when (= setter :none)
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
+(defn disabled-for-db-reasons
+  "Return the reasons, if any, that the given "
+  [setting-def database]
+  (when-let [f (:enabled-for-db? setting-def)]
+    (try (when-not (f database)
+           [{:key     :disabled-for-db
+             :message "This database does not support this setting"}])
+         (catch ExceptionInfo e
+           (or (:setting/disabled-reasons (ex-data e))
+               (throw e))))))
+
+(defn custom-disabled-reasons!
+  "Expose custom reasons for a setting being disabled to the admin panel."
+  [reasons]
+  (throw (ex-info "Setting is not enabled for this database" {:setting/disabled-reasons reasons})))
+
 (defn validate-settable-for-db!
   "Check whether the given setting can be set for the given database."
   [setting-definition-or-name database driver-supports?]
-  (let [{:keys [driver-feature enabled-for-db?] :as setting} (resolve-setting setting-definition-or-name)
+  (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
         s-name (setting-name setting)]
     (validate-settable! setting)
     (when (and driver-feature (not (driver-supports? database driver-feature)))
@@ -893,10 +913,11 @@
                       {:setting s-name
                        :required-feature driver-feature
                        :database-id (:id database)})))
-    (when (and enabled-for-db? (not (enabled-for-db? database)))
+    (when-let [reasons (disabled-for-db-reasons setting database)]
       (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
-                      {:setting s-name
-                       :database-id (:id database)})))))
+                      {:setting     s-name
+                       :database-id (:id database)
+                       :reasons     reasons})))))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
