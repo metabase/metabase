@@ -102,3 +102,9 @@ export class Route extends _Route {
     return _Route.createRouteFromReactElement(element);
   }
 }
+
+Route.propTypes = {
+  title: PropTypes.string,
+  path: PropTypes.string,
+  component: PropTypes.any,
+};

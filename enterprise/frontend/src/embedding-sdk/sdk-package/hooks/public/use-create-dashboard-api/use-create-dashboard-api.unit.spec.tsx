@@ -3,10 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupDashboardCreateEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
-import {
-  createDashboard,
-  getCollectionNumericIdFromReference,
-} from "embedding-sdk/bundle";
+import { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
@@ -14,6 +11,7 @@ import type {
   CreateDashboardValues,
   MetabaseDashboard,
 } from "embedding-sdk/types/dashboard";
+import { createDashboard } from "metabase/api/dashboard";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { useCreateDashboardApi } from "./use-create-dashboard-api";

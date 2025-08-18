@@ -14,6 +14,11 @@ title: Driver interface changelog
 
 ## Metabase 0.56.3
 
+- Added metabase.driver/compile-transform, metabase.driver/compile-drop-table, metabase.driver/execute-raw-queries!,
+  metabase.driver/run-transform!, metabase.driver/drop-transform-target!, metabase.driver/native-query-deps,
+  metabase.driver/connection-details, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
+  metabase.driver.sql/default-schema, and metabase.driver.sql/find-table to implement sql transforms.
+
 - Added the driver multi-method `driver/describe-database*` for drivers to prefer implementing over `driver/describe-database`.
   This allows drivers to opt-in to the automatic resilient connection mechanism, which provides better error recovery
   when database connections are closed during metadata sync operations. Existing drivers implementing `describe-database`
@@ -44,10 +49,11 @@ title: Driver interface changelog
 
 - Added the driver multi-method `driver/set-database-used!` for drivers to set a database on the connection with statements like `USE DATABASE`.
 
+- Added the driver feature `:transforms/table` for drivers that supports transforms with table as target
+
 ## Metabase 0.55.9
 
 - Add multi-method `driver/do-with-resilient-connection` for executing functions in a context where closed connections may be automatically reopened
-
 
 ## Metabase 0.55.0
 
