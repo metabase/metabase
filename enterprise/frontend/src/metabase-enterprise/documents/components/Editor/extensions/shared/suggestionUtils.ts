@@ -15,6 +15,9 @@ export const isRecentQuestion = (
 ): item is RecentCollectionItem & { model: "card" | "dataset" } =>
   item.model === "card" || item.model === "dataset";
 
+export const filterRecents = (item: RecentItem, models: SearchModel[]) =>
+  models.includes(item.model);
+
 export function buildSearchMenuItems(
   searchResults: SearchResult[],
   onSelect: (result: SearchResult) => void,
@@ -35,14 +38,11 @@ export function buildSearchMenuItems(
 }
 
 export function buildRecentsMenuItems(
-  recents: Array<RecentCollectionItem & { model: "card" | "dataset" }>,
-  onSelect: (recent: RecentCollectionItem) => void,
+  recents: Array<RecentItem>,
+  onSelect: (recent: RecentItem) => void,
 ): MenuItem[] {
   return recents.map((recent) => {
-    const iconData = getIcon({
-      model: recent.model,
-      display: recent.display ?? undefined,
-    });
+    const iconData = getIcon(recent);
     return {
       icon: iconData.name,
       label: getName(recent),
