@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import {
   formatCronExpressionForUI,
   getScheduleExplanation,
@@ -96,7 +97,15 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
     if (job.id == null) {
       return;
     }
+
+    trackSimpleEvent({
+      event: "transform_trigger_manual_run",
+      target_id: job.id,
+      triggered_from: "job-page",
+    });
+
     const { error } = await runJob(job.id);
+
     if (error) {
       sendErrorToast(t`Failed to run job`);
     } else {

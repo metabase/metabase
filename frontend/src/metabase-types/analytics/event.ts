@@ -254,7 +254,7 @@ export type ConnectionStringParsedFailedEvent = ValidateEvent<{
 
 export type TransformTriggerManualRunEvent = ValidateEvent<{
   event: "transform_trigger_manual_run";
-  triggered_from: "transform-page";
+  triggered_from: "transform-page" | "job-page";
   target_id: number;
 }>;
 
