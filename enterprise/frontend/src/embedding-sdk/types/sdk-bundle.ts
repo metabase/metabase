@@ -24,8 +24,14 @@ import type { getApplicationName } from "metabase/selectors/whitelabel";
  * Any rename/removal change for object is a breaking change between the SDK Bundle and the SDK NPM package,
  * and should be done via the deprecation of the field first.
  */
-export type MetabaseEmbeddingSdkBundleExports = {
-  // Public Components
+export type MetabaseEmbeddingSdkBundleExports =
+  MetabaseEmbeddingSdkBundlePublicExports &
+    MetabaseEmbeddingSdkBundleReduxStoreExports &
+    MetabaseEmbeddingSdkBundleStoreMutationsExports &
+    MetabaseEmbeddingSdkBundleStoreSelectorsExports &
+    MetabaseEmbeddingSdkBundleInternalHooksExports;
+
+export type MetabaseEmbeddingSdkBundlePublicExports = {
   CollectionBrowser: typeof CollectionBrowser;
   CreateDashboardModal: typeof CreateDashboardModal;
   CreateQuestion: typeof CreateQuestion;
@@ -37,19 +43,25 @@ export type MetabaseEmbeddingSdkBundleExports = {
   SdkDebugInfo: typeof SdkDebugInfo;
   StaticDashboard: typeof StaticDashboard;
   StaticQuestion: typeof StaticQuestion;
+};
 
-  // Redux store factory
+export type MetabaseEmbeddingSdkBundleReduxStoreExports = {
   getSdkStore: typeof getSdkStore;
+};
 
-  // Exports needed for public Hooks that use sdk redux store
+export type MetabaseEmbeddingSdkBundleStoreMutationsExports = {
   createDashboard: typeof createDashboard;
+};
+
+export type MetabaseEmbeddingSdkBundleStoreSelectorsExports = {
   getApplicationName: typeof getApplicationName;
   getCollectionNumericIdFromReference: typeof getCollectionNumericIdFromReference;
   getLoginStatus: typeof getLoginStatus;
   getSetting: typeof getSetting;
   getUser: typeof getUser;
+};
 
-  // Internal Hooks
+export type MetabaseEmbeddingSdkBundleInternalHooksExports = {
   useInitData: typeof useInitData;
   useLogVersionInfo: typeof useLogVersionInfo;
 };
