@@ -307,7 +307,7 @@ describe(
         });
       });
 
-      it("it should show an error on a component level if SDK components are not wrapped within the MetabaseProvider", () => {
+      it("should show an error on a component level if SDK components are not wrapped within the MetabaseProvider", () => {
         sdkBundleCleanup();
 
         cy.window().then((win) => {
@@ -401,7 +401,7 @@ describe(
           return createdDashboard?.name;
         };
 
-        it("should call hook properly when called inside MetabaseProvider", () => {
+        it("should render the created dashboard name when called inside MetabaseProvider", () => {
           mountSdk(
             <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
               <ComponentWithHook />
@@ -415,7 +415,7 @@ describe(
           });
         });
 
-        it("should call hook properly when called outside of MetabaseProvider", () => {
+        it("should render the created dashboard name when called outside of MetabaseProvider", () => {
           mountSdk(
             <>
               <ComponentWithHook />
@@ -431,7 +431,7 @@ describe(
           });
         });
 
-        it("should call hook properly when called without rendered SDK components", () => {
+        it("should render the created dashboard name when called without rendered SDK components", () => {
           mountSdk(
             <>
               <ComponentWithHook />
