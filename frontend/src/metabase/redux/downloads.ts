@@ -67,10 +67,10 @@ const getDownloadedResourceType = ({
 
   const isInIframe = isWithinIframe();
 
-  const defaultAccessedVia = isInIframe
-    ? "interactive-iframe-embed"
-    : isEmbeddingSdk()
-      ? "sdk-embed"
+  const defaultAccessedVia = isEmbeddingSdk()
+    ? "sdk-embed"
+    : isInIframe
+      ? "interactive-iframe-embed"
       : "internal";
 
   if (dashcardId != null && token != null) {
