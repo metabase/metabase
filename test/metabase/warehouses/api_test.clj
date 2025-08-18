@@ -67,7 +67,7 @@
   [_ _]
   "1.0")
 
-(defmethod driver/describe-database ::test-driver
+(defmethod driver/describe-database* ::test-driver
   [_ _]
   {:tables []})
 
