@@ -19,7 +19,10 @@ import {
   getTitleForColumn,
   tableColumnSettings,
 } from "metabase/visualizations/lib/settings/column";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import {
+  getDeduplicatedTableColumnSettings,
+  getOptionFromColumn,
+} from "metabase/visualizations/lib/settings/utils";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
 import {
@@ -425,7 +428,9 @@ class Table extends Component<TableProps, TableState> {
       });
     } else {
       const { cols, rows, results_timezone } = data;
-      const columnSettings = settings["table.columns"] ?? [];
+      const columnSettings = getDeduplicatedTableColumnSettings(
+        settings["table.columns"] ?? [],
+      );
       const columnIndexes = findColumnIndexesForColumnSettings(
         cols,
         columnSettings,

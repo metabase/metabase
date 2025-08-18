@@ -50,6 +50,7 @@ import { useDispatch } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
+import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -391,7 +392,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
   const handleColumnReordering = useCallback(
     (columnsOrder: string[]) => {
-      const newColumns = settings["table.columns"]?.slice() ?? [];
+      const columnSettings = settings["table.columns"] ?? [];
+      const newColumns =
+        getDeduplicatedTableColumnSettings(columnSettings).slice();
 
       const enabledIndices = newColumns
         .map((col, index) => (col.enabled ? index : -1))

@@ -509,12 +509,20 @@ export const tableColumnSettings = {
     getValue: ([{ data }], vizSettings) => {
       const { cols } = data;
       const settings = vizSettings["table.columns"] ?? [];
-      const columnIndexes = findColumnIndexesForColumnSettings(cols, settings);
-      const settingIndexes = findColumnSettingIndexesForColumns(cols, settings);
+      const uniqColumnSettings = _.uniq(settings, false, (item) => item.name);
+
+      const columnIndexes = findColumnIndexesForColumnSettings(
+        cols,
+        uniqColumnSettings,
+      );
+      const settingIndexes = findColumnSettingIndexesForColumns(
+        cols,
+        uniqColumnSettings,
+      );
 
       return [
         // retain settings with matching columns only
-        ...settings.filter(
+        ...uniqColumnSettings.filter(
           (_, settingIndex) => columnIndexes[settingIndex] >= 0,
         ),
         // add columns that do not have matching settings to the end
