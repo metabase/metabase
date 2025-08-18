@@ -5,10 +5,12 @@ import {
   samlTokenStorage,
   validateSessionToken,
 } from "embedding/auth-common";
-import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import * as MetabaseError from "embedding-sdk/errors";
+import {
+  EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
+  getEmbeddingSdkPackageBuildData,
+} from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
-import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
@@ -18,7 +20,6 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { requestSessionTokenFromEmbedJs } from "metabase-enterprise/embedding_iframe_sdk/utils";
-import type { Settings } from "metabase-types/api";
 
 import { getOrRefreshSession } from "../reducer";
 import { getFetchRefreshTokenFn } from "../selectors";
@@ -79,21 +80,6 @@ export const initAuth = createAsyncThunk(
       dispatch(refreshCurrentUser()),
       dispatch(refreshSiteSettings()),
     ]);
-
-    const mbVersion = (siteSettings.payload as Settings)?.version?.tag;
-    const sdkVersion = getEmbeddingSdkVersion();
-
-    if (
-      mbVersion &&
-      sdkVersion !== "unknown" &&
-      !isSdkVersionCompatibleWithMetabaseVersion({ mbVersion, sdkVersion })
-    ) {
-      console.warn(
-        `SDK version ${sdkVersion} is not compatible with MB version ${mbVersion}, this might cause issues.`,
-        // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
-        "Learn more at https://www.metabase.com/docs/latest/embedding/sdk/version",
-      );
-    }
 
     if (!user.payload) {
       throw MetabaseError.USER_FETCH_FAILED();
@@ -167,7 +153,9 @@ export function getSdkRequestHeaders(hash?: string): Record<string, string> {
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     "X-Metabase-Client": "embedding-sdk-react",
     // eslint-disable-next-line no-literal-metabase-strings -- header name
-    "X-Metabase-Client-Version": getEmbeddingSdkVersion(),
+    "X-Metabase-Client-Version":
+      getEmbeddingSdkPackageBuildData()?.version ??
+      EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
   };
