@@ -10,8 +10,9 @@ import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/t
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { Card, DatasetData } from "metabase-types/api";
+import type { Card, DatasetData, TableId } from "metabase-types/api";
 
 export const useObjectDetail = (
   { rows, cols }: DatasetData,
@@ -37,7 +38,10 @@ export const useObjectDetail = (
   const rowIndexToPkMap: Record<number, ObjectId> = useSelector((state) =>
     state.qb != null ? getRowIndexToPKMap(state) : {},
   );
-  const tableId = useMemo(() => Lib.sourceTableOrCardId(query), [query]);
+  const tableId = useMemo(
+    () => getSourceTableId(query, metadata),
+    [query, metadata],
+  );
 
   const primaryKeyColumn: ColumnDescriptor | null = useMemo(() => {
     const primaryKeyColumns = cols.filter(
@@ -93,3 +97,32 @@ export const useObjectDetail = (
 
   return onOpenObjectDetail;
 };
+
+function getSourceTableId(
+  query: Lib.Query,
+  metadata: Metadata | undefined,
+): TableId | undefined {
+  if (!metadata) {
+    return undefined;
+  }
+
+  const sourceId = Lib.sourceTableOrCardId(query);
+
+  if (typeof sourceId === "number") {
+    return sourceId;
+  }
+
+  const questionId = getQuestionIdFromVirtualTableId(sourceId);
+
+  if (!questionId) {
+    return undefined;
+  }
+
+  const question = metadata.questions[questionId];
+
+  if (!question) {
+    return undefined;
+  }
+
+  return getSourceTableId(question.query(), metadata);
+}
