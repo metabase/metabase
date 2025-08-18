@@ -137,7 +137,7 @@ jobs:
               .substring(0, 50); // Limit length
 
             // Create base branch name
-            const baseBranchName = `bug-fix/issue-${issueNumber}-${kebabTitle}`;
+            const baseBranchName = `claude-fix/issue-${issueNumber}-${kebabTitle}`;
             core.exportVariable('BASE_BRANCH_NAME', baseBranchName);
 
             // Export issue info for the prompt
@@ -147,34 +147,24 @@ jobs:
             core.exportVariable('ISSUE_CREATED', issueData.created_at);
             core.exportVariable('ISSUE_BODY', issueData.body || 'No description provided');
 
-      - name: Determine unique branch name
+      - name: Determine branch strategy
         run: |
-          # Check for existing branches with the same base name
-          BASE_NAME="${{ env.BASE_BRANCH_NAME }}"
+          # Use the base branch name (no counters)
+          BRANCH_NAME="${{ env.BASE_BRANCH_NAME }}"
 
-          # Use git to efficiently filter branches by pattern
-          EXISTING_BRANCHES=$(git branch -r --list "origin/${BASE_NAME}*" 2>/dev/null || true)
-
-          if [ -z "$EXISTING_BRANCHES" ]; then
-            # No existing branches, use base name
-            FINAL_BRANCH_NAME="$BASE_NAME"
-            echo "Using branch name: $FINAL_BRANCH_NAME"
+          # Check if this exact branch already exists
+          if git branch -r --list "origin/${BRANCH_NAME}" | grep -q .; then
+            echo "Branch already exists: $BRANCH_NAME"
+            echo "Will push to existing branch and skip PR creation"
+            echo "BRANCH_EXISTS=true" >> $GITHUB_ENV
           else
-            # Find the next available number
-            COUNTER=1
-            while true; do
-              CANDIDATE_NAME="${BASE_NAME}-${COUNTER}"
-              if ! git branch -r --list "origin/${CANDIDATE_NAME}" | grep -q .; then
-                FINAL_BRANCH_NAME="$CANDIDATE_NAME"
-                echo "Using branch name: $FINAL_BRANCH_NAME (duplicate detected)"
-                break
-              fi
-              COUNTER=$((COUNTER + 1))
-            done
+            echo "Creating new branch: $BRANCH_NAME"
+            echo "Will create new PR"
+            echo "BRANCH_EXISTS=false" >> $GITHUB_ENV
           fi
 
-          # Export the final branch name
-          echo "BRANCH_NAME=$FINAL_BRANCH_NAME" >> $GITHUB_ENV
+          # Export the branch name
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
       - name: Prepare bug fix prompt
         id: prepare_prompt
@@ -308,7 +298,7 @@ jobs:
             console.log('Reviewer:', issueCreator);
 
       - name: Create Pull Request
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.check_changes.outputs.has_changes == 'true' && env.BRANCH_EXISTS == 'false'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -358,6 +348,14 @@ jobs:
             automated-fix
             ci skip
           reviewers: ${{ steps.prepare_reviewers.outputs.reviewers }}
+
+      - name: Log existing branch update
+        if: steps.check_changes.outputs.has_changes == 'true' && env.BRANCH_EXISTS == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            console.log('🔄 Updated existing branch: ${{ env.BRANCH_NAME }}');
+            console.log('The changes have been pushed to the existing PR for this issue.');
 
       - name: Log analysis for no changes
         if: steps.check_changes.outputs.has_changes == 'false'
