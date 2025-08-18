@@ -15,3 +15,7 @@
 (def incorrect-value-type
   "Error type for SQL incorrect value type."
   ::incorrect-value-type)
+
+(def violate-permission-constraint
+  "Error type for SQL permission denied violations."
+  ::violate-permission-constraint)
