@@ -24,7 +24,7 @@ import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarLargeProps {
   collectionId?: CollectionId;
-  detailView: DetailViewState;
+  detailView: DetailViewState | null;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;

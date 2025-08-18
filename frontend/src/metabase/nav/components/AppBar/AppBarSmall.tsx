@@ -24,7 +24,7 @@ import {
 import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarSmallProps {
-  detailView: DetailViewState;
+  detailView: DetailViewState | null;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;

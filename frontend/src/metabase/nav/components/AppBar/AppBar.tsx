@@ -12,7 +12,7 @@ import AppBarSmall from "./AppBarSmall";
 export interface AppBarProps {
   currentUser: User;
   collectionId?: CollectionId;
-  detailView: DetailViewState;
+  detailView: DetailViewState | null;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
