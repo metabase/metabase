@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { SdkBreadcrumbs } from "embedding-sdk/components/private/SdkBreadcrumbs";
 import {
@@ -44,10 +45,13 @@ export function ContentManager({ settings }: ContentManagerProps) {
 
   // Use the last collection in the breadcrumb as the target for saving new questions.
   const targetCollection = useMemo(() => {
-    return (
-      breadcrumbs.findLast((item) => item.type === "collection")?.id ??
-      initialCollection
+    const collectionBreadcrumbs = breadcrumbs.filter(
+      (item) => item.type === "collection",
     );
+
+    const lastCollectionItem = _.last(collectionBreadcrumbs);
+
+    return lastCollectionItem?.id ?? initialCollection;
   }, [breadcrumbs, initialCollection]);
 
   // If a user clicks on a collection breadcrumb, switch the view.
