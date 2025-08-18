@@ -1,3 +1,4 @@
+import type { CreateDashboardValues, MetabaseDashboard } from "embedding-sdk";
 import type { CollectionBrowser } from "embedding-sdk/components/public/CollectionBrowser";
 import type { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk/components/public/CreateDashboardModal";
@@ -9,29 +10,29 @@ import type { EditableDashboard } from "embedding-sdk/components/public/dashboar
 import type { InteractiveDashboard } from "embedding-sdk/components/public/dashboard/InteractiveDashboard";
 import type { StaticDashboard } from "embedding-sdk/components/public/dashboard/StaticDashboard";
 import type { SdkDebugInfo } from "embedding-sdk/components/public/debug/SdkDebugInfo";
-import type { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";
 import type { SdkStore, SdkStoreState } from "embedding-sdk/store/types";
 import type { LoginStatus } from "embedding-sdk/types/user";
-import type { createDashboard } from "metabase/api/dashboard";
 import type { User } from "metabase-types/api";
 
-type HookFunction = () => void;
+type InternalHook = () => void;
 type ReduxStoreFactory = () => SdkStore;
 type ReduxStoreSelector<T> = (state: SdkStoreState) => T;
+type ReduxStoreUtilityFunction<
+  TFunctionSignature extends (...params: any[]) => any,
+> = (store: SdkStore) => TFunctionSignature;
 
 /**
  * IMPORTANT!
  * Any rename/removal change for object is a breaking change between the SDK Bundle and the SDK NPM package,
  * and should be done via the deprecation of the field first.
  */
-export type MetabaseEmbeddingSdkBundleExports =
-  MetabaseEmbeddingSdkBundlePublicExports &
-    MetabaseEmbeddingSdkBundleReduxStoreExports &
-    MetabaseEmbeddingSdkBundleStoreMutationsExports &
-    MetabaseEmbeddingSdkBundleStoreSelectorsExports &
-    MetabaseEmbeddingSdkBundleInternalHooksExports;
+export type MetabaseEmbeddingSdkBundleExports = PublicExports &
+  ReduxStoreExports &
+  ReduxStoreUtilityFunctionExports &
+  ReduxStoreSelectorsExports &
+  InternalHooksExports;
 
-export type MetabaseEmbeddingSdkBundlePublicExports = {
+type PublicExports = {
   CollectionBrowser: typeof CollectionBrowser;
   CreateDashboardModal: typeof CreateDashboardModal;
   CreateQuestion: typeof CreateQuestion;
@@ -45,23 +46,24 @@ export type MetabaseEmbeddingSdkBundlePublicExports = {
   StaticQuestion: typeof StaticQuestion;
 };
 
-export type MetabaseEmbeddingSdkBundleReduxStoreExports = {
+type ReduxStoreExports = {
   getSdkStore: ReduxStoreFactory;
 };
 
-export type MetabaseEmbeddingSdkBundleStoreMutationsExports = {
-  createDashboard: typeof createDashboard;
+type ReduxStoreUtilityFunctionExports = {
+  createDashboard: ReduxStoreUtilityFunction<
+    (params: CreateDashboardValues) => Promise<MetabaseDashboard>
+  >;
 };
 
-export type MetabaseEmbeddingSdkBundleStoreSelectorsExports = {
+type ReduxStoreSelectorsExports = {
   getApplicationName: ReduxStoreSelector<string>;
   getAvailableFonts: ReduxStoreSelector<string[]>;
-  getCollectionNumericIdFromReference: typeof getCollectionNumericIdFromReference;
   getLoginStatus: ReduxStoreSelector<LoginStatus>;
   getUser: ReduxStoreSelector<User | null>;
 };
 
-export type MetabaseEmbeddingSdkBundleInternalHooksExports = {
-  useInitData: HookFunction;
-  useLogVersionInfo: HookFunction;
+export type InternalHooksExports = {
+  useInitData: InternalHook;
+  useLogVersionInfo: InternalHook;
 };
