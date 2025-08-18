@@ -14,9 +14,11 @@ title: Driver interface changelog
 
 ## Metabase 0.56.3
 
-- Added the driver multi-method `driver/describe-database*` for drivers to prefer implementing over `driver/describe-database`, in order
-  to opt-in the automatic resilient connection mechanism.
-  
+- Added the driver multi-method `driver/describe-database*` for drivers to prefer implementing over `driver/describe-database`.
+  This allows drivers to opt-in to the automatic resilient connection mechanism, which provides better error recovery
+  when database connections are closed during metadata sync operations. Existing drivers implementing `describe-database`
+  will continue to work but won't benefit from the resilient connection handling and are engouraged to migrate to `driver/describe-database*`.
+
 ## Metabase 0.56.0
 
 - Add the testing multi-method `tx/track-dataset` for shared cloud dbs to track loaded datasets for more efficient sharing.
