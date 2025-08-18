@@ -472,7 +472,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
             [
               "field",
               PRODUCTS.CATEGORY,
-              { "base-type": "type/text", "source-field": ORDERS.PRODUCT_ID },
+              { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
             ],
           ],
         },

@@ -22,7 +22,7 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { useMetabotAgent } from "../../hooks";
 
 import Styles from "./MetabotChat.module.css";
-import { AgentErrorMessage, Message } from "./MetabotChatMessage";
+import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
@@ -156,40 +156,17 @@ export const MetabotChat = () => {
               data-testid="metabot-chat-inner-messages"
             >
               {/* conversation messages */}
-              {metabot.messages.map((message, index) => {
-                const canRetry =
-                  metabot.useStreaming &&
-                  message.role === "agent" &&
-                  metabot.messages[index + 1]?.role !== "agent";
-
-                return (
-                  <Message
-                    key={"msg-" + index}
-                    data-testid="metabot-chat-message"
-                    message={message}
-                    onRetry={canRetry ? handleRetryMessage : undefined}
-                    hideActions={
-                      metabot.isDoingScience &&
-                      metabot.messages.length === index + 1 &&
-                      message.role === "agent"
-                    }
-                  />
-                );
-              })}
-
-              {/* error messages */}
-              {metabot.errorMessages.map((message, index) => (
-                <AgentErrorMessage
-                  key={"err-" + index}
-                  data-testid="metabot-chat-message"
-                  message={message}
-                />
-              ))}
+              <Messages
+                messages={metabot.messages}
+                errorMessages={metabot.errorMessages}
+                onRetryMessage={handleRetryMessage}
+                isDoingScience={metabot.isDoingScience}
+              />
 
               {/* loading */}
               {metabot.isDoingScience && (
                 <MetabotThinking
-                  toolCalls={metabot.useStreaming ? metabot.toolCalls : []}
+                  toolCalls={metabot.toolCalls}
                   hasStartedResponse={
                     _.last(metabot.messages)?.role === "agent"
                   }
@@ -231,11 +208,8 @@ export const MetabotChat = () => {
               data-testid="metabot-chat-input"
               w="100%"
               leftSection={
-                <Box h="100%" pt="11px" onDoubleClick={metabot.toggleStreaming}>
-                  <Icon
-                    name="metabot"
-                    c={metabot.useStreaming ? "brand" : "warning"}
-                  />
+                <Box h="100%" pt="11px">
+                  <Icon name="metabot" c="brand" />
                 </Box>
               }
               autosize

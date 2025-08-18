@@ -261,7 +261,10 @@
 
 (defn- by-desired-alias
   [columns desired-alias]
-  (m/find-first (comp #{desired-alias} :lib/desired-column-alias) columns))
+  (let [columns (into []
+                      (lib.field.util/add-source-and-desired-aliases-xform meta/metadata-provider)
+                      columns)]
+    (m/find-first (comp #{desired-alias} :lib/desired-column-alias) columns)))
 
 (deftest ^:parallel remove-clause-aggregation-with-ref-test
   (testing "removing an aggregation removes references in order-by (#12625)"
@@ -288,7 +291,11 @@
                     lib/append-stage)
           [a0-column a1-column] (-> query
                                     lib/visible-columns
-                                    (->> (filter #(= "sum" (:name %)))))
+                                    (->> (filter #(= (:name %) "sum"))))
+          _ (is (=? {:name "sum", :lib/source-column-alias "sum"}
+                    a0-column))
+          _ (is (=? {:name "sum", :lib/source-column-alias "sum_2"}
+                    a1-column))
           query (-> query
                     (lib/expression "xix" (lib/ref a0-column))
                     (lib/expression "yiy" (lib/ref a1-column)))
@@ -1287,20 +1294,26 @@
     (are [query-fn] (let [q (query-fn)] (= q (lib.remove-replace/normalize-fields-clauses q)))
       lib.tu/query-with-join
       lib.tu/query-with-self-join
-      lib.tu/venues-query))
+      lib.tu/venues-query)))
+
+(deftest ^:parallel normalize-fields-clauses-test-2
   (testing "a :fields clause with extras is retained"
     (let [base     (lib/query meta/metadata-provider (meta/table-metadata :orders))
           viz      (lib/visible-columns base)
           category (m/find-first #(= (:name %) "CATEGORY") viz)
           query    (lib/add-field base 0 category)]
       (is (= base  (lib.remove-replace/normalize-fields-clauses base)))
-      (is (= query (lib.remove-replace/normalize-fields-clauses query)))))
+      (is (= query (lib.remove-replace/normalize-fields-clauses query))))))
+
+(deftest ^:parallel normalize-fields-clauses-test-3
   (testing "a :fields clause with a default field removed is retained"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/remove-field 0 (assoc (meta/field-metadata :orders :tax)
                                                :lib/source :source/table-defaults)))]
       (is (= 8 (-> query :stages first :fields count)))
-      (is (= query (lib.remove-replace/normalize-fields-clauses query)))))
+      (is (= query (lib.remove-replace/normalize-fields-clauses query))))))
+
+(deftest ^:parallel normalize-fields-clauses-test-4a
   (testing "if :fields clause matches the defaults it is dropped"
     (testing "removing then restoring a field"
       (let [tax     (assoc (meta/field-metadata :orders :tax)
@@ -1315,10 +1328,14 @@
                       lib.remove-replace/normalize-fields-clauses
                       :stages
                       first
-                      :fields)))))
+                      :fields)))))))
+
+(deftest ^:parallel normalize-fields-clauses-test-4b
+  (testing "if :fields clause matches the defaults it is dropped"
     (testing "adding and dropping and implicit join field"
       (let [category (assoc (meta/field-metadata :products :category)
-                            :lib/source :source/implicitly-joinable)
+                            :lib/source :source/implicitly-joinable
+                            :fk-field-id 1337) ; just make something up
             query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/add-field 0 category)
                          ;; Can't use remove-field itself; it will normalize the fields clause.
@@ -1328,7 +1345,9 @@
                       lib.remove-replace/normalize-fields-clauses
                       :stages
                       first
-                      :fields))))))
+                      :fields)))))))
+
+(deftest ^:parallel normalize-fields-clauses-test-5a
   (testing ":fields clauses on joins"
     (testing "are preserved if :none or :all"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -1338,7 +1357,10 @@
             none  (assoc-in query [:stages 0 :joins 0 :fields] :none)]
         (is (= :all (-> query :stages first :joins first :fields)))
         (is (= query (lib.remove-replace/normalize-fields-clauses query)))
-        (is (= none  (lib.remove-replace/normalize-fields-clauses none)))))
+        (is (= none  (lib.remove-replace/normalize-fields-clauses none)))))))
+
+(deftest ^:parallel normalize-fields-clauses-test-5b
+  (testing ":fields clauses on joins"
     (testing "are preserved if they do not match the defaults"
       (let [join   (-> (lib/join-clause (meta/table-metadata :products)
                                         [(lib/= (meta/field-metadata :orders :product-id)
@@ -1348,7 +1370,10 @@
             query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                        (lib/join join))]
         (is (= 4 (-> query :stages first :joins first :fields count)))
-        (is (= query (lib.remove-replace/normalize-fields-clauses query)))))
+        (is (= query (lib.remove-replace/normalize-fields-clauses query)))))))
+
+(deftest ^:parallel normalize-fields-clauses-test-5c
+  (testing ":fields clauses on joins"
     (testing "are replaced with :all if they include all the defaults"
       (let [join   (-> (lib/join-clause (meta/table-metadata :products)
                                         [(lib/= (meta/field-metadata :orders :product-id)

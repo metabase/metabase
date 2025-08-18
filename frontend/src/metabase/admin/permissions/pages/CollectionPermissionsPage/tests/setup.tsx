@@ -136,7 +136,7 @@ export function setup({
     rootCollection,
   });
 
-  setupTokenStatusEndpoint(true);
+  setupTokenStatusEndpoint({ valid: true });
 
   setupCollectionPermissionsGraphEndpoint(permissionsGraph);
   setupGroupsEndpoint(permissionGroups);
