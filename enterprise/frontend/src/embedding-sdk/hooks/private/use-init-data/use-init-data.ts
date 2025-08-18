@@ -71,8 +71,7 @@ export const useInitData = ({
 
     dispatch(initAuth(authConfig));
 
-    const sdkPackageVersion =
-      getEmbeddingSdkPackageBuildData()?.version ?? null;
+    const sdkPackageVersion = getEmbeddingSdkPackageBuildData().version ?? null;
 
     api.requestClient = {
       name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
