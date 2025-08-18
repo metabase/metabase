@@ -69,6 +69,7 @@ export const Header = ({ columns, icon, row }: Props) => {
           <Text
             c="text-primary"
             className={S.text}
+            component="h1"
             fw="bold"
             fz={rem(32)}
             lh={1}

@@ -30,7 +30,12 @@ export function DetailView({ dataset, rowId, table, tableForeignKeys }: Props) {
   const icon = getEntityIcon(table.entity_type);
 
   return (
-    <Stack bg="var(--mb-color-background-light)" gap={0} mih="100%">
+    <Stack
+      bg="var(--mb-color-background-light)"
+      data-testid="object-detail"
+      gap={0}
+      mih="100%"
+    >
       {headerColumns.length > 0 && (
         <Box
           bg="bg-white"
