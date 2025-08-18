@@ -189,9 +189,19 @@ export class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
       );
     }
 
+    // Create a properly structured series array with transformed data
+    // This ensures that getTableClickedObjectRowData works correctly
+    const transformedSeries = [
+      {
+        ...this.props.series[0],
+        data: data,
+      },
+    ];
+
     return (
       <TableInteractive
         {...this.props}
+        series={transformedSeries}
         question={this.state.question}
         data={data}
         isPivoted={false}
