@@ -28,9 +28,9 @@ export interface ListViewProps {
 export function ListView({
   data,
   settings,
-  sortedColumnName: _sortedColumnName,
-  sortingDirection: _sortingDirection,
-  onSortClick: _onSortClick,
+  sortedColumnName,
+  sortingDirection,
+  onSortClick,
   entityType,
   card,
   metadata,
@@ -44,10 +44,7 @@ export function ListView({
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 70,
     // Allow dynamic row heights when content wraps in the right subgrid
-    measureElement: (el) => {
-      console.log("measureElement");
-      return el.getBoundingClientRect().height;
-    },
+    measureElement: (el) => el.getBoundingClientRect().height,
     overscan: 10,
   });
   const virtualRows = virtualizer.getVirtualItems();
@@ -205,15 +202,34 @@ export function ListView({
                               return (
                                 <div key={colIndex}>
                                   <Text
+                                    className={styles.columnName}
                                     size="xs"
                                     c="text-light"
-                                    fw={500}
                                     style={{
                                       marginBottom:
                                         "calc(var(--mantine-spacing-xs) / 2)",
                                     }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onSortClick(col);
+                                    }}
                                   >
                                     {col.display_name}
+                                    {sortedColumnName === col.name && (
+                                      <Icon
+                                        name={
+                                          sortingDirection === "asc"
+                                            ? "arrow_up"
+                                            : "arrow_down"
+                                        }
+                                        c="text-medium"
+                                        size={10}
+                                        style={{
+                                          display: "inline",
+                                          marginLeft: 4,
+                                        }}
+                                      />
+                                    )}
                                   </Text>
                                   <ColumnValue
                                     column={col}

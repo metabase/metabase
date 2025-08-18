@@ -78,6 +78,15 @@
   align-items: start;
 }
 
+.columnName {
+  cursor: pointer;
+  font-weight: 500;
+
+  &:hover {
+    font-weight: 700;
+  }
+}
+
 .categoryValue {
   padding: 4px 8px;
   border-radius: 100px;
