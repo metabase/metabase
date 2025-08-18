@@ -2,7 +2,7 @@ name: Auto-update documentation
 
 on:
   schedule:
-    - cron: '0 2 * * 6' # Every Saturday at 2 AM UTC
+    - cron: "0 2 * * 6" # Every Saturday at 2 AM UTC
   workflow_dispatch:
 
 permissions:
@@ -24,7 +24,7 @@ jobs:
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: 'auto-update-docs'
+          m2-cache-key: "auto-update-docs"
 
       - name: Generate environment variables documentation
         id: generate_env_docs
@@ -64,15 +64,15 @@ jobs:
         run: |
           # Use timestamp with seconds to avoid conflicts
           BRANCH_NAME="docs/auto-update-$(date +%Y-%m-%d-%H%M%S)"
-          
+
           git config user.name github-actions
           git config user.email github-actions@github.com
           git checkout -b $BRANCH_NAME
-          
+
           git add docs/
           git commit -m "Auto-update documentation" --no-verify
           git push -u origin $BRANCH_NAME
-          
+
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
       - name: Create pull request
@@ -82,10 +82,10 @@ jobs:
         run: |
           # Generate a summary of changes
           CHANGES_SUMMARY=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | head -10 | sed 's/^/- /' || echo "- No specific files detected")
-          
+
           # Count total changes for conditional message
           TOTAL_CHANGES=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | wc -l || echo "0")
-          
+
           # Retry PR creation up to 3 times
           for i in {1..3}; do
             if gh pr create \
