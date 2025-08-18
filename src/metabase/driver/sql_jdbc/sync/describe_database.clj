@@ -281,5 +281,3 @@
              exclusion-patterns] (when (some? schema-filter-prop)
                                    (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]
         (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))))})
-
-#_(describe-database :postgres (toucan2.core/select-one :model/Database 29))
