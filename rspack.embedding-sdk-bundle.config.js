@@ -77,10 +77,9 @@ const config = {
     path: TMP_BUILD_PATH,
     publicPath: "",
     filename: SDK_BUNDLE_FILENAME,
-    library: {
-      type: "umd",
-      name: "MetabaseEmbeddingSDK",
-    },
+
+    // We assign exports from SDK bundle into window.MetabaseEmbeddingSDK manually in the SDK bundle entry point.
+    library: false,
   },
 
   devtool: IS_DEV_MODE ? mainConfig.devtool : false,

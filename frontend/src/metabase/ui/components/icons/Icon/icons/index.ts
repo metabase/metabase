@@ -94,8 +94,12 @@ import cloud_component from "./cloud.svg?component";
 import cloud_source from "./cloud.svg?source";
 import cloud_filled_component from "./cloud_filled.svg?component";
 import cloud_filled_source from "./cloud_filled.svg?source";
+import code_block_component from "./code_block.svg?component";
+import code_block_source from "./code_block.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
+import company_component from "./company.svg?component";
+import company_source from "./company.svg?source";
 import compare_component from "./compare.svg?component";
 import compare_source from "./compare.svg?source";
 import connections_component from "./connections.svg?component";
@@ -104,6 +108,8 @@ import contract_component from "./contract.svg?component";
 import contract_source from "./contract.svg?source";
 import copy_component from "./copy.svg?component";
 import copy_source from "./copy.svg?source";
+import currency_component from "./currency.svg?component";
+import currency_source from "./currency.svg?source";
 import curve_component from "./curve.svg?component";
 import curve_source from "./curve.svg?source";
 import curved_component from "./curved.svg?component";
@@ -276,6 +282,8 @@ import number_component from "./number.svg?component";
 import number_source from "./number.svg?source";
 import official_collection_component from "./official_collection.svg?component";
 import official_collection_source from "./official_collection.svg?source";
+import ordered_list_component from "./ordered_list.svg?component";
+import ordered_list_source from "./ordered_list.svg?source";
 import palette_component from "./palette.svg?component";
 import palette_source from "./palette.svg?source";
 import pause_component from "./pause.svg?component";
@@ -310,6 +318,10 @@ import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
 import question_component from "./question.svg?component";
 import question_source from "./question.svg?source";
+import quote_component from "./quote.svg?component";
+import quote_source from "./quote.svg?source";
+import receipt_component from "./receipt.svg?component";
+import receipt_source from "./receipt.svg?source";
 import recents_component from "./recents.svg?component";
 import recents_source from "./recents.svg?source";
 import redo_component from "./redo.svg?component";
@@ -396,6 +408,16 @@ import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import text_bold_component from "./text_bold.svg?component";
+import text_bold_source from "./text_bold.svg?source";
+import text_italic_component from "./text_italic.svg?component";
+import text_italic_source from "./text_italic.svg?source";
+import text_strike_component from "./text_strike.svg?component";
+import text_strike_source from "./text_strike.svg?source";
+import thumbs_down_component from "./thumbs_down.svg?component";
+import thumbs_down_source from "./thumbs_down.svg?source";
+import thumbs_up_component from "./thumbs_up.svg?component";
+import thumbs_up_source from "./thumbs_up.svg?source";
 import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
@@ -579,6 +601,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: check_filled_component,
       source: check_filled_source,
     },
+    code_block: {
+      component: code_block_component,
+      source: code_block_source,
+    },
     chevrondown: {
       component: chevrondown_component,
       source: chevrondown_source,
@@ -631,6 +657,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: combine_component,
       source: combine_source,
     },
+    company: {
+      component: company_component,
+      source: company_source,
+    },
     connections: {
       component: connections_component,
       source: connections_source,
@@ -642,6 +672,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     copy: {
       component: copy_component,
       source: copy_source,
+    },
+    currency: {
+      component: currency_component,
+      source: currency_source,
     },
     curved: {
       component: curved_component,
@@ -1051,6 +1085,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: pulse_component,
       source: pulse_source,
     },
+    receipt: {
+      component: receipt_component,
+      source: receipt_source,
+    },
     recents: {
       component: recents_component,
       source: recents_source,
@@ -1110,6 +1148,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     question: {
       component: question_component,
       source: question_source,
+    },
+    quote: {
+      component: quote_component,
+      source: quote_source,
     },
     return: {
       component: return_component,
@@ -1229,6 +1271,26 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: table2_component,
       source: table2_source,
     },
+    text_bold: {
+      component: text_bold_component,
+      source: text_bold_source,
+    },
+    text_italic: {
+      component: text_italic_component,
+      source: text_italic_source,
+    },
+    text_strike: {
+      component: text_strike_component,
+      source: text_strike_source,
+    },
+    thumbs_down: {
+      component: thumbs_down_component,
+      source: thumbs_down_source,
+    },
+    thumbs_up: {
+      component: thumbs_up_component,
+      source: thumbs_up_source,
+    },
     time_history: {
       component: time_history_component,
       source: time_history_source,
@@ -1284,6 +1346,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     official_collection: {
       component: official_collection_component,
       source: official_collection_source,
+    },
+    ordered_list: {
+      component: ordered_list_component,
+      source: ordered_list_source,
     },
     verified_filled: {
       component: verified_filled_component,
@@ -1382,6 +1448,7 @@ export type IconName =
   | "calendar"
   | "check"
   | "check_filled"
+  | "code_block"
   | "chevrondown"
   | "chevronleft"
   | "chevronright"
@@ -1395,6 +1462,8 @@ export type IconName =
   | "cloud_filled"
   | "compare"
   | "combine"
+  | "company"
+  | "currency"
   | "connections"
   | "contract"
   | "copy"
@@ -1500,6 +1569,7 @@ export type IconName =
   | "popular"
   | "progress"
   | "pulse"
+  | "receipt"
   | "recents"
   | "revert"
   | "sankey"
@@ -1514,6 +1584,7 @@ export type IconName =
   | "sum"
   | "sync"
   | "question"
+  | "quote"
   | "redo"
   | "return"
   | "reference"
@@ -1544,6 +1615,11 @@ export type IconName =
   | "tab"
   | "table"
   | "table2"
+  | "text_bold"
+  | "text_italic"
+  | "text_strike"
+  | "thumbs_down"
+  | "thumbs_up"
   | "time_history"
   | "trash"
   | "trash_filled"
@@ -1558,6 +1634,7 @@ export type IconName =
   | "variable"
   | "verified"
   | "official_collection"
+  | "ordered_list"
   | "verified_filled"
   | "view_archive"
   | "warning"

@@ -73,7 +73,8 @@
                                    (map (comp keyword u/->kebab-case-en name second))
                                    ;; Remove db-specific fields
                                    (remove #{:search-vector :query}))
-                             (vals (scoring/scorers {:search-string ""})))
+                             (vals (scoring/scorers {:search-engine :search.engine/appdb
+                                                     :search-string ""})))
                        (set (cons :model (keys search.spec/attr-types))))))))
 
 ;; ---- index-ony rankers ----

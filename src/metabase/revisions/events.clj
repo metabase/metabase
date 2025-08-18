@@ -53,3 +53,12 @@
 (methodical/defmethod events/publish-event! ::segment-event
   [topic event]
   (push-revision! :model/Segment event {:is-creation? (= topic :event/segment-create)}))
+
+(derive ::document-event ::event)
+(derive :event/document-create ::document-event)
+(derive :event/document-update ::document-event)
+(derive :event/document-delete ::document-event)
+
+(methodical/defmethod events/publish-event! ::document-event
+  [topic event]
+  (push-revision! :model/Document event {:is-creation? (= topic :event/document-create)}))
