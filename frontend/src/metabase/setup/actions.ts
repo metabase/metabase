@@ -7,6 +7,7 @@ import {
   updateSetting,
   updateSettings,
 } from "metabase/admin/settings/settings";
+import { userApi } from "metabase/api";
 import { loadLocalization } from "metabase/lib/i18n";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -175,7 +176,14 @@ export const skipDatabase = createAsyncThunk(
 export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
   SUBMIT_USER_INVITE,
-  (_: InviteInfo, { dispatch }) => {
+  async (inviteInfo: InviteInfo, { dispatch }) => {
+    await dispatch(
+      userApi.endpoints.createUser.initiate({
+        email: inviteInfo.email,
+        first_name: inviteInfo.first_name || undefined,
+        last_name: inviteInfo.last_name || undefined,
+      }),
+    );
     dispatch(goToNextStep());
   },
 );
