@@ -106,6 +106,7 @@ export interface ContentManagerCommonEmbedOptions {
   /** Whether to show the "New Exploration" button. Defaults to true. */
   withNewQuestion?: boolean;
 
+  template?: never;
   questionId?: never;
   dashboardId?: never;
 }
