@@ -12,6 +12,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
@@ -91,6 +92,12 @@ function CreateTransformForm({
   const handleSubmit = async (values: NewTransformValues) => {
     const request = getCreateRequest(query, values);
     const transform = await createTransform(request).unwrap();
+
+    trackSimpleEvent({
+      event: "transform_created",
+      target_id: transform.id,
+    });
+
     onCreate(transform);
   };
 

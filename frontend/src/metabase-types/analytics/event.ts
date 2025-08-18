@@ -258,6 +258,11 @@ export type TransformTriggerManualRunEvent = ValidateEvent<{
   target_id: number;
 }>;
 
+export type TransformCreatedEvent = ValidateEvent<{
+  event: "transform_created";
+  target_id: number;
+}>;
+
 export type EmbedWizardEvent =
   | EmbedWizardExperienceSelectedEvent
   | EmbedWizardResourceSelectedEvent
@@ -297,4 +302,5 @@ export type SimpleEvent =
   | EmbedWizardEvent
   | ConnectionStringParsedSuccessEvent
   | ConnectionStringParsedFailedEvent
-  | TransformTriggerManualRunEvent;
+  | TransformTriggerManualRunEvent
+  | TransformCreatedEvent;
