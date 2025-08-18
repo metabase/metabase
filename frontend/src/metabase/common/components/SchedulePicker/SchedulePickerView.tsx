@@ -266,7 +266,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
       textBeforeInterval,
       className,
       style,
-      mt = "lg",
+      mt = "md",
     } = this.props;
 
     const scheduleType = schedule.schedule_type;

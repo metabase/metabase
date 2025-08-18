@@ -33,7 +33,7 @@ runs:
           });
 
           if (!artifacts.data?.artifacts?.[0]?.id) {
-            throw new Error(`No artifacts found for: ${{ inputs.name }}`);
+            throw new Error(`No artifacts found for ${{ inputs.name }}`);
           }
 
           const artifact_id = artifacts.data.artifacts[0].id;
@@ -47,52 +47,40 @@ runs:
 
           fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
 
-    - name: unzip uberjar artifact
-      shell: bash
-      run: unzip mb.zip
-    - name: Process the Uberjar
+    - name: Extract and rename JAR
       shell: bash
       run: | # bash
         OUTPUT_NAME="${{ inputs.output-name }}"
         EXTRACT_PATH="${{ inputs.extract-path }}"
 
-        # Function to determine the final JAR path
-        get_jar_path() {
-          if [ "$EXTRACT_PATH" == "." ]; then
-            echo "$OUTPUT_NAME"
-          else
-            echo "$EXTRACT_PATH/$OUTPUT_NAME"
-          fi
-        }
+        # Create a temporary directory for extraction to avoid conflicts
+        TEMP_DIR=$(mktemp -d)
 
-        # Create target directory if it doesn't exist
-        if [ "$EXTRACT_PATH" != "." ]; then
-          mkdir -p "$EXTRACT_PATH"
-        fi
+        # Extract to temporary directory
+        unzip mb.zip -d "$TEMP_DIR"
 
-        # Find the source jar file
-        if [ -e "metabase.jar" ]; then
-          SOURCE_JAR="metabase.jar"
-        elif [ -e "target/uberjar/metabase.jar" ]; then
-          SOURCE_JAR="target/uberjar/metabase.jar"
+        # Create target directory
+        mkdir -p "$EXTRACT_PATH"
+
+        # Find and move the jar to final location
+        if [ -e "$TEMP_DIR/metabase.jar" ]; then
+          mv "$TEMP_DIR/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
+        elif [ -e "$TEMP_DIR/target/uberjar/metabase.jar" ]; then
+          mv "$TEMP_DIR/target/uberjar/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
         else
-          echo "Could not find the metabase.jar file"
+          echo "Could not find metabase.jar in extracted files"
           exit 1
         fi
 
-        # Get the target path
-        TARGET_PATH=$(get_jar_path)
+        # Clean up temporary directory
+        rm -rf "$TEMP_DIR"
 
-        # Move the jar if source and target differ
-        if [ "$SOURCE_JAR" == "$TARGET_PATH" ]; then
-          echo "Jar is already at the correct location: $TARGET_PATH"
+        # Set the JAR_PATH environment variable
+        if [ "$EXTRACT_PATH" == "." ]; then
+          echo "JAR_PATH=$OUTPUT_NAME" >> $GITHUB_ENV
         else
-          echo "Moving $SOURCE_JAR to $TARGET_PATH"
-          mv "$SOURCE_JAR" "$TARGET_PATH"
+          echo "JAR_PATH=$EXTRACT_PATH/$OUTPUT_NAME" >> $GITHUB_ENV
         fi
-
-        # Export the path for subsequent steps
-        echo "JAR_PATH=$TARGET_PATH" >> $GITHUB_ENV
 
     - name: Verify that this is a valid JAR file
       shell: bash

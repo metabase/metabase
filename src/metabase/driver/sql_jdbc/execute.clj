@@ -856,6 +856,39 @@
                       e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Transform Stuff                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- create-and-execute-statement!
+  [driver conn sql params]
+  (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
+    {:rows-affected (if (instance? PreparedStatement stmt)
+                      (.executeUpdate ^PreparedStatement stmt)
+                      (.executeUpdate stmt sql))}))
+
+(defmethod driver/execute-raw-queries! :sql-jdbc
+  [driver connection-details queries]
+  (try
+    (do-with-connection-with-options
+     driver
+     connection-details
+     {:write? true}
+     (fn [^Connection conn]
+       (.setAutoCommit conn false)
+       (try
+         (let [result (doall (for [[sql params] queries]
+                               (create-and-execute-statement! driver conn sql params)))]
+           (.commit conn)
+           result)
+         (catch Throwable t
+           (.rollback conn)
+           (throw t)))))
+    (catch Throwable e
+      (throw (ex-info (tru "Error executing raw queries: {0}" (ex-message e))
+                      {:queries queries, :type driver-api/qp.error-type.invalid-query}
+                      e)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
