@@ -33,10 +33,6 @@
   &:hover {
     color: var(--mb-color-brand);
   }
-
-  &[data-column-id="__MB_ROW_SELECT"] {
-    border-right: none;
-  }
 }
 
 .tableBodyContainer {
@@ -46,10 +42,6 @@
 .tableBodyCell {
   background-color: var(--mb-color-bg-white);
   border-right: 1px solid var(--mb-color-border-alpha-30);
-
-  &[data-column-id="__MB_ROW_SELECT"] {
-    border-right: none;
-  }
 }
 
 .headerCellContainer {
@@ -63,4 +55,14 @@
 .sortIndicator {
   flex-shrink: 0;
   margin-left: 0.25rem;
+}
+
+.pencilIcon {
+  cursor: pointer;
+  color: var(--mb-color-brand);
+  visibility: hidden;
+}
+
+.tableRow:hover .pencilIcon {
+  visibility: visible;
 }
