@@ -502,7 +502,7 @@
                 :description (when-not (str/blank? remarks)
                                remarks)}))))))
 
-(defmethod driver/describe-database :athena
+(defmethod driver/describe-database* :athena
   [driver {details :details, :as database}]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
