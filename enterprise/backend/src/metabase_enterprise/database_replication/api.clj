@@ -1,7 +1,6 @@
 (ns metabase-enterprise.database-replication.api
   (:require
    [clojure.core.memoize :as memoize]
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
@@ -63,55 +62,11 @@
       exclude-pattern
       exclude-fn)))
 
-(defn find-tables
-  "Note: copied from harbormaster.connections.sql/find-tables. Keep in sync.
-  Returns table list filtered by schemas, including row count, ownership, and super user information.
-  Postgres specific."
-  [{:as conn, :keys [schema-filters]}]
-  (->>
-   "
-SELECT
-    c.relname AS table_name,
-    n.nspname AS table_schema,
-    c.relowner = r.oid AS is_owner,
-    (r.rolinherit AND EXISTS (
-        SELECT 1 FROM pg_auth_members am
-        WHERE am.member = r.oid AND am.roleid = c.relowner
-    )) AS inherits_owner,
-    r.rolsuper AS is_superuser,
-    EXISTS (
-        SELECT 1 FROM pg_auth_members am
-        JOIN pg_roles super_role ON super_role.oid = am.roleid
-        WHERE am.member = r.oid
-          AND (super_role.rolsuper = true OR super_role.rolname = 'rds_superuser')
-    ) AS inherits_superuser,
-    EXISTS (
-        SELECT 1 FROM pg_constraint con
-        WHERE con.conrelid = c.oid
-          AND con.contype = 'p'
-    ) AS has_pkey,
-    quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS full_name,
-    pg_total_relation_size(quote_ident(n.nspname) || '.' || quote_ident(c.relname)) AS size,
-    COALESCE(s.n_live_tup, 0) AS estimated_row_count
-FROM
-    pg_catalog.pg_class c
-    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-    JOIN pg_catalog.pg_roles r ON r.rolname = current_user
-    LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid
-WHERE
-    c.relkind = 'r'  -- regular tables only
-    AND n.nspname NOT IN ('pg_catalog', 'information_schema')
-    AND has_schema_privilege(current_user, n.nspname, 'USAGE')
-ORDER BY
-    n.nspname,
-    c.relname;"
-   (jdbc/query (:credentials conn))
-   (filter (comp (schema-filters->fn schema-filters) :table_schema))
-   (map #(assoc % :has_ownership (boolean (some % [:is_superuser :inherits_superuser :is_owner :inherits_owner]))))
-   (sort-by :size)))
+(defn- preview [secret]
+  (hm.client/call :preview-connection, :connection-id "preview", :type "pg_replication", :secret secret))
 
-(def ^:private find-tables-memo
-  (memoize/ttl find-tables :ttl/threshold (u/minutes->ms 5)))
+(def ^:private preview-memo
+  (memoize/ttl preview :ttl/threshold (u/minutes->ms 5)))
 
 (defn- token-check-quotas-info
   "Predicate that signals if replication looks right from the quota perspective.
@@ -126,8 +81,10 @@ ORDER BY
                                              (apply -))
                                     -1)
         all-tables                 (->> (dissoc secret :schema-filters)
-                                        find-tables-memo
-                                        ;; memo the slow query, then filter schemas over the memoized result
+                                        ;; memo the slow preview call without filters, then
+                                        ;; filter schemas over the memoized result for snappy UI
+                                        preview-memo
+                                        :tables
                                         (filter (comp (schema-filters->fn schema-filters) :table_schema)))
         replicated-tables          (->> all-tables
                                         (filter :has_pkey)
