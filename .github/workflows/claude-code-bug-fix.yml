@@ -298,7 +298,7 @@ jobs:
             console.log('Reviewer:', issueCreator);
 
       - name: Create Pull Request
-        if: steps.check_changes.outputs.has_changes == 'true' && env.BRANCH_EXISTS == 'false'
+        if: steps.check_changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
