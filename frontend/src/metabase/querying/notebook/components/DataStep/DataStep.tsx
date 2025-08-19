@@ -14,7 +14,6 @@ import { CONTAINER_PADDING } from "../NotebookCell/constants";
 import { NotebookDataPicker } from "../NotebookDataPicker";
 
 import S from "./DataStep.module.css";
-import { moveColumnInSettings } from "metabase/visualizations/components/settings/ChartSettingTableColumns/TableColumnPanel/utils";
 
 export const DataStep = ({
   query,
@@ -80,8 +79,6 @@ export const DataStep = ({
     column: Lib.ColumnMetadata,
     newDisplayName: string,
   ) => {
-    // Use the existing visualization settings system to rename columns
-    // This updates the column_title setting which is used throughout the system
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
     const columnKey = columnInfo.name;
     const currentSettings = question.card().visualization_settings || {};
@@ -96,7 +93,6 @@ export const DataStep = ({
     };
 
     const newSettings = updateSettings(currentSettings, diff);
-    // Create a new question with updated visualization settings
     const updatedQuestion = question.updateSettings(newSettings);
 
     updateVisualizationSettings(updatedQuestion);
@@ -108,21 +104,17 @@ export const DataStep = ({
     const diff = {
       "table.columns": reorderedColumns.map((column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        if (columnInfo.selected) {
-          console.log(columnInfo)
-        }
+
         return {
           name: columnInfo.name,
           enabled: columnInfo.selected,
-        }
-      })
-    }
+        };
+      }),
+    };
 
     const newSettings = updateSettings(currentSettings, diff);
-
-    // console.log(Lib.displayInfo(query, stageIndex, columns[0]))
-    // const newSettings = moveColumnInSettings(columns, oldIndex, newIndex)
     const updatedQuestion = question.updateSettings(newSettings);
+
     updateVisualizationSettings(updatedQuestion);
   };
 
