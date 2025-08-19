@@ -140,6 +140,7 @@ export const insertSnippet =
     const datasetQuery = query
       .setQueryText(newText)
       .updateSnippetsWithIds([snippet])
+      .setQueryText(newText)
       .datasetQuery();
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
   };
