@@ -75,6 +75,7 @@
     (params.ops/to-clause param)
     ;; multipe values. Recursively handle them all and glue them all together with an OR clause
     (sequential? param-value)
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (mbql.u/simplify-compound-filter
      (vec (cons :or (for [value param-value]
                       (build-filter-clause query {:type param-type, :value value, :target target})))))

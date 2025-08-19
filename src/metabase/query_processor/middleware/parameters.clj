@@ -32,6 +32,7 @@
           (dissoc :source-table :filter))
       ;; putting parameters in a join that has a `:source-query` is a little wacky (just add them to `:parameters` in
       ;; the source query itself), but we'll allow it for now
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (-> (update-in join [:source-query :filter] mbql.u/combine-filter-clauses filter-clause)
           (dissoc :filter)))))
 
@@ -43,6 +44,7 @@
     parent-stage
     (-> parent-stage
         (update :source-query dissoc :filter)
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (update :filter mbql.u/combine-filter-clauses filter-clause))))
 
 (defn- expand-mbql-params [outer-query {:keys [parameters], :as m}]
