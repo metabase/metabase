@@ -90,34 +90,6 @@
         :db-filters-type "inclusion"
         :db-filters-patterns database-name}))))
 
-(defn connection-details->spec* [details]
-  (let [;; ensure defaults merge on top of nils
-        default-details {:user "default" :password "" :dbname "default" :host "localhost" :port 8123}
-        details (reduce-kv (fn [m k v] (assoc m k (if (nil? v) (k default-details) v)))
-                           default-details
-                           details)
-        {:keys [user password _dbname db host port ssl clickhouse-settings max-open-connections]} details
-        host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
-                 (str/starts-with? host "http://")  (subs host 7)
-                 (str/starts-with? host "https://") (subs host 8)
-                 :else host)]
-    (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
-         :subprotocol                    "clickhouse"
-         :subname                        (str "//" host ":" port "/" db)
-         :password                       (or password "")
-         :user                           user
-         :ssl                            (boolean ssl)
-         :use_server_time_zone_for_dates true
-         :product_name                   (format "metabase/%s" (:tag driver-api/mb-version-info))
-         :remember_last_set_roles        true
-         :http_connection_provider       "HTTP_URL_CONNECTION"
-         :jdbc_ignore_unsupported_values "true"
-         :jdbc_schema_term               "schema"
-         :max_open_connections           (or max-open-connections 100)
-         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-         :custom_http_params             (or clickhouse-settings "")}
-        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
-
 (defmethod sql.tx/qualified-name-components :clickhouse
   ([_ db-name]                       [db-name])
   ([_ db-name table-name]            [db-name table-name])
