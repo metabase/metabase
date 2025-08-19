@@ -15,6 +15,8 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+;; `delete!` below is ok in a parallel test since it's not actually executing anything
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
                         (thunk))))
