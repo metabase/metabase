@@ -17,7 +17,7 @@ export const getEmbedExperiences = () =>
     {
       value: "dashboard",
       title: t`Dashboard`,
-      description: `Embed an entire dashboard with multiple charts and filters`,
+      description: t`Embed an entire dashboard with multiple charts and filters`,
     },
     {
       value: "chart",
@@ -26,8 +26,8 @@ export const getEmbedExperiences = () =>
     },
     {
       value: "exploration",
-      title: "Exploration",
-      description: "Embed an interactive data exploration experience",
+      title: t`Exploration`,
+      description: t`Embed an interactive data exploration experience`,
     },
     {
       value: "browser",
