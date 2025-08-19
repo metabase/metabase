@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-736-add-metabase-browser-template-to-embed-flow"
+    }
+  ]
 }
