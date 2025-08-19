@@ -1124,3 +1124,23 @@ describe("issue 55487", () => {
     cy.findByTestId("object-detail").should("be.visible");
   });
 });
+
+describe("issue 58628", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signIn("nodata");
+  });
+
+  it("should show the unauthorized page when accessing the notebook editor without data perms (metabase#58628)", () => {
+    cy.log("should not be able to access the notebook editor");
+    cy.visit("/question/notebook");
+    cy.url().should("include", "/unauthorized");
+    H.main()
+      .findByText("Sorry, you don’t have permission to see that.")
+      .should("be.visible");
+
+    cy.log("should be able to access the query builder in view mode");
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.queryBuilderHeader().should("be.visible");
+  });
+});
