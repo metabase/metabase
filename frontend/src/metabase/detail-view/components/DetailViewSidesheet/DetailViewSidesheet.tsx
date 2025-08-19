@@ -47,7 +47,9 @@ export function DetailViewSidesheet({
 }: Props) {
   const [linkCopied, setLinkCopied] = useState(false);
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
-  const rowName = getRowName(columns, row) || rowId;
+  const rowName = useMemo(() => {
+    return getRowName(columns, row) || rowId;
+  }, [columns, row, rowId]);
   const icon = getEntityIcon(table.entity_type);
 
   const handleCopyLink = useCallback(() => {
