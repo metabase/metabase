@@ -119,29 +119,28 @@
   Returns a future object that will complete when the reindexing is done.
   Respects `search.ingestion/*force-sync*` and deref's the future if it's true."
   [& {:as opts}]
-  ;(cond->
-  (future
+  (cond->
+   (future
       ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
-    (when (supports-index?)
-      (try
-        (log/info "Reindexing searchable entities")
-        (let [timer (u/start-timer)
-              report (reduce (partial merge-with max)
-                             nil
-                             (for [e (search.engine/active-engines)]
-                               (search.engine/reindex! e opts)))
-              duration (u/since-ms timer)]
-          (analytics/inc! :metabase-search/index-reindex-ms duration)
-          (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
-          (doseq [[model cnt] report]
-            (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
-          (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
-          report)
-        (catch Exception e
-          (analytics/inc! :metabase-search/index-error)
-          (throw e)))))
-    ;search.ingestion/*force-sync* (doto deref)
-  )
+     (when (supports-index?)
+       (try
+         (log/info "Reindexing searchable entities")
+         (let [timer (u/start-timer)
+               report (reduce (partial merge-with max)
+                              nil
+                              (for [e (search.engine/active-engines)]
+                                (search.engine/reindex! e opts)))
+               duration (u/since-ms timer)]
+           (analytics/inc! :metabase-search/index-reindex-ms duration)
+           (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
+           (doseq [[model cnt] report]
+             (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+           (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
+           report)
+         (catch Exception e
+           (analytics/inc! :metabase-search/index-error)
+           (throw e)))))
+    search.ingestion/*force-sync* (doto deref)))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."
