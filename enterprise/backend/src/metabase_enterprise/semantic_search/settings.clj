@@ -89,7 +89,9 @@
   :doc "Number of threads to use for batched index updates, including embedding requests")
 
 (defsetting ee-search-gate-write-timeout
-  "Timeout of gate write statements in seconds."
+  (str "Timeout of gate write statements in seconds. Used to determine lag tolerance of the indexer (see the "
+       "[[metabase-enterprise.semantic-search.gate/poll]]) in conjunction "
+       "with `ee-search-indexer-lag-tolerance-multiplier`.")
   :type :integer
   :default 5
   :export? false

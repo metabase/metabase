@@ -29,7 +29,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private lag-tolerance
-  (.multipliedBy (semantic.gate/gate-write-timeout)
+  (.multipliedBy semantic.gate/gate-write-timeout
                  (semantic.settings/ee-search-indexer-lag-tolerance-multiplier)))
 
 (defn indexing-step
