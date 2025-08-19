@@ -2,12 +2,13 @@ import { trackSchemaEvent } from "metabase/lib/analytics";
 import Settings from "metabase/lib/settings";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
+const MB_STATS_ANALYTICS_UUID = "d97541bd-59b0-4656-b437-d659ac48eae1";
+
 const shouldReportSearchTerm = () =>
-  Settings.get("analytics-uuid") === "d97541bd-59b0-4656-b437-d659ac48eae1";
+  Settings.get("analytics-uuid") === MB_STATS_ANALYTICS_UUID;
 
 type SearchRequestFilter = Pick<
   SearchRequest,
-  | "q"
   | "created_by"
   | "created_at"
   | "last_edited_at"
