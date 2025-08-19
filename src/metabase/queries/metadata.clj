@@ -79,7 +79,7 @@
    (for [snippet snippets
          :when (:template_tags snippet)
          tag (vals (:template_tags snippet))
-         :when (#{:dimension :temporal-unit "dimension" "temporal-unit"} (:type tag))
+         :when (#{:dimension :temporal-unit} (:type tag))
          :let [dimension (:dimension tag)
                                             ;; Handle both keyword and string field references
                [dim-type field-id] (cond
