@@ -40,7 +40,6 @@ export function DetailViewSidesheet({
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = getRowName(columns, row) || rowId;
   const icon = getEntityIcon(table.entity_type);
-  const hasRelationships = tableForeignKeys && tableForeignKeys.length > 0;
 
   return (
     <Sidesheet actions={<div>TODO</div>} onClose={onClose}>
@@ -56,12 +55,7 @@ export function DetailViewSidesheet({
           </Box>
         )}
 
-        <Group
-          flex={hasRelationships ? undefined : "1"}
-          pb={rem(48)}
-          pt="xl"
-          px={rem(56)}
-        >
+        <Group pb={rem(48)} pt="xl" px={rem(56)}>
           <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
             {columns.length - headerColumns.length > 0 && (
               <DetailsGroup columns={columns} row={row} table={table} />
@@ -69,7 +63,7 @@ export function DetailViewSidesheet({
           </Stack>
         </Group>
 
-        {hasRelationships && (
+        {tableForeignKeys && tableForeignKeys.length > 0 && (
           <Box
             flex="1"
             bg="var(--mb-color-background-light)"

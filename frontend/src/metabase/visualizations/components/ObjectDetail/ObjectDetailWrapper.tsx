@@ -42,15 +42,6 @@ export function ObjectDetailWrapper({
       zoomedRow != null &&
       zoomedRowID != null
     ) {
-      {
-        /* <ObjectDetailView
-      {...rest}
-      showHeader
-      data={data}
-      question={question ?? getFallbackQuestion()}
-      closeObjectDetail={closeObjectDetail}
-      /> */
-      }
       return (
         <DetailViewSidesheet
           columns={columns}
