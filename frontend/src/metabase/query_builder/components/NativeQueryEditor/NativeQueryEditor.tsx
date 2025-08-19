@@ -379,9 +379,11 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               snippet={this.props.modalSnippet}
               onCreate={this.props.insertSnippet}
               onUpdate={(newSnippet, oldSnippet) => {
+                let newQuery = query.setQueryText(query.queryText());
                 if (newSnippet.name !== oldSnippet.name) {
-                  setDatasetQuery(query.updateSnippetNames([newSnippet]));
+                  newQuery = query.updateSnippetNames([newSnippet]);
                 }
+                setDatasetQuery(newQuery);
               }}
               onClose={this.props.closeSnippetModal}
             />
