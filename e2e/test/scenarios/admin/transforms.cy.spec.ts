@@ -1,11 +1,14 @@
 const { H } = cy;
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   CardType,
   ListTransformRunsResponse,
   TransformTagId,
 } from "metabase-types/api";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const DB_NAME = "Writable Postgres12";
 const SOURCE_TABLE = "Animals";
@@ -191,17 +194,14 @@ describe("scenarios > admin > transforms", () => {
         label: string;
       }) {
         cy.log("create a query in the target database");
-        H.getTableId({ name: "ORDERS", databaseId: SAMPLE_DB_ID }).then(
-          (tableId) =>
-            H.createQuestion({
-              name: "Test",
-              type,
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": tableId,
-              },
-            }),
-        );
+        H.createQuestion({
+          name: "Test",
+          type,
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+          },
+        });
 
         cy.log("create a new transform");
         visitTransformListPage();
