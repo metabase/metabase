@@ -458,11 +458,11 @@
 
 (defmethod lib-type :snippet
   [_object-type]
-  :metadata/nativeQuerySnippet)
+  :metadata/NativeQuerySnippet)
 
 (defmethod parse-objects-default-key :snippet
   [_object-type]
-  "nativeQuerySnippets")
+  "snippets")
 
 (defmethod parse-field-fn :snippet
   [_object-type]

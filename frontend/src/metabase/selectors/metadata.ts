@@ -140,7 +140,7 @@ export const getMetadata: (
     metadata.questions = Object.fromEntries(
       Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
     );
-    metadata.nativeQuerySnippets = Object.fromEntries(
+    metadata.snippets = Object.fromEntries(
       Object.values(snippets).map((snippet) => [snippet.id, snippet]),
     );
 

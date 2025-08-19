@@ -47,7 +47,7 @@ class Metadata {
   fields: Record<string, Field> = {};
   segments: Record<string, Segment> = {};
   questions: Record<string, Question> = {};
-  nativeQuerySnippets: Record<string, NativeQuerySnippet> = {};
+  snippets: Record<string, NativeQuerySnippet> = {};
   settings?: Settings;
 
   constructor(opts?: MetadataOpts) {
@@ -167,7 +167,7 @@ class Metadata {
     if (snippetId == null) {
       return null;
     }
-    return this.nativeQuerySnippets[snippetId] ?? null;
+    return this.snippets[snippetId] ?? null;
   }
 
   setting<T extends SettingKey>(key: T): Settings[T] | null {
