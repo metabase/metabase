@@ -129,6 +129,7 @@ export const SdkIframeEmbedPreview = () => {
               : undefined,
           }),
         )
+        .with({ componentName: "metabase-browser" }, () => null)
         .exhaustive()}
     </Card>
   );
