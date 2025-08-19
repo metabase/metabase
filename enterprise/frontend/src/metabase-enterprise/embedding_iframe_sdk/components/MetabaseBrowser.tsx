@@ -88,7 +88,11 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
             });
           }
 
-          setCurrentView({ type: "dashboard", id: dashboard.id });
+          // On the next tick, update the current view.
+          // This is needed for when we create new collections.
+          setTimeout(() => {
+            setCurrentView({ type: "dashboard", id: dashboard.id });
+          }, 0);
         }}
         onClose={() =>
           setCurrentView({ type: "collection", id: targetCollection })
