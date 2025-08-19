@@ -126,6 +126,7 @@
    (ThreadPoolExecutor$DiscardPolicy.)))
 
 (defn- reindex-logic! [opts]
+  (.printStackTrace (Exception. "TEST!"))
   (when (supports-index?)
     (try
       (log/info "Reindexing searchable entities")
@@ -152,7 +153,7 @@
   [& {:keys [async?] :or {async? true} :as opts}]
   (if (or search.ingestion/*force-sync* async?)
     (let [result (reindex-logic! opts)]
-      (future result))
+      (doto (promise) (deliver result)))
     (.submit ^ExecutorService reindex-pool ^Callable reindex-logic!)))
 
 (defn reset-tracking!

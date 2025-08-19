@@ -37,6 +37,12 @@
 
 (use-fixtures :each (fn [thunk] (search.tu/with-new-search-if-available (thunk))))
 
+;; `reindex!` below is ok in a parallel test since it's not actually executing anything
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                        (thunk))))
+
 (def ^:private default-search-row
   {:archived                   false
    :dashboard                  nil
