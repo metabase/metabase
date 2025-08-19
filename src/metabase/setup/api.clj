@@ -137,6 +137,7 @@
                                                         :last_name invited-last-name}
                                                        {:email email, :first_name first-name})
                   (setup-set-settings! {:email email :site-name site-name :site-locale site-locale})
+                  ;; site-locale should be set at this point
                   (call-enterprise 'metabase-enterprise.transforms.models.transform-job/localize-jobs site-locale)
                   (call-enterprise 'metabase-enterprise.transforms.models.transform-tag/localize-tags site-locale)
                   user-info))
