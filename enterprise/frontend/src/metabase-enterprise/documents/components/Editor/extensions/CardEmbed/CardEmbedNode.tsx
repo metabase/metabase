@@ -33,6 +33,9 @@ import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
 
+import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
+import { setBackNavigation } from "metabase/redux/entityBackButton.slice";
+
 function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
     return `{% card id=${attrs.id} name="${attrs.name}" %}`;
@@ -144,6 +147,7 @@ export const CardEmbedComponent = memo(
     const { card, dataset, isLoading, series, error } = useCardData({ id });
 
     const metadata = useSelector(getMetadata);
+    const document = useSelector(getCurrentDocument);
     const datasetError = dataset && getDatasetError(dataset);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
@@ -195,10 +199,22 @@ export const CardEmbedComponent = memo(
       }
     };
 
+    const handleSetBackNavigation = useCallback(() => {
+      if (document) {
+        dispatch(
+          setBackNavigation({
+            model: "document",
+            id: document?.id,
+            name: document?.name,
+          }),
+        );
+      }
+    }, [document, dispatch]);
+
     const handleTitleClick = () => {
       if (card && metadata) {
         try {
-          dispatch(setShowNavigateBackToDocumentButton(true));
+          handleSetBackNavigation();
           const isDraftCard = card.id < 0;
           const question = new Question(
             isDraftCard ? { ...card, id: null } : card,
@@ -242,7 +258,7 @@ export const CardEmbedComponent = memo(
         }
 
         try {
-          dispatch(setShowNavigateBackToDocumentButton(true));
+          handleSetBackNavigation();
           // For drill-through, we need to ensure the card is treated as adhoc
           // Remove the ID so getUrl creates an adhoc question URL instead of navigating to saved question
           const adhocCard = { ...nextCard, id: null };
@@ -253,14 +269,14 @@ export const CardEmbedComponent = memo(
           console.error("Failed to create question URL:", error);
           // Fallback: navigate to a new question with the dataset_query
           if (nextCard.dataset_query) {
-            dispatch(setShowNavigateBackToDocumentButton(true));
+            handleSetBackNavigation();
             const params = new URLSearchParams();
             params.set("dataset_query", JSON.stringify(nextCard.dataset_query));
             dispatch(push(`/question?${params.toString()}`));
           }
         }
       },
-      [dispatch, metadata],
+      [dispatch, metadata, handleSetBackNavigation],
     );
 
     if (isLoading && !card) {

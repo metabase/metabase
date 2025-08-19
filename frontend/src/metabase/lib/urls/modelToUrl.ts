@@ -14,7 +14,10 @@ export type UrlableModel = {
   };
 };
 
-export function modelToUrl(item: UrlableModel) {
+export function modelToUrl(item: UrlableModel | null) {
+  if (!item) {
+    return null;
+  }
   switch (item.model) {
     case "card":
       return question({

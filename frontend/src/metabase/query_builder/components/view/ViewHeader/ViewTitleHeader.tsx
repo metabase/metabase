@@ -17,6 +17,7 @@ import ViewTitleHeaderS from "./ViewTitleHeader.module.css";
 import {
   AdHocQuestionLeftSide,
   DashboardBackButton,
+  QueryBuidlerBackButton,
   QuestionFiltersHeader,
   SavedQuestionLeftSide,
   ViewTitleHeaderRightSide,
@@ -156,7 +157,7 @@ export function ViewTitleHeader({
         data-testid="qb-header"
       >
         <DashboardBackButton mr="sm" />
-        <PLUGIN_DOCUMENTS.DocumentBackButton mr="sm" />
+        <QueryBuidlerBackButton mr="sm" />
         {isSaved ? (
           <SavedQuestionLeftSide
             question={question}

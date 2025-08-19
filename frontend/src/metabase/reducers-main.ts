@@ -12,6 +12,7 @@ import { reducer as setup } from "metabase/setup/reducers";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
 import { commonReducers } from "./reducers-common";
+import { entityBackButtonReducer } from "./redux/entityBackButton.slice";
 
 /*
 Create a main reducers factory
@@ -32,6 +33,7 @@ export function makeMainReducers() {
     admin,
     plugins: combineReducers(PLUGIN_REDUCERS),
     visualizer,
+    entityBackButton: entityBackButtonReducer,
   };
 }
 

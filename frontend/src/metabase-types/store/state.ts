@@ -1,6 +1,7 @@
 import type { RouterState } from "react-router-redux";
 
 import type { Api } from "metabase/api/api";
+import type { EntityBackButtonState } from "metabase/redux/entityBackButton.slice";
 import type { User } from "metabase-types/api";
 
 import type { AdminState } from "./admin";
@@ -49,6 +50,7 @@ export interface State {
     future: VisualizerState[];
   };
   "metabase-api": MetabaseApiState;
+  entityBackButton: EntityBackButtonState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

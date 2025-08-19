@@ -14,3 +14,4 @@ export * from "./SavedQuestionLeftSide";
 export * from "./ViewTitleHeaderRightSide";
 export * from "./DashboardBackButton";
 export * from "./AdHocQuestionDescription";
+export * from "./QueryBuilderBackButton/QueryBuilderBackButton";
