@@ -1955,8 +1955,7 @@ describe("issue 55687", () => {
   });
 });
 
-// TODO: re-enable this test when we have a fix for metabase/metabase#58371
-describe.skip("issue 58371", () => {
+describe("issue 58371", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -2002,7 +2001,7 @@ describe.skip("issue 58371", () => {
               0,
               [
                 "field",
-                "Aggregation with Dash-in-name",
+                "count_where",
                 {
                   "base-type": "type/Float",
                   "join-alias": "Other Question",
