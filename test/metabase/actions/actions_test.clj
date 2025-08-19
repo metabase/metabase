@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.actions.actions-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.actions.actions :as actions]
@@ -16,7 +15,6 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
