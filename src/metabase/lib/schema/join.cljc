@@ -53,14 +53,14 @@
   "Operators that should be listed as options in join conditions."
   (into [:enum] condition-operators))
 
-;;; valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database
-;;; supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports
-;;; left joins will support the `:left-join` feature.
-;;;
-;;; When `:strategy` is not specified, `:left-join` is the default strategy.
 (mr/def ::strategy
+  "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database
+  supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left
+  joins will support the `:left-join` feature.
+
+  When `:strategy` is not specified, `:left-join` is the default strategy."
   [:enum
-   {:decode/normalize common/normalize-keyword}
+   {:decode/normalize common/normalize-keyword, :default :left-join}
    :left-join
    :right-join
    :inner-join
@@ -125,7 +125,10 @@
      :condition          ":condition is not allowed for MBQL 5 joins, use :conditions instead"
      :source-card        "join should not have :source-card; use :stages instead"
      :source-table       "join should not have :source-table; use :stages instead"
-     :source-query       "join should not have :source-query; use :stages instead"})
+     :source-query       "join should not have :source-query; use :stages instead"
+     :filter             "join should not have top-level :filters; these should belong to one of the join :stages"
+     :filters            "join should not have top-level :filters; these should belong to one of the join :stages"
+     :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"})
    [:ref ::validate-field-aliases-match-join-alias]])
 
 (mr/def ::joins

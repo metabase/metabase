@@ -1,10 +1,8 @@
-// eslint-disable-next-line no-restricted-imports
-import { MantineProvider } from "@mantine/core";
 import type { StoryFn } from "@storybook/react";
 import { SignJWT } from "jose";
 import { useMemo } from "react";
 
-import { MetabaseProvider } from "embedding-sdk/components/public";
+import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
 import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
@@ -58,15 +56,13 @@ export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   }, [user]);
 
   return (
-    <MantineProvider>
-      <MetabaseProvider
-        authConfig={authConfig}
-        theme={theme}
-        key={key}
-        locale={locale}
-      >
-        <Story />
-      </MetabaseProvider>
-    </MantineProvider>
+    <ComponentProvider
+      authConfig={authConfig}
+      theme={theme}
+      key={key}
+      locale={locale}
+    >
+      <Story />
+    </ComponentProvider>
   );
 };

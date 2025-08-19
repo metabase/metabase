@@ -1,15 +1,11 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
 /* eslint-disable import/order */
+const fs = require("fs");
+const path = require("path");
 const rspack = require("@rspack/core");
-const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 const mainConfig = require("./rspack.main.config");
-const { resolve } = require("path");
-const {
-  TypescriptConvertErrorsToWarnings,
-} = require("./frontend/build/embedding-sdk/rspack/typescript-convert-errors-to-warnings");
-const { IS_DEV_MODE } = require("./frontend/build/shared/constants");
 const {
   OPTIMIZATION_CONFIG,
 } = require("./frontend/build/embedding-sdk/rspack/shared");
@@ -23,13 +19,23 @@ const {
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const {
+  getBuildInfoValues,
+} = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
+
+const sdkPackageTemplateJson = fs.readFileSync(
+  path.resolve(
+    path.join(
+      __dirname,
+      "enterprise/frontend/src/embedding-sdk/package.template.json",
+    ),
+  ),
+  "utf-8",
+);
+const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
-
-const skipDTS = process.env.SKIP_DTS === "true";
-
-const isDevMode = IS_DEV_MODE;
 
 const EMBEDDING_SDK_BUNDLE_HOST = process.env.EMBEDDING_SDK_BUNDLE_HOST || "";
 
@@ -75,22 +81,14 @@ const config = {
 
   plugins: [
     new rspack.EnvironmentPlugin({
+      IS_EMBEDDING_SDK: "true",
       EMBEDDING_SDK_BUNDLE_HOST,
+      ...getBuildInfoValues({ version: sdkPackageTemplateJsonContent.version }),
     }),
     new rspack.optimize.LimitChunkCountPlugin({
       maxChunks: 1,
     }),
     new rspack.BannerPlugin(getBannerOptions(SDK_PACKAGE_BANNER)),
-    !skipDTS &&
-      new ForkTsCheckerWebpackPlugin({
-        async: isDevMode,
-        typescript: {
-          configFile: resolve(__dirname, "./tsconfig.sdk.json"),
-          mode: "write-dts",
-          memoryLimit: 4096,
-        },
-      }),
-    new TypescriptConvertErrorsToWarnings(),
   ].filter(Boolean),
 };
 

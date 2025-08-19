@@ -246,9 +246,9 @@
 
 (defmethod normalize-mbql-clause-tokens :offset
   [[_tag opts expr n, :as clause]]
-  {:pre [(= (count clause) 4)]}
-  (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
-    [:offset opts (normalize-tokens expr nil) n]))
+  (when (= (count clause) 4)
+    (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
+      [:offset opts (normalize-tokens expr nil) n])))
 
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default are recursively normalized.
@@ -427,9 +427,9 @@
                        [k v]))))
         metadata))
 
-(defn- normalize-native-query
+(mu/defn- normalize-native-query :- [:maybe :map]
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
-  [native-query]
+  [native-query :- [:maybe :map]]
   (let [native-query (update-keys native-query maybe-normalize-token)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))

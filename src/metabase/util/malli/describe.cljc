@@ -1,5 +1,6 @@
 (ns metabase.util.malli.describe
-  "This is exactly the same as [[malli.experimental.describe]], but handles our deferred i18n forms."
+  "This is exactly the same as [[malli.experimental.describe]], but handles our deferred i18n forms, and uses our
+  registry."
   (:require
    [clojure.string :as str]
    [malli.core :as mc]

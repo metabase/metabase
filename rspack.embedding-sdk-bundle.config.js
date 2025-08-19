@@ -9,14 +9,10 @@ const prefixwrap = require("postcss-prefixwrap");
 
 const mainConfig = require("./rspack.main.config");
 const { resolve } = require("path");
-const fs = require("fs");
 const path = require("path");
 
 const postcssConfig = require("./postcss.config.js");
 
-const {
-  TypescriptConvertErrorsToWarnings,
-} = require("./frontend/build/embedding-sdk/rspack/typescript-convert-errors-to-warnings");
 const {
   LICENSE_TEXT,
   IS_DEV_MODE,
@@ -39,6 +35,9 @@ const {
   SDK_BUNDLE_PATH,
   SDK_BUNDLE_FILENAME,
 } = require("./frontend/build/embedding-sdk/constants/sdk-bundle");
+const {
+  getBuildInfoValues,
+} = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 
@@ -47,18 +46,6 @@ const TMP_BUILD_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
 
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
-
-const sdkPackageTemplateJson = fs.readFileSync(
-  path.resolve(
-    path.join(
-      __dirname,
-      "enterprise/frontend/src/embedding-sdk/package.template.json",
-    ),
-  ),
-  "utf-8",
-);
-const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
-const EMBEDDING_SDK_VERSION = sdkPackageTemplateJsonContent.version;
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
@@ -77,10 +64,9 @@ const config = {
     path: TMP_BUILD_PATH,
     publicPath: "",
     filename: SDK_BUNDLE_FILENAME,
-    library: {
-      type: "umd",
-      name: "MetabaseEmbeddingSDK",
-    },
+
+    // We assign exports from SDK bundle into window.METABASE_EMBEDDING_SDK_BUNDLE manually in the SDK bundle entry point.
+    library: false,
   },
 
   devtool: IS_DEV_MODE ? mainConfig.devtool : false,
@@ -186,21 +172,12 @@ const config = {
       process: "process/browser.js",
     }),
     new rspack.EnvironmentPlugin({
-      EMBEDDING_SDK_VERSION,
-      GIT_BRANCH: require("child_process")
-        .execSync("git rev-parse --abbrev-ref HEAD")
-        .toString()
-        .trim(),
-      GIT_COMMIT: require("child_process")
-        .execSync("git rev-parse HEAD")
-        .toString()
-        .trim(),
       IS_EMBEDDING_SDK: "true",
+      ...getBuildInfoValues({
+        // Version of the SDK bundle is equal to Metabase Instance version and received from it via API call
+        version: null,
+      }),
     }),
-    new rspack.DefinePlugin({
-      "process.env.BUILD_TIME": JSON.stringify(new Date().toISOString()),
-    }),
-    new TypescriptConvertErrorsToWarnings(),
     shouldAnalyzeBundles &&
       new BundleAnalyzerPlugin({
         analyzerMode: "static",
