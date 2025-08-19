@@ -6,7 +6,9 @@ import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { Input } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
@@ -16,15 +18,13 @@ import {
   createMockSearchResult,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import type { SettingsState } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import {
   CommandSuggestion,
   type CommandSuggestionProps,
 } from "./CommandSuggestion";
-import { createMockState } from "metabase-types/store/mocks";
-import { SettingsState } from "metabase-types/store";
-import { mockSettings } from "__support__/settings";
-import { PLUGIN_METABOT } from "metabase/plugins";
 
 registerVisualizations();
 
@@ -137,40 +137,7 @@ describe("CommandSuggestion", () => {
   it("renders with default commands", async () => {
     setup();
 
-    // Custom Commands
-    expect(
-      await screen.findByRole("option", { name: "Ask Metabot" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("option", { name: "Chart" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("option", { name: "Link" }),
-    ).toBeInTheDocument();
-
-    // Formatting Commands
-
-    expect(
-      await screen.findByRole("option", { name: "Heading 1" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("option", { name: "Heading 2" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("option", { name: "Heading 3" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("option", { name: "Bullet list" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("option", { name: "Numbered list" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("option", { name: "Quote" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("option", { name: "Code block" }),
-    ).toBeInTheDocument();
+    await expectStandardCommandsToBePresent();
   });
 
   it("searches for possible card embeds by default", async () => {
@@ -345,21 +312,6 @@ describe("CommandSuggestion", () => {
   });
 
   describe("metabot", () => {
-    const expectStandardCommandsToBePresent = () => {
-      // Main commands
-      expect(screen.getByText("Chart")).toBeInTheDocument();
-      expect(screen.getByText("Link")).toBeInTheDocument();
-
-      // Formatting commands
-      expect(screen.getByText("Heading 1")).toBeInTheDocument();
-      expect(screen.getByText("Heading 2")).toBeInTheDocument();
-      expect(screen.getByText("Heading 3")).toBeInTheDocument();
-      expect(screen.getByText("Bullet list")).toBeInTheDocument();
-      expect(screen.getByText("Numbered list")).toBeInTheDocument();
-      expect(screen.getByText("Quote")).toBeInTheDocument();
-      expect(screen.getByText("Code block")).toBeInTheDocument();
-    };
-
     beforeEach(() => {
       jest.clearAllMocks();
     });
@@ -369,7 +321,7 @@ describe("CommandSuggestion", () => {
         PLUGIN_METABOT.isEnabled = jest.fn(() => false);
       });
 
-      it("should show all available commands except Metabot", () => {
+      it("should show all available commands except Metabot", async () => {
         const settings = mockSettings({
           "token-features": createMockTokenFeatures({
             metabot_v3: false,
@@ -379,7 +331,7 @@ describe("CommandSuggestion", () => {
         setup({ settings });
 
         expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
-        expectStandardCommandsToBePresent();
+        await expectStandardCommandsToBePresent();
       });
     });
 
@@ -388,7 +340,7 @@ describe("CommandSuggestion", () => {
         PLUGIN_METABOT.isEnabled = jest.fn(() => true);
       });
 
-      it("should show all available commands including Metabot", () => {
+      it("should show all available commands including Metabot", async () => {
         const settings = mockSettings({
           "token-features": createMockTokenFeatures({
             metabot_v3: true,
@@ -398,8 +350,42 @@ describe("CommandSuggestion", () => {
         setup({ settings });
 
         expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
-        expectStandardCommandsToBePresent();
+        await expectStandardCommandsToBePresent();
       });
     });
   });
 });
+
+const expectStandardCommandsToBePresent = async () => {
+  // Custom Commands
+  expect(
+    await screen.findByRole("option", { name: "Chart" }),
+  ).toBeInTheDocument();
+  expect(
+    await screen.findByRole("option", { name: "Link" }),
+  ).toBeInTheDocument();
+
+  // Formatting Commands
+
+  expect(
+    await screen.findByRole("option", { name: "Heading 1" }),
+  ).toBeInTheDocument();
+  expect(
+    await screen.findByRole("option", { name: "Heading 2" }),
+  ).toBeInTheDocument();
+  expect(
+    await screen.findByRole("option", { name: "Heading 3" }),
+  ).toBeInTheDocument();
+  expect(
+    await screen.findByRole("option", { name: "Bullet list" }),
+  ).toBeInTheDocument();
+  expect(
+    await screen.findByRole("option", { name: "Numbered list" }),
+  ).toBeInTheDocument();
+  expect(
+    await screen.findByRole("option", { name: "Quote" }),
+  ).toBeInTheDocument();
+  expect(
+    await screen.findByRole("option", { name: "Code block" }),
+  ).toBeInTheDocument();
+};
