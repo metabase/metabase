@@ -19,6 +19,7 @@ export const getDefaultSdkIframeEmbedSettings = (
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
+        componentName: "metabase-dashboard",
         dashboardId: defaultResourceId,
         drills: true,
         withDownloads: false,
@@ -28,17 +29,20 @@ export const getDefaultSdkIframeEmbedSettings = (
     .with(
       "chart",
       (): QuestionEmbedOptions => ({
+        componentName: "metabase-question",
         questionId: defaultResourceId,
         drills: true,
         withDownloads: false,
         withTitle: true,
+        isSaveEnabled: false,
       }),
     )
     .with(
       "exploration",
       (): ExplorationEmbedOptions => ({
+        componentName: "metabase-question",
         template: "exploration",
-        isSaveEnabled: true,
+        isSaveEnabled: false,
       }),
     )
     .exhaustive();

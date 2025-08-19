@@ -68,6 +68,7 @@
  actions/cached-value
  actions/incorrect-value-type
  actions/perform-action!*
+ actions/violate-check-constraint
  actions/violate-foreign-key-constraint
  actions/violate-not-null-constraint
  actions/violate-unique-constraint
@@ -97,6 +98,7 @@
  lib.metadata/field
  lib.metadata/fields
  lib.metadata/table
+ lib.metadata/tables
  lib.schema.common/instance-of-class
  lib.schema.temporal-bucketing/date-bucketing-units
  lib.types.isa/temporal?

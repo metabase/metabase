@@ -4,6 +4,14 @@ import { initialize, mswLoader } from "msw-storybook-addon";
 import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
 
 import { availableLocales } from "./constants";
+import { defineEmbeddingSdkPackageBuildInfo } from "../frontend/src/metabase/embedding-sdk/lib/define-embedding-sdk-package-build-info";
+import { defineGlobalDependencies } from "../frontend/src/metabase/embedding-sdk/lib/define-global-dependencies";
+
+// To run initialization side effects like Mantine styles, dayjs plugins, etc
+import "metabase/embedding-sdk/vendors-side-effects";
+
+defineEmbeddingSdkPackageBuildInfo();
+defineGlobalDependencies();
 
 // @ts-expect-error: See metabase/lib/delay
 // This will skip the skippable delays in stories

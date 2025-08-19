@@ -88,7 +88,6 @@ dataset_query:
           - description
         - base-type: type/Text
           join-alias: Content - Entity Qualified
-      ident: join_ezcT88-OmH-5HFOFNqmX7@0__Content - Entity Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: People - Creator
@@ -105,7 +104,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: People - Creator
       fields: none
-      ident: join_ezcT88-OmH-5HFOFNqmX7@0__People - Creator
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     limit: 200

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.dummy-tools
   (:require
    [medley.core :as m]
+   [metabase-enterprise.documents.core :as documents]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -9,10 +10,13 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
@@ -48,11 +52,17 @@
                     :verified (verified-review? dashboard-id "dashboard")))})
     {:output "dashboard not found"}))
 
+(defn- get-field-values [id->values id]
+  (->
+   (get id->values id)
+   (or (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id id)))
+   :values))
+
 (defn- add-field-values
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
     (let [id->values (field-values/batched-get-latest-full-field-values field-ids)]
-      (map #(m/assoc-some % :field-values (-> % :id id->values :values)) cols))
+      (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 
 (defn- add-table-reference
@@ -248,7 +258,7 @@
                                   :with-metrics?                   true
                                   :with-default-temporal-breakout? false
                                   :with-queryable-dimensions?      false})
-                 (tap> (queries)))))
+          (tap> (queries)))))
   -)
 
 (defn get-table-details
@@ -311,6 +321,55 @@
       (if (map? details)
         {:structured-output details}
         {:output (or details "report not found")}))))
+
+(defn get-document-details
+  "Get information about the document with ID `document-id`."
+  [{:keys [document-id]}]
+  (if (int? document-id)
+    (try
+      (if-let [doc (documents/get-document document-id)]
+        {:structured-output {:id (:id doc)
+                             :name (:name doc)
+                             :document (:document doc)}}
+        {:output "document not found"})
+      (catch Exception e
+        {:output (str "error fetching document: " (.getMessage e))}))
+    {:output "invalid document_id"}))
+
+(defn- base-type->type [field]
+  (case field
+    :type/Integer   "number"
+    :type/Float     "number"
+    :type/Text      "string"
+    :type/Date      "date"
+    :type/DateTime  "datetime"
+    :type/Time      "time"
+    :type/Boolean   "boolean"
+    :type/Null      "null"
+    "string"))
+
+(defn get-tables
+  "Get information about the tables in a database."
+  [{:keys [database-id] :or {database-id 1}}]
+  (if (int? database-id)
+    (let [db (t2/select-one [:model/Database :id :name :description :engine] database-id)
+          tables (t2/select [:model/Table :id :name :description]
+                            {:where [:and
+                                     [:= :db_id database-id]
+                                     [:= :active true]
+                                     (mi/visible-filter-clause :model/Table
+                                                               :id
+                                                               {:user-id       api/*current-user-id*
+                                                                :is-superuser? api/*is-superuser?*}
+                                                               {:perms/view-data      :unrestricted
+                                                                :perms/create-queries :query-builder-and-native})]})
+          columns (group-by :table_id (map #(-> %
+                                                (assoc :type (base-type->type (:base_type %)))
+                                                (dissoc :base_type))
+                                           (t2/select [:model/Field :id :table_id :name :description :base_type])))]
+      {:structured-output {:database db
+                           :tables   (map #(assoc % :columns (get columns (:id %) [])) tables)}})
+    {:output "invalid database_id"}))
 
 (defn- execute-query
   [query-id legacy-query]
