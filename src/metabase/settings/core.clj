@@ -77,7 +77,9 @@
    [metabase.settings.models.setting.cache]
    [metabase.settings.models.setting.multi-setting]
    [metabase.settings.settings]
-   [potemkin :as p]))
+   [metabase.util :as u]
+   [potemkin :as p]
+   [toucan2.core :as t2]))
 
 (comment
   metabase.settings.models.setting/keep-me
@@ -136,7 +138,8 @@
 (defmacro with-database
   "Execute `body` with Database-local Setting values bound to `new-values`."
   [new-db & body]
-  `(binding [metabase.settings.models.setting/*database* ~new-db
+  ;; TODO Find a better solution than this shameful hack to turn from a qp metadata database back into a toucan database
+  `(binding [metabase.settings.models.setting/*database-delay*        (delay (t2/select-one :model/Database (u/the-id ~new-db)))
              metabase.settings.models.setting/*database-local-values* (or (:settings ~new-db) {})]
      ~@body))
 
