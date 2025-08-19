@@ -233,11 +233,13 @@
    [:driver-feature [:maybe :keyword]]
 
    ;; Function that takes a database and returns true if this setting should be enabled for that specific database.
-   ;; This is only valid for database-local settings. If the function returns false, setting this will throw an exception.
+   ;; If the function returns false, attempting to set this will fail.
    ;;
-   ;; In cases where the admin panel cares needs to communicate the reasons it is disabled to the user, this function
-   ;; can use [[custom-disabled-reasons!]] to override the explanation. This supports multiple reasons so that the
-   ;; frontend can be authoritative over which explanations have higher precedence.
+   ;; In cases where the admin panel should display specific reasons to the user, [[custom-disabled-reasons!]] can be
+   ;; used to throw a custom exception. This supports multiple reasons, allowing the frontend to be authoritative over
+   ;; display rules - for example, giving certain reasons higher precedence.
+   ;;
+   ;; This is only valid for database-local settings.
    [:enabled-for-db? [:maybe ifn?]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
