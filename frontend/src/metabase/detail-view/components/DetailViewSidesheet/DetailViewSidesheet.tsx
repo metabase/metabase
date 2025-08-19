@@ -46,7 +46,7 @@ export function DetailViewSidesheet({
     <Sidesheet actions={<div>TODO</div>} onClose={onClose}>
       <Stack data-testid="object-detail" gap={0} mih="100%">
         {headerColumns.length > 0 && (
-          <Box pt="sm" px={rem(56)}>
+          <Box pb="md" pt="sm" px={rem(56)}>
             <Box
               // intentionally misalign the header to create an "optical alignment effect" (due to rounded avatar)
               ml={rem(-8)}
