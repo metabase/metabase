@@ -7,6 +7,7 @@ import type {
   DatasetData,
   QuestionDashboardCard,
   RowValue,
+  Series,
 } from "metabase-types/api";
 
 export type ObjectId = number | string;
@@ -29,6 +30,7 @@ export interface ObjectDetailProps {
   metadata?: Metadata;
   card?: Card;
   dashcard?: QuestionDashboardCard;
+  series: Series;
   isObjectDetail?: boolean; // whether this should be shown in a modal
   table?: Table | null;
   zoomedRow?: RowValue[] | undefined;
