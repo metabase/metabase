@@ -107,6 +107,7 @@
     (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 
+;; TODO: force a new index
 (defenterprise reindex!
   "Reindex the semantic search index."
   :feature :semantic-search
@@ -114,8 +115,8 @@
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
-    ;; todo force a new index
-    (semantic.pgvector-api/initialize-index! pgvector index-metadata embedding-model opts)
+    ;; TODO: once we have liquidbase-based migrations, this call should be to `initialize-index!` instead
+    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)
     (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 
