@@ -3,7 +3,8 @@ import { useState } from "react";
 import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import Question from "metabase-lib/v1/Question";
-import type { Table } from "metabase-types/api";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type { Table as ApiTable } from "metabase-types/api";
 
 import { PaginationFooter } from "../PaginationFooter/PaginationFooter";
 
@@ -43,7 +44,7 @@ export function ObjectDetailWrapper({
       zoomedRow,
       zoomedRowID,
     } = rest;
-    const table = tableWrapper?.getPlainObject();
+    const table = getApiTable(tableWrapper);
     const columns = series[0]?.data?.results_metadata?.columns;
 
     if (
@@ -102,9 +103,22 @@ export function ObjectDetailWrapper({
   );
 }
 
+function getApiTable(table: Table | undefined | null): ApiTable | undefined {
+  if (!table) {
+    return undefined;
+  }
+
+  const apiTable: ApiTable = {
+    ...table.getPlainObject(),
+    fields: table.original_fields,
+  } as ApiTable; // TODO get rid of this hack, we need a real ApiTable object
+
+  return apiTable;
+}
+
 function getRowUrl(
   question: Question,
-  table: Table,
+  table: ApiTable,
   rowId: string | number,
 ): string | undefined {
   if (question.type() === "model") {
