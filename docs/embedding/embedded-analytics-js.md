@@ -136,7 +136,7 @@ You can use the `defineMetabaseConfig()` function to define the configuration th
 
 ### Theming
 
-You can specify colors, fonts, configure spacing, etc in the `theme` parameter of the embed configuration.
+You can specify colors, fonts, configure spacing and other appearance options using the `theme` parameter of the embed configuration.
 
 For example, this will define the font, color, and size for text, color for backgrounds, and colors for filters and summaries:
 
@@ -204,7 +204,7 @@ Keep in mind that API keys should only be used for testing with trusted users. A
 
 ### Set up SSO
 
-SSO is required to embed in a domain other than localhost. You can use JWT or SAML SSO. To configure SAML, see (Authenticating with SAML)[./sdk/authentication#authenticating-with-saml-sso]. To configure JWT, see the steps below.
+SSO is required to embed in a domain other than localhost. You can use JWT or SAML SSO. To configure SAML, see [Authenticating with SAML](./sdk/authentication#authenticating-with-saml-sso). To configure JWT, see the steps below.
 
 #### 1. In Metabase, configure [JWT SSO](../people-and-groups/authenticating-with-jwt.md).
 
