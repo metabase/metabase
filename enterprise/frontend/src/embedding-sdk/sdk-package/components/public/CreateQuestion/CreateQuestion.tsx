@@ -7,5 +7,5 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
  * @deprecated Use `<InteractiveQuestion questionId="new" />` instead.
  * */
 export const CreateQuestion = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.CreateQuestion,
+  () => getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.CreateQuestion,
 );

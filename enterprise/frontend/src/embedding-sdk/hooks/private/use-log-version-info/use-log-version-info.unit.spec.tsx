@@ -19,18 +19,16 @@ jest.mock("embedding-sdk/store/selectors", () => ({
 const setup = async ({
   sdkVersion,
   mbVersion,
-  allowConsoleLog,
 }: {
   sdkVersion: string;
   mbVersion: string;
-  allowConsoleLog?: boolean;
 }) => {
   (getEmbeddingSdkPackageBuildData as jest.Mock).mockReturnValue({
     version: sdkVersion,
   });
   (getMetabaseInstanceVersion as jest.Mock).mockReturnValue(mbVersion);
 
-  renderHook(() => useLogVersionInfo({ allowConsoleLog }));
+  renderHook(() => useLogVersionInfo());
 };
 
 let consoleWarnSpy: jest.SpyInstance;

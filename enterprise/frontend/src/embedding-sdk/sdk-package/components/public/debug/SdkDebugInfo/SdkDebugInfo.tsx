@@ -7,5 +7,5 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
  * @internal
  */
 export const SdkDebugInfo = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.SdkDebugInfo,
+  () => getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.SdkDebugInfo,
 );
