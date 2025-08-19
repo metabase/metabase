@@ -2,7 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import {
   type QuestionPickerItem,
   QuestionPickerModal,
@@ -10,7 +12,7 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Icon, Menu } from "metabase/ui";
-import { useDoesDatabaseSupportTransforms } from "metabase-enterprise/transforms/hooks/use-does-database-support-transforms";
+import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 
 import {
   getNewTransformFromCardUrl,
@@ -26,7 +28,9 @@ export function CreateTransformMenu() {
     dispatch(push(getNewTransformFromCardUrl(item.id)));
   };
 
-  const databaseSupportsTransforms = useDoesDatabaseSupportTransforms();
+  const { data: databases, isLoading } = useListDatabasesQuery({
+    include_analytics: true,
+  });
 
   return (
     <>
@@ -40,24 +44,33 @@ export function CreateTransformMenu() {
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Label>{t`Create your transform with…`}</Menu.Label>
-          <Menu.Item
-            component={ForwardRefLink}
-            to={getNewTransformFromTypeUrl("query")}
-            leftSection={<Icon name="notebook" />}
-          >
-            {t`Query builder`}
-          </Menu.Item>
-          <Menu.Item
-            component={ForwardRefLink}
-            to={getNewTransformFromTypeUrl("native")}
-            leftSection={<Icon name="sql" />}
-          >
-            {t`SQL query`}
-          </Menu.Item>
-          <Menu.Item leftSection={<Icon name="folder" />} onClick={openPicker}>
-            {t`A saved question`}
-          </Menu.Item>
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : (
+            <>
+              <Menu.Label>{t`Create your transform with…`}</Menu.Label>
+              <Menu.Item
+                component={ForwardRefLink}
+                to={getNewTransformFromTypeUrl("query")}
+                leftSection={<Icon name="notebook" />}
+              >
+                {t`Query builder`}
+              </Menu.Item>
+              <Menu.Item
+                component={ForwardRefLink}
+                to={getNewTransformFromTypeUrl("native")}
+                leftSection={<Icon name="sql" />}
+              >
+                {t`SQL query`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<Icon name="folder" />}
+                onClick={openPicker}
+              >
+                {t`A saved question`}
+              </Menu.Item>
+            </>
+          )}
         </Menu.Dropdown>
       </Menu>
       {isPickerOpened && (
@@ -73,7 +86,10 @@ export function CreateTransformMenu() {
               item.model === "dataset" ||
               item.model === "metric"
             ) {
-              return !databaseSupportsTransforms(item.database_id);
+              const database = databases?.data.find(
+                (database) => database.id === item.database_id,
+              );
+              return !doesDatabaseSupportTransforms(database);
             }
 
             if (item.model === "dashboard") {

@@ -7,12 +7,11 @@ import { useSetting } from "metabase/common/hooks";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
+import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { RecentItem } from "metabase-types/api";
-
-import { useDoesDatabaseSupportTransforms } from "../../../hooks/use-does-database-support-transforms";
+import type { Database as ApiDatabase, RecentItem } from "metabase-types/api";
 
 import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
@@ -28,6 +27,7 @@ type EditorBodyProps = {
   onChange: (newQuestion: Question) => void;
   onRunQuery: () => Promise<void>;
   onCancelQuery: () => void;
+  databases: ApiDatabase[];
 };
 
 export function EditorBody({
@@ -39,6 +39,7 @@ export function EditorBody({
   onChange,
   onRunQuery,
   onCancelQuery,
+  databases,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -67,8 +68,6 @@ export function EditorBody({
     onChange(newNativeQuery.question());
   };
 
-  const databaseSupportsTransforms = useDoesDatabaseSupportTransforms();
-
   const dataPickerOptions = useMemo(() => {
     return {
       shouldDisableItem: (
@@ -76,7 +75,8 @@ export function EditorBody({
       ) => {
         // Disable unsuppported databases
         if (item.model === "database") {
-          return !databaseSupportsTransforms(item.id);
+          const database = databases.find((db) => db.id === item.id);
+          return !doesDatabaseSupportTransforms(database);
         }
 
         if (
@@ -88,10 +88,12 @@ export function EditorBody({
           item.model === "table"
         ) {
           if ("database_id" in item) {
-            return !databaseSupportsTransforms(item.database_id);
+            const database = databases.find((db) => db.id === item.database_id);
+            return !doesDatabaseSupportTransforms(database);
           }
           if ("database" in item) {
-            return !databaseSupportsTransforms(item.database.id);
+            const database = databases.find((db) => db.id === item.database.id);
+            return !doesDatabaseSupportTransforms(database);
           }
         }
 
@@ -103,7 +105,7 @@ export function EditorBody({
         return false;
       },
     };
-  }, [databaseSupportsTransforms]);
+  }, [databases]);
 
   return isNative ? (
     <NativeQueryEditor
@@ -125,9 +127,10 @@ export function EditorBody({
       runQuery={onRunQuery}
       cancelQuery={onCancelQuery}
       setDatasetQuery={handleNativeQueryChange}
-      databaseIsDisabled={(database: Database) =>
-        !databaseSupportsTransforms(database.id)
-      }
+      databaseIsDisabled={(db: Database) => {
+        const database = databases.find((database) => database.id === db.id);
+        return !doesDatabaseSupportTransforms(database);
+      }}
     />
   ) : (
     <ResizableBox
