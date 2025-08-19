@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from "react";
 
+import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { DashboardBackButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import type { ActionIconProps } from "metabase/ui";
 
@@ -24,8 +25,9 @@ export type BackButtonProps = Omit<
  */
 export const BackButton = ({ ...actionIconProps }: BackButtonProps) => {
   const { onNavigateBack, backToDashboard } = useSdkQuestionContext();
+  const { isBreadcrumbEnabled } = useSdkBreadcrumbs();
 
-  if (!onNavigateBack) {
+  if (!onNavigateBack || isBreadcrumbEnabled) {
     return null;
   }
 
