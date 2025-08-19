@@ -4,11 +4,11 @@ import fetchMock from "fetch-mock";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import {
-  MetabaseProvider,
-  type MetabaseProviderProps,
+  ComponentProvider,
   StaticQuestion,
-  defineMetabaseAuthConfig,
 } from "embedding-sdk/components/public";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
 import {
   MOCK_INSTANCE_URL,
@@ -46,9 +46,9 @@ describe("Auth Flow - JWT", () => {
     ).toHaveLength(1);
 
     rerender(
-      <MetabaseProvider authConfig={authConfig}>
+      <ComponentProvider authConfig={authConfig}>
         <StaticQuestion questionId={1} />
-      </MetabaseProvider>,
+      </ComponentProvider>,
     );
 
     await waitForLoaderToBeRemoved();
@@ -159,9 +159,9 @@ describe("Auth Flow - JWT", () => {
     });
 
     renderWithProviders(
-      <MetabaseProvider authConfig={authConfig}>
+      <ComponentProvider authConfig={authConfig}>
         <StaticQuestion questionId={1} />
-      </MetabaseProvider>,
+      </ComponentProvider>,
     );
 
     await waitForLoaderToBeRemoved();

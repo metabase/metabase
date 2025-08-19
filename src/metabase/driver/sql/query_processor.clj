@@ -20,13 +20,7 @@
    [metabase.util.malli :as mu]
    [toucan2.pipeline :as t2.pipeline])
   (:import
-   (java.time
-    LocalDate
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
@@ -1747,7 +1741,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod join-source :sql
-  [driver {:keys [source-table source-query]}]
+  [driver {:keys [source-table source-query], :as _join}]
   (cond
     (and source-query (:native source-query))
     (sql-source-query (:native source-query) (:params source-query))
@@ -1907,7 +1901,8 @@
                            ;; Honey SQL 2 = [expr [alias]]
                            (first (second from))
                            from)
-        [raw-identifier] (format-honeysql driver table-identifier)
+        [raw-identifier] (when table-identifier
+                           (format-honeysql driver table-identifier))
         expr             (if (seq raw-identifier)
                            [:raw (format "%s.*" raw-identifier)]
                            :*)]
@@ -2070,3 +2065,15 @@
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
+
+;;;; Transforms
+
+(defmethod driver/compile-transform :sql
+  [driver {:keys [query output-table]}]
+  (format-honeysql driver
+                   {:create-table-as [(keyword output-table)]
+                    :raw query}))
+
+(defmethod driver/compile-drop-table :sql
+  [driver table]
+  (format-honeysql driver {:drop-table [:if-exists (keyword table)]}))

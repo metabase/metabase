@@ -1543,45 +1543,51 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
    *        - Then start the server and Cypress tests
    */
 
-  it.skip("dashboard filter should not show placeholder for translated languages (metabase#15694)", () => {
-    cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
-      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
-    });
-    H.createQuestionAndDashboard({
-      questionDetails: {
-        name: "15694",
-        query: { "source-table": PEOPLE_ID },
-      },
-      dashboardDetails: {
-        parameters: [
-          {
-            name: "Location",
-            slug: "location",
-            id: "5aefc725",
-            type: "string/=",
-            sectionId: "location",
-          },
-        ],
-      },
-    }).then(({ body: { card_id, dashboard_id } }) => {
-      H.addOrUpdateDashboardCard({
-        card_id,
-        dashboard_id,
-        card: {
-          parameter_mappings: [
+  it(
+    "dashboard filter should not show placeholder for translated languages (metabase#15694)",
+    { tags: "@skip" },
+    () => {
+      cy.request("GET", "/api/user/current").then(
+        ({ body: { id: USER_ID } }) => {
+          cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
+        },
+      );
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "15694",
+          query: { "source-table": PEOPLE_ID },
+        },
+        dashboardDetails: {
+          parameters: [
             {
-              parameter_id: "5aefc725",
-              card_id,
-              target: ["dimension", ["field", PEOPLE.STATE, null]],
+              name: "Location",
+              slug: "location",
+              id: "5aefc725",
+              type: "string/=",
+              sectionId: "location",
             },
           ],
         },
-      });
+      }).then(({ body: { card_id, dashboard_id } }) => {
+        H.addOrUpdateDashboardCard({
+          card_id,
+          dashboard_id,
+          card: {
+            parameter_mappings: [
+              {
+                parameter_id: "5aefc725",
+                card_id,
+                target: ["dimension", ["field", PEOPLE.STATE, null]],
+              },
+            ],
+          },
+        });
 
-      cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
-      H.filterWidget().contains(/\{0\}/).should("not.exist");
-    });
-  });
+        cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
+        H.filterWidget().contains(/\{0\}/).should("not.exist");
+      });
+    },
+  );
 });
 
 describe("scenarios > dashboard > caching", () => {

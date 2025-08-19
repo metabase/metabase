@@ -9,6 +9,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { DocumentId } from "./document";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";
@@ -24,7 +25,6 @@ import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
-
 export type CardType = "model" | "question" | "metric";
 
 type CreatorInfo = Pick<
@@ -58,6 +58,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   collection_position: number | null;
   dashboard: Pick<Dashboard, "id" | "name"> | null;
   dashboard_id: DashboardId | null;
+  document_id?: DocumentId;
   dashboard_count: number | null;
 
   result_metadata: Field[];
@@ -376,6 +377,7 @@ export interface CreateCardRequest {
   description?: string;
   collection_id?: CollectionId;
   dashboard_id?: DashboardId;
+  document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number;
   result_metadata?: Field[];
@@ -401,6 +403,7 @@ export interface UpdateCardRequest {
   embedding_params?: EmbeddingParameters;
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
+  document_id?: DocumentId | null;
   collection_position?: number;
   result_metadata?: Field[];
   cache_ttl?: number;

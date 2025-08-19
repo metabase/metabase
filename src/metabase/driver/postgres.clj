@@ -76,7 +76,9 @@
                               :expressions/integer      true
                               :expressions/float        true
                               :expressions/date         true
-                              :database-routing         true}]
+                              :database-routing         true
+                              :transforms/table         true
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -282,7 +284,7 @@
                      (map #(dissoc % :type)))
                (get-tables database syncable-schemas nil))))))))))
 
-(defmethod driver/describe-database :postgres
+(defmethod driver/describe-database* :postgres
   [_driver database]
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
   ;; memory in a set like this
