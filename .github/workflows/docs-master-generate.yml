@@ -1,4 +1,4 @@
-name: Auto-update documentation
+name: Auto-update documentation (master)
 
 on:
   schedule:
@@ -70,7 +70,7 @@ jobs:
           git checkout -b $BRANCH_NAME
 
           git add docs/
-          git commit -m "Auto-update documentation" --no-verify
+          git commit -m "Update generated docs (master)" --no-verify
           git push -u origin $BRANCH_NAME
 
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
@@ -91,11 +91,10 @@ jobs:
             if gh pr create \
               --base master \
               --head ${{ steps.commit_and_push.outputs.branch_name }} \
-              --title "Auto-update documentation from Monday build" \
-              --body "This PR contains automatically generated documentation updates from the Monday build process.
+              --title "Update generated docs (master)" \
+              --body "API, config template, and environment variable doc updates."
 
-          ## Changes detected
-          The following documentation files were updated:
+          ## Changes made
           $CHANGES_SUMMARY
           $([ "$TOTAL_CHANGES" -gt 10 ] && echo "- ... and more files")
 
@@ -105,7 +104,7 @@ jobs:
           - \`clojure -M:ee:doc config-template\`
           - \`clojure -M:ee:doc api-documentation\`
 
-          Please review the changes and merge if they look correct." \
+          Review the changes before merging." \
                 --label "Type:Documentation" \
                 --label "no-backport"; then
               echo "PR created successfully on attempt $i"
