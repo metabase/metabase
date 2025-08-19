@@ -9,4 +9,6 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
  * @category useApplicationName
  */
 export const useApplicationName = () =>
-  useLazySelector(getWindow()?.MetabaseEmbeddingSDK?.getApplicationName);
+  useLazySelector(
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getApplicationName,
+  );

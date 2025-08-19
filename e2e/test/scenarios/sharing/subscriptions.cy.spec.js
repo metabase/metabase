@@ -133,15 +133,19 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.popover().isRenderedWithinViewport();
       });
 
-      it.skip("should not send attachments by default if not explicitly selected (metabase#28673)", () => {
-        openDashboardSubscriptions();
-        assignRecipient();
+      it(
+        "should not send attachments by default if not explicitly selected (metabase#28673)",
+        { tags: "@skip" },
+        () => {
+          openDashboardSubscriptions();
+          assignRecipient();
 
-        cy.findByLabelText("Attach results").should("not.be.checked");
-        H.sendEmailAndAssert(
-          ({ attachments }) => expect(attachments).to.be.empty,
-        );
-      });
+          cy.findByLabelText("Attach results").should("not.be.checked");
+          H.sendEmailAndAssert(
+            ({ attachments }) => expect(attachments).to.be.empty,
+          );
+        },
+      );
     });
 
     describe("with existing subscriptions", () => {

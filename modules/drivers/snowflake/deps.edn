@@ -2,7 +2,7 @@
  ["src" "resources"]
 
  :deps
- {net.snowflake/snowflake-jdbc-thin {:mvn/version "3.25.1"
+ {net.snowflake/snowflake-jdbc-thin {:mvn/version "3.26.0"
                                      :exclusions  [com.nimbusds/nimbus-jose-jwt
                                                    org.apache.commons/commons-lang3]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
