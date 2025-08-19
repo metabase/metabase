@@ -14,7 +14,7 @@ import {
   isPK,
   isTitle,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type { DatasetColumn, RowValue, Table } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 export function renderValue(
@@ -151,4 +151,22 @@ export const getColumnTitle = (column: DatasetColumn) => {
   const series = [{ data: { cols: [column] }, card: createMockCard() }];
   const settings = getComputedSettingsForSeries(series);
   return getTitleForColumn(column, series, settings);
+};
+
+export const getEntityIcon = (entityType?: Table["entity_type"]) => {
+  switch (entityType) {
+    case "entity/UserTable":
+      return "person";
+    case "entity/CompanyTable":
+      return "globe";
+    case "entity/TransactionTable":
+      return "index";
+    case "entity/SubscriptionTable":
+      return "sync";
+    case "entity/ProductTable":
+    case "entity/EventTable":
+    case "entity/GenericTable":
+    default:
+      return "document";
+  }
 };

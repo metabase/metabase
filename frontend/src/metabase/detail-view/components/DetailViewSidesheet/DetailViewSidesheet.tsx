@@ -15,7 +15,7 @@ import { Box, Group, Stack, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import type { Dataset, ForeignKey, Table } from "metabase-types/api";
 
-import S from "./DetailViewPage.module.css";
+import S from "./DetailViewSidesheet.module.css";
 
 interface Props {
   dataset: Dataset;
@@ -24,7 +24,7 @@ interface Props {
   tableForeignKeys?: ForeignKey[];
 }
 
-export function DetailViewPage({
+export function DetailViewSidesheet({
   dataset,
   rowId,
   table,
