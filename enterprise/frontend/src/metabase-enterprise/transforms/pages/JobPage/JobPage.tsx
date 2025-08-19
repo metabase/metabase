@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -41,9 +41,9 @@ export function JobPage({ params }: JobPageProps) {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
 
-  if (isPolling !== isPollingNeeded(job)) {
-    setIsPolling(!isPolling);
-  }
+  useEffect(() => {
+    setIsPolling(isPollingNeeded(job));
+  }, [job]);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
