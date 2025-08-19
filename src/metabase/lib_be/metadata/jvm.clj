@@ -369,16 +369,6 @@
                    {:where [:= database-id-key database-id]}
                    {})))))
 
-(defn- metadatas-for-names [database-id metadata-type names]
-  (let [database-id-key (case metadata-type
-                          :metadata/table :db_id
-                          :metadata/card  :database_id
-                          :table/db_id)]
-    (when (seq names)
-      (t2/select metadata-type
-                 database-id-key database-id
-                 :name           [:in (set names)]))))
-
 (defn- tables [database-id]
   (t2/select :metadata/table
              {:where [:and
@@ -413,8 +403,6 @@
     (database database-id))
   (metadatas [_this metadata-type ids]
     (metadatas database-id metadata-type ids))
-  (metadatas-for-names [_this metadata-type names]
-    (metadatas-for-names [database-id metadata-type names]))
   (tables [_this]
     (tables database-id))
   (metadatas-for-table [_this metadata-type table-id]

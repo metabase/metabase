@@ -10,6 +10,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
+(declare #^:private substitute*)
+
 (defn- substitute-field-param [[sql args missing] in-optional? k {:keys [_field value], :as v}]
   (if (and (= params/no-value value) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely

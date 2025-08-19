@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -463,6 +464,13 @@
   [_object-type]
   "nativeQuerySnippets")
 
+(defmethod parse-field-fn :snippet
+  [_object-type]
+  (fn [k v]
+    (case k
+      :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map (js->clj v))
+      v)))
+
 (defn- parse-objects-delay [object-type metadata]
   (delay
     (try
@@ -513,22 +521,6 @@
                   (some-> metadatas* (get id) deref)))
           ids)))
 
-(defn- metadatas-for-names [metadata metadata-type names]
-  (let [names (into #{} names)
-        k          (case metadata-type
-                     :metadata/table                :tables
-                     :metadata/column               :fields
-                     :metadata/card                 :cards
-                     :metadata/segment              :segments
-                     :metadata/native-query-snippet :snippets)
-        metadatas* (some-> metadata k deref)]
-    (into []
-          (keep (fn [[id value-ref]]
-                  (let [value (deref value-ref)]
-                    (when (names (:name value))
-                      value))))
-          metadatas*)))
-
 (defn- tables [metadata database-id]
   (into []
         (keep (fn [[_id dlay]]
@@ -578,8 +570,6 @@
         (database metadata database-id))
       (metadatas [_this metadata-type ids]
         (metadatas metadata metadata-type ids))
-      (metadatas-for-names [_this metadata-type names]
-        (metadatas-for-names metadata metadata-type names))
       (tables [_this]
         (tables metadata database-id))
       (metadatas-for-table [_this metadata-type table-id]

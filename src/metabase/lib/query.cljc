@@ -201,6 +201,16 @@
   [metadata-providerable query]
   (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
 
+(defn- snippet-tags [metadata-provider template-tags]
+  (->> (vals template-tags)
+       (keep (fn [tag]
+               (when (= (:type tag) :snippet)
+                 (-> (:snippet-id tag)
+                     (->> (lib.metadata/native-query-snippet metadata-provider))
+                     :template-tags
+                     (update-vals #(assoc % :from-snippet true))))))
+       (apply merge)))
+
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
 ;; - fill in field refs with metadata (#33680)
@@ -232,11 +242,20 @@
                                             second
                                             (select-keys [:base-type :effective-type])))
                                        (catch #?(:clj Exception :cljs :default) _
-                                        ;; This currently does not find expressions defined in join stages
+                                         ;; This currently does not find expressions defined in join stages
                                          nil))]
-                      ;; Fallback if metadata is missing
+                       ;; Fallback if metadata is missing
                        [:expression (merge found-ref opts) expression-name]))))
-             (m/indexed stages))))))
+             (m/indexed stages)))
+      (native? query)
+      (lib.util/update-query-stage 0 (fn [{existing-tags :template-tags :as stage}]
+                                       (let [snippet-tags (snippet-tags metadata-provider existing-tags)]
+                                         (assoc stage :template-tags
+                                                (->> (m/filter-kv (fn [name tag]
+                                                                    (or (get snippet-tags name)
+                                                                        (not (:from-snippet tag))))
+                                                                  existing-tags)
+                                                     (merge snippet-tags)))))))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]
