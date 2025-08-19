@@ -128,9 +128,6 @@ export const SdkIframeEmbedPreview = () => {
               : undefined,
           }),
         )
-<<<<<<< HEAD
-        .with({ componentName: "metabase-browser" }, () => null)
-=======
         .with({ componentName: "metabase-browser" }, (s) =>
           createElement("metabase-browser", {
             "read-only": s.readOnly,
@@ -140,7 +137,6 @@ export const SdkIframeEmbedPreview = () => {
               : undefined,
           }),
         )
->>>>>>> 3b0e5b76ce9 (add metabase-browser option to embed flow)
         .exhaustive()}
     </Card>
   );

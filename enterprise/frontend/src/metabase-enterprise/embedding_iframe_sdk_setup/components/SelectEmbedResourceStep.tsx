@@ -66,7 +66,12 @@ export const SelectEmbedResourceStep = () => {
       return;
     }
 
-    trackEmbedWizardResourceSelected(Number(id), experience);
+    const numericResourceId = typeof id === "string" ? parseInt(id) : id;
+
+    // Only track the resource id if it is a valid numeric id.
+    if (!isNaN(numericResourceId)) {
+      trackEmbedWizardResourceSelected(numericResourceId, experience);
+    }
 
     if (experience === "dashboard") {
       updateSettings({

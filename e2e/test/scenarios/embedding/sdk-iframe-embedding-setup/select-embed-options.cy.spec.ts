@@ -322,24 +322,19 @@ H.describeWithSnowplow(suiteTitle, () => {
     codeBlock().should("contain", 'is-save-enabled="true"');
   });
 
-  it("shows read-only option checked by default for browser", () => {
-    navigateToEmbedOptionsStep({ experience: "browser" });
+  it("can toggle read-only setting for browser", () => {
+    navigateToEmbedOptionsStep({
+      experience: "browser",
+      resourceName: "First collection",
+    });
 
     getEmbedSidebar()
       .findByLabelText("Allow editing dashboards and questions")
       .should("not.be.checked");
 
-    cy.log(
-      "New Dashboard and New Exploration buttons should not be visible by default",
-    );
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("New Dashboard").should("not.exist");
-      cy.findByText("New Exploration").should("not.exist");
     });
-  });
-
-  it("toggles editing permissions for browser", () => {
-    navigateToEmbedOptionsStep({ experience: "browser" });
 
     cy.log("turn on editing (set read-only to false)");
     getEmbedSidebar()
@@ -354,7 +349,6 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("New Dashboard").should("be.visible");
-      cy.findByText("New Exploration").should("be.visible");
     });
 
     cy.log("snippet should be updated");

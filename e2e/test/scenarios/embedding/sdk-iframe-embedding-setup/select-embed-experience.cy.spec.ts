@@ -99,11 +99,15 @@ H.describeWithSnowplow(suiteTitle, () => {
         event_detail: "browser",
       });
 
-      H.waitForSimpleEmbedIframesToLoad();
-
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.log("collection browser is visible");
-        cy.findAllByText("Our analytics").first().should("be.visible");
+        cy.log("collection is visible in breadcrumbs");
+        cy.findByTestId("sdk-breadcrumbs")
+          .findAllByText("Our analytics")
+          .first()
+          .should("be.visible");
+
+        cy.log("collection is visible in browser");
+        cy.findAllByText("Orders in a dashboard").should("be.visible");
       });
     });
   });

@@ -237,29 +237,25 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a collection").should("be.visible");
-      cy.findByText("Our analytics").click();
+      cy.findByText("First collection").click();
       cy.findByText("Select").click();
     });
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_resource_selected",
-      target_id: 1,
-      event_detail: "browser",
-    });
-
-    cy.log(
-      "collection is added to recents list and browser shows collection content",
-    );
+    cy.log("collection is added to recents list");
     getEmbedSidebar().within(() => {
       getRecentItemCards()
-        .should("have.length", 1)
-        .first()
-        .should("contain", "Our analytics")
+        .should("contain", "First collection")
         .should("have.attr", "data-selected", "true");
     });
 
+    cy.log("collection is shown in the breadcrumbs and preview");
     H.getSimpleEmbedIframeContent().within(() => {
-      cy.findAllByText("Our analytics").first().should("be.visible");
+      cy.findByTestId("sdk-breadcrumbs")
+        .findAllByText("First collection")
+        .first()
+        .should("be.visible");
+
+      cy.findByText("Second collection").should("be.visible");
     });
   });
 
