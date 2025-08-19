@@ -39,6 +39,7 @@
   validate-inputs!]
  [metabase.actions.error
   incorrect-value-type
+  violate-check-constraint
   violate-foreign-key-constraint
   violate-not-null-constraint
   violate-unique-constraint]
