@@ -211,13 +211,15 @@
    Replaces templates tags"
   [query :- ::lib.schema/query
    inner-query :- ::common/non-blank-string]
-  (lib.util/update-query-stage
-   query 0
-   (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query stage)
-     (assoc stage
-            :native inner-query
-            :template-tags (extract-template-tags inner-query existing-tags)))))
+  (u/prog1 (lib.util/update-query-stage
+            query 0
+            (fn [{existing-tags :template-tags :as stage}]
+              (assert-native-query stage)
+              (assoc stage
+                     :native inner-query
+                     :template-tags (extract-template-tags inner-query existing-tags))))
+    (prn "with-native-query")
+    (println (u/pprint-to-str <>))))
 
 ;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
 ;;; `with-replaced-template-tags`
