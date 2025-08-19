@@ -815,7 +815,7 @@ class Visualization extends PureComponent<
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
-                style={{ position: "relative" }}
+                style={{ position: hasDevWatermark ? "relative" : undefined }}
               >
                 <VisualizationRenderedWrapper
                   onRendered={this.handleVisualizationRendered}
