@@ -25,7 +25,7 @@ interface Props {
   };
 }
 
-export function TableDetailView({ params }: Props) {
+export function TableDetailPage({ params }: Props) {
   const tableId = parseInt(params.tableId, 10);
   const rowId = params.rowId;
 

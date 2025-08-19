@@ -24,7 +24,7 @@ interface Props {
   };
 }
 
-export function ModelDetailView({ params }: Props) {
+export function ModelDetailPage({ params }: Props) {
   const cardId = Urls.extractEntityId(params.slug);
   const rowId = params.rowId;
 
