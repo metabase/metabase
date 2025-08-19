@@ -8,6 +8,7 @@ import {
 } from "metabase/forms";
 import { Icon, type SwitchProps, Tooltip } from "metabase/ui";
 import type {
+  Engine,
   EngineField,
   EngineFieldOption,
   EngineKey,
@@ -23,12 +24,14 @@ export interface DatabaseDetailFieldProps {
   field: EngineField;
   autoFocus?: boolean;
   engineKey: EngineKey | undefined;
+  engine: Engine | undefined;
 }
 
 const DatabaseDetailField = ({
   field,
   autoFocus,
   engineKey,
+  engine,
 }: DatabaseDetailFieldProps): JSX.Element | null => {
   const override = FIELD_OVERRIDES[field.name];
   const type = getFieldType(field, override);
@@ -43,6 +46,7 @@ const DatabaseDetailField = ({
         {...props}
         {...getInputProps(field)}
         nullable
+        providers={engine?.["extra-info"]?.providers}
       />
     );
   }

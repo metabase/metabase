@@ -9,7 +9,8 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.core :as warehouses]))
+   [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.provider-detection :as provider-detection]))
 
 (set! *warn-on-reflection* true)
 
@@ -394,3 +395,8 @@
     (if (nil? json-unfolding)
       true
       json-unfolding)))
+
+;; Driver-specific extra-info methods
+
+(defmethod driver/extra-info :postgres [_]
+  {:providers (provider-detection/providers-for-api)})
