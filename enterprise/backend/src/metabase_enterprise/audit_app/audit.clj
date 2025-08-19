@@ -9,6 +9,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -266,7 +267,15 @@
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
               (audit/last-analytics-checksum! current-checksum))))
         (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-          (adjust-audit-db-to-host! audit-db))))))
+          (adjust-audit-db-to-host! audit-db)
+          ;; Re-fetch the database after adjustment to get the updated engine value
+          (when-let [updated-audit-db (t2/select-one :model/Database :is_audit true)]
+            ;; Sync the audit database to update field metadata to match the host database engine
+            ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
+            ;; to the correct types for the host database (e.g., datetime for MySQL)
+            (log/info "Syncing Audit DB to update field metadata for host engine...")
+            (sync/sync-database! updated-audit-db)
+            (log/info "Audit DB sync complete.")))))))
 
 (defn- maybe-install-audit-db
   []
