@@ -40,7 +40,7 @@
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
-  (.get ^Future (search/reindex!)))
+  (search/reindex! {:async? false}))
 
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
   (doto (Thread. ^Runnable init!) .start))

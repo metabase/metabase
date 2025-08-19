@@ -129,7 +129,7 @@
   "Populate a new index, and make it active. Simultaneously updates the current index.
   Returns a future that will complete when the reindexing is done.
   Respects `search.ingestion/*force-sync*` and waits for the future if it's true."
-  [& {:as opts}]
+  [& {:keys [async?] :or {async? true} :as opts}]
   (let [logic (fn [] (when (supports-index?)
                        (try
                          (log/info "Reindexing searchable entities")
@@ -148,7 +148,7 @@
                          (catch Exception e
                            (analytics/inc! :metabase-search/index-error)
                            (throw e)))))]
-    (if search.ingestion/*force-sync*
+    (if (or search.ingestion/*force-sync* async?)
       (let [result (logic)]
         (future result))
       (.submit ^ExecutorService reindex-pool ^Callable logic))))

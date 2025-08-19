@@ -26,6 +26,7 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -834,7 +835,7 @@
            {:delete-from (t2/table-name model)
             :where [:and max-id-condition additional-conditions]}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (.get (search/reindex! {:in-place? true}))))))
+        (search/reindex! {:in-place? true :async false})))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
