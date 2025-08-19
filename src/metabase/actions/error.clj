@@ -19,3 +19,7 @@
 (def violate-permission-constraint
   "Error type for SQL permission denied violations."
   ::violate-permission-constraint)
+
+(def violate-check-constraint
+  "Error type for SQL check constraint violation."
+  ::violate-check-constraint)

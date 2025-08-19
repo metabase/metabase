@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { useLazySelector } from "embedding-sdk/sdk-package/hooks/private/use-lazy-selector";
+import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import type {
@@ -16,8 +16,11 @@ import type {
  * @category useCreateDashboardApi
  */
 export const useCreateDashboardApi = () => {
-  const { props } = useMetabaseProviderPropsStore();
-  const { reduxStore } = props;
+  const {
+    state: {
+      internalProps: { reduxStore },
+    },
+  } = useMetabaseProviderPropsStore();
 
   const loginStatus = useLazySelector((state) => state.sdk.loginStatus);
 
@@ -34,9 +37,10 @@ export const useCreateDashboardApi = () => {
       }
 
       const createDashboard =
-        getWindow()?.MetabaseEmbeddingSDK?.createDashboard;
+        getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createDashboard;
       const getCollectionNumericIdFromReference =
-        getWindow()?.MetabaseEmbeddingSDK?.getCollectionNumericIdFromReference;
+        getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE
+          ?.getCollectionNumericIdFromReference;
 
       if (!createDashboard || !getCollectionNumericIdFromReference) {
         throw new Error("Embedding SDK bundle is not initialized");

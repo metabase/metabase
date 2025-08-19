@@ -27,7 +27,7 @@
       (doseq [[query-type gtap-rule]
               [["MBQL"
                 {:gtaps      {:venues {:query      (mt.tu/restricted-column-query (mt/id))
-                                       :remappings {:cat [:dimension (mt/id :venues :category_id)]}}}
+                                       :remappings {:cat [:dimension [:field (mt/id :venues :category_id) nil]]}}}
                  :attributes {:cat 50}}]
                ["native"
                 {:gtaps      {:venues {:query
@@ -88,7 +88,7 @@
                         (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                              {:remappings
                                                                               {:cat
-                                                                               [:dimension (mt/id :venues :category_id)]}}}
+                                                                               [:dimension [:field (mt/id :venues :category_id) nil]]}}}
                                                                 :attributes {:cat 5 #_BBQ}}
                           (is (= {:field_id        (mt/id :venues :name)
                                   :values          [["Baby Blues BBQ"]

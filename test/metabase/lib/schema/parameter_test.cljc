@@ -12,6 +12,12 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
+(deftest ^:parallel parameter-schema-test
+  (are [x] (not (me/humanize (mr/explain ::lib.schema.parameter/parameter x)))
+    {:type   :category
+     :target [:variable [:field 71725 nil]]
+     :value  50}))
+
 (deftest ^:parallel normalize-dimension-test
   (are [x expected] (= expected
                        (lib.normalize/normalize
