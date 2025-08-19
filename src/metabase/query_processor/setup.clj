@@ -177,7 +177,7 @@
 
       :else
       (let [db (lib.metadata/database (qp.store/metadata-provider))]
-        (setting/with-database db
+        (setting/with-database (:metabase/toucan-instance (meta db))
           (f query))))))
 
 (mu/defn- do-with-canceled-chan :- fn?

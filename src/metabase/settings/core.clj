@@ -138,8 +138,7 @@
 (defmacro with-database
   "Execute `body` with Database-local Setting values bound to `new-values`."
   [new-db & body]
-  ;; TODO Find a better solution than this shameful hack to turn from a qp metadata database back into a toucan database
-  `(binding [metabase.settings.models.setting/*database-delay*        (delay (t2/select-one :model/Database (u/the-id ~new-db)))
+  `(binding [metabase.settings.models.setting/*database-delay*        ~new-db
              metabase.settings.models.setting/*database-local-values* (or (:settings ~new-db) {})]
      ~@body))
 
