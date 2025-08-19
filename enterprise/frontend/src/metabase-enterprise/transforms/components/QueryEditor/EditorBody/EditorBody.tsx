@@ -68,44 +68,7 @@ export function EditorBody({
     onChange(newNativeQuery.question());
   };
 
-  const dataPickerOptions = useMemo(() => {
-    return {
-      shouldDisableItem: (
-        item: DataPickerItem | CollectionPickerItem | RecentItem,
-      ) => {
-        // Disable unsuppported databases
-        if (item.model === "database") {
-          const database = databases.find((db) => db.id === item.id);
-          return !doesDatabaseSupportTransforms(database);
-        }
-
-        if (
-          // Disable questions based on unsuppported databases
-          item.model === "card" ||
-          item.model === "dataset" ||
-          item.model === "metric" ||
-          // Disable tables based on unsuppported databases
-          item.model === "table"
-        ) {
-          if ("database_id" in item) {
-            const database = databases.find((db) => db.id === item.database_id);
-            return !doesDatabaseSupportTransforms(database);
-          }
-          if ("database" in item) {
-            const database = databases.find((db) => db.id === item.database.id);
-            return !doesDatabaseSupportTransforms(database);
-          }
-        }
-
-        // Disable dashboards altogether
-        if (item.model === "dashboard") {
-          return true;
-        }
-
-        return false;
-      },
-    };
-  }, [databases]);
+  const dataPickerOptions = useDataPickerOptions({ databases });
 
   return isNative ? (
     <NativeQueryEditor
@@ -157,4 +120,45 @@ export function EditorBody({
       </Box>
     </ResizableBox>
   );
+}
+
+function useDataPickerOptions({ databases }: { databases: ApiDatabase[] }) {
+  return useMemo(() => {
+    return {
+      shouldDisableItem: (
+        item: DataPickerItem | CollectionPickerItem | RecentItem,
+      ) => {
+        // Disable unsuppported databases
+        if (item.model === "database") {
+          const database = databases.find((db) => db.id === item.id);
+          return !doesDatabaseSupportTransforms(database);
+        }
+
+        if (
+          // Disable questions based on unsuppported databases
+          item.model === "card" ||
+          item.model === "dataset" ||
+          item.model === "metric" ||
+          // Disable tables based on unsuppported databases
+          item.model === "table"
+        ) {
+          if ("database_id" in item) {
+            const database = databases.find((db) => db.id === item.database_id);
+            return !doesDatabaseSupportTransforms(database);
+          }
+          if ("database" in item) {
+            const database = databases.find((db) => db.id === item.database.id);
+            return !doesDatabaseSupportTransforms(database);
+          }
+        }
+
+        // Disable dashboards altogether
+        if (item.model === "dashboard") {
+          return true;
+        }
+
+        return false;
+      },
+    };
+  }, [databases]);
 }
