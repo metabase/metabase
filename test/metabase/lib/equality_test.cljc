@@ -1143,7 +1143,7 @@
       (is (not (lib.equality/= col different-binning))))))
 
 (deftest ^:parallel duplicate-names-selection-test
-  (testing "Should be able to distinguish columns with the same name from a card with self join"
+  (testing "Should be able to distinguish columns with the same name from a card with self join (#62383)"
     (let [mp        (lib.tu/mock-metadata-provider
                      meta/metadata-provider
                      {:cards [{:id            1
