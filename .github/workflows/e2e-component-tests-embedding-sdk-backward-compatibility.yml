@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -62,9 +62,10 @@ jobs:
 
   e2e-tests:
     name: "SDK backward-compatibility E2E > Run e2e tests"
-    needs: [get-build-requirements]
+    needs: [files-changed, get-build-requirements]
     if: |
-      !cancelled()
+      !cancelled() &&
+      needs.files-changed.outputs.e2e_embedding_sdk == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
