@@ -150,10 +150,11 @@
                       new-database-name)
            {:name new-database-name})
          (when new-pk?
-           ;; historically the semantic type was used to provide a value for the :pk? key
-           ;; this guard avoids spamming logs when people upgrade to support database_is_pk
-           (when (or (some? old-pk)                         ; have a value, on the new branch
-                     (not= old-semantic-type :type/PK))
+           ;; this guard avoids spamming logs with pk changes when people first upgrade to support database_is_pk
+           (when (or ;; if we have any value for the old database_is_pk we have upgraded already, and can log regardless
+                  (some? old-pk)
+                     ;; otherwise, log only if logical pk status has changed
+                  (not= new-pk (= old-semantic-type :type/PK)))
              (log/infof "Database pk of %s has changed from '%s' to '%s'"
                         (common/field-metadata-name-for-logging table metabase-field)
                         old-pk
