@@ -11,7 +11,7 @@ import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
-import { createMockCard } from "metabase-types/api/mocks";
+import { createMockCard, createMockSeries } from "metabase-types/api/mocks";
 import { createProductsTable } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
@@ -56,6 +56,7 @@ async function setup(options?: Partial<ObjectDetailProps>) {
       settings={{
         column: () => null,
       }}
+      series={createMockSeries()}
       showHeader
       canZoom={true}
       canZoomPreviousRow={false}
