@@ -23,7 +23,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   queryBuilderMode: "view", // "view" | "notebook" | "dataset"
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
-  datasetEditorTab: "query", // "query" / "metadata"
+  datasetEditorTab: "query",
   isShowingQuestionDetailsSidebar: false,
   isShowingSnippetSidebar: false,
   isShowingNotebookNativePreview: false,

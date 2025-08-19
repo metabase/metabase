@@ -156,7 +156,7 @@ function getSidebar(
     modelIndexes,
   } = props;
 
-  if (datasetEditorTab === "metadata") {
+  if (datasetEditorTab === "columns") {
     if (isQueryError) {
       return null;
     }
@@ -264,7 +264,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   );
 
   const isEditingQuery = datasetEditorTab === "query";
-  const isEditingMetadata = datasetEditorTab === "metadata";
+  const isEditingColumns = datasetEditorTab === "columns";
 
   const initialEditorHeight = useMemo(() => {
     const { isNative } = Lib.queryDisplayInfo(question.query());
@@ -496,7 +496,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
 
   const renderTableHeader = useMemo(
     () =>
-      datasetEditorTab === "metadata"
+      datasetEditorTab === "columns"
         ? renderSelectableTableColumnHeader
         : undefined,
     [datasetEditorTab, renderSelectableTableColumnHeader],
@@ -542,7 +542,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           <EditorTabs
             currentTab={datasetEditorTab}
             disabledQuery={!isEditable}
-            disabledMetadata={!resultsMetadata}
+            disabledColumns={!resultsMetadata}
             onChange={onChangeEditorTab}
           />
         }
@@ -611,19 +611,19 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
                 noHeader
                 queryBuilderMode="dataset"
                 onHeaderColumnReorder={handleHeaderColumnReorder}
-                isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
+                isShowingDetailsOnlyColumns={datasetEditorTab === "columns"}
                 hasMetadataPopovers={false}
                 handleVisualizationClick={handleTableElementClick}
-                tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
+                tableHeaderHeight={isEditingColumns && TABLE_HEADER_HEIGHT}
                 renderTableHeader={renderTableHeader}
                 scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
-                renderEmptyMessage={isEditingMetadata}
+                renderEmptyMessage={isEditingColumns}
               />
             </DebouncedFrame>
             <Box
               className={cx(DatasetEditorS.TabHintToastContainer, {
                 [DatasetEditorS.isVisible]:
-                  isEditingMetadata && isTabHintVisible && !result?.error,
+                  isEditingColumns && isTabHintVisible && !result?.error,
               })}
             >
               <TabHintToast onClose={hideTabHint} />

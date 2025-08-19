@@ -82,7 +82,7 @@ export const QuestionMoreActionsMenu = ({
 
   const handleEditMetadata = () =>
     onSetQueryBuilderMode("dataset", {
-      datasetEditorTab: "metadata",
+      datasetEditorTab: "columns",
     });
 
   const [ackedModelModal] = useUserAcknowledgement("turn_into_model_modal");

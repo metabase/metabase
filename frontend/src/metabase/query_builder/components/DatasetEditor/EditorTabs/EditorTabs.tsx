@@ -11,14 +11,14 @@ import EditorTabsS from "./EditorTabs.module.css";
 type Props = {
   currentTab: string;
   disabledQuery: boolean;
-  disabledMetadata: boolean;
+  disabledColumns: boolean;
   onChange: (optionId: DatasetEditorTab) => void;
 };
 
 export function EditorTabs({
   currentTab,
   disabledQuery,
-  disabledMetadata,
+  disabledColumns,
   onChange,
 }: Props) {
   const theme = useMantineTheme();
@@ -66,27 +66,27 @@ export function EditorTabs({
       <li>
         <label
           className={cx(EditorTabsS.Tab, {
-            [EditorTabsS.active]: currentTab === "metadata",
-            [EditorTabsS.inactive]: currentTab !== "metadata",
-            [EditorTabsS.disabled]: disabledMetadata,
+            [EditorTabsS.active]: currentTab === "columns",
+            [EditorTabsS.inactive]: currentTab !== "columns",
+            [EditorTabsS.disabled]: disabledColumns,
           })}
-          htmlFor="editor-tabs-metadata"
+          htmlFor="editor-tabs-columns"
         >
           <Icon name="notebook" mr="10px" />
           <input
             type="radio"
             className={EditorTabsS.RadioInput}
-            id="editor-tabs-metadata"
+            id="editor-tabs-columns"
             name="editor-tabs"
-            value="metadata"
-            checked={currentTab === "metadata"}
+            value="columns"
+            checked={currentTab === "columns"}
             onChange={() => {
-              onChange("metadata");
+              onChange("columns");
             }}
-            disabled={disabledMetadata}
-            data-testid="editor-tabs-metadata"
+            disabled={disabledColumns}
+            data-testid="editor-tabs-columns"
           />
-          <span data-testid="editor-tabs-metadata-name">{t`Metadata`}</span>
+          <span data-testid="editor-tabs-columns-name">{t`Columns`}</span>
         </label>
       </li>
       <li>
@@ -94,7 +94,7 @@ export function EditorTabs({
           className={cx(EditorTabsS.Tab, {
             [EditorTabsS.active]: currentTab === "metadata",
             [EditorTabsS.inactive]: currentTab !== "metadata",
-            [EditorTabsS.disabled]: disabledMetadata,
+            [EditorTabsS.disabled]: disabledColumns,
           })}
           htmlFor="editor-tabs-metadata"
         >
@@ -109,7 +109,7 @@ export function EditorTabs({
             onChange={() => {
               onChange("metadata");
             }}
-            disabled={disabledMetadata}
+            disabled={disabledColumns}
             data-testid="editor-tabs-metadata"
           />
           <span data-testid="editor-tabs-metadata-name">{t`Metadata`}</span>

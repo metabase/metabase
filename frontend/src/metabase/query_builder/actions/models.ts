@@ -3,7 +3,11 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { addUndo } from "metabase/redux/undo";
-import type { Dispatch, GetState } from "metabase-types/store";
+import type {
+  DatasetEditorTab,
+  Dispatch,
+  GetState,
+} from "metabase-types/store";
 
 import { getQuestion } from "../selectors";
 
@@ -12,7 +16,7 @@ import { runDirtyQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab =
-  (datasetEditorTab: "query" | "metadata") => (dispatch: Dispatch) => {
+  (datasetEditorTab: DatasetEditorTab) => (dispatch: Dispatch) => {
     dispatch(
       setQueryBuilderMode("dataset", { datasetEditorTab, replaceState: false }),
     );
