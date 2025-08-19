@@ -75,7 +75,7 @@
   Returns the index that you can use with semantic.search.index functions to operate on the index.
 
   Designed to be called once at application startup (or in tests)."
-  [pgvector index-metadata embedding-model & opts]
+  [pgvector index-metadata embedding-model & {:as opts}]
   (semantic.db.connection/with-migrate-tx [tx pgvector]
     (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata
                                               :embedding-model embedding-model})
