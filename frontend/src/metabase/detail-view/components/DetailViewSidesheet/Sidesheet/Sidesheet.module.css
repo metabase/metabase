@@ -15,6 +15,9 @@
     display: flex;
     flex: 1;
     flex-direction: column;
+    box-shadow:
+      -2px 0 4px -2px rgba(16, 24, 40, 0.06),
+      -4px 0 8px -2px rgba(16, 24, 40, 0.1);
   }
 }
 
