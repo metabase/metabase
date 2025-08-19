@@ -388,7 +388,7 @@
   "scripts": {
     "mage": "./bin/mage",
     "build": "yarn build:cljs && yarn build:js",
-    "build-embedding-sdk-package": "yarn embedding-sdk:clean:dist && yarn embedding-sdk:clean:tsbuildinfo && yarn && yarn build-release:cljs && yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-release:embedding-sdk-package && yarn build-embedding-sdk-cli && yarn embedding-sdk:dts:generate",
+    "build-embedding-sdk-package": "yarn embedding-sdk:clean:dist && yarn && yarn build-release:cljs && yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-release:embedding-sdk-package && yarn build-embedding-sdk-cli && yarn embedding-sdk:dts:generate",
     "build-embedding-sdk-cli": "rspack --config rspack.embedding-sdk-cli.config.js",
     "build-embedding-sdk-cli:watch": "yarn build-embedding-sdk-cli --watch",
     "build-hot": "rm -f target/cljs_dev/cljs.core.js && yarn build:cljs && yarn build-hot:js",
