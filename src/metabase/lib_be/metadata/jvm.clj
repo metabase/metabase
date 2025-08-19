@@ -338,7 +338,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :name :description :content :archived :collection_id]}))
+         {:select [:id :name :description :content :archived :collection_id :template_tags]}))
 
 (t2/define-after-select :metadata/native-query-snippet
   [snippet]
