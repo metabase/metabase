@@ -1141,7 +1141,7 @@ describe("issue 39448", () => {
 });
 
 // See TODO inside this test when unskipping
-describe("issue 27521", { tags: "@skip" }, () => {
+describe("issue 27521", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
