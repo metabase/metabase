@@ -178,10 +178,12 @@
 (defn- row->index [{:keys [id
                            provider
                            model_name
+                           index_created_at
                            vector_dimensions
                            table_name
                            index_version]}]
   {:id               id
+   :index-created-at index_created_at
    :embedding-model  {:provider          provider
                       :model-name        model_name
                       :vector-dimensions vector_dimensions}
@@ -301,7 +303,7 @@
          :active             false}))))
 
 (defn record-new-index-table!
-  "Records an index in the metadata table and returns its assigned ID.
+  "Records an index in the metadata table and returns its assigned ID + index-created-at.
   The indexes :table-name must be unique, or you will receive a constraint violation."
   [pgvector index-metadata index]
   (let [{:keys [metadata-table-name]}
@@ -324,10 +326,11 @@
                                              :table_name        index-table-name
                                              :index_version     index-version
                                              :index_created_at  [:now]}])
-                       (sql.helpers/returning :id)
+                       (sql.helpers/returning :id :index_created_at)
                        (sql/format :quoted true))
-        {:keys [id]} (jdbc/execute-one! pgvector insert-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
-    id))
+        {:keys [id index_created_at]}
+        (jdbc/execute-one! pgvector insert-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    [id index_created_at]))
 
 (comment
   (def pgvector ((requiring-resolve 'metabase-enterprise.semantic-search.env/get-pgvector-datasource!)))

@@ -54,9 +54,9 @@
         (let [index
               (cond
                 (not (:id index))
-                (let [index-id (semantic.index-metadata/record-new-index-table! tx index-metadata index)]
+                (let [[index-id index-created-at] (semantic.index-metadata/record-new-index-table! tx index-metadata index)]
                   (-> index
-                      (assoc :id index-id)
+                      (assoc :id index-id :index-created-at index-created-at)
                       (mark-created)))
 
                 (:force-reset? opts)
