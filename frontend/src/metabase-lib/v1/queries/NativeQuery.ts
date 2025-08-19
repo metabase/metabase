@@ -379,31 +379,6 @@ export default class NativeQuery {
       .filter(variableFilter);
   }
 
-  updateSnippetsWithIds(snippets): NativeQuery {
-    const tagsBySnippetName = _.chain(this.templateTags())
-      .filter((tag) => tag.type === "snippet" && tag["snippet-id"] == null)
-      .groupBy((tag) => tag["snippet-name"])
-      .value();
-
-    if (Object.keys(tagsBySnippetName).length === 0) {
-      // no need to check if there are no tags
-      return this;
-    }
-
-    let query = this;
-
-    for (const snippet of snippets) {
-      for (const tag of tagsBySnippetName[snippet.name] || []) {
-        query = query.setTemplateTag(tag.name, {
-          ...tag,
-          "snippet-id": snippet.id,
-        });
-      }
-    }
-
-    return query;
-  }
-
   updateSnippetNames(snippets): NativeQuery {
     const tagsBySnippetId = _.chain(this.templateTags())
       .filter((tag) => tag.type === "snippet")
@@ -429,7 +404,7 @@ export default class NativeQuery {
     }
 
     if (queryText !== this.queryText()) {
-      return this.setQueryText(queryText).updateSnippetsWithIds(snippets);
+      return this.setQueryText(queryText);
     }
 
     return this;

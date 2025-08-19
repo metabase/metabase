@@ -179,11 +179,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   onChange = (queryText: string) => {
     const { query, setDatasetQuery } = this.props;
     if (query.queryText() !== queryText) {
-      const updatedQuery = query
-        .setQueryText(queryText)
-        .updateSnippetsWithIds(this.props.snippets)
-        .setQueryText(queryText);
-
+      const updatedQuery = query.setQueryText(queryText);
       setDatasetQuery(updatedQuery);
     }
   };

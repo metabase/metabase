@@ -5,7 +5,10 @@ import Question from "metabase-lib/v1/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,
 } from "metabase-lib/v1/queries/NativeQuery";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockNativeQuerySnippet,
+} from "metabase-types/api/mocks";
 import {
   PRODUCTS,
   SAMPLE_DB_ID,
@@ -13,6 +16,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 const MONGO_DB_ID = SAMPLE_DB_ID + 1;
+const SNIPPET_ID = 1;
 
 const metadata = createMockMetadata({
   databases: [
@@ -26,6 +30,13 @@ const metadata = createMockMetadata({
         "dynamic-schema",
         "native-requires-specified-collection",
       ],
+    }),
+  ],
+  snippets: [
+    createMockNativeQuerySnippet({
+      id: SNIPPET_ID,
+      name: "bar",
+      content: "WHERE",
     }),
   ],
 });
@@ -265,16 +276,14 @@ describe("NativeQuery", () => {
       it("should update query text with new snippet names", () => {
         const q = makeQuery()
           .setQueryText("{{ snippet: foo }}")
-          .updateSnippetsWithIds([{ id: 123, name: "foo" }])
-          .updateSnippetNames([{ id: 123, name: "bar" }]);
+          .updateSnippetNames([{ id: SNIPPET_ID, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}}");
       });
 
       it("should update snippet names that differ on spacing", () => {
         const q = makeQuery()
           .setQueryText("{{ snippet: foo }} {{snippet:  foo  }}")
-          .updateSnippetsWithIds([{ id: 123, name: "foo" }])
-          .updateSnippetNames([{ id: 123, name: "bar" }]);
+          .updateSnippetNames([{ id: SNIPPET_ID, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}} {{snippet: bar}}");
       });
     });
