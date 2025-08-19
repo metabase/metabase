@@ -15,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p])
-  (:import (java.util.concurrent ArrayBlockingQueue ExecutorService ThreadPoolExecutor ThreadPoolExecutor$DiscardPolicy TimeUnit)))
+  (:import (java.util.concurrent ArrayBlockingQueue ExecutorService Future ThreadPoolExecutor ThreadPoolExecutor$DiscardPolicy TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -128,10 +128,10 @@
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index.
   Returns a future object that will complete when the reindexing is done.
-  Respects `search.ingestion/*force-sync*` and deref's the future if it's true."
+  Respects `search.ingestion/*force-sync*` and waits for the future if it's true."
   [& {:as opts}]
   (cond->
-   (.submit ^ExecutorService @reindex-pool ^Callable
+   (.submit ^ExecutorService reindex-pool ^Callable
       ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
             (when (supports-index?)
               (try
@@ -151,7 +151,7 @@
                 (catch Exception e
                   (analytics/inc! :metabase-search/index-error)
                   (throw e)))))
-    search.ingestion/*force-sync* (doto deref)))
+    search.ingestion/*force-sync* (doto ^Future .get)))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."

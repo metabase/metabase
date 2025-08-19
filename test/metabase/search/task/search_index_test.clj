@@ -8,6 +8,8 @@
    [metabase.search.test-util :as search.tu]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;; TODO this is coupled to appdb engines at the moment
 (defn- index-size []
   (t2/count (search.index/active-table)))
