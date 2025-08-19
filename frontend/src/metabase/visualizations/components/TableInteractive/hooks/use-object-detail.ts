@@ -40,9 +40,7 @@ export const useObjectDetail = (
   const tableId = useMemo(() => Lib.sourceTableOrCardId(query), [query]);
 
   const primaryKeyColumn: ColumnDescriptor | null = useMemo(() => {
-    const primaryKeyColumns = cols.filter(
-      (column) => column.table_id === tableId && isPK(column),
-    );
+    const primaryKeyColumns = cols.filter((column) => isPK(column));
 
     if (primaryKeyColumns.length !== 1) {
       return null;
@@ -53,7 +51,7 @@ export const useObjectDetail = (
       column: primaryKeyColumn,
       index: cols.indexOf(primaryKeyColumn),
     };
-  }, [cols, tableId]);
+  }, [cols]);
 
   const onOpenObjectDetail = useCallback(
     (rowIndex: number) => {
