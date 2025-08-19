@@ -167,8 +167,7 @@
                               messages     (channel/render-notification
                                             channel-type
                                             notification-payload
-                                            (:template handler)
-                                            (:recipients handler))]
+                                            handler)]
                           (log/debugf "Got %d messages for channel %s with template %d"
                                       (count messages)
                                       (handler->channel-name handler)
@@ -370,7 +369,8 @@
                                                              (pos? (queue-size queue))))
                                                (try
                                                  (when-let [notification (take-notification-with-timeout! queue 1000)]
-                                                   (send-notification-sync! notification))
+                                                   (log/with-restored-context-from-meta notification
+                                                     (send-notification-sync! notification)))
                                                  (catch InterruptedException _
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
@@ -386,7 +386,7 @@
                       (if-not (.get shutdown-flag)
                         (do
                           (ensure-enough-workers!)
-                          (put-notification! queue notification)
+                          (put-notification! queue (log/with-context-meta notification))
                           ::ok)
                         (do
                           (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))

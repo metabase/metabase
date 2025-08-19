@@ -109,3 +109,11 @@
     {:type    error-type
      :message (tru "Some of your values aren’t of the correct type for the database.")
      :errors  {}}))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-check-constraint]
+  [_driver error-type _database _action-type error-message]
+  (when-let [[_match constraint-name]
+             (re-find #"Check constraint violation: \"([^\"]+)\"" error-message)]
+    {:type    error-type
+     :message (tru "Some of your values violate the constraint: {0}" constraint-name)
+     :errors  {}}))

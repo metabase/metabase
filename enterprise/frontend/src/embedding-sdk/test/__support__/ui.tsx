@@ -3,32 +3,36 @@ import type * as React from "react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import {
-  MetabaseProviderInternal,
-  type MetabaseProviderProps,
-} from "embedding-sdk/components/public/MetabaseProvider";
+import { ComponentProviderInternal } from "embedding-sdk/components/public/ComponentProvider";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { sdkReducers } from "embedding-sdk/store";
 import type { SdkStore, SdkStoreState } from "embedding-sdk/store/types";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import type { MantineThemeOverride } from "metabase/ui";
-import { themeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
+import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 export interface RenderWithSDKProvidersOptions {
   storeInitialState?: Partial<State>;
-  sdkProviderProps?: Partial<MetabaseProviderProps> | null;
+  componentProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
+  // Needed for Components/Hooks that retrieve Component/Hooks from the window.METABASE_EMBEDDING_SDK_BUNDLE
+  metabaseEmbeddingSdkBundleExports?: Partial<
+    typeof window.METABASE_EMBEDDING_SDK_BUNDLE
+  >;
 }
 
 export function renderWithSDKProviders(
   ui: React.ReactElement,
   {
     storeInitialState = {},
-    sdkProviderProps = null,
+    componentProviderProps = null,
     theme,
+    metabaseEmbeddingSdkBundleExports,
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
@@ -57,21 +61,30 @@ export function renderWithSDKProviders(
   ) as unknown as SdkStore;
 
   // Prevent spamming the console during tests
-  if (sdkProviderProps) {
-    sdkProviderProps.allowConsoleLog = false;
+  if (componentProviderProps) {
+    componentProviderProps.allowConsoleLog = false;
+  }
+
+  if (metabaseEmbeddingSdkBundleExports) {
+    window.METABASE_EMBEDDING_SDK_BUNDLE =
+      metabaseEmbeddingSdkBundleExports as typeof window.METABASE_EMBEDDING_SDK_BUNDLE;
+
+    ensureMetabaseProviderPropsStore().updateInternalProps({
+      reduxStore: store,
+    });
   }
 
   const wrapper = (props: any) => {
     return (
       <MetabaseReduxProvider store={store}>
         {/* If we try to inject CSS variables to `.mb-wrapper`, it will slow the Jest tests down like crazy. */}
-        <themeProviderContext.Provider value={{ withCssVariables: false }}>
-          <MetabaseProviderInternal
+        <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
+          <ComponentProviderInternal
             {...props}
-            {...sdkProviderProps}
-            store={store}
+            {...componentProviderProps}
+            reduxStore={store}
           />
-        </themeProviderContext.Provider>
+        </ThemeProviderContext.Provider>
       </MetabaseReduxProvider>
     );
   };

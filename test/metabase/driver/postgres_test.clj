@@ -215,9 +215,9 @@
           (sync/sync-database! (mt/db) {:scan :schema})
           (is (= [[42]]
                  (mt/rows (qp/process-query
-                           {:database (u/the-id (mt/db))
+                           {:database (mt/id)
                             :type     :query
-                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (:id (mt/db)))}})))))))))
+                            :query    {:source-table (t2/select-one-pk :model/Table :db_id (mt/id))}})))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -1119,7 +1119,37 @@
             :postgres actions.error/violate-foreign-key-constraint nil :model.row/delete
             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
 
-;; this contains specical tests case for postgres
+;; this contains special tests case for postgres
+;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
+(deftest check-constraint-test
+  (mt/test-driver :postgres
+    (testing "violate check constraints"
+      (tx/drop-if-exists-and-create-db! driver/*driver* "check-constraint-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "check-constraint-test"})]
+        (doseq [stmt ["CREATE TABLE test_users (
+                        id serial PRIMARY KEY,
+                        email VARCHAR(255) NOT NULL,
+                        age INTEGER,
+                        CONSTRAINT email_format_check CHECK (email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$')
+                      );"]]
+          (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details) [stmt]))
+        (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+          (mt/with-db database
+            (sync/sync-database! database)
+            (mt/with-actions-enabled
+              (testing "when creating with invalid email"
+                (is (= {:errors      {}
+                        :message     "Some of your values violate the constraint: email_format_check"
+                        :status-code 400
+                        :type        actions.error/violate-check-constraint}
+                       (sql-jdbc.actions-test/perform-action-ex-data
+                        :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
+                                                                 "age"   25}
+                                                    :database   (:id database)
+                                                    :query      {:source-table $$test_users}
+                                                    :type       :query}))))))))))))
+
+;; this contains special tests case for postgres
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
 (deftest action-error-handling-test
   (mt/test-driver :postgres
@@ -1139,31 +1169,31 @@
             (sync/sync-database! database)
             (mt/with-actions-enabled
               (testing "when creating"
-                (is (= {:errors      {"column1" "This Column1 value already exists."
-                                      "column2" "This Column2 value already exists."}
-                        :message     "Column1 and Column2 already exist."
-                        :status-code 400
-                        :type        actions.error/violate-unique-constraint}
-                       (sql-jdbc.actions-test/perform-action-ex-data
-                        :model.row/create (mt/$ids {:create-row {"id"      3
-                                                                 "column1" "A"
-                                                                 "column2" "A"}
-                                                    :database   (:id database)
-                                                    :query      {:source-table $$mytable}
-                                                    :type       :query})))))
+                (is (=? {:errors      {"column1" "This Column1 value already exists."
+                                       "column2" "This Column2 value already exists."}
+                         :message     "Column1 and Column2 already exist."
+                         :status-code 400
+                         :type        actions.error/violate-unique-constraint}
+                        (sql-jdbc.actions-test/perform-action-ex-data
+                         :model.row/create (mt/$ids {:create-row {"id"      3
+                                                                  "column1" "A"
+                                                                  "column2" "A"}
+                                                     :database   (:id database)
+                                                     :query      {:source-table $$mytable}
+                                                     :type       :query})))))
               (testing "when updating"
-                (is (= {:errors      {"column1" "This Column1 value already exists."
-                                      "column2" "This Column2 value already exists."}
-                        :message     "Column1 and Column2 already exist."
-                        :status-code 400
-                        :type        actions.error/violate-unique-constraint}
-                       (sql-jdbc.actions-test/perform-action-ex-data
-                        :model.row/update (mt/$ids {:update-row {"column1" "A"
-                                                                 "column2" "A"}
-                                                    :database   (:id database)
-                                                    :query      {:source-table $$mytable
-                                                                 :filter       [:= $mytable.id 2]}
-                                                    :type       :query}))))))))))))
+                (is (=? {:errors      {"column1" "This Column1 value already exists."
+                                       "column2" "This Column2 value already exists."}
+                         :message     "Column1 and Column2 already exist."
+                         :status-code 400
+                         :type        actions.error/violate-unique-constraint}
+                        (sql-jdbc.actions-test/perform-action-ex-data
+                         :model.row/update (mt/$ids {:update-row {"column1" "A"
+                                                                  "column2" "A"}
+                                                     :database   (:id database)
+                                                     :query      {:source-table $$mytable
+                                                                  :filter       [:= $mytable.id 2]}
+                                                     :type       :query}))))))))))))
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
@@ -1177,8 +1207,8 @@
                                      :type     :native
                                      :native   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}})))))]
       (testing "check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific"
-        (is  (= "US/Pacific"
-                (get-timezone-with-report-timezone "US/Pacific"))))
+        (is  (= "America/Los_Angeles"
+                (get-timezone-with-report-timezone "America/Los_Angeles"))))
       (testing "check that we can set it to something else: America/Chicago"
         (is (= "America/Chicago"
                (get-timezone-with-report-timezone "America/Chicago"))))

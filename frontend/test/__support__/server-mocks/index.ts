@@ -42,6 +42,7 @@ export * from "./store";
 export * from "./table";
 export * from "./task";
 export * from "./timeline";
+export * from "./transform";
 export * from "./user";
 export * from "./user-key-value";
 export * from "./util";
