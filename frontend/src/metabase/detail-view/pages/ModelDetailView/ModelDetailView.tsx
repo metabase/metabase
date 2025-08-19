@@ -6,7 +6,7 @@ import { useGetCardQueryMetadataQuery } from "metabase/api";
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
-import { DetailView } from "metabase/detail-view/components";
+import { DetailViewPage } from "metabase/detail-view/components";
 import { getRowName } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -83,5 +83,5 @@ export function ModelDetailView({ params }: Props) {
     );
   }
 
-  return <DetailView dataset={dataset} rowId={rowId} table={table} />;
+  return <DetailViewPage dataset={dataset} rowId={rowId} table={table} />;
 }

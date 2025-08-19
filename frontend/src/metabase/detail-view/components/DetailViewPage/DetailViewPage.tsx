@@ -11,7 +11,7 @@ import { Box, Group, Stack, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import type { Dataset, ForeignKey, Table } from "metabase-types/api";
 
-import S from "./DetailView.module.css";
+import S from "./DetailViewPage.module.css";
 import { getEntityIcon } from "./utils";
 
 interface Props {
@@ -21,7 +21,12 @@ interface Props {
   tableForeignKeys?: ForeignKey[];
 }
 
-export function DetailView({ dataset, rowId, table, tableForeignKeys }: Props) {
+export function DetailViewPage({
+  dataset,
+  rowId,
+  table,
+  tableForeignKeys,
+}: Props) {
   const data = useMemo(() => extractRemappedColumns(dataset.data), [dataset]);
   const columns = useMemo(() => data?.results_metadata.columns ?? [], [data]);
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);

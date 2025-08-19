@@ -9,7 +9,7 @@ import {
   useListTableForeignKeysQuery,
 } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
-import { DetailView } from "metabase/detail-view/components";
+import { DetailViewPage } from "metabase/detail-view/components";
 import { getRowName } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
@@ -84,7 +84,7 @@ export function TableDetailView({ params }: Props) {
   }
 
   return (
-    <DetailView
+    <DetailViewPage
       dataset={dataset}
       rowId={rowId}
       table={table}
