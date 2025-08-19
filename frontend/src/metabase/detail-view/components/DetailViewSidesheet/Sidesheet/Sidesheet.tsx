@@ -25,8 +25,8 @@ export function Sidesheet({ actions, children, onClose }: Props) {
         transitionProps={{ duration: 0 }}
         w={rem(720)}
       >
-        <Modal.Body className={S.body} p={0}>
-          <Group gap="lg" justify="flex-end" px="xl" py="lg">
+        <Modal.Body className={S.body} p={0} pt="lg">
+          <Group gap="lg" justify="flex-end" px="xl">
             {actions}
 
             <Modal.CloseButton aria-label={t`Close`} />
