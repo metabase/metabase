@@ -275,7 +275,7 @@
             ;; to the correct types for the host database (e.g., datetime for MySQL)
             (log/info "Starting Sync of Audit DB to update field metadata for host engine")
             (future
-              (log/with-no-logs (sync/sync-database! updated-audit-db))
+              (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
               (log/info "Audit DB sync complete."))))))))
 
 (defn- maybe-install-audit-db
