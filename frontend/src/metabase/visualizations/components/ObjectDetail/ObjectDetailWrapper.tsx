@@ -4,6 +4,7 @@ import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Table as ApiTable } from "metabase-types/api";
 
 import { PaginationFooter } from "../PaginationFooter/PaginationFooter";
@@ -121,6 +122,12 @@ function getRowUrl(
   table: ApiTable,
   rowId: string | number,
 ): string | undefined {
+  const pks = table.fields?.filter(isPK) ?? [];
+
+  if (pks.length !== 1) {
+    return undefined;
+  }
+
   if (question.type() === "model") {
     return `/model/${question.slug()}/detail/${rowId}`;
   }
