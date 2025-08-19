@@ -22,6 +22,7 @@
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util Queue)
+   (java.util.concurrent Future)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -124,7 +125,7 @@
                              [:name ms/NonBlankString]]]
   (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
-  (.get (search/reindex!))
+  (.get ^Future (search/reindex!))
   nil)
 
 (api.macros/defendpoint :post "/echo"
