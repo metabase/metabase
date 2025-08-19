@@ -700,8 +700,7 @@ class Question {
         q &&
         new Question(q.card(), this.metadata())
           .setParameters(
-            getTemplateTagParametersFromCard(q.card()),
-            q.metadata(),
+            getTemplateTagParametersFromCard(q.card(), q.metadata()),
           )
           .setDashboardProps({
             dashboardId: undefined,
@@ -884,7 +883,6 @@ class Question {
 
     return this.setParameters(
       getTemplateTagParametersFromCard(this.card(), this.metadata()),
-      this.metadata(),
     );
   }
 
