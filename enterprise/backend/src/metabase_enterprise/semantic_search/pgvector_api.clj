@@ -13,6 +13,7 @@
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import (java.time Instant)))
@@ -99,7 +100,7 @@
   [pgvector index-metadata documents]
   (let [now (Instant/now)]
     (transduce
-     (partition-all (min 512 semantic.gate/max-batch-size))
+     (partition-all (min 512 (semantic.settings/ee-search-gate-max-batch-size)))
      (completing
       (fn [acc documents]
         (->> documents
@@ -117,7 +118,7 @@
   [pgvector index-metadata model ids]
   (let [now (Instant/now)]
     (transduce
-     (partition-all (min 512 semantic.gate/max-batch-size))
+     (partition-all (min 512 (semantic.settings/ee-search-gate-max-batch-size)))
      (completing
       (fn [acc ids]
         (->> ids
