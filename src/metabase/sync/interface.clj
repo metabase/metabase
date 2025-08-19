@@ -16,8 +16,7 @@
    [:database_require_filter {:optional true} [:maybe :boolean]]
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
    [:description             {:optional true} [:maybe :string]]
-   [:visibility_type         {:optional true} [:maybe :string]]
-   [:owner                   {:optional true} [:maybe :string]]])
+   [:visibility_type         {:optional true} [:maybe :string]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."

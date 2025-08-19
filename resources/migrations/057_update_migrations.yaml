@@ -1022,25 +1022,6 @@ databaseChangeLog:
                 job_id IN (SELECT id FROM transform_job WHERE built_in_type IS NOT NULL) AND
                 tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
 
-  - changeSet:
-      id: v57.2025-08-24T00:00:00
-      author: devurandom
-      comment: Add object owner information to metabase_table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_table
-                columnName: owner
-      changes:
-        - addColumn:
-            tableName: metabase_table
-            columns:
-              - column:
-                  name: owner
-                  type: ${text.type}
-                  remarks: 'Owner of the table object.'
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

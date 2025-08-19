@@ -241,11 +241,8 @@
                            [:inline "m"] [:inline "MATERIALIZED VIEW"]
                            :else nil]
                           :type]
-                         ;; https://www.postgresql.org/docs/17/ddl-priv.html
-                         [[:cast :c.relowner :regrole] :owner]
                          [:d.description :description]
                          [:stat.n_live_tup :estimated_row_count]]
-             ;; https://www.postgresql.org/docs/17/catalog-pg-class.html
              :from      [[:pg_catalog.pg_class :c]]
              :join      [[:pg_catalog.pg_namespace :n]   [:= :c.relnamespace :n.oid]]
              :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid 0] [:= :d.classoid [:raw "'pg_class'::regclass"]]]
