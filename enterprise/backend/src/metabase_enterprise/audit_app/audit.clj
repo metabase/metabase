@@ -273,9 +273,10 @@
             ;; Sync the audit database to update field metadata to match the host database engine
             ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
             ;; to the correct types for the host database (e.g., datetime for MySQL)
-            (log/info "Syncing Audit DB to update field metadata for host engine...")
-            (sync/sync-database! updated-audit-db)
-            (log/info "Audit DB sync complete.")))))))
+            (log/info "Starting Sync of Audit DB to update field metadata for host engine")
+            (future
+              (log/with-no-logs (sync/sync-database! updated-audit-db))
+              (log/info "Audit DB sync complete."))))))))
 
 (defn- maybe-install-audit-db
   []
