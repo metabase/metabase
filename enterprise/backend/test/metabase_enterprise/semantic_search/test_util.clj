@@ -13,7 +13,7 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
-   [metabase.search.core :as search.core]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -325,7 +325,7 @@
        (with-open [_# (open-temp-index-and-metadata!)]
          (binding [search.ingestion/*force-sync* true]
            (blocking-index!
-            (search.core/reindex! :search.engine/semantic {:force-reset true}))
+            (search.engine/reindex! :search.engine/semantic {:force-reset true}))
            ~@body)))))
 
 (defn table-exists-in-db?

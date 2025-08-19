@@ -171,24 +171,24 @@
               (cond
                 is-active
                 (testing "is already active"
-                  (is (= {:index              (index' model)
-                          :index-table-exists true
-                          :metadata-row       (model-row model)
-                          :active             true}
-                         (sut' model))))
+                  (is (=? {:index              (assoc (index' model) :id int?)
+                           :index-table-exists true
+                           :metadata-row       (model-row model)
+                           :active             true}
+                          (sut' model))))
                 is-inactive
                 (testing "is inactive"
-                  (is (= {:index              (index' model)
-                          :index-table-exists true
-                          :metadata-row       (model-row model)
-                          :active             false}
-                         (sut' model))))
+                  (is (=? {:index              (assoc (index' model) :id int?)
+                           :index-table-exists true
+                           :metadata-row       (model-row model)
+                           :active             false}
+                          (sut' model))))
                 :else
                 (testing "no metadata"
-                  (is (= {:index              (index' model)
-                          :index-table-exists false
-                          :active             false}
-                         (sut' model))))))))))))
+                  (is (=? {:index              (index' model)
+                           :index-table-exists false
+                           :active             false}
+                          (sut' model))))))))))))
 
 (deftest record-new-index-table!-test
   (let [pgvector        semantic.tu/db
