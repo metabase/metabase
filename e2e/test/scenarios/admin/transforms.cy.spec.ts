@@ -171,6 +171,31 @@ describe("scenarios > admin > transforms", () => {
       });
     });
 
+    it("should not be possible to create an mbql transform from metrics", () => {
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (tableId) =>
+          H.createQuestion({
+            name: "Metric",
+            type: "metric",
+            query: {
+              "source-table": tableId,
+              aggregation: [["count"]],
+            },
+          }),
+      );
+
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findByText("Collections").click();
+        cy.findAllByTestId("picker-item")
+          .contains("Metric")
+          .should("have.attr", "data-disabled", "true");
+      });
+    });
+
     it("should not be possible to create a sql transform from a table from an unsupported database", () => {
       visitTransformListPage();
       getTransformListPage().button("Create a transform").click();
