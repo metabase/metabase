@@ -202,18 +202,6 @@
   [metadata-providerable query]
   (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
 
-(defn- snippet-tags [metadata-provider template-tags]
-  (u/prog1 (->> (vals template-tags)
-                (keep (fn [tag]
-                        (when (= (:type tag) :snippet)
-                          (-> (:snippet-id tag)
-                              (->> (lib.metadata/native-query-snippet metadata-provider))
-                              :template-tags
-                              (update-vals #(assoc % :from-snippet true))))))
-                (apply merge))
-    (prn "snippet-tags")
-    (println (u/pprint-to-str <>))))
-
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
 ;; - fill in field refs with metadata (#33680)
@@ -227,46 +215,29 @@
 
                   lib.normalize/normalize)
         stages (:stages query)]
-    (u/prog1 (cond-> query
-               converted?
-               (assoc
-                :stages
-                (mapv (fn [[stage-number stage]]
-                        (-> stage
-                            (add-types-to-fields metadata-provider)
-                            (lib.util.match/replace
-                              [:expression
-                               (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                               expression-name]
-                              (let [found-ref (try
-                                                (m/remove-vals
-                                                 #(= :type/* %)
-                                                 (-> (lib.expression/expression-ref query stage-number expression-name)
-                                                     second
-                                                     (select-keys [:base-type :effective-type])))
-                                                (catch #?(:clj Exception :cljs :default) _
-                                                  ;; This currently does not find expressions defined in join stages
-                                                  nil))]
-                                ;; Fallback if metadata is missing
-                                [:expression (merge found-ref opts) expression-name]))))
-                      (m/indexed stages)))
-               (native? query)
-               (lib.util/update-query-stage 0 (fn [{existing-tags :template-tags :as stage}]
-                                                (let [snippet-tags (snippet-tags metadata-provider existing-tags)]
-                                                  (assoc stage :template-tags
-                                                         (->> (into {}
-                                                                    (keep (fn [[name tag]]
-                                                                            (let [from-snippet (boolean (get snippet-tags name))]
-                                                                              (when (or from-snippet
-                                                                                        (not (:from-snippet tag))
-                                                                                        (:from-query tag))
-                                                                                [name (assoc tag :from-snippet from-snippet)]))))
-                                                                    existing-tags)
-                                                              (merge snippet-tags)))))))
-      (prn "query-method")
-      (println (u/pprint-to-str <>))
-      #?(:clj (stacktrace/print-stack-trace (Exception. "foo"))
-         :cljs (.trace js/console)))))
+    (cond-> query
+      converted?
+      (assoc
+       :stages
+       (mapv (fn [[stage-number stage]]
+               (-> stage
+                   (add-types-to-fields metadata-provider)
+                   (lib.util.match/replace
+                     [:expression
+                      (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                      expression-name]
+                     (let [found-ref (try
+                                       (m/remove-vals
+                                        #(= :type/* %)
+                                        (-> (lib.expression/expression-ref query stage-number expression-name)
+                                            second
+                                            (select-keys [:base-type :effective-type])))
+                                       (catch #?(:clj Exception :cljs :default) _
+                                         ;; This currently does not find expressions defined in join stages
+                                         nil))]
+                       ;; Fallback if metadata is missing
+                       [:expression (merge found-ref opts) expression-name]))))
+             (m/indexed stages))))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]

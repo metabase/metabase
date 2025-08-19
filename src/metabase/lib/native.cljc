@@ -170,6 +170,42 @@
                            (pr-str missing-keys)))
          result)))))
 
+(defn- snippet-ids [template-tags]
+  (keep #(when (= (:type %) :snippet)
+           (:snippet-id %))
+        (vals template-tags)))
+
+(defn- snippet-tags [metadata-providerable template-tags]
+  (u/prog1 (loop [[snippet-id & more-snippet-ids]  (snippet-ids template-tags)
+                  seen #{}
+                  tags {}]
+             (cond
+               (nil? snippet-id) tags
+               (seen snippet-id) (recur more-snippet-ids seen tags)
+               :else (recur more-snippet-ids
+                            (conj seen snippet-id)
+                            (->> (lib.metadata/native-query-snippet metadata-providerable snippet-id)
+                                 :template-tags
+                                 (merge tags)))))
+    (prn "snippet-tags")
+    (println (u/pprint-to-str <>))))
+
+(defn- add-snippet-tags [query]
+  (lib.util/update-query-stage
+   query 0
+   (fn [{existing-tags :template-tags :as stage}]
+     (let [snippet-tags (snippet-tags query existing-tags)]
+       (assoc stage :template-tags
+              (->> (into {}
+                         (keep (fn [[name tag]]
+                                 (let [from-snippet (boolean (get snippet-tags name))]
+                                   (when (or from-snippet
+                                             (not (:from-snippet tag))
+                                             (:from-query tag))
+                                     [name (assoc tag :from-snippet from-snippet)]))))
+                         existing-tags)
+                   (merge snippet-tags)))))))
+
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
 
@@ -188,7 +224,8 @@
                                         :lib/stage-metadata results-metadata
                                         :template-tags      tags
                                         :native             sql-or-other-native-query}])
-         (with-native-extras native-extras)))))
+         (with-native-extras native-extras)
+         add-snippet-tags))))
 
 (mu/defn with-different-database :- ::lib.schema/query
   "Changes the database for this query. The first stage must be a native type.
@@ -211,13 +248,14 @@
    Replaces templates tags"
   [query :- ::lib.schema/query
    inner-query :- ::common/non-blank-string]
-  (u/prog1 (lib.util/update-query-stage
-            query 0
-            (fn [{existing-tags :template-tags :as stage}]
-              (assert-native-query stage)
-              (assoc stage
-                     :native inner-query
-                     :template-tags (extract-template-tags inner-query existing-tags))))
+  (u/prog1 (-> (lib.util/update-query-stage
+                query 0
+                (fn [{existing-tags :template-tags :as stage}]
+                  (assert-native-query stage)
+                  (assoc stage
+                         :native inner-query
+                         :template-tags (extract-template-tags inner-query existing-tags))))
+               add-snippet-tags)
     (prn "with-native-query")
     (println (u/pprint-to-str <>))))
 
