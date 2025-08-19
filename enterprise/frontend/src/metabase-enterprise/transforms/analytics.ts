@@ -28,3 +28,28 @@ export function trackTranformJobTriggerManualRun({
     triggered_from: triggeredFrom,
   });
 }
+
+export function trackTransformCreate({
+  triggeredFrom,
+  creationType,
+}: {
+  triggeredFrom: "transform-page-create-menu";
+  creationType: "query" | "native" | "saved-question";
+}) {
+  trackSimpleEvent({
+    event: "transform_create",
+    triggered_from: triggeredFrom,
+    event_detail: creationType,
+  });
+}
+
+export function trackTransformCreated({
+  transformId,
+}: {
+  transformId: TransformId;
+}) {
+  trackSimpleEvent({
+    event: "transform_created",
+    target_id: transformId,
+  });
+}

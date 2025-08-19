@@ -7,9 +7,9 @@ import {
   QuestionPickerModal,
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Icon, Menu } from "metabase/ui";
+import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
 
 import {
   getNewTransformFromCardUrl,
@@ -23,10 +23,9 @@ export function CreateTransformMenu() {
 
   const handleSavedQuestionClick = () => {
     openPicker();
-    trackSimpleEvent({
-      event: "transform_create",
-      triggered_from: "transform-page-create-menu",
-      event_detail: "saved-question",
+    trackTransformCreate({
+      triggeredFrom: "transform-page-create-menu",
+      creationType: "saved-question",
     });
   };
 
@@ -52,10 +51,9 @@ export function CreateTransformMenu() {
             to={getNewTransformFromTypeUrl("query")}
             leftSection={<Icon name="notebook" />}
             onClick={() => {
-              trackSimpleEvent({
-                event: "transform_create",
-                triggered_from: "transform-page-create-menu",
-                event_detail: "query",
+              trackTransformCreate({
+                triggeredFrom: "transform-page-create-menu",
+                creationType: "query",
               });
             }}
           >
@@ -66,10 +64,9 @@ export function CreateTransformMenu() {
             to={getNewTransformFromTypeUrl("native")}
             leftSection={<Icon name="sql" />}
             onClick={() => {
-              trackSimpleEvent({
-                event: "transform_create",
-                triggered_from: "transform-page-create-menu",
-                event_detail: "native",
+              trackTransformCreate({
+                triggeredFrom: "transform-page-create-menu",
+                creationType: "native",
               });
             }}
           >
