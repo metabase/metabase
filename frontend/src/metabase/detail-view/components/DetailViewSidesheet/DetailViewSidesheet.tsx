@@ -82,6 +82,7 @@ export function DetailViewSidesheet({
               style={{
                 opacity: onPreviousClick ? undefined : 0.5,
               }}
+              p={0}
               w={20}
               onClick={onPreviousClick}
             />
@@ -97,6 +98,7 @@ export function DetailViewSidesheet({
               style={{
                 opacity: onNextClick ? undefined : 0.5,
               }}
+              p={0}
               w={20}
               onClick={onNextClick}
             />
@@ -109,6 +111,7 @@ export function DetailViewSidesheet({
                 h={20}
                 leftSection={<Icon name="link" />}
                 variant="subtle"
+                p={0}
                 w={20}
                 onClick={handleCopyLink}
               />
@@ -117,15 +120,18 @@ export function DetailViewSidesheet({
 
           {url && (
             <Tooltip label={t`Open row page`}>
-              <Button
-                c="text-dark"
-                component={Link}
-                h={20}
-                leftSection={<Icon name="expand" />}
-                to={url}
-                variant="subtle"
-                w={20}
-              />
+              <Box>
+                <Button
+                  c="text-dark"
+                  component={Link}
+                  h={20}
+                  leftSection={<Icon name="expand" />}
+                  to={url}
+                  variant="subtle"
+                  p={0}
+                  w={20}
+                />
+              </Box>
             </Tooltip>
           )}
         </>
