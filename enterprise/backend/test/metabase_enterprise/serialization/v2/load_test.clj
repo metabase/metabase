@@ -45,7 +45,7 @@
 ;;; `(into [] (extract/extract ...))` in these tests.
 
 (deftest load-basics-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (testing "a simple, fresh collection is imported"
       (let [serialized (atom nil)
             eid1       "0123456789abcdef_0123"]
@@ -76,7 +76,7 @@
                 (is (= eid1               (:entity_id (first colls))))))))))))
 
 (deftest deserialization-nested-collections-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (testing "with a three-level nesting of collections"
       (let [serialized (atom nil)
             parent     (atom nil)
@@ -115,7 +115,7 @@
                        (:location grandchild-dest)))))))))))
 
 (deftest deserialization-database-table-field-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (testing "databases, tables and fields are nested in namespaces"
       (let [serialized (atom nil)
             db1s       (atom nil)
@@ -188,7 +188,7 @@
   ;; converted to a portable form and read back in.
   ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a card that
   ;; references those fields to be correctly loaded with the dest IDs.
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (testing "embedded MBQL in Card :dataset-query is portable"
       (let [serialized (atom nil)
             coll1s     (atom nil)
@@ -275,7 +275,7 @@
   ;; converted to a portable form and read back in.
   ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a segment that
   ;; references those fields to be correctly loaded with the dest IDs.
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (testing "embedded MBQL in Segment :definition is portable"
       (let [serialized (atom nil)
             coll1s     (atom nil)
@@ -354,7 +354,7 @@
   ;; DashboardCard.visualization_settings contains JSON with several places where IDs are embedded.
   ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a Card and
   ;; DashboardCard to be correctly loaded with the dest IDs.
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (testing "parameter_mappings are portable"
       (let [serialized (atom nil)
             coll1s     (atom nil)
@@ -579,7 +579,7 @@
                          (-> setting :click_behavior :tabId))))))))))))
 
 (deftest timelines-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (testing "timelines"
       (let [serialized (atom nil)
             coll1s     (atom nil)
@@ -693,7 +693,7 @@
 (deftest users-test
   ;; Users are serialized as their email address. If a corresponding user is found during deserialization, its ID is
   ;; used. However, if no such user exists, a new one is created with mostly blank fields.
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (testing "existing users are found and used; missing users are created on the fly"
       (let [serialized (atom nil)
             user1s     (atom nil)
@@ -749,7 +749,7 @@
   ;; - in dst: a different database, table and field, to fiddle the IDs; plus the same database, table, both fields, but
   ;;   only one FieldValues. The existing and new FieldValues should both work correctly.
   ;; Another thing tested here is that the :field_id is properly reconstructed from the serdes path.
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (testing "FieldValues are portable"
       (let [serialized (atom nil)
             db1s       (atom nil)
@@ -850,7 +850,7 @@
   ;; If the dependencies of an entity exist in the receiving database, they don't need to be in the export.
   ;; This tests that such an import will succeed, and that it still fails when the dependency is not found in
   ;; either location.
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (let [db1s       (atom nil)
           table1s    (atom nil)]
 
@@ -894,7 +894,7 @@
                                     (serdes.load/load-metabase! ingestion))))))))))
 
 (deftest card-with-snippet-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (let [db1s       (atom nil)
           table1s    (atom nil)
           snippet1s  (atom nil)
@@ -935,7 +935,7 @@
                          :snippet-id))))))))))
 
 (deftest snippet-with-unique-name
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (testing "Snippets with the same name should be replaced/removed on deserialization"
       (mt/with-empty-h2-app-db!
         (let [unique-name "some snippet"
@@ -970,7 +970,7 @@
                     (t2/select-one :model/NativeQuerySnippet :entity_id (:entity_id snippet))))))))))
 
 (deftest load-action-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (let [serialized (atom nil)
           eid (u/generate-nano-id)]
       (ts/with-dbs [source-db dest-db]
@@ -1008,7 +1008,7 @@
                 (is (keyword? (:type action)))))))))))
 
 (deftest remove-dashcards-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (let [serialized (atom nil)
           dash1s     (atom nil)
           dash1d     (atom nil)
@@ -1056,7 +1056,7 @@
                         (:entity_id @tab2d))))))))))
 
 (deftest dashcard-series-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (ts/with-dbs [source-db dest-db]
       (testing "Dashcard series are updated and deleted correctly"
         (ts/with-db source-db
@@ -1106,7 +1106,7 @@
                                        (sort-by :position)))))))))))))))))
 
 (deftest dashcard-series-multi-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (ts/with-dbs [source-db dest-db]
       (testing "Dashcard series works correctly with one card in multiple series"
         (ts/with-db source-db
@@ -1126,7 +1126,7 @@
                          (t2/count :model/DashboardCardSeries))))))))))))
 
 (deftest extraneous-keys-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (let [serialized (atom nil)
           eid (u/generate-nano-id)]
       (ts/with-dbs [source-db dest-db]
@@ -1161,7 +1161,7 @@
             (is (serdes.load/load-metabase! (ingestion-in-memory @serialized)))))))))
 
 (deftest tx-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (mt/with-empty-h2-app-db!
       (let [coll       (ts/create! :model/Collection :name "coll")
             card       (ts/create! :model/Card :name "card" :collection_id (:id coll))
@@ -1179,18 +1179,18 @@
         (testing "Partial load does not change the database"
           (t2/update! :model/Collection {:id (:id coll)} {:name (str "qwe_" (:name coll))})
           (let [load-update! serdes/load-update!]
-            (with-redefs [serdes/load-update! (fn [model adjusted local]
+            (mt/with-dynamic-fn-redefs [serdes/load-update! (fn [model adjusted local]
                                                 ;; Collection is loaded first
-                                                (if (= model "Card")
-                                                  (throw (ex-info "oops, error" {}))
-                                                  (load-update! model adjusted local)))]
+                                                              (if (= model "Card")
+                                                                (throw (ex-info "oops, error" {}))
+                                                                (load-update! model adjusted local)))]
               (is (thrown? clojure.lang.ExceptionInfo
                            (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
               (is (= (str "qwe_" (:name coll))
                      (t2/select-one-fn :name :model/Collection :id (:id coll)))))))))))
 
 (deftest circular-links-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (ts/with-dbs [source-db dest-db]
       (ts/with-db source-db
         (let [coll          (ts/create! :model/Collection :name "coll")
@@ -1239,7 +1239,7 @@
                      (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id card-2)))))))))))
 
 (deftest continue-on-error-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (let [change-ser   (fn [ser changes] ;; kind of like left-join, but right side is indexed
                          (vec (for [entity ser]
                                 (merge entity (get changes (:entity_id entity))))))
@@ -1253,10 +1253,10 @@
                        :model/Card       _c3  {:name "card3" :collection_id (:id coll)}]
           (testing "It's possible to skip a few errors during extract"
             (let [extract-one serdes/extract-one]
-              (with-redefs [serdes/extract-one (fn [model-name opts instance]
-                                                 (if (= (:entity_id instance) (:entity_id c1))
-                                                   (throw (ex-info "Skip me" {}))
-                                                   (extract-one model-name opts instance)))]
+              (mt/with-dynamic-fn-redefs [serdes/extract-one (fn [model-name opts instance]
+                                                               (if (= (:entity_id instance) (:entity_id c1))
+                                                                 (throw (ex-info "Skip me" {}))
+                                                                 (extract-one model-name opts instance)))]
                 (mt/with-log-messages-for-level [messages [metabase.models.serialization :warn]]
                   (let [ser            (vec (serdes.extract/extract {:no-settings       true
                                                                      :no-data-model     true
@@ -1292,7 +1292,7 @@
             (is (nil? (t2/select-one :model/Card :name "MY CARD")))))))))
 
 (deftest database-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (ts/with-dbs [source-db dest-db]
       (ts/with-db source-db
         (mt/with-temp [:model/Database   _ {:name    "My Database"
@@ -1327,7 +1327,7 @@
                          (t2/select-one-fn :details :model/Database))))))))))))
 
 (deftest unique-dimensions-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (ts/with-dbs [source-db dest-db]
       (ts/with-db source-db
         (mt/with-temp [:model/Dimension d1 {:name     "Some Dimension"
@@ -1345,7 +1345,7 @@
                        (t2/select-one :model/Dimension :entity_id (:entity_id d2))))))))))))
 
 (deftest nested-identity-hashes-test ;; tests serdes/nested behavior for identity hashes
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (let [ids (atom {})]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
@@ -1388,7 +1388,7 @@
                                (serdes/entity-id (name model) e)))))))))))))))
 
 (deftest identically-named-fields-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (mt/with-empty-h2-app-db!
       (let [db (ts/create! :model/Database :name "mydb")
             t  (ts/create! :model/Table :name "table" :db_id (:id db))
@@ -1423,7 +1423,7 @@
                (t2/select-one-fn :description :model/Field (:id f3))))))))
 
 (deftest blank-eid-creates-new-entity-test
-  (with-redefs [search/reindex! (constantly nil)]
+  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
     (mt/with-empty-h2-app-db!
       (let [coll       (ts/create! :model/Collection :name "mycoll")
             [coll-ser] (serdes.extract/extract {:targets [["Collection" (:id coll)]]})

@@ -42,7 +42,7 @@
   @(search/reindex!))
 
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
-  (future init!))
+  (doto (Thread. ^Runnable init!) .start))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
