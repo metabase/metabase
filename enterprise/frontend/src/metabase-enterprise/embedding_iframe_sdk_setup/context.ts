@@ -5,6 +5,7 @@ import type { Parameter } from "metabase-types/api";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
+  SdkIframeEmbedSetupRecentItemType,
   SdkIframeEmbedSetupSettings,
   SdkIframeEmbedSetupStep,
 } from "./types";
@@ -26,7 +27,7 @@ export interface SdkIframeEmbedSetupContextType {
   recentQuestions: SdkIframeEmbedSetupRecentItem[];
   recentCollections: SdkIframeEmbedSetupRecentItem[];
   addRecentItem: (
-    type: "dashboard" | "question" | "collection",
+    type: SdkIframeEmbedSetupRecentItemType,
     recentItem: SdkIframeEmbedSetupRecentItem,
   ) => void;
 

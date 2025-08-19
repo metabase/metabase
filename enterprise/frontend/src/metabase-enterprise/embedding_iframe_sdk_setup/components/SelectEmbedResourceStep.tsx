@@ -13,6 +13,7 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
+  SdkIframeEmbedSetupRecentItemType,
 } from "../types";
 
 import { SelectEmbedResourceMissingRecents } from "./SelectEmbedResourceMissingRecents";
@@ -47,7 +48,7 @@ export const SelectEmbedResourceStep = () => {
     .with({ initialCollection: P.nonNullable }, (s) => s.initialCollection)
     .with({ dashboardId: P.nonNullable }, (s) => s.dashboardId)
     .with({ questionId: P.nonNullable }, (s) => s.questionId)
-    .otherwise(() => null);
+    .otherwise(() => undefined);
 
   const updateEmbedSettings = (
     experience: SdkIframeEmbedSetupExperience,
@@ -101,37 +102,20 @@ export const SelectEmbedResourceStep = () => {
     updateEmbedSettings(experience, resourceId);
 
     // Add the current resource to the top of the recent items list
-    // Only add to recent items for dashboard and chart experiences
-    if (experience === "dashboard") {
-      addRecentItem("dashboard", {
-        id: resourceId,
-        name: item.name,
-        description: item.description,
-      });
-    } else if (experience === "chart") {
-      addRecentItem("question", {
-        id: resourceId,
-        name: item.name,
-        description: item.description,
-      });
-    }
-  };
 
-  const handleCollectionPickerResourceSelect = (item: {
-    id: string | number;
-    name: string;
-    model: string;
-  }) => {
-    const resourceId = item.id;
+    const resourceType = match<
+      typeof experience,
+      SdkIframeEmbedSetupRecentItemType
+    >(experience)
+      .with("chart", () => "question")
+      .with("browser", () => "collection")
+      .with("dashboard", () => "dashboard")
+      .exhaustive();
 
-    closePicker();
-    updateEmbedSettings(experience, resourceId);
-
-    // Add collection to recent items
-    addRecentItem("collection", {
+    addRecentItem(resourceType, {
       id: resourceId,
       name: item.name,
-      description: "", // Collections from picker don't have descriptions
+      description: item.description,
     });
   };
 
@@ -203,12 +187,12 @@ export const SelectEmbedResourceStep = () => {
       return (
         <CollectionPickerModal
           title={t`Select a collection`}
-          value={
-            selectedItemId
-              ? { id: selectedItemId, model: "collection", collection_id: null }
-              : { id: "root", model: "collection", collection_id: null }
-          }
-          onChange={handleCollectionPickerResourceSelect}
+          value={{
+            id: selectedItemId ?? "root",
+            model: "collection",
+            collection_id: null,
+          }}
+          onChange={handlePickerModalResourceSelect}
           onClose={closePicker}
           options={COLLECTION_MODAL_OPTIONS}
         />

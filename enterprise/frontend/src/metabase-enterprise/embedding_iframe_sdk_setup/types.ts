@@ -16,6 +16,11 @@ export type SdkIframeEmbedSetupStep =
   | "select-embed-options"
   | "get-code";
 
+export type SdkIframeEmbedSetupRecentItemType =
+  | "dashboard"
+  | "question"
+  | "collection";
+
 export type SdkIframeEmbedSetupRecentItem = Pick<
   BaseRecentItem,
   "name" | "description"
