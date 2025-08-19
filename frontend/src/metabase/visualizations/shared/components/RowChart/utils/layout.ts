@@ -89,63 +89,6 @@ export const getMaxYValuesCount = (
   return Math.max(Math.floor(viewportHeight / singleValueHeight), 1);
 };
 
-export const ellipsifyText = (
-  text: string,
-  maxWidth: number,
-  ticksFont: ChartFont,
-  measureTextWidth: TextWidthMeasurer,
-): string => {
-  if (maxWidth <= 0) {
-    return text;
-  }
-
-  const textWidth = measureTextWidth(text, {
-    size: `${ticksFont.size}px`,
-    family: "Lato",
-    weight: String(ticksFont.weight ?? 400),
-  });
-
-  if (textWidth <= maxWidth) {
-    return text;
-  }
-
-  const ellipsis = "…";
-  const ellipsisWidth = measureTextWidth(ellipsis, {
-    size: `${ticksFont.size}px`,
-    family: "Lato",
-    weight: String(ticksFont.weight ?? 400),
-  });
-
-  const availableWidth = maxWidth - ellipsisWidth;
-  if (availableWidth <= 0) {
-    return ellipsis;
-  }
-
-  // Binary search to find the longest text that fits
-  let left = 0;
-  let right = text.length;
-  let bestFit = "";
-
-  while (left <= right) {
-    const mid = Math.floor((left + right) / 2);
-    const truncated = text.slice(0, mid);
-    const truncatedWidth = measureTextWidth(truncated, {
-      size: `${ticksFont.size}px`,
-      family: "Lato",
-      weight: String(ticksFont.weight ?? 400),
-    });
-
-    if (truncatedWidth <= availableWidth) {
-      bestFit = truncated;
-      left = mid + 1;
-    } else {
-      right = mid - 1;
-    }
-  }
-
-  return bestFit + ellipsis;
-};
-
 export const getRowChartGoal = (
   goal: ChartGoal | null | undefined,
   style: GoalStyle,

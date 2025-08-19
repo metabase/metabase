@@ -9,13 +9,13 @@ import { Text } from "@visx/text";
 import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import * as React from "react";
 
+import { truncateText } from "metabase/visualizations/lib/text";
 import type { HoveredData } from "metabase/visualizations/shared/types/events";
 import type { Margin } from "metabase/visualizations/shared/types/layout";
 import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 
 import type { SeriesInfo } from "../../types/data";
 import type { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
-import { ellipsifyText } from "../RowChart/utils/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
 
 import { DATA_LABEL_OFFSET } from "./constants";
@@ -104,11 +104,11 @@ const RowChartView = <TDatum,>({
 
     return (value: StringLike) => {
       const originalText = yTickFormatter(value);
-      return ellipsifyText(
+      return truncateText(
         originalText,
         maxLabelWidth,
-        theme.axis.ticks,
         measureTextWidth,
+        theme.axis.ticks,
       );
     };
   }, [
