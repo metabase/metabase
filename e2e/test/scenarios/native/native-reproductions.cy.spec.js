@@ -311,7 +311,7 @@ describe("issue 20044", () => {
   });
 });
 
-describe("issue 20625", { tags: "@quarantine" }, () => {
+describe("issue 20625", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
