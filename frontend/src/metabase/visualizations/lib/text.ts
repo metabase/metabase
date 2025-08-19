@@ -11,13 +11,7 @@ export function truncateText(
   measurer: TextWidthMeasurer,
   fontStyle: FontStyle,
 ) {
-  if (maxWidth <= 0) {
-    return text;
-  }
-
-  const textWidth = measurer(text, fontStyle);
-
-  if (textWidth <= maxWidth) {
+  if (measurer(text, fontStyle) <= maxWidth) {
     return text;
   }
 
