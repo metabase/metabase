@@ -60,7 +60,6 @@
       (log/error e "Error executing semantic search")
       (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))
 
-;; TODO: tx-write
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
