@@ -17,6 +17,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getVisualizationRaw } from "metabase/visualizations";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,
   getDefaultCurrencyInHeader,
@@ -509,7 +510,7 @@ export const tableColumnSettings = {
     getValue: ([{ data }], vizSettings) => {
       const { cols } = data;
       const settings = vizSettings["table.columns"] ?? [];
-      const uniqColumnSettings = _.uniq(settings, false, (item) => item.name);
+      const uniqColumnSettings = getDeduplicatedTableColumnSettings(settings);
 
       const columnIndexes = findColumnIndexesForColumnSettings(
         cols,

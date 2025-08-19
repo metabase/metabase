@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import { findColumnSettingIndexesForColumns } from "metabase-lib/v1/queries/utils/dataset";
@@ -35,14 +34,12 @@ export const HideColumnAction: LegacyDrill = ({
       default: true,
       question: () => {
         const columnSettings = settings?.["table.columns"] ?? [];
-        const uniqColumnSettings =
-          getDeduplicatedTableColumnSettings(columnSettings);
         const [columnSettingIndex] = findColumnSettingIndexesForColumns(
           [column],
-          uniqColumnSettings,
+          columnSettings,
         );
 
-        const columnSettingsCopy = [...uniqColumnSettings];
+        const columnSettingsCopy = [...columnSettings];
         if (columnSettingIndex >= 0) {
           columnSettingsCopy[columnSettingIndex] = {
             ...columnSettingsCopy[columnSettingIndex],

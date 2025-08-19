@@ -9,7 +9,6 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
-import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import type { ClickObject } from "metabase-lib";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -156,11 +155,9 @@ export function DetailsTable({
       return { cols: columns, row: zoomedRow };
     }
 
-    const uniqColumnSettings =
-      getDeduplicatedTableColumnSettings(columnSettings);
     const columnIndexes = findColumnIndexesForColumnSettings(
       columns,
-      uniqColumnSettings.filter(({ enabled }) => enabled),
+      columnSettings.filter(({ enabled }) => enabled),
     ).filter((columnIndex: number) => columnIndex >= 0);
 
     return {

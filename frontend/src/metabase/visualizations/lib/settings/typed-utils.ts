@@ -2,7 +2,6 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import { getVisualization } from "metabase/visualizations";
-import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import type { VisualizationSettingDefinition } from "metabase/visualizations/types";
 import type {
   Card,
@@ -36,8 +35,8 @@ export function mergeSettings(
 
   if (first["table.columns"] && second["table.columns"]) {
     merged["table.columns"] = mergeTableColumns(
-      getDeduplicatedTableColumnSettings(first["table.columns"]),
-      getDeduplicatedTableColumnSettings(second["table.columns"]),
+      first["table.columns"],
+      second["table.columns"],
     );
   }
 
