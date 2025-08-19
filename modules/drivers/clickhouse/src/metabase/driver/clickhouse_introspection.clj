@@ -159,7 +159,7 @@
        (map #(assoc % :schema nil))
        (set)))
 
-(defmethod driver/describe-database :clickhouse
+(defmethod driver/describe-database* :clickhouse
   [driver {{:keys [enable-multiple-db]}
            :details :as db}]
   {:tables

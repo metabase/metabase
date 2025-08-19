@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
-import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
 import type { SdkDashboardProps } from "../SdkDashboard";
 import { SdkDashboard } from "../SdkDashboard";

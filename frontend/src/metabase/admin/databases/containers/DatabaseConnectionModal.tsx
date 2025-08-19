@@ -54,7 +54,7 @@ export const DatabaseConnectionModalInner = ({
 
   const handleOnSubmit = (savedDB: { id: DatabaseId }) => {
     if (addingNewDatabase) {
-      dispatch(push(`/admin/databases/${savedDB.id}?created=true`));
+      dispatch(push(`/admin/databases/${savedDB.id}`));
     } else {
       handleCloseModal();
     }

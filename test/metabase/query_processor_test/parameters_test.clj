@@ -8,11 +8,15 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.native :as lib-native]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
@@ -245,11 +249,15 @@
 
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]
-      (let [query (assoc (mt/mbql-query nil
-                           {:source-table (format "card__%d" card-id)})
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      (mt/application-database-metadata-provider (mt/id))
+                                      {:cards [{:id            1
+                                                :dataset-query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]})
+      (let [date  (lib.metadata/field (qp.store/metadata-provider) (mt/id :checkins :date))
+            query (assoc (mt/mbql-query nil
+                           {:source-table "card__1", :limit 5})
                          :parameters [{:type   :date/all-options
-                                       :target [:dimension (mt/$ids *checkins.date)] ; expands to appropriate field-literal form
+                                       :target [:dimension [:field (:name date) {:base-type :type/Date}]]
                                        :value  "2014-01-06"}])]
         (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
@@ -257,10 +265,14 @@
                   :checkins
                   (qp/process-query query)))))
         (testing "We should be able to apply filters explicitly targeting nested native stages (#48258)"
-          (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
-                 (mt/formatted-rows
-                  :checkins
-                  (qp/process-query (assoc-in query [:parameters 0 :target 2] {:stage-number 0}))))))))))
+          (let [query' (assoc-in query [:parameters 0 :target 2 :stage-number] 0)]
+            (is (=? {:parameters [{:target [:dimension [:field (:name date) {:base-type :type/Date}] {:stage-number 0}]
+                                   :value "2014-01-06"}]}
+                    query'))
+            (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
+                   (mt/formatted-rows
+                    :checkins
+                    (qp/process-query query'))))))))))
 
 (deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
@@ -696,3 +708,44 @@
                            (mt/formatted-rows
                             [int str]
                             (qp/process-query query))))))))))))))
+
+(deftest ^:parallel x-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [query (lib/query
+                 (mt/application-database-metadata-provider (mt/id))
+                 {:lib/type   :mbql/query
+                  :database   (mt/id)
+                  :stages     [{:lib/type     :mbql.stage/mbql
+                                :source-table (mt/id :orders)
+                                :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                                (mt/id :orders :id)]
+                                               [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                                                (mt/id :orders :tax)]]
+                                :order-by     [[:asc {:lib/uuid "00000000-0000-0000-0000-000000000002"}
+                                                [:field {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+                                                 (mt/id :orders :id)]]]
+                                :limit        2}]
+                  :parameters [{:value  [2.07]
+                                :type   :number/=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  nil
+                                :type   :number/=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  nil
+                                :type   :number/!=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  nil
+                                :type   :number/!=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  [nil]
+                                :type   :number/<=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  nil
+                                :type   :number/>=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}
+                               {:value  nil
+                                :type   :number/<=
+                                :target [:dimension [:field (mt/id :orders :tax) {:base-type :type/Float}] {:stage-number 0}]}]})]
+      (is (= [[1   2.07]
+              [212 2.07]]
+             (mt/formatted-rows [int 2.0] (qp/process-query query)))))))

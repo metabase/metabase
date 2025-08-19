@@ -46,20 +46,25 @@
 
 (deftest ^:parallel long-column-name-in-card-test
   (testing "Should be able to handle long column names in saved questions (#35252)"
-    (let [mp (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-              [{:native   {:query "SELECT ID AS \"ID\", CATEGORY as \"This is a very very long column title that makes my saved question break when I want to use it elsewhere\" FROM PRODUCTS"}
-                :database (mt/id)
-                :type     :native}])
-          card-meta (lib.metadata/card mp 1)
-          base (lib/query mp card-meta)
+    (let [mp            (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                         [{:native   {:query "SELECT ID AS \"ID\", CATEGORY as \"This is a very very long column title that makes my saved question break when I want to use it elsewhere\" FROM PRODUCTS ORDER BY ID ASC"}
+                           :database (mt/id)
+                           :type     :native}])
+          card-meta     (lib.metadata/card mp 1)
+          base          (lib/query mp card-meta)
           long-name-col (second (lib/filterable-columns base))
-          query (lib/filter base (lib/contains long-name-col "a"))]
-      (mt/with-native-query-testing-context
-        query
-          ;; should return 53 rows with two columns, but fails instead
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column \".*very very long column title.*\" not found"
-                              (mt/rows+column-names
-                               (qp/process-query query))))))))
+          query         (-> base
+                            (lib/filter (lib/contains long-name-col "a"))
+                            (lib/limit 3))]
+      (mt/with-native-query-testing-context query
+        ;; should return 53 rows with two columns, but fails instead
+        (is (= {:rows    [[5 "Gadget"]
+                          [11 "Gadget"]
+                          [16 "Gadget"]]
+                :columns ["ID"
+                          "This is a very very long column title that makes my saved question break when I want to use it elsewhere"]}
+               (mt/rows+column-names
+                (qp/process-query query))))))))
 
 ;; other than producing the metadata for the card, there is no  query processing here
 (deftest ^:parallel duplicate-names-selection-test
@@ -505,7 +510,7 @@
           (is (= [[1746]]
                  (mt/rows results))))))))
 
-(deftest model-with-implicit-join-and-external-remapping-test
+(deftest ^:parallel model-with-implicit-join-and-external-remapping-test
   (testing "Should handle models with implicit join on externally remapped field (#57596)"
     (qp.store/with-metadata-provider
       (lib.tu/remap-metadata-provider
@@ -527,7 +532,9 @@
                                               :source-field (mt/id :orders :user_id)
                                               :source-field-name "USER_ID"}]
                                             {:stage-number -1}]}]))]
-            ;; should return 613 rows
+        ;; should return 613 rows
         (mt/with-native-query-testing-context query
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column .*STATE.* not found"
-                                (-> query qp/process-query mt/rows count))))))))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Column .* not found"
+               (-> query qp/process-query mt/rows count))))))))

@@ -245,9 +245,8 @@
    valid-temporal-unit-for-base-type?])
 
 (mr/def ::no-binning-options-at-top-level
-  [:fn
-   {:error/message ":binning keys like :strategy are not allowed at the top level of :field options."}
-   (complement :strategy)])
+  (lib.schema.common/disallowed-keys
+   {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."}))
 
 (mr/def ::FieldOptions
   [:and
@@ -1315,23 +1314,28 @@
               m))]])
 
 (def ^:private NativeQuery:Common
-  [:map
-   [:template-tags {:optional true} [:ref ::TemplateTagMap]]
-   ;; collection (table) this query should run against. Needed for MongoDB
-   [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+  [:and
+   [:map
+    [:template-tags {:optional true} [:ref ::TemplateTagMap]]
+    ;; collection (table) this query should run against. Needed for MongoDB
+    [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
+   (lib.schema.common/disallowed-keys
+    {:type         "An inner query must not include :type, this will cause us to mix it up with an outer query"
+     :source-table ":source-table is only allowed in MBQL inner queries."
+     :fields       ":fields is only allowed in MBQL inner queries."})])
 
 (def NativeQuery
   "Schema for a valid, normalized native [inner] query."
   [:merge
    NativeQuery:Common
    [:map
-    [:query :any]]])
+    [:query :some]]])
 
 (mr/def ::NativeSourceQuery
   [:merge
    NativeQuery:Common
    [:map
-    [:native :any]]])
+    [:native :some]]])
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
@@ -1384,9 +1388,8 @@
     [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
     [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
     [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
-   [:fn
-    {:error/message "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"}
-    (complement :lib/type)]
+   (lib.schema.common/disallowed-keys
+    {:lib/type "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"})
    (letfn [(disallowed-key? [k]
              (core/or (core/not (keyword? k))
                       (let [disallowed-char (if (qualified-keyword? k)
@@ -1524,13 +1527,13 @@
     (every-pred
      (some-fn :source-table :source-query)
      (complement (every-pred :source-table :source-query)))]
-   (let [disallowed-keys #{:filter :breakout :aggreggation :expressions :joins}]
-     [:fn
-      {:error/message "Join should not have top-level 'inner' query keys like :fields or :filter -- they should go in :source-query"
-       :error/fn      (fn [{join :value} _]
-                        (when (map? join)
-                          (str "join should not have top-level 'inner' query keys, found " (set/intersection (set (keys join)) disallowed-keys))))}
-      (complement (apply some-fn disallowed-keys))])])
+   (lib.schema.common/disallowed-keys
+    {:type         "A join should not include :type"
+     :filter       "A join should not have top-level 'inner' query keys like :filter"
+     :breakout     "A join should not have top-level 'inner' query keys like :breakout"
+     :aggreggation "A join should not have top-level 'inner' query keys like :aggreggation"
+     :expressions  "A join should not have top-level 'inner' query keys like :expressions"
+     :joins        "A join should not have top-level 'inner' query keys like :joins"})])
 
 (def Join
   "Alias for ::Join. Prefer that going forward."
@@ -1592,7 +1595,9 @@
    [:fn
     {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
     (fn [{:keys [breakout fields]}]
-      (empty? (set/intersection (set breakout) (set fields))))]])
+      (empty? (set/intersection (set breakout) (set fields))))]
+   (lib.schema.common/disallowed-keys
+    {:type "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
@@ -1624,7 +1629,7 @@
 (defclause variable
   target template-tag)
 
-(def ^:private ParameterTarget
+(mr/def ::parameter.target
   "Schema for the value of `:target` in a [[Parameter]]."
   ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
   ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
@@ -1638,7 +1643,7 @@
   [:merge
    [:ref :metabase.lib.schema.parameter/parameter]
    [:map
-    [:target {:optional true} ParameterTarget]]])
+    [:target {:optional true} [:ref ::parameter.target]]]])
 
 (def Parameter
   "Alias for ::Parameter. Prefer using that directly going forward."
@@ -1786,9 +1791,8 @@
 
   This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not functioning
   properly."
-  [:fn
-   {:error/message "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)"}
-   (complement :source-metadata)])
+  (lib.schema.common/disallowed-keys
+   {:source-metadata "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)"}))
 
 (def Query
   "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in `Card.dataset_query`."
@@ -1832,7 +1836,10 @@
    ;;
    ;; CONSTRAINTS
    [:ref ::check-keys-for-query-type]
-   [:ref ::check-query-does-not-have-source-metadata]])
+   [:ref ::check-query-does-not-have-source-metadata]
+   (lib.schema.common/disallowed-keys
+    {:source-table "An outer query must not include inner-query keys like :source-table; this might cause us to confuse it with an inner query"
+     :source-query "An outer query must not include inner-query keys like :source-query; this might cause us to confuse it with an inner query"})])
 
 (def ^{:arglists '([query])} valid-query?
   "Is this a valid outer query? (Pre-compling a validator is more efficient.)"

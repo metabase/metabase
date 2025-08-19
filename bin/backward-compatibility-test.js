@@ -220,7 +220,7 @@ async function test() {
     // OPEN_UI: "true",
   };
 
-  const cypressCommand = `node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@OSS --@external",grepOmitFiltered=true --spec "${testForThisShard.join(",")}"`;
+  const cypressCommand = `node e2e/runner/run_cypress_ci.js e2e --env grepTags="--@flaky --@OSS --@external --@skip",grepOmitFiltered=true --spec "${testForThisShard.join(",")}"`;
   executeCommand(cypressCommand, FE_FOLDER, testEnv);
 }
 

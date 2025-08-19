@@ -132,9 +132,13 @@
   "Return a flattened list of all `:fields` referenced in `joins`."
   [joins]
   (into []
-        (comp (map :fields)
-              (filter sequential?)
-              cat)
+        (mapcat (fn [{:keys [fields], :as join}]
+                  (when (sequential? fields)
+                    ;; make sure the field ref has `:join-alias`... it already SHOULD but if the query is NAUGHTY then
+                    ;; we better just add it in to be safe. In #61398 which is pending I actually make this happen
+                    ;; automatically in MBQL 5 normalization, so we can take this out eventually.
+                    (for [[tag id-or-name opts] fields]
+                      [tag id-or-name (assoc opts :join-alias (:alias join))]))))
         joins))
 
 (defn- should-add-join-fields?

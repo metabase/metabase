@@ -9,7 +9,7 @@ import {
 } from "metabase/embedding-sdk/theme";
 import { Box } from "metabase/ui";
 
-import { MetabaseProvider } from "../MetabaseProvider";
+import { ComponentProvider } from "../ComponentProvider";
 
 import { SdkQuestion } from "./SdkQuestion";
 
@@ -32,11 +32,11 @@ const Wrapper = ({
   children: ReactNode;
   theme: MetabaseTheme;
 }) => (
-  <MetabaseProvider theme={theme} authConfig={storybookSdkAuthDefaultConfig}>
+  <ComponentProvider theme={theme} authConfig={storybookSdkAuthDefaultConfig}>
     <Box p="xl" bg={theme.colors?.background}>
       {children}
     </Box>
-  </MetabaseProvider>
+  </ComponentProvider>
 );
 
 const DefaultTemplate = (theme: MetabaseTheme) => (

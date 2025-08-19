@@ -131,30 +131,17 @@
                                                          {:error (explain schema-or-validator value)})))
          value))))
 
-(core/defn map-schema-assoc
-  "Returns a new schema that is the same as map-schema, but with the key k associated with the value v.
-   If kvs are provided, they are also associated with the schema."
-  [map-schema & kvs]
-  (if kvs
-    (if (next kvs)
-      (let [key (first kvs)
-            val (first (next kvs))
-            ret (mut/assoc map-schema key val)]
-        (recur ret (nnext kvs)))
-      (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
-    map-schema))
-
 (core/defn require-all-keys
   "Ensure maps has no optional keys, maybe is required."
   [schema]
   (mc/walk
    schema
    (mc/schema-walker
-    (fn [schema]
+    (core/fn [schema]
       (case (mc/type schema)
         :map
         (mc/-set-children schema
-                          (mapv (fn [[k p s]]
+                          (mapv (core/fn [[k p s]]
                                   [k (dissoc p :optional) s]) (mc/children schema)))
         :maybe
         (first (mc/children schema))
@@ -166,10 +153,10 @@
   [schema]
   (mc/walk
    schema
-   (mc/schema-walker (fn [schema]
+   (mc/schema-walker (core/fn [schema]
                        (if (= :map (mc/type schema))
                          (mc/-set-children schema
-                                           (mapv (fn [[k p s]]
+                                           (mapv (core/fn [[k p s]]
                                                    [(u/->snake_case_en k) p s]) (mc/children schema)))
 
                          schema)))))
