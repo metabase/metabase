@@ -40,12 +40,13 @@ export function DetailViewSidesheet({
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = getRowName(columns, row) || rowId;
   const icon = getEntityIcon(table.entity_type);
+  const hasRelationships = tableForeignKeys && tableForeignKeys.length > 0;
 
   return (
     <Sidesheet actions={<div>TODO</div>} onClose={onClose}>
       <Stack data-testid="object-detail" gap={0} mih="100%">
         {headerColumns.length > 0 && (
-          <Box pb="xl" pt="sm" px={rem(56)}>
+          <Box pt="sm" px={rem(56)}>
             <Box
               // intentionally misalign the header to create an "optical alignment effect" (due to rounded avatar)
               ml={rem(-8)}
@@ -55,7 +56,12 @@ export function DetailViewSidesheet({
           </Box>
         )}
 
-        <Group align="flex-start" flex="1" px={rem(56)}>
+        <Group
+          flex={hasRelationships ? undefined : "1"}
+          pb={rem(48)}
+          pt="xl"
+          px={rem(56)}
+        >
           <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
             {columns.length - headerColumns.length > 0 && (
               <DetailsGroup columns={columns} row={row} table={table} />
@@ -63,12 +69,12 @@ export function DetailViewSidesheet({
           </Stack>
         </Group>
 
-        {tableForeignKeys && tableForeignKeys.length > 0 && (
+        {hasRelationships && (
           <Box
+            flex="1"
             bg="var(--mb-color-background-light)"
-            px={rem(40)}
-            py="xl"
-            w={rem(440)}
+            px={rem(56)}
+            py={rem(48)}
           >
             <Relationships
               columns={columns}
