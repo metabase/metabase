@@ -2,6 +2,9 @@ import { trackSchemaEvent } from "metabase/lib/analytics";
 import Settings from "metabase/lib/settings";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
+const shouldReportSearchTerm = () =>
+  Settings.get("analytics-uuid") === "d97541bd-59b0-4656-b437-d659ac48eae1";
+
 type SearchRequestFilter = Pick<
   SearchRequest,
   | "q"
@@ -46,6 +49,8 @@ export const trackSearchRequest = (
       search_term_hash: searchRequest.q
         ? await hashSearchTerm(searchRequest.q)
         : null,
+      search_term:
+        shouldReportSearchTerm() && searchRequest.q ? searchRequest.q : null,
       content_type: searchRequest.models ?? null,
       creator: !!searchRequest.created_by,
       creation_date: !!searchRequest.created_at,
@@ -95,6 +100,7 @@ export const trackSearchClick = ({
       request_id: requestId,
       entity_model: entityModel,
       search_term_hash: searchTerm ? await hashSearchTerm(searchTerm) : null,
+      search_term: shouldReportSearchTerm() && searchTerm ? searchTerm : null,
     });
   };
 

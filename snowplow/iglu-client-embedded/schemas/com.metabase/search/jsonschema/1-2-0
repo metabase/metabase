@@ -191,6 +191,14 @@
         "null"
       ],
       "maxLength": 1024
+    },
+    "search_term": {
+      "description": "The search term as a string (only reported for specific analytics UUIDs)",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
     }
   },
   "required": [
