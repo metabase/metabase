@@ -4,14 +4,8 @@
 const fs = require("fs");
 const path = require("path");
 const rspack = require("@rspack/core");
-const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 const mainConfig = require("./rspack.main.config");
-const { resolve } = require("path");
-const {
-  TypescriptConvertErrorsToWarnings,
-} = require("./frontend/build/embedding-sdk/rspack/typescript-convert-errors-to-warnings");
-const { IS_DEV_MODE } = require("./frontend/build/shared/constants");
 const {
   OPTIMIZATION_CONFIG,
 } = require("./frontend/build/embedding-sdk/rspack/shared");
@@ -42,10 +36,6 @@ const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
-
-const skipDTS = process.env.SKIP_DTS === "true";
-
-const isDevMode = IS_DEV_MODE;
 
 const EMBEDDING_SDK_BUNDLE_HOST = process.env.EMBEDDING_SDK_BUNDLE_HOST || "";
 
@@ -99,16 +89,6 @@ const config = {
       maxChunks: 1,
     }),
     new rspack.BannerPlugin(getBannerOptions(SDK_PACKAGE_BANNER)),
-    !skipDTS &&
-      new ForkTsCheckerWebpackPlugin({
-        async: isDevMode,
-        typescript: {
-          configFile: resolve(__dirname, "./tsconfig.sdk.json"),
-          mode: "write-dts",
-          memoryLimit: 4096,
-        },
-      }),
-    new TypescriptConvertErrorsToWarnings(),
   ].filter(Boolean),
 };
 
