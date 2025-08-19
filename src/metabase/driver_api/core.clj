@@ -139,6 +139,8 @@
  premium-features/is-hosted?
  qp.compile/compile
  qp.debug/debug>
+ ;; TODO (Cam 8/19/25) -- importing dynamic vars doesn't really work because the copies here don't pick up changes to
+ ;; the original value. We need to make these functions instead.
  qp.i/*disable-qp-logging*
  qp.preprocess/preprocess
  qp.reducible/reducible-rows
