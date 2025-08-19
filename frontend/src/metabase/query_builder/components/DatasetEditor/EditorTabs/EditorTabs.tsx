@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { alpha, darken } from "metabase/lib/colors";
 import { Icon, useMantineTheme } from "metabase/ui";
+import type { DatasetEditorTab } from "metabase-types/store";
 
 import EditorTabsS from "./EditorTabs.module.css";
 
@@ -11,7 +12,7 @@ type Props = {
   currentTab: string;
   disabledQuery: boolean;
   disabledMetadata: boolean;
-  onChange: (optionId: string) => void;
+  onChange: (optionId: DatasetEditorTab) => void;
 };
 
 export function EditorTabs({
@@ -62,6 +63,32 @@ export function EditorTabs({
         </label>
       </li>
 
+      <li>
+        <label
+          className={cx(EditorTabsS.Tab, {
+            [EditorTabsS.active]: currentTab === "metadata",
+            [EditorTabsS.inactive]: currentTab !== "metadata",
+            [EditorTabsS.disabled]: disabledMetadata,
+          })}
+          htmlFor="editor-tabs-metadata"
+        >
+          <Icon name="notebook" mr="10px" />
+          <input
+            type="radio"
+            className={EditorTabsS.RadioInput}
+            id="editor-tabs-metadata"
+            name="editor-tabs"
+            value="metadata"
+            checked={currentTab === "metadata"}
+            onChange={() => {
+              onChange("metadata");
+            }}
+            disabled={disabledMetadata}
+            data-testid="editor-tabs-metadata"
+          />
+          <span data-testid="editor-tabs-metadata-name">{t`Metadata`}</span>
+        </label>
+      </li>
       <li>
         <label
           className={cx(EditorTabsS.Tab, {

@@ -494,7 +494,7 @@ export const getIsResultDirty = createSelector(
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
-      question && Lib.queryDisplayInfo(question.query()).isEditable;
+      !!question && Lib.queryDisplayInfo(question.query()).isEditable;
 
     return (
       haveParametersChanged ||
