@@ -175,16 +175,18 @@
          (sql/format :quoted true)))
     nil))
 
-(defn- row->index [{:keys [provider
+(defn- row->index [{:keys [id
+                           provider
                            model_name
                            vector_dimensions
                            table_name
                            index_version]}]
-  {:embedding-model {:provider          provider
-                     :model-name        model_name
-                     :vector-dimensions vector_dimensions}
-   :table-name      table_name
-   :version         index_version})
+  {:id               id
+   :embedding-model  {:provider          provider
+                      :model-name        model_name
+                      :vector-dimensions vector_dimensions}
+   :table-name       table_name
+   :version          index_version})
 
 (defn- table-exists? [pgvector table-name]
   (-> (jdbc/execute-one! pgvector

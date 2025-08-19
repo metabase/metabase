@@ -29,25 +29,42 @@
   (require '[metabase-enterprise.semantic-search.embedding :as semantic.embedding])
   (def embedding-model (semantic.embedding/get-configured-model)))
 
+(defn- mark-created [index]
+  (vary-meta index assoc :index-created? true))
+
 (defn initialize-index!
+  "Creates an index for the provided embedding model (if it does not exist or if we're asking to force reset).
+
+  Returns the index that you can use with semantic.search.index functions to operate on the index."
   [tx index-metadata embedding-model opts]
   (let [active-index-state (semantic.index-metadata/get-active-index-state tx index-metadata)
         active-index       (:index active-index-state)
         active-model       (:embedding-model active-index)
-          ;; Model switching: compare configured embedding-model vs currently active model.
-          ;; If different, find/create appropriate index and activate it. This handles
-          ;; environment changes (model config updates) without losing existing indexes.
-          ;; nil active-model (no active index) is treated as model change so that a new index is created and made active
+        ;; Model switching: compare configured embedding-model vs currently active model.
+        ;; If different, find/create appropriate index and activate it. This handles
+        ;; environment changes (model config updates) without losing existing indexes.
+        ;; nil active-model (no active index) is treated as model change so that a new index is created and made active
         model-changed      (not= embedding-model active-model)
         model-switching    (and active-model model-changed)]
     (when model-switching
       (log/infof "Configured model does not match active index, switching. Previous active: %s" (u/pprint-to-str active-index)))
-    (let [{:keys [index metadata-row]}
-          (semantic.index-metadata/find-best-index! tx index-metadata embedding-model)]
-      (semantic.index/create-index-table-if-not-exists! tx index)
-      (if model-changed
-        (let [index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! tx index-metadata index))]
-          (semantic.index-metadata/activate-index! tx index-metadata index-id)
+    (let [{:keys [index]} (semantic.index-metadata/find-best-index! tx index-metadata embedding-model)]
+      (semantic.index/create-index-table-if-not-exists! tx index opts)
+      (if (or model-changed (:force-reset? opts))
+        (let [index
+              (cond
+                (not (:id index))
+                (let [index-id (semantic.index-metadata/record-new-index-table! tx index-metadata index)]
+                  (-> index
+                      (assoc :id index-id)
+                      (mark-created)))
+
+                (:force-reset? opts)
+                (mark-created index)
+
+                :else
+                index)]
+          (semantic.index-metadata/activate-index! tx index-metadata (:id index))
           index)
         active-index))))
 

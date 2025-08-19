@@ -99,11 +99,11 @@
 (defenterprise init!
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
-  [searchable-documents _opts]
+  [searchable-documents opts]
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
-    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)
     (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 
