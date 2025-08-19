@@ -40,6 +40,7 @@
                      (setting/custom-disabled-reasons!
                       [(when (database/is-destination? db) db-routing-reason)
                        (cond
+                         ;; TODO we also care about re-sync after connection details are changed
                          (= (:initial_sync_status db) "incomplete") busy-sync-reason
                          (t2/exists? :model/Table :db_id (:id db) #_#_:is_writable true) nil
                          (t2/exists? :model/Table :db_id (:id db) #_#_:is_writable nil) missing-permissions-reason
