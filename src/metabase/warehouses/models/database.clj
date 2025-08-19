@@ -27,6 +27,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.provider-detection :as provider-detection]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -211,6 +212,26 @@
                  (throw (Exception. "Failed to connect to Database"))))
            (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
            (analytics/inc! :metabase-database/status {:driver engine :healthy true})
+
+           ;; Detect and update provider name if not already set (only for postgres databases)
+           (when (= (name engine) "postgres")
+             (try
+               (log/info (u/format-color :blue "Provider detection: checking database %s {:id %d, :provider_name %s, :details %s}"
+                                         (:name database) (:id database) (:provider_name database)
+                                         (select-keys details [:host :hostname])))
+               (let [detected-provider (provider-detection/detect-provider-from-database
+                                        (assoc database :details details))]
+                 (log/info (u/format-color :blue "Provider detection: detected provider %s for database %s"
+                                           detected-provider (:name database)))
+                 (log/info (u/format-color :blue "Provider detection: updating %s {:id %d} from '%s' to '%s'"
+                                           (:name database) (:id database)
+                                           (:provider_name database) detected-provider))
+                 ;; Use direct query to avoid triggering search index updates
+                 (t2/query {:update :metabase_database
+                            :set {:provider_name detected-provider}
+                            :where [:= :id (:id database)]}))
+               (catch Throwable provider-e
+                 (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))
 
            (catch Throwable e
              (let [humanized-message (some->> (u/all-ex-messages e)
