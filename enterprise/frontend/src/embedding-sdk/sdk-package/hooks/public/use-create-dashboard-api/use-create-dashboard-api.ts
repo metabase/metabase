@@ -37,14 +37,7 @@ export const useCreateDashboardApi = () => {
 
   return useMemo(
     () =>
-      handleCreateDashboard
-        ? {
-            /**
-             * @param options
-             */
-            createDashboard: handleCreateDashboard,
-          }
-        : null,
+      handleCreateDashboard ? { createDashboard: handleCreateDashboard } : null,
     [handleCreateDashboard],
   );
 };
