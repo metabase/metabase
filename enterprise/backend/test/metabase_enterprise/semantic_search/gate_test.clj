@@ -287,13 +287,13 @@
 
     (with-open [_ (open-tables! pgvector index-metadata)]
 
-      (let [id1
+      (let [[id1]
             (semantic.index-metadata/record-new-index-table!
              pgvector
              index-metadata
              index1)
 
-            id2
+            [id2]
             (semantic.index-metadata/record-new-index-table!
              pgvector
              index-metadata
