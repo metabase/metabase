@@ -237,7 +237,7 @@ describe("CommandSuggestion", () => {
     });
   });
 
-  it("Default Search should include formatting commands, Chart search should not", async () => {
+  it("should include formatting commands for default search, not for Chart search", async () => {
     const { command } = setup({ query: "Quo" });
 
     expect(

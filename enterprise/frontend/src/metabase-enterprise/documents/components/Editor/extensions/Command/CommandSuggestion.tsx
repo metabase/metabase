@@ -117,20 +117,7 @@ export const CommandSuggestion = forwardRef<
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showLinkSearch, setShowLinkSearch] = useState(false);
   const [showEmbedSearch, setShowEmbedSearch] = useState(false);
-  const [pendingLinkMode, setPendingLinkMode] = useState(false);
-  const [pendingEmbedMode, setPendingEmbedMode] = useState(false);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-
-  useEffect(() => {
-    if (pendingLinkMode) {
-      setShowLinkSearch(true);
-      setPendingLinkMode(false);
-    }
-    if (pendingEmbedMode) {
-      setShowEmbedSearch(true);
-      setPendingEmbedMode(false);
-    }
-  }, [pendingLinkMode, pendingEmbedMode]);
 
   const allCommandSections: CommandSection[] = useMemo(
     () => [
@@ -243,20 +230,20 @@ export const CommandSuggestion = forwardRef<
 
   const executeCommand = (commandName: string) => {
     if (commandName === "linkTo") {
-      setPendingLinkMode(true);
       command({
         clearQuery: true,
         switchToLinkMode: true,
       });
+      setShowLinkSearch(true);
       return;
     }
 
     if (commandName === "embedQuestion") {
-      setPendingEmbedMode(true);
       command({
         clearQuery: true,
         switchToEmbedMode: true,
       });
+      setShowEmbedSearch(true);
       return;
     }
 

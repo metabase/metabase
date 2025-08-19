@@ -2,18 +2,12 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import type {
   Database,
-  RecentCollectionItem,
   RecentItem,
   SearchModel,
   SearchResult,
 } from "metabase-types/api";
 
 import type { MenuItem } from "../../shared/MenuComponents";
-
-export const isRecentQuestion = (
-  item: RecentItem,
-): item is RecentCollectionItem & { model: "card" | "dataset" } =>
-  item.model === "card" || item.model === "dataset";
 
 export const filterRecents = (item: RecentItem, models: SearchModel[]) =>
   models.includes(item.model);
