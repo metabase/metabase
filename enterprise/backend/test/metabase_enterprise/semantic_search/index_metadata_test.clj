@@ -80,8 +80,8 @@
         index2         (semantic.index-metadata/qualify-index (assoc un-index :table-name "i2") index-metadata)
         sut            semantic.index-metadata/activate-index!]
     (with-open [_ (open-tables! pgvector index-metadata)]
-      (let [[index-id1] (semantic.index-metadata/record-new-index-table! pgvector index-metadata index1)
-            [index-id2] (semantic.index-metadata/record-new-index-table! pgvector index-metadata index2)]
+      (let [{index-id1 :id} (semantic.index-metadata/record-new-index-table! pgvector index-metadata index1)
+            {index-id2 :id} (semantic.index-metadata/record-new-index-table! pgvector index-metadata index2)]
         (testing "does nothing if no control row"
           ;; note: I might recommend this to throw if no control row, this behaviour is ok for now
           (sut pgvector index-metadata index-id1)
@@ -107,7 +107,7 @@
       (testing "by default there is no active index"
         (is (nil? (sut pgvector index-metadata))))
       (testing "returns active index configuration when one is set"
-        (let [[index-id] (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)]
+        (let [{index-id :id} (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)]
           (semantic.index-metadata/activate-index! pgvector index-metadata index-id)
           (is (=? [{:active_id index-id}] (semantic.tu/get-control-rows pgvector index-metadata)))
           (is (=? {:index        index
@@ -122,7 +122,7 @@
   (let [index (default-index embedding-model index-metadata)]
     (semantic.index/create-index-table-if-not-exists! pgvector index)
     {:index    index
-     :index-id (first (semantic.index-metadata/record-new-index-table! pgvector index-metadata index))}))
+     :index-id (:id (semantic.index-metadata/record-new-index-table! pgvector index-metadata index))}))
 
 (defn- setup-scenario! [pgvector index-metadata {:keys [active inactive]}]
   (semantic.index-metadata/ensure-control-row-exists! pgvector index-metadata)
@@ -200,7 +200,7 @@
       (testing "empty to start"
         (is (= [] (semantic.tu/get-metadata-rows pgvector index-metadata))))
       (testing "records index metadata and returns assigned ID"
-        (let [[index-id] (sut pgvector index-metadata index)]
+        (let [{index-id :id} (sut pgvector index-metadata index)]
           (is (int? index-id))
           (is (=? [{:id                index-id
                     :provider          (:provider embedding-model)

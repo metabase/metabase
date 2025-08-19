@@ -303,7 +303,7 @@
          :active             false}))))
 
 (defn record-new-index-table!
-  "Records an index in the metadata table and returns its assigned ID + index-created-at.
+  "Records an index in the metadata table and returns the index with its assigned ID + index-created-at.
   The indexes :table-name must be unique, or you will receive a constraint violation."
   [pgvector index-metadata index]
   (let [{:keys [metadata-table-name]}
@@ -330,7 +330,7 @@
                        (sql/format :quoted true))
         {:keys [id index_created_at]}
         (jdbc/execute-one! pgvector insert-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
-    [id index_created_at]))
+    (assoc index :id id :index-created-at index_created_at)))
 
 (comment
   (def pgvector ((requiring-resolve 'metabase-enterprise.semantic-search.env/get-pgvector-datasource!)))

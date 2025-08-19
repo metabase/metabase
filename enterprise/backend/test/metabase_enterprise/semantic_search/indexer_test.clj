@@ -55,9 +55,9 @@
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))]
     (with-open [_ (open-metadata! pgvector index-metadata)
                 _ (open-index! pgvector index)]
-      (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
 
-      (let [metadata-row      (get-metadata-row! pgvector index-metadata index)
+      (let [index (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
+            metadata-row      (get-metadata-row! pgvector index-metadata index)
             initial-watermark (semantic.gate/resume-watermark metadata-row)
             indexing-state    (semantic.indexer/init-indexing-state metadata-row)
             {poll-proxy :proxy poll-calls :calls} (semantic.tu/spy semantic.gate/poll)
@@ -285,65 +285,64 @@
         version        semantic.gate/search-doc->gate-doc]
     (with-open [_ (open-metadata! pgvector index-metadata)
                 _ (open-index! pgvector index)]
-      (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
+      (let [index (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)]
+        (testing "exits immediately after max run duration elapses"
+          (let [run-time       (u/start-timer)
+                indexing-state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
+            (vswap! indexing-state assoc :max-run-duration (Duration/ofMillis 1))
+            (with-redefs [semantic.indexer/sleep (fn [_])]
+              (with-open [loop-thread (open-loop-thread! pgvector
+                                                         index-metadata
+                                                         index
+                                                         indexing-state)]
+                (let [{:keys [^Thread thread caught-ex]} @loop-thread
+                      max-wait 1000
+                      wait-time (u/start-timer)]
+                  (testing "exits"
+                    (is
+                     (loop []
+                       (cond
+                         (not (.isAlive thread)) true
+                         (< max-wait (u/since-ms wait-time)) false
+                         :else (recur))))
+                    (testing "did not wait too long"
+                      (is (<= (u/since-ms run-time) 500)))
+                    (testing "did not crash"
+                      (is (nil? @caught-ex)))))))))
 
-      (testing "exits immediately after max run duration elapses"
-        (let [run-time       (u/start-timer)
-              indexing-state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
-          (vswap! indexing-state assoc :max-run-duration (Duration/ofMillis 1))
-          (with-redefs [semantic.indexer/sleep (fn [_])]
-            (with-open [loop-thread (open-loop-thread! pgvector
-                                                       index-metadata
-                                                       index
-                                                       indexing-state)]
-              (let [{:keys [^Thread thread caught-ex]} @loop-thread
-                    max-wait 1000
-                    wait-time (u/start-timer)]
-                (testing "exits"
-                  (is
-                   (loop []
-                     (cond
-                       (not (.isAlive thread)) true
-                       (< max-wait (u/since-ms wait-time)) false
-                       :else (recur))))
-                  (testing "did not wait too long"
-                    (is (<= (u/since-ms run-time) 500)))
-                  (testing "did not crash"
-                    (is (nil? @caught-ex)))))))))
-
-      (testing "exists early if no new records after a time"
-        (let [run-time       (u/start-timer)
-              indexing-state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))
-              upsert-index!  semantic.index/upsert-index!
-              indexed        (atom [])]
-          (vswap! indexing-state assoc :exit-early-cold-duration (Duration/ofMillis 1))
-          (with-redefs [semantic.indexer/sleep       (fn [_])
-                        semantic.index/upsert-index! (fn [pgvector index docs]
-                                                       (let [docs (vec docs)]
-                                                         (swap! indexed into docs)
-                                                         (upsert-index! pgvector index docs)))]
-            ;; need some data first for early exit, or it does nothing
-            (semantic.gate/gate-documents! pgvector index-metadata [(version c1 t1)])
-            (with-open [loop-thread (open-loop-thread! pgvector
-                                                       index-metadata
-                                                       index
-                                                       indexing-state)]
-              (let [{:keys [^Thread thread caught-ex]} @loop-thread
-                    wait-time (u/start-timer)
-                    max-wait 1000]
-                (testing "exits"
-                  (is
-                   (loop []
-                     (cond
-                       (not (.isAlive thread)) true
-                       (< max-wait (u/since-ms wait-time)) false
-                       :else (recur))))
-                  (testing "has seen our row before exiting"
-                    (is (= 1 (count @indexed))))
-                  (testing "did not wait too long"
-                    (is (<= (u/since-ms run-time) 500)))
-                  (testing "did not crash"
-                    (is (nil? @caught-ex))))))))))))
+        (testing "exists early if no new records after a time"
+          (let [run-time       (u/start-timer)
+                indexing-state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))
+                upsert-index!  semantic.index/upsert-index!
+                indexed        (atom [])]
+            (vswap! indexing-state assoc :exit-early-cold-duration (Duration/ofMillis 1))
+            (with-redefs [semantic.indexer/sleep       (fn [_])
+                          semantic.index/upsert-index! (fn [pgvector index docs]
+                                                         (let [docs (vec docs)]
+                                                           (swap! indexed into docs)
+                                                           (upsert-index! pgvector index docs)))]
+             ;; need some data first for early exit, or it does nothing
+              (semantic.gate/gate-documents! pgvector index-metadata [(version c1 t1)])
+              (with-open [loop-thread (open-loop-thread! pgvector
+                                                         index-metadata
+                                                         index
+                                                         indexing-state)]
+                (let [{:keys [^Thread thread caught-ex]} @loop-thread
+                      wait-time (u/start-timer)
+                      max-wait 1000]
+                  (testing "exits"
+                    (is
+                     (loop []
+                       (cond
+                         (not (.isAlive thread)) true
+                         (< max-wait (u/since-ms wait-time)) false
+                         :else (recur))))
+                    (testing "has seen our row before exiting"
+                      (is (= 1 (count @indexed))))
+                    (testing "did not wait too long"
+                      (is (<= (u/since-ms run-time) 500)))
+                    (testing "did not crash"
+                      (is (nil? @caught-ex)))))))))))))
 
 (deftest init-indexing-state-test
   (testing "initializes indexing state from metadata row"
