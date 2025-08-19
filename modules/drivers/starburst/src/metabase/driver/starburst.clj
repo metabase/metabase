@@ -61,7 +61,8 @@
                               :convert-timezone                true
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
-                              :now                             true}]
+                              :now                             true
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
 (defn- format-field
@@ -468,7 +469,7 @@
                      (describe-schema driver conn catalog schema))))
             (jdbc/reducible-result-set rs {})))))
 
-(defmethod driver/describe-database :starburst
+(defmethod driver/describe-database* :starburst
   [driver {{:keys [catalog schema] :as _details} :details :as database}]
   (sql-jdbc.execute/do-with-connection-with-options
    driver

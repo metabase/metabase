@@ -6,7 +6,7 @@ title: End-to-end tests with Cypress
 
 Metabase uses Cypress for “end-to-end testing”, that is, tests that are executed against the application as a whole, including the frontend, backend, and application database. These tests are essentially scripts written in JavaScript that run in the web browser: visit different URLs, click various UI elements, type text, and assert that things happen as expected (for example, an element appearing on screen, or a network request occuring).
 
-*Please, get familiar with the [Cypress best practices](https://docs.cypress.io/app/core-concepts/best-practices) before you proceed.*
+_Please, get familiar with the [Cypress best practices](https://docs.cypress.io/app/core-concepts/best-practices) before you proceed._
 
 ## Getting Started
 
@@ -164,7 +164,7 @@ We have a few helpers for dealing with tests involving snowplow
    partial-match the payload provided. This is simply a convenience function for comparing
    `event.unstruct_event.data.data` rather than the entire `event`. Most of our events are unstructured events, so this is handy.
 1. Use `assertNoUnstructuredSnowplowEvent({ ...eventData })` is the inverse of `expectUnstructuredSnowplowEvent`, and asserts that
-   *no* unstructured events match the payload.
+   _no_ unstructured events match the payload.
 1. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
 
 ### Running tests that require SMTP server

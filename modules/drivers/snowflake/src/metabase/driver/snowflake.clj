@@ -205,6 +205,8 @@
                 ;; keep open connections open indefinitely instead of closing them. See #9674 and
                 ;; https://docs.snowflake.net/manuals/sql-reference/parameters.html#client-session-keep-alive
                 :client_session_keep_alive                  true
+                ;; identify this connection as coming from Metabase for easier monitoring in Snowflake
+                :application                                "Metabase_Metabase"
                 ;; other SESSION parameters
                 ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
                 ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
@@ -591,7 +593,7 @@
                             :from   [[table-identifier]]}]
       (sql-jdbc/query driver database query))))
 
-(defmethod driver/describe-database :snowflake
+(defmethod driver/describe-database* :snowflake
   [driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]

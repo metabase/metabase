@@ -70,8 +70,9 @@
   "Given collection of table-ids, return the sandboxes that should be enforced for the current user on any of the tables. A
   sandbox is not enforced if the user is in a different permissions group that grants full access to the table."
   [table-ids]
-  (let [enforced-sandboxes-for-user (perms/sandboxes-for-user)]
-    (filter #((set table-ids) (:table_id %)) enforced-sandboxes-for-user)))
+  (when-not *is-superuser?*
+    (let [enforced-sandboxes-for-user (perms/sandboxes-for-user)]
+      (filter #((set table-ids) (:table_id %)) enforced-sandboxes-for-user))))
 
 (defn sandboxed-user-for-db?
   "Returns true if the currently logged in user has any enforced sandboxes for the provided database. Throws an

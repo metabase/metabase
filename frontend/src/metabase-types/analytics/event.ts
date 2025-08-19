@@ -3,7 +3,11 @@ import type {
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
-import type { Engine, VisualizationDisplay } from "metabase-types/api";
+import type {
+  Engine,
+  TransformId,
+  VisualizationDisplay,
+} from "metabase-types/api";
 
 type SimpleEventSchema = {
   event: string;
@@ -86,7 +90,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "collection"
     | "dataset"
     | "indexed-entity"
-    | "snippet";
+    | "snippet"
+    | "document";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -241,6 +246,39 @@ export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
 }>;
 
+export type ConnectionStringParsedSuccessEvent = ValidateEvent<{
+  event: "connection_string_parsed_success";
+  triggered_from: "admin" | "setup" | "embedding_setup";
+}>;
+
+export type ConnectionStringParsedFailedEvent = ValidateEvent<{
+  event: "connection_string_parsed_failed";
+  triggered_from: "admin" | "setup" | "embedding_setup";
+}>;
+
+export type TransformTriggerManualRunEvent = ValidateEvent<{
+  event: "transform_trigger_manual_run";
+  triggered_from: "transform-page";
+  target_id: TransformId;
+}>;
+
+export type TransformJobTriggerManualRunEvent = ValidateEvent<{
+  event: "transform_job_trigger_manual_run";
+  triggered_from: "job-page";
+  target_id: TransformId;
+}>;
+
+export type TransformCreateEvent = ValidateEvent<{
+  event: "transform_create";
+  triggered_from: "transform-page-create-menu";
+  event_detail: "query" | "native" | "saved-question";
+}>;
+
+export type TransformCreatedEvent = ValidateEvent<{
+  event: "transform_created";
+  target_id: number;
+}>;
+
 export type EmbedWizardEvent =
   | EmbedWizardExperienceSelectedEvent
   | EmbedWizardResourceSelectedEvent
@@ -277,4 +315,10 @@ export type SimpleEvent =
   | AddDataModalTabEvent
   | DashboardFilterCreatedEvent
   | DashboardFilterMovedEvent
-  | EmbedWizardEvent;
+  | EmbedWizardEvent
+  | ConnectionStringParsedSuccessEvent
+  | ConnectionStringParsedFailedEvent
+  | TransformTriggerManualRunEvent
+  | TransformJobTriggerManualRunEvent
+  | TransformCreatedEvent
+  | TransformCreateEvent;

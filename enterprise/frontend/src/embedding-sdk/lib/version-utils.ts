@@ -1,13 +1,25 @@
 import { versionToNumericComponents } from "metabase/lib/utils";
 
-export const isSdkVersionCompatibleWithMetabaseVersion = ({
-  mbVersion,
-  sdkVersion,
+// They are mostly used for local development
+export const isInvalidMetabaseVersion = (mbVersion: string) => {
+  return (
+    mbVersion === "vLOCAL_DEV" ||
+    mbVersion === "vUNKNOWN" ||
+    mbVersion.endsWith("-SNAPSHOT")
+  );
+};
+
+export const isSdkPackageCompatibleWithSdkBundle = ({
+  sdkPackageVersion,
+  sdkBundleVersion,
 }: {
-  mbVersion: string;
-  sdkVersion: string;
+  sdkPackageVersion: string;
+  sdkBundleVersion: string;
 }) => {
-  const mbVersionComponents = versionToNumericComponents(mbVersion);
-  const sdkVersionComponents = versionToNumericComponents(sdkVersion);
-  return mbVersionComponents?.[1] === sdkVersionComponents?.[1];
+  const sdkPackageVersionComponents =
+    versionToNumericComponents(sdkPackageVersion);
+  const sdkBundleVersionComponents =
+    versionToNumericComponents(sdkBundleVersion);
+
+  return sdkBundleVersionComponents?.[1] === sdkPackageVersionComponents?.[1];
 };

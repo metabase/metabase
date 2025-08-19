@@ -7,7 +7,7 @@ module.exports = {
       webpack: {
         config: path.resolve(
           __dirname,
-          "../../../../webpack.embedding-sdk.config.js",
+          "../../../../rspack.embedding-sdk-bundle.config.js",
         ),
         typescript: true,
       },
@@ -52,4 +52,28 @@ module.exports = {
       },
     ],
   },
+  overrides: [
+    {
+      files: [
+        "sdk-package/**/*.{ts,tsx,js,jsx}",
+        "sdk-shared/**/*.{ts,tsx,js,jsx}",
+      ],
+      excludedFiles: [
+        "**/test/**",
+        "**/*.spec.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx}",
+      ],
+      rules: {
+        "no-external-references-for-sdk-package-code": [
+          "error",
+          {
+            allowedPaths: [
+              path.join(__dirname, "sdk-package"),
+              path.join(__dirname, "sdk-shared"),
+            ],
+          },
+        ],
+      },
+    },
+  ],
 };

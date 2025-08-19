@@ -100,7 +100,7 @@
 (defn- query-action
   [action-id]
   {:action_id     action-id
-   :database_id   (u/the-id (mt/db))
+   :database_id   (mt/id)
    :dataset_query (mt/query venues)})
 
 (def ^:private test-collection (make-result "collection test collection"
@@ -380,9 +380,12 @@
                (:engine resp))))))))
 
 (defn- get-available-models [& args]
-  (set
-   (:available_models
-    (apply mt/user-http-request :crowberto :get 200 "search" :calculate_available_models true args))))
+  (disj
+   (set
+    (:available_models
+     (apply mt/user-http-request :crowberto :get 200 "search" :calculate_available_models true args)))
+   ;; due to test contamination sometimes documents appear here, so just remove them.
+   "document"))
 
 (deftest archived-models-test
   (testing "It returns some stuff when you get results"
@@ -1826,7 +1829,7 @@
           (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
 
         (testing "Bad request (400)"
-          (mt/user-http-request :crowberto :get 400 "/search" :q " ")
+          (mt/user-http-request :crowberto :get 400 "/search" :archived "meow")
           (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
           ;; We do not treat client side errors as errors for our alerts.
           (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))

@@ -13,10 +13,11 @@ describe(suiteTitle, () => {
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+    H.mockEmbedJsToDevServer();
   });
 
   it("auto-enables the enable-embedding-simple settings", () => {
-    cy.visit("/embed-iframe");
+    cy.visit("/embed-js");
 
     cy.log("simple embedding toast should be shown");
     H.undoToast()

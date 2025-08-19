@@ -7,7 +7,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
 
-describe.skip("issue 12445", { tags: "@external" }, () => {
+describe("issue 12445", { tags: ["@external", "@skip"] }, () => {
   const CC_NAME = "Abbr";
 
   beforeEach(() => {
@@ -140,9 +140,9 @@ describe("issue 13751", { tags: "@external" }, () => {
   });
 });
 
-describe.skip(
+describe(
   "postgres > question > custom columns",
-  { tags: "@external" },
+  { tags: ["@external", "@skip"] },
   () => {
     const PG_DB_NAME = "QA Postgres12";
 
@@ -728,7 +728,7 @@ describe("issue 24922", () => {
   });
 });
 
-describe.skip("issue 25189", () => {
+describe("issue 25189", { tags: "@skip" }, () => {
   const ccTable = "Custom Created";
   const ccFunction = "Custom Total";
 
@@ -886,7 +886,7 @@ describe("issue 32032", () => {
 });
 
 // broken. see https://github.com/metabase/metabase/issues/55673
-describe.skip("issue 42949", () => {
+describe("issue 42949", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1125,33 +1125,37 @@ describe("issue 49882", () => {
   });
 
   // TODO: we no longer have wrapped lines (for now)
-  it.skip("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)", () => {
-    H.enterCustomColumnDetails({
-      formula:
-        'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax]){leftarrow}{leftarrow}{uparrow}x{downarrow}y',
-    });
+  it(
+    "should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)",
+    { tags: "@skip" },
+    () => {
+      H.enterCustomColumnDetails({
+        formula:
+          'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax]){leftarrow}{leftarrow}{uparrow}x{downarrow}y',
+      });
 
-    H.CustomExpressionEditor.value().should(
-      "equal",
-      'case([Tax] > 1, xcase([Total] > 200, [Total], "Nothing"), [Tax]y)',
-    );
-  });
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        'case([Tax] > 1, xcase([Total] > 200, [Total], "Nothing"), [Tax]y)',
+      );
+    },
+  );
 
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
-    const selectProductVendor =
+    const selectProductRating =
       "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}";
 
     H.enterCustomColumnDetails({
-      formula: `[Produ${selectProductVendor}`,
+      formula: `[Produ${selectProductRating}`,
       blur: false,
     });
 
-    H.CustomExpressionEditor.completion("Product → Vendor").should(
+    H.CustomExpressionEditor.completion("Product → Rating").should(
       "be.visible",
     );
     H.CustomExpressionEditor.acceptCompletion("tab");
 
-    H.CustomExpressionEditor.value().should("equal", "[Product → Vendor]");
+    H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
   });
 });
 
@@ -1956,7 +1960,7 @@ describe("issue 55687", () => {
 });
 
 // TODO: re-enable this test when we have a fix for metabase/metabase#58371
-describe.skip("issue 58371", () => {
+describe("issue 58371", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -2069,18 +2073,25 @@ describe("issue 57674", () => {
   });
 
   // TODO: re-enable this test once we have a fix for metabase#61264
-  it.skip("should show an error when using a case or if expression with mismatched types (metabase#57674)", () => {
-    H.getNotebookStep("data").button("Custom column").click();
+  it(
+    "should show an error when using a case or if expression with mismatched types (metabase#57674)",
+    { tags: "@skip" },
+    () => {
+      H.getNotebookStep("data").button("Custom column").click();
 
-    H.CustomExpressionEditor.clear();
-    H.popover().findByText("Types are incompatible.").should("not.exist");
+      H.CustomExpressionEditor.clear();
+      H.popover().findByText("Types are incompatible.").should("not.exist");
 
-    H.CustomExpressionEditor.type('case([Total] > 100, [Created At], "foo")', {
-      allowFastSet: true,
-    }).blur();
+      H.CustomExpressionEditor.type(
+        'case([Total] > 100, [Created At], "foo")',
+        {
+          allowFastSet: true,
+        },
+      ).blur();
 
-    H.popover().findByText("Types are incompatible.").should("be.visible");
-  });
+      H.popover().findByText("Types are incompatible.").should("be.visible");
+    },
+  );
 
   it("should not show an error when using a case or if expression with compatible types (metabase#57674)", () => {
     H.getNotebookStep("data").button("Custom column").click();

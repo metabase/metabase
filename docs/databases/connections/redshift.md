@@ -104,6 +104,12 @@ You can enable model persistence to allow Metabase to create tables with model d
 
 Check out [Model persistence](../../data-modeling/model-persistence.md).
 
+## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
+
+See [Database routing](../../permissions/database-routing.md).
+
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).

@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util :as lib.util]
@@ -23,11 +24,59 @@
    qualified-keyword?
    [:+ :any]])
 
+(defn- cache-key-for-table-or-card
+  "Metadata for a Table, Card, or Metric always comes from the metadata provider and is always unaffected by the
+  contents of the query, or stage number; thus as an optimization we can generate a key based on just the hash of the
+  metadata provider (see below), `:lib/type`, ID, and options."
+  [unique-key query x options]
+  [unique-key (hash (:lib/metadata query)) (:lib/type x) (:id x) (not-empty options)])
+
+(defn- cache-key-optimized-query
+  "Optimization: replace all stages beyond what we're calculating metadata for with just a single additional blank
+  stage. The only way later stages can possibly affect metadata for previous stages is the mega hack for stage
+  returned-columns that deduplicates `:name` only if the stage in question is the last stage of a
+  query (see [[metabase.lib.stage-test/returned-columns-deduplicate-names-test]]). I'd rather just figure out how to
+  get rid of the need for this hack in the first place (seems crazy that later stages can affect the metadata of
+  previous stages) but sometimes you just have to live with haxx.
+
+  This will allow us to hit the cache much more often."
+  [query stage-number]
+  (let [stage-number        (lib.util/canonical-stage-index query stage-number)
+        num-stages          (count (:stages query))
+        num-relevant-stages (inc stage-number)]
+    (if (> num-stages num-relevant-stages)
+      (update query :stages (fn [stages]
+                              (-> (into []
+                                        (take num-relevant-stages)
+                                        stages)
+                                  ;; replace all 'irrelevant stages' with a single additional
+                                  ;; blank stage.
+                                  (conj {:lib/type :mbql.stage/mbql}))))
+      query)))
+
+(defn- cache-key-for-other [unique-key query stage-number x options]
+  (letfn [(prepare-map [m]
+            (cond-> m
+              (map? m) (->
+                        ;; use the hash of the metadata provider so only two queries with identical metadata providers
+                        ;; get the exact same cache key (see tests). This is mostly to satisfy tests that do crazy
+                        ;; stuff and swap out a query's metadata provider so we don't end up returning the wrong
+                        ;; cached results for the same query with a different MP
+                        (m/update-existing :lib/metadata hash)
+                        ;; don't want `nil` versus `{}` to result in cache misses.
+                        not-empty)))]
+    [unique-key
+     (-> query
+         (cache-key-optimized-query stage-number)
+         prepare-map)
+     (lib.util/canonical-stage-index query stage-number)
+     (prepare-map x)
+     (prepare-map options)]))
+
 (mu/defn cache-key :- ::cache-key
   "Calculate a cache key to use with [[with-cached-value]]. Prefer the 5 arity, which ensures unserializable keys
   like `:lib/metadata` are removed."
-  ([unique-key
-    x]
+  ([unique-key x]
    [unique-key x])
 
   ([unique-key   :- qualified-keyword?
@@ -36,24 +85,9 @@
     stage-number :- :int
     x            :- :any
     options      :- :any]
-   (letfn [(update-map [m]
-             (let [;; use the hash of the metadata provider so only two queries with identical metadata providers get
-                   ;; the exact same cache key (see tests). This is mostly to satisfy tests that do crazy stuff and swap
-                   ;; out a query's metadata provider so we don't end up returning the wrong cached results for the same
-                   ;; query with a different MP
-                   m (m/update-existing m :lib/metadata hash)]
-               (case (:lib/type m)
-                 ;; For cards and metrics being used as keys, these came from the metadata itself, so replace them
-                 ;; with stubs referencing them by :id.
-                 (:metadata/card :metadata/metric) [(:lib/type m) (:id m)]
-                 ;; Otherwise, return the original map.
-                 (not-empty m))))]
-     [unique-key
-      (update-map query)
-      (lib.util/canonical-stage-index query stage-number)
-      ;; don't want `nil` versus `{}` to result in cache misses.
-      (cond-> x (map? x) update-map)
-      (cond-> options (map? options) update-map)])))
+   (if (#{:metadata/table :metadata/card :metadata/metric} (lib.dispatch/dispatch-value x))
+     (cache-key-for-table-or-card unique-key query x options)
+     (cache-key-for-other unique-key query stage-number x options))))
 
 (mu/defn- ->cached-metadata-provider :- [:maybe ::lib.metadata.protocols/cached-metadata-provider]
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable]
@@ -81,21 +115,21 @@
   "Function called whenever we have a cache hit. Normally just does boring logging but dynamic so we can test this
   stuff."
   [k]
-  (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/format-color :green "Found %s" (pr-str k)))))
+  (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :green "HIT: ") (name (first k)) " " (hash (rest k)))))
 
 (defn ^:dynamic *cache-miss-hook*
   "Function called whenever we have a cache miss. Normally just does boring logging but dynamic so we can test this
   stuff."
   [k]
-  (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/format-color :yellow "Calculating %s" (pr-str k)))))
+  (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :red "MISS: ") (name (first k)) " " (hash (rest k)))))
 
-(mu/defn do-with-cached-value :- :some
+(mu/defn do-with-cached-value
   "Impl for [[with-cached-value]]."
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
-   thunk                 :- [:=> [:cat] :some]]
+   thunk                 :- [:=> [:cat] :any]]
   (binding [*cache-depth* (inc *cache-depth*)]
-    (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/format-color :red "Get %s" (pr-str k))))
+    (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :cyan "GET: ") (name (first k)) " " (hash (rest k))))
     (let [cached-v (cached-value metadata-providerable k ::not-found)]
       (if-not (= cached-v ::not-found)
         (do

@@ -27,6 +27,8 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+
+    H.mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
@@ -45,7 +47,7 @@ H.describeWithSnowplow(suiteTitle, () => {
         "be.visible",
       );
 
-      cy.findByLabelText("Existing Metabase Session")
+      cy.findByLabelText("Existing Metabase session")
         .should("be.visible")
         .should("be.checked");
 
@@ -111,7 +113,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Existing Metabase Session").should("be.checked");
+      cy.findByLabelText("Existing Metabase session").should("be.checked");
       codeBlock().should("contain", '"useExistingUserSession": true');
     });
   });

@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import fetchMock from "fetch-mock";
 
 import {
   setupCardEndpoints,
@@ -7,11 +6,9 @@ import {
 } from "__support__/server-mocks";
 import { waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
-import {
-  MetabaseProvider,
-  StaticQuestion,
-  defineMetabaseAuthConfig,
-} from "embedding-sdk/components/public";
+import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
+import { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion";
+import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-package/lib/public/define-metabase-auth-config";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -32,8 +29,6 @@ const setup = async (
   config: MetabaseAuthConfig,
   jwtProviderResponse?: JwtMockConfig["providerResponse"],
 ) => {
-  fetchMock.reset();
-
   const { jwtProviderMock } = setupMockJwtEndpoints({
     providerResponse: jwtProviderResponse,
   });
@@ -50,14 +45,15 @@ const setup = async (
     .mockImplementation(() => {});
 
   render(
-    <MetabaseProvider authConfig={config}>
+    <ComponentProvider authConfig={config}>
       <StaticQuestion questionId={1} />
-    </MetabaseProvider>,
+    </ComponentProvider>,
   );
 
   await waitForLoaderToBeRemoved();
 
-  const getLastAuthProviderApiCall = () => jwtProviderMock.lastCall();
+  const getLastAuthProviderApiCall = () =>
+    jwtProviderMock.callHistory.lastCall();
 
   return { getLastAuthProviderApiCall };
 };
@@ -86,10 +82,6 @@ const expectErrorMessage = async (message: string) => {
 };
 
 describe("SDK auth errors for JWT authentication", () => {
-  afterEach(() => {
-    jest.resetAllMocks();
-  });
-
   it("should show a message when the user's JWT server endpoint doesn't return a json object", async () => {
     const { getLastAuthProviderApiCall } = await setup(defaultAuthConfig, {
       body: "not a json object",

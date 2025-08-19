@@ -28,6 +28,7 @@
   cached-database-via-table-id
   cached-table
   default-mapping
+  handle-effects!*
   perform-action!
   perform-action-v2!
   ;; allow actions to be defined in the data-editing module
@@ -39,8 +40,10 @@
   validate-inputs!]
  [metabase.actions.error
   incorrect-value-type
+  violate-check-constraint
   violate-foreign-key-constraint
   violate-not-null-constraint
+  violate-permission-constraint
   violate-unique-constraint]
  [metabase.actions.execution
   execute-action!
