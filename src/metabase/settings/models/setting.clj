@@ -31,7 +31,7 @@
    (java.util.concurrent TimeUnit)
    (java.util.concurrent.locks ReentrantLock)))
 
-(def ^:dynamic *database-delay*
+(def ^:dynamic *database*
   "The database upon which we are operating, from which [[*database-local-values*]] are taken.
   This is used to do a just-in-time check whether a given setting is enabled for the given database, so that we can
   revert to the default value even if there is a vestigial value saved against it.
@@ -677,7 +677,7 @@
         disable-cache?                                   (or config/*disable-setting-cache* (not cache?))]
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?)))
-            (and *database-delay* (disabled-for-db-reasons setting-def @*database-delay*)))
+            (and *database* (disabled-for-db-reasons setting-def *database*)))
       default
       (if (= config/*disable-setting-cache* disable-cache?) ;; Optimization: only bind dynvar if necessary.
         (getter)

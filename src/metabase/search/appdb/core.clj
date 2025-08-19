@@ -169,7 +169,9 @@
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
         (log/debug "Forcing early reindex because existing index is old")
-        (search.engine/reindex! :search.engine/appdb {}))
+        ;; TODO active index won't be updated until the first instance finishes reindexing, so each instance in a
+        ;;      multi-instance cluster is likely to hit this branch on start-up. The option tells the rest to no-op.
+        (search.engine/reindex! :search.engine/appdb {:resume-if-pending-index-found? false}))
 
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
@@ -177,15 +179,20 @@
           (populate-index! :search/updating))))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
-  [_ {:keys [in-place?]}]
+  [_ {:keys [resume-if-pending-index-found? in-place?]
+      :or   {resume-if-pending-index-found? true}}]
   (search.index/ensure-ready!)
-  (if in-place?
-    (when-let [table (search.index/active-table)]
-      ;; keep the current table, just delete its contents
-      (t2/delete! table))
-    (search.index/maybe-create-pending!))
-  (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
-    (search.index/activate-table!)))
+  (let [created-pending? (if in-place?
+                           (do (if-let [table (search.index/active-table)]
+                                 ;; keep the current table, just delete its contents
+                                 (t2/delete! table)
+                                 ;; create an active table
+                                 )
+                               false)
+                           (boolean (search.index/maybe-create-pending!)))]
+    (when (or in-place? created-pending? resume-if-pending-index-found?)
+      (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
+        (search.index/activate-table!)))))
 
 (derive :event/setting-update ::settings-changed-event)
 

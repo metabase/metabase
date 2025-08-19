@@ -180,25 +180,28 @@
         (t2/query stmt)))))
 
 (defn maybe-create-pending!
-  "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
+  "Create a search index table if one doesn't exist, and record it in the metadata table.
+  Record the name of the table if we created it, and it was not immediately superseded."
   []
   (if *mocking-tables*
     ;; The atoms are the only source of truth, create a new table if necessary.
-    (or (pending-table)
-        (let [table-name (gen-table-name)]
-          (create-table! table-name)
-          (swap! *indexes* assoc :pending table-name)))
+    (when-not (pending-table)
+      (let [table-name (gen-table-name)]
+        (create-table! table-name)
+        (swap! *indexes* assoc :pending table-name)))
     ;; The database is the source of truth
     (let [{:keys [pending]} (sync-tracking-atoms!)]
-      (or pending
-          (let [table-name (gen-table-name)]
-            (log/infof "Creating pending index %s" table-name)
-            ;; We may fail to insert a new metadata row if we lose a race with another instance.
-            (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
-              (create-table! table-name))
-            (let [pending (:pending (sync-tracking-atoms!))]
-              (log/infof "New pending index %s" pending)
-              pending))))))
+      (when-not pending
+        (let [table-name (gen-table-name)]
+          (log/infof "Creating pending index %s" table-name)
+          ;; We may fail to insert a new metadata row if we lose a race with another instance.
+          ;; TODO can this leave a bad entry if we fail to create the table?
+          ;;      maybe this is already in a transaction, but we should only commit the metadata after it's created.
+          (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
+            (create-table! table-name))
+          (if (not= table-name (:pending (sync-tracking-atoms!)))
+            (log/infof "Superseded by pending index %s" pending)
+            table-name))))))
 
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
@@ -270,8 +273,10 @@
 
   (let [active-table (active-table)
         entries (map document->entry documents)
-        ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-        active-updated? (when-not (and active-table (= context :search/reindexing)) (safe-batch-upsert! active-table entries))
+        ;; No need to update the active index if we are doing a full reindex - it will be swapped out soon.
+        ;; Most updates would be no-ops anyway.
+        active-updated? (when-not (and active-table (= context :search/reindexing))
+                          (safe-batch-upsert! active-table entries))
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
