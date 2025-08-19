@@ -1,8 +1,7 @@
 (ns metabase.warehouses.provider-detection
   "Database provider detection based on hostname patterns."
   (:require
-   [clojure.string :as str]
-   [metabase.util.log :as log]))
+   [clojure.string :as str]))
 
 (def ^:private providers
   "Database providers with their hostname patterns.
@@ -47,3 +46,11 @@
   (when-let [details (:details database)]
     (when-let [host (extract-host-from-details details)]
       (detect-provider host))))
+
+(defn providers-for-api
+  "Return providers data formatted for API consumption, with regex patterns converted to strings."
+  []
+  (mapv (fn [provider]
+          {:name (:name provider)
+           :pattern (str (:pattern provider))})
+        providers))
