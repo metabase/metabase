@@ -49,7 +49,7 @@ export const Header = ({ columns, icon, row }: Props) => {
   );
 
   return (
-    <Group gap="xl">
+    <Group gap="xl" wrap="nowrap">
       {(avatar || icon) && (
         <Box className={S.avatarFrame} flex="0 0 auto">
           {avatar && (
