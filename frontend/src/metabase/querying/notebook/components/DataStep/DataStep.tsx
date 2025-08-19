@@ -14,6 +14,7 @@ import { CONTAINER_PADDING } from "../NotebookCell/constants";
 import { NotebookDataPicker } from "../NotebookDataPicker";
 
 import S from "./DataStep.module.css";
+import { moveColumnInSettings } from "metabase/visualizations/components/settings/ChartSettingTableColumns/TableColumnPanel/utils";
 
 export const DataStep = ({
   query,
@@ -101,6 +102,30 @@ export const DataStep = ({
     updateVisualizationSettings(updatedQuestion);
   };
 
+  const handleReorderColumns = (reorderedColumns: Lib.ColumnMetadata[]) => {
+    const currentSettings = question.card().visualization_settings || {};
+
+    const diff = {
+      "table.columns": reorderedColumns.map((column) => {
+        const columnInfo = Lib.displayInfo(query, stageIndex, column);
+        if (columnInfo.selected) {
+          console.log(columnInfo)
+        }
+        return {
+          name: columnInfo.name,
+          enabled: columnInfo.selected,
+        }
+      })
+    }
+
+    const newSettings = updateSettings(currentSettings, diff);
+
+    // console.log(Lib.displayInfo(query, stageIndex, columns[0]))
+    // const newSettings = moveColumnInSettings(columns, oldIndex, newIndex)
+    const updatedQuestion = question.updateSettings(newSettings);
+    updateVisualizationSettings(updatedQuestion);
+  };
+
   return (
     <>
       <NotebookCell color={color}>
@@ -157,6 +182,8 @@ export const DataStep = ({
           onSelectAll={handleSelectAll}
           onSelectNone={handleSelectNone}
           onColumnDisplayNameChange={handleColumnDisplayNameChange}
+          onReorderColumns={handleReorderColumns}
+          visualizationSettings={question.card().visualization_settings}
           data-testid="data-step-column-picker"
         />
       )}
