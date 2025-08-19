@@ -1,12 +1,13 @@
 import { useState } from "react";
 
+import { Sidesheet } from "metabase/common/components/Sidesheet";
+import { DetailViewSidesheet } from "metabase/detail-view/components";
 import Question from "metabase-lib/v1/Question";
 
 import { PaginationFooter } from "../PaginationFooter/PaginationFooter";
 
 import { ObjectDetailView } from "./ObjectDetailView";
 import S from "./ObjectDetailWrapper.module.css";
-import { RootModal } from "./ObjectDetailWrapper.styled";
 import type { ObjectDetailProps } from "./types";
 
 export function ObjectDetailWrapper({
@@ -27,21 +28,43 @@ export function ObjectDetailWrapper({
     card && rest.metadata ? new Question(card, rest.metadata) : undefined;
 
   if (shouldShowModal) {
-    return (
-      <RootModal
-        isOpen
-        onClose={closeObjectDetail}
-        className="" // need an empty className to override the Modal default width
-      >
-        <ObjectDetailView
-          {...rest}
-          showHeader
-          data={data}
-          question={question ?? getFallbackQuestion()}
-          closeObjectDetail={closeObjectDetail}
-        />
-      </RootModal>
-    );
+    const {
+      series,
+      table: tableWrapper,
+      tableForeignKeys,
+      zoomedRow,
+      zoomedRowID,
+    } = rest;
+    const table = tableWrapper?.getPlainObject();
+    const columns = series[0]?.data?.results_metadata?.columns;
+
+    if (
+      columns != null &&
+      table != null &&
+      zoomedRow != null &&
+      zoomedRowID != null
+    ) {
+      {
+        /* <ObjectDetailView
+      {...rest}
+      showHeader
+      data={data}
+      question={question ?? getFallbackQuestion()}
+      closeObjectDetail={closeObjectDetail}
+      /> */
+      }
+      return (
+        <Sidesheet isOpen size="lg" onClose={closeObjectDetail}>
+          <DetailViewSidesheet
+            columns={columns}
+            row={zoomedRow}
+            rowId={zoomedRowID}
+            table={table}
+            tableForeignKeys={tableForeignKeys}
+          />
+        </Sidesheet>
+      );
+    }
   }
 
   const hasPagination = data?.rows?.length > 1;
