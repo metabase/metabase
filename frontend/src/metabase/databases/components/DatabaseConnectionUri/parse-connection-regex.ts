@@ -197,6 +197,7 @@ export function parseConnectionUriRegex(
   }
 
   const regex = connectionStringRegexes[engineKey];
+  const trimmedString = connectionUri.trim();
 
   if (!regex) {
     return null;
@@ -204,14 +205,14 @@ export function parseConnectionUriRegex(
 
   // Some of engines have more than one matching regex
   const candidate: RegExp | undefined = Array.isArray(regex)
-    ? regex.find((r) => connectionUri.match(r))
+    ? regex.find((r) => trimmedString.match(r))
     : regex;
 
   if (!candidate) {
     return null;
   }
 
-  const match = connectionUri.trim().match(candidate);
+  const match = trimmedString.trim().match(candidate);
 
   if (match) {
     const params = match.groups?.params
