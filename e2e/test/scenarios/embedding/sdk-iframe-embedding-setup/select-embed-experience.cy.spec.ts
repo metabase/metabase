@@ -89,6 +89,23 @@ H.describeWithSnowplow(suiteTitle, () => {
         cy.findByText("Pick your starting data").should("be.visible");
       });
     });
+
+    it("shows browser template when selected", () => {
+      visitNewEmbedPage();
+      getEmbedSidebar().findByText("Browser").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_selected",
+        event_detail: "browser",
+      });
+
+      H.waitForSimpleEmbedIframesToLoad();
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.log("collection browser is visible");
+        cy.findAllByText("Our analytics").first().should("be.visible");
+      });
+    });
   });
 
   describe("select embed experiences with an empty activity log", () => {

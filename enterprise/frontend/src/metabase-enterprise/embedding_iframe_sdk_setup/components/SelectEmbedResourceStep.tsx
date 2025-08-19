@@ -2,9 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
+import type { BrowserEmbedOptions } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import type { CollectionId } from "metabase-types/api";
 
 import { trackEmbedWizardResourceSelected } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -23,23 +26,31 @@ export const SelectEmbedResourceStep = () => {
     updateSettings,
     recentDashboards,
     recentQuestions,
+    recentCollections,
     addRecentItem,
   } = useSdkIframeEmbedSetupContext();
 
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
 
-  // Only dashboard and charts allow selecting resources.
-  if (experience !== "dashboard" && experience !== "chart") {
+  // Exploration does not allow selecting resources.
+  if (experience === "exploration") {
     return null;
   }
 
   const isDashboard = experience === "dashboard";
-  const recentItems = isDashboard ? recentDashboards : recentQuestions;
+  const isBrowser = experience === "browser";
+  const recentItems = isDashboard
+    ? recentDashboards
+    : isBrowser
+      ? recentCollections
+      : recentQuestions;
 
   const selectedItemId = isDashboard
     ? settings.dashboardId
-    : settings.questionId;
+    : isBrowser
+      ? (settings as BrowserEmbedOptions).initialCollection
+      : settings.questionId;
 
   const updateEmbedSettings = (
     experience: SdkIframeEmbedSetupExperience,
@@ -48,7 +59,9 @@ export const SelectEmbedResourceStep = () => {
     // Do not update if the selected item is already selected.
     if (
       (experience === "dashboard" && settings.dashboardId === id) ||
-      (experience === "chart" && settings.questionId === id)
+      (experience === "chart" && settings.questionId === id) ||
+      (settings.componentName === "metabase-browser" &&
+        (settings as BrowserEmbedOptions).initialCollection === id)
     ) {
       return;
     }
@@ -70,6 +83,10 @@ export const SelectEmbedResourceStep = () => {
         // Clear parameters
         initialSqlParameters: {},
       });
+    } else if (experience === "browser") {
+      updateSettings({
+        initialCollection: id as CollectionId,
+      });
     }
   };
 
@@ -82,11 +99,37 @@ export const SelectEmbedResourceStep = () => {
     updateEmbedSettings(experience, resourceId);
 
     // Add the current resource to the top of the recent items list
-    const resourceType = experience === "dashboard" ? "dashboard" : "question";
-    addRecentItem(resourceType, {
+    // Only add to recent items for dashboard and chart experiences
+    if (experience === "dashboard") {
+      addRecentItem("dashboard", {
+        id: resourceId,
+        name: item.name,
+        description: item.description,
+      });
+    } else if (experience === "chart") {
+      addRecentItem("question", {
+        id: resourceId,
+        name: item.name,
+        description: item.description,
+      });
+    }
+  };
+
+  const handleCollectionPickerResourceSelect = (item: {
+    id: string | number;
+    name: string;
+    model: string;
+  }) => {
+    const resourceId = item.id;
+
+    closePicker();
+    updateEmbedSettings(experience, resourceId);
+
+    // Add collection to recent items
+    addRecentItem("collection", {
       id: resourceId,
       name: item.name,
-      description: item.description,
+      description: "", // Collections from picker don't have descriptions
     });
   };
 
@@ -154,8 +197,30 @@ export const SelectEmbedResourceStep = () => {
       );
     }
 
+    if (experience === "browser") {
+      return (
+        <CollectionPickerModal
+          title={t`Select a collection`}
+          value={
+            selectedItemId
+              ? { id: selectedItemId, model: "collection", collection_id: null }
+              : { id: "root", model: "collection", collection_id: null }
+          }
+          onChange={handleCollectionPickerResourceSelect}
+          onClose={closePicker}
+          options={COLLECTION_MODAL_OPTIONS}
+        />
+      );
+    }
+
     return null;
   };
+
+  const browseResourceTitle = match(experience)
+    .with("dashboard", () => t`Browse dashboards`)
+    .with("browser", () => t`Browse collections`)
+    .with("chart", () => t`Browse questions`)
+    .exhaustive();
 
   return (
     <>
@@ -168,11 +233,7 @@ export const SelectEmbedResourceStep = () => {
           <ActionIcon
             variant="outline"
             size="lg"
-            title={
-              experience === "dashboard"
-                ? t`Browse dashboards`
-                : t`Browse questions`
-            }
+            title={browseResourceTitle}
             onClick={openPicker}
             data-testid="embed-browse-entity-button"
           >
@@ -192,6 +253,7 @@ const getEmbedTitle = (experience: string) =>
   match(experience)
     .with("dashboard", () => t`Select a dashboard to embed`)
     .with("chart", () => t`Select a chart to embed`)
+    .with("browser", () => t`Select a collection to embed`)
     .with("exploration", () => t`Exploration embed setup`)
     .otherwise(() => t`Select content to embed`);
 
@@ -199,6 +261,7 @@ const getEmbedDescription = (experience: string) =>
   match(experience)
     .with("dashboard", () => t`Choose from your recently visited dashboards`)
     .with("chart", () => t`Choose from your recently visited charts`)
+    .with("browser", () => t`Choose a collection to start browsing from`)
     .with("exploration", () => null)
     .otherwise(() => t`Choose your content to embed`);
 
@@ -206,4 +269,10 @@ const MODAL_OPTIONS = {
   showPersonalCollections: true,
   showRootCollection: true,
   hasConfirmButtons: false,
+} as const;
+
+const COLLECTION_MODAL_OPTIONS = {
+  showPersonalCollections: true,
+  showRootCollection: true,
+  hasConfirmButtons: true,
 } as const;

@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 
 import type {
+  BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
   QuestionEmbedOptions,
@@ -43,6 +44,15 @@ export const getDefaultSdkIframeEmbedSettings = (
         componentName: "metabase-question",
         template: "exploration",
         isSaveEnabled: false,
+      }),
+    )
+    .with(
+      "browser",
+      (): BrowserEmbedOptions => ({
+        componentName: "metabase-browser",
+        initialCollection: "root",
+        readOnly: true,
+        collectionVisibleColumns: ["type", "name"],
       }),
     )
     .exhaustive();

@@ -24,8 +24,9 @@ export interface SdkIframeEmbedSetupContextType {
   // Recent items
   recentDashboards: SdkIframeEmbedSetupRecentItem[];
   recentQuestions: SdkIframeEmbedSetupRecentItem[];
+  recentCollections: SdkIframeEmbedSetupRecentItem[];
   addRecentItem: (
-    type: "dashboard" | "question",
+    type: "dashboard" | "question" | "collection",
     recentItem: SdkIframeEmbedSetupRecentItem,
   ) => void;
 

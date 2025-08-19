@@ -322,6 +322,46 @@ H.describeWithSnowplow(suiteTitle, () => {
     codeBlock().should("contain", 'is-save-enabled="true"');
   });
 
+  it("shows read-only option checked by default for browser", () => {
+    navigateToEmbedOptionsStep({ experience: "browser" });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow editing dashboards and questions")
+      .should("not.be.checked");
+
+    cy.log(
+      "New Dashboard and New Exploration buttons should not be visible by default",
+    );
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New Dashboard").should("not.exist");
+      cy.findByText("New Exploration").should("not.exist");
+    });
+  });
+
+  it("toggles editing permissions for browser", () => {
+    navigateToEmbedOptionsStep({ experience: "browser" });
+
+    cy.log("turn on editing (set read-only to false)");
+    getEmbedSidebar()
+      .findByLabelText("Allow editing dashboards and questions")
+      .click()
+      .should("be.checked");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "readOnly",
+    });
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New Dashboard").should("be.visible");
+      cy.findByText("New Exploration").should("be.visible");
+    });
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", 'read-only="false"');
+  });
+
   it("can change brand color and reset colors", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",

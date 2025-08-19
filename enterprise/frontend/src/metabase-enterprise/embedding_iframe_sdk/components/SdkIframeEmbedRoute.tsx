@@ -89,7 +89,8 @@ const SdkIframeEmbedView = ({
         componentName: "metabase-browser",
       },
       (settings) => (
-        <SdkBreadcrumbsProvider>
+        // re-mount breadcrumbs when initial collection changes
+        <SdkBreadcrumbsProvider key={settings.initialCollection}>
           <MetabaseBrowser settings={settings} />
         </SdkBreadcrumbsProvider>
       ),
@@ -155,11 +156,28 @@ const SdkIframeEmbedView = ({
             {...commonProps}
             isSaveEnabled={settings.isSaveEnabled ?? false}
             key={rerenderKey}
-            targetCollection={settings.targetCollection}
-            entityTypes={settings.entityTypes}
           />
         );
       },
+    )
+    .with(
+      {
+        componentName: "metabase-dashboard",
+        dashboardId: P.nonNullable,
+        drills: P.optional(true),
+      },
+      (settings) => (
+        <InteractiveDashboard
+          dashboardId={settings.dashboardId}
+          withTitle={settings.withTitle}
+          withDownloads={settings.withDownloads}
+          initialParameters={settings.initialParameters}
+          hiddenParameters={settings.hiddenParameters}
+          drillThroughQuestionHeight="100%"
+          drillThroughQuestionProps={{ isSaveEnabled: false }}
+          key={rerenderKey}
+        />
+      ),
     )
     .otherwise(() => null);
 };

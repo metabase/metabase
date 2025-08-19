@@ -7,7 +7,8 @@ import type { BaseRecentItem } from "metabase-types/api";
 export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
-  | "exploration";
+  | "exploration"
+  | "browser";
 
 export type SdkIframeEmbedSetupStep =
   | "select-embed-experience"
