@@ -887,7 +887,7 @@
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
 (defn disabled-for-db-reasons
-  "Return the reasons, if any, that the given "
+  "Return the reasons, if any, for the given setting being disabled."
   [setting-def database]
   (when-let [f (:enabled-for-db? setting-def)]
     (try (when-not (f database)
