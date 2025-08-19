@@ -326,7 +326,9 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor: stickyElementsBackgroundColor,
+                            backgroundColor: active
+                              ? undefined
+                              : stickyElementsBackgroundColor,
                             ...styles?.bodyCell,
                           }
                         : {

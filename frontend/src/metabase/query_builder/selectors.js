@@ -511,7 +511,7 @@ export const getIsResultDirty = createSelector(
 
 export const getZoomedObjectId = (state) => state.qb.zoomedRowObjectId;
 
-const getZoomedObjectRowIndex = createSelector(
+export const getZoomedObjectRowIndex = createSelector(
   [getPKRowIndexMap, getZoomedObjectId],
   (PKRowIndexMap, objectId) => {
     if (!PKRowIndexMap) {

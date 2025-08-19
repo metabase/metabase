@@ -49,7 +49,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
-import { getZoomedObjectId } from "metabase/query_builder/selectors";
+import { getZoomedObjectRowIndex } from "metabase/query_builder/selectors";
 import { Flex, type MantineTheme } from "metabase/ui";
 import {
   getTableCellClickedObject,
@@ -177,7 +177,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isClientSideSortingEnabled = isDashboard;
   const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
-  const zoomedRowIndex = useSelector(getZoomedObjectId);
+  const zoomedRowIndex = useSelector(getZoomedObjectRowIndex);
 
   const tc = useTranslateContent();
 
