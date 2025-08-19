@@ -55,6 +55,9 @@ export const useInitDataInternal = ({
 
   const dispatch = reduxStore.dispatch;
 
+  const isAuthUninitialized = () =>
+    reduxStore.getState().sdk.loginStatus.status === "uninitialized";
+
   const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
 
   // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
@@ -74,17 +77,14 @@ export const useInitDataInternal = ({
     }
   }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
 
-  useMount(() => {
+  useMount(function initAuthAndConfigureApi() {
     if (hasBeenInitialized.current) {
       return;
     }
 
     registerVisualizationsOnce();
 
-    const isAuthUninitialized =
-      reduxStore.getState().sdk.loginStatus.status === "uninitialized";
-
-    if (!isAuthUninitialized) {
+    if (!isAuthUninitialized()) {
       return;
     }
 
