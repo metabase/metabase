@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import Question from "metabase-lib/v1/Question";
 
@@ -26,14 +27,12 @@ export function ObjectDetailWrapper({
   const getFallbackQuestion = () =>
     card && rest.metadata ? new Question(card, rest.metadata) : undefined;
 
+  const { data: tableForeignKeys } = useListTableForeignKeysQuery(
+    shouldShowModal && rest.table ? rest.table.id : skipToken,
+  );
+
   if (shouldShowModal) {
-    const {
-      series,
-      table: tableWrapper,
-      tableForeignKeys,
-      zoomedRow,
-      zoomedRowID,
-    } = rest;
+    const { series, table: tableWrapper, zoomedRow, zoomedRowID } = rest;
     const table = tableWrapper?.getPlainObject();
     const columns = series[0]?.data?.results_metadata?.columns;
 
