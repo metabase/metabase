@@ -112,7 +112,13 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
         />
       );
 
-      return <Group h="100%">{dashboardView}</Group>;
+      // The overflow-scroll is needed otherwise the editable
+      // dashboard header gets scrolled out of view.
+      return (
+        <Group h="100%" style={{ overflowY: "scroll" }}>
+          {dashboardView}
+        </Group>
+      );
     })
     .with(
       { type: P.union("question", "metric", "model"), id: P.nonNullable },
