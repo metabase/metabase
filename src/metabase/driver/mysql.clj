@@ -299,6 +299,18 @@
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime expr))
 
+(defmethod sql.qp/->honeysql [:mysql ::sql.qp/cast]
+  [driver [_ expr database-type]]
+  ;; MySQL doesn't support casting to timestamp, timestamptz, or timestamp with time zone - use datetime instead
+  (if database-type
+    (let [normalized-type (u/lower-case-en database-type)
+          mysql-type (if (or (contains? #{"timestamp" "timestamptz"} normalized-type)
+                             (str/includes? normalized-type "timestamp with time zone"))
+                       "datetime"
+                       database-type)]
+      (h2x/maybe-cast mysql-type (sql.qp/->honeysql driver expr)))
+    (sql.qp/->honeysql driver expr)))
+
 (defn- date-format [format-str expr]
   [:date_format expr (h2x/literal format-str)])
 
@@ -457,10 +469,14 @@
   (sql.qp/adjust-day-of-week driver [:dayofweek expr]))
 
 (defn- temporal-cast [type expr]
-  ;; mysql does not allow casting to timestamp
-  (if (= "timestamp" (u/lower-case-en type))
-    (h2x/maybe-cast "datetime" expr)
-    (h2x/maybe-cast type expr)))
+  ;; mysql does not allow casting to timestamp, timestamptz, or timestamp with time zone
+  (if type
+    (let [normalized-type (u/lower-case-en type)]
+      (if (or (contains? #{"timestamp" "timestamptz"} normalized-type)
+              (str/includes? normalized-type "timestamp with time zone"))
+        (h2x/maybe-cast "datetime" expr)
+        (h2x/maybe-cast type expr)))
+    expr))
 
 (defmethod sql.qp/date [:mysql :day]
   [_ _ expr]
