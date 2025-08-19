@@ -12,6 +12,7 @@
   (:import
    (java.time Instant)
    (java.util Date)
+   (java.util.concurrent Future)
    (org.quartz DisallowConcurrentExecution)))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +40,7 @@
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
-  (.get (search/reindex!)))
+  (.get ^Future (search/reindex!)))
 
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
   (doto (Thread. ^Runnable init!) .start))
