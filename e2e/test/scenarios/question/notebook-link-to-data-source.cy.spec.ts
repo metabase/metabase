@@ -424,13 +424,15 @@ describe("scenarios > notebook > link to data source", () => {
           .should("not.exist");
 
         cy.log(
-          "Even if user opens the notebook link directly, they should see the unauthorized page",
+          "Even if user opens the notebook link directly, they should not see the source question. We open the entity picker instead",
         );
         cy.visit(`/question/${nestedQuestion.id}/notebook`);
-        cy.url().should("include", "/unauthorized");
-        H.main()
-          .findByText("Sorry, you don’t have permission to see that.")
-          .should("be.visible");
+        cy.findByTestId("entity-picker-modal").within(() => {
+          cy.findByText("Pick your starting data").should("be.visible");
+          cy.findByLabelText("Close").click();
+        });
+
+        H.getNotebookStep("data").should("contain", "Pick your starting data");
 
         cy.log(
           "The same should be true for a user that additionally doesn't have write query permissions",
