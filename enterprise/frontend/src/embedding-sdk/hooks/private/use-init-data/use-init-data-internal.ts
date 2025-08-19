@@ -85,7 +85,6 @@ export const useInitDataInternal = ({
 
   useEffect(() => {
     if (authConfig.fetchRequestToken !== fetchRefreshTokenFnFromStore) {
-      // This needs to be a useEffect to avoid the `Cannot update a component XX while rendering a different component` error
       dispatch(setFetchRefreshTokenFn(authConfig.fetchRequestToken ?? null));
     }
   }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
