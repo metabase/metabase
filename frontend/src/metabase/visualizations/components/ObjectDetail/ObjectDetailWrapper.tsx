@@ -107,12 +107,12 @@ function getRowUrl(
   table: Table,
   rowId: string | number,
 ): string | undefined {
-  if (typeof table.id === "number") {
-    return `/table/${table.id}/detail/${rowId}`;
+  if (question.type() === "model") {
+    return `/model/${question.slug()}/detail/${rowId}`;
   }
 
-  if (table.type === "model") {
-    return `/model/${question.slug()}/detail/${rowId}`;
+  if (typeof table.id === "number") {
+    return `/table/${table.id}/detail/${rowId}`;
   }
 
   return undefined;
