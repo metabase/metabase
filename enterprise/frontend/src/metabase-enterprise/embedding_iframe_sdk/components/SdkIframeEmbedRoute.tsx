@@ -1,21 +1,15 @@
 import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
-<<<<<<< HEAD
-=======
-import { SdkBreadcrumbsProvider } from "embedding-sdk/components/private/SdkBreadcrumbs";
-import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
-import { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion";
->>>>>>> 37e6eee3116 (Add the metabase-browser custom element to Embed JS (#60828))
 import {
   InteractiveDashboard,
   MetabaseProvider,
   StaticDashboard,
-  StaticQuestion,
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
+import { SdkBreadcrumbsProvider } from "embedding-sdk/components/private/SdkBreadcrumbs";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
+import { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
