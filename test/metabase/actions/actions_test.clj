@@ -678,7 +678,7 @@
     (mt/with-actions-enabled
       (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
         (let [test-db-name   "permission_test"
-              test-user-name "test_user_2"]
+              test-user-name "test_user"]
           ;; Create a test database with test data
           (tx/drop-if-exists-and-create-db! driver/*driver* test-db-name)
           (let [details    (mt/dbdef->connection-details driver/*driver* :db {:database-name test-db-name})
