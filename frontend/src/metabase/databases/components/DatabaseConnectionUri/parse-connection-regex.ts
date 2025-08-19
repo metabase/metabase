@@ -197,9 +197,12 @@ export function parseConnectionUriRegex(
   }
 
   const regex = connectionStringRegexes[engineKey];
+
   if (!regex) {
     return null;
   }
+
+  // Some of engines have more than one matching regex
   const candidate: RegExp | undefined = Array.isArray(regex)
     ? regex.find((r) => connectionUri.match(r))
     : regex;
@@ -207,7 +210,9 @@ export function parseConnectionUriRegex(
   if (!candidate) {
     return null;
   }
-  const match = connectionUri.match(candidate);
+
+  const match = connectionUri.trim().match(candidate);
+
   if (match) {
     const params = match.groups?.params
       ? Object.fromEntries(new URLSearchParams(match.groups.params))
@@ -215,6 +220,12 @@ export function parseConnectionUriRegex(
     const semicolonParams = mapSemicolonParams(match.groups?.semicolonParams);
     return {
       ...match.groups,
+      username: match.groups?.username
+        ? decodeURIComponent(match.groups.username)
+        : undefined,
+      password: match.groups?.password
+        ? decodeURIComponent(match.groups.password)
+        : undefined,
       params: params ?? semicolonParams,
       hasJdbcPrefix: Boolean(match.groups?.hasJdbcPrefix),
     };
