@@ -49,6 +49,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [metabase.lib-be.locked-query-map :as lib.locked-query-map]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -196,7 +197,7 @@
      (fn
        ([preprocessed]
         (log/debugf "Preprocessed query:\n\n%s" (u/pprint-to-str preprocessed))
-        preprocessed)
+        (lib.locked-query-map/locked-query preprocessed))
        ([query middleware-fn]
         (try
           (assert (ifn? middleware-fn))
