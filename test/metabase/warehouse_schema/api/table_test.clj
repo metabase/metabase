@@ -66,7 +66,7 @@
     :view_count  0
     :metrics     []
     :segments    []
-    :is_writable false}))
+    :is_writable nil}))
 
 (defn- field-defaults []
   (merge
