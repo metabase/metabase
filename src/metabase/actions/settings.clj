@@ -12,12 +12,40 @@
   :visibility       :public
   :database-local   :only)
 
+;; reasons for disabling table editing
+
+(def ^:private db-routing-reason
+  {:key :setting/database-routing
+   :message "Table editing is not supported with database routing."})
+
+(def ^:private no-writable-tables-reason
+  {:key :permissions/no-writable-table
+   :message "Table editing requires at least one table with INSERT, UPDATE, and DELETE support."})
+
+(def ^:private busy-sync-reason
+  {:key :warning/database-sync-in-progress
+   :message "Unable to determine whether the database connection is readonly, as it is still syncing."})
+
+(def ^:private missing-permissions-reason
+  {:key :warning/database-metadata-missing
+   :message "Unable to determine whether the database connection is readonly, as we are missing metadata from sync."})
+
 (setting/defsetting database-enable-table-editing
   (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
   :default          false
   :feature          :table-data-editing
   :driver-feature   :actions/data-editing
-  :enabled-for-db?  (complement database/is-destination?)
+  :enabled-for-db? (fn [db]
+                     (setting/custom-disabled-reasons!
+                      [(when (database/is-destination? db) db-routing-reason)
+                       (cond
+                         ;; TODO: if sync is currently running for this database
+                         '.. busy-sync-reason
+                         ;; TODO: if there is at least one table for this database with is_writable = true
+                         '.. nil
+                         ;; TODO: if there is at least one table for this database with is_writable = nil
+                         '.. missing-permissions-reason
+                         :else no-writable-tables-reason)]))
   :type             :boolean
   :visibility       :public
   :database-local   :only
