@@ -1344,7 +1344,7 @@ describe("issue 47988", () => {
   });
 });
 
-describe.skip("issues 28270, 33708", () => {
+describe("issues 28270, 33708", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1868,7 +1868,7 @@ describe("Issue 30712", () => {
   });
 });
 
-describe.skip("issue 60930", () => {
+describe("issue 60930", { tags: "@skip" }, () => {
   const modelDetails: StructuredQuestionDetails = {
     name: "Model",
     type: "model",
