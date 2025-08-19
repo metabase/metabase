@@ -817,11 +817,19 @@
        [{:type :database, :id database-id}
         {:type :schema,   :id database-id}])
      (when (= (:lib/type base-stage) :mbql.stage/native)
+       (concat
+        ;; Extract field dependencies from dimension template tags
        (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
              :when (and (= tag-type :dimension)
                         (= dim-tag :field)
                         (integer? id))]
-         {:type :field, :id id}))
+          {:type :field, :id id})
+        ;; Extract snippet dependencies from snippet template tags
+        (for [{tag-type :type, snippet-id :snippet-id} (vals (:template-tags base-stage))
+              :when (and (= tag-type :snippet)
+                         (some? snippet-id)
+                         (integer? snippet-id))]
+          {:type :native-query-snippet, :id snippet-id})))
      (when-let [card-id (:source-card base-stage)]
        (let [card (lib.metadata/card metadata-providerable card-id)
              definition (:dataset-query card)]
@@ -843,12 +851,13 @@
 (def ^:private DependentItem
   [:and
    [:map
-    [:type [:enum :database :schema :table :card :field]]]
+    [:type [:enum :database :schema :table :card :field :native-query-snippet]]]
    [:multi {:dispatch :type}
     [:database [:map [:id ::lib.schema.id/database]]]
     [:schema   [:map [:id ::lib.schema.id/database]]]
     [:table    [:map [:id [:or ::lib.schema.id/table :string]]]]
-    [:field    [:map [:id ::lib.schema.id/field]]]]])
+    [:field [:map [:id ::lib.schema.id/field]]]
+    [:native-query-snippet [:map [:id ::lib.schema.id/native-query-snippet]]]]])
 
 (mu/defn dependent-metadata :- [:sequential DependentItem]
   "Return the IDs and types of entities the metadata about is required

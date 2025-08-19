@@ -1,6 +1,7 @@
 (ns metabase.lib.fe-util-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.set :as set]
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -1045,7 +1046,31 @@
                         {:type :table,    :id "card__1"}]
                        (lib/dependent-metadata query 1 :metric))
         query
-        (lib/append-stage query)))))
+        (lib/append-stage query))))
+  (testing "Native query snippets should be included in dependent metadata"
+    (let [;; lib/native-query would try to look up the snippets:
+          query {:lib/type :mbql/query
+                 :database 1
+                 :stages [{:lib/type :mbql.stage/native
+                           :native "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
+                           :template-tags {"snippet: filter1" {:type :snippet
+                                                               :snippet-id 10
+                                                               :snippet-name "filter1"
+                                                               :name "snippet: filter1"
+                                                               :display-name "Filter 1"
+                                                               :id "def456"}
+                                           "snippet: filter2" {:type :snippet
+                                                               :snippet-id 20
+                                                               :snippet-name "filter2"
+                                                               :name "snippet: filter2"
+                                                               :display-name "Filter 2"
+                                                               :id "ghi789"}}}]}
+          deps (lib/dependent-metadata query nil :question)]
+      (is (=? [{:type :database}
+               {:type :schema}
+               {:type :native-query-snippet :id 10}
+               {:type :native-query-snippet :id 20}]
+              deps)))))
 
 (deftest ^:parallel table-or-card-dependent-metadata-test
   (testing "start from table"
