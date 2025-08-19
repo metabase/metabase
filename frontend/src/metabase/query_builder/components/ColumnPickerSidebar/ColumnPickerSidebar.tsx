@@ -1,3 +1,11 @@
+import { DndContext, type DragEndEvent, closestCenter } from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -18,12 +26,9 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import S from "./ColumnPickerSidebar.module.css";
-import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import type { VisualizationSettings } from "metabase-types/api";
 
 interface ColumnPickerSidebarProps {
   query: Lib.Query;
@@ -74,8 +79,14 @@ export function ColumnPickerSidebar({
   >(new Map());
 
   useEffect(() => {
-    setLocalColumns(columns);
-  }, [columns]);
+    const orderedColumns = orderColumnsByVisualizationSettings(
+      columns,
+      visualizationSettings,
+      query,
+      stageIndex,
+    );
+    setLocalColumns(orderedColumns);
+  }, [columns, visualizationSettings, query, stageIndex]);
 
   useEffect(() => {
     const settings = visualizationSettings["column_settings"] ?? {};
@@ -85,11 +96,12 @@ export function ColumnPickerSidebar({
       const names = nameTylpes.map((entry) => {
         const [, name] = JSON.parse(entry);
 
-
         return [name, (settings[entry] ?? {}).column_title];
       });
 
-      setColumnDisplayNames(new Map(names.map(([name, value]) => [name, value])))
+      setColumnDisplayNames(
+        new Map(names.map(([name, value]) => [name, value])),
+      );
     }
   }, [visualizationSettings, columns]);
 
@@ -221,7 +233,10 @@ export function ColumnPickerSidebar({
               </HoverParent>
             </li>
 
-            <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
+            <DndContext
+              onDragEnd={handleDragEnd}
+              collisionDetection={closestCenter}
+            >
               <SortableContext
                 items={filteredItems.map((item) => item.columnInfo.displayName)}
                 strategy={verticalListSortingStrategy}
@@ -268,82 +283,98 @@ interface ColumnPickerItemProps {
   handle: React.ReactNode;
 }
 
-const ColumnPickerItem = forwardRef<HTMLLIElement, ColumnPickerItemProps>(function ColumnPickerItem(props, ref) {
-  const { query, stageIndex, item, displayName, onToggle, onDisplayNameChange, style, handle, ...rest } = props;
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingName, setEditingName] = useState(displayName);
+const ColumnPickerItem = forwardRef<HTMLLIElement, ColumnPickerItemProps>(
+  function ColumnPickerItem(props, ref) {
+    const {
+      query,
+      stageIndex,
+      item,
+      displayName,
+      onToggle,
+      onDisplayNameChange,
+      style,
+      handle,
+      ...rest
+    } = props;
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingName, setEditingName] = useState(displayName);
 
-  const handleStartEdit = () => {
-    setIsEditing(true);
-    setEditingName(displayName);
-  };
+    const handleStartEdit = () => {
+      setIsEditing(true);
+      setEditingName(displayName);
+    };
 
-  const handleSaveEdit = () => {
-    if (editingName.trim() && editingName !== displayName) {
-      onDisplayNameChange(item.column, editingName.trim());
-    }
-    setIsEditing(false);
-  };
+    const handleSaveEdit = () => {
+      if (editingName.trim() && editingName !== displayName) {
+        onDisplayNameChange(item.column, editingName.trim());
+      }
+      setIsEditing(false);
+    };
 
-  const handleCancelEdit = () => {
-    setEditingName(displayName);
-    setIsEditing(false);
-  };
+    const handleCancelEdit = () => {
+      setEditingName(displayName);
+      setIsEditing(false);
+    };
 
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    event.stopPropagation();
-    if (event.key === "Enter") {
-      handleSaveEdit();
-    } else if (event.key === "Escape") {
-      handleCancelEdit();
-    }
-  };
+    const handleKeyDown = (event: React.KeyboardEvent) => {
+      event.stopPropagation();
+      if (event.key === "Enter") {
+        handleSaveEdit();
+      } else if (event.key === "Escape") {
+        handleCancelEdit();
+      }
+    };
 
-  return (
-    <li key={item.columnInfo.displayName} ref={ref} style={style} {...rest}>
-      <HoverParent className={S.Label} as="div">
-        <Flex align="center" gap="xs" w="100%">
-          <Checkbox
-            checked={item.isSelected}
-            disabled={item.isDisabled}
-            onChange={(event) => onToggle(item.column, event.target.checked)}
-          />
-          <QueryColumnInfoIcon
-            className={S.ItemIcon}
-            query={query}
-            stageIndex={stageIndex}
-            column={item.column}
-            position="top-start"
-            size={16}
-          />
-          <Box flex={1}>
-            {isEditing ? (
-              <TextInput
-                value={editingName}
-                onChange={(event) => setEditingName(event.currentTarget.value)}
-                onBlur={handleSaveEdit}
-                onKeyDown={handleKeyDown}
-                size="md"
-                autoFocus
-                onFocus={(e) => e.target.select()}
-              />
-            ) : (
-              <Text
-                title={t`Click to edit display name`}
-                onDoubleClick={handleStartEdit}
-              >
-                {displayName ?? item.columnInfo.longDisplayName}
-              </Text>
-            )}
-          </Box>
-          {handle}
-        </Flex>
-      </HoverParent>
-    </li>
-  );
-});
+    return (
+      <li key={item.columnInfo.displayName} ref={ref} style={style} {...rest}>
+        <HoverParent className={S.Label} as="div">
+          <Flex align="center" gap="xs" w="100%">
+            <Checkbox
+              checked={item.isSelected}
+              disabled={item.isDisabled}
+              onChange={(event) => onToggle(item.column, event.target.checked)}
+            />
+            <QueryColumnInfoIcon
+              className={S.ItemIcon}
+              query={query}
+              stageIndex={stageIndex}
+              column={item.column}
+              position="top-start"
+              size={16}
+            />
+            <Box flex={1}>
+              {isEditing ? (
+                <TextInput
+                  value={editingName}
+                  onChange={(event) =>
+                    setEditingName(event.currentTarget.value)
+                  }
+                  onBlur={handleSaveEdit}
+                  onKeyDown={handleKeyDown}
+                  size="md"
+                  autoFocus
+                  onFocus={(e) => e.target.select()}
+                />
+              ) : (
+                <Text
+                  title={t`Click to edit display name`}
+                  onDoubleClick={handleStartEdit}
+                >
+                  {displayName ?? item.columnInfo.longDisplayName}
+                </Text>
+              )}
+            </Box>
+            {handle}
+          </Flex>
+        </HoverParent>
+      </li>
+    );
+  },
+);
 
-function SortableColumnPickerItem(props: Omit<ColumnPickerItemProps, "handle" | "style">) {
+function SortableColumnPickerItem(
+  props: Omit<ColumnPickerItemProps, "handle" | "style">,
+) {
   const { item } = props;
   const {
     attributes,
@@ -358,19 +389,69 @@ function SortableColumnPickerItem(props: Omit<ColumnPickerItemProps, "handle" | 
   });
 
   const Handle = () => {
-    return <ActionIcon
-      size="sm"
-      variant="subtle"
-      {...listeners}
-      style={{ cursor: isDragging ? "grabbing" : "grab" }}
-      aria-label={t`Drag to reorder`}
-    >
-      <Icon name="grabber" />
-    </ActionIcon>
+    return (
+      <ActionIcon
+        size="sm"
+        variant="subtle"
+        {...listeners}
+        style={{ cursor: isDragging ? "grabbing" : "grab" }}
+        aria-label={t`Drag to reorder`}
+      >
+        <Icon name="grabber" />
+      </ActionIcon>
+    );
+  };
+
+  return (
+    <ColumnPickerItem
+      {...props}
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+      {...attributes}
+      handle={<Handle />}
+    />
+  );
+}
+
+const orderColumnsByVisualizationSettings = (
+  columns: Lib.ColumnMetadata[],
+  visualizationSettings: VisualizationSettings,
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.ColumnMetadata[] => {
+  const tableColumns = visualizationSettings["table.columns"];
+
+  if (!tableColumns || tableColumns.length === 0) {
+    return columns;
   }
 
-  return <ColumnPickerItem {...props} ref={setNodeRef} style={{
-    transform: CSS.Transform.toString(transform), transition,
-    opacity: isDragging ? 0.5 : 1,
-  }} {...attributes} handle={<Handle />} />
-}
+  const columnOrderMap = new Map<string, number>();
+  tableColumns.forEach((col, index) => {
+    columnOrderMap.set(col.name, index);
+  });
+
+  return columns.toSorted((a, b) => {
+    const aInfo = Lib.displayInfo(query, stageIndex, a);
+    const bInfo = Lib.displayInfo(query, stageIndex, b);
+
+    const aOrder = columnOrderMap.get(aInfo.name);
+    const bOrder = columnOrderMap.get(bInfo.name);
+
+    if (aOrder !== undefined && bOrder !== undefined) {
+      return aOrder - bOrder;
+    }
+
+    if (aOrder !== undefined && bOrder === undefined) {
+      return -1;
+    }
+    if (aOrder === undefined && bOrder !== undefined) {
+      return 1;
+    }
+
+    return 0;
+  });
+};
