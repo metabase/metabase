@@ -3,7 +3,11 @@ import type {
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
-import type { Engine, VisualizationDisplay } from "metabase-types/api";
+import type {
+  Engine,
+  TransformId,
+  VisualizationDisplay,
+} from "metabase-types/api";
 
 type SimpleEventSchema = {
   event: string;
@@ -254,8 +258,14 @@ export type ConnectionStringParsedFailedEvent = ValidateEvent<{
 
 export type TransformTriggerManualRunEvent = ValidateEvent<{
   event: "transform_trigger_manual_run";
-  triggered_from: "transform-page" | "job-page";
-  target_id: number;
+  triggered_from: "transform-page";
+  target_id: TransformId;
+}>;
+
+export type TransformJobTriggerManualRunEvent = ValidateEvent<{
+  event: "transform_job_trigger_manual_run";
+  triggered_from: "job-page";
+  target_id: TransformId;
 }>;
 
 export type TransformCreateEvent = ValidateEvent<{
@@ -309,5 +319,6 @@ export type SimpleEvent =
   | ConnectionStringParsedSuccessEvent
   | ConnectionStringParsedFailedEvent
   | TransformTriggerManualRunEvent
+  | TransformJobTriggerManualRunEvent
   | TransformCreatedEvent
   | TransformCreateEvent;

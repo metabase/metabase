@@ -2,7 +2,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
-import { trackSimpleEvent } from "metabase/lib/analytics";
 import {
   formatCronExpressionForUI,
   getScheduleExplanation,
@@ -13,6 +12,7 @@ import {
   useLazyGetTransformJobQuery,
   useRunTransformJobMutation,
 } from "metabase-enterprise/api";
+import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 
 import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
@@ -98,10 +98,9 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
       return;
     }
 
-    trackSimpleEvent({
-      event: "transform_trigger_manual_run",
-      target_id: job.id,
-      triggered_from: "job-page",
+    trackTranformJobTriggerManualRun({
+      jobId: job.id,
+      triggeredFrom: "job-page",
     });
 
     const { error } = await runJob(job.id);

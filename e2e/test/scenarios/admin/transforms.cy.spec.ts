@@ -816,7 +816,7 @@ describe("scenarios > admin > transforms > jobs", () => {
       });
       runJobAndWaitForSuccess();
       H.expectUnstructuredSnowplowEvent({
-        event: "transform_trigger_manual_run",
+        event: "transform_job_trigger_manual_run",
         triggered_from: "job-page",
       });
       getNavSidebar().findByText("Runs").click();
