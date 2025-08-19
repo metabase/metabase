@@ -209,6 +209,70 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("not.exist");
     });
 
+    it("should create a dashboard in a new collection", () => {
+      setupEmbed(
+        '<metabase-browser initial-collection="root" read-only="false" />',
+      );
+
+      H.getSimpleEmbedIframeContent()
+        .findByText("New Dashboard")
+        .should("be.visible")
+        .click();
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByRole("dialog").within(() => {
+          cy.findByPlaceholderText("What is the name of your dashboard?").type(
+            "Foo Bar Dashboard",
+          );
+
+          cy.log("open the collection picker");
+          cy.findByText("Our analytics").click();
+        });
+
+        cy.findByText("Collections").click();
+        cy.findByText("New collection").click();
+
+        cy.findAllByRole("dialog")
+          .eq(2)
+          .within(() => {
+            cy.findByPlaceholderText("My new collection").type(
+              "Foo Collection",
+            );
+            cy.findByText("Create").click();
+          });
+
+        cy.findByText("Select").click();
+
+        cy.log("create new dashboard");
+        cy.findByRole("dialog").within(() => {
+          cy.findByText("Create").click();
+        });
+      });
+
+      cy.log("dashboard is created and shows empty state");
+      H.getSimpleEmbedIframeContent()
+        .findByText("This dashboard is empty")
+        .should("be.visible");
+
+      cy.log("breadcrumbs show the new collection");
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("sdk-breadcrumbs")
+        .findByText("Foo Collection")
+        .should("be.visible");
+
+      cy.log("breadcrumbs show the new dashboard");
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("sdk-breadcrumbs")
+        .findByText("Foo Bar Dashboard")
+        .should("be.visible");
+
+      cy.log("dashboard title is visible in header");
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("dashboard-header")
+        .findByText("Foo Bar Dashboard")
+        .should("be.visible");
+    });
+
     it("should hide New Exploration button when with-new-question is false", () => {
       setupEmbed(`
         <metabase-browser
