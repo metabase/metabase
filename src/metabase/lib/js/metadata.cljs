@@ -495,31 +495,63 @@
                       [id (-> card card->metric-card delay)]))))
           cards)))
 
+(defn- metadata-field [metadata-type]
+  (case metadata-type
+    :metadata/table                :tables
+    :metadata/column               :fields
+    :metadata/card                 :cards
+    :metadata/segment              :segments
+    :metadata/native-query-snippet :snippets))
+
+(defn- by-name-field [field]
+  (keyword (str (name field) "-by-name")))
+
+(defn- by-name-delay [objects-delay]
+  (delay
+    (let [objects @objects-delay]
+      (into {}
+            (map (fn [[_id object-delay]]
+                   (let [object @object-delay]
+                     [(:name object) object])))
+            objects))))
+
+(defn- add-by-names [metadata-map]
+  (into metadata-map
+        (map (fn [[field objects-delay]]
+               [(by-name-field field)
+                (by-name-delay objects-delay)]))
+        metadata-map))
+
 (defn- parse-metadata [metadata]
   (let [delayed-cards (parse-objects-delay :card metadata)]
-    {:databases (parse-objects-delay :database metadata)
-     :tables    (parse-objects-delay :table    metadata)
-     :fields    (parse-objects-delay :field    metadata)
-     :snippets  (parse-objects-delay :snippet  metadata)
-     :cards     delayed-cards
-     :metrics   (delay (metric-cards delayed-cards))
-     :segments  (parse-objects-delay :segment  metadata)}))
+    (add-by-names
+     {:databases (parse-objects-delay :database metadata)
+      :tables    (parse-objects-delay :table    metadata)
+      :fields    (parse-objects-delay :field    metadata)
+      :snippets  (parse-objects-delay :snippet  metadata)
+      :cards     delayed-cards
+      :metrics   (delay (metric-cards delayed-cards))
+      :segments  (parse-objects-delay :segment  metadata)})))
 
 (defn- database [metadata database-id]
   (some-> metadata :databases deref (get database-id) deref))
 
 (defn- metadatas [metadata metadata-type ids]
-  (let [k          (case metadata-type
-                     :metadata/table                :tables
-                     :metadata/column               :fields
-                     :metadata/card                 :cards
-                     :metadata/segment              :segments
-                     :metadata/native-query-snippet :snippets)
+  (let [k          (metadata-field metadata-type)
         metadatas* (some-> metadata k deref)]
     (into []
           (keep (fn [id]
                   (some-> metadatas* (get id) deref)))
           ids)))
+
+(defn- metadatas-by-name [metadata metadata-type names]
+  (let [names      (into #{} names)
+        k          (-> metadata-type metadata-field by-name-field)
+        metadatas* (some-> metadata k deref)]
+    (into []
+          (keep (fn [name]
+                  (some-> metadatas* (get name))))
+          names)))
 
 (defn- tables [metadata database-id]
   (into []
@@ -570,6 +602,8 @@
         (database metadata database-id))
       (metadatas [_this metadata-type ids]
         (metadatas metadata metadata-type ids))
+      (metadatas-by-name [_this metadata-type names]
+        (metadatas-by-name metadata metadata-type names))
       (tables [_this]
         (tables metadata database-id))
       (metadatas-for-table [_this metadata-type table-id]

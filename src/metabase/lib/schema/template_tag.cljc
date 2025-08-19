@@ -37,11 +37,7 @@
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
    [:id {:optional true} [:multi {:dispatch uuid?}
                           [true  :uuid]
-                          [false ::common/non-blank-string]]]
-   ;; Stores the source of the tag -- the query itself or a snippet
-   ;; Both sides are tracked separately because a tag could be from both locations
-   [:from-snippet {:optional true} :boolean]
-   [:from-query {:optional true} :boolean]])
+                          [false ::common/non-blank-string]]]])
 
 ;;; Stuff shared between the Field filter and raw value template tag schemas.
 (mr/def ::value.common
