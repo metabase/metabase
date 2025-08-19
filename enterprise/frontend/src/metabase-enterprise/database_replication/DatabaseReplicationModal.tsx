@@ -32,7 +32,7 @@ const transformSchemaFilters = (
   schemaFilters: DatabaseReplicationFormFields["schemaFilters"],
 ) => ({
   "schema-filters-type": schemaSelect,
-  "schema-filters-patterns": schemaFilters
+  "schema-filters-patterns": schemaFilters,
 });
 
 export const DatabaseReplicationModal = ({
