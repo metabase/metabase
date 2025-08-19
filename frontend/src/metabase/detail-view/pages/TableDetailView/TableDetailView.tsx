@@ -85,7 +85,8 @@ export function TableDetailView({ params }: Props) {
 
   return (
     <DetailViewPage
-      dataset={dataset}
+      columns={columns}
+      row={row}
       rowId={rowId}
       table={table}
       tableForeignKeys={tableForeignKeys}

@@ -12,28 +12,31 @@ import {
   getRowName,
 } from "metabase/detail-view/utils";
 import { Box, Group, Stack, rem } from "metabase/ui";
-import { extractRemappedColumns } from "metabase/visualizations";
-import type { Dataset, ForeignKey, Table } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  ForeignKey,
+  RowValues,
+  Table,
+} from "metabase-types/api";
 
 import S from "./DetailViewSidesheet.module.css";
 
 interface Props {
-  dataset: Dataset;
+  columns: DatasetColumn[];
+  row: RowValues;
   rowId: string | number;
   table: Table;
   tableForeignKeys?: ForeignKey[];
 }
 
 export function DetailViewSidesheet({
-  dataset,
+  columns,
+  row,
   rowId,
   table,
   tableForeignKeys,
 }: Props) {
-  const data = useMemo(() => extractRemappedColumns(dataset.data), [dataset]);
-  const columns = useMemo(() => data?.results_metadata.columns ?? [], [data]);
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
-  const row = useMemo(() => (data?.rows ?? [])[0], [data]);
   const rowName = getRowName(columns, row) || rowId;
   const icon = getEntityIcon(table.entity_type);
 

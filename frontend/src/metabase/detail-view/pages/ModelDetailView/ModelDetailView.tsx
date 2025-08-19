@@ -83,5 +83,7 @@ export function ModelDetailView({ params }: Props) {
     );
   }
 
-  return <DetailViewPage dataset={dataset} rowId={rowId} table={table} />;
+  return (
+    <DetailViewPage columns={columns} row={row} rowId={rowId} table={table} />
+  );
 }
