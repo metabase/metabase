@@ -29,15 +29,11 @@ export function TableDetailPage({ params }: Props) {
   const tableId = parseInt(params.tableId, 10);
   const rowId = params.rowId;
 
-  const dispatch = useDispatch();
-
   const {
     data: table,
     error: tableError,
     isLoading: isTableLoading,
-  } = useGetTableQueryMetadataQuery({
-    id: tableId,
-  });
+  } = useGetTableQueryMetadataQuery({ id: tableId });
   const { data: tableForeignKeys } = useListTableForeignKeysQuery(tableId);
 
   const objectQuery = useMemo<StructuredDatasetQuery | undefined>(() => {
@@ -60,6 +56,8 @@ export function TableDetailPage({ params }: Props) {
   const columns = useMemo(() => data?.results_metadata.columns ?? [], [data]);
   const row = useMemo(() => (data?.rows ?? [])[0], [data]);
   const rowName = getRowName(columns, row) || rowId;
+
+  const dispatch = useDispatch();
 
   useEffect(() => {
     dispatch(closeNavbar());

@@ -38,8 +38,6 @@ export function ModelDetailPage({ params }: Props) {
     (table) => table.id === getQuestionVirtualTableId(cardId),
   );
 
-  const dispatch = useDispatch();
-
   const objectQuery = useMemo<StructuredDatasetQuery | undefined>(() => {
     return table ? getObjectQuery(table, rowId) : undefined;
   }, [table, rowId]);
@@ -60,6 +58,8 @@ export function ModelDetailPage({ params }: Props) {
   const columns = useMemo(() => data?.results_metadata.columns ?? [], [data]);
   const row = useMemo(() => (data?.rows ?? [])[0], [data]);
   const rowName = getRowName(columns, row) || rowId;
+
+  const dispatch = useDispatch();
 
   useEffect(() => {
     dispatch(closeNavbar());
