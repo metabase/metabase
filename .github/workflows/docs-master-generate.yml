@@ -2,7 +2,7 @@ name: Auto-update documentation (master)
 
 on:
   schedule:
-    - cron: "0 1 * * 2" # Every Tuesday at 1 AM UTC
+    - cron: "0 1 * * 1-5" # Every Monday through Friday at 1 AM UTC
   workflow_dispatch:
 
 permissions:
@@ -92,21 +92,21 @@ jobs:
               --base master \
               --head ${{ steps.commit_and_push.outputs.branch_name }} \
               --title "Update generated docs (master)" \
-              --body "API, config template, and environment variable doc updates."
+              --body "API, config template, and environment variable doc updates.
 
-          ## Changes made
-          $CHANGES_SUMMARY
-          $([ "$TOTAL_CHANGES" -gt 10 ] && echo "- ... and more files")
+## Changes made
+$CHANGES_SUMMARY
+$([ "$TOTAL_CHANGES" -gt 10 ] && echo "- ... and more files")
 
-          ## Generation commands
-          Documentation was generated using:
-          - \`clojure -M:ee:doc environment-variables-documentation\`
-          - \`clojure -M:ee:doc config-template\`
-          - \`clojure -M:ee:doc api-documentation\`
+## Generation commands
+Documentation was generated using:
+- \`clojure -M:ee:doc environment-variables-documentation\`
+- \`clojure -M:ee:doc config-template\`
+- \`clojure -M:ee:doc api-documentation\`
 
-          Review the changes before merging." \
-                --label "Type:Documentation" \
-                --label "no-backport"; then
+Review the changes before merging." \
+              --label "Type:Documentation" \
+              --label "no-backport"; then
               echo "PR created successfully on attempt $i"
               break
             else
