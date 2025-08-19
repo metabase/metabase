@@ -12,7 +12,9 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -673,83 +675,90 @@
 (deftest test-permission-denied-errors
   (testing "Permission denied errors should return nice error messages"
     ;; can't create users with restricted permissions in h2
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
-      (with-actions-test-data-and-actions-permissively-enabled!
-        (let [db-id       (mt/id)
-              table-id    (mt/id :categories)
-              admin-spec  (sql-jdbc.conn/connection-details->spec driver/*driver*
-                                                                  (t2/select-one-fn :details :model/Database :id db-id))
-              test-user-name (str "test_user_" (mt/random-name))
-              test-user-password "test123"
-              db-name          (-> (t2/select-one-fn :details :model/Database :id db-id) :db)
-              drop-user-sql    (case driver/*driver*
-                                 :h2       (format "DROP USER IF EXISTS %s" test-user-name)
-                                 :postgres (format "DROP USER IF EXISTS %s" test-user-name)
-                                 :mysql    (format "DROP USER IF EXISTS '%s'" test-user-name))
-              create-user-sql  (case driver/*driver*
-                                 :h2       (format "CREATE USER %s PASSWORD '%s'" test-user-name test-user-password)
-                                 :postgres (format "CREATE USER %s WITH PASSWORD '%s'" test-user-name test-user-password)
-                                 :mysql    (format "CREATE USER '%s' IDENTIFIED BY '%s'" test-user-name test-user-password))
-              grant-select-sql (case driver/*driver*
-                                 :h2       (format "GRANT SELECT ON categories TO %s" test-user-name)
-                                 :postgres (format "GRANT SELECT ON TABLE categories TO %s" test-user-name)
-                                 :mysql    (format "GRANT SELECT ON `%s`.categories TO '%s'" db-name test-user-name))]
-          (doseq [stmt [drop-user-sql create-user-sql grant-select-sql]]
-            (when stmt
-              (jdbc/execute! admin-spec [stmt])))
+    (mt/with-actions-enabled
+      (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
+        (let [test-db-name   "permission_test"
+              test-user-name "test_user_2"]
+          ;; Create a test database with test data
+          (tx/drop-if-exists-and-create-db! driver/*driver* test-db-name)
+          (let [details    (mt/dbdef->connection-details driver/*driver* :db {:database-name test-db-name})
+                admin-spec (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+            ;; Set up test data and user with limited permissions
+            (doseq [stmt (concat
+                          ;; Create the categories table with test data
+                          ["CREATE TABLE categories (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL);"
+                           "INSERT INTO categories (id, name) VALUES (1, 'Test Category');"
+                           "INSERT INTO categories (id, name) VALUES (2, 'Another Category');"]
+                          ;; Create test user with no password and only SELECT permissions
+                          [(format "DROP USER IF EXISTS %s" test-user-name)
+                           (case driver/*driver*
+                             :postgres (format "CREATE USER %s WITH PASSWORD '123456';" test-user-name)
+                             :mysql    (format "CREATE USER '%s'" test-user-name))
+                           (case driver/*driver*
+                             :postgres (format "GRANT SELECT ON TABLE categories TO %s" test-user-name)
+                             :mysql    (format "GRANT SELECT ON %s.categories TO '%s'" test-db-name test-user-name))])]
+              (when stmt
+                (jdbc/execute! admin-spec [stmt])))
 
-          (let [original-details (t2/select-one-fn :details :model/Database :id db-id)
-                test-user-details (-> original-details
+            ;; Create connection details for test user (no password)
+            (let [test-user-details (cond-> details
+                                      (= driver/*driver* :mysql)
                                       (assoc :user test-user-name
-                                             :password test-user-password)
-                                      (cond-> (= driver/*driver* :mysql)
-                                        ;; MySQL requires additional connection options to handle RSA authentication
-                                        ;; when connecting with restricted users in test environments
-                                        (assoc :additional-options "useSSL=false&allowPublicKeyRetrieval=true")))]
+                                             :additional-options "useSSL=false&allowPublicKeyRetrieval=true")
 
-            (t2/update! :model/Database db-id {:details test-user-details})
+                                      (= driver/*driver* :postgres)
+                                      (assoc :user test-user-name
+                                             :password "123456"))]
+              ;; Create temporary database with test user credentials
+              (mt/with-temp [:model/Database test-database {:engine driver/*driver*, :details test-user-details :settings {:database-enable-actions true
+                                                                                                                           :database-enable-table-editing true}}]
+                ;; Sync the database to get table metadata
+                (sync/sync-database! test-database)
+                (let [table-id (t2/select-one-pk :model/Table :db_id (:id test-database) :name "categories")]
+                  (testing (str "INSERT permission denied for " driver/*driver*)
+                    (let [result (try
+                                   (actions/perform-action-v2!
+                                    :table.row/create
+                                    test-scope
+                                    [{:database (:id test-database)
+                                      :table-id table-id
+                                      :row      {"name" "New Test Category"}}])
+                                   nil
+                                   (catch Exception e
+                                     (ex-data e)))
+                          first-error (first (:errors result))]
+                      (is (= 400 (:status-code result)))
+                      (is (= actions.error/violate-permission-constraint (:type first-error)))
+                      (is (= "You don't have permission to add data to this table." (:message first-error)))))
 
-            (testing (str "INSERT permission denied for " driver/*driver*)
-              (let [result (try
-                             (actions/perform-action!
-                              :table.row/create
-                              {:database db-id
-                               :table-id table-id
-                               :row      {"name" "New Test Category"}})
-                             nil
-                             (catch Exception e
-                               (ex-data e)))]
-                (is (= 400 (:status-code result)))
-                (let [first-error (first (:errors result))]
-                  (is (= actions.error/violate-permission-constraint (:type first-error)))
-                  (is (= "You don't have permission to add data to this table." (:message first-error)))))
+                  (testing (str "UPDATE permission denied for " driver/*driver*)
+                    (let [result (try
+                                   (actions/perform-action-v2!
+                                    :table.row/update
+                                    test-scope
+                                    [{:database (:id test-database)
+                                      :table-id table-id
+                                      :row      {"id" 1 "name" "Updated Category"}}])
+                                   nil
+                                   (catch Exception e
+                                     (ex-data e)))
+                          first-error (first (:errors result))]
+                      (is (= 400 (:status-code result)))
+                      (is (= actions.error/violate-permission-constraint (:type first-error)))
+                      (is (= "You don't have permission to update data in this table." (:message first-error)))))
 
-              (testing (str "UPDATE permission denied for " driver/*driver*)
-                (let [result (try
-                               (actions/perform-action!
-                                :table.row/update
-                                {:database db-id
-                                 :table-id table-id
-                                 :row      {"id" 1 "name" "Updated Category"}})
-                               nil
-                               (catch Exception e
-                                 (ex-data e)))]
-                  (is (= 400 (:status-code result)))
-                  (let [first-error (first (:errors result))]
-                    (is (= actions.error/violate-permission-constraint (:type first-error)))
-                    (is (= "You don't have permission to update data in this table." (:message first-error))))))
-
-              (testing (str "DELETE permission denied for " driver/*driver*)
-                (let [result (try
-                               (actions/perform-action!
-                                :table.row/delete
-                                {:database db-id
-                                 :table-id table-id
-                                 :row      {"id" 1}})
-                               nil
-                               (catch Exception e
-                                 (ex-data e)))]
-                  (is (= 400 (:status-code result)))
-                  (let [first-error (first (:errors result))]
-                    (is (= actions.error/violate-permission-constraint (:type first-error)))
-                    (is (= "You don't have permission to delete data from this table." (:message first-error)))))))))))))
+                  (testing (str "DELETE permission denied for " driver/*driver*)
+                    (let [result (try
+                                   (actions/perform-action-v2!
+                                    :table.row/delete
+                                    test-scope
+                                    [{:database (:id test-database)
+                                      :table-id table-id
+                                      :row      {"id" 1}}])
+                                   nil
+                                   (catch Exception e
+                                     (ex-data e)))
+                          first-error (first (:errors result))]
+                      (is (= 400 (:status-code result)))
+                      (is (= actions.error/violate-permission-constraint (:type first-error)))
+                      (is (= "You don't have permission to delete data from this table." (:message first-error))))))))))))))
