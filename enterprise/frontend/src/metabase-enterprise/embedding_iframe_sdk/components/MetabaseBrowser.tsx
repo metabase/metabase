@@ -4,13 +4,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SdkBreadcrumbs } from "embedding-sdk/components/private/SdkBreadcrumbs";
+import { CollectionBrowser } from "embedding-sdk/components/public/CollectionBrowser";
+import { CreateDashboardModal } from "embedding-sdk/components/public/CreateDashboardModal";
+import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
 import {
-  CollectionBrowser,
-  CreateDashboardModal,
   EditableDashboard,
   InteractiveDashboard,
-  InteractiveQuestion,
-} from "embedding-sdk/components/public";
+} from "embedding-sdk/components/public/dashboard";
 import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import type { SdkCollectionId } from "embedding-sdk/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk/types/breadcrumb";
