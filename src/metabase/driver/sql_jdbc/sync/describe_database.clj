@@ -171,7 +171,7 @@
                  (assoc-in acc [schema table]
                            (cond-> #{}
                              select (conj :select)
-                             (and insert update delete) (conj ::write))))
+                             (and insert update delete) (conj :write))))
                {})))
 
 (defn have-privilege-fn
