@@ -1,5 +1,6 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
+   [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -27,15 +28,23 @@
   [_]
   #{:snippets})
 
+(defn- add-template-tags [snippet]
+  (assoc snippet :template_tags
+         (->> (:content snippet)
+              lib/extract-template-tags
+              (m/map-vals (fn [tag]
+                            (cond-> tag
+                              (= (:type tag) :snippet)
+                              (assoc :snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet :name (:snippet-name tag)))))))))
+
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (u/prog1 (-> snippet
-               (assoc :template_tags (lib/extract-template-tags (:content snippet))))
+  (u/prog1 (add-template-tags snippet)
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
   (u/prog1 (cond-> snippet
-             (:content snippet) (assoc :template_tags (lib/extract-template-tags (:content snippet))))
+             (:content snippet) add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? (t2/changes <>) :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))

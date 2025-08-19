@@ -176,19 +176,18 @@
         (vals template-tags)))
 
 (defn- snippet-tags [metadata-providerable template-tags]
-  (u/prog1 (loop [[snippet-id & more-snippet-ids]  (snippet-ids template-tags)
-                  seen #{}
-                  tags {}]
-             (cond
-               (nil? snippet-id) tags
-               (seen snippet-id) (recur more-snippet-ids seen tags)
-               :else (recur more-snippet-ids
-                            (conj seen snippet-id)
-                            (->> (lib.metadata/native-query-snippet metadata-providerable snippet-id)
-                                 :template-tags
-                                 (merge tags)))))
-    (prn "snippet-tags")
-    (println (u/pprint-to-str <>))))
+  (loop [[snippet-id & more-snippet-ids]  (snippet-ids template-tags)
+         seen #{}
+         tags {}]
+    (cond
+      (nil? snippet-id) tags
+      (seen snippet-id) (recur more-snippet-ids seen tags)
+      :else (let [snippet-tags (->> (lib.metadata/native-query-snippet metadata-providerable snippet-id)
+                                    :template-tags
+                                    (m/map-vals #(assoc % :from-snippet true)))]
+              (recur (apply conj more-snippet-ids (snippet-ids snippet-tags))
+                     (conj seen snippet-id)
+                     (merge tags snippet-tags))))))
 
 (defn- add-snippet-tags [query]
   (lib.util/update-query-stage
@@ -196,15 +195,16 @@
    (fn [{existing-tags :template-tags :as stage}]
      (let [snippet-tags (snippet-tags query existing-tags)]
        (assoc stage :template-tags
-              (->> (into {}
-                         (keep (fn [[name tag]]
-                                 (let [from-snippet (boolean (get snippet-tags name))]
-                                   (when (or from-snippet
-                                             (not (:from-snippet tag))
-                                             (:from-query tag))
-                                     [name (assoc tag :from-snippet from-snippet)]))))
-                         existing-tags)
-                   (merge snippet-tags)))))))
+              (let [cleaned-existing-tags
+                    (into {}
+                          (keep (fn [[name tag]]
+                                  (let [from-snippet (boolean (get snippet-tags name))]
+                                    (when (or from-snippet
+                                              (not (:from-snippet tag))
+                                              (:from-query tag))
+                                      [name (assoc tag :from-snippet from-snippet)]))))
+                          existing-tags)]
+                (merge snippet-tags cleaned-existing-tags)))))))
 
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
@@ -248,16 +248,14 @@
    Replaces templates tags"
   [query :- ::lib.schema/query
    inner-query :- ::common/non-blank-string]
-  (u/prog1 (-> (lib.util/update-query-stage
-                query 0
-                (fn [{existing-tags :template-tags :as stage}]
-                  (assert-native-query stage)
-                  (assoc stage
-                         :native inner-query
-                         :template-tags (extract-template-tags inner-query existing-tags))))
-               add-snippet-tags)
-    (prn "with-native-query")
-    (println (u/pprint-to-str <>))))
+  (-> (lib.util/update-query-stage
+       query 0
+       (fn [{existing-tags :template-tags :as stage}]
+         (assert-native-query stage)
+         (assoc stage
+                :native inner-query
+                :template-tags (extract-template-tags inner-query existing-tags))))
+      add-snippet-tags))
 
 ;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
 ;;; `with-replaced-template-tags`
