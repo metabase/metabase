@@ -1,4 +1,7 @@
 (ns metabase.driver-api.core
+  {:clj-kondo/config '{:linters
+                       ;; this is actually ok here since this is a drivers
+                       {:discouraged-namespace [metabase.query-processor.store {:level :off}]}}}
   (:refer-clojure :exclude [replace compile require])
   (:require
    [metabase.actions.core :as actions]
