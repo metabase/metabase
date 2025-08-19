@@ -274,7 +274,7 @@
    :multi-level-schema false
    :schema-filters-patterns (routed-dataset-name driver)})
 
-(deftest update-and-sync-routing-test
+(deftest db-routing-e2e-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:database-routing]})
     (mt/with-premium-features #{:database-routing}
       (binding [tx/*use-routing-details* true]
