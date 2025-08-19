@@ -1,5 +1,5 @@
 //
-import { createElement, useCallback, useEffect, useMemo, useRef } from "react";
+import { createElement, useCallback, useEffect, useMemo } from "react";
 import { useSearchParam } from "react-use";
 import { match } from "ts-pattern";
 
@@ -10,9 +10,14 @@ import { Card } from "metabase/ui";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import S from "./SdkIframeEmbedPreview.module.css";
+
+// we import the equivalent of embed.js so that we don't add extra loading time
+// by appending the script
+import "metabase-enterprise/embedding_iframe_sdk/embed";
 
 declare global {
   interface Window {
@@ -21,11 +26,9 @@ declare global {
 }
 
 export const SdkIframeEmbedPreview = () => {
-  const { settings, isEmbedSettingsLoaded, experience } =
-    useSdkIframeEmbedSetupContext();
+  const { settings } = useSdkIframeEmbedSetupContext();
 
   const localeOverride = useSearchParam("locale");
-  const scriptRef = useRef<HTMLScriptElement | null>(null);
 
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
@@ -37,52 +40,44 @@ export const SdkIframeEmbedPreview = () => {
     [],
   );
 
-  useEffect(
-    () => {
-      if (isEmbedSettingsLoaded) {
-        const script = document.createElement("script");
-        script.src = `${instanceUrl}/app/embed.js`;
-        document.body.appendChild(script);
-        scriptRef.current = script;
-      }
+  const derivedTheme = useMemo(() => {
+    // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
+    // some color will not be reset to the default (e.g. text color, CSS variables).
+    // We can remove this block once EMB-696 is fixed.
+    const defaultTheme: MetabaseTheme = {
+      colors: Object.fromEntries(
+        getConfigurableThemeColors().map((color) => [
+          color.key,
+          applicationColors?.[color.originalColorKey] ??
+            defaultMetabaseColors[color.originalColorKey],
+        ]),
+      ),
+    };
 
-      return () => {
-        scriptRef.current?.remove();
-      };
-    },
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- settings are synced via useEffect below
-    [isEmbedSettingsLoaded, experience],
-  );
-
-  // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
-  // some color will not be reset to the default (e.g. text color, CSS variables).
-  // We can remove this block once EMB-696 is fixed.
-  const defaultTheme: MetabaseTheme = useMemo(() => {
-    const colors = Object.fromEntries(
-      getConfigurableThemeColors().map((color) => [
-        color.key,
-        applicationColors?.[color.originalColorKey] ??
-          defaultMetabaseColors[color.originalColorKey],
-      ]),
+    return getDerivedDefaultColorsForEmbedFlow(
+      settings.theme ?? defaultTheme,
+      applicationColors ?? undefined,
     );
-    return { colors };
-  }, [applicationColors]);
+  }, [applicationColors, settings.theme]);
 
-  useEffect(() => {
-    defineMetabaseConfig({
+  const metabaseConfig = useMemo(
+    () => ({
       instanceUrl,
       useExistingUserSession: true,
-      theme: settings.theme ?? defaultTheme,
+      theme: derivedTheme,
       ...(localeOverride ? { locale: localeOverride } : {}),
-    });
-  }, [
-    instanceUrl,
-    localeOverride,
-    settings.theme,
-    defineMetabaseConfig,
-    defaultTheme,
-  ]);
+    }),
+    [instanceUrl, localeOverride, derivedTheme],
+  );
+
+  // initial configuration, needed so that the element finds the config on first render
+  if (!window.metabaseConfig.instanceUrl) {
+    defineMetabaseConfig(metabaseConfig);
+  }
+
+  useEffect(() => {
+    defineMetabaseConfig(metabaseConfig);
+  }, [metabaseConfig, defineMetabaseConfig]);
 
   return (
     <Card

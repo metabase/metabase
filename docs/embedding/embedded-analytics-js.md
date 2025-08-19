@@ -1,9 +1,11 @@
 ---
-title: Embedded Analytics JS
+title: Embedded analytics JS
 summary: Getting started with Embedded Analytics JS for embedding Metabase entities into external applications
 ---
 
-# Embedded Analytics JS
+# Embedded analytics JS
+
+{% include plans-blockquote.html feature="Embedded analytics JS" convert_pro_link_to_embbedding=true %}
 
 Embedded analytics JS allows you to embed Metabase entities like questions, dashboards, or even the query builder into your own application using customizable components.
 
@@ -134,7 +136,7 @@ You can use the `defineMetabaseConfig()` function to define the configuration th
 
 ### Theming
 
-You can specify colors, fonts, configure spacing, etc in the `theme` parameter of the embed configuration.
+You can specify colors, fonts, configure spacing and other appearance options using the `theme` parameter of the embed configuration.
 
 For example, this will define the font, color, and size for text, color for backgrounds, and colors for filters and summaries:
 
@@ -157,7 +159,7 @@ For example, this will define the font, color, and size for text, color for back
 </script>
 ```
 
-For the full list of theme settings, see [Appearance](../sdk/appearance.md).
+For the full list of theme settings, see [Appearance](./sdk/appearance.md).
 
 ## Authentication
 
@@ -186,7 +188,7 @@ Note that this will not work in some browsers, or in incognito mode. We recommen
 
 To use an API key to test your embeds:
 
-1. Create an [API key](../../people-and-groups/api-keys.md)
+1. Create an [API key](../people-and-groups/api-keys.md)
 2. Add `apiKey: "YOUR_API_KEY"` to `defineMetabaseConfig()`:
 
 ```html
@@ -202,7 +204,7 @@ Keep in mind that API keys should only be used for testing with trusted users. A
 
 ### Set up SSO
 
-SSO is required to embed in a domain other than localhost. You can use JWT or SAML SSO. To configure SAML, see (Authenticating with SAML)[./sdk/authentication#authenticating-with-saml-sso]. To configure JWT, see the steps below.
+SSO is required to embed in a domain other than localhost. You can use JWT or SAML SSO. To configure SAML, see [Authenticating with SAML](./sdk/authentication#authenticating-with-saml-sso). To configure JWT, see the steps below.
 
 #### 1. In Metabase, configure [JWT SSO](../people-and-groups/authenticating-with-jwt.md).
 
@@ -295,7 +297,7 @@ Renders a dashboard.
 
 **Required parameters:**
 
-- `dashboard-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization#entity-ids-work-with-embedding) in your embeds will ensure sure that the IDs are stable when exporting from one Metabase and importing to another Metabase.
+- `dashboard-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds will ensure sure that the IDs are stable when exporting from one Metabase and importing to another Metabase.
 
 **Optional parameters:**
 
@@ -334,7 +336,7 @@ Renders a question (chart).
 
 **Required parameters:**
 
-- `question-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization#entity-ids-work-with-embedding) in your embeds will ensure sure that the IDs are stable when exporting from one Metabase and importing to another Metabase.
+- `question-id` - This can be a regular ID or an entity ID. [Using Entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) in your embeds will ensure sure that the IDs are stable when exporting from one Metabase and importing to another Metabase.
 
   Use `question-id="new"` to embed the query builder exploration interface.
 

@@ -3,12 +3,12 @@ import { MantineProvider } from "@mantine/core";
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { useEffect } from "react";
 
-import { renameConflictingCljsGlobals } from "metabase/embedding-sdk/test/rename-conflicting-cljs-globals";
+import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
 export const getHostedBundleStoryDecorator = () =>
   function useDecorator(Story: StoryFn, context: StoryContext) {
     useEffect(() => {
-      renameConflictingCljsGlobals();
+      deleteConflictingCljsGlobals();
 
       return () => {
         window.location.reload();

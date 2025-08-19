@@ -34,7 +34,7 @@ const NotStartedLoadingTrigger = () => {
   useEffect(function handleSdkBundleNotStartedLoadingState() {
     timeoutRef.current = window.setTimeout(() => {
       const store = ensureMetabaseProviderPropsStore();
-      const loadingState = store.getSnapshot().loadingState;
+      const loadingState = store.getState().internalProps.loadingState;
 
       if (
         loadingState === undefined ||
@@ -58,7 +58,12 @@ const ComponentWrapperInner = <TComponentProps,>({
   getComponent,
   componentProps,
 }: Props<TComponentProps>) => {
-  const { props: metabaseProviderProps } = useMetabaseProviderPropsStore();
+  const {
+    state: {
+      internalProps: metabaseProviderInternalProps,
+      props: metabaseProviderProps,
+    },
+  } = useMetabaseProviderPropsStore();
   const { isLoading, isError, isNotStartedLoading } = useSdkLoadingState();
 
   if (isError) {
@@ -69,28 +74,33 @@ const ComponentWrapperInner = <TComponentProps,>({
     return <Error message={SDK_NOT_STARTED_LOADING_MESSAGE} />;
   }
 
-  if (isLoading || !metabaseProviderProps.loadingState) {
+  if (isLoading || !metabaseProviderInternalProps.loadingState) {
     return <Loader />;
   }
 
-  const MetabaseProvider = isLoading
+  const ComponentProvider = isLoading
     ? null
-    : getWindow()?.MetabaseEmbeddingSDK?.MetabaseProvider;
+    : getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.ComponentProvider;
   const Component = getComponent();
 
-  if (!MetabaseProvider || !Component || !metabaseProviderProps.reduxStore) {
+  if (
+    !ComponentProvider ||
+    !Component ||
+    !metabaseProviderInternalProps.reduxStore ||
+    !metabaseProviderProps
+  ) {
     return <Error message={SDK_NOT_LOADED_YET_MESSAGE} />;
   }
 
   return (
-    <MetabaseProvider
+    <ComponentProvider
       {...metabaseProviderProps}
-      reduxStore={metabaseProviderProps.reduxStore}
+      reduxStore={metabaseProviderInternalProps.reduxStore}
     >
       <Component
         {...(componentProps as JSX.IntrinsicAttributes & TComponentProps)}
       />
-    </MetabaseProvider>
+    </ComponentProvider>
   );
 };
 

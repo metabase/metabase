@@ -4,13 +4,14 @@ title: "Metabase config file template"
 
 # Metabase config file template
 
-You can generate the following config file template by changing into the top-level Metabase directory and running:
+You can generate this doc page by changing into the top-level Metabase directory and running:
 
 ```
 clojure -M:doc:ee config-template
 ```
 
 The template lists example `database`, `user`, and `settings` sections for the [config file](./config-file.md).
+
 
 ```yaml
 # A config file template for Metabase.
@@ -26,45 +27,45 @@ The template lists example `database`, `user`, and `settings` sections for the [
 version: 1
 config:
   users:
-    - first_name: First
-      last_name: Person
-      password: metabot1
-      email: first@example.com
-    - first_name: Normal
-      last_name: Person
-      password: metabot1
-      email: normal@example.com
-    - first_name: Admin
-      last_name: Person
-      password: metabot1
-      is_superuser: true
-      email: admin@example.com
+  - first_name: First
+    last_name: Person
+    password: metabot1
+    email: first@example.com
+  - first_name: Normal
+    last_name: Person
+    password: metabot1
+    email: normal@example.com
+  - first_name: Admin
+    last_name: Person
+    password: metabot1
+    is_superuser: true
+    email: admin@example.com
   databases:
-    - name: Sample PostgreSQL
-      engine: postgres
-      details:
-        host: postgres-data
-        port: 5432
-        user: metabase
-        password: metasample123
-        dbname: sample
-    - name: Sample MySQL
-      engine: mysql
-      details:
-        host: mysql-data
-        port: 3306
-        user: metabase
-        password: metasample123
-        dbname: sample
+  - name: Sample PostgreSQL
+    engine: postgres
+    details:
+      host: postgres-data
+      port: 5432
+      user: metabase
+      password: metasample123
+      dbname: sample
+  - name: Sample MySQL
+    engine: mysql
+    details:
+      host: mysql-data
+      port: 3306
+      user: metabase
+      password: metasample123
+      dbname: sample
   api-keys:
-    - name: Admin API key
-      group: admin
-      creator: first@example.com
-      key: mb_firsttestapikey123
-    - name: All Users API key
-      group: all-users
-      creator: first@example.com
-      key: mb_secondtestapikey456
+  - name: Admin API key
+    group: admin
+    creator: first@example.com
+    key: mb_firsttestapikey123
+  - name: All Users API key
+    group: all-users
+    creator: first@example.com
+    key: mb_secondtestapikey456
   settings:
     admin-email: null
     aggregated-query-row-limit: null
@@ -102,6 +103,7 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
+    audit-max-retention-days: null
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
@@ -118,6 +120,10 @@ config:
     default-maps-enabled: true
     download-row-limit: null
     ee-ai-features-enabled: false
+    ee-embedding-model: Snowflake/snowflake-arctic-embed-l-v2.0
+    ee-embedding-model-dimensions: 1024
+    ee-embedding-provider: ai-service
+    ee-openai-api-base-url: https://api.openai.com
     ee-openai-api-key: null
     ee-openai-model: gpt-4-turbo-preview
     email-from-address: notifications@metabase.com
@@ -156,7 +162,10 @@ config:
     health-check-logging-enabled: true
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
+    http-channel-host-strategy: external-only
     humanization-strategy: simple
+    index-update-thread-count: 2
+    install-analytics-database: true
     jdbc-data-warehouse-max-connection-pool-size: 15
     jwt-attribute-email: email
     jwt-attribute-firstname: first_name
@@ -168,7 +177,7 @@ config:
     jwt-identity-provider-uri: null
     jwt-shared-secret: null
     jwt-user-provisioning-enabled: true
-    landing-page: ""
+    landing-page: ''
     landing-page-illustration: default
     landing-page-illustration-custom: null
     ldap-attribute-email: mail
@@ -190,6 +199,7 @@ config:
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
     license-token-missing-banner-dismissal-timestamp: []
+    load-analytics-content: true
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
@@ -205,6 +215,7 @@ config:
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
     notification-thread-pool-size: 3
+    openai-max-tokens-per-batch: 4000
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
@@ -237,9 +248,12 @@ config:
     saml-user-provisioning-enabled: true
     scim-enabled: null
     sdk-encryption-validation-key: null
-    search-engine: appdb
     search-language: null
     search-typeahead-enabled: true
+    semantic-search-enabled: true
+    semantic-search-min-results-threshold: 100
+    semantic-search-results-limit: 1000
+    send-email-on-first-login-from-new-device: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
     session-cookies: null
@@ -247,6 +261,7 @@ config:
     setup-embedding-autoenabled: false
     setup-license-active-at-setup: false
     show-database-syncing-modal: null
+    show-google-sheets-integration: null
     show-homepage-data: true
     show-homepage-xrays: true
     show-metabase-links: true
