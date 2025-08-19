@@ -12,7 +12,6 @@
   (:import
    (java.time Instant)
    (java.util Date)
-   (java.util.concurrent Future)
    (org.quartz DisallowConcurrentExecution)))
 
 (set! *warn-on-reflection* true)

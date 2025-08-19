@@ -22,7 +22,6 @@
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util Queue)
-   (java.util.concurrent Future)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)

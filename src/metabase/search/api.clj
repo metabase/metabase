@@ -20,8 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response])
-  (:import (java.util.concurrent Future)))
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
