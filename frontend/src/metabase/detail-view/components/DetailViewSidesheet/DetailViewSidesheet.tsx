@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -42,9 +43,23 @@ export function DetailViewSidesheet({
   onNextClick,
   onPreviousClick,
 }: Props) {
+  const [linkCopied, setLinkCopied] = useState(false);
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = getRowName(columns, row) || rowId;
   const icon = getEntityIcon(table.entity_type);
+  const url = getRowUrl();
+
+  const handleCopyLink = useCallback(() => {
+    navigator.clipboard.writeText(url ?? "");
+    setLinkCopied(true);
+  }, [url]);
+
+  useEffect(() => {
+    if (linkCopied) {
+      const timeout = setTimeout(() => setLinkCopied(false), 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [linkCopied]);
 
   return (
     <Sidesheet
@@ -79,6 +94,33 @@ export function DetailViewSidesheet({
               onClick={onNextClick}
             />
           </Tooltip>
+
+          {url && (
+            <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to a row`}>
+              <Button
+                c="text-dark"
+                h={20}
+                leftSection={<Icon name="link" />}
+                variant="subtle"
+                w={20}
+                onClick={handleCopyLink}
+              />
+            </Tooltip>
+          )}
+
+          {url && (
+            <Tooltip label={t`Open row page`}>
+              <Button
+                c="text-dark"
+                component={Link}
+                h={20}
+                leftSection={<Icon name="expand" />}
+                to={url}
+                variant="subtle"
+                w={20}
+              />
+            </Tooltip>
+          )}
         </>
       }
       onClose={onClose}
@@ -123,4 +165,9 @@ export function DetailViewSidesheet({
       </Stack>
     </Sidesheet>
   );
+}
+
+function getRowUrl(): string | undefined {
+  return "/asd";
+  return undefined;
 }
