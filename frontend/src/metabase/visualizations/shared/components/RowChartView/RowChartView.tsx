@@ -100,7 +100,7 @@ const RowChartView = <TDatum,>({
     }
 
     // Calculate the maximum allowed width for y-axis labels (50% of chart width)
-    const maxLabelWidth = margin.left - theme.axis.label.size * 2.5;
+    const maxLabelWidth = margin.left - theme.axis.label.size;
 
     return (value: StringLike) => {
       const originalText = yTickFormatter(value);
