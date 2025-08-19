@@ -1,4 +1,4 @@
-import React, { type ReactNode, forwardRef } from "react";
+import { type ReactNode, forwardRef } from "react";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
@@ -7,13 +7,11 @@ import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus, getUsageProblem } from "embedding-sdk/store/selectors";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 
-import { RenderOnlyInSdkProvider } from "../SdkContext";
-
 export type PublicComponentWrapperProps = {
   children: ReactNode;
 } & CommonStylingProps;
 
-const PublicComponentWrapperInner = forwardRef<
+export const PublicComponentWrapper = forwardRef<
   HTMLDivElement,
   PublicComponentWrapperProps
 >(function PublicComponentWrapper({ children, className, style }, ref) {
@@ -42,16 +40,5 @@ const PublicComponentWrapperInner = forwardRef<
     <PublicComponentStylesWrapper className={className} style={style} ref={ref}>
       {content}
     </PublicComponentStylesWrapper>
-  );
-});
-
-export const PublicComponentWrapper = React.forwardRef<
-  HTMLDivElement,
-  PublicComponentWrapperProps
->(function PublicComponentWrapper(props, ref) {
-  return (
-    <RenderOnlyInSdkProvider>
-      <PublicComponentWrapperInner ref={ref} {...props} />
-    </RenderOnlyInSdkProvider>
   );
 });

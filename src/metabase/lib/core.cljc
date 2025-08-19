@@ -246,6 +246,7 @@
  [metabase.lib.field.util
   update-keys-for-col-from-previous-stage]
  [lib.filter
+  add-filter-to-stage
   filter
   filters
   filterable-columns
@@ -390,6 +391,7 @@
   with-temporal-bucket]
  [lib.util
   fresh-uuids
+  native-stage?
   normalized-query-type
   previous-stage
   previous-stage-number

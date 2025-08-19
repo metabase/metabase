@@ -315,7 +315,7 @@ export const visitCustomHtmlPage = (
  * This function checks if the rspack dev server is available and if so, it mocks the embed.js file
  * to point it to the rspack dev server.
  */
-const mockEmbedJsToDevServer = () => {
+export const mockEmbedJsToDevServer = () => {
   if (Cypress.env("CI")) {
     // we don't need this logic in CI, let's skip the check to avoid slowing down the tests
     return;

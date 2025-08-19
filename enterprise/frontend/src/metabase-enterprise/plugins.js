@@ -40,3 +40,6 @@ import "./clean_up";
 import "./metabot";
 import "./database_replication";
 import "./table-editing";
+import "./documents";
+import "./semantic_search";
+import "./transforms";

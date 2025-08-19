@@ -542,7 +542,7 @@
         (update :order-by distinct))))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
-  [driver _ honeysql-form query]
+  [driver _k honeysql-form query]
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter])]
     (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
          (parent-method driver :filter honeysql-form))))

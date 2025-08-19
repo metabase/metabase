@@ -7,7 +7,8 @@
       "cypress",
       "@testing-library/cypress",
       "cypress-real-events",
-      "@cypress/grep"
+      "@cypress/grep",
+      "../enterprise/frontend/src/embedding-sdk/types/globalTypes.d.ts"
     ],
     "paths": {
       "e2e/*": ["./*"],
