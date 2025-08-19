@@ -2,7 +2,7 @@ import { type ReactNode, type Ref, forwardRef, useState } from "react";
 import { useUpdateEffect } from "react-use";
 import { t } from "ttag";
 
-import { Button, Icon, Loader } from "metabase/ui";
+import { Button, Icon, Loader, Tooltip } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
 const RECENT_TIMEOUT = 5000;
@@ -11,15 +11,21 @@ type RunButtonProps = {
   run: TransformRun | null | undefined;
   isLoading: boolean;
   isDisabled?: boolean;
+  isCancelling?: boolean;
+  allowCancellation?: boolean;
   onRun: () => void;
+  onCancel?: () => void;
 };
 
 export const RunButton = forwardRef(function RunButton(
   {
     run,
     isLoading,
+    isCancelling,
     isDisabled: isExternallyDisabled = false,
     onRun,
+    onCancel,
+    allowCancellation = false,
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -37,18 +43,31 @@ export const RunButton = forwardRef(function RunButton(
     return () => clearTimeout(timeoutId);
   }, [run]);
 
+  const isRunning = run?.status === "started" || isLoading;
+
   return (
-    <Button
-      ref={ref}
-      variant="filled"
-      color={color}
-      leftSection={leftSection}
-      disabled={isDisabled}
-      data-testid="run-button"
-      onClick={onRun}
-    >
-      {label}
-    </Button>
+    <Button.Group>
+      <Button
+        ref={ref}
+        variant="filled"
+        color={color}
+        leftSection={leftSection}
+        disabled={isDisabled}
+        data-testid="run-button"
+        onClick={onRun}
+      >
+        {label}
+      </Button>
+      {allowCancellation && isRunning && (
+        <Tooltip label={t`Cancel`}>
+          <Button
+            onClick={onCancel}
+            disabled={isCancelling}
+            rightSection={<Icon name="close" aria-hidden />}
+          />
+        </Tooltip>
+      )}
+    </Button.Group>
   );
 });
 
