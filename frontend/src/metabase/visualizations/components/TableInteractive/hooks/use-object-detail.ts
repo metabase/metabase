@@ -85,7 +85,7 @@ export const useObjectDetail = (
 
         if (isModel) {
           dispatch(closeNavbar());
-          dispatch(push(`/model/${card.id}/detail/${objectId}`));
+          dispatch(push(`/model/${card.id}/${objectId}`));
           return;
         }
       }
