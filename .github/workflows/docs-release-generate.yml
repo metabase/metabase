@@ -5,6 +5,10 @@ on:
     - cron: "0 1 * * 1-5" # Every Monday through Friday at 1 AM UTC
   workflow_dispatch:
 
+# Define the release branch to target
+env:
+  RELEASE_BRANCH: release-x.56.x
+
 permissions:
   contents: write
   pull-requests: write
@@ -20,7 +24,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          ref: release-x.56.x
+          ref: ${{ env.RELEASE_BRANCH }}
 
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
@@ -71,7 +75,7 @@ jobs:
           git checkout -b $BRANCH_NAME
 
           git add docs/
-          git commit -m "Update generated docs (release-x.56.x)" --no-verify
+          git commit -m "Update generated docs (${{ env.RELEASE_BRANCH }})" --no-verify
           git push -u origin $BRANCH_NAME
 
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
@@ -90,9 +94,9 @@ jobs:
           # Retry PR creation up to 3 times
           for i in {1..3}; do
             if gh pr create \
-              --base release-x.56.x \
+              --base ${{ env.RELEASE_BRANCH }} \
               --head ${{ steps.commit_and_push.outputs.branch_name }} \
-              --title "Update generated docs (release-x.56.x)" \
+              --title "Update generated docs (${{ env.RELEASE_BRANCH }})" \
               --body "API, config template, and environment variable doc updates.
 
 ## Changes made
@@ -132,7 +136,7 @@ Review the changes before merging." \
           if [ "${{ steps.check_changes.outputs.changes }}" == "true" ]; then
             echo "## ✅ Documentation Updated Successfully" >> $GITHUB_STEP_SUMMARY
             echo "- Created branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- Created PR for review targeting release-x.56.x" >> $GITHUB_STEP_SUMMARY
+            echo "- Created PR for review targeting ${{ env.RELEASE_BRANCH }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "## ℹ️ No Documentation Changes" >> $GITHUB_STEP_SUMMARY
             echo "- All documentation is up to date" >> $GITHUB_STEP_SUMMARY
