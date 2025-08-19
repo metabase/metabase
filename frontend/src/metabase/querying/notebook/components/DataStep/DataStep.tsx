@@ -1,12 +1,14 @@
-import { type CSSProperties, useMemo } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import { Icon, Popover, Tooltip } from "metabase/ui";
+import { ColumnPickerSidebar } from "metabase/query_builder/components/ColumnPickerSidebar/ColumnPickerSidebar";
+import { Icon, Tooltip } from "metabase/ui";
+import { updateSettings } from "metabase/visualizations/lib/settings";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
-import { FieldPicker, type FieldPickerItem } from "../FieldPicker";
+import type { FieldPickerItem } from "../FieldPicker";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import { CONTAINER_PADDING } from "../NotebookCell/constants";
 import { NotebookDataPicker } from "../NotebookDataPicker";
@@ -19,6 +21,7 @@ export const DataStep = ({
   readOnly = false,
   color,
   updateQuery,
+  updateVisualizationSettings,
 }: NotebookStepProps) => {
   const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
@@ -48,91 +51,8 @@ export const DataStep = ({
       await updateQuery(newQuery);
     }
   };
+  const [isColumnPickerOpen, setIsColumnPickerOpen] = useState(false);
 
-  return (
-    <NotebookCell color={color}>
-      <NotebookCellItem
-        color={color}
-        inactive={!table}
-        right={
-          canSelectTableColumns && (
-            <DataFieldPopover
-              query={query}
-              stageIndex={stageIndex}
-              updateQuery={updateQuery}
-            />
-          )
-        }
-        containerStyle={{ padding: 0 }}
-        rightContainerStyle={{ width: 37, padding: 0 }}
-        data-testid="data-step-cell"
-      >
-        <NotebookDataPicker
-          query={query}
-          stageIndex={stageIndex}
-          table={table}
-          title={t`Pick your starting data`}
-          canChangeDatabase
-          hasMetrics
-          isDisabled={readOnly}
-          onChange={handleTableChange}
-        />
-      </NotebookCellItem>
-    </NotebookCell>
-  );
-};
-
-interface DataFieldPopoverProps {
-  query: Lib.Query;
-  stageIndex: number;
-  updateQuery: (query: Lib.Query) => Promise<void>;
-}
-
-function DataFieldPopover({
-  query,
-  stageIndex,
-  updateQuery,
-}: DataFieldPopoverProps) {
-  return (
-    <Popover position="bottom-start">
-      <Popover.Target>
-        <Tooltip label={t`Pick columns`}>
-          <IconButtonWrapper
-            className={S.DataStepIconButton}
-            style={
-              {
-                "--notebook-cell-container-padding": CONTAINER_PADDING,
-              } as CSSProperties
-            }
-            aria-label={t`Pick columns`}
-            data-testid="fields-picker"
-          >
-            <Icon name="chevrondown" />
-          </IconButtonWrapper>
-        </Tooltip>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <DataFieldPicker
-          query={query}
-          stageIndex={stageIndex}
-          updateQuery={updateQuery}
-        />
-      </Popover.Dropdown>
-    </Popover>
-  );
-}
-
-interface DataFieldPickerProps {
-  query: Lib.Query;
-  stageIndex: number;
-  updateQuery: (query: Lib.Query) => Promise<void>;
-}
-
-function DataFieldPicker({
-  query,
-  stageIndex,
-  updateQuery,
-}: DataFieldPickerProps) {
   const columns = useMemo(
     () => Lib.fieldableColumns(query, stageIndex),
     [query, stageIndex],
@@ -155,19 +75,113 @@ function DataFieldPicker({
     updateQuery(nextQuery);
   };
 
+  const handleColumnDisplayNameChange = (
+    column: Lib.ColumnMetadata,
+    newDisplayName: string,
+  ) => {
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    const columnKey = columnInfo.name;
+    const currentSettings = question.card().visualization_settings || {};
+
+    const diff = {
+      column_settings: {
+        ...currentSettings.column_settings,
+        [JSON.stringify(["name", columnKey])]: {
+          column_title: newDisplayName,
+        },
+      },
+    };
+
+    const newSettings = updateSettings(currentSettings, diff);
+    const updatedQuestion = question.updateSettings(newSettings);
+
+    updateVisualizationSettings(updatedQuestion);
+  };
+
+  const handleReorderColumns = (reorderedColumns: Lib.ColumnMetadata[]) => {
+    const currentSettings = question.card().visualization_settings || {};
+
+    const diff = {
+      "table.columns": reorderedColumns.map((column) => {
+        const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
+        return {
+          name: columnInfo.name,
+          enabled: columnInfo.selected,
+        };
+      }),
+    };
+
+    const newSettings = updateSettings(currentSettings, diff);
+    const updatedQuestion = question.updateSettings(newSettings);
+
+    updateVisualizationSettings(updatedQuestion);
+  };
+
   return (
-    <FieldPicker
-      query={query}
-      stageIndex={stageIndex}
-      columns={columns}
-      isColumnSelected={isColumnSelected}
-      isColumnDisabled={isColumnDisabled}
-      onToggle={handleToggle}
-      onSelectAll={handleSelectAll}
-      onSelectNone={handleSelectNone}
-    />
+    <>
+      <NotebookCell color={color}>
+        <NotebookCellItem
+          color={color}
+          inactive={!table}
+          right={
+            canSelectTableColumns && (
+              <Tooltip label={t`Pick columns`}>
+                <IconButtonWrapper
+                  className={S.DataStepIconButton}
+                  style={
+                    {
+                      "--notebook-cell-container-padding": CONTAINER_PADDING,
+                    } as CSSProperties
+                  }
+                  aria-label={t`Pick columns`}
+                  data-testid="fields-picker"
+                  onClick={() => setIsColumnPickerOpen(true)}
+                >
+                  <Icon name="chevrondown" />
+                </IconButtonWrapper>
+              </Tooltip>
+            )
+          }
+          containerStyle={{ padding: 0 }}
+          rightContainerStyle={{ width: 37, padding: 0 }}
+          data-testid="data-step-cell"
+        >
+          <NotebookDataPicker
+            query={query}
+            stageIndex={stageIndex}
+            table={table}
+            title={t`Pick your starting data`}
+            canChangeDatabase
+            hasMetrics
+            isDisabled={readOnly}
+            onChange={handleTableChange}
+          />
+        </NotebookCellItem>
+      </NotebookCell>
+
+      {canSelectTableColumns && (
+        <ColumnPickerSidebar
+          isOpen={isColumnPickerOpen}
+          onClose={() => setIsColumnPickerOpen(false)}
+          query={query}
+          stageIndex={stageIndex}
+          columns={columns}
+          title={t`Pick columns`}
+          isColumnSelected={isColumnSelected}
+          isColumnDisabled={isColumnDisabled}
+          onToggle={handleToggle}
+          onSelectAll={handleSelectAll}
+          onSelectNone={handleSelectNone}
+          onColumnDisplayNameChange={handleColumnDisplayNameChange}
+          onReorderColumns={handleReorderColumns}
+          visualizationSettings={question.card().visualization_settings}
+          data-testid="data-step-column-picker"
+        />
+      )}
+    </>
   );
-}
+};
 
 function isColumnSelected({ columnInfo }: FieldPickerItem) {
   return Boolean(columnInfo.selected);

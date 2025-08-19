@@ -15,17 +15,20 @@ import Question from "metabase-lib/v1/Question";
 const PREVIEW_ROWS_LIMIT = 10;
 
 const getPreviewQuestion = (step) => {
-  const { previewQuery, stageIndex } = step;
+  const { previewQuery, stageIndex, question } = step;
   const limit = Lib.currentLimit(previewQuery, stageIndex);
   const hasSuitableLimit = limit !== null && limit <= PREVIEW_ROWS_LIMIT;
   const queryWithLimit = hasSuitableLimit
     ? previewQuery
     : Lib.limit(previewQuery, stageIndex, PREVIEW_ROWS_LIMIT);
 
+  const baseSettings = { "table.pivot": false };
+  const questionSettings = question?.card()?.visualization_settings || {};
+
   return Question.create()
     .setQuery(queryWithLimit)
     .setDisplay("table")
-    .setSettings({ "table.pivot": false });
+    .setSettings({ ...questionSettings, ...baseSettings });
 };
 
 export const NotebookStepPreview = ({ step, onClose }) => {
