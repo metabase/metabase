@@ -1,6 +1,8 @@
+import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
@@ -142,6 +144,10 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [cancelTransform, { isLoading: isCancelling }] =
     useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
+  const [
+    isConfirmCancellationModalOpen,
+    { close: closeConfirmModal, open: openConfirmModal },
+  ] = useDisclosure(false);
 
   const handleRun = async () => {
     const { error } = await runTransform(transform.id);
@@ -166,14 +172,26 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   };
 
   return (
-    <RunButton
-      allowCancellation
-      run={transform.last_run}
-      isLoading={isFetching || isStarting || isCancelling}
-      isCancelling={isCancelling}
-      onRun={handleRun}
-      onCancel={handleCancel}
-    />
+    <>
+      <RunButton
+        allowCancellation
+        run={transform.last_run}
+        isLoading={isFetching || isStarting || isCancelling}
+        isCancelling={isCancelling}
+        onRun={handleRun}
+        onCancel={openConfirmModal}
+      />
+      <ConfirmModal
+        title={t`Cancel this run?`}
+        opened={isConfirmCancellationModalOpen}
+        onClose={closeConfirmModal}
+        onConfirm={() => {
+          void handleCancel();
+          closeConfirmModal();
+        }}
+        closeButtonText={t`No`}
+      />
+    </>
   );
 }
 
