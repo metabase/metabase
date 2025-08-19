@@ -1,15 +1,17 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
-import { Stack, Text, TextInput } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
+import { Group, Stack, Text } from "metabase/ui";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import { useSdkIframeEmbedSetupContext } from "../../context";
 
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
 import { useHideParameter } from "./hooks/use-hide-parameter";
-import { getParameterPlaceholder } from "./utils/parameter-placeholder";
 
 export const ParameterSettings = () => {
   const {
@@ -59,6 +61,19 @@ export const ParameterSettings = () => {
     return {};
   }, [settings]);
 
+  const uiParameters = useMemo(
+    () =>
+      getValuePopulatedParameters({
+        parameters: availableParameters,
+        values: parameterValues,
+        defaultRequired: true,
+      }).map((param) => ({
+        ...param,
+        value: parameterValues?.[param.slug] ?? param.value,
+      })),
+    [availableParameters, parameterValues],
+  );
+
   // Only show parameters for dashboards and questions
   if (!isQuestionOrDashboardEmbed) {
     return null;
@@ -75,35 +90,31 @@ export const ParameterSettings = () => {
   if (availableParameters.length > 0) {
     return (
       <Stack>
-        {availableParameters.map((param) => {
-          const defaultValue = parameterValues?.[param.slug] ?? undefined;
-
-          const placeholderValue = getParameterPlaceholder(param);
-
-          const placeholderText = c(
-            `the placeholder text containing examples of how a parameter string looks like. {0} contains the placeholder (e.g. "2025-11-05")`,
-          ).t`e.g. ${placeholderValue}`;
-
-          return (
-            <TextInput
-              key={param.id}
-              label={param.name}
-              placeholder={placeholderValue ? placeholderText : undefined}
-              defaultValue={defaultValue}
-              onChange={(e) =>
-                updateInitialParameterValue(param.slug, e.target.value)
+        {uiParameters.map((parameter) => (
+          <Group justify="space-between" align="center" key={parameter.id}>
+            <ParameterWidget
+              className={CS.m0}
+              parameter={parameter}
+              parameters={uiParameters}
+              setValue={(value: string) =>
+                updateInitialParameterValue(parameter.slug, value)
               }
-              rightSection={
-                <ParameterVisibilityToggle
-                  parameterName={param.slug}
-                  experience={experience}
-                  isHidden={isParameterHidden(param.slug)}
-                  onToggle={toggleParameterVisibility}
-                />
-              }
+              setParameterValueToDefault={() => {
+                updateInitialParameterValue(
+                  parameter.slug,
+                  parameter.default as any,
+                );
+              }}
+              enableParameterRequiredBehavior
             />
-          );
-        })}
+            <ParameterVisibilityToggle
+              parameterName={parameter.slug}
+              experience={experience}
+              isHidden={isParameterHidden(parameter.slug)}
+              onToggle={toggleParameterVisibility}
+            />
+          </Group>
+        ))}
       </Stack>
     );
   }
