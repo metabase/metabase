@@ -36,14 +36,6 @@
    :name tag-name
    :id   (str (random-uuid))})
 
-(defn- tag-name->card-id [tag-name]
-  (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
-    (parse-long id-str)))
-
-(defn- tag-name->snippet-name [tag-name]
-  (when (str/starts-with? tag-name "snippet:")
-    (str/trim (subs tag-name (count "snippet:")))))
-
 (defn- recognize-template-tags [query-text]
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found {}
@@ -51,22 +43,22 @@
       (match [current]
         [nil] found
         [_ :guard string?] (recur found more)
-        [{:type ::lib.parse/optional
-          :contents contents}] (recur found (apply conj more contents))
-
         [{:type ::lib.parse/param
-          :name tag-name}]
-        (let [full-tag         (str "{{" tag-name "}}")
-              [_ matched-name] (some #(re-matches % full-tag) tag-regexes)
-              snippet nil #_(when-let [snippet-name (tag-name->snippet-name tag-name)]
-                              (prn "snippet" snippet-name)
-                              (->> snippet-name
-                                   (lib.metadata/native-query-snippet-for-name metadata-providerable)
-                                   :content
-                                   (lib.parse/parse {})))]
-          (recur (cond-> found
-                   (and matched-name (not (found matched-name))) (assoc matched-name (fresh-tag matched-name)))
-                 (into more snippet)))))))
+          :name tag-name}] (let [full-tag         (str "{{" tag-name "}}")
+                                 [_ matched-name] (some #(re-matches % full-tag) tag-regexes)]
+                             (recur (cond-> found
+                                      (and matched-name (not (found matched-name))) (assoc matched-name (fresh-tag matched-name)))
+                                    more))
+        [{:type ::lib.parse/optional
+          :contents contents}] (recur found (apply conj more contents))))))
+
+(defn- tag-name->card-id [tag-name]
+  (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
+    (parse-long id-str)))
+
+(defn- tag-name->snippet-name [tag-name]
+  (when (str/starts-with? tag-name "snippet:")
+    (str/trim (subs tag-name (count "snippet:")))))
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
