@@ -15,9 +15,8 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
-<<<<<<< HEAD
 (set! *warn-on-reflection* true)
-=======
+
 (defn- verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
   [id item-type]
@@ -27,7 +26,6 @@
                               :most_recent true
                               {:order-by [[:id :desc]]})]
     (= (:status review) "verified")))
->>>>>>> 03904327539 (More tests and better split out of logic into separate files)
 
 (defn get-current-user
   "Get information about the current user."
@@ -259,7 +257,7 @@
                                   :with-metrics?                   true
                                   :with-default-temporal-breakout? false
                                   :with-queryable-dimensions?      false})
-                 (tap> (queries)))))
+          (tap> (queries)))))
   -)
 
 (defn get-table-details

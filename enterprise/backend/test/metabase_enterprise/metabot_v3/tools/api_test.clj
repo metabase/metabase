@@ -4,11 +4,8 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-<<<<<<< HEAD
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-=======
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.tools.dummy-tools]
->>>>>>> 03904327539 (More tests and better split out of logic into separate files)
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
@@ -271,16 +268,16 @@
                    {:type "query"
                     :query_id string?
                     :query (mt/mbql-query products
-                                          {:aggregation [[:metric metric-id]]
-                                           :breakout [!week.products.created_at !day.products.created_at]
-                                           :filter [:and
-                                                    [:> [:field %id {}] 50]
-                                                    [:= [:field %title {}] "3" "4"]
-                                                    [:!= [:field %rating {}] 3 4]
-                                                    [:= [:get-month [:field %created_at {}]] 4 5 9]
-                                                    [:!= [:get-day [:field %products.created_at {}]] 14 15 19]
-                                                    [:= [:get-day-of-week [:field %created_at {}] :iso] 1 7]
-                                                    [:= [:get-year [:field %created_at {}]] 2008]]})
+                             {:aggregation [[:metric metric-id]]
+                              :breakout [!week.products.created_at !day.products.created_at]
+                              :filter [:and
+                                       [:> [:field %id {}] 50]
+                                       [:= [:field %title {}] "3" "4"]
+                                       [:!= [:field %rating {}] 3 4]
+                                       [:= [:get-month [:field %created_at {}]] 4 5 9]
+                                       [:!= [:get-day [:field %products.created_at {}]] 14 15 19]
+                                       [:= [:get-day-of-week [:field %created_at {}] :iso] 1 7]
+                                       [:= [:get-year [:field %created_at {}]] 2008]]})
                     :result_columns
                     [{:field_id (str "q" query-id "/0")
                       :name "CREATED_AT"
@@ -799,9 +796,9 @@
       (mt/with-temp [:model/Card {model-id :id}  model-data
                      :model/Card {metric-id :id} (assoc metric-data :dataset_query
                                                         (mt/mbql-query orders
-                                                                       {:source-table (str "card__" model-id)
-                                                                        :aggregation [[:count]]
-                                                                        :breakout [!month.*created_at *quantity]}))]
+                                                          {:source-table (str "card__" model-id)
+                                                           :aggregation [[:count]]
+                                                           :breakout [!month.*created_at *quantity]}))]
         (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
           (let [request (fn [arguments]
                           (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
@@ -972,9 +969,9 @@
                                            :conversation_id conversation-id}))]
       (mt/with-temp [:model/Card {metric-id :id} (assoc metric-data :dataset_query
                                                         (mt/mbql-query orders
-                                                                       {:source-table table-id
-                                                                        :aggregation [[:count]]
-                                                                        :breakout [!month.created_at $quantity]}))]
+                                                          {:source-table table-id
+                                                           :aggregation [[:count]]
+                                                           :breakout [!month.created_at $quantity]}))]
         (testing "Normal call"
           (doseq [arg-id [table-id (str table-id)]]
             (is (=? {:structured_output {:name "ORDERS"
