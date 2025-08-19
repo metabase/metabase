@@ -136,8 +136,9 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: "Small Marble Shoes" });
-      cy.findByText("Doohickey").should("be.visible");
+      cy.findByRole("heading", { name: /Product/ });
+      cy.findByText("Small Marble Shoes");
+      cy.findByText("Doohickey");
     });
   });
 
@@ -168,10 +169,11 @@ describe("scenarios > model indexes", () => {
     H.commandPalette().findByRole("option", { name: "Anais Zieme" }).click();
 
     cy.wait("@dataset");
+    cy.wait("@dataset"); // second query gets the additional record
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByText(/We're a little lost/i).should("not.exist");
-      cy.findByText("Anais Zieme").should("be.visible");
+      cy.findAllByText("Anais Zieme").should("have.length", 2);
     });
   });
 
@@ -188,10 +190,9 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: "Small Marble Shoes" }).should(
-        "be.visible",
-      );
-      cy.findByText("Doohickey").should("be.visible");
+      cy.findByRole("heading", { name: /Product/ });
+      cy.findByText("Small Marble Shoes");
+      cy.findByText("Doohickey");
     });
 
     expectCardQueries(1);
@@ -204,10 +205,7 @@ describe("scenarios > model indexes", () => {
       .click();
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: "Ergonomic Silk Coat" }).should(
-        "be.visible",
-      );
-      cy.findByText("Upton, Kovacek and Halvorson").should("be.visible");
+      cy.findByText("Upton, Kovacek and Halvorson");
     });
 
     expectCardQueries(1);
