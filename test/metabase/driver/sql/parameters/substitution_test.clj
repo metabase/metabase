@@ -6,8 +6,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]

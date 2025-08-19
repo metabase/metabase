@@ -36,6 +36,7 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
@@ -1279,3 +1280,53 @@
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map schema.table/card->virtual-table))))
+
+;;; -------------------------------- GET /api/database/:id/settings-available ------------------------------------
+
+(defn- database-local-settings
+  "Return a sorted map of all database-local settings with their enabled status for the given database.
+   Settings that require unavailable premium features are omitted entirely."
+  [database]
+  (let [settings         @setting/registered-settings
+        driver           (driver.u/database->driver database)
+        driver-supports? (fn [feature] (driver.u/supports? driver feature database))]
+    (into (sorted-map)
+          (for [[setting-name {:keys [feature database-local driver-feature enabled?] :as setting-def}] settings
+                :when (and  (not= :never database-local)
+                            (or (nil? feature) (premium-features/has-feature? feature)))]
+            [setting-name
+             (let [reasons (cond-> []
+                             (and enabled? (not (enabled?)))
+                             (conj {:key     :setting-disabled
+                                    :message "This setting is disabled for all databases."})
+
+                             (and driver-feature (not (driver-supports? driver-feature)))
+                             (conj {:key     :driver-feature-missing
+                                    :message (format "The %s driver does not support the `%s` feature"
+                                                     (driver/display-name driver)
+                                                     (name driver-feature))})
+
+                             true
+                             (into (setting/disabled-for-db-reasons setting-def database)))]
+               (if (empty? reasons)
+                 {:enabled true}
+                 {:enabled false, :reasons reasons}))]))))
+
+(mr/def ::available-settings
+  [:map-of
+   :keyword
+   [:multi {:dispatch :enabled}
+    [true [:map [:enabled [:= true]]]]
+    [false [:map
+            [:enabled [:= false]]
+            [:reasons
+             [:sequential [:map
+                           [:key :keyword]
+                           [:message :string]]]]]]]])
+
+(api.macros/defendpoint :get "/:id/settings-available" :- [:map [:settings ::available-settings]]
+  "Get all database-local settings and their availability for the given database."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [database (api/read-check (get-database id))]
+    {:settings (database-local-settings database)}))
