@@ -12,7 +12,10 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
  */
 export const useAvailableFonts = () => {
   const availableFonts = useLazySelector((state) =>
-    getWindow()?.MetabaseEmbeddingSDK?.getSetting(state, "available-fonts"),
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getSetting(
+      state,
+      "available-fonts",
+    ),
   );
 
   return useMemo(

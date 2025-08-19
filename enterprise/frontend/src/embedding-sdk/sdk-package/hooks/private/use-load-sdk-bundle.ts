@@ -50,10 +50,10 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
   useEffect(() => {
     const metabaseProviderPropsStore = ensureMetabaseProviderPropsStore();
     const { loadingPromise: existingLoadingPromise, loadingState } =
-      metabaseProviderPropsStore.getSnapshot();
+      metabaseProviderPropsStore.getState().internalProps;
 
     // The SDK bundle script was loaded before
-    if (window.MetabaseEmbeddingSDK) {
+    if (window.METABASE_EMBEDDING_SDK_BUNDLE) {
       // After the SDK bundle script was loaded, the MetabaseProviderProps store may be cleaned up.
       // It happens when the MetabaseProvider component is unmounted and remounted later.
       // In this case we don't need to load the SDK bundle again, but we have to set the proper `Loaded` state.

@@ -68,7 +68,7 @@ const config = {
     publicPath: "",
     filename: SDK_BUNDLE_FILENAME,
 
-    // We assign exports from SDK bundle into window.MetabaseEmbeddingSDK manually in the SDK bundle entry point.
+    // We assign exports from SDK bundle into window.METABASE_EMBEDDING_SDK_BUNDLE manually in the SDK bundle entry point.
     library: false,
   },
 

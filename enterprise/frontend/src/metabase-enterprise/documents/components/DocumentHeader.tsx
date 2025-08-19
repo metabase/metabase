@@ -104,55 +104,57 @@ export const DocumentHeader = ({
             {t`Save`}
           </Button>
         )}
-        <Menu position="bottom-end">
-          <Menu.Target>
-            <ActionIcon
-              variant="subtle"
-              size="md"
-              aria-label={t`More options`}
-              data-hide-on-print
-            >
-              <Icon name="ellipsis" />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<Icon name="document" />}
-              onClick={handlePrint}
-            >
-              {t`Print Document`}
-            </Menu.Item>
-            {!isNewDocument && (
-              <>
-                {canWrite && (
-                  <Menu.Item
-                    leftSection={<Icon name="move" />}
-                    onClick={onMove}
-                  >
-                    {t`Move`}
-                  </Menu.Item>
-                )}
-                <Menu.Item
-                  leftSection={<Icon name={"bookmark"} />}
-                  onClick={onToggleBookmark}
-                >
-                  {isBookmarked ? t`Remove from Bookmarks` : t`Bookmark`}
-                </Menu.Item>
-                {canWrite && (
-                  <>
-                    <Menu.Divider />
+        {!document?.archived && (
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <ActionIcon
+                variant="subtle"
+                size="md"
+                aria-label={t`More options`}
+                data-hide-on-print
+              >
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="document" />}
+                onClick={handlePrint}
+              >
+                {t`Print Document`}
+              </Menu.Item>
+              {!isNewDocument && (
+                <>
+                  {canWrite && (
                     <Menu.Item
-                      leftSection={<Icon name="trash" />}
-                      onClick={onArchive}
+                      leftSection={<Icon name="move" />}
+                      onClick={onMove}
                     >
-                      {t`Move to trash`}
+                      {t`Move`}
                     </Menu.Item>
-                  </>
-                )}
-              </>
-            )}
-          </Menu.Dropdown>
-        </Menu>
+                  )}
+                  <Menu.Item
+                    leftSection={<Icon name={"bookmark"} />}
+                    onClick={onToggleBookmark}
+                  >
+                    {isBookmarked ? t`Remove from Bookmarks` : t`Bookmark`}
+                  </Menu.Item>
+                  {canWrite && (
+                    <>
+                      <Menu.Divider />
+                      <Menu.Item
+                        leftSection={<Icon name="trash" />}
+                        onClick={onArchive}
+                      >
+                        {t`Move to trash`}
+                      </Menu.Item>
+                    </>
+                  )}
+                </>
+              )}
+            </Menu.Dropdown>
+          </Menu>
+        )}
       </Flex>
     </Flex>
   );

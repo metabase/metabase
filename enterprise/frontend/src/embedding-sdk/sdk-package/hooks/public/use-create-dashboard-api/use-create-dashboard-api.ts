@@ -16,8 +16,11 @@ import type {
  * @category useCreateDashboardApi
  */
 export const useCreateDashboardApi = () => {
-  const { props } = useMetabaseProviderPropsStore();
-  const { reduxStore } = props;
+  const {
+    state: {
+      internalProps: { reduxStore },
+    },
+  } = useMetabaseProviderPropsStore();
 
   const loginStatus = useLazySelector((state) => state.sdk.loginStatus);
 
@@ -34,9 +37,10 @@ export const useCreateDashboardApi = () => {
       }
 
       const createDashboard =
-        getWindow()?.MetabaseEmbeddingSDK?.createDashboard;
+        getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createDashboard;
       const getCollectionNumericIdFromReference =
-        getWindow()?.MetabaseEmbeddingSDK?.getCollectionNumericIdFromReference;
+        getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE
+          ?.getCollectionNumericIdFromReference;
 
       if (!createDashboard || !getCollectionNumericIdFromReference) {
         throw new Error("Embedding SDK bundle is not initialized");

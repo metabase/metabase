@@ -22,7 +22,7 @@
 (defmethod api-exception-response Throwable
   [^Throwable e]
   (let [{:keys [status-code], :as info} (ex-data e)
-        other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace)
+        other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace ::log/context)
         body                            (cond
                                           (and status-code (not= status-code 500) (empty? other-info))
                                           ;; If status code was specified (but not a 500 -- an unexpected error, and
