@@ -15,6 +15,8 @@
   (:import
    (org.apache.logging.log4j ThreadContext)))
 
+(set! *warn-on-reflection* true)
+
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
 (defn- glogi-logp
   "Macro helper for [[logp]] in CLJS."
@@ -241,3 +243,17 @@
                     (ThreadContext/put (name k#) (val original#))
                     (ThreadContext/remove (name k#)))))))
     :cljs ~@body))
+
+(defn with-context-meta
+  "Given a map, returns the map with the `::context` set. Used for propagation of log context across threads."
+  [m]
+  (vary-meta m assoc ::context (->> (ThreadContext/getImmutableContext)
+                                    (keep (fn [[k v]] (when (str/starts-with? k "mb-")
+                                                        [(str/replace k "mb-" "") v])))
+                                    (into {}))))
+
+(defmacro with-restored-context-from-meta
+  "Given a map presumably containing metadata from `with-context-meta`, sets the current ThreadContext"
+  [m & body]
+  `(with-context (::context (meta ~m))
+     ~@body))
