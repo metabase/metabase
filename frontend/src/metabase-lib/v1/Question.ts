@@ -699,7 +699,10 @@ class Question {
       return (
         q &&
         new Question(q.card(), this.metadata())
-          .setParameters(getTemplateTagParametersFromCard(q.card()))
+          .setParameters(
+            getTemplateTagParametersFromCard(q.card()),
+            q.metadata(),
+          )
           .setDashboardProps({
             dashboardId: undefined,
             dashcardId: undefined,
@@ -879,7 +882,10 @@ class Question {
       return this;
     }
 
-    return this.setParameters(getTemplateTagParametersFromCard(this.card()));
+    return this.setParameters(
+      getTemplateTagParametersFromCard(this.card()),
+      this.metadata(),
+    );
   }
 
   /**
