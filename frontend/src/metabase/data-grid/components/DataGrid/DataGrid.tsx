@@ -54,6 +54,7 @@ export interface DataGridProps<TData>
   showRowsCount?: boolean;
   isColumnReorderingDisabled?: boolean;
   theme?: DataGridTheme;
+  zoomedRowIndex?: number;
 }
 
 export const DataGrid = function DataGrid<TData>({
@@ -72,6 +73,7 @@ export const DataGrid = function DataGrid<TData>({
   getTotalHeight,
   getVisibleRows,
   isColumnReorderingDisabled,
+  zoomedRowIndex,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
@@ -281,6 +283,7 @@ export const DataGrid = function DataGrid<TData>({
 
                 const dataIndex =
                   virtualRow != null ? virtualRow.index : row.index;
+                const active = zoomedRowIndex === dataIndex;
 
                 return (
                   <div
@@ -291,7 +294,9 @@ export const DataGrid = function DataGrid<TData>({
                     data-index={dataIndex}
                     data-allow-page-break-after="true"
                     data-row-selected={row.getIsSelected()}
-                    className={cx(S.row, classNames?.row)}
+                    className={cx(S.row, classNames?.row, {
+                      [S.active]: active,
+                    })}
                     style={{
                       ...virtualRowStyles,
                       ...styles?.row,

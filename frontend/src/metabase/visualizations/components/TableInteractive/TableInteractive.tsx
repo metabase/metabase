@@ -46,9 +46,10 @@ import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
+import { getZoomedObjectId } from "metabase/query_builder/selectors";
 import { Flex, type MantineTheme } from "metabase/ui";
 import {
   getTableCellClickedObject,
@@ -176,6 +177,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isClientSideSortingEnabled = isDashboard;
   const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
+  const zoomedRowIndex = useSelector(getZoomedObjectId);
 
   const tc = useTranslateContent();
 
@@ -806,6 +808,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         showRowsCount={isDashboard}
         isColumnReorderingDisabled={isColumnReorderingDisabled}
         emptyState={emptyState}
+        zoomedRowIndex={zoomedRowIndex}
         onBodyCellClick={handleBodyCellClick}
         onAddColumnClick={handleAddColumnButtonClick}
         onHeaderCellClick={handleHeaderCellClick}
