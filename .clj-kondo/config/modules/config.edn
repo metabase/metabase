@@ -1585,6 +1585,13 @@
            task
            util}}
 
+  enterprise/cloud-add-ons
+  {:team "Cloud"
+   :api  #{metabase-enterprise.cloud-add-ons.api}
+   :uses #{api
+           premium-features
+           enterprise/harbormaster}}
+
   enterprise/content-translation
   {:team "UX West"
    :api  #{metabase-enterprise.content-translation.dictionary

@@ -3,9 +3,11 @@ import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { Route } from "metabase/hoc/Title";
 import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { MetabotAdminPurchase } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotAdminPurchase";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
@@ -20,17 +22,9 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.isEnabled = () => true;
   PLUGIN_METABOT.Metabot = Metabot;
 
-  PLUGIN_METABOT.adminNavItem = [
-    {
-      name: t`AI`,
-      path: "/admin/metabot",
-      key: "metabot",
-    },
-  ];
-
   PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
 
-  PLUGIN_METABOT.AdminRoute = (
+  PLUGIN_METABOT.getAdminRoutes = () => (
     <Route
       key="metabot"
       path="metabot"
@@ -70,6 +64,21 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
+} else {
+  PLUGIN_METABOT.getAdminPaths = () => [
+    {
+      name: t`AI`,
+      path: "/admin/metabot",
+      key: "metabot",
+    },
+  ];
+  PLUGIN_METABOT.getAdminRoutes = () => (
+    <Route path="metabot" component={createAdminRouteGuard("metabot")}>
+      <Route title={t`AI`} component={AdminSettingsLayout}>
+        <IndexRoute component={MetabotAdminPurchase} />
+      </Route>
+    </Route>
+  );
 }
 
 /**

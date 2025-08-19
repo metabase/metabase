@@ -49,7 +49,7 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/tools",
       key: "tools",
     },
-    ...PLUGIN_METABOT.adminNavItem,
+    ...PLUGIN_METABOT.getAdminPaths(),
   ];
 
   return items;

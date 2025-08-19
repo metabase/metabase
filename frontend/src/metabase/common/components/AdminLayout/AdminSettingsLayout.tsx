@@ -12,16 +12,18 @@ export const AdminSettingsLayout = ({
   children,
   maw = "50rem",
 }: {
-  sidebar: React.ReactNode;
+  sidebar?: React.ReactNode;
   children?: React.ReactNode;
   maw?: string;
 }) => {
   return (
     <Box className={S.Wrapper}>
       <Box className={S.Main}>
-        <Box className={S.Sidebar} data-testid="admin-layout-sidebar">
-          {sidebar}
-        </Box>
+        {sidebar && (
+          <Box className={S.Sidebar} data-testid="admin-layout-sidebar">
+            {sidebar}
+          </Box>
+        )}
         <Box className={S.Content} data-testid="admin-layout-content">
           <Box maw={maw} w="100%">
             <Box pb="2rem">
