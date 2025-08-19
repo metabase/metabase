@@ -230,11 +230,11 @@
   (let [resolved-id (eid-translation/->id-or-404 :card id)
         card (get-card resolved-id)]
     (u/prog1 card
-      (when-not ignore-view?
-        (events/publish-event! :event/card-read
-                               {:object-id (:id <>)
-                                :user-id api/*current-user-id*
-                                :context (or context :question)})))))
+             (when-not ignore-view?
+               (events/publish-event! :event/card-read
+                                      {:object-id (:id <>)
+                                       :user-id api/*current-user-id*
+                                       :context (or context :question)})))))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
@@ -635,7 +635,9 @@
                                                                       (:entity_id card-before-update))})
           card-updates                       (merge card-updates
                                                     (when (and (some? type)
-                                                               is-model-after-update?)
+                                                               is-model-after-update?
+                                                               ;; leave display unchanged if explicitly set to "list"
+                                                               (not (contains? #{"list" :list} (get card-updates :display))))
                                                       {:display :table})
                                                     (when (and
                                                            (api/column-will-change? :dashboard_id
@@ -861,9 +863,9 @@
   (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)]
     {:uuid (or existing-public-uuid
                (u/prog1 (str (random-uuid))
-                 (t2/update! :model/Card card-id
-                             {:public_uuid       <>
-                              :made_public_by_id api/*current-user-id*})))}))
+                        (t2/update! :model/Card card-id
+                                    {:public_uuid       <>
+                                     :made_public_by_id api/*current-user-id*})))}))
 
 (api.macros/defendpoint :delete "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."

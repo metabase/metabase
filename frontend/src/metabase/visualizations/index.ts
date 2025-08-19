@@ -78,6 +78,7 @@ export function getVisualization(display: VisualizationDisplay | null) {
 }
 
 export function getVisualizationRaw(series: SeriesLike) {
+  console.log("getVisualizationRaw", series);
   return visualizations.get(series[0].card.display);
 }
 

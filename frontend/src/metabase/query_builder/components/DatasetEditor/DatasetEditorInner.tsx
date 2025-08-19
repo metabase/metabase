@@ -63,6 +63,7 @@ import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
 import { TabHintToast } from "./TabHintToast";
 import { EDITOR_TAB_INDEXES } from "./constants";
+import { DatasetEditorNewSidebar } from "./DatasetEditorNewSidebar/DatasetEditorNewSidebar";
 
 type MetadataDiff = Record<string, Partial<Field>>;
 
@@ -135,6 +136,8 @@ function getSidebar(
     focusFirstField,
     onFieldMetadataChange,
     onMappedDatabaseColumnChange,
+    updateVisualizationSettings,
+    visualizationSettings,
   }: {
     datasetEditorTab: DatasetEditorTab;
     isQueryError?: unknown;
@@ -143,6 +146,8 @@ function getSidebar(
     focusFirstField: () => void;
     onFieldMetadataChange: (values: Partial<DatasetColumn>) => void;
     onMappedDatabaseColumnChange: (value: number) => void;
+    updateVisualizationSettings: (settings: VisualizationSettings) => void;
+    visualizationSettings?: VisualizationSettings | null;
   },
 ): ReactNode {
   const {
@@ -176,6 +181,26 @@ function getSidebar(
         onFieldMetadataChange={onFieldMetadataChange}
         onMappedDatabaseColumnChange={onMappedDatabaseColumnChange}
         modelIndexes={modelIndexes}
+      />
+    );
+  }
+
+  const onUpdateModelSettings = (settings: any) => {
+    updateVisualizationSettings(settings);
+  };
+
+  if (datasetEditorTab === "metadata") {
+    if (isQueryError) {
+      return null;
+    }
+    if (!focusedField) {
+      // Returning a div, so the sidebar is visible while the data is loading.
+      return <div />;
+    }
+    return (
+      <DatasetEditorNewSidebar
+        onUpdateSettings={onUpdateModelSettings}
+        settings={visualizationSettings}
       />
     );
   }
@@ -243,7 +268,6 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   } = props;
 
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
-  const isDirty = isModelQueryDirty || isMetadataDirty;
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const fields = useMemo(
     () =>
@@ -253,6 +277,21 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       ),
     [resultsMetadata, visualizationSettings],
   );
+
+  const [editedVisualizationSettings, setEditedVisualizationSettings] =
+    useState(visualizationSettings);
+  useEffect(() => {
+    if (visualizationSettings && !editedVisualizationSettings) {
+      setEditedVisualizationSettings(visualizationSettings);
+    }
+  }, [visualizationSettings, editedVisualizationSettings]);
+  // const isDirty = isModelQueryDirty || isMetadataDirty;
+  const [isDirty, setIsDirty] = useState(
+    () => isModelQueryDirty || isMetadataDirty,
+  );
+  useEffect(() => {
+    setIsDirty((isDirty) => isDirty || isModelQueryDirty || isMetadataDirty);
+  }, [isModelQueryDirty, isMetadataDirty]);
 
   const { data: modelIndexes } = useListModelIndexesQuery(
     {
@@ -389,12 +428,26 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
     const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
+    const questionWithVisualizationSettings =
+      questionWithMetadata.updateSettings(
+        editedVisualizationSettings as VisualizationSettings,
+      );
+
+    debugger;
 
     if (canBeDataset && isBrandNewDataset) {
-      await updateQuestion(questionWithMetadata, { rerunQuery: false });
+      await updateQuestion(questionWithVisualizationSettings, {
+        rerunQuery: false,
+      });
+      setEditedVisualizationSettings(
+        questionWithVisualizationSettings.settings(),
+      );
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(questionWithMetadata, { rerunQuery: true });
+      await onSave(questionWithVisualizationSettings, { rerunQuery: true });
+      setEditedVisualizationSettings(
+        questionWithVisualizationSettings.settings(),
+      );
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {
@@ -409,6 +462,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     setQueryBuilderMode,
     runQuestionQuery,
     onOpenModal,
+    editedVisualizationSettings,
   ]);
 
   const handleColumnSelect = useCallback(
@@ -529,6 +583,22 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       focusFirstField,
       onFieldMetadataChange,
       onMappedDatabaseColumnChange,
+      updateVisualizationSettings: (settings) => {
+        setEditedVisualizationSettings(settings);
+        setIsDirty(true);
+
+        if (
+          settings.viewSettings?.defaultView &&
+          editedVisualizationSettings?.viewSettings?.defaultView !==
+            settings.viewSettings.defaultView
+        ) {
+          const nextQuestion = question.setDisplay(
+            settings.viewSettings.defaultView,
+          );
+          updateQuestion(nextQuestion);
+        }
+      },
+      visualizationSettings: editedVisualizationSettings,
     },
   );
 

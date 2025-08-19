@@ -57,8 +57,14 @@ function getSettingDefinitionsForSeries(series) {
   }
   const visualization = getVisualizationRaw(series);
   const definitions = {
+    // ...series?.[0]?.card?.visualization_settings,
     ...COMMON_SETTINGS,
     ...(visualization.settings || {}),
+    // TODO: Ask if this approach is viable:
+    viewSettings: {
+      defaultView: "table",
+      ...series?.[0]?.card?.visualization_settings?.viewSettings,
+    },
   };
   for (const id in definitions) {
     definitions[id].id = id;

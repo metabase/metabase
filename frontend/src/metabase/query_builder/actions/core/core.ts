@@ -250,6 +250,7 @@ export const apiUpdateQuestion = (
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     const originalQuestion = getOriginalQuestion(getState());
+    debugger;
     question = question || getQuestion(getState());
 
     const isResultDirty = getIsResultDirty(getState());
@@ -370,6 +371,7 @@ async function reduxUpdateQuestion(
   { excludeDatasetQuery = false, excludeVisualisationSettings = false },
 ) {
   const fullCard = question.card();
+  debugger;
 
   const keysToOmit = [
     excludeDatasetQuery ? "dataset_query" : null,
