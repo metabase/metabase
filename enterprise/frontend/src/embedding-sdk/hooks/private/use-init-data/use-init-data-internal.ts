@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -49,21 +49,34 @@ export const useInitDataInternal = ({
   reduxStore,
   authConfig,
 }: InitDataLoaderParameters) => {
-  // react calls some lifecycle hooks twice in dev mode, the auth init fires some http requests and when it's called twice,
-  // it fires them twice as well, making debugging harder as they show up twice in the network tab and in the logs
-  const hasBeenInitialized = useRef(false);
-
   const dispatch = reduxStore.dispatch;
 
   const isAuthUninitialized = () =>
     reduxStore.getState().sdk.loginStatus.status === "uninitialized";
 
   const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
+  const sdkPackageVersion = getEmbeddingSdkPackageBuildData().version ?? null;
 
-  // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
-  // This is the case for example for the locale json files
+  // We have to initialize the API fields before other possible API calls
   if (api.basename !== authConfig.metabaseInstanceUrl) {
     api.basename = authConfig.metabaseInstanceUrl;
+  }
+
+  if (!api.requestClient) {
+    api.requestClient = {
+      name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      version: sdkPackageVersion,
+    };
+  }
+
+  if (!api.onResponseError) {
+    api.onResponseError = ({
+      metabaseVersion,
+    }: {
+      metabaseVersion: string;
+    }) => {
+      dispatch(setMetabaseInstanceVersion(metabaseVersion));
+    };
   }
 
   useEffect(() => {
@@ -77,34 +90,13 @@ export const useInitDataInternal = ({
     }
   }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
 
-  useMount(function initAuthAndConfigureApi() {
-    if (hasBeenInitialized.current) {
-      return;
+  useMount(function initializeData() {
+    if (isAuthUninitialized()) {
+      dispatch(initAuth(authConfig));
     }
+  });
 
+  useMount(function registerVisualizations() {
     registerVisualizationsOnce();
-
-    if (!isAuthUninitialized()) {
-      return;
-    }
-
-    hasBeenInitialized.current = true;
-
-    dispatch(initAuth(authConfig));
-
-    const sdkPackageVersion = getEmbeddingSdkPackageBuildData().version ?? null;
-
-    api.requestClient = {
-      name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-      version: sdkPackageVersion,
-    };
-
-    api.onResponseError = ({
-      metabaseVersion,
-    }: {
-      metabaseVersion: string;
-    }) => {
-      dispatch(setMetabaseInstanceVersion(metabaseVersion));
-    };
   });
 };
