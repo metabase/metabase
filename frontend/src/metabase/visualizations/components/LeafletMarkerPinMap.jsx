@@ -25,33 +25,71 @@ export default class LeafletMarkerPinMap extends LeafletMap {
     super.componentDidUpdate(prevProps, prevState);
 
     try {
-      const { pinMarkerLayer } = this;
-      const { points } = this.props;
-
-      const markers = pinMarkerLayer.getLayers();
-      const max = Math.max(points.length, markers.length);
-      for (let i = 0; i < max; i++) {
-        if (i >= points.length) {
-          pinMarkerLayer.removeLayer(markers[i]);
-        }
-        if (i >= markers.length) {
-          const marker = this._createMarker(i);
-          pinMarkerLayer.addLayer(marker);
-          markers.push(marker);
-        }
-
-        if (i < points.length) {
-          const { lat, lng } = markers[i].getLatLng();
-          if (lng !== points[i][0] || lat !== points[i][1]) {
-            markers[i].setLatLng(points[i]);
-          }
-        }
-      }
+      this._createMarkers(this.props.points);
     } catch (err) {
       console.error(err);
       this.props.onRenderError(err.message || err);
     }
   }
+
+  _createMarkers = (points) => {
+    const { pinMarkerLayer } = this;
+    if (!this.map) {
+      return;
+    }
+
+    const mapBounds = this.map?.getBounds?.();
+    if (!mapBounds) {
+      return;
+    }
+    const mapWest = mapBounds.getWest();
+    const mapEast = mapBounds.getEast();
+
+    // if map crosses dateline, we need wrapping
+    const crossesLeftDateline = mapWest < -180 && mapEast > -180;
+    const crossesRightDateline = mapWest < 180 && mapEast > 180;
+    const shouldGetWrappedPoints = crossesLeftDateline || crossesRightDateline;
+
+    const wrappedPoints = shouldGetWrappedPoints
+      ? points.flatMap((point) => {
+          const [lat, lng] = point;
+          const points = [point];
+
+          // note: for wide screens, we may need extra copies on both sides
+          if (crossesLeftDateline) {
+            // copy on the left side
+            points.push([lat, lng - 360]);
+          }
+
+          if (crossesRightDateline) {
+            // copy on the right side
+            points.push([lat, lng + 360]);
+          }
+          return points;
+        })
+      : points;
+
+    const markers = pinMarkerLayer.getLayers();
+    const max = Math.max(wrappedPoints.length, markers.length);
+    for (let i = 0; i < max; i++) {
+      if (i >= wrappedPoints.length) {
+        pinMarkerLayer.removeLayer(markers[i]); // remove excess markers
+      }
+      if (i >= markers.length) {
+        // create new markers for new points
+        const marker = this._createMarker(i);
+        pinMarkerLayer.addLayer(marker);
+        markers.push(marker);
+      }
+
+      if (i < wrappedPoints.length) {
+        const { lat, lng } = markers[i].getLatLng();
+        if (lng !== wrappedPoints[i][0] || lat !== wrappedPoints[i][1]) {
+          markers[i].setLatLng(wrappedPoints[i]); // if any marker doesn't match the point, update it
+        }
+      }
+    }
+  };
 
   _createMarker = (rowIndex) => {
     const marker = L.marker([0, 0], { icon: this.pinMarkerIcon });
