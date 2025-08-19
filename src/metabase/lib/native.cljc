@@ -95,7 +95,7 @@
         snippet-tags (set/select #(:from-snippet (existing-tags %)) existing-tag-names)
         tags     (if (= 1 (count new-tags) (count (set/difference old-tags snippet-tags)))
                    ;; With exactly one change, we treat it as a rename.
-                   (rename-template-tag existing-tags (first old-tags) (first new-tags))
+                   (rename-template-tag existing-tags (first (set/difference old-tags snippet-tags)) (first new-tags))
                    ;; With more than one change, just drop the old ones and add the new.
                    (merge (into {}
                                 (keep (fn [[name tag]]
