@@ -15,7 +15,13 @@ interface Props {
 
 export function Sidesheet({ actions, children, onClose }: Props) {
   return (
-    <Modal.Root h="100dvh" opened variant="sidesheet" onClose={onClose}>
+    <Modal.Root
+      h="100dvh"
+      opened
+      trapFocus={false}
+      variant="sidesheet"
+      onClose={onClose}
+    >
       <Modal.Content
         classNames={{
           content: cx(S.content, Animation.slideLeft),
