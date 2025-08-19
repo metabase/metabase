@@ -95,7 +95,13 @@
                    ;; With exactly one change, we treat it as a rename.
                    (rename-template-tag existing-tags (first old-tags) (first new-tags))
                    ;; With more than one change, just drop the old ones and add the new.
-                   (merge (m/remove-keys old-tags existing-tags)
+                   (merge (into {}
+                                (keep (fn [[name tag]]
+                                        (let [from-query (not (old-tags name))]
+                                          (when (or from-query
+                                                    (:from-snippet tag))
+                                            [name (assoc tag :from-query from-query)]))))
+                                existing-tags)
                           (m/filter-keys new-tags query-tags)))]
     (update-vals tags finish-tag)))
 

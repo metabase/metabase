@@ -251,10 +251,14 @@
       (lib.util/update-query-stage 0 (fn [{existing-tags :template-tags :as stage}]
                                        (let [snippet-tags (snippet-tags metadata-provider existing-tags)]
                                          (assoc stage :template-tags
-                                                (->> (m/filter-kv (fn [name tag]
-                                                                    (or (get snippet-tags name)
-                                                                        (not (:from-snippet tag))))
-                                                                  existing-tags)
+                                                (->> (into {}
+                                                           (keep (fn [[name tag]]
+                                                                   (let [from-snippet (boolean (get snippet-tags name))]
+                                                                     (when (or from-snippet
+                                                                               (not (:from-snippet tag))
+                                                                               (:from-query tag))
+                                                                       [name (assoc tag :from-snippet from-snippet)]))))
+                                                           existing-tags)
                                                      (merge snippet-tags)))))))))
 
 (defmethod query-method :metadata/table
