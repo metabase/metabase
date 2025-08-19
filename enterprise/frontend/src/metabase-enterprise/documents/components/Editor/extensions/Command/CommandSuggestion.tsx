@@ -10,6 +10,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   Box,
   Divider,
@@ -138,11 +139,15 @@ const CommandSuggestionComponent = forwardRef<
     () => [
       {
         items: [
-          {
-            icon: "metabot",
-            label: t`Ask Metabot`,
-            command: "metabot",
-          },
+          ...(PLUGIN_METABOT.isEnabled()
+            ? ([
+                {
+                  icon: "metabot",
+                  label: t`Ask Metabot`,
+                  command: "metabot",
+                },
+              ] as const)
+            : []),
           {
             icon: "lineandbar",
             label: t`Chart`,
