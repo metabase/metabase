@@ -113,11 +113,16 @@
   (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
 
 (defn- partial-revokes-enabled?
-  [db]
-  (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db) ["SHOW VARIABLES LIKE 'partial_revokes';"])
-      first
-      :value
-      (= "ON")))
+  [driver db]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db
+   nil
+   (fn [^java.sql.Connection conn]
+     (-> (jdbc/query {:connection conn} "SHOW VARIABLES LIKE 'partial_revokes';")
+         first
+         :value
+         (= "ON")))))
 
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
@@ -125,12 +130,11 @@
   false
   #_(and (= driver :mysql) (not (mariadb? db))))
 
-(defmethod driver/database-supports? [:mysql :checking-table-writable]
+(defmethod driver/database-supports? [:mysql :check-table-writable]
   [driver _feat db]
-  ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
   (and (= driver :mysql)
        (not (mariadb? db))
-       (partial-revokes-enabled? db)))
+       (not (partial-revokes-enabled? driver db))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |

@@ -161,16 +161,17 @@
                     "EXTERNAL TABLE" "DYNAMIC_TABLE"]))
 
 (defn- build-privilege-map
-  "Build a nested map of schema -> table -> set of permissions from current user table privileges."
+  "Build a nested map of schema -> table -> set of permissions from current user table privileges.
+  There are 2 permissions:
+  - :select - self-explained
+  - :write - must have insert, update, and delete permisisons. used for table data editing"
   [driver conn]
   (->> (sql-jdbc.sync.interface/current-user-table-privileges driver {:connection conn})
        (reduce (fn [acc {:keys [schema table select insert update delete]}]
                  (assoc-in acc [schema table]
                            (cond-> #{}
                              select (conj :select)
-                             insert (conj :insert)
-                             update (conj :update)
-                             delete (conj :delete))))
+                             (and insert update delete) (conj :write))))
                {})))
 
 (defn have-privilege-fn
@@ -179,7 +180,7 @@
 
    Privilege types:
    - :select - Can read from the table
-   - :insert, :update, :delete - Individual write permissions
+   - :write - if table has insert, update, delete permissions
 
   This function shouldn't be called with `map` or anything alike, instead use it as a cache function like so:
 
@@ -199,18 +200,18 @@
         (if (#{[:postgres "FOREIGN TABLE"]}
              [driver ttype])
           (case privilege
-            :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-            (:insert :update :delete) false) ; Foreign tables typically don't support write operations
+            :select   (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+            :write nil) ; Foreign tables typically don't support write operations
           (contains? (get-in privilege-map [schema table] #{}) privilege))))
-    (let [can-check-writable?         (driver/database-supports? driver :checking-table-writable conn)
-          check-writable-privlege-map (when can-check-writable?
-                                        (build-privilege-map driver conn))]
+    (let [can-check-writable?          (driver/database-supports? driver :check-table-writable {:connection conn})
+          check-writable-privilege-map (when can-check-writable?
+                                         (build-privilege-map driver conn))]
       (fn [{schema :schema table :name} privilege]
         (case privilege
           :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-          (:insert :update :delete) (if check-writable-privlege-map
-                                      (contains? (get-in check-writable-privlege-map [schema table] #{}) privilege)
-                                      false))))))
+          :write  (if can-check-writable?
+                    (contains? (get-in check-writable-privilege-map [schema table] #{}) privilege)
+                    nil))))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -230,7 +231,7 @@
                                (map (fn [table]
                                       (-> table
                                           (dissoc :type)
-                                          (assoc :is_writable (every? (partial privilege-fn table) [:insert :update :delete]))))))
+                                          (assoc :is_writable (privilege-fn table :write))))))
                          (db-tables driver metadata schema db-name-or-nil))))
               syncable-schemas)))
 
@@ -254,7 +255,7 @@
       (map (fn [table]
              (-> table
                  (dissoc :type)
-                 (assoc :is_writable (every? (partial privilege-fn table) [:insert :update :delete]))))))
+                 (assoc :is_writable (privilege-fn table :write))))))
      (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
 (defn db-or-id-or-spec->database
