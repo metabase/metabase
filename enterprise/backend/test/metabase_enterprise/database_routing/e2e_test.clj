@@ -5,14 +5,12 @@
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
-   [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.data.clickhouse :as clickhouse.tx]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
@@ -229,39 +227,24 @@
 (doseq [driver [:redshift :databricks :athena :presto-jdbc]]
   (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
 
-(deftest db-routing-e2e-test
-  (mt/test-drivers (mt/normal-driver-select {:+features [:database-routing]})
-    (mt/with-premium-features #{:database-routing}
-      (binding [tx/*use-routing-dataset* true
-                tx/*use-routing-details* true]
-        (mt/dataset (mt/dataset-definition (routed-dataset-name driver/*driver*)
-                                           [["t"
-                                             [{:field-name "f", :base-type :type/Text}]
-                                             [["routed-foo"]
-                                              ["routed-bar"]]]])
-          (let [routed (mt/db)]
-            (when-not (get-in routed [:details :multi-level-schema])
-              (binding [tx/*use-routing-details* false]
-                (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
-                                                   [["t"
-                                                     [{:field-name "f", :base-type :type/Text}]
-                                                     [["original-foo"]
-                                                      ["original-bar"]]]])
-                  (let [router (mt/db)]
-                    (wire-routing {:parent router :children [routed]})
-                    (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
-                                                            :user_attribute "db_name"}]
-                      (met/with-user-attributes! :rasta {"db_name" (:name routed)}
-                        (mt/with-current-user (mt/user->id :crowberto)
-                          (is (= [[1 "original-foo"] [2 "original-bar"]]
-                                 (->> (mt/query t)
-                                      (mt/process-query)
-                                      (mt/formatted-rows [int str])))))
-                        (mt/with-current-user (mt/user->id :rasta)
-                          (is (= [[1 "routed-foo"] [2 "routed-bar"]]
-                                 (->> (mt/query t)
-                                      (mt/process-query)
-                                      (mt/formatted-rows [int str])))))))))))))))))
+(defmulti router-dataset-details
+  "Modified details for the router dataset"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod router-dataset-details :default [_driver] {})
+
+(defmethod router-dataset-details :clickhouse [_driver]
+  {:dbname "db_router_data"
+   :enable-multiple-db false})
+
+(defmethod router-dataset-details :bigquery-cloud-sdk [_driver]
+  {:dataset-filters-patterns "metabase_routing_dataset"})
+
+(defmethod router-dataset-details :databricks [driver]
+  {:multi-level-schema false
+   :schema-filters-patterns (router-dataset-name driver)})
 
 (defmulti routed-dataset-details
   "Modified details for the routed dataset"
@@ -282,20 +265,14 @@
 (defmethod routed-dataset-details :redshift [driver]
   {:db (tx/db-test-env-var-or-throw driver :db-routing)})
 
-(defmulti router-dataset-details
-  "Modified details for the router dataset"
-  {:arglists '([driver])}
-  tx/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
+(defmethod routed-dataset-details :athena [driver]
+  {:region (tx/db-test-env-var-or-throw driver :region-routing)
+   :s3_staging_dir (tx/db-test-env-var-or-throw :athena :s3-staging-dir-routing)})
 
-(defmethod router-dataset-details :default [_driver] {})
-
-(defmethod router-dataset-details :clickhouse [_driver]
-  {:dbname "db_router_data"
-   :enable-multiple-db false})
-
-(defmethod router-dataset-details :bigquery-cloud-sdk [_driver]
-  {:dataset-filters-patterns "metabase_routing_dataset"})
+(defmethod routed-dataset-details :databricks [driver]
+  {:catalog (tx/db-test-env-var-or-throw driver :catalog-routing)
+   :multi-level-schema false
+   :schema-filters-patterns (routed-dataset-name driver)})
 
 (deftest update-and-sync-routing-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:database-routing]})

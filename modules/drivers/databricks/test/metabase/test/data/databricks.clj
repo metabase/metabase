@@ -51,9 +51,7 @@
 
 (defmethod tx/dbdef->connection-details :databricks
   [_driver _connection-type {:keys [database-name] :as _dbdef}]
-  (let [catalog (if tx/*use-routing-details*
-                  (tx/db-test-env-var-or-throw :databricks :catalog-routing)
-                  (tx/db-test-env-var-or-throw :databricks :catalog))
+  (let [catalog (tx/db-test-env-var-or-throw :databricks :catalog)
         multi-level? (tx/db-test-env-var :databricks :multi-level-schema)
         ;; Databricks' namespace model: catalog, schema, table. With current implementation user can add all schemas
         ;; in catalog or all catalogs on one Metabase database connection. Following expression generates schema

@@ -79,7 +79,7 @@
   (merge
    {:host     (mt/db-test-env-var :clickhouse :host)
     :port     (Integer/parseInt (mt/db-test-env-var :clickhouse :port))
-    :enable-multiple-db (not tx/*use-routing-dataset*)}
+    :enable-multiple-db true}
    (when-let [user (mt/db-test-env-var :clickhouse :user)]
      {:user user})
    (when-let [password (mt/db-test-env-var :clickhouse :password)]
