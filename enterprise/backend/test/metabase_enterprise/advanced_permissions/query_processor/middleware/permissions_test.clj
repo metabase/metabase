@@ -12,7 +12,7 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.reducible :as qp.reducible]
-[metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
    [metabase.util :as u])
