@@ -14,6 +14,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -91,7 +92,8 @@
   [query-tags query-tag-names existing-tags existing-tag-names]
   (let [new-tags (set/difference query-tag-names existing-tag-names)
         old-tags (set/difference existing-tag-names query-tag-names)
-        tags     (if (= 1 (count new-tags) (count old-tags))
+        snippet-tags (set/select #(:from-snippet (existing-tags %)) existing-tag-names)
+        tags     (if (= 1 (count new-tags) (count (set/difference old-tags snippet-tags)))
                    ;; With exactly one change, we treat it as a rename.
                    (rename-template-tag existing-tags (first old-tags) (first new-tags))
                    ;; With more than one change, just drop the old ones and add the new.
