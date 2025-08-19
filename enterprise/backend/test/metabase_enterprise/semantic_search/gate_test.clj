@@ -287,17 +287,19 @@
 
     (with-open [_ (open-tables! pgvector index-metadata)]
 
-      (let [[id1]
+      (let [[id1 _created-at1]
             (semantic.index-metadata/record-new-index-table!
              pgvector
              index-metadata
              index1)
 
-            [id2]
+            [id2 created-at2]
             (semantic.index-metadata/record-new-index-table!
              pgvector
              index-metadata
-             index2)]
+             index2)
+
+            index2 (assoc index2 :id id2 :index-created-at created-at2)]
 
         (semantic.gate/flush-watermark! pgvector index-metadata index2 watermark)
 
