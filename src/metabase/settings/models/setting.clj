@@ -689,6 +689,7 @@
          (ex-info (format "Trying to read database-local setting %s without having run with-database" (:name setting-def))
                   {:setting setting-def}))
 
+        ;; This will likely mean that we're in a test using hand-crafted metadata. Just stub the instance too.
         (and (:enabled-for-db? setting-def) (not *database*))
         (log/warnf "Skipping enabled-for-db? check for %s as we don't have the underlying toucan2 db instance."
                    (:name setting-def))))
