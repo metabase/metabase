@@ -168,10 +168,11 @@
 
 (defn custom-disabled-reasons!
   "Expose custom reasons for a setting being disabled to the admin panel.
-  For convenience, we strip nil reasons, and no-op if nothing remains."
+  For convenience, we strip nil reasons, and no-op with a truthy return if nothing remains."
   [reasons]
-  (when-let [reasons (seq (remove nil? reasons))]
-    (throw (ex-info "Setting is not enabled for this database" {:setting/disabled-reasons reasons}))))
+  (if-let [reasons (seq (remove nil? reasons))]
+    (throw (ex-info "Setting is not enabled for this database" {:setting/disabled-reasons reasons}))
+    true))
 
 ;; This is called `LocalOption` rather than `DatabaseLocalOption` or something like that because we intend to also add
 ;; User-Local Settings at some point in the future. The will use the same options

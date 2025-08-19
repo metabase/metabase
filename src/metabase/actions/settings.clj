@@ -2,7 +2,8 @@
   (:require
    [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
-   [metabase.warehouses.models.database :as database]))
+   [metabase.warehouses.models.database :as database]
+   [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
   (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
@@ -39,12 +40,9 @@
                      (setting/custom-disabled-reasons!
                       [(when (database/is-destination? db) db-routing-reason)
                        (cond
-                         ;; TODO: if sync is currently running for this database
-                         '.. busy-sync-reason
-                         ;; TODO: if there is at least one table for this database with is_writable = true
-                         '.. nil
-                         ;; TODO: if there is at least one table for this database with is_writable = nil
-                         '.. missing-permissions-reason
+                         (= (:initial_sync_status db) "incomplete") busy-sync-reason
+                         (t2/exists? :model/Table :db_id (:id db) #_#_:is_writable true) nil
+                         (t2/exists? :model/Table :db_id (:id db) #_#_:is_writable nil) missing-permissions-reason
                          :else no-writable-tables-reason)]))
   :type             :boolean
   :visibility       :public
