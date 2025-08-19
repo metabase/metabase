@@ -18,6 +18,7 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -37,10 +38,8 @@
 
 (use-fixtures :each (fn [thunk] (search.tu/with-new-search-if-available (thunk))))
 
-;; `reindex!` below is ok in a parallel test since it's not actually executing anything
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                      (binding [search.ingestion/*force-sync* true]
                         (thunk))))
 
 (def ^:private default-search-row
