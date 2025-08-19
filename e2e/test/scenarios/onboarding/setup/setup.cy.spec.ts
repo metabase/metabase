@@ -244,27 +244,8 @@ describe("scenarios > setup", () => {
   it("should not show 'Sample Database' if env var is explicitly set to false during setup", () => {
     H.mockSessionProperty("has-sample-database?", false);
 
-    cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
-    );
+    navigateToDatabaseStep();
 
-    skipWelcomePage();
-    selectPreferredLanguageAndContinue();
-
-    cy.findByTestId("setup-forms").within(() => {
-      const password = "12341234";
-      cy.findByLabelText("Create a password").should("be.empty").type(password);
-      cy.findByLabelText("Confirm your password").type(password);
-      cy.button("Next").click();
-
-      cy.log("Just go through the usage questionaire");
-      cy.findByLabelText("What will you use Metabase for?").should(
-        "be.visible",
-      );
-      cy.button("Next").click();
-    });
-
-    cy.log("We are now on the database step");
     cy.findByLabelText("Add your data").within(() => {
       cy.button("Continue with sample data").should("not.exist");
       cy.button("I'll add my data later").click();
@@ -272,6 +253,28 @@ describe("scenarios > setup", () => {
 
     cy.log("We're done with the database step");
     cy.findByLabelText("I'll add my own data later").should("be.visible");
+  });
+
+  it("should create a new user upon inviting a teammate", () => {
+    H.mockSessionProperty("email-configured?", true);
+
+    navigateToDatabaseStep();
+
+    cy.findByLabelText("Setup section").click();
+    cy.findByLabelText("First name").type("TeammateFirstName");
+    cy.findByLabelText("Last name").type("TeammateLastName");
+    cy.findByLabelText("Email").type("teammate@metabase.test");
+    cy.intercept("POST", "/api/user").as("createUser");
+
+    cy.button("Send invitation").click();
+
+    cy.wait("@createUser").then((interception) => {
+      expect(interception.request.body).to.include({
+        first_name: "TeammateFirstName",
+        last_name: "TeammateLastName",
+        email: "teammate@metabase.test",
+      });
+    });
   });
 
   it("should allow a quick setup for the 'embedding' use case", () => {
@@ -729,4 +732,27 @@ const typeToken = (token: string) => {
     // hides the token from failure screenshots
     .invoke("attr", "type", "password")
     .type(token, { log: false });
+};
+
+// Navigate to the setup page, fills user data, password, skips usage questionnaire and proceeds to the database step
+const navigateToDatabaseStep = () => {
+  cy.visit(
+    "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+  );
+
+  skipWelcomePage();
+  selectPreferredLanguageAndContinue();
+
+  cy.findByTestId("setup-forms").within(() => {
+    const password = "12341234";
+    cy.findByLabelText("Create a password").should("be.empty").type(password);
+    cy.findByLabelText("Confirm your password").type(password);
+    cy.button("Next").click();
+
+    cy.log("Just go through the usage questionnaire");
+    cy.findByLabelText("What will you use Metabase for?").should("be.visible");
+    cy.button("Next").click();
+  });
+
+  cy.log("We are now on the database step");
 };
