@@ -14,6 +14,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
@@ -1140,3 +1141,75 @@
                                                                     :strategy  :num-bins})]
       (is (lib.equality/= col same-binning))
       (is (not (lib.equality/= col different-binning))))))
+
+(deftest ^:parallel duplicate-names-selection-test
+  (testing "Should be able to distinguish columns with the same name from a card with self join"
+    (let [mp        (lib.tu/mock-metadata-provider
+                     meta/metadata-provider
+                     {:cards [{:id            1
+                               :dataset-query (lib.tu.macros/mbql-query orders
+                                                {:joins  [{:source-table $$orders
+                                                           :alias        "o"
+                                                           :fields       [&o.orders.id]
+                                                           :condition    [:= $id &o.orders.id]}]
+                                                 :fields [$id
+                                                          &o.orders.id]})}]})
+          card-meta (lib.metadata/card mp 1)
+          id-col    (m/find-first (comp #{"ID"} :name)
+                                  (lib/returned-columns (lib/query mp card-meta)))
+          query     (-> (lib/query mp (lib.metadata/table mp (meta/id :reviews)))
+                        (lib/join (-> (lib/join-clause card-meta
+                                                       [(lib/= (lib.metadata/field mp (meta/id :reviews :id))
+                                                               id-col)])
+                                      (lib/with-join-fields :all))))
+          visible   (lib.metadata.calculation/visible-columns query -1)
+          returned  (lib.metadata.calculation/returned-columns query -1)
+          marked    (lib.equality/mark-selected-columns query -1 visible returned)]
+      (is (=? [{:lib/source-column-alias "ID",         :display-name "ID"}
+               {:lib/source-column-alias "PRODUCT_ID", :display-name "Product ID"}
+               {:lib/source-column-alias "REVIEWER",   :display-name "Reviewer"}
+               {:lib/source-column-alias "RATING",     :display-name "Rating"}
+               {:lib/source-column-alias "BODY",       :display-name "Body"}
+               {:lib/source-column-alias "CREATED_AT", :display-name "Created At"}
+               {:lib/source-column-alias "ID",         :display-name "Card 1 → ID"}
+               {:lib/source-column-alias "o__ID",      :display-name "Card 1 → ID"}
+               {:lib/source-column-alias "ID",         :display-name "ID"}
+               {:lib/source-column-alias "EAN",        :display-name "Ean"}
+               {:lib/source-column-alias "TITLE",      :display-name "Title"}
+               {:lib/source-column-alias "CATEGORY",   :display-name "Category"}
+               {:lib/source-column-alias "VENDOR",     :display-name "Vendor"}
+               {:lib/source-column-alias "PRICE",      :display-name "Price"}
+               {:lib/source-column-alias "RATING",     :display-name "Rating"}
+               {:lib/source-column-alias "CREATED_AT", :display-name "Created At"}]
+              (map #(select-keys % [:lib/source-column-alias :display-name])
+                   visible)))
+      (is (=? [{:lib/source-column-alias "ID",         :lib/desired-column-alias "ID",            :display-name "ID"}
+               {:lib/source-column-alias "PRODUCT_ID", :lib/desired-column-alias "PRODUCT_ID"     :display-name "Product ID"}
+               {:lib/source-column-alias "REVIEWER",   :lib/desired-column-alias "REVIEWER",      :display-name "Reviewer"}
+               {:lib/source-column-alias "RATING",     :lib/desired-column-alias "RATING",        :display-name "Rating"}
+               {:lib/source-column-alias "BODY",       :lib/desired-column-alias "BODY",          :display-name "Body"}
+               {:lib/source-column-alias "CREATED_AT", :lib/desired-column-alias "CREATED_AT"     :display-name "Created At"}
+               {:lib/source-column-alias "ID",         :lib/desired-column-alias "Card 1__ID",    :display-name "Card 1 → ID"}
+               {:lib/source-column-alias "o__ID",      :lib/desired-column-alias "Card 1__o__ID", :display-name "Card 1 → ID"}]
+              (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias :display-name])
+                   returned)))
+      (is (=? [{:lib/source-column-alias "ID",         :display-name "ID",         :selected? true}
+               {:lib/source-column-alias "PRODUCT_ID", :display-name "Product ID", :selected? true}
+               {:lib/source-column-alias "REVIEWER",   :display-name "Reviewer",   :selected? true}
+               {:lib/source-column-alias "RATING",     :display-name "Rating",     :selected? true}
+               {:lib/source-column-alias "BODY",       :display-name "Body",       :selected? true}
+               {:lib/source-column-alias "CREATED_AT", :display-name "Created At", :selected? true}
+               ;; the following two Card 1 → ID should have :selected? true
+               {:lib/source-column-alias "ID",    :display-name "Card 1 → ID", :selected? true} ; FIXME - these should be true
+               {:lib/source-column-alias "o__ID", :display-name "Card 1 → ID", :selected? true}
+               ;; these are implicitly joinable fields, :selected? false is right
+               {:lib/source-column-alias "ID",         :display-name "ID",         :selected? false}
+               {:lib/source-column-alias "EAN",        :display-name "Ean",        :selected? false}
+               {:lib/source-column-alias "TITLE",      :display-name "Title",      :selected? false}
+               {:lib/source-column-alias "CATEGORY",   :display-name "Category",   :selected? false}
+               {:lib/source-column-alias "VENDOR",     :display-name "Vendor",     :selected? false}
+               {:lib/source-column-alias "PRICE",      :display-name "Price",      :selected? false}
+               {:lib/source-column-alias "RATING",     :display-name "Rating",     :selected? false}
+               {:lib/source-column-alias "CREATED_AT", :display-name "Created At", :selected? false}]
+              (map #(select-keys % [:lib/source-column-alias :display-name :selected?])
+                   marked))))))
