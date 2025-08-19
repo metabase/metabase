@@ -1,7 +1,6 @@
 (ns metabase.lib.query
   (:refer-clojure :exclude [remove])
   (:require
-   [clojure.stacktrace :as stacktrace]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
@@ -233,9 +232,9 @@
                                             second
                                             (select-keys [:base-type :effective-type])))
                                        (catch #?(:clj Exception :cljs :default) _
-                                         ;; This currently does not find expressions defined in join stages
+                                        ;; This currently does not find expressions defined in join stages
                                          nil))]
-                       ;; Fallback if metadata is missing
+                      ;; Fallback if metadata is missing
                        [:expression (merge found-ref opts) expression-name]))))
              (m/indexed stages))))))
 
