@@ -36,7 +36,7 @@ describe("parseConnectionUri - whitespace and encoding", () => {
     );
   });
 
-  it("should handle special characters in user pass", () => {
+  it("should handle special characters in username and password", () => {
     const connectionString =
       "postgres://me%40ry:pe%40ce%26lo%2F3@host:5432/dbname";
     const result = parseConnectionUriRegex(connectionString, "postgres");
@@ -48,6 +48,20 @@ describe("parseConnectionUri - whitespace and encoding", () => {
         database: "dbname",
         username: "me@ry",
         password: "pe@ce&lo/3",
+      }),
+    );
+  });
+
+  it("should handle malformed uri component", () => {
+    const connectionString = "postgres://me%ZZry@host:5432/dbname";
+    const result = parseConnectionUriRegex(connectionString, "postgres");
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "postgres",
+        host: "host",
+        port: "5432",
+        database: "dbname",
+        username: "me%ZZry",
       }),
     );
   });
