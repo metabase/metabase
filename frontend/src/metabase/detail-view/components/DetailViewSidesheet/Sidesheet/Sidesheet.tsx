@@ -29,7 +29,7 @@ export function Sidesheet({ actions, children, onClose }: Props) {
           <Group gap="lg" justify="flex-end" px="xl">
             {actions}
 
-            <Modal.CloseButton aria-label={t`Close`} />
+            <Modal.CloseButton aria-label={t`Close`} ml={0} />
           </Group>
 
           <Stack className={S.scrollable} gap={0} h="100%">

@@ -32,7 +32,16 @@ export function ObjectDetailWrapper({
   );
 
   if (shouldShowModal) {
-    const { series, table: tableWrapper, zoomedRow, zoomedRowID } = rest;
+    const {
+      canZoomNextRow,
+      canZoomPreviousRow,
+      series,
+      table: tableWrapper,
+      viewNextObjectDetail,
+      viewPreviousObjectDetail,
+      zoomedRow,
+      zoomedRowID,
+    } = rest;
     const table = tableWrapper?.getPlainObject();
     const columns = series[0]?.data?.results_metadata?.columns;
 
@@ -50,6 +59,10 @@ export function ObjectDetailWrapper({
           table={table}
           tableForeignKeys={tableForeignKeys}
           onClose={closeObjectDetail}
+          onNextClick={canZoomNextRow ? viewNextObjectDetail : undefined}
+          onPreviousClick={
+            canZoomPreviousRow ? viewPreviousObjectDetail : undefined
+          }
         />
       );
     }

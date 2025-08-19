@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import {
   DetailsGroup,
@@ -10,7 +11,7 @@ import {
   getHeaderColumns,
   getRowName,
 } from "metabase/detail-view/utils";
-import { Box, Group, Stack, rem } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Tooltip, rem } from "metabase/ui";
 import type {
   DatasetColumn,
   ForeignKey,
@@ -27,6 +28,8 @@ interface Props {
   table: Table;
   tableForeignKeys?: ForeignKey[];
   onClose: () => void;
+  onNextClick: (() => void) | undefined;
+  onPreviousClick: (() => void) | undefined;
 }
 
 export function DetailViewSidesheet({
@@ -36,13 +39,50 @@ export function DetailViewSidesheet({
   table,
   tableForeignKeys,
   onClose,
+  onNextClick,
+  onPreviousClick,
 }: Props) {
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = getRowName(columns, row) || rowId;
   const icon = getEntityIcon(table.entity_type);
 
   return (
-    <Sidesheet actions={<div>TODO</div>} onClose={onClose}>
+    <Sidesheet
+      actions={
+        <>
+          <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
+            <Button
+              c="text-dark"
+              disabled={!onPreviousClick}
+              h={20}
+              leftSection={<Icon name="chevronup" />}
+              variant="subtle"
+              style={{
+                opacity: onPreviousClick ? undefined : 0.5,
+              }}
+              w={20}
+              onClick={onPreviousClick}
+            />
+          </Tooltip>
+
+          <Tooltip disabled={!onNextClick} label={t`Next row`}>
+            <Button
+              c="text-dark"
+              disabled={!onNextClick}
+              h={20}
+              leftSection={<Icon name="chevrondown" />}
+              variant="subtle"
+              style={{
+                opacity: onNextClick ? undefined : 0.5,
+              }}
+              w={20}
+              onClick={onNextClick}
+            />
+          </Tooltip>
+        </>
+      }
+      onClose={onClose}
+    >
       <Stack data-testid="object-detail" gap={0} mih="100%">
         {headerColumns.length > 0 && (
           <Box pb="md" pt="sm" px={rem(56)}>
