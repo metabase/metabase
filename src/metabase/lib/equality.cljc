@@ -12,7 +12,6 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -420,10 +419,10 @@
       :field)     (let [plausible (if (string? ref-id)
                                     (plausible-matches-for-name a-ref columns)
                                     (plausible-matches-for-id   a-ref columns generous?))]
-      (case (count plausible)
-        0 nil
-        1 (first plausible)
-        (disambiguate-matches a-ref plausible)))
+                    (case (count plausible)
+                      0 nil
+                      1 (first plausible)
+                      (disambiguate-matches a-ref plausible)))
      (throw (ex-info "Unknown type of ref" {:ref a-ref}))))
 
   ([query stage-number a-ref-or-column columns]
@@ -559,10 +558,6 @@
                                         (keep (fn [selected-col-or-ref]
                                                 (or (find-matching-column query stage-number selected-col-or-ref cols)
                                                     (do
-                                                      (println "selected-col\n"
-                                                               (metabase.util/cprint-to-str selected-col-or-ref)) ; NOCOMMIT
-                                                      (println "cols\n"
-                                                               (metabase.util/cprint-to-str (filter #(= (:id %) 49600) cols)))
                                                       (log/warnf "[mark-selected-columns] failed to find match for %s" (pr-str selected-col-or-ref))
                                                       nil))))
                                         selected-columns-or-refs)]
