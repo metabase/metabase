@@ -6,7 +6,7 @@ interface Window {
   ReactDOMClient?: unknown;
   ReactDOMServer?: unknown;
 
-  MetabaseEmbeddingSDK?: import("embedding-sdk/types/sdk-bundle").MetabaseEmbeddingSdkBundleExports;
+  METABASE_EMBEDDING_SDK_BUNDLE?: import("embedding-sdk/types/sdk-bundle").MetabaseEmbeddingSdkBundleExports;
   METABASE_PROVIDER_PROPS_STORE?: import("embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store").MetabaseProviderPropsStore;
   METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO?: import("metabase/embedding-sdk/types/build-info").BuildInfo;
 }

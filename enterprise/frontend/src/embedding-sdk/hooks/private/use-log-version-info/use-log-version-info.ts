@@ -3,15 +3,18 @@ import { useEffect } from "react";
 import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import { isSdkPackageCompatibleWithSdkBundle } from "embedding-sdk/lib/version-utils";
 import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
+import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
 
-type Options = {
-  allowConsoleLog?: boolean;
-};
+export const useLogVersionInfo = () => {
+  const {
+    state: { props },
+  } = useMetabaseProviderPropsStore();
 
-export const useLogVersionInfo = ({ allowConsoleLog = true }: Options) => {
   const sdkPackageVersion = getEmbeddingSdkPackageBuildData()?.version;
   const sdkBundleVersion = useLazySelector(getMetabaseInstanceVersion);
+
+  const allowConsoleLog = props?.allowConsoleLog;
 
   useEffect(() => {
     if (!sdkPackageVersion || !sdkBundleVersion) {

@@ -68,4 +68,4 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   useLogVersionInfo,
 };
 
-window.MetabaseEmbeddingSDK = sdkBundleExports;
+window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
