@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import Question from "metabase-lib/v1/Question";
 
@@ -54,15 +53,14 @@ export function ObjectDetailWrapper({
       /> */
       }
       return (
-        <Sidesheet isOpen size="lg" onClose={closeObjectDetail}>
-          <DetailViewSidesheet
-            columns={columns}
-            row={zoomedRow}
-            rowId={zoomedRowID}
-            table={table}
-            tableForeignKeys={tableForeignKeys}
-          />
-        </Sidesheet>
+        <DetailViewSidesheet
+          columns={columns}
+          row={zoomedRow}
+          rowId={zoomedRowID}
+          table={table}
+          tableForeignKeys={tableForeignKeys}
+          onClose={closeObjectDetail}
+        />
       );
     }
   }

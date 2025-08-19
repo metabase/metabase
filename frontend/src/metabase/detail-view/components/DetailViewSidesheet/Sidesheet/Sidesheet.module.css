@@ -1,0 +1,23 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.content {
+  &:not([data-css-specificity-hack="🤷‍♀️"]) {
+    position: fixed;
+    height: 100dvh;
+    max-height: 100dvh;
+    inset-inline-end: 0;
+    border-radius: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+}
+
+.scrollable {
+  overflow: auto;
+}
