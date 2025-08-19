@@ -1072,6 +1072,62 @@
                {:type :native-query-snippet :id 20}]
               deps)))))
 
+(deftest ^:parallel recursive-snippet-dependencies-test
+  (testing "Recursive snippet dependencies should be resolved"
+    (let [metadata-provider (lib.tu/mock-metadata-provider
+                             {:native-query-snippets
+                              [{:lib/type :metadata/native-query-snippet
+                                :id 10
+                                :name "filter1"
+                                :template-tags {"snippet: nested1" {:type :snippet
+                                                                    :snippet-id 30
+                                                                    :snippet-name "nested1"
+                                                                    :name "snippet: nested1"
+                                                                    :display-name "Nested 1"
+                                                                    :id "test-id-30"}
+                                                "snippet: nested2" {:type :snippet
+                                                                    :snippet-id 40
+                                                                    :snippet-name "nested2"
+                                                                    :name "snippet: nested2"
+                                                                    :display-name "Nested 2"
+                                                                    :id "test-id-40"}}}
+                               {:lib/type :metadata/native-query-snippet
+                                :id 30
+                                :name "nested1"
+                                :template-tags {"snippet: deeply-nested" {:type :snippet
+                                                                          :snippet-id 50
+                                                                          :snippet-name "deeply-nested"
+                                                                          :name "snippet: deeply-nested"
+                                                                          :display-name "Deeply Nested"
+                                                                          :id "test-id-50"}}}
+                               {:lib/type :metadata/native-query-snippet
+                                :id 40
+                                :name "nested2"
+                                :template-tags {}}
+                               {:lib/type :metadata/native-query-snippet
+                                :id 50
+                                :name "deeply-nested"
+                                :template-tags {}}]})
+          query (lib/query metadata-provider
+                           {:lib/type :mbql/query
+                            :database 1
+                            :stages [{:lib/type :mbql.stage/native
+                                      :native "SELECT * WHERE {{snippet: filter1}}"
+                                      :template-tags {"snippet: filter1" {:type :snippet
+                                                                          :snippet-id 10
+                                                                          :snippet-name "filter1"
+                                                                          :name "snippet: filter1"
+                                                                          :display-name "Filter 1"
+                                                                          :id "test-id-1"}}}]})
+          deps (lib/dependent-metadata query nil :question)]
+      (is (=? [{:type :database}
+               {:type :schema}
+               {:type :native-query-snippet :id 10}
+               {:type :native-query-snippet :id 30}
+               {:type :native-query-snippet :id 50}
+               {:type :native-query-snippet :id 40}]
+              deps)))))
+
 (deftest ^:parallel table-or-card-dependent-metadata-test
   (testing "start from table"
     (is (= [{:type :table, :id (meta/id :checkins)}]

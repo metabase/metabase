@@ -14,7 +14,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -31,6 +30,14 @@
 
 (def ^:private tag-regexes
   [variable-tag-regex snippet-tag-regex card-tag-regex])
+
+(defn- tag-name->card-id [tag-name]
+  (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
+    (parse-long id-str)))
+
+(defn- tag-name->snippet-name [tag-name]
+  (when (str/starts-with? tag-name "snippet:")
+    (str/trim (subs tag-name (count "snippet:")))))
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
@@ -69,14 +76,6 @@
         [{:type ::lib.parse/optional
           :contents contents}] (recur found (apply conj more contents))))))
 
-(defn- tag-name->card-id [tag-name]
-  (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
-    (parse-long id-str)))
-
-(defn- tag-name->snippet-name [tag-name]
-  (when (str/starts-with? tag-name "snippet:")
-    (str/trim (subs tag-name (count "snippet:")))))
-
 (defn- rename-template-tag
   [existing-tags old-name new-name]
   (let [old-tag       (get existing-tags old-name)
@@ -103,14 +102,14 @@
                    ;; With more than one change, just drop the old ones and add the new.
                    (merge (m/remove-keys old-tags existing-tags)
                           (m/filter-keys new-tags query-tags)))]
-    (update-vals tags #(finish-tag %))))
+    (update-vals tags finish-tag)))
 
 (defn- snippet-names [template-tags]
   (keep #(when (= (:type %) :snippet)
            (:snippet-name %))
         (vals template-tags)))
 
-(defn- snippet-tags [metadata-providerable template-tags]
+(defn- extract-snippet-tags [metadata-providerable template-tags]
   (loop [[snippet-name & more-snippet-names] (snippet-names template-tags)
          seen #{}
          tags {}]
@@ -125,9 +124,9 @@
 
 (defn- add-snippet-ids [metadata-providerable template-tags]
   (update-vals template-tags
-               (fn [{:keys [type snippet-name] :as tag}]
+               (fn [{:keys [tag-type snippet-name] :as tag}]
                  (cond-> tag
-                   (= type :snippet) (assoc :snippet-id
+                   (= tag-type :snippet) (assoc :snippet-id
                                             (:id (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name)))))))
 
 (mu/defn extract-template-tags :- ::lib.schema.template-tag/template-tag-map
@@ -152,7 +151,7 @@
     query-text            :- ::common/non-blank-string
     existing-tags         :- [:maybe ::lib.schema.template-tag/template-tag-map]]
    (let [direct-tags        (recognize-template-tags query-text)
-         query-tags         (merge direct-tags (snippet-tags metadata-providerable direct-tags))
+         query-tags (merge direct-tags (extract-snippet-tags metadata-providerable direct-tags))
          query-tag-names    (not-empty (set (keys query-tags)))
          existing-tag-names (not-empty (set (keys existing-tags)))]
      (if (or query-tag-names existing-tag-names)

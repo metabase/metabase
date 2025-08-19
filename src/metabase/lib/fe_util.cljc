@@ -13,6 +13,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
@@ -799,6 +800,27 @@
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 
+(defn- query-dependents-snippets
+  "Recursively extract snippet dependencies from snippet template tags.
+   Returns a sequence of dependent items including the snippet and any nested snippets."
+  [metadata-providerable snippet-id visited-ids]
+  (if (contains? visited-ids snippet-id)
+    [] ; Avoid infinite recursion
+    (let [visited-ids' (conj visited-ids snippet-id)
+          snippet (lib.metadata/native-query-snippet metadata-providerable snippet-id)]
+      (if-not snippet
+        [{:type :native-query-snippet, :id snippet-id}] ; Return just the ID if we can't fetch the snippet
+        (cons {:type :native-query-snippet, :id snippet-id}
+              ;; Recursively get dependencies from the snippet's own template tags
+              (when-let [snippet-template-tags (:template-tags snippet)]
+                (mapcat
+                 (fn [{nested-type :type, nested-snippet-id :snippet-id}]
+                   (when (and (= nested-type :snippet)
+                              (some? nested-snippet-id)
+                              (integer? nested-snippet-id))
+                     (query-dependents-snippets metadata-providerable nested-snippet-id visited-ids')))
+                 (vals snippet-template-tags))))))))
+
 (defn- query-dependents-foreign-keys
   [metadata-providerable columns]
   (for [column columns
@@ -824,12 +846,18 @@
                         (= dim-tag :field)
                         (integer? id))]
           {:type :field, :id id})
-        ;; Extract snippet dependencies from snippet template tags
-        (for [{tag-type :type, snippet-id :snippet-id} (vals (:template-tags base-stage))
-              :when (and (= tag-type :snippet)
+        ;; Extract snippet dependencies from snippet template tags (with recursion)
+        (mapcat
+         (fn [{tag-type :type, snippet-id :snippet-id}]
+           (when (and (= tag-type :snippet)
                          (some? snippet-id)
-                         (integer? snippet-id))]
-          {:type :native-query-snippet, :id snippet-id})))
+                      (integer? snippet-id))
+             ;; Only try to recurse if we have a real metadata provider
+             (if (lib.metadata.protocols/metadata-providerable? metadata-providerable)
+               (query-dependents-snippets metadata-providerable snippet-id #{})
+               ;; If we don't have a real metadata provider, just return the direct dependency
+               [{:type :native-query-snippet, :id snippet-id}])))
+         (vals (:template-tags base-stage)))))
      (when-let [card-id (:source-card base-stage)]
        (let [card (lib.metadata/card metadata-providerable card-id)
              definition (:dataset-query card)]
