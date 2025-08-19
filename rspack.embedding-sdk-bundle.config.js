@@ -14,9 +14,6 @@ const path = require("path");
 const postcssConfig = require("./postcss.config.js");
 
 const {
-  TypescriptConvertErrorsToWarnings,
-} = require("./frontend/build/embedding-sdk/rspack/typescript-convert-errors-to-warnings");
-const {
   LICENSE_TEXT,
   IS_DEV_MODE,
 } = require("./frontend/build/shared/constants");
@@ -181,7 +178,6 @@ const config = {
         version: null,
       }),
     }),
-    new TypescriptConvertErrorsToWarnings(),
     shouldAnalyzeBundles &&
       new BundleAnalyzerPlugin({
         analyzerMode: "static",
