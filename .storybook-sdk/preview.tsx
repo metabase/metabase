@@ -8,9 +8,7 @@ import { defineEmbeddingSdkPackageBuildInfo } from "../frontend/src/metabase/emb
 import { defineGlobalDependencies } from "../frontend/src/metabase/embedding-sdk/lib/define-global-dependencies";
 
 // To run initialization side effects like Mantine styles, dayjs plugins, etc
-// Also to properly watch and recompile when the SDK code is updated
-// This does not break the SDK Bundle loading logic
-import "embedding-sdk/bundle";
+import "metabase/embedding-sdk/vendors-side-effects";
 
 defineEmbeddingSdkPackageBuildInfo();
 defineGlobalDependencies();

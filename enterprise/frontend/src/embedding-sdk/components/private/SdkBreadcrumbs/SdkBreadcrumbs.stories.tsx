@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { P, match } from "ts-pattern";
 
-import { InteractiveDashboard } from "embedding-sdk/components/public";
+import { InteractiveDashboard } from "embedding-sdk/components/public/dashboard/InteractiveDashboard";
 import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import type { SdkCollectionId } from "embedding-sdk/types";

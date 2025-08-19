@@ -120,9 +120,9 @@ describe("issue 39487", () => {
 
   // broken after migration away from filter modal
   // see https://github.com/metabase/metabase/issues/55688
-  it.skip(
+  it(
     "calendar has constant size when using date range picker filter (metabase#39487)",
-    { viewportHeight: 1000 },
+    { viewportHeight: 1000, tags: "@skip" },
     () => {
       createTimeSeriesQuestionWithFilter([
         "between",
@@ -953,7 +953,7 @@ describe("issue 55631", () => {
   });
 });
 
-describe.skip("issue 39033", () => {
+describe("issue 39033", { tags: "@skip" }, () => {
   const question1Name = "Q1";
   const question1Details: NativeQuestionDetails = {
     name: question1Name,

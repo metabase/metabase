@@ -15,6 +15,7 @@ import {
 import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
+import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
 import type {
   CreateTransformRequest,
   DatasetQuery,
@@ -91,6 +92,9 @@ function CreateTransformForm({
   const handleSubmit = async (values: NewTransformValues) => {
     const request = getCreateRequest(query, values);
     const transform = await createTransform(request).unwrap();
+
+    trackTransformCreated({ transformId: transform.id });
+
     onCreate(transform);
   };
 
