@@ -1258,3 +1258,20 @@ describe("issue 49577", () => {
     });
   });
 });
+
+describe("issue 58061", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow to use a field filter with a date column with a broken semantic type (metabase#58061)", () => {
+    cy.request("PUT", `/api/field/${PRODUCTS.CREATED_AT}`, {
+      semantic_type: "type/Category",
+    });
+
+    H.createNativeQuestion({
+      native: {},
+    });
+  });
+});
