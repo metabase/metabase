@@ -138,8 +138,8 @@
                                                        {:email email, :first_name first-name})
                   (setup-set-settings! {:email email :site-name site-name :site-locale site-locale})
                   ;; site-locale should be set at this point
-                  (call-enterprise 'metabase-enterprise.transforms.models.transform-job/localize-jobs site-locale)
-                  (call-enterprise 'metabase-enterprise.transforms.models.transform-tag/localize-tags site-locale)
+                  (call-enterprise 'metabase-enterprise.transforms.models.transform-job/localize-jobs)
+                  (call-enterprise 'metabase-enterprise.transforms.models.transform-tag/localize-tags)
                   user-info))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
