@@ -78,11 +78,11 @@ export function DetailViewSidesheet({
               disabled={!onPreviousClick}
               h={20}
               leftSection={<Icon name="chevronup" />}
+              p={0}
               variant="subtle"
               style={{
                 opacity: onPreviousClick ? undefined : 0.5,
               }}
-              p={0}
               w={20}
               onClick={onPreviousClick}
             />
@@ -94,11 +94,11 @@ export function DetailViewSidesheet({
               disabled={!onNextClick}
               h={20}
               leftSection={<Icon name="chevrondown" />}
+              p={0}
               variant="subtle"
               style={{
                 opacity: onNextClick ? undefined : 0.5,
               }}
-              p={0}
               w={20}
               onClick={onNextClick}
             />
@@ -110,8 +110,8 @@ export function DetailViewSidesheet({
                 c="text-dark"
                 h={20}
                 leftSection={<Icon name="link" />}
-                variant="subtle"
                 p={0}
+                variant="subtle"
                 w={20}
                 onClick={handleCopyLink}
               />
@@ -126,9 +126,9 @@ export function DetailViewSidesheet({
                   component={Link}
                   h={20}
                   leftSection={<Icon name="expand" />}
+                  p={0}
                   to={url}
                   variant="subtle"
-                  p={0}
                   w={20}
                 />
               </Box>

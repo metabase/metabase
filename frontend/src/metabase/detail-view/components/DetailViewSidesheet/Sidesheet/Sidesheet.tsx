@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
-import { Group, Modal, Stack, rem } from "metabase/ui";
+import { Button, Group, Icon, Modal, Stack, Tooltip, rem } from "metabase/ui";
 
 import S from "./Sidesheet.module.css";
 
@@ -35,7 +35,17 @@ export function Sidesheet({ actions, children, onClose }: Props) {
           <Group gap="lg" justify="flex-end" px="xl">
             {actions}
 
-            <Modal.CloseButton aria-label={t`Close`} ml={0} />
+            <Tooltip label={t`Close`}>
+              <Button
+                c="text-dark"
+                h={20}
+                leftSection={<Icon name="close" />}
+                p={0}
+                variant="subtle"
+                w={20}
+                onClick={onClose}
+              />
+            </Tooltip>
           </Group>
 
           <Stack className={S.scrollable} gap={0} h="100%">
