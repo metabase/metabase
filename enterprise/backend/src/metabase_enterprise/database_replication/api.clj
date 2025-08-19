@@ -1,13 +1,14 @@
 (ns metabase-enterprise.database-replication.api
   (:require
    [clojure.core.memoize :as memoize]
-   [clojure.string :as str]
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.driver.sync :as driver.s]
    [metabase.premium-features.core :refer [quotas]]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -33,34 +34,23 @@
 (defn- database-id->connection-id [conns database-id]
   (->> database-id kw-id (get conns) :connection-id))
 
-(defn- prepare-filter
-  [filter-type schema-filters]
-  (some->> schema-filters
-           (filter (comp #{filter-type} :type))
-           (map (comp #(str/replace % #"(^|[^\\\\])\*" "$1.*") str/trim :pattern))
-           not-empty
-           (str/join "|")
-           re-pattern))
+(defn- schema-filter->fn [{:keys [type patterns]}]
+  (fn [table-schema]
+    (or (= type "all")
+        (-> patterns
+            driver.s/schema-pattern->re-pattern
+            (re-matches table-schema)
+            ((case type
+               "include" identity
+               "exclude" nil?))))))
 
 (defn- schema-filters->fn [schema-filters]
-  (let [include-pattern (prepare-filter "include" schema-filters)
-        include-fn      #(re-matches include-pattern %)
-        exclude-pattern (prepare-filter "exclude" schema-filters)
-        exclude-fn      #(not (re-matches exclude-pattern %))]
-    (cond
-      (and (not include-pattern)
-           (not exclude-pattern))
-      (constantly true)
-
-      (and include-pattern
-           exclude-pattern)
-      (every-pred include-fn exclude-fn)
-
-      include-pattern
-      include-fn
-
-      exclude-pattern
-      exclude-fn)))
+  (if (seq schema-filters)
+    (fn [table-schema]
+      (->> schema-filters
+           (map schema-filter->fn)
+           (every? #(% table-schema))))
+    (constantly true)))
 
 (defn- preview [secret]
   (hm.client/call :preview-connection, :connection-id "preview", :type "pg_replication", :secret secret))
@@ -73,19 +63,20 @@
 
    This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
   replicated."
-  [{:as secret, :keys [schema-filters]}]
+  [secret & {:as replication-schema-filters}]
   (let [all-quotas                 (quotas)
         free-quota                 (or
                                     (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) all-quotas)
                                              ((juxt :soft-limit :usage))
                                              (apply -))
                                     -1)
-        all-tables                 (->> (dissoc secret :schema-filters)
-                                        ;; memo the slow preview call without filters, then
-                                        ;; filter schemas over the memoized result for snappy UI
+        all-tables                 (->> secret
+                                        ;; memo the slow preview call without replication-schema-filters, then
+                                        ;; apply filter over the memoized result for snappy UI
                                         preview-memo
                                         :tables
-                                        (filter (comp (schema-filters->fn schema-filters) :table_schema)))
+                                        (filter (comp (schema-filters->fn [replication-schema-filters])
+                                                      :table_schema)))
         replicated-tables          (->> all-tables
                                         (filter :has_pkey)
                                         (filter :has_ownership))
@@ -110,43 +101,41 @@
      :tables-without-pk          (map map-ks-fn tables-without-pk)
      :tables-without-owner-match (map map-ks-fn tables-without-owner-match)}))
 
-(defn- ->secret [database replication-schema-filters]
+(defn- m->schema-filter [m]
+  (-> m
+      (select-keys [:schema-filters-type :schema-filters-patterns])
+      (set/rename-keys {:schema-filters-type :type, :schema-filters-patterns :patterns})))
+
+(defn- ->secret [database & {:as replication-schema-filters}]
   (let [credentials    (-> (:details database)
                            (select-keys [:dbname :host :user :password :port])
                            (update :port #(or % 5432)) ;; port is required in the API, but optional in MB
                            (merge {:dbtype "postgresql"}))
-        {:keys [schema-filters-type schema-filters-patterns]} (:details database)
-        schema-filters (-> (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
-                             (for [pattern (str/split schema-filters-patterns #",")]
-                               {:type k :pattern pattern}))
-                           (concat (map #(select-keys % [:type :pattern]) replication-schema-filters))
-                           not-empty)]
+        schema-filters (->> [(m->schema-filter (:details database))
+                             (m->schema-filter replication-schema-filters)]
+                            (filterv not-empty))]
     {:credentials    credentials
      :schema-filters schema-filters}))
 
+(def ^:private body-schema
+  [:map
+   [:schemaFilters
+    {:optional true}
+    [:map
+     [:schema-filters-type [:enum "include" "exclude" "all"]]
+     [:schema-filters-patterns :string]]]])
+
 (api.macros/defendpoint :post "/connection/:database-id/preview"
   "Return info about pg-replication connection that is about to be created."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]
-   _query-params
-   {:keys [schemaFilters]} :- [:map
-                               [:schemaFilters {:optional true} [:sequential
-                                                                 [:map
-                                                                  [:type [:enum "include" "exclude"]]
-                                                                  [:pattern :string]]]]]]
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [schemaFilters]} :- body-schema]
   (let [database (t2/select-one :model/Database :id database-id)
-        secret (->secret database schemaFilters)]
-    (u/recursive-map-keys u/->camelCaseEn (token-check-quotas-info secret))))
+        secret (->secret database)
+        replication-schema-filters (m->schema-filter schemaFilters)]
+    (u/recursive-map-keys u/->camelCaseEn (token-check-quotas-info secret replication-schema-filters))))
 
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
-  ;; FIXME: First arg is route params, 2nd arg is query params, 3rd arg is body params:
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]
-   _query-params
-   {:keys [schemaFilters]} :- [:map
-                               [:schemaFilters {:optional true} [:sequential
-                                                                 [:map
-                                                                  [:type [:enum "include" "exclude"]]
-                                                                  [:pattern :string]]]]]]
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [schemaFilters]} :- body-schema]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [database (t2/select-one :model/Database :id database-id)]
     (api/check-404 database)
@@ -176,8 +165,6 @@
       (hm.client/call :delete-connection, :connection-id connection-id)
       (database-replication.settings/database-replication-connections! (dissoc conns (kw-id database-id)))
       nil)))
-
-;; preview endpoint will be around here
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/database-replication` routes."

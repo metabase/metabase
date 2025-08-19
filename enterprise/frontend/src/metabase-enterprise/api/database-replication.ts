@@ -28,13 +28,18 @@ export interface PreviewDatabaseReplicationResponse {
   totalEstimatedRowCount: number;
 }
 
+export interface SchemaFilters {
+  "schema-filters-type": "include" | "exclude" | "all";
+  "schema-filters-patterns": string;
+}
+
 export const DatabaseReplicationApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     previewDatabaseReplication: builder.mutation<
       PreviewDatabaseReplicationResponse,
       {
         databaseId: DatabaseId;
-        schemaFilters?: { type: "include" | "exclude"; pattern: string }[];
+        schemaFilters: SchemaFilters;
       }
     >({
       query: ({ databaseId, ...body }) => ({
@@ -49,7 +54,7 @@ export const DatabaseReplicationApi = EnterpriseApi.injectEndpoints({
       void,
       {
         databaseId: DatabaseId;
-        schemaFilters?: { type: "include" | "exclude"; pattern: string }[];
+        schemaFilters: SchemaFilters;
       }
     >({
       query: ({ databaseId, ...body }) => ({

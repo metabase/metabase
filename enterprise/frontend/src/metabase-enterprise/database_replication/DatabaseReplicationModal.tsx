@@ -30,13 +30,10 @@ const isRTKQueryError = (error: unknown): error is IRTKQueryError =>
 const transformSchemaFilters = (
   schemaSelect: DatabaseReplicationFormFields["schemaSelect"],
   schemaFilters: DatabaseReplicationFormFields["schemaFilters"],
-) =>
-  schemaSelect === "all"
-    ? undefined
-    : schemaFilters
-        .split(",")
-        .map((pattern) => pattern.trim())
-        .map((pattern) => ({ type: schemaSelect, pattern }));
+) => ({
+  "schema-filters-type": schemaSelect,
+  "schema-filters-patterns": schemaFilters
+});
 
 export const DatabaseReplicationModal = ({
   opened,

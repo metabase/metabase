@@ -1626,6 +1626,7 @@
            metabase-enterprise.database-replication.init}
    :uses #{analytics
            api
+           driver
            premium-features
            settings
            util
