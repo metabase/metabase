@@ -1,12 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker";
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
-import type { BrowserEmbedOptions } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackEmbedWizardResourceSelected } from "../analytics";
@@ -38,19 +37,17 @@ export const SelectEmbedResourceStep = () => {
     return null;
   }
 
-  const isDashboard = experience === "dashboard";
-  const isBrowser = experience === "browser";
-  const recentItems = isDashboard
-    ? recentDashboards
-    : isBrowser
-      ? recentCollections
-      : recentQuestions;
+  const recentItems = match(experience)
+    .with("dashboard", () => recentDashboards)
+    .with("browser", () => recentCollections)
+    .with("chart", () => recentQuestions)
+    .exhaustive();
 
-  const selectedItemId = isDashboard
-    ? settings.dashboardId
-    : isBrowser
-      ? (settings as BrowserEmbedOptions).initialCollection
-      : settings.questionId;
+  const selectedItemId = match(settings)
+    .with({ initialCollection: P.nonNullable }, (s) => s.initialCollection)
+    .with({ dashboardId: P.nonNullable }, (s) => s.dashboardId)
+    .with({ questionId: P.nonNullable }, (s) => s.questionId)
+    .otherwise(() => null);
 
   const updateEmbedSettings = (
     experience: SdkIframeEmbedSetupExperience,
@@ -61,7 +58,7 @@ export const SelectEmbedResourceStep = () => {
       (experience === "dashboard" && settings.dashboardId === id) ||
       (experience === "chart" && settings.questionId === id) ||
       (settings.componentName === "metabase-browser" &&
-        (settings as BrowserEmbedOptions).initialCollection === id)
+        settings.initialCollection === id)
     ) {
       return;
     }
