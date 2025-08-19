@@ -664,6 +664,11 @@
 (defn- default-getter-for-type [setting-type]
   (partial get-value-of-type (keyword setting-type)))
 
+(defn- throw-or-log
+  "Given an error that should never happen, throw it for us, log it for customers."
+  [e]
+  (if config/is-prod? (log/warn e) (throw e)))
+
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
@@ -672,13 +677,26 @@
   Note: If the setting has an initializer, and this is the first time accessing, a value will be generated and saved
   unless *disable-init* has been bound to a truthy value."
   [setting-definition-or-name]
-  (let [setting-def                                      (resolve-setting setting-definition-or-name)
-        {:keys [cache? getter enabled? default feature]} setting-def
-        disable-cache?                                   (or config/*disable-setting-cache* (not cache?))]
+  (let [setting-def                       (resolve-setting setting-definition-or-name)
+        {:keys [getter enabled? feature]} setting-def
+        disable-cache?                    (or config/*disable-setting-cache* (not (:cache? setting-def)))]
+
+    ;; Reading database-local settings is failure prone, so catch
+    (when (= :only (:database-local setting-def))
+      (cond
+        (not *database-local-values*)
+        (throw-or-log
+         (ex-info (format "Trying to read database-local setting %s without having run with-database" (:name setting-def))
+                  {:setting setting-def}))
+
+        (and (:enabled-for-db? setting-def) (not *database*))
+        (log/warnf "Skipping enabled-for-db? check for %s as we don't have the underlying toucan2 db instance."
+                   (:name setting-def))))
+
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?)))
             (and *database* (disabled-for-db-reasons setting-def *database*)))
-      default
+      (:default setting-def)
       (if (= config/*disable-setting-cache* disable-cache?) ;; Optimization: only bind dynvar if necessary.
         (getter)
         (binding [config/*disable-setting-cache* disable-cache?]

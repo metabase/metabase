@@ -138,7 +138,7 @@
 (defmacro with-database
   "Execute `body` with Database-local Setting values bound to `new-values`."
   [new-db & body]
-  `(binding [metabase.settings.models.setting/*database*              ~new-db
+  `(binding [metabase.settings.models.setting/*database*              (:metabase/toucan-instance (meta ~new-db))
              metabase.settings.models.setting/*database-local-values* (or (:settings ~new-db) {})]
      ~@body))
 
