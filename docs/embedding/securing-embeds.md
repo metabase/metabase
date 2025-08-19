@@ -19,7 +19,7 @@ In this guide, we'll talk primarily about authentication.
 [Public embedding](public-links.md#public-embeds) doesn't involve any authentication or authorization. A public embed displays a public link with a unique string at the end, like this:
 
 ```plaintext
-http://my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b
+http:s//my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b
 ```
 
 The string (in this example: `184f819c-2c80-4b2d-80f8-26bffaae5d8b`) uniquely identifies your Metabase question or dashboard. Since public embeds don't do any authentication or authorization, anyone with the URL can view the data.
@@ -47,13 +47,13 @@ We want to add a "Status = Active" filter and display the dashboard's public lin
 To apply and hide the "Status = Active" filter, we'll add [query parameters](public-links.md#public-embed-parameters) to the end of the public link in our embed:
 
 ```plaintext
-http://my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b?status=active#hide_parameters=status
+http:s//my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b?status=active#hide_parameters=status
 ```
 
 Even though we've hidden the filter from the embed, someone could take the public link used in the embed, and remove the query parameter `?status=active`:
 
 ```plaintext
-http://my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b
+http:s//my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b
 ```
 
 Loading the public link without the query parameter would remove the "Status = Active" filter from the data. The person would get access to the original Accounts data, including the rows with inactive accounts.
@@ -109,7 +109,7 @@ Let's go back to our Accounts example:
 Remember, we can filter the data in a public embed by including a query parameter at the end of the embedding URL:
 
 ```plaintext
-http://my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b?status=active
+http:s//my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b?status=active
 ```
 
 | Account ID | Plan    | Status |
@@ -121,13 +121,13 @@ http://my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b?sta
 With static embeds, we can "lock" the filter by encoding the query parameter in a signed JWT. For example, say we set up the "Status = Active" filter as a [locked parameter](./static-embedding-parameters.md). The `?status=active` query parameter will be encoded in the signed JWT, so it won't be visible or editable from the static embedding URL:
 
 ```plaintext
-http://my-metabase.com/dashboard/your_signed_jwt
+http:s//my-metabase.com/dashboard/your_signed_jwt
 ```
 
 If someone tries to add an (unsigned) query parameter to the end of the static embedding URL like this:
 
 ```plaintext
-http://my-metabase.com/dashboard/your_signed_jwt?status=inactive
+http:s//my-metabase.com/dashboard/your_signed_jwt?status=inactive
 ```
 
 Metabase will reject this unauthorized request for data, so the inactive account rows will remain hidden from the embed.

@@ -52,7 +52,7 @@ Here's an example payload for an alert (we truncated the PNG encoding because it
     "type": "question",
     "question_id": 108,
     "question_name": "Sales",
-    "question_url": "http://example.com/question/108",
+    "question_url": "http:s//example.com/question/108",
     "visualization": "data:image/png;base64,=...LONG_ENCODED_PNG_HERE...",
     "raw_data": {
       "cols": [

@@ -143,7 +143,7 @@ For example, this will define the font, color, and size for text, color for back
 ```html
 <script>
   defineMetabaseConfig({
-    instanceUrl: "http://your-metabase-url",
+    instanceUrl: "http:s//your-metabase-url",
     theme: {
       fontFamily: "Lato",
       fontSize: "16px",
@@ -174,7 +174,7 @@ To use the add `useExistingUserSession: true` to `defineMetabaseConfig()` in you
 ```html
 <script>
   defineMetabaseConfig({
-    instanceUrl: "http://your-metabase-url",
+    instanceUrl: "http:s//your-metabase-url",
     useExistingUserSession: true,
   });
 </script>
@@ -194,7 +194,7 @@ To use an API key to test your embeds:
 ```html
 <script>
   defineMetabaseConfig({
-    instanceUrl: "http://your-metabase-url",
+    instanceUrl: "http:s//your-metabase-url",
     apiKey: "mb_hopeyouhaveaniceday",
   });
 </script>
