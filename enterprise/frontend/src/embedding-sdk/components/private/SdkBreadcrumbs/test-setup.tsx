@@ -6,11 +6,13 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
+  setupDatabaseListEndpoint,
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
@@ -156,14 +158,26 @@ export const setup = async () => {
     collections: [ROOT_TEST_COLLECTION, NESTED_COLLECTION],
   });
 
+  setupCollectionByIdEndpoint({
+    collections: [ROOT_TEST_COLLECTION, NESTED_COLLECTION],
+  });
+
   setupCollectionItemsEndpoint({
     collection: ROOT_TEST_COLLECTION,
     collectionItems,
   });
 
+  const nestedCollectionItems = [
+    createMockCollectionItem({
+      id: 3,
+      model: "card",
+      name: "Nested Question",
+    }),
+  ];
+
   setupCollectionItemsEndpoint({
     collection: NESTED_COLLECTION,
-    collectionItems: [],
+    collectionItems: nestedCollectionItems,
   });
 
   setupDashboardEndpoints(TEST_DASHBOARD);
@@ -185,6 +199,7 @@ export const setup = async () => {
   );
   setupAlertsEndpoints(TEST_CARD, []);
   setupDatabaseEndpoints(TEST_DATABASE);
+  setupDatabaseListEndpoint([TEST_DATABASE]);
   setupTableEndpoints(TEST_TABLE);
 
   setupNotificationChannelsEndpoints({});
