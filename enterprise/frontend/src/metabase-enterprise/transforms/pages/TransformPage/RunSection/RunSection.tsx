@@ -1,9 +1,11 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
+  useCancelCurrentTransformRunMutation,
   useLazyGetTransformQuery,
   useRunTransformMutation,
   useUpdateTransformMutation,
@@ -136,7 +138,9 @@ type RunButtonSectionProps = {
 
 function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [fetchTransform, { isFetching }] = useLazyGetTransformQuery();
-  const [runTransform, { isLoading: isRunning }] = useRunTransformMutation();
+  const [runTransform, { isLoading: isStarting }] = useRunTransformMutation();
+  const [cancelTransform, { isLoading: isCancelling }] =
+    useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
@@ -150,11 +154,25 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
     return { error };
   };
 
+  const handleCancel = async () => {
+    const { error } = await cancelTransform(transform.id);
+    if (error && !isResourceNotFoundError(error)) {
+      sendErrorToast(t`Failed to cancel transform`);
+    } else {
+      // fetch the transform to get the correct `last_run` info
+      fetchTransform(transform.id);
+    }
+    return { error };
+  };
+
   return (
     <RunButton
+      allowCancellation
       run={transform.last_run}
-      isLoading={isFetching || isRunning}
+      isLoading={isFetching || isStarting || isCancelling}
+      isCancelling={isCancelling}
       onRun={handleRun}
+      onCancel={handleCancel}
     />
   );
 }
