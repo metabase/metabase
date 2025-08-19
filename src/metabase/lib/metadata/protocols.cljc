@@ -41,6 +41,14 @@
  not matter. For MetadataProviders that have a cache, calling this method can be done for side-effects (to warm the
  cache).")
 
+  (metadatas-by-name [metadata-provider metadata-type names]
+    "Return a sequence of non-nil metadata object of `metadata-type` associated with `names`, which is either
+  a sequence or a set of string names. Objects should be fetched as needed, but if this MetadataProvider has an
+  internal cache (i.e., if it is a [[CachedMetadataProvider]]), it should return any cached objects and only fetch
+  ones not present in the cache. This should not error if any objects were not found. The order objects are returned
+  in does not matter. For MetadataProviders that have a cache, calling this method can be done for side-effects (to
+  warm the cache).")
+
   (tables [metadata-provider]
     "Return a sequence of Tables in this Database. Tables should satisfy the `:metabase.lib.schema.metadata/table`
   schema. This should also include things that serve as 'virtual' tables, e.g. Saved Questions or Models. But users of
@@ -102,6 +110,14 @@
                   (= (:id object) metadata-id))
                 (metadatas metadata-provider metadata-type [metadata-id])))
 
+(mu/defn- metadata-by-name :- [:maybe ::metadata]
+  [metadata-provider :- ::metadata-provider
+   metadata-type     :- ::metadata-type-excluding-database
+   metadata-name     :- :string]
+  (m/find-first (fn [object]
+                  (= (:name object) metadata-name))
+                (metadatas-by-name metadata-provider metadata-type [metadata-name])))
+
 (mu/defn table :- [:maybe ::lib.schema.metadata/table]
   "Return metadata for a specific Table. Metadata should satisfy `:metabase.lib.schema.metadata/table`."
   [metadata-provider :- ::metadata-provider
@@ -127,6 +143,12 @@
   [metadata-provider :- ::metadata-provider
    snippet-id        :- ::lib.schema.id/native-query-snippet]
   (metadata metadata-provider :metadata/native-query-snippet snippet-id))
+
+(mu/defn native-query-snippet-by-name :- [:maybe ::lib.schema.metadata/native-query-snippet]
+  "Get metadata for a NativeQuerySnippet with `snippet-name` if it can be found."
+  [metadata-provider :- ::metadata-provider
+   snippet-name      :- :string]
+  (metadata-by-name metadata-provider :metadata/native-query-snippet snippet-name))
 
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application

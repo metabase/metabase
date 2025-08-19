@@ -3,9 +3,11 @@
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -29,13 +31,11 @@
   #{:snippets})
 
 (defn- add-template-tags [snippet]
-  (assoc snippet :template_tags
-         (->> (:content snippet)
-              lib/extract-template-tags
-              (m/map-vals (fn [tag]
-                            (cond-> tag
-                              (= (:type tag) :snippet)
-                              (assoc :snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet :name (:snippet-name tag)))))))))
+  ;; We need a metadata provider, but we don't care about which db it is connected to, so we just pick a random db
+  (qp.store/with-metadata-provider (t2/select-one-fn :id :model/Database)
+    (assoc snippet :template_tags
+           (->> (:content snippet)
+                (lib/extract-template-tags (qp.store/metadata-provider))))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
