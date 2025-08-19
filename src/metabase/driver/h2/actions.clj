@@ -109,3 +109,29 @@
     {:type    error-type
      :message (tru "Some of your values aren’t of the correct type for the database.")
      :errors  {}}))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-permission-constraint]
+  [_driver error-type _database action-type error-message]
+  (when-let [[_match _table-name]
+             (re-find #"Not enough rights for object \"(.+)\"" error-message)]
+    (merge {:type error-type}
+           (case action-type
+             (:table.row/create :model.row/create)
+             {:message (tru "You don''t have permission to add data to this table.")
+              :errors  {}}
+
+             (:table.row/update :model.row/update)
+             {:message (tru "You don''t have permission to update data in this table.")
+              :errors  {}}
+
+             (:table.row/delete :model.row/delete)
+             {:message (tru "You don''t have permission to delete data from this table.")
+              :errors  {}}))))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-check-constraint]
+  [_driver error-type _database _action-type error-message]
+  (when-let [[_match constraint-name]
+             (re-find #"Check constraint violation: \"([^\"]+)\"" error-message)]
+    {:type    error-type
+     :message (tru "Some of your values violate the constraint: {0}" constraint-name)
+     :errors  {}}))

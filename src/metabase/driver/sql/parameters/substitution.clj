@@ -315,7 +315,7 @@
             (sql.qp/->honeysql driver form))]
     (cond
       (params.ops/operator? param-type)
-      (->> (assoc params :target [:template-tag (field->field-filter-clause driver field param-type value)])
+      (->> (assoc params :target [:dimension (field->field-filter-clause driver field param-type value)])
            params.ops/to-clause
            #_{:clj-kondo/ignore [:deprecated-var]}
            driver-api/desugar-filter-clause

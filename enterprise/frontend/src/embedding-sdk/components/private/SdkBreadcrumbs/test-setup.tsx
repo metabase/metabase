@@ -14,9 +14,9 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
-import { InteractiveDashboard } from "embedding-sdk/components/public";
 import { CollectionBrowser } from "embedding-sdk/components/public/CollectionBrowser";
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
+import { InteractiveDashboard } from "embedding-sdk/components/public/dashboard/InteractiveDashboard";
 import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";

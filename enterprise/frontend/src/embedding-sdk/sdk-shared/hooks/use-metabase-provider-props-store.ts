@@ -1,34 +1,22 @@
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 
 import { ensureMetabaseProviderPropsStore } from "../lib/ensure-metabase-provider-props-store";
 
 export function useMetabaseProviderPropsStore() {
-  const storeRef =
-    useRef<ReturnType<typeof ensureMetabaseProviderPropsStore>>();
-
-  if (!storeRef.current) {
-    storeRef.current = ensureMetabaseProviderPropsStore();
-  }
-
-  useEffect(() => {
-    // To handle strict mode case when the component is remounted, and the `storeRef.current` is cleaned up
-    if (!storeRef.current) {
-      storeRef.current = ensureMetabaseProviderPropsStore();
-    }
-
-    return () => {
-      storeRef.current = undefined;
-    };
-  }, []);
-
-  const props = useSyncExternalStore(
-    storeRef.current.subscribe,
-    storeRef.current.getSnapshot,
-    storeRef.current.getSnapshot,
+  const storeRef = useRef<ReturnType<typeof ensureMetabaseProviderPropsStore>>(
+    ensureMetabaseProviderPropsStore(),
   );
 
+  const state = useSyncExternalStore(
+    storeRef.current.subscribe,
+    storeRef.current.getState,
+    storeRef.current.getState,
+  );
+
+  const store = storeRef.current;
+
   return {
-    props,
-    store: storeRef.current,
+    state,
+    store,
   };
 }
