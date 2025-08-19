@@ -74,6 +74,7 @@ export function DetailViewSidesheet({
         <>
           <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
             <Button
+              aria-label={t`Previous row`}
               c="text-dark"
               disabled={!onPreviousClick}
               h={20}
@@ -90,6 +91,7 @@ export function DetailViewSidesheet({
 
           <Tooltip disabled={!onNextClick} label={t`Next row`}>
             <Button
+              aria-label={t`Next row`}
               c="text-dark"
               disabled={!onNextClick}
               h={20}
@@ -107,6 +109,7 @@ export function DetailViewSidesheet({
           {url && (
             <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to a row`}>
               <Button
+                aria-label={linkCopied ? t`Copied!` : t`Copy link to a row`}
                 c="text-dark"
                 h={20}
                 leftSection={<Icon name="link" />}
@@ -122,6 +125,7 @@ export function DetailViewSidesheet({
             <Tooltip label={t`Open row page`}>
               <Box>
                 <Button
+                  aria-label={t`Open row page`}
                   c="text-dark"
                   component={Link}
                   h={20}

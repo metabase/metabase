@@ -37,6 +37,7 @@ export function Sidesheet({ actions, children, onClose }: Props) {
 
             <Tooltip label={t`Close`}>
               <Button
+                aria-label={t`Close`}
                 c="text-dark"
                 h={20}
                 leftSection={<Icon name="close" />}
