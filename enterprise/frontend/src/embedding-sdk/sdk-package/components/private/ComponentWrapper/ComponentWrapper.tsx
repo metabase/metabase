@@ -3,12 +3,13 @@ import { type FunctionComponent, useEffect, useId, useRef } from "react";
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { Error } from "embedding-sdk/sdk-package/components/private/Error/Error";
 import { Loader } from "embedding-sdk/sdk-package/components/private/Loader/Loader";
+import { EnsureSingleInstance } from "embedding-sdk/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import {
+  SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE,
   SDK_LOADING_ERROR_MESSAGE,
   SDK_NOT_LOADED_YET_MESSAGE,
   SDK_NOT_STARTED_LOADING_MESSAGE,
-} from "embedding-sdk/sdk-package/config";
-import { EnsureSingleInstance } from "embedding-sdk/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+} from "embedding-sdk/sdk-shared/constants/error-messages";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk/sdk-shared/hooks/use-sdk-loading-state";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
@@ -81,15 +82,19 @@ const ComponentWrapperInner = <TComponentProps,>({
   const ComponentProvider = isLoading
     ? null
     : getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.ComponentProvider;
-  const Component = getComponent();
 
   if (
     !ComponentProvider ||
-    !Component ||
     !metabaseProviderInternalProps.reduxStore ||
     !metabaseProviderProps
   ) {
     return <Error message={SDK_NOT_LOADED_YET_MESSAGE} />;
+  }
+
+  const Component = getComponent();
+
+  if (!Component) {
+    return <Error message={SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE} />;
   }
 
   return (

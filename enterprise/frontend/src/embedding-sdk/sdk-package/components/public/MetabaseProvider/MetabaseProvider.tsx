@@ -46,7 +46,8 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
       isLoading
         ? null
         : (existingStore ??
-          getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getSdkStore()),
+          getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getSdkStore?.() ??
+          null),
     [existingStore, isLoading],
   );
 
