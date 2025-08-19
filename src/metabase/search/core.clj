@@ -15,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p])
-  (:import (java.util.concurrent ArrayBlockingQueue ExecutorService Future ThreadPoolExecutor ThreadPoolExecutor$DiscardPolicy TimeUnit)))
+  (:import (java.util.concurrent ArrayBlockingQueue ExecutorService ThreadPoolExecutor ThreadPoolExecutor$DiscardPolicy TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -127,31 +127,31 @@
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index.
-  Returns a future object that will complete when the reindexing is done.
+  Returns a future that will complete when the reindexing is done.
   Respects `search.ingestion/*force-sync*` and waits for the future if it's true."
   [& {:as opts}]
-  (cond->
-   (.submit ^ExecutorService reindex-pool ^Callable
-      ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
-            (when (supports-index?)
-              (try
-                (log/info "Reindexing searchable entities")
-                (let [timer (u/start-timer)
-                      report (reduce (partial merge-with max)
-                                     nil
-                                     (for [e (search.engine/active-engines)]
-                                       (search.engine/reindex! e opts)))
-                      duration (u/since-ms timer)]
-                  (analytics/inc! :metabase-search/index-reindex-ms duration)
-                  (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
-                  (doseq [[model cnt] report]
-                    (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
-                  (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
-                  report)
-                (catch Exception e
-                  (analytics/inc! :metabase-search/index-error)
-                  (throw e)))))
-    search.ingestion/*force-sync* (doto ^Future .get)))
+  (let [logic (fn [] (when (supports-index?)
+                       (try
+                         (log/info "Reindexing searchable entities")
+                         (let [timer (u/start-timer)
+                               report (reduce (partial merge-with max)
+                                              nil
+                                              (for [e (search.engine/active-engines)]
+                                                (search.engine/reindex! e opts)))
+                               duration (u/since-ms timer)]
+                           (analytics/inc! :metabase-search/index-reindex-ms duration)
+                           (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
+                           (doseq [[model cnt] report]
+                             (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+                           (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
+                           report)
+                         (catch Exception e
+                           (analytics/inc! :metabase-search/index-error)
+                           (throw e)))))]
+    (if search.ingestion/*force-sync*
+      (let [result (logic)]
+        (future result))
+      (.submit ^ExecutorService reindex-pool ^Callable logic))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."
