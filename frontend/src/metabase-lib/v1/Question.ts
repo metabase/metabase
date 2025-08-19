@@ -883,7 +883,7 @@ class Question {
     }
 
     return this.setParameters(
-      getTemplateTagParametersFromCard(this.card()),
+      getTemplateTagParametersFromCard(this.card(), this.metadata()),
       this.metadata(),
     );
   }
