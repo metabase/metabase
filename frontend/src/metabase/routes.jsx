@@ -30,7 +30,6 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
@@ -285,7 +284,7 @@ export const getRoutes = (store) => {
             <Route path=":slug/query" component={QueryBuilder} />
             <Route path=":slug/metadata" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
-            <Route path=":slug/:rowId" component={ModelDetailPage} />
+            <Route path=":slug/:objectId" component={QueryBuilder} />
             <Route path="query" component={QueryBuilder} />
             <Route path="metabot" component={QueryBuilder} />
           </Route>

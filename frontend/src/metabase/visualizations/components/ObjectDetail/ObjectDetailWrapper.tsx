@@ -3,6 +3,7 @@ import { useState } from "react";
 import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import Question from "metabase-lib/v1/Question";
+import type { Table } from "metabase-types/api";
 
 import { PaginationFooter } from "../PaginationFooter/PaginationFooter";
 
@@ -49,7 +50,8 @@ export function ObjectDetailWrapper({
       columns != null &&
       table != null &&
       zoomedRow != null &&
-      zoomedRowID != null
+      zoomedRowID != null &&
+      question
     ) {
       return (
         <DetailViewSidesheet
@@ -58,6 +60,7 @@ export function ObjectDetailWrapper({
           rowId={zoomedRowID}
           table={table}
           tableForeignKeys={tableForeignKeys}
+          url={getRowUrl(question, table, zoomedRowID)}
           onClose={closeObjectDetail}
           onNextClick={canZoomNextRow ? viewNextObjectDetail : undefined}
           onPreviousClick={
@@ -97,4 +100,20 @@ export function ObjectDetailWrapper({
       )}
     </>
   );
+}
+
+function getRowUrl(
+  question: Question,
+  table: Table,
+  rowId: string | number,
+): string | undefined {
+  if (typeof table.id === "number") {
+    return `/table/${table.id}/detail/${rowId}`;
+  }
+
+  if (table.type === "model") {
+    return `/model/${question.slug()}/detail/${rowId}`;
+  }
+
+  return undefined;
 }

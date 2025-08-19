@@ -28,6 +28,7 @@ interface Props {
   rowId: string | number;
   table: Table;
   tableForeignKeys?: ForeignKey[];
+  url: string | undefined;
   onClose: () => void;
   onNextClick: (() => void) | undefined;
   onPreviousClick: (() => void) | undefined;
@@ -39,6 +40,7 @@ export function DetailViewSidesheet({
   rowId,
   table,
   tableForeignKeys,
+  url,
   onClose,
   onNextClick,
   onPreviousClick,
@@ -47,10 +49,13 @@ export function DetailViewSidesheet({
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = getRowName(columns, row) || rowId;
   const icon = getEntityIcon(table.entity_type);
-  const url = getRowUrl();
 
   const handleCopyLink = useCallback(() => {
-    navigator.clipboard.writeText(url ?? "");
+    if (!url) {
+      return;
+    }
+
+    navigator.clipboard.writeText(`${window.location.origin}${url}`);
     setLinkCopied(true);
   }, [url]);
 
@@ -165,9 +170,4 @@ export function DetailViewSidesheet({
       </Stack>
     </Sidesheet>
   );
-}
-
-function getRowUrl(): string | undefined {
-  return "/asd";
-  return undefined;
 }
