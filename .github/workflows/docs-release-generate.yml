@@ -133,11 +133,14 @@ Review the changes before merging." \
       - name: Workflow summary
         if: always()
         run: |
-          if [ "${{ steps.check_changes.outputs.changes }}" == "true" ]; then
+          if [ "${{ steps.check_changes.outputs.changes }}" == "true" ] 2>/dev/null; then
             echo "## ✅ Documentation Updated Successfully" >> $GITHUB_STEP_SUMMARY
             echo "- Created branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- Created PR for review targeting ${{ env.RELEASE_BRANCH }}" >> $GITHUB_STEP_SUMMARY
-          else
+          elif [ "${{ steps.check_changes.outputs.changes }}" == "false" ] 2>/dev/null; then
             echo "## ℹ️ No Documentation Changes" >> $GITHUB_STEP_SUMMARY
             echo "- All documentation is up to date" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⚠️ Workflow Summary Unavailable" >> $GITHUB_STEP_SUMMARY
+            echo "- Could not determine documentation change status" >> $GITHUB_STEP_SUMMARY
           fi
