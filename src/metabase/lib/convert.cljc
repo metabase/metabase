@@ -628,6 +628,10 @@
     ;; empty.
     [:value value opts]))
 
+(defmethod ->legacy-MBQL :between
+  [[tag _opts x y z]]
+  [tag (->legacy-MBQL x) (->legacy-MBQL y) (->legacy-MBQL z)])
+
 ;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
 (defmethod ->legacy-MBQL :offset
   [[tag opts expr n, :as clause]]

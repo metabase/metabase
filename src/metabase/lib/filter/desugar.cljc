@@ -39,8 +39,8 @@
   "Rewrite `:is-null` and `:not-null` filter clauses as simpler `:=` and `:!=`, respectively."
   [expr :- ::clause]
   (lib.util.match/replace expr
-    [:is-null  opts x]  [:=  opts x nil]
-    [:not-null opts x]  [:!= opts x nil]))
+    [:is-null  opts x] [:=  opts x nil]
+    [:not-null opts x] [:!= opts x nil]))
 
 (defn- emptyable?
   [expr]

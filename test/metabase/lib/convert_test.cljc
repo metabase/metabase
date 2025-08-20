@@ -1581,3 +1581,24 @@
                  :lib/metadata meta/metadata-provider}]
       (is (=? {:native {:projections [:count]}}
               (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel between-with-options->legacy-test
+  (is (= [:between
+          [:field 72922 {:base-type :type/Text}]
+          [:relative-datetime -15 :day]
+          [:relative-datetime 0 :day]]
+         (lib.convert/->legacy-MBQL [:between
+                                     {:include-current true,
+                                      :lib/uuid        "b8991b40-d452-4922-8768-b07f6f2b1918"}
+                                     [:field
+                                      {:base-type :type/Text
+                                       :lib/uuid  "408cebeb-4511-4e3f-87c4-bc9d9cb84eca"}
+                                      72922]
+                                     [:relative-datetime
+                                      {:lib/uuid "4eeca5bb-1614-48d1-8bfd-30c91dd4f546"}
+                                      -15
+                                      :day]
+                                     [:relative-datetime
+                                      {:lib/uuid "85a69d68-a2df-4c22-8a45-2203c837d3bf"}
+                                      0
+                                      :day]]))))
