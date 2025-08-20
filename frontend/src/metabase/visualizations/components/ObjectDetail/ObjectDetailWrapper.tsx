@@ -38,7 +38,6 @@ export function ObjectDetailWrapper({
     const {
       canZoomNextRow,
       canZoomPreviousRow,
-      series,
       table: tableWrapper,
       viewNextObjectDetail,
       viewPreviousObjectDetail,
@@ -46,7 +45,7 @@ export function ObjectDetailWrapper({
       zoomedRowID,
     } = rest;
     const table = getApiTable(tableWrapper);
-    const columns = series[0]?.data?.results_metadata?.columns;
+    const columns = data?.cols;
 
     if (
       columns != null &&

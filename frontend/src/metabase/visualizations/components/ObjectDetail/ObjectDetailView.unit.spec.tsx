@@ -18,7 +18,6 @@ import {
   createMockField,
   createMockImplicitQueryAction,
   createMockQueryAction,
-  createMockSeries,
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
@@ -255,7 +254,6 @@ function setup(
       settings={{
         column: () => null,
       }}
-      series={createMockSeries()}
       showHeader
       canZoom={true}
       canZoomPreviousRow={false}
