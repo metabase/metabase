@@ -4,6 +4,7 @@
    [com.climate.claypoole :as cp]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
@@ -215,7 +216,7 @@
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
         abbrev-model-name (embedding/abbrev-model-name model-name)
-        result (str "index_table_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
+        result (str "index_tbl_" provider-name "_" abbrev-model-name "_" vector-dimensions "_" (.toEpochSecond (t/offset-date-time)))]
     (throw-if-max-pg-len result "Table name exceeds PostgreSQL limit")
     result))
 
