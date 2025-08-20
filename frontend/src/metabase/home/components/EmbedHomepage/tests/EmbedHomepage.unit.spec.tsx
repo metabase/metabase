@@ -35,7 +35,7 @@ describe("EmbedHomepage (OSS)", () => {
 
     expect(readEmbedJsDocsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/embed-js.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
+      "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
     );
   });
 
