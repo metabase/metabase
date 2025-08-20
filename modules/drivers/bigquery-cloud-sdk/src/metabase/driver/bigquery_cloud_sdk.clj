@@ -851,8 +851,7 @@
   (let [details (if (contains? connection-details :details)
                   (:details connection-details)
                   connection-details)
-        client (database-details->client details)
-        project-id (get-project-id details)]
+        client (database-details->client details)]
     (try
       (vec
        (doall
@@ -870,18 +869,18 @@
               (.getTotalRows table-result)
               0)))))
       (catch Exception e
-        (log/errorf e "Error executing BigQuery DDL")
+        (log/error e "Error executing BigQuery DDL")
         (throw e)))))
 
 (defmethod driver/run-transform! [:bigquery-cloud-sdk :table]
-  [driver {:keys [connection-details query output-table] :as transform-details} {:keys [overwrite?]}]
+  [driver {:keys [connection-details output-table] :as transform-details} {:keys [overwrite?]}]
   ;; Main orchestrator for transform execution
   (let [queries (cond->> [(driver/compile-transform driver transform-details)]
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
     {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
 
 (defmethod driver/drop-transform-target! [:bigquery-cloud-sdk :table]
-  [driver database {:keys [name schema] :as target}]
+  [driver database {:keys [name schema] :as _target}]
   ;; Drop a transform target table
   ;; compile-drop-table expects a keyword, not a string
   (let [qualified-name (if schema
