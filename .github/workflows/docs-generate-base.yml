@@ -40,24 +40,30 @@ jobs:
         with:
           m2-cache-key: "auto-update-docs-${{ inputs.m2_cache_key_suffix }}"
 
-      - name: Generate all documentation
-        id: generate_docs
+      - name: Generate environment variables documentation
+        id: generate_env_docs
         run: |
-          set -e
+          set -e  # Exit on any error
           # Ensure we're on the target branch for documentation generation
           git checkout ${{ inputs.target_branch }}
-          echo "Generating documentation from branch: ${{ inputs.target_branch }}"
-
-          echo "Generating environment variables documentation..."
+          echo "Generating environment variables documentation from branch: ${{ inputs.target_branch }}"
           clojure -M:ee:doc environment-variables-documentation
+        continue-on-error: false
 
-          echo "Generating config template..."
+      - name: Generate config template documentation
+        id: generate_config_docs
+        run: |
+          set -e  # Exit on any error
+          echo "Generating config template documentation..."
           clojure -M:ee:doc config-template
+        continue-on-error: false
 
+      - name: Generate API documentation
+        id: generate_api_docs
+        run: |
+          set -e  # Exit on any error
           echo "Generating API documentation..."
           clojure -M:ee:doc api-documentation
-
-          echo "All documentation generated successfully"
         continue-on-error: false
 
       - name: Check for changes
@@ -75,6 +81,9 @@ jobs:
         id: commit_and_push
         if: steps.check_changes.outputs.changes == 'true'
         run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          
           BRANCH_NAME="docs/auto-update-${{ inputs.target_branch }}-$(date +%Y-%m-%d-%H%M%S)"
           echo "Creating branch: $BRANCH_NAME"
 
@@ -112,6 +121,12 @@ jobs:
           $CHANGES_SUMMARY
           $([ "$TOTAL_CHANGES" -gt 10 ] && echo "- ... and $((TOTAL_CHANGES - 10)) more files")
 
+          ## Generation commands
+          Documentation was generated using:
+          - \`clojure -M:ee:doc environment-variables-documentation\`
+          - \`clojure -M:ee:doc config-template\`
+          - \`clojure -M:ee:doc api-documentation\`
+
           Please review the changes and merge if they look correct.
 
           ---
@@ -125,7 +140,8 @@ jobs:
               --head "${{ steps.commit_and_push.outputs.branch_name }}" \
               --title "Auto-update documentation for ${{ inputs.target_branch }}" \
               --body "$PR_BODY" \
-              --label "Type:Documentation,no-backport"; then
+              --label "Type:Documentation" \
+              --label "no-backport"; then
               echo "PR created successfully on attempt $i"
               break
             else
@@ -138,6 +154,11 @@ jobs:
               sleep 10
             fi
           done
+
+      - name: Skip PR creation
+        if: steps.check_changes.outputs.changes == 'false'
+        run: |
+          echo "No documentation changes detected, skipping PR creation"
 
       - name: Workflow summary
         if: always()
