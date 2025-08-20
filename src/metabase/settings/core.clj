@@ -77,9 +77,7 @@
    [metabase.settings.models.setting.cache]
    [metabase.settings.models.setting.multi-setting]
    [metabase.settings.settings]
-   [metabase.util :as u]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (comment
   metabase.settings.models.setting/keep-me
