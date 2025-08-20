@@ -1,1 +1,1 @@
-export * from "./use-init-data";
+export * from "./use-init-data-internal";
