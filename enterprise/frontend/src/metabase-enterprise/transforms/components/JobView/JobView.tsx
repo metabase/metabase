@@ -1,6 +1,7 @@
 import { Stack } from "metabase/ui";
 import type { TransformTagId } from "metabase-types/api";
 
+import { DependenciesSection } from "./DependenciesSection";
 import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
@@ -38,6 +39,7 @@ export function JobView({
       <TagSection job={job} onTagsChange={onTagListChange} />
       {job.id != null && <ManageSection job={job} />}
       {job.id == null && <SaveSection job={job} />}
+      <DependenciesSection job={job} />
     </Stack>
   );
 }
