@@ -72,6 +72,7 @@ export function getRowSelectColumn({
           <Tooltip label="Edit record">
             <Icon
               name="pencil"
+              data-testid="row-edit-icon"
               className={S.pencilIcon}
               onClick={() => onRowEditClick(row.index)}
             />

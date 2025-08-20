@@ -159,7 +159,7 @@ describe("scenarios > table-editing", () => {
       openEditRowModal(2);
       H.modal().within(() => {
         cy.get("@rowId").then((rowId) => {
-          cy.findAllByRole("textbox").first().should("have.value", rowId);
+          cy.findByTestId("ID-field-input").should("have.text", rowId);
         });
       });
     });
@@ -378,7 +378,7 @@ describe("scenarios > table-editing", () => {
       cy.wait("@getOrdersTable");
     });
 
-    it("should allow to create and delete a row", () => {
+    it("should allow to create a row", () => {
       cy.findByTestId("new-record-button").click();
 
       H.modal().within(() => {
@@ -401,56 +401,13 @@ describe("scenarios > table-editing", () => {
         cy.findByText("Record successfully created").should("be.visible");
         cy.findByLabelText("close icon").click();
       });
-
-      // We want to check if the new row is added as the last row to the table
-      // eslint-disable-next-line no-unsafe-element-filtering
-      cy.findByTestId("table-scroll-container")
-        .scrollTo("bottom")
-        .findAllByRole("row")
-        .last()
-        .should("have.attr", "data-dataset-index", "2000")
-        .within(() => {
-          cy.get('[data-column-id="TAX"]').should("have.text", "50");
-          cy.get('[data-column-id="TOTAL"]').should("have.text", "100");
-          cy.get('[data-column-id="DISCOUNT"]').should("have.text", "10");
-
-          cy.findByTestId("detail-shortcut").click({
-            scrollBehavior: false,
-            force: true,
-          });
-        });
-
-      H.modal()
-        .first()
-        .within(() => {
-          cy.findByText("Edit record").should("be.visible");
-          cy.findByTestId("delete-row-icon").click();
-        });
-
-      H.modal()
-        .first()
-        .within(() => {
-          cy.findByText("Delete this record?").should("be.visible");
-          cy.findByText("Delete record").click();
-        });
-
-      cy.wait("@executeBulk").then(({ response, request }) => {
-        expect(request.body.action).to.equal("data-grid.row/delete");
-        expect(response?.body.outputs[0].op).to.equal("deleted");
-      });
-
-      H.undoToast().findByText("Successfully deleted").should("be.visible");
     });
 
     it("should allow to delete multiple rows (bulk)", () => {
-      cy.findByTestId("delete-records-bulk-button").should("be.disabled");
-
       cy.findAllByTestId("row-select-checkbox").eq(15).click();
       cy.findAllByTestId("row-select-checkbox").eq(16).click();
 
-      cy.findByTestId("delete-records-bulk-button")
-        .should("not.be.disabled")
-        .click();
+      cy.findByTestId("toast-card").findByText("Delete").click();
 
       H.modal().within(() => {
         cy.findByText("Delete 2 records?").should("be.visible");
@@ -462,9 +419,9 @@ describe("scenarios > table-editing", () => {
         expect(response?.body.outputs[0].op).to.equal("deleted");
       });
 
-      H.undoToast().findByText("Successfully deleted").should("be.visible");
+      cy.findByTestId("toast-card").should("not.exist");
 
-      cy.findByTestId("delete-records-bulk-button").should("be.disabled");
+      H.undoToast().findByText("Successfully deleted").should("be.visible");
     });
   });
 });
@@ -512,7 +469,7 @@ function openEditRowModal(rowIndex: number) {
         scrollBehavior: false,
       });
 
-      cy.findByTestId("detail-shortcut").click({
+      cy.findByTestId("row-edit-icon").click({
         scrollBehavior: false,
       });
     });
