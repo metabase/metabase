@@ -21,7 +21,7 @@
       (with-redefs [semantic.db.datasource/data-source (atom nil)
                     semantic.env/get-index-metadata (constantly semantic.tu/mock-index-metadata)
                     semantic.env/get-configured-embedding-model (constantly semantic.tu/mock-embedding-model)
-                    semantic.index/model-table-suffix semantic.tu/mock-table-suffix]
+                    semantic.index/timestamp-table-suffix semantic.tu/mock-table-suffix]
         (test-func))
       (finally
         (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)))))
