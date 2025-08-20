@@ -1258,3 +1258,40 @@ describe("issue 49577", () => {
     });
   });
 });
+
+describe("issue 58061", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should allow to pass a field filter value for a date column in the URL when the column has a broken semantic type (metabase#58061)", () => {
+    cy.request("PUT", `/api/field/${PRODUCTS.CREATED_AT}`, {
+      semantic_type: "type/Category",
+    });
+
+    H.createNativeQuestion({
+      native: {
+        query: "SELECT * FROM PRODUCTS WHERE {{filter}}",
+        "template-tags": {
+          filter: {
+            id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
+            name: "filter",
+            type: "dimension",
+            "display-name": "date",
+            dimension: ["field", PRODUCTS.CREATED_AT, null],
+            "widget-type": "date/all-options",
+          },
+        },
+      },
+    }).then(({ body: card }) => {
+      cy.visit({
+        url: `/question/${card.id}`,
+        qs: { filter: "2024-09-08" },
+      });
+      cy.wait("@dataset");
+      H.assertQueryBuilderRowCount(1);
+    });
+  });
+});
