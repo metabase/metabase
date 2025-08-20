@@ -153,7 +153,7 @@
   (if (or search.ingestion/*force-sync* (not async?))
     (let [result (reindex-logic! opts)]
       (doto (promise) (deliver result)))
-    (.submit ^ExecutorService reindex-pool ^Callable reindex-logic!)))
+    (.submit ^ExecutorService reindex-pool ^Callable #(reindex-logic! opts))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."
