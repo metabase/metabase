@@ -138,7 +138,8 @@ jobs:
 
           Please review the changes and merge if they look correct." \
               --label "Type:Documentation" \
-              --label "no-backport"; then
+              --label "no-backport" \
+              --reviewer "metabase/tech-writers"; then
               echo "PR created successfully on attempt $i"
               break
             else
