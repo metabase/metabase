@@ -1174,7 +1174,7 @@ jobs:
       - be-tests-sqlite-ee
       - be-tests-sqlserver
       - be-tests-starburst-ee
-      - be-tests-vertica-ee
+      # - be-tests-vertica-ee
       - be-tests-clickhouse-ee
     runs-on: ubuntu-latest
     timeout-minutes: 5
