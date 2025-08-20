@@ -280,12 +280,14 @@ describe("scenarios > setup", () => {
       });
     });
 
-    // Checks we are now in the next step
-    cy.findByTestId("step-number").should("have.text", "5");
+    // Checks invite event was sent
     H.expectUnstructuredSnowplowEvent({
       event: "invite_sent",
       source: "setup",
     });
+
+    // Checks we are now in the next step
+    cy.findByTestId("step-number").should("have.text", "5");
   });
 
   it("should allow a quick setup for the 'embedding' use case", () => {
