@@ -392,8 +392,12 @@ export function visitPublicQuestion(id, { params = {}, hash = {} } = {}) {
  * @param {object} options
  * @param {Record<string, string>} options.params
  * @param {Record<string, string>} options.hash
+ * @param {(window: Window) => void} [options.onBeforeLoad]
  */
-export function visitPublicDashboard(id, { params = {}, hash = {} } = {}) {
+export function visitPublicDashboard(
+  id,
+  { params = {}, hash = {}, onBeforeLoad } = {},
+) {
   const searchParams = new URLSearchParams(params).toString();
   const searchSection = searchParams ? `?${searchParams}` : "";
   const hashParams = new URLSearchParams(hash).toString();
@@ -404,6 +408,7 @@ export function visitPublicDashboard(id, { params = {}, hash = {} } = {}) {
       cy.signOut();
       cy.visit({
         url: `/public/dashboard/${uuid}` + searchSection + hashSection,
+        onBeforeLoad,
       });
     },
   );
