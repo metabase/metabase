@@ -1,3 +1,4 @@
+import { arrayMove } from "@dnd-kit/sortable";
 import { type CSSProperties, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -53,25 +54,48 @@ export const DataStep = ({
   };
   const [isColumnPickerOpen, setIsColumnPickerOpen] = useState(false);
 
-  const columns = useMemo(
-    () => Lib.fieldableColumns(query, stageIndex),
-    [query, stageIndex],
-  );
+  const { columns, selectedColumns } = useMemo(() => {
+    const allColumns = Lib.fieldableColumns(query, stageIndex);
+    const selectedFields = Lib.fields(query, stageIndex);
+    const selectedFieldRefs = (
+      selectedFields.length ? selectedFields : allColumns
+    ).map((f) => Lib.legacyRef(query, stageIndex, f));
+    const selectedColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      allColumns,
+      selectedFieldRefs,
+    );
+
+    const selectedColumns = selectedColumnIndexes.map(
+      (index) => allColumns[index],
+    );
+    const unselectedColumns = allColumns.filter(
+      (c, index) => !selectedColumnIndexes.includes(index),
+    );
+    const res = [...selectedColumns, ...unselectedColumns];
+    return { columns: res, selectedColumns, unselectedColumns };
+  }, [query, stageIndex]);
 
   const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
-    const nextQuery = isSelected
-      ? Lib.addField(query, stageIndex, column)
-      : Lib.removeField(query, stageIndex, column);
-    updateQuery(nextQuery);
+    if (isSelected) {
+      const newQuery = Lib.addField(query, stageIndex, column);
+      updateQuery(newQuery);
+    } else {
+      const newQuery = Lib.removeField(query, stageIndex, column);
+      updateQuery(newQuery);
+    }
   };
 
   const handleSelectAll = () => {
     const nextQuery = Lib.withFields(query, stageIndex, []);
+
     updateQuery(nextQuery);
   };
 
   const handleSelectNone = () => {
     const nextQuery = Lib.withFields(query, stageIndex, [columns[0]]);
+
     updateQuery(nextQuery);
   };
 
@@ -98,24 +122,10 @@ export const DataStep = ({
     updateVisualizationSettings(updatedQuestion);
   };
 
-  const handleReorderColumns = (reorderedColumns: Lib.ColumnMetadata[]) => {
-    const currentSettings = question.card().visualization_settings || {};
-
-    const diff = {
-      "table.columns": reorderedColumns.map((column) => {
-        const columnInfo = Lib.displayInfo(query, stageIndex, column);
-
-        return {
-          name: columnInfo.name,
-          enabled: columnInfo.selected,
-        };
-      }),
-    };
-
-    const newSettings = updateSettings(currentSettings, diff);
-    const updatedQuestion = question.updateSettings(newSettings);
-
-    updateVisualizationSettings(updatedQuestion);
+  const handleReorderColumns = (oldIndex: number, newIndex: number) => {
+    const reorderedColumns = arrayMove(selectedColumns, oldIndex, newIndex);
+    const newQuery = Lib.withFields(query, stageIndex, reorderedColumns);
+    updateQuery(newQuery);
   };
 
   return (

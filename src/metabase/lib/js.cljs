@@ -726,7 +726,7 @@
     (and (map? x) (map? y))
     (let [x (dissoc x :lib/uuid)
           y (dissoc y :lib/uuid)]
-      (and (= (set (keys x)) (set (keys y)))
+      (and (= (keys x) (keys y))
            (every? (fn [[k v]]
                      (query=* v (get y k)))
                    x)))

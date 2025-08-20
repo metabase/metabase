@@ -55,7 +55,7 @@ export function fieldValuesSearchInfo(
 export function legacyRef(
   query: Query,
   stageIndex: number,
-  column: ColumnMetadata | MetricMetadata | SegmentMetadata,
+  column: ColumnMetadata | MetricMetadata | SegmentMetadata | Clause,
 ): FieldReference {
   return ML.legacy_ref(query, stageIndex, column);
 }

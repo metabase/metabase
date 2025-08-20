@@ -1,7 +1,6 @@
 import { DndContext, type DragEndEvent, closestCenter } from "@dnd-kit/core";
 import {
   SortableContext,
-  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
@@ -52,7 +51,7 @@ interface ColumnPickerSidebarProps {
     column: Lib.ColumnMetadata,
     newDisplayName: string,
   ) => void;
-  onReorderColumns?: (columns: Lib.ColumnMetadata[]) => void;
+  onReorderColumns?: (oldIndex: number, newIndex: number) => void;
   visualizationSettings: VisualizationSettings;
 }
 
@@ -72,21 +71,28 @@ export function ColumnPickerSidebar({
   onReorderColumns,
   visualizationSettings,
 }: ColumnPickerSidebarProps) {
-  const [localColumns, setLocalColumns] = useState<Lib.ColumnMetadata[]>([]);
+  const [localColumns, setLocalColumns] =
+    useState<Lib.ColumnMetadata[]>(columns);
   const [searchText, setSearchText] = useState("");
   const [columnDisplayNames, setColumnDisplayNames] = useState<
     Map<string, string>
   >(new Map());
 
   useEffect(() => {
-    const orderedColumns = orderColumnsByVisualizationSettings(
-      columns,
-      visualizationSettings,
-      query,
-      stageIndex,
-    );
-    setLocalColumns(orderedColumns);
-  }, [columns, visualizationSettings, query, stageIndex]);
+    // console.log("columns", columns.map(c => Lib.displayInfo(query, stageIndex, c).name));
+    setLocalColumns(columns);
+  }, [columns]);
+
+  // useEffect(() => {
+  //   // const orderedColumns = orderColumnsByVisualizationSettings(
+  //   //   columns,
+  //   //   visualizationSettings,
+  //   //   query,
+  //   //   stageIndex,
+  //   // );
+  //   console.log(columns.map(c => Lib.displayInfo(query, stageIndex, c).name));
+  //   setLocalColumns(columns);
+  // }, [columns]);
 
   useEffect(() => {
     const settings = visualizationSettings["column_settings"] ?? {};
@@ -182,9 +188,9 @@ export function ColumnPickerSidebar({
       });
 
       if (oldIndex !== -1 && newIndex !== -1) {
-        const reorderedColumns = arrayMove(localColumns, oldIndex, newIndex);
+        // const reorderedColumns = arrayMove(localColumns, oldIndex, newIndex);
         // setLocalColumns(reorderedColumns);
-        onReorderColumns(reorderedColumns);
+        onReorderColumns(oldIndex, newIndex);
       }
     }
   };
@@ -416,42 +422,3 @@ function SortableColumnPickerItem(
     />
   );
 }
-
-const orderColumnsByVisualizationSettings = (
-  columns: Lib.ColumnMetadata[],
-  visualizationSettings: VisualizationSettings,
-  query: Lib.Query,
-  stageIndex: number,
-): Lib.ColumnMetadata[] => {
-  const tableColumns = visualizationSettings["table.columns"];
-
-  if (!tableColumns || tableColumns.length === 0) {
-    return columns;
-  }
-
-  const columnOrderMap = new Map<string, number>();
-  tableColumns.forEach((col, index) => {
-    columnOrderMap.set(col.name, index);
-  });
-
-  return columns.toSorted((a, b) => {
-    const aInfo = Lib.displayInfo(query, stageIndex, a);
-    const bInfo = Lib.displayInfo(query, stageIndex, b);
-
-    const aOrder = columnOrderMap.get(aInfo.name);
-    const bOrder = columnOrderMap.get(bInfo.name);
-
-    if (aOrder !== undefined && bOrder !== undefined) {
-      return aOrder - bOrder;
-    }
-
-    if (aOrder !== undefined && bOrder === undefined) {
-      return -1;
-    }
-    if (aOrder === undefined && bOrder !== undefined) {
-      return 1;
-    }
-
-    return 0;
-  });
-};
