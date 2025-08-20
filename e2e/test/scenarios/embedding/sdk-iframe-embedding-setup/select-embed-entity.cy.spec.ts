@@ -317,7 +317,7 @@ H.describeWithSnowplow(suiteTitle, () => {
         cy.findByTestId("embed-recent-item-card").should("not.exist");
         cy.findByText("No recent collections").should("be.visible");
 
-        cy.findByText(/search for collections/).click();
+        cy.findByTitle("Browse collections").click();
       });
 
       H.entityPickerModal().within(() => {
