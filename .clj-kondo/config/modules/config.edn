@@ -187,6 +187,7 @@
            metabase.audit-app.init}
    :uses #{api
            app-db
+           config
            events
            models
            premium-features
