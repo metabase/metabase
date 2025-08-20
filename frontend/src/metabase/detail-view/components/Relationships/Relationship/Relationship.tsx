@@ -64,7 +64,7 @@ export const Relationship = ({ fk, href, rowId, table }: Props) => {
       gap={rem(12)}
       {...(clickable ? { component: Link, to: href } : undefined)}
     >
-      {isFetching && <Loader size="md" />}
+      {isFetching && <Loader data-testid="loading-indicator" size="md" />}
 
       {!isFetching && (
         <Text
