@@ -21,7 +21,7 @@
    {:name "Timescale" :pattern #"\.tsdb\.cloud|\.timescale\.com$"}])
 
 (defn detect-provider
-  "Detect database provider from hostname using regex patterns.
+  "Detect database provider from host using regex patterns.
    Returns provider name string or nil if no match found."
   [host]
   (when (and host (string? host) (not (str/blank? host)))
@@ -32,13 +32,11 @@
            :name))))
 
 (defn extract-host-from-details
-  "Extract host from database details map. Handles various possible keys."
+  "Extract host from database details map."
   [details]
   (when details
     (or (:host details)
-        (get details "host")
-        (:hostname details)
-        (get details "hostname"))))
+        (get details "host"))))
 
 (defn detect-provider-from-database
   "Detect provider from a database entity by examining its details."

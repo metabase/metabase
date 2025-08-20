@@ -62,16 +62,16 @@ const config = [
 
 const testCases: { host: string; provider: DatabaseProviderName }[] = [
   {
-    host: "production-flexible-server.postgres.database.azure.com",
-    provider: "Azure",
+    host: "my-db.aivencloud.com",
+    provider: "Aiven",
   },
   {
     host: "my-db.rds.amazonaws.com",
     provider: "Amazon RDS",
   },
   {
-    host: "my-db.aivencloud.com",
-    provider: "Aiven",
+    host: "production-flexible-server.postgres.database.azure.com",
+    provider: "Azure",
   },
   {
     host: "p.vbjrfujv5beutaoelw725gvi3i.db.postgresbridge.com",
