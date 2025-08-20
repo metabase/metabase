@@ -1023,7 +1023,7 @@ databaseChangeLog:
                 tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
 
   - changeSet:
-      id: v57.2025-08-15T04:30:00
+      id: v57.2025-08-22T00:16:00
       validCheckSum: ANY
       author: rileythomp
       comment: Added 0.57.0 - Migrate ClickHouse database details to be use `enable-multiple-db`
