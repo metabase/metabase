@@ -279,6 +279,41 @@ export type TransformCreatedEvent = ValidateEvent<{
   target_id: number;
 }>;
 
+export type DocumentCreatedEvent = ValidateEvent<{
+  event: "document_created";
+  target_id: number;
+}>;
+
+export type DocumentUpdatedEvent = ValidateEvent<{
+  event: "document_saved";
+  target_id: number;
+}>;
+
+export type DocumentAddCardEvent = ValidateEvent<{
+  event: "document_add_card";
+  target_id: number | null;
+}>;
+
+export type DocumentAddSmartLinkEvent = ValidateEvent<{
+  event: "document_add_smart_link";
+  target_id: number | null;
+}>;
+
+export type DocumentReplaceCardEvent = ValidateEvent<{
+  event: "document_replace_card";
+  target_id: number | null;
+}>;
+
+export type DocumentAskMetabotEvent = ValidateEvent<{
+  event: "document_ask_metabot";
+  target_id: number | null;
+}>;
+
+export type DocumentPrintEvent = ValidateEvent<{
+  event: "document_print";
+  target_id: number | null;
+}>;
+
 export type EmbedWizardEvent =
   | EmbedWizardExperienceSelectedEvent
   | EmbedWizardResourceSelectedEvent
@@ -321,4 +356,11 @@ export type SimpleEvent =
   | TransformTriggerManualRunEvent
   | TransformJobTriggerManualRunEvent
   | TransformCreatedEvent
-  | TransformCreateEvent;
+  | TransformCreateEvent
+  | DocumentAddCardEvent
+  | DocumentAddSmartLinkEvent
+  | DocumentAskMetabotEvent
+  | DocumentCreatedEvent
+  | DocumentReplaceCardEvent
+  | DocumentUpdatedEvent
+  | DocumentPrintEvent;

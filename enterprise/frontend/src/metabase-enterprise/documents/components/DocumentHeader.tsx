@@ -16,6 +16,7 @@ import {
 } from "metabase/ui";
 import type { Document } from "metabase-types/api";
 
+import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
 import S from "./DocumentHeader.module.css";
@@ -49,7 +50,8 @@ export const DocumentHeader = ({
 }: DocumentHeaderProps) => {
   const handlePrint = useCallback(() => {
     window.print();
-  }, []);
+    trackDocumentPrint(document);
+  }, [document]);
 
   return (
     <Flex
