@@ -1,12 +1,8 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
-import type {
-  CreateDashboardValues,
-  MetabaseDashboard,
-} from "embedding-sdk/types/dashboard";
 
 /**
  * Creates a dashboard.
@@ -22,56 +18,26 @@ export const useCreateDashboardApi = () => {
     },
   } = useMetabaseProviderPropsStore();
 
-  const loginStatus = useLazySelector((state) => state.sdk.loginStatus);
+  const loginStatus = useLazySelector(
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getLoginStatus,
+  );
+  const createDashboard =
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createDashboard;
 
   /**
    * @function
    */
-  const handleCreateDashboard = useCallback(
-    async ({
-      collectionId = "personal",
-      ...rest
-    }: CreateDashboardValues): Promise<MetabaseDashboard> => {
-      if (!reduxStore) {
-        throw new Error('Embedding SDK "reduxStore" is not available');
-      }
-
-      const createDashboard =
-        getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createDashboard;
-      const getCollectionNumericIdFromReference =
-        getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE
-          ?.getCollectionNumericIdFromReference;
-
-      if (!createDashboard || !getCollectionNumericIdFromReference) {
-        throw new Error("Embedding SDK bundle is not initialized");
-      }
-
-      const realCollectionId = getCollectionNumericIdFromReference(
-        reduxStore.getState(),
-        collectionId,
-      );
-
-      const action = createDashboard.initiate({
-        ...rest,
-        collection_id: realCollectionId,
-      });
-
-      return reduxStore.dispatch(action).unwrap();
-    },
-    [reduxStore],
+  const handleCreateDashboard = useMemo(
+    () =>
+      reduxStore &&
+      loginStatus?.status === "success" &&
+      createDashboard?.(reduxStore),
+    [createDashboard, loginStatus?.status, reduxStore],
   );
 
   return useMemo(
     () =>
-      // Until a user is authorized the `createDashboard` can't be called
-      reduxStore && loginStatus?.status === "success"
-        ? {
-            /**
-             * @param options
-             */
-            createDashboard: handleCreateDashboard,
-          }
-        : null,
-    [handleCreateDashboard, loginStatus?.status, reduxStore],
+      handleCreateDashboard ? { createDashboard: handleCreateDashboard } : null,
+    [handleCreateDashboard],
   );
 };
