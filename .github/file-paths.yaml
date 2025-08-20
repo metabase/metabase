@@ -137,16 +137,17 @@ e2e_embedding_sdk_compatibility:
   - "e2e/runner/embedding-sdk/**"
   - "e2e/test-host-app/**/*.cy.*.{js,ts}"
 
+snowplow: &snowplow
+  - ".github/workflows/snowplow.yml"
+  - "snowplow/**"
+
 e2e_all:
   - *default
   - *e2e_ci
   - *sources
   - *e2e_specs
   - "e2e/**"
-
-snowplow:
-  - ".github/workflows/snowplow.yml"
-  - "snowplow/**"
+  - *snowplow
 
 documentation:
   - "docs/**"
