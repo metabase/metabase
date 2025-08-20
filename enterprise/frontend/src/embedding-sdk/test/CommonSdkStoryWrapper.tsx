@@ -2,7 +2,8 @@ import type { StoryFn } from "@storybook/react";
 import { SignJWT } from "jose";
 import { useMemo } from "react";
 
-import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk";
+import { ComponentProvider } from "embedding-sdk/components/public/ComponentProvider";
+import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
 
@@ -55,13 +56,13 @@ export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   }, [user]);
 
   return (
-    <MetabaseProvider
+    <ComponentProvider
       authConfig={authConfig}
       theme={theme}
       key={key}
       locale={locale}
     >
       <Story />
-    </MetabaseProvider>
+    </ComponentProvider>
   );
 };

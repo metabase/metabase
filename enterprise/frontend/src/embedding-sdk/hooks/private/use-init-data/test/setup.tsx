@@ -1,11 +1,7 @@
 /* eslint-disable i18next/no-literal-string */
 
 import { renderWithProviders } from "__support__/ui";
-import {
-  sdkReducers,
-  useSdkDispatch,
-  useSdkSelector,
-} from "embedding-sdk/store";
+import { sdkReducers, useSdkSelector, useSdkStore } from "embedding-sdk/store";
 import { refreshTokenAsync } from "embedding-sdk/store/auth";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
@@ -20,7 +16,7 @@ import {
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import type { LoginStatusError, MetabaseAuthConfig } from "embedding-sdk/types";
 
-import { useInitData } from "../use-init-data";
+import { useInitDataInternal } from "../use-init-data-internal";
 
 jest.mock("embedding/auth-common/saml-token-storage", () => {
   let token: any = null;
@@ -40,12 +36,14 @@ jest.mock("embedding/auth-common/saml-token-storage", () => {
 export type MetabaseConfigProps = Partial<MetabaseAuthConfig>;
 
 export const TestComponent = ({ config }: { config: MetabaseConfigProps }) => {
-  const dispatch = useSdkDispatch();
+  const reduxStore = useSdkStore();
+  const dispatch = reduxStore.dispatch;
 
   const loginStatus = useSdkSelector(getLoginStatus);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
-  useInitData({
+  useInitDataInternal({
+    reduxStore,
     authConfig: createMockSdkConfig({
       ...config,
       metabaseInstanceUrl: config.metabaseInstanceUrl ?? MOCK_INSTANCE_URL,

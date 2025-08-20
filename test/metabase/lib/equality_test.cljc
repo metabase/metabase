@@ -1119,3 +1119,24 @@
                       :lib/source-column-alias  "ADDRESS"
                       :lib/type                 :metadata/column}]
       (is (nil? (lib.equality/find-matching-ref col field-refs))))))
+
+(deftest ^:parallel column-equality-binning-test
+  (testing "Two columns with the same binning should be equal; different binning should make them unequal"
+    (let [col               (assoc (meta/field-metadata :orders :total)
+                                   :metabase.lib.field/binning {:bin-width 20.0
+                                                                :max-value 160.0
+                                                                :min-value 0.0
+                                                                :num-bins  10
+                                                                :strategy  :num-bins})
+          same-binning      (assoc col :metabase.lib.field/binning {:bin-width 20.0
+                                                                    :max-value 160.0
+                                                                    :min-value 0.0
+                                                                    :num-bins  10
+                                                                    :strategy  :num-bins})
+          different-binning (assoc col :metabase.lib.field/binning {:bin-width 5.0
+                                                                    :max-value 160.0
+                                                                    :min-value 5.0
+                                                                    :num-bins  50
+                                                                    :strategy  :num-bins})]
+      (is (lib.equality/= col same-binning))
+      (is (not (lib.equality/= col different-binning))))))

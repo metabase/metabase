@@ -280,9 +280,9 @@
         original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
     (if unit
       (-> metadata
-          (assoc ::temporal-unit unit
-                 ::original-effective-type original-effective-type)
-          (m/assoc-some ::original-temporal-unit original-temporal-unit))
+          (assoc ::temporal-unit unit)
+          (m/assoc-some ::original-effective-type original-effective-type
+                        ::original-temporal-unit  original-temporal-unit))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
         original-effective-type (assoc :effective-type original-effective-type)
         original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
@@ -387,7 +387,9 @@
      ::original-effective-type
      ::original-temporal-unit])
    {:metabase.lib.field/binning       :binning
-    :metabase.lib.field/temporal-unit :temporal-unit}))
+    :metabase.lib.field/temporal-unit :temporal-unit
+    :lib/ref-name                     :name
+    :lib/ref-display-name             :display-name}))
 
 (def ^:private field-ref-propagated-keys-for-non-inherited-columns
   "Keys that should get copied into `:field` ref options from column metadata ONLY when the column is not inherited.

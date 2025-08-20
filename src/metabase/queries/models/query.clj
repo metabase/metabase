@@ -8,6 +8,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -110,9 +112,18 @@
   (cond
     (= :native query-type)  {:database-id database-id, :table-id nil}
     (integer? source-table) {:database-id database-id, :table-id source-table}
-    (string? source-table)  (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
-                              (t2/select-one [:model/Card :card_schema [:table_id :table-id] [:database_id :database-id]]
-                                             :id (Integer/parseInt card-id)))
+    (string? source-table)  (let [card-id (lib.util/legacy-string-table-id->card-id source-table)]
+                              (if (qp.store/initialized?)
+                                (lib.metadata/card (qp.store/metadata-provider) card-id)
+                                (-> (t2/select-one [:model/Card
+                                                    ;; `card_schema` is only needed for post-processing.
+                                                    :card_schema
+                                                    [:table_id :table-id]
+                                                    [:database_id :database-id]]
+                                                   :id card-id)
+                                    ;; remove `card_schema` so people don't try to use a key that would be `kebab-case`
+                                    ;; if we got it from the metadata provider.
+                                    (dissoc :card_schema))))
     (map? source-query)     (legacy-query->database-and-table-ids {:database database-id
                                                                    :type     query-type
                                                                    :query    source-query})))
