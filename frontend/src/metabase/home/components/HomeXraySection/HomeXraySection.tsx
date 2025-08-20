@@ -70,7 +70,7 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   const candidate = candidates.find((d) => d.schema === schema);
   const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
-  const canSelectSchema = schemas.length > 1;
+  const canSelectSchema = schemas.length > 1 && schema !== null;
   const applicationName = useSelector(getApplicationName);
 
   return (
