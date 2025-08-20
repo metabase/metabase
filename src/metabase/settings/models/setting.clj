@@ -681,15 +681,16 @@
         {:keys [getter enabled? feature]} setting-def
         disable-cache?                    (or config/*disable-setting-cache* (not (:cache? setting-def)))]
 
-    ;; Reading database-local settings is failure prone, so catch
+    ;; Reading database-local settings is failure prone, so catch easy mistakes.
     (when (= :only (:database-local setting-def))
       (cond
         (not *database-local-values*)
         (throw-or-log
-         (ex-info (format "Trying to read database-local setting %s without having run with-database" (:name setting-def))
+         (ex-info (format "Trying to read database-local setting %s without surrounding [[setting/with-database]] call."
+                          (:name setting-def))
                   {:setting setting-def}))
 
-        ;; This will likely mean that we're in a test using hand-crafted metadata. Just stub the instance too.
+        ;; This likely means we're in a test using hand-crafted metadata. Just stub the instance too.
         (and (:enabled-for-db? setting-def) (not *database*))
         (log/warnf "Skipping enabled-for-db? check for %s as we don't have the underlying toucan2 db instance."
                    (:name setting-def))))
