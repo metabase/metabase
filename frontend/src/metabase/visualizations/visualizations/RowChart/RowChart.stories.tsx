@@ -1,4 +1,8 @@
+// @ts-expect-error There is no type definition
+import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
+import { useState } from "react";
+import { useMount } from "react-use";
 
 import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
@@ -38,37 +42,57 @@ export const Default: StoryFn<{ series: RawSeries }> = ({
   series = MOCK_SERIES,
 }: {
   series: RawSeries;
-}) => (
-  <VisualizationWrapper>
-    <Box h={500}>
-      <Visualization rawSeries={series} width={500} />
-    </Box>
-  </VisualizationWrapper>
-);
+}) => {
+  return (
+    <VisualizationWrapper>
+      <Box h={500}>
+        <Visualization rawSeries={series} width={500} />
+      </Box>
+    </VisualizationWrapper>
+  );
+};
 
-export const WithLongNames = {
-  render: Default,
-  args: {
-    series: [
-      {
-        card: createMockCard({ name: "Card", display: "row" }),
-        data: {
-          cols: [
-            StringColumn({ name: "Dimension" }),
-            NumberColumn({ name: "Count" }),
+export const WithLongNames = () => {
+  const [series, setSeries] = useState([
+    {
+      card: createMockCard({ name: "Card", display: "row" }),
+      data: {
+        cols: [
+          StringColumn({ name: "Dimension" }),
+          NumberColumn({ name: "Count" }),
+        ],
+        rows: [
+          [
+            "Aerodynamic Bronze HatAerodynamic Bronze HatAerodynamic Bronze HatAerodynamic Bronze HatAerodynamic Bronze HatAerodynamic Bronze HatAerodynamic Bronze Hat",
+            1,
           ],
-          rows: [
-            [
-              "Aerodynamic Bronze HatAerodynamic Bronze HatAerodynamic Bronze HatAerodynamic Bronze HatAerodynamic Bronze HatAerodynamic Bronze HatAerodynamic Bronze Hat",
-              1,
-            ],
-            [
-              "Aerodynamic Concrete BenchAerodynamic Concrete BenchAerodynamic Concrete BenchAerodynamic Concrete BenchAerodynamic Concrete BenchAerodynamic Concrete BenchAerodynamic Concrete Bench",
-              2,
-            ],
+          [
+            "Aerodynamic Concrete BenchAerodynamic Concrete BenchAerodynamic Concrete BenchAerodynamic Concrete BenchAerodynamic Concrete BenchAerodynamic Concrete BenchAerodynamic Concrete Bench",
+            2,
           ],
-        },
+        ],
       },
-    ] as Series,
-  },
+    },
+  ] as Series);
+
+  useMount(() => {
+    const asyncCallback = createAsyncCallback();
+
+    // trigger rerender to avoid weird issue with first calculation being incorrect. Maybe because of fonts are not loaded?
+    setTimeout(() => {
+      setSeries([...series]);
+
+      setTimeout(() => {
+        asyncCallback();
+      });
+    }, 100);
+  });
+
+  return (
+    <VisualizationWrapper>
+      <Box h={500}>
+        <Visualization rawSeries={series} width={500} />
+      </Box>
+    </VisualizationWrapper>
+  );
 };
