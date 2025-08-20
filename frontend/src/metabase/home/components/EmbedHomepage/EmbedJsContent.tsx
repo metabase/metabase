@@ -22,7 +22,7 @@ export const EmbedJsContent = ({
 }: EmbedJsContentProps) => {
   const cta = match({ variant, hasEmbeddingFeature })
     .with({ variant: "ee", hasEmbeddingFeature: true }, () => (
-      <Link to={"/embed-js"}>
+      <Link to="/embed-js">
         <Button variant="outline">{t`Start embedding`}</Button>
       </Link>
     ))
