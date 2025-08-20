@@ -168,9 +168,11 @@
    (ensure-pmbql-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
-   (ensure-pmbql #'limit/add-default-limit)
-   (ensure-pmbql #'qp.middleware.enterprise/apply-download-limit)
-   (ensure-pmbql #'check-features/check-features)])
+   (ensure-legacy #'limit/add-default-limit)
+   (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
+   (ensure-legacy #'check-features/check-features)
+   ;; return pMBQL at the end
+   (ensure-pmbql identity)])
 
 (defn- middleware-fn-name [middleware-fn]
   (if-let [fn-name (:name (meta middleware-fn))]

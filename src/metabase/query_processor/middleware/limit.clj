@@ -1,12 +1,10 @@
 (ns metabase.query-processor.middleware.limit
   "Middleware that handles limiting the maximum number of rows returned by a query."
   (:require
-   [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.query-processor.schema :as qp.schema]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.query-processor.settings :as qp.settings]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
    [potemkin :as p]))
 
 ;;; provided as a convenience since this var used to live here. Prefer using directly from `qp.settings` going forward.
@@ -26,14 +24,11 @@
   [query]
   (assoc-in query [:middleware :disable-max-results?] true))
 
-(defn- add-limit [max-rows query]
-  (let [original-limit (lib/current-limit query -1)]
-    (cond-> query
-      (and (not (lib/native-stage? query -1))
-           (not original-limit)
-           (not (lib/current-page query -1))
-           (empty? (lib/aggregations query -1)))
-      (lib/limit -1 max-rows))))
+(defn- add-limit [max-rows {query-type :type, {original-limit :limit}, :query, :as query}]
+  (cond-> query
+    (and (= query-type :query)
+         (qp.util/query-without-aggregations-or-limits? query))
+    (update :query assoc :limit max-rows, ::original-limit original-limit)))
 
 (defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is the minimum of:
@@ -45,21 +40,21 @@
   which is also the maximum row count allowed for xlsx downloads due to Excel sheet constraints."
   [query]
   (when-not (disable-max-results? query)
-    (let [context             (-> query :info :context)
-          download-context?   #{:csv-download :json-download :xlsx-download}
+    (let [context (-> query :info :context)
+          download-context? #{:csv-download :json-download :xlsx-download}
           attachment-context? #{:dashboard-subscription :pulse :notification}
-          download-limit      (when (download-context? context) (qp.settings/download-row-limit))
-          attachment-limit    (when (attachment-context? context) (qp.settings/attachment-row-limit))
-          res                 (u/safe-min (lib/max-rows-limit query)
-                                          download-limit
-                                          attachment-limit)]
+          download-limit (when (download-context? context) (qp.settings/download-row-limit))
+          attachment-limit (when (attachment-context? context) (qp.settings/attachment-row-limit))
+          res (u/safe-min (mbql.u/query->max-rows-limit query)
+                          download-limit
+                          attachment-limit)]
       (if (= context :xlsx-download)
         (u/safe-min res qp.settings/absolute-max-results)
         (or res qp.settings/absolute-max-results)))))
 
-(mu/defn add-default-limit :- ::lib.schema/query
+(defn add-default-limit
   "Pre-processing middleware. Add default `:limit` to MBQL queries without any aggregations."
-  [query :- ::lib.schema/query]
+  [query]
   (if-let [max-rows (determine-query-max-rows query)]
     (add-limit max-rows query)
     query))
@@ -81,10 +76,9 @@
   ;; have to break [[determine-query-max-rows]] into two separate things in order to do that. :shrug:
   ((take (if-not (pos? max-rows) 1 max-rows)) rf))
 
-(mu/defn limit-result-rows :- ::qp.schema/rff
+(defn limit-result-rows
   "Post-processing middleware. Limit the maximum number of rows that are returned in post-processing."
-  [query :- ::lib.schema/query
-   rff   :- ::qp.schema/rff]
+  [query rff]
   (let [max-rows (determine-query-max-rows query)]
     (fn limit-result-rows-rff* [metadata]
       (limit-xform max-rows (rff metadata)))))

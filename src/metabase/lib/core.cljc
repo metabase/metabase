@@ -34,7 +34,6 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options]
    [metabase.lib.order-by :as lib.order-by]
-   [metabase.lib.page]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -78,7 +77,6 @@
          lib.normalize/keep-me
          metabase.lib.options/keep-me
          lib.order-by/keep-me
-         lib.parse/keep-me
          lib.query/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
@@ -304,8 +302,7 @@
   available-metrics]
  [lib.limit
   current-limit
-  limit
-  max-rows-limit]
+  limit]
  [lib.metadata.calculation
   column-name
   describe-query
@@ -347,9 +344,6 @@
   orderable-columns]
  [lib.normalize
   normalize]
- [metabase.lib.page
-  current-page
-  with-page]
  [lib.parse
   parse]
  [lib.query
