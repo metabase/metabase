@@ -229,13 +229,13 @@
     Closeable
     (close [_] (close-fn o))))
 
-(defn open-temp-index! ^Closeable []
+(defn open-temp-index! ^Closeable [& {:keys [index] :or {index mock-index}}]
   (closeable
-   (do (semantic.index/create-index-table-if-not-exists! db mock-index {:force-reset? true})
-       mock-index)
-   (fn cleanup-temp-index-table! [{:keys [table-name]}]
+   (do (semantic.index/create-index-table-if-not-exists! db index {:force-reset? true})
+       index)
+   (fn cleanup-temp-index-table! [{:keys [table-name] :as index}]
      (try
-       (semantic.index/drop-index-table! db mock-index)
+       (semantic.index/drop-index-table! db index)
        (catch Exception e
          (log/error e "Warning: failed to clean up test table" table-name))))))
 
@@ -398,6 +398,17 @@
   (-> row
       (unwrap-column :text_search_vector)
       (unwrap-column :text_search_with_native_query_vector)))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn index-count
+  "Count the number of documents in the index."
+  [index]
+  (let [result (jdbc/execute-one! db
+                                  (-> (sql.helpers/select [:%count.* :count])
+                                      (sql.helpers/from (keyword (:table-name index)))
+                                      semantic.index/sql-format-quoted)
+                                  {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (or (:count result) 0)))
 
 #_:clj-kondo/ignore
 (defn full-index

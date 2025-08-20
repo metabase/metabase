@@ -7,12 +7,15 @@
   (:require
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
+
+(set! *warn-on-reflection* true)
 
 ;; metadata and control tables allow multiple indexes to coexist
 ;; while maintaining a single active pointer.
@@ -36,7 +39,7 @@
     [:indexer_last_seen_hash :text :null]]
 
    :control
-   [[:id :bigint [:primary-key]]                            ;; not auto-inc, only one row - still useful to ensure only one row when inserting.
+   [[:id :bigint [:primary-key]] ;; not auto-inc, only one row - still useful to ensure only one row when inserting.
     [:version :text :not-null]
     [:active_id :int :null]
     [:active_updated_at :timestamp-with-time-zone :null]]
@@ -54,6 +57,11 @@
     ;; even if they do not, as a redundancy filtering optimisation - nothing too bad happens.
     [:document_hash :text :null]]})
 
+(defn model-table-suffix
+  "Returns a new suffix for a table name, based on current timestamp"
+  []
+  (mod (.toEpochSecond (t/offset-date-time)) 10000000))
+
 (defn qualify-index
   "Qualifies an index-map, returning a new index-map that might have additional disambiguating prefixes applied
   to table names.
@@ -62,18 +70,22 @@
   the same database."
   [index index-metadata]
   ;; if created databases for namespacing in tests we could probably remove this whole idea.
-  (let [{:keys [index-table-qualifier]} index-metadata
-        qualify (partial format index-table-qualifier)]
+  (let [{:keys [index-table-qualifier index-table-unique-suffix]} index-metadata
+        qualify (fn [table-name]
+                  (cond-> (format index-table-qualifier table-name)
+                    index-table-unique-suffix
+                    (str "_" (model-table-suffix))))]
     (-> index
         (update :table-name qualify))))
 
 (def default-index-metadata
   "The default index metadata configuration that will be used for the search engine integration."
-  {:version               "1"
-   :metadata-table-name   "index_metadata"
-   :control-table-name    "index_control"
-   :gate-table-name       "index_gate"
-   :index-table-qualifier "%s"})
+  {:version                   "1"
+   :metadata-table-name       "index_metadata"
+   :control-table-name        "index_control"
+   :gate-table-name           "index_gate"
+   :index-table-qualifier     "%s"
+   :index-table-unique-suffix true})
 
 (defn- create-index-metadata-table-if-not-exists-sql [index-metadata]
   (let [{:keys [metadata-table-name]} index-metadata
