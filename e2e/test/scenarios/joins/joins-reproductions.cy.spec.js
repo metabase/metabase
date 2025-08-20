@@ -1204,7 +1204,7 @@ describe("issue 27521", () => {
     H.popover().findByText("Orders → ID").should("be.visible").click();
     H.getNotebookStep("join")
       .findByLabelText("Right column")
-      .findByText("Orders → ID")
+      .findByText("Q1 → ID")
       .should("be.visible")
       .click();
     H.popover().findByText("ID").should("be.visible").click();
