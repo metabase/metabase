@@ -19,6 +19,7 @@ export function DateFilterPicker({
   withSubmitButton,
   onChange,
   onBack,
+  readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
@@ -62,7 +63,7 @@ export function DateFilterPicker({
         }}
         renderBackButton={() =>
           onBack ? (
-            <PopoverBackButton p="sm" onClick={onBack}>
+            <PopoverBackButton p="sm" onClick={onBack} readOnly={readOnly}>
               {columnInfo.longDisplayName}
             </PopoverBackButton>
           ) : null
