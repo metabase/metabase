@@ -1,3 +1,6 @@
+# Thi workflow does the backward compatibility tests
+# between the Embedding SDK package of version N and Embedding SDK Bundle of version N - 1
+# N - 1 is a target of a PR
 name: Embedding SDK backward-compatibility E2E Component Tests
 
 on:
@@ -23,9 +26,28 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
+  decide-target-ref:
+    runs-on: ubuntu-latest
+    outputs:
+      target-ref: ${{ steps.get-target-ref.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Decide ref to checkout
+        id: get-target-ref
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "value=${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"
+          fi
+
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
     name: "SDK backward-compatibility E2E > [Backport only] Get build requirements"
+    needs: [decide-target-ref]
     if: |
       !cancelled() &&
       contains(github.base_ref || github.ref, 'release-x')
@@ -37,7 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.base_ref || github.ref }}
+          ref: ${{ needs.decide-target-ref.outputs.target-ref }}
           sparse-checkout: release
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && yarn && yarn build
@@ -62,7 +84,7 @@ jobs:
 
   e2e-tests:
     name: "SDK backward-compatibility E2E > Run e2e tests"
-    needs: [files-changed, get-build-requirements]
+    needs: [files-changed, decide-target-ref, get-build-requirements]
     if: |
       !cancelled() &&
       needs.files-changed.outputs.e2e_embedding_sdk == 'true'
@@ -85,7 +107,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.base_ref || github.ref }}
+          ref: ${{ needs.decide-target-ref.outputs.target-ref }}
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
