@@ -8,6 +8,7 @@ import {
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
@@ -140,6 +141,11 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
+    trackTranformTriggerManualRun({
+      transformId: transform.id,
+      triggeredFrom: "transform-page",
+    });
+
     const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);

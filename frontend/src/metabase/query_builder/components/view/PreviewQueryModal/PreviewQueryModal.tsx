@@ -40,7 +40,10 @@ export const PreviewQueryModal = ({
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   const engine = question.database()?.engine;
-  const formattedQuery = formatNativeQuery(data?.query, engine);
+  const formattedQuery =
+    data != null && engine != null
+      ? formatNativeQuery(data.query, engine)
+      : undefined;
   const formattedError = error ? getResponseErrorMessage(error) : undefined;
 
   return (

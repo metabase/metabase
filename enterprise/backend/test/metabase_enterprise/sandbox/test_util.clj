@@ -3,6 +3,7 @@
   (:require
    [malli.core :as mc]
    [mb.hawk.parallel]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -54,6 +55,26 @@
                                [:query      {:optional true} :map]
                                [:remappings {:optional true} :map]]]]]
    [:attributes {:optional true} :map]])
+
+(defn do-with-gtaps-for-all-users! [args-fn f]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-gtaps-for-user!")
+  (letfn [(thunk []
+            (mt/with-no-data-perms-for-all-users!
+              (let [{:keys [gtaps]} (mc/assert WithGTAPsArgs (args-fn))]
+                (mt/with-additional-premium-features #{:sandboxes}
+                  (do-with-gtap-defs! (perms/all-users-group) gtaps f)))))]
+    ;; create a temp copy of the current DB if we haven't already created one. If one is already created, keep using
+    ;; that so we can test multiple sandboxed users against the same DB
+    (if data.impl/*db-is-temp-copy?*
+      (thunk)
+      (data/with-temp-copy-of-db
+        (thunk)))))
+
+(defmacro with-gtaps-for-all-users!
+  "Sets up a sandbox for the 'all users' group."
+  {:style/indent :defn}
+  [gtaps-and-attributes-map & body]
+  `(do-with-gtaps-for-all-users! (fn [] ~gtaps-and-attributes-map) (fn [] ~@body)))
 
 (defn do-with-gtaps-for-user! [args-fn test-user-name-or-user-id f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-gtaps-for-user!")

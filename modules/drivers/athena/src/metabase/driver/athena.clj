@@ -509,7 +509,7 @@
 ;   #{"database_name"})
 
 ; If we want to limit the initial connection to a specific database/schema, I think we'd have to do that here...
-(defmethod driver/describe-database :athena
+(defmethod driver/describe-database* :athena
   [driver {details :details, :as database}]
   (sql-jdbc.execute/do-with-connection-with-options
    driver

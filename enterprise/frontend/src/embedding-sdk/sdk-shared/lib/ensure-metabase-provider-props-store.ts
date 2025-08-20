@@ -6,8 +6,10 @@ import {
 
 import { getWindow } from "./get-window";
 
-type MetabaseProviderPropsToStore = MetabaseProviderPropsStoreExternalProps &
-  MetabaseProviderPropsStoreInternalProps;
+type MetabaseProviderPropsStoreState = {
+  props: MetabaseProviderPropsStoreExternalProps | null;
+  internalProps: MetabaseProviderPropsStoreInternalProps;
+};
 
 export type MetabaseProviderPropsStoreExternalProps = Omit<
   ComponentProviderProps,
@@ -22,34 +24,39 @@ export type MetabaseProviderPropsStoreInternalProps = {
   singleInstanceIdsMap?: Record<string, string[]>;
 };
 
+/**
+ * IMPORTANT!
+ * Any rename/removal change for fields is a breaking change between the SDK Bundle and the SDK NPM package,
+ * and should be done via the deprecation of the field first.
+ */
 export type MetabaseProviderPropsStore = {
-  getSnapshot(): MetabaseProviderPropsToStore;
-  subscribe(fn: () => void): () => void;
+  getState(): MetabaseProviderPropsStoreState;
+  subscribe(listener: () => void): () => void;
   initialize(initialProps: MetabaseProviderPropsStoreExternalProps): void;
   updateInternalProps(
-    p: Partial<MetabaseProviderPropsStoreInternalProps>,
+    internalProps: Partial<MetabaseProviderPropsStoreInternalProps>,
   ): void;
-  setProps(p: Partial<MetabaseProviderPropsStoreExternalProps>): void;
+  setProps(props: Partial<MetabaseProviderPropsStoreExternalProps>): void;
   cleanup(): void;
 };
 
-const INTERNAL_PROP_NAMES: (keyof MetabaseProviderPropsStoreInternalProps)[] = [
-  "loadingPromise",
-  "loadingState",
-  "loadingError",
-  "reduxStore",
-  "singleInstanceIdsMap",
-];
-
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
-const getEmptyProps = (): MetabaseProviderPropsStoreInternalProps =>
-  ({
+
+const getInitialState = (): MetabaseProviderPropsStoreState => ({
+  internalProps: {
     loadingPromise: null,
     loadingState: SdkLoadingState.Initial,
     loadingError: null,
     reduxStore: null,
     singleInstanceIdsMap: {},
-  }) satisfies MetabaseProviderPropsStoreInternalProps;
+  },
+  props: null,
+});
+
+const getDefaultProps =
+  (): Partial<MetabaseProviderPropsStoreExternalProps> => ({
+    allowConsoleLog: true,
+  });
 
 export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
   const win = getWindow();
@@ -62,43 +69,44 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
     return win[KEY];
   }
 
-  let props = getEmptyProps() as MetabaseProviderPropsToStore;
+  let state = getInitialState();
   const listeners = new Set<() => void>();
 
   const store: MetabaseProviderPropsStore = {
-    getSnapshot: () => props,
+    getState: () => state,
     subscribe(listener) {
       listeners.add(listener);
 
       return () => listeners.delete(listener);
     },
     initialize(initialProps) {
-      const internalProps = Object.fromEntries(
-        INTERNAL_PROP_NAMES.map((key) => [key, props[key]]),
-      ) as MetabaseProviderPropsStoreInternalProps;
-
-      props = {
-        ...internalProps,
-        ...initialProps,
-      } as MetabaseProviderPropsToStore;
+      state = {
+        ...state,
+        props: {
+          ...getDefaultProps(),
+          ...initialProps,
+        },
+      } as MetabaseProviderPropsStoreState;
     },
-    updateInternalProps(propsToSet) {
-      props = {
-        ...props,
-        ...propsToSet,
-      } as MetabaseProviderPropsToStore;
+    updateInternalProps(internalProps) {
+      state = {
+        ...state,
+        internalProps: {
+          ...state.internalProps,
+          ...internalProps,
+        },
+      } as MetabaseProviderPropsStoreState;
 
       listeners.forEach((callback) => callback());
     },
-    setProps(propsToSet) {
-      const internalProps = Object.fromEntries(
-        INTERNAL_PROP_NAMES.map((key) => [key, props[key]]),
-      ) as MetabaseProviderPropsStoreInternalProps;
-
-      props = {
-        ...internalProps,
-        ...propsToSet,
-      } as MetabaseProviderPropsToStore;
+    setProps(props) {
+      state = {
+        ...state,
+        props: {
+          ...getDefaultProps(),
+          ...props,
+        },
+      } as MetabaseProviderPropsStoreState;
 
       listeners.forEach((callback) => callback());
     },
