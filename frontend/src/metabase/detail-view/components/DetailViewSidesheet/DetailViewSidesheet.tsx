@@ -20,6 +20,7 @@ import type {
   Table,
 } from "metabase-types/api";
 
+import S from "./DetailViewSidesheet.module.css";
 import { Sidesheet } from "./Sidesheet";
 
 interface Props {
@@ -106,38 +107,55 @@ export function DetailViewSidesheet({
             />
           </Tooltip>
 
-          {url && (
-            <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to a row`}>
-              <Button
-                aria-label={linkCopied ? t`Copied!` : t`Copy link to a row`}
-                c="text-dark"
-                h={20}
-                leftSection={<Icon name="link" />}
-                p={0}
-                variant="subtle"
-                w={20}
-                onClick={handleCopyLink}
-              />
-            </Tooltip>
-          )}
+          <Tooltip label={t`Actions`}>
+            <Button
+              aria-label={t`Actions`}
+              c="text-dark"
+              h={20}
+              leftSection={<Icon name="ellipsis" />}
+              p={0}
+              variant="subtle"
+              w={20}
+              onClick={onNextClick}
+            />
+          </Tooltip>
 
           {url && (
-            <Tooltip label={t`Open row page`}>
-              <Box>
+            <>
+              <Separator />
+
+              <Tooltip label={linkCopied ? t`Copied!` : t`Copy link to a row`}>
                 <Button
-                  aria-label={t`Open row page`}
+                  aria-label={linkCopied ? t`Copied!` : t`Copy link to a row`}
                   c="text-dark"
-                  component={Link}
                   h={20}
-                  leftSection={<Icon name="expand" />}
+                  leftSection={<Icon name="link" />}
                   p={0}
-                  to={url}
                   variant="subtle"
                   w={20}
+                  onClick={handleCopyLink}
                 />
-              </Box>
-            </Tooltip>
+              </Tooltip>
+
+              <Tooltip label={t`Open row page`}>
+                <Box>
+                  <Button
+                    aria-label={t`Open row page`}
+                    c="text-dark"
+                    component={Link}
+                    h={20}
+                    leftSection={<Icon name="expand" />}
+                    p={0}
+                    to={url}
+                    variant="subtle"
+                    w={20}
+                  />
+                </Box>
+              </Tooltip>
+            </>
           )}
+
+          <Separator />
         </>
       }
       data-testid="object-detail"
@@ -184,3 +202,5 @@ export function DetailViewSidesheet({
     </Sidesheet>
   );
 }
+
+const Separator = () => <Box className={S.separator} h={20} mx={rem(-8)} />;
