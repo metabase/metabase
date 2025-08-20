@@ -155,7 +155,7 @@
                                 (.getCanonicalName ^Class klass))
                         {:tag klass}))))))
 
-(defn disabled-for-db-reasons
+(defn- disabled-for-db-reasons
   "Return the reasons, if any, for the given setting being disabled."
   [setting-def database]
   (when-let [f (:enabled-for-db? setting-def)]
@@ -165,6 +165,11 @@
          (catch ExceptionInfo e
            (or (:setting/disabled-reasons (ex-data e))
                (throw e))))))
+
+(defn- warning?
+  "Warnings don't block you saving a setting, but the value won't be used until the warning is resolved."
+  [reason]
+  (= "warning" (namespace (:key reason))))
 
 (defn custom-disabled-reasons!
   "Expose custom reasons for a setting being disabled to the admin panel.
@@ -948,7 +953,9 @@
                       {:setting s-name
                        :required-feature driver-feature
                        :database-id (:id database)})))
-    (when-let [reasons (disabled-for-db-reasons setting database)]
+    ;; Warnings are only for display and shouldn't block writing the setting.
+    ;; They imply that the setting won't work until the issue is resolved, but often it is a transient problem.
+    (when-let [reasons (seq (remove warning? (disabled-for-db-reasons setting database)))]
       (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
                       {:setting     s-name
                        :database-id (:id database)
