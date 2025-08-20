@@ -542,7 +542,7 @@
           (is (contains? tables tables-table))
           (is (contains? tables columns-table)))))))
 
-(deftest clickhouse-describe-database-enable-multiple-db-schema-test
+(deftest ^:parallel clickhouse-describe-database-enable-multiple-db-schema-test
   (mt/test-driver :clickhouse
     (let [tables-with-schema {:tables
                               #{{:name "users", :schema "test_data", :description nil}

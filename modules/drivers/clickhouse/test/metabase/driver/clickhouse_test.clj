@@ -355,7 +355,7 @@
                               :value  "2"}]
                 :middleware {:format-rows? false}})))))))
 
-(deftest clickhouse-db-supports-schemas-test
+(deftest ^:parallel clickhouse-db-supports-schemas-test
   (doseq [[schemas-supported? details] [[false? {}]
                                         [false? {:enable-multiple-db nil}]
                                         [false? {:enable-multiple-db false}]
