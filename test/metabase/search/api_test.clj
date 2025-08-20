@@ -36,11 +36,8 @@
 
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
-(use-fixtures :each (fn [thunk] (search.tu/with-new-search-if-available (thunk))))
-
-(use-fixtures :each (fn [thunk]
-                      (binding [search.ingestion/*force-sync* true]
-                        (thunk))))
+(use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
+                                  (search.tu/with-new-search-if-available (thunk)))))
 
 (def ^:private default-search-row
   {:archived                   false
