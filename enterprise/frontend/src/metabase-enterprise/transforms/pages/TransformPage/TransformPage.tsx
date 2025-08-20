@@ -10,6 +10,7 @@ import type { Transform, TransformId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../../constants";
 
+import { DependenciesSection } from "./DependenciesSection";
 import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
@@ -60,6 +61,7 @@ export function TransformPage({ params }: TransformPageProps) {
       <RunSection transform={transform} />
       <TargetSection transform={transform} />
       <ManageSection transform={transform} />
+      <DependenciesSection transform={transform} />
     </Stack>
   );
 }
