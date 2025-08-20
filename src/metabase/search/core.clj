@@ -15,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p])
-  (:import (java.util.concurrent ArrayBlockingQueue ExecutorService RejectedExecutionException ThreadPoolExecutor ThreadPoolExecutor$DiscardPolicy TimeUnit)))
+  (:import (java.util.concurrent ArrayBlockingQueue ExecutorService ThreadPoolExecutor ThreadPoolExecutor$AbortPolicy ThreadPoolExecutor$DiscardPolicy TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -122,8 +122,7 @@
    1 ; pool size
    1 ; max pool size
    0 TimeUnit/MILLISECONDS ; keepalive
-   (ArrayBlockingQueue. 1)
-   (RejectedExecutionException.)))
+   (ArrayBlockingQueue. 1)))
 
 (defn- reindex-logic! [opts]
   (when (supports-index?)
