@@ -17,7 +17,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.schema :as qp.schema]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]

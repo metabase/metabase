@@ -1,7 +1,9 @@
 (ns metabase.driver-api.core
   {:clj-kondo/config '{:linters
-                       ;; this is actually ok here since this is a drivers
-                       {:discouraged-namespace [metabase.query-processor.store {:level :off}]}}}
+                       ;; this is actually ok here since this is a drivers namespace
+                       {:discouraged-namespace {metabase.query-processor.store {:level :off}}
+                        ;; this is also ok here since this is a drivers namespace
+                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
   (:refer-clojure :exclude [replace compile require])
   (:require
    [metabase.actions.core :as actions]
@@ -110,8 +112,7 @@
  lib.util.match/match-one
  lib.util.match/replace
  lib.util/truncate-alias
- ;; this is actually still allowed in driver namespaces... for now.
- #_{:clj-kondo/ignore [:discouraged-var]} lib/->legacy-MBQL
+ lib/->legacy-MBQL
  lib/query-from-legacy-inner-query
  limit/absolute-max-results
  limit/determine-query-max-rows
