@@ -83,7 +83,7 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          
+
           BRANCH_NAME="docs/auto-update-${{ inputs.target_branch }}-$(date +%Y-%m-%d-%H%M%S)"
           echo "Creating branch: $BRANCH_NAME"
 
@@ -113,10 +113,10 @@ jobs:
           CHANGES_SUMMARY=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | head -10 | sed 's/^/- /' || echo "- No specific files detected")
           TOTAL_CHANGES=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | wc -l || echo "0")
           BRANCH_NAME="${{ steps.commit_and_push.outputs.branch_name }}"
-          
+
           echo "Creating PR with branch: $BRANCH_NAME"
           echo "Changes detected: $TOTAL_CHANGES files"
-          
+
           for i in {1..3}; do
             echo "Attempt $i of 3..."
             if gh pr create \
