@@ -354,3 +354,10 @@
                               :target [:variable [:template-tag "category_id_2"]]
                               :value  "2"}]
                 :middleware {:format-rows? false}})))))))
+
+(deftest clickhouse-db-supports-schemas-test
+  (doseq [[schemas-supported? details] [[false? {}]
+                                        [false? {:enable-multiple-db nil}]
+                                        [false? {:enable-multiple-db false}]
+                                        [true? {:enable-multiple-db true}]]]
+    (is (schemas-supported? (driver/database-supports? :clickhouse :schemas {:details details})))))
