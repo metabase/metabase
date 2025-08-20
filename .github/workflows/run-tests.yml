@@ -90,17 +90,27 @@ jobs:
 
   app-db-tests:
     needs: files-changed
+    if: ${{ needs.files-changed.outputs.backend_all == 'true' }}
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
-    with:
-      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
-  driver-tests:
+  driver-tests-tier1:
     needs: files-changed
-    uses: ./.github/workflows/drivers.yml
+    if: ${{ needs.files-changed.outputs.backend_all == 'true' }}
+    uses: ./.github/workflows/drivers-tier1.yml
     secrets: inherit
-    with:
-      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
+
+  driver-tests-tier2:
+    needs: files-changed
+    if: ${{ needs.files-changed.outputs.backend_all == 'true' }}
+    uses: ./.github/workflows/drivers-tier2.yml
+    secrets: inherit
+
+  driver-tests-tier3:
+    needs: files-changed
+    if: ${{ needs.files-changed.outputs.backend_all == 'true' }}
+    uses: ./.github/workflows/drivers-tier3.yml
+    secrets: inherit
 
   frontend-tests:
     needs: files-changed

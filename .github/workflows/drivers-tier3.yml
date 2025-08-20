@@ -1,0 +1,256 @@
+name: Driver Tests - Tier 3 (Slow/Complex)
+
+on:
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-tier3
+  cancel-in-progress: true
+
+jobs:
+  # Determine if tier 3 drivers should run (same logic as current determine-driver-skips)
+  determine-tier3-skips:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check_team_and_branch.outputs.skip }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Fetch base branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+      - name: Check if tier3 drivers should run
+        id: check_team_and_branch
+        run: |
+          IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
+          HAS_TEAM_LABEL="${{ contains(github.event.pull_request.labels.*.name, '.Team/Drivers') || contains(github.event.pull_request.labels.*.name, '.Team/Querying') || contains(github.event.pull_request.labels.*.name, '.Team/SemanticLayer') || contains(github.event.pull_request.labels.*.name, '.Team/DevEx') }}"
+
+          echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
+          echo "Has relevant team label: ${HAS_TEAM_LABEL}"
+          if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "Merging into master or a release branch. Tier 3 driver tests will run."
+          elif [[ "${HAS_TEAM_LABEL}" == "true" ]]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "A relevant team label is present. Tier 3 driver tests will run."
+          else
+            echo "Checking for changes in relevant folders..."
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
+
+            CHANGED_FOLDERS=()
+            for folder in "src/metabase/lib" "src/metabase/query_processor" "modules/drivers" "src/metabase/driver"; do
+              if echo "$CHANGED_FILES" | grep -q "$folder"; then
+                CHANGED_FOLDERS+=("$folder")
+              fi
+            done
+
+            if [[ ${#CHANGED_FOLDERS[@]} -gt 0 ]]; then
+              echo "skip=false" >> $GITHUB_OUTPUT
+              echo "Changes detected in: ${CHANGED_FOLDERS[*]}. Tier 3 driver tests will run."
+            else
+              echo "skip=true" >> $GITHUB_OUTPUT
+              echo "No relevant changes found. Tier 3 driver tests will be skipped."
+            fi
+          fi
+        shell: bash
+
+  # Tier 3: Complex drivers (30-60 minutes, complex setup, external dependencies)
+  be-tests-athena:
+    needs: determine-tier3-skips
+    if: ${{ !(needs.determine-tier3-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 65
+    env:
+      CI: 'true'
+      DRIVERS: athena
+      MB_ATHENA_TEST_REGION: us-east-1
+      MB_ATHENA_TEST_REGION_ROUTING: us-east-2
+      MB_ATHENA_TEST_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_ACCESS_KEY }}
+      MB_ATHENA_TEST_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_SECRET_KEY }}
+      MB_ATHENA_TEST_S3_STAGING_DIR: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR }}
+      MB_ATHENA_TEST_S3_STAGING_DIR_ROUTING: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR_ROUTING }}
+      MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY }}
+      MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
+    name: Athena
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test Athena driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-athena-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  be-tests-databricks:
+    needs: determine-tier3-skips
+    if: ${{ !(needs.determine-tier3-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 65
+    env:
+      CI: 'true'
+      DRIVERS: databricks
+      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
+      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
+      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
+      MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
+      MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
+      MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
+      MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
+    name: Databricks
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test Databricks driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-databricks-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  be-tests-oracle-latest:
+    needs: determine-tier3-skips
+    if: ${{ !(needs.determine-tier3-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 65
+    env:
+      CI: 'true'
+      DRIVERS: oracle
+      MB_ORACLE_TEST_HOST: localhost
+      MB_ORACLE_TEST_USER: ''
+      MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
+      MB_ORACLE_TEST_PASSWORD: ''
+      MB_ORACLE_TEST_SSL: true
+      MB_ORACLE_SSL_TEST_SSL: true
+      MB_ORACLE_TEST_SSL_USE_TRUSTSTORE: true
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_PATH: './test_resources/ssl/oracle/truststore.p12'
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_OPTIONS: local
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE: 'PassworD_#1234'
+      MB_ORACLE_TEST_SSL_USE_KEYSTORE: true
+      MB_ORACLE_TEST_SSL_KEYSTORE_PATH: './test_resources/ssl/oracle/keystore.p12'
+      MB_ORACLE_TEST_SSL_KEYSTORE_OPTIONS: local
+      MB_ORACLE_TEST_SSL_KEYSTORE_PASSWORD_VALUE: 'PassworD_#1234'
+    services:
+      oracle:
+        image: metabase/qa-databases:oracle-xe-21.3
+        env:
+          ORACLE_PASSWORD: password
+        ports:
+          - "1521:2484"
+    name: Oracle 21.3
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test Oracle 21.3
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-oracle-21-3-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  be-tests-mongo-latest:
+    needs: determine-tier3-skips
+    if: ${{ !(needs.determine-tier3-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 65
+    env:
+      CI: 'true'
+      DRIVERS: mongo
+      MB_MONGO_TEST_USER: metabase
+      MB_MONGO_TEST_PASSWORD: metasample123
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - "27017:27017"
+        env:
+          MONGO_INITDB_ROOT_USERNAME: metabase
+          MONGO_INITDB_ROOT_PASSWORD: metasample123
+    name: MongoDB Latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test MongoDB Latest
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mongo-latest-ee'
+        test-args: >-
+          :exclude-tags [:mongo-sharded-cluster-tests]
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  tier3-results:
+    needs:
+      - be-tests-athena
+      - be-tests-databricks
+      - be-tests-oracle-latest
+      - be-tests-mongo-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    name: tier3-results
+    if: always() && !cancelled()
+    steps:
+      - name: Check tier 3 status
+        uses: actions/github-script@v7
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | #js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(([jobName, jobValues]) => ({
+              name: jobName,
+              result: jobValues.result
+            }));
+            
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log("✅ Tier 3 (Slow/Complex) drivers passed!");
+              process.exit(0);
+            } else {
+              console.log("❌ Tier 3 (Slow/Complex) drivers failed:");
+              jobs.forEach((job) => {
+                if (job.result !== 'success') {
+                  console.log(`${job.name} - ${job.result}`);
+                }
+              });
+              process.exit(1);
+            }

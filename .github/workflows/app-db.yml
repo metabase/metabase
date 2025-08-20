@@ -2,10 +2,6 @@ name: App DB Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-app-db
@@ -13,7 +9,6 @@ concurrency:
 
 jobs:
   be-tests-mariadb:
-    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -125,7 +120,6 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mysql:
-    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -237,7 +231,6 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-postgres:
-    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
