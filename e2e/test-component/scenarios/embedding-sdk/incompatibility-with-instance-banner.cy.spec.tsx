@@ -9,7 +9,7 @@ import { DEFAULT_SDK_AUTH_PROVIDER_CONFIG } from "e2e/support/helpers/embedding-
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
-const mockMetabaseVersion = () => {
+const mockIncompatibleMetabaseVersion = () => {
   cy.intercept("POST", "*", (req) => {
     req.reply({
       statusCode: 500,
@@ -45,7 +45,7 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
       getSdkRoot().within(() => {
         cy.findByTestId("notebook-button").click();
 
-        mockMetabaseVersion();
+        mockIncompatibleMetabaseVersion();
 
         cy.findByText("Visualize").click();
       });
@@ -62,7 +62,7 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
       });
     });
 
-    it("should show an error after the SDK is re-mounted when the `api.onResponseError` handler is already set", () => {
+    it("should show an error after the SDK is re-mounted", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -77,7 +77,7 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
       // Unmount the SDK
       cy.mount(<></>);
 
-      // Remount the SDK, the `api.onResponseError` handler that is alredy set, should properly work with the new reduxStore
+      // Remount the SDK, the `api.onResponseError` handler that was set previously should properly work with the new reduxStore
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
@@ -87,7 +87,7 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
       getSdkRoot().within(() => {
         cy.findByTestId("notebook-button").click();
 
-        mockMetabaseVersion();
+        mockIncompatibleMetabaseVersion();
 
         cy.findByText("Visualize").click();
       });
@@ -130,7 +130,7 @@ describe("scenarios > embedding-sdk > incompatibility-with-instance-banner", () 
       getSdkRoot().within(() => {
         cy.findByTestId("notebook-button").click();
 
-        mockMetabaseVersion();
+        mockIncompatibleMetabaseVersion();
 
         cy.findByText("Visualize").click();
       });
