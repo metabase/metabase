@@ -417,6 +417,9 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     closeModal();
     cancelQuestionChanges();
     setQueryBuilderMode("view");
+    if (isShowingListViewConfiguration) {
+      dispatch(setUIControls({ isShowingListViewConfiguration: false }));
+    }
     runDirtyQuestionQuery();
   };
 
