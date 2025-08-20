@@ -52,7 +52,6 @@ export const getDefaultSdkIframeEmbedSettings = (
         componentName: "metabase-browser",
         initialCollection: "root",
         readOnly: true,
-        collectionVisibleColumns: ["type", "name"],
       }),
     )
     .exhaustive();
