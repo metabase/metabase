@@ -859,7 +859,7 @@ describe("issue 33844", () => {
     H.modal().within(() => {
       cy.findByText("Order").should("be.visible");
       cy.findByText("ID").should("be.visible");
-      cy.findByTestId("object-detail-close-button").click();
+      cy.findByLabelText("Close").click();
     });
 
     cy.log("make the column visible in table views");

@@ -25,7 +25,6 @@ export function Sidesheet({
       data-testid={dataTestId}
       h="100dvh"
       opened
-      trapFocus={false}
       variant="sidesheet"
       onClose={onClose}
     >
@@ -46,7 +45,6 @@ export function Sidesheet({
               <Button
                 aria-label={t`Close`}
                 c="text-dark"
-                data-testid="object-detail-close-button"
                 h={20}
                 leftSection={<Icon name="close" />}
                 p={0}

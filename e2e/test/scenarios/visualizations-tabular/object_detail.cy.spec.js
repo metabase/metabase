@@ -101,7 +101,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading").should("contain", "Order").and("contain", 1);
       cy.findByText("37.65").should("be.visible");
-      cy.findByTestId("object-detail-close-button").click();
+      cy.findByLabelText("Close").click();
     });
 
     cy.log("Check object details for the second row");
@@ -278,7 +278,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     drillPK({ id: 5 });
     cy.get("@fetchDataset").should("have.callCount", 3);
 
-    cy.findByTestId("object-detail-close-button").click();
+    cy.findByLabelText("Close").click();
 
     drillPK({ id: 5 });
     cy.get("@fetchDataset").should("have.callCount", 5);
