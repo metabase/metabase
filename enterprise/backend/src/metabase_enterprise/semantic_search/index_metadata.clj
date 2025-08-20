@@ -252,7 +252,7 @@
   - :index              the index parameters, table name, version etc.
   - :metadata-row       the unqualified next.jdbc row, nil if it is a new index or if the metadata row has somehow been deleted
   - :index-table-exists whether the table named by the `:index` actually exists in the database"
-  [pgvector index-metadata embedding-model]
+  [pgvector index-metadata embedding-model & {:keys [force-new?]}]
   (let [{:keys [metadata-table-name
                 control-table-name]}
         index-metadata
@@ -270,7 +270,8 @@
                                      [:= :model_name model-name]
                                      [:= :vector_dimensions vector-dimensions]]}
                            (sql/format :quoted true))
-        model-rows     (jdbc/execute! pgvector model-rows-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+        model-rows     (when-not force-new?
+                         (jdbc/execute! pgvector model-rows-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
         {[active] true
          inactive false}

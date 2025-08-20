@@ -48,20 +48,14 @@
         model-switching    (and active-model model-changed)]
     (when model-switching
       (log/infof "Configured model does not match active index, switching. Previous active: %s" (u/pprint-to-str active-index)))
-    (let [{:keys [index]} (semantic.index-metadata/find-best-index! tx index-metadata embedding-model)]
+    (let [{:keys [index]} (semantic.index-metadata/find-best-index! tx index-metadata embedding-model :force-new? (:force-reset? opts))]
       (semantic.index/create-index-table-if-not-exists! tx index)
       (if (or model-changed (:force-reset? opts))
         (let [index
-              (cond
-                (not (:id index))
+              (if (not (:id index))
                 (->> index
                      (semantic.index-metadata/record-new-index-table! tx index-metadata)
                      (mark-created))
-
-                (:force-reset? opts)
-                (mark-created index)
-
-                :else
                 index)]
           (semantic.index-metadata/activate-index! tx index-metadata (:id index))
           index)
