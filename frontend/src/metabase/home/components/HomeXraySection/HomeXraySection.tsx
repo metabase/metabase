@@ -12,6 +12,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import Select from "metabase/common/components/Select";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { Database, DatabaseXray } from "metabase-types/api";
@@ -110,9 +111,11 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   );
 };
 
-const getDefaultSchema = (schemas: string[]) => {
+const getDefaultSchema = (schemas: Array<string | null>) => {
   return (
-    schemas.find((schema) => schema.toLowerCase() === "public") || schemas[0]
+    schemas
+      .filter(isNotNull)
+      .find((schema) => schema.toLowerCase() === "public") || schemas[0]
   );
 };
 
