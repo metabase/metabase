@@ -58,7 +58,7 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
     [props],
   );
 
-  useEffect(function cleanupMetabaseProviderPropsStore() {
+  useEffect(function cleanup() {
     return () => {
       ensureMetabaseProviderPropsStore().cleanup();
     };

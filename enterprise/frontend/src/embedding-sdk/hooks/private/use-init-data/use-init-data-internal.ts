@@ -5,6 +5,7 @@ import _ from "underscore";
 import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
 import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { initAuth } from "embedding-sdk/store/auth";
 import {
   setFetchRefreshTokenFn,
@@ -75,7 +76,12 @@ export const useInitDataInternal = ({
     }: {
       metabaseVersion: string;
     }) => {
-      dispatch(setMetabaseInstanceVersion(metabaseVersion));
+      // Use ensureMetabaseProviderPropsStore to access the current instance of reduxStore
+      ensureMetabaseProviderPropsStore()
+        .getState()
+        .internalProps.reduxStore?.dispatch(
+          setMetabaseInstanceVersion(metabaseVersion),
+        );
     };
   }
 
