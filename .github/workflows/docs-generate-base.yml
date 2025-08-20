@@ -47,16 +47,16 @@ jobs:
           # Ensure we're on the target branch for documentation generation
           git checkout ${{ inputs.target_branch }}
           echo "Generating documentation from branch: ${{ inputs.target_branch }}"
-          
+
           echo "Generating environment variables documentation..."
           clojure -M:ee:doc environment-variables-documentation
-          
+
           echo "Generating config template..."
           clojure -M:ee:doc config-template
-          
+
           echo "Generating API documentation..."
           clojure -M:ee:doc api-documentation
-          
+
           echo "All documentation generated successfully"
         continue-on-error: false
 
@@ -77,20 +77,20 @@ jobs:
         run: |
           BRANCH_NAME="docs/auto-update-${{ inputs.target_branch }}-$(date +%Y-%m-%d-%H%M%S)"
           echo "Creating branch: $BRANCH_NAME"
-          
+
           # Create and switch to new branch from current target branch
           git checkout -b "$BRANCH_NAME"
-          
+
           # Stage and commit changes
           git add docs/
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 1
           fi
-          
+
           git commit -m "Update generated docs (${{ inputs.target_branch }})" --no-verify
           git push -u origin "$BRANCH_NAME"
-          
+
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
           echo "Successfully created and pushed branch"
 
@@ -104,7 +104,7 @@ jobs:
           # Get a better summary of changes
           CHANGES_SUMMARY=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | head -10 | sed 's/^/- /' || echo "- No specific files detected")
           TOTAL_CHANGES=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | wc -l || echo "0")
-          
+
           PR_BODY="This PR contains automatically generated documentation updates.
 
           ## Changes detected
