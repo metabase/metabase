@@ -180,7 +180,8 @@
           (is (not (contains? param-fields "p7"))))))))
 
 (deftest ^:parallel card->template-tag-test
-  (let [card {:dataset_query (mt/native-query {:template-tags {"id"   {:name         "id"
+  (let [card {:dataset_query (mt/native-query {:query "SELECT *"
+                                               :template-tags {"id"   {:name         "id"
                                                                        :display_name "ID"
                                                                        :id           "11111111"
                                                                        :type         :dimension
@@ -239,7 +240,8 @@
 (deftest ^:parallel duplicate-column-names-test
   (testing "columns with duplicated names get mapped correctly to parameters"
     (testing "native queries"
-      (let [card {:dataset_query (mt/native-query {:template-tags
+      (let [card {:dataset_query (mt/native-query {:query "SELECT *"
+                                                   :template-tags
                                                    {"tag1" {:name         "tag1"
                                                             :display_name "Tag 1"
                                                             :id           "11111111"

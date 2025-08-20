@@ -27,8 +27,10 @@ const DefaultErrorMessage = ({ message }: Props) => (
 
 export const Error = ({ message }: Props) => {
   const {
-    props: { errorComponent: ErrorComponent },
+    state: { props: metabaseProviderProps },
   } = useMetabaseProviderPropsStore();
+
+  const ErrorComponent = metabaseProviderProps?.errorComponent;
 
   return (
     <div style={{ padding: "0.5rem" }} data-testid="sdk-error-container">

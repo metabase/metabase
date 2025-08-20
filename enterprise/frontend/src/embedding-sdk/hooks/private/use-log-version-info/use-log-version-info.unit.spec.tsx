@@ -1,27 +1,19 @@
-import { render } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
+import "embedding-sdk/bundle";
 
-import {
-  setupCurrentUserEndpoint,
-  setupPropertiesEndpoints,
-} from "__support__/server-mocks";
-import { waitForLoaderToBeRemoved } from "__support__/ui";
-import { ComponentProvider } from "embedding-sdk/components/public";
-import {
-  createMockSettings,
-  createMockTokenFeatures,
-  createMockUser,
-  createMockVersion,
-} from "metabase-types/api/mocks";
+import { useLogVersionInfo } from "embedding-sdk/hooks/private/use-log-version-info";
+import { getEmbeddingSdkPackageBuildData } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
+import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
 
-import { getEmbeddingSdkVersion } from "../config";
-
-import { createMockSdkConfig } from "./mocks/config";
-import { setupMockJwtEndpoints } from "./mocks/sso";
-
-const defaultAuthConfig = createMockSdkConfig();
-
-jest.mock("../config", () => ({
-  getEmbeddingSdkVersion: jest.fn(),
+jest.mock("embedding-sdk/sdk-shared/hooks/use-lazy-selector", () => ({
+  useLazySelector: jest.fn((selector) => selector()),
+}));
+jest.mock("embedding-sdk/lib/get-embedding-sdk-package-build-data", () => ({
+  getEmbeddingSdkPackageBuildData: jest.fn(),
+}));
+jest.mock("embedding-sdk/store/selectors", () => ({
+  ...jest.requireActual("embedding-sdk/store/selectors"),
+  getMetabaseInstanceVersion: jest.fn(),
 }));
 
 const setup = async ({
@@ -31,25 +23,12 @@ const setup = async ({
   sdkVersion: string;
   mbVersion: string;
 }) => {
-  (getEmbeddingSdkVersion as jest.Mock).mockReturnValue(sdkVersion);
+  (getEmbeddingSdkPackageBuildData as jest.Mock).mockReturnValue({
+    version: sdkVersion,
+  });
+  (getMetabaseInstanceVersion as jest.Mock).mockReturnValue(mbVersion);
 
-  setupMockJwtEndpoints();
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "token-features": createMockTokenFeatures({
-        embedding_sdk: true,
-      }),
-      version: createMockVersion({ tag: mbVersion }),
-    }),
-  );
-  setupCurrentUserEndpoint(createMockUser({ id: 1 }));
-
-  render(
-    <ComponentProvider authConfig={defaultAuthConfig}>
-      <div>Hello</div>
-    </ComponentProvider>,
-  );
-  await waitForLoaderToBeRemoved();
+  renderHook(() => useLogVersionInfo());
 };
 
 let consoleWarnSpy: jest.SpyInstance;
@@ -57,10 +36,10 @@ let consoleWarnSpy: jest.SpyInstance;
 const getWarnMessages = (): string[] =>
   consoleWarnSpy.mock.calls.map((callArguments) => callArguments.join(" "));
 
-describe("SDK auth errors", () => {
+describe("useLogVersionInfo", () => {
   beforeEach(() => {
     consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-    (getEmbeddingSdkVersion as jest.Mock).mockClear();
+    (getEmbeddingSdkPackageBuildData as jest.Mock).mockClear();
   });
 
   afterEach(() => {
@@ -74,7 +53,7 @@ describe("SDK auth errors", () => {
       expect(
         getWarnMessages().filter((message) =>
           message.includes(
-            "SDK version 0.52.10 is not compatible with MB version v1.55.0, this might cause issues.",
+            "SDK package version 0.52.10 is not compatible with SDK bundle version v1.55.0, this might cause issues.",
           ),
         ),
       ).toHaveLength(1);

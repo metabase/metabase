@@ -3,11 +3,12 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const appConfig = require("../rspack.embedding-sdk-bundle.config");
 const fs = require("fs");
 const path = require("path");
-
 const {
-  isEmbeddingSdkPackageInstalled,
-  embeddingSdkVersion: EMBEDDING_SDK_VERSION,
-} = resolveEmbeddingSdkPackage();
+  getBuildInfoValues,
+} = require("../frontend/build/embedding-sdk/rspack/get-build-info-values");
+
+const { isEmbeddingSdkPackageInstalled, embeddingSdkPackageVersion } =
+  resolveEmbeddingSdkPackage();
 
 module.exports = {
   stories: ["../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx"],
@@ -36,8 +37,8 @@ module.exports = {
         Buffer: ["buffer", "Buffer"],
       }),
       new webpack.EnvironmentPlugin({
-        EMBEDDING_SDK_VERSION,
         IS_EMBEDDING_SDK: "true",
+        ...getBuildInfoValues({ version: embeddingSdkPackageVersion }),
       }),
     ],
     module: {
@@ -70,7 +71,7 @@ const isSvgRule = (rule) => rule.test && rule.test?.test(".svg");
 
 function resolveEmbeddingSdkPackage() {
   let isEmbeddingSdkPackageInstalled = false;
-  let embeddingSdkVersion;
+  let embeddingSdkPackageVersion;
 
   try {
     const packagePath = require.resolve("@metabase/embedding-sdk-react");
@@ -82,7 +83,7 @@ function resolveEmbeddingSdkPackage() {
       path.join(packagePath, "package.json"),
       "utf-8",
     );
-    embeddingSdkVersion = JSON.stringify(
+    embeddingSdkPackageVersion = JSON.stringify(
       JSON.parse(packageJsonContent)?.version,
     );
   } catch (err) {
@@ -93,11 +94,13 @@ function resolveEmbeddingSdkPackage() {
       "utf-8",
     );
     const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
-    embeddingSdkVersion = JSON.stringify(sdkPackageTemplateJsonContent.version);
+    embeddingSdkPackageVersion = JSON.stringify(
+      sdkPackageTemplateJsonContent.version,
+    );
   }
 
   return {
     isEmbeddingSdkPackageInstalled,
-    embeddingSdkVersion,
+    embeddingSdkPackageVersion,
   };
 }
