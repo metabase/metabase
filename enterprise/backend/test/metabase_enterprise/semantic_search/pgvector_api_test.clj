@@ -6,6 +6,7 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
@@ -236,7 +237,8 @@
                                  (when-not (.join thread (Duration/ofSeconds 30))
                                    (log/fatal "Indexing loop thread not exiting during test!")))))))]
     (with-redefs [semantic.indexer/sleep         (fn [_])       ; do not slow down
-                  semantic.indexer/poll-limit    4              ; important to test poll / paging (not many docs in test-data)
+                  ; important to test poll / paging (not many docs in test-data)
+                  semantic.settings/ee-search-indexer-poll-limit    (constantly 4)
                   semantic.indexer/lag-tolerance Duration/ZERO] ; if too high will slow the test down significantly
 
       (with-open [index-ref  (open-semantic-search! pgvector index-metadata embedding-model)
