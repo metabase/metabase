@@ -90,7 +90,9 @@
   admin-writable-site-wide-settings
   can-read-setting?
   current-user-readable-visibilities
+  custom-disabled-reasons!
   defsetting
+  disabled-for-db-reasons
   env-var-value
   export?
   get

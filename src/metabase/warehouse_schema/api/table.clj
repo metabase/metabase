@@ -13,7 +13,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]

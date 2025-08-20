@@ -111,6 +111,39 @@
        :message (tru "Some of your values aren’t of the correct type for the database.")
        :errors  {column (tru "This value should be of type {0}." (str/capitalize expected-type))}})))
 
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-permission-constraint]
+  [_driver error-type _database action-type error-message]
+  (or (when-let [[_match _command _table-name]
+                 (re-find #"(INSERT|UPDATE|DELETE) command denied to user .* for table '(.+)'" error-message)]
+        (merge {:type error-type}
+               (case action-type
+                 (:table.row/create :model.row/create)
+                 {:message (tru "You don''t have permission to add data to this table.")
+                  :errors  {}}
+
+                 (:table.row/update :model.row/update)
+                 {:message (tru "You don''t have permission to update data in this table.")
+                  :errors  {}}
+
+                 (:table.row/delete :model.row/delete)
+                 {:message (tru "You don''t have permission to delete data from this table.")
+                  :errors  {}})))
+      (when-let [[_match _table-name]
+                 (re-find #"Access denied for user .* to database '(.+)'" error-message)]
+        (merge {:type error-type}
+               (case action-type
+                 (:table.row/create :model.row/create)
+                 {:message (tru "You don''t have permission to add data to this database.")
+                  :errors  {}}
+
+                 (:table.row/update :model.row/update)
+                 {:message (tru "You don''t have permission to update data in this database.")
+                  :errors  {}}
+
+                 (:table.row/delete :model.row/delete)
+                 {:message (tru "You don''t have permission to delete data from this database.")
+                  :errors  {}})))))
+
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-check-constraint]
   [_driver error-type _database _action-type error-message]
   (or (when-let [[_match constraint-name]

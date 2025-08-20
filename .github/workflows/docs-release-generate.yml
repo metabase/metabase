@@ -1,9 +1,13 @@
-name: Auto-update documentation (master)
+name: Auto-update documentation (release)
 
 on:
   schedule:
     - cron: "0 1 * * 1-5" # Every Monday through Friday at 1 AM UTC
   workflow_dispatch:
+
+# Define the release branch to target
+env:
+  RELEASE_BRANCH: release-x.56.x
 
 permissions:
   contents: write
@@ -20,11 +24,12 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ref: ${{ env.RELEASE_BRANCH }}
 
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: "auto-update-docs"
+          m2-cache-key: "auto-update-docs-release"
 
       - name: Generate environment variables documentation
         id: generate_env_docs
@@ -63,14 +68,14 @@ jobs:
         if: steps.check_changes.outputs.changes == 'true'
         run: |
           # Use timestamp with seconds to avoid conflicts
-          BRANCH_NAME="docs/auto-update-$(date +%Y-%m-%d-%H%M%S)"
+          BRANCH_NAME="docs/auto-update-release-$(date +%Y-%m-%d-%H%M%S)"
 
           git config user.name github-actions
           git config user.email github-actions@github.com
           git checkout -b $BRANCH_NAME
 
           git add docs/
-          git commit -m "Update generated docs (master)" --no-verify
+          git commit -m "Update generated docs (${{ env.RELEASE_BRANCH }})" --no-verify
           git push -u origin $BRANCH_NAME
 
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
@@ -89,9 +94,9 @@ jobs:
           # Retry PR creation up to 3 times
           for i in {1..3}; do
             if gh pr create \
-              --base master \
+              --base ${{ env.RELEASE_BRANCH }} \
               --head ${{ steps.commit_and_push.outputs.branch_name }} \
-              --title "Update generated docs (master)" \
+              --title "Update generated docs (${{ env.RELEASE_BRANCH }})" \
               --body "API, config template, and environment variable doc updates.
 
 ## Changes made
@@ -131,7 +136,7 @@ Review the changes before merging." \
           if [ "${{ steps.check_changes.outputs.changes }}" == "true" ]; then
             echo "## ✅ Documentation Updated Successfully" >> $GITHUB_STEP_SUMMARY
             echo "- Created branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- Created PR for review" >> $GITHUB_STEP_SUMMARY
+            echo "- Created PR for review targeting ${{ env.RELEASE_BRANCH }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "## ℹ️ No Documentation Changes" >> $GITHUB_STEP_SUMMARY
             echo "- All documentation is up to date" >> $GITHUB_STEP_SUMMARY
