@@ -119,10 +119,10 @@
    db
    nil
    (fn [^java.sql.Connection conn]
-     (-> (jdbc/query {:connection conn} "SHOW VARIABLES LIKE 'partial_revokes';")
-         first
-         :value
-         (= "ON")))))
+     (let [stmt (.prepareStatement conn "SHOW VARIABLES LIKE 'partial_revokes';")
+           rset (.executeQuery stmt)]
+       (when (.next rset)
+         (= "ON" (.getString rset 2)))))))
 
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
@@ -134,7 +134,11 @@
   [driver _feat db]
   (and (= driver :mysql)
        (not (mariadb? db))
-       (not (partial-revokes-enabled? driver db))))
+       (not (try
+              (partial-revokes-enabled? driver db)
+              (catch Exception e
+                (log/warn e "Failed to check table writable")
+                false)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
