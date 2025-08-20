@@ -15,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p])
-  (:import (java.util.concurrent ArrayBlockingQueue ExecutorService ThreadPoolExecutor ThreadPoolExecutor$AbortPolicy ThreadPoolExecutor$DiscardPolicy TimeUnit)))
+  (:import (java.util.concurrent ArrayBlockingQueue ExecutorService ThreadPoolExecutor TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
