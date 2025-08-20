@@ -1551,8 +1551,8 @@
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                 [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
-                                 (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+                                (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                  (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
             (jdbc/execute! conn-spec (str
                                       "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"
@@ -1767,6 +1767,7 @@
       (let [db-name "sync_writable_test"
             details (tx/dbdef->connection-details :postgres :db {:database-name db-name})]
         (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
+       #_{:clj-kondo/ignore [:discouraged-var]}
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (try
             (jdbc/execute! conn "CREATE SCHEMA IF NOT EXISTS sync_test_schema")
