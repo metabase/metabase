@@ -14,7 +14,11 @@ import {
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import type { Field } from "metabase-types/api";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDataset,
+  createMockSeries,
+} from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
@@ -101,6 +105,7 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
   renderWithProviders(
     <ObjectDetail
       data={testDataset}
+      series={createMockSeries()}
       settings={{}}
       isObjectDetail
       onVisualizationClick={jest.fn()}
