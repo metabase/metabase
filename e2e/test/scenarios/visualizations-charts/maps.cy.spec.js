@@ -132,7 +132,7 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });
 
-  it("should display a pins when a breakout column sets a base-type (metabase#59984)", () => {
+  it("should display pins when a breakout column sets a base-type (metabase#59984)", () => {
     cy.intercept("/api/tiles/**").as("tiles");
 
     H.visitQuestionAdhoc({
@@ -256,6 +256,58 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@sensibleOptions").within(() => {
       cy.findByTestId("Map-button").should("be.visible");
     });
+  });
+
+  it("should display pins type viz setting (metabase#40999)", () => {
+    cy.intercept("/api/tiles/**").as("tiles");
+
+    H.visitQuestionAdhoc({
+      display: "map",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PEOPLE_ID,
+          aggregation: ["count"],
+          breakout: [
+            [
+              "field",
+              PEOPLE.LONGITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+            [
+              "field",
+              PEOPLE.LATITUDE,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        },
+      },
+      visualization_settings: {
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    });
+
+    cy.wait("@tiles");
+
+    cy.findByTestId("viz-settings-button").click();
+
+    H.leftSidebar().within(() => {
+      cy.findByText("Pin type").should("be.visible");
+
+      cy.findByLabelText("Pin type").click();
+      H.popover().findByText("Markers").click();
+    });
+
+    cy.findByTestId("visualization-root")
+      .get(".leaflet-marker-icon")
+      .should("have.length.greaterThan", 10);
   });
 
   describe(

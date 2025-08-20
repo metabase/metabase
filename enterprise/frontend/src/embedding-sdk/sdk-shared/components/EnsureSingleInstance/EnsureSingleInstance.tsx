@@ -1,6 +1,32 @@
-import { type ReactNode, useEffect, useMemo } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo } from "react";
 
-import { useSingleInstanceIdsData } from "embedding-sdk/sdk-shared/hooks/use-single-instance-ids-data";
+import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
+
+export const useSingleInstanceIdsData = () => {
+  const {
+    store,
+    state: {
+      internalProps: { singleInstanceIdsMap },
+    },
+  } = useMetabaseProviderPropsStore();
+
+  const setSingleInstanceIdsMap = useCallback(
+    (
+      updateFn: (
+        singleInstanceIdsMap: Record<string, string[]>,
+      ) => Record<string, string[]>,
+    ) => {
+      const { singleInstanceIdsMap = {} } = store.getState().internalProps;
+
+      store.updateInternalProps({
+        singleInstanceIdsMap: updateFn(singleInstanceIdsMap),
+      });
+    },
+    [store],
+  );
+
+  return { singleInstanceIdsMap, setSingleInstanceIdsMap };
+};
 
 type EnsureSingleInstanceData = {
   isInstanceToRender: boolean;
