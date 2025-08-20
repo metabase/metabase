@@ -394,14 +394,14 @@
                        (zipmap units))))]
           (qp-test.date-time-zone-functions-test/run-datetime-diff-time-zone-tests! diffs))))))
 
-(deftest database-supports-schemas-test
+(deftest ^:parallel database-supports-schemas-test
   (doseq [[schemas-supported? details] [[true? {}]
                                         [true? {:dbname nil}]
                                         [true? {:dbname ""}]
                                         [false? {:dbname "db_name"}]]]
     (is (schemas-supported? (driver/database-supports? :athena :schemas {:details details})))))
 
-(deftest athena-describe-database
+(deftest ^:parallel athena-describe-database
   (mt/test-driver :athena
     (testing "when the dbname is specified describe-database only returns tables from that database and does not include the schema"
       (is (= {:tables #{{:name "users", :schema nil, :description nil}
