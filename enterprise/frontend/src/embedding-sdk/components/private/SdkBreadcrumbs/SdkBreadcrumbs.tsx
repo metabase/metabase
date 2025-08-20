@@ -32,7 +32,7 @@ export const SdkBreadcrumbs = ({
 
   return (
     <PublicComponentStylesWrapper className={className} style={style}>
-      <Flex align="center">
+      <Flex align="center" data-testid="sdk-breadcrumbs">
         {breadcrumbs.map((breadcrumb, index) => (
           <Fragment key={breadcrumb.id}>
             <Badge

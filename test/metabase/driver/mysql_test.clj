@@ -592,58 +592,58 @@
 ;; API tests are in [[metabase.actions.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
-    (is (= {:type :metabase.actions.error/violate-not-null-constraint
-            :message "F1 must have values."
-            :errors {"f1" "You must provide a value."}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :mysql actions.error/violate-not-null-constraint nil nil
-            "Column 'f1' cannot be null")))))
+    (is (=? {:type :metabase.actions.error/violate-not-null-constraint
+             :message "F1 must have values."
+             :errors {"f1" "You must provide a value."}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :mysql actions.error/violate-not-null-constraint nil nil
+             "Column 'f1' cannot be null")))))
 
 (deftest actions-maybe-parse-sql-error-test-2
   (testing "violate unique constraint"
     (with-redefs [mysql.actions/constraint->column-names (constantly ["PRIMARY"])]
-      (is (= {:type :metabase.actions.error/violate-unique-constraint,
-              :message "Primary already exists.",
-              :errors {"PRIMARY" "This Primary value already exists."}}
-             (sql-jdbc.actions/maybe-parse-sql-error
-              :mysql actions.error/violate-unique-constraint nil nil
-              "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'"))))))
+      (is (=? {:type :metabase.actions.error/violate-unique-constraint,
+               :message "Primary already exists.",
+               :errors {"PRIMARY" "This Primary value already exists."}}
+              (sql-jdbc.actions/maybe-parse-sql-error
+               :mysql actions.error/violate-unique-constraint nil nil
+               "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'"))))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-3
   (testing "incorrect type"
-    (is (= {:type :metabase.actions.error/incorrect-value-type,
-            :message "Some of your values aren’t of the correct type for the database."
-            :errors {"id" "This value should be of type Integer."}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :mysql actions.error/incorrect-value-type nil nil
-            "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1")))))
+    (is (=? {:type :metabase.actions.error/incorrect-value-type,
+             :message "Some of your values aren’t of the correct type for the database."
+             :errors {"id" "This value should be of type Integer."}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :mysql actions.error/incorrect-value-type nil nil
+             "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-4
   (testing "violate fk constraints"
-    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint
-            :message "Unable to create a new record."
-            :errors {"group-id" "This Group-id does not exist."}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :mysql actions.error/violate-foreign-key-constraint nil :model.row/create
-            "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
+    (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint
+             :message "Unable to create a new record."
+             :errors {"group-id" "This Group-id does not exist."}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :mysql actions.error/violate-foreign-key-constraint nil :model.row/create
+             "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-5
   (testing "violate fk constraints"
-    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
-            :message "Unable to update the record.",
-            :errors {"group" "This Group does not exist."}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :mysql actions.error/violate-foreign-key-constraint nil :model.row/update
-            "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
+    (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint,
+             :message "Unable to update the record.",
+             :errors {"group" "This Group does not exist."}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :mysql actions.error/violate-foreign-key-constraint nil :model.row/update
+             "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-6
   (testing "violate fk constraints"
-    (is (= {:type :metabase.actions.error/violate-foreign-key-constraint
-            :message "Other tables rely on this row so it cannot be deleted."
-            :errors {}}
-           (sql-jdbc.actions/maybe-parse-sql-error
-            :mysql actions.error/violate-foreign-key-constraint nil :model.row/delete
-            "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
+    (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint
+             :message "Other tables rely on this row so it cannot be deleted."
+             :errors {}}
+            (sql-jdbc.actions/maybe-parse-sql-error
+             :mysql actions.error/violate-foreign-key-constraint nil :model.row/delete
+             "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
 (deftest check-constraint-test
   (mt/test-driver :mysql
@@ -662,16 +662,16 @@
             (sync/sync-database! database)
             (mt/with-actions-enabled
               (testing "when creating with invalid email"
-                (is (= {:errors      {}
-                        :message     "Some of your values violate the constraint: email_format_check"
-                        :status-code 400
-                        :type        actions.error/violate-check-constraint}
-                       (sql-jdbc.actions-test/perform-action-ex-data
-                        :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
-                                                                 "age"   25}
-                                                    :database   (:id database)
-                                                    :query      {:source-table $$test_users}
-                                                    :type       :query}))))))))))))
+                (is (=? {:errors      {}
+                         :message     "Some of your values violate the constraint: email_format_check"
+                         :status-code 400
+                         :type        actions.error/violate-check-constraint}
+                        (sql-jdbc.actions-test/perform-action-ex-data
+                         :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
+                                                                  "age"   25}
+                                                     :database   (:id database)
+                                                     :query      {:source-table $$test_users}
+                                                     :type       :query}))))))))))))
 
 ;; this contains specical test cases for mysql
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
@@ -694,30 +694,30 @@
             (sync/sync-database! database)
             (mt/with-actions-enabled
               (testing "when creating"
-                (is (= {:type        :metabase.actions.error/violate-unique-constraint
-                        :message     "Column1 and Column2 already exist."
-                        :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
-                        :status-code 400}
-                       (sql-jdbc.actions-test/perform-action-ex-data
-                        :model.row/create (mt/$ids {:create-row {"id"      3
-                                                                 "column1" "A"
-                                                                 "column2" "A"}
-                                                    :database   (:id database)
-                                                    :query      {:source-table $$mytable}
-                                                    :type       :query})))))
+                (is (=? {:type        :metabase.actions.error/violate-unique-constraint
+                         :message     "Column1 and Column2 already exist."
+                         :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
+                         :status-code 400}
+                        (sql-jdbc.actions-test/perform-action-ex-data
+                         :model.row/create (mt/$ids {:create-row {"id"      3
+                                                                  "column1" "A"
+                                                                  "column2" "A"}
+                                                     :database   (:id database)
+                                                     :query      {:source-table $$mytable}
+                                                     :type       :query})))))
               (testing "when updating"
-                (is (= {:errors      {"column1" "This Column1 value already exists."
-                                      "column2" "This Column2 value already exists."}
-                        :message     "Column1 and Column2 already exist."
-                        :status-code 400
-                        :type        actions.error/violate-unique-constraint}
-                       (sql-jdbc.actions-test/perform-action-ex-data
-                        :model.row/update (mt/$ids {:update-row {"column1" "A"
-                                                                 "column2" "A"}
-                                                    :database   (:id database)
-                                                    :query      {:source-table $$mytable
-                                                                 :filter       [:= $mytable.id 2]}
-                                                    :type       :query}))))))))))))
+                (is (=? {:errors      {"column1" "This Column1 value already exists."
+                                       "column2" "This Column2 value already exists."}
+                         :message     "Column1 and Column2 already exist."
+                         :status-code 400
+                         :type        actions.error/violate-unique-constraint}
+                        (sql-jdbc.actions-test/perform-action-ex-data
+                         :model.row/update (mt/$ids {:update-row {"column1" "A"
+                                                                  "column2" "A"}
+                                                     :database   (:id database)
+                                                     :query      {:source-table $$mytable
+                                                                  :filter       [:= $mytable.id 2]}
+                                                     :type       :query}))))))))))))
 
 (deftest ^:parallel parse-grant-test
   (testing "`parse-grant` should work correctly"
