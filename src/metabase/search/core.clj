@@ -126,7 +126,6 @@
    (ThreadPoolExecutor$DiscardPolicy.)))
 
 (defn- reindex-logic! [opts]
-  (.printStackTrace (Exception. "TEST!"))
   (when (supports-index?)
     (try
       (log/info "Reindexing searchable entities")
@@ -149,7 +148,8 @@
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index.
   Returns a future that will complete when the reindexing is done.
-  Respects `search.ingestion/*force-sync*` and waits for the future if it's true."
+  Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
+  Alternately, if `:async?` is false, it will also run synchronously."
   [& {:keys [async?] :or {async? true} :as opts}]
   (if (or search.ingestion/*force-sync* async?)
     (let [result (reindex-logic! opts)]
