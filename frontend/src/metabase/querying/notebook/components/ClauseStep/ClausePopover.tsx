@@ -10,12 +10,14 @@ interface ClausePopoverProps {
   isInitiallyOpen?: boolean;
   renderItem: (open: () => void) => JSX.Element | string;
   renderPopover: (close: () => void) => JSX.Element | null;
+  disabled?: boolean;
 }
 
 export function ClausePopover({
   isInitiallyOpen = false,
   renderItem,
   renderPopover,
+  disabled,
 }: ClausePopoverProps) {
   const [isOpen, setIsOpen] = useState(isInitiallyOpen);
   const { active } = useDndContext();
@@ -47,6 +49,7 @@ export function ClausePopover({
         trapFocus
         onChange={handleChange}
         classNames={{ dropdown: S.dropdown }}
+        disabled={disabled}
       >
         <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
         <Popover.Dropdown data-testid="clause-popover">
