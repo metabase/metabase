@@ -51,19 +51,21 @@ export default class LeafletMarkerPinMap extends LeafletMap {
     const shouldGetWrappedPoints = crossesLeftDateline || crossesRightDateline;
 
     const wrappedPoints = shouldGetWrappedPoints
-      ? points.flatMap((point) => {
+      ? points.flatMap((point, index) => {
           const [lat, lng] = point;
-          const points = [point];
+          // we need to store the data index separately
+          // because the same point can have multiple markers
+          const points = [[lat, lng, index]];
 
           // note: for wide screens, we may need extra copies on both sides
           if (crossesLeftDateline) {
             // copy on the left side
-            points.push([lat, lng - 360]);
+            points.push([lat, lng - 360, index]);
           }
 
           if (crossesRightDateline) {
             // copy on the right side
-            points.push([lat, lng + 360]);
+            points.push([lat, lng + 360, index]);
           }
           return points;
         })
@@ -77,15 +79,18 @@ export default class LeafletMarkerPinMap extends LeafletMap {
       }
       if (i >= markers.length) {
         // create new markers for new points
-        const marker = this._createMarker(i);
+        const index = wrappedPoints[i][2] ?? i;
+
+        const marker = this._createMarker(index);
         pinMarkerLayer.addLayer(marker);
         markers.push(marker);
       }
 
       if (i < wrappedPoints.length) {
         const { lat, lng } = markers[i].getLatLng();
+        // if any marker doesn't match the point, update it
         if (lng !== wrappedPoints[i][0] || lat !== wrappedPoints[i][1]) {
-          markers[i].setLatLng(wrappedPoints[i]); // if any marker doesn't match the point, update it
+          markers[i].setLatLng(wrappedPoints[i].slice(0, 2));
         }
       }
     }
