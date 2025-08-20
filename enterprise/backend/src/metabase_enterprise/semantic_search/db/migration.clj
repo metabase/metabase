@@ -14,17 +14,18 @@
    [:migrated_at :timestamp [:default [:NOW]]]
    [:status [:varchar 32]]])
 
-(def ^:private migration-table-hsql
-  (-> (sql.helpers/create-table :migration :if-not-exists)
+(defn- migration-table-hsql
+  [migration-table-name]
+  (-> (sql.helpers/create-table (keyword migration-table-name) :if-not-exists)
       (sql.helpers/with-columns columns)))
 
 (defn- migration-table-sql
-  []
-  (sql/format migration-table-hsql))
+  [migration-table-name]
+  (sql/format (migration-table-hsql migration-table-name)))
 
 (defn- ensure-migration-table!
-  [tx]
-  (let [sql (migration-table-sql)]
+  [tx migration-table-name]
+  (let [sql (migration-table-sql migration-table-name)]
     (try
       (jdbc/execute! tx sql)
       (catch SQLException e
@@ -35,23 +36,23 @@
 
 (defn- db-version
   "Get database version of schema from migration table."
-  [tx]
+  [tx migration-table-name]
   (or (:max_version
        (jdbc/execute-one! tx
                           (sql/format {:select [[[:max :version] :max_version]]
-                                       :from [:migration]})))
+                                       :from [(keyword migration-table-name)]})))
       -1))
 
 (defn- write-successful-migration!
-  [tx]
-  (jdbc/execute-one! tx (sql/format (-> (sql.helpers/insert-into :migration)
+  [tx migration-table-name]
+  (jdbc/execute-one! tx (sql/format (-> (sql.helpers/insert-into (keyword migration-table-name))
                                         (sql.helpers/values [{:version semantic.db.migration.impl/schema-version
                                                               :status "success"}])))))
 
 (defn maybe-migrate-schema!
   "Execute schema migration (control, meta, gate, ...) if appropriate."
-  [tx opts]
-  (let [db-version (db-version tx)]
+  [tx opts migration-table-name]
+  (let [db-version (db-version tx migration-table-name)]
     (cond
       (= db-version semantic.db.migration.impl/schema-version)
       (log/info "Migration already performed, skipping.")
@@ -61,7 +62,7 @@
         (log/infof "Starting migration from version %d to %d."
                    db-version semantic.db.migration.impl/schema-version)
         (semantic.db.migration.impl/migrate-schema! tx opts)
-        (write-successful-migration! tx))
+        (write-successful-migration! tx migration-table-name))
 
       :else
       (log/infof "Database schema version (%d) is newer than code version (%d). Not performing migration."
@@ -107,13 +108,13 @@
 
 (defn maybe-migrate!
   "Execute schema and dynamic schema migrations."
-  [tx opts]
-  (ensure-migration-table! tx)
-  (maybe-migrate-schema! tx opts)
+  [tx opts migration-table-name]
+  (ensure-migration-table! tx migration-table-name)
+  (maybe-migrate-schema! tx opts migration-table-name)
   (maybe-migrate-dynamic-schema! tx opts)
   nil)
 
 (defn drop-migration-table!
   "Drop migration table."
-  [connectable]
-  (jdbc/execute! connectable (sql/format (sql.helpers/drop-table :if-exists :migration))))
+  [connectable migration-table-name]
+  (jdbc/execute! connectable (sql/format (sql.helpers/drop-table :if-exists (keyword migration-table-name)))))
