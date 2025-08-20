@@ -181,7 +181,7 @@ export const getEntityIcon = (entityType?: Table["entity_type"]) => {
 export function getObjectQuery(
   table: Table,
   objectId: string | number,
-): StructuredDatasetQuery | undefined {
+): StructuredDatasetQuery {
   const pks = (table.fields ?? []).filter(isPK);
 
   if (pks.length === 0) {

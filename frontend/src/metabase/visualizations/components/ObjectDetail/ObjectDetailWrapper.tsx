@@ -71,13 +71,7 @@ export function ObjectDetailWrapper({
     const table = getApiTable(tableWrapper);
     const columns = data?.cols;
 
-    if (
-      columns != null &&
-      table != null &&
-      zoomedRow != null &&
-      zoomedRowID != null &&
-      question
-    ) {
+    if (columns != null && table != null && zoomedRowID != null && question) {
       return (
         <DetailViewSidesheet
           actions={areImplicitActionsEnabled ? actions : []}

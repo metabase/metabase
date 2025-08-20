@@ -8,7 +8,7 @@ import { Button, Group, Icon, Modal, Stack, Tooltip, rem } from "metabase/ui";
 import S from "./Sidesheet.module.css";
 
 interface Props {
-  actions: ReactNode;
+  actions?: ReactNode;
   children: ReactNode;
   "data-testid"?: string;
   onClose: () => void;

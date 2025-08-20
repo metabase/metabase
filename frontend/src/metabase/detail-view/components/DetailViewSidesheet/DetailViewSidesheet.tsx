@@ -3,7 +3,9 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import EntityMenu from "metabase/common/components/EntityMenu";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import Modal from "metabase/common/components/Modal";
 import {
   DetailsGroup,
@@ -13,12 +15,14 @@ import {
 import {
   getEntityIcon,
   getHeaderColumns,
+  getObjectQuery,
   getRowName,
 } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi } from "metabase/services";
 import { Box, Button, Group, Icon, Stack, Tooltip, rem } from "metabase/ui";
+import { extractRemappedColumns } from "metabase/visualizations";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import type {
   Database,
@@ -34,11 +38,13 @@ import S from "./DetailViewSidesheet.module.css";
 import { Sidesheet } from "./Sidesheet";
 import { getActionItems } from "./utils";
 
+const EMPTY_ROW: RowValues = [];
+
 interface Props {
   actions: WritebackAction[];
   columns: DatasetColumn[];
   databases: Database[];
-  row: RowValues;
+  row: RowValues | undefined;
   rowId: string | number;
   table: Table;
   tableForeignKeys?: ForeignKey[];
@@ -52,7 +58,7 @@ export function DetailViewSidesheet({
   actions,
   columns,
   databases,
-  row,
+  row: rowFromProps,
   rowId,
   table,
   tableForeignKeys,
@@ -61,6 +67,21 @@ export function DetailViewSidesheet({
   onNextClick,
   onPreviousClick,
 }: Props) {
+  const objectQuery = useMemo(() => {
+    return getObjectQuery(table, rowId);
+  }, [table, rowId]);
+
+  const {
+    data: dataset,
+    error,
+    isLoading,
+  } = useGetAdhocQueryQuery(rowFromProps == null ? objectQuery : skipToken);
+  const data = useMemo(() => {
+    return dataset ? extractRemappedColumns(dataset.data) : undefined;
+  }, [dataset]);
+  const rowFromQuery = useMemo(() => (data?.rows ?? [])[0], [data]);
+  const row = rowFromProps ?? rowFromQuery ?? EMPTY_ROW;
+
   const dispatch = useDispatch();
   const [linkCopied, setLinkCopied] = useState(false);
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
@@ -126,44 +147,56 @@ export function DetailViewSidesheet({
     }
   }, [linkCopied]);
 
+  if (error || isLoading) {
+    return (
+      <Sidesheet data-testid="object-detail" onClose={onClose}>
+        <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+      </Sidesheet>
+    );
+  }
+
   return (
     <>
       <Sidesheet
         actions={
           <>
-            <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
-              <Button
-                aria-label={t`Previous row`}
-                c="text-dark"
-                disabled={!onPreviousClick}
-                h={20}
-                leftSection={<Icon name="chevronup" />}
-                p={0}
-                variant="subtle"
-                style={{
-                  opacity: onPreviousClick ? undefined : 0.5,
-                }}
-                w={20}
-                onClick={onPreviousClick}
-              />
-            </Tooltip>
+            {rowFromProps != null && (
+              <>
+                <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
+                  <Button
+                    aria-label={t`Previous row`}
+                    c="text-dark"
+                    disabled={!onPreviousClick}
+                    h={20}
+                    leftSection={<Icon name="chevronup" />}
+                    p={0}
+                    variant="subtle"
+                    style={{
+                      opacity: onPreviousClick ? undefined : 0.5,
+                    }}
+                    w={20}
+                    onClick={onPreviousClick}
+                  />
+                </Tooltip>
 
-            <Tooltip disabled={!onNextClick} label={t`Next row`}>
-              <Button
-                aria-label={t`Next row`}
-                c="text-dark"
-                disabled={!onNextClick}
-                h={20}
-                leftSection={<Icon name="chevrondown" />}
-                p={0}
-                variant="subtle"
-                style={{
-                  opacity: onNextClick ? undefined : 0.5,
-                }}
-                w={20}
-                onClick={onNextClick}
-              />
-            </Tooltip>
+                <Tooltip disabled={!onNextClick} label={t`Next row`}>
+                  <Button
+                    aria-label={t`Next row`}
+                    c="text-dark"
+                    disabled={!onNextClick}
+                    h={20}
+                    leftSection={<Icon name="chevrondown" />}
+                    p={0}
+                    variant="subtle"
+                    style={{
+                      opacity: onNextClick ? undefined : 0.5,
+                    }}
+                    w={20}
+                    onClick={onNextClick}
+                  />
+                </Tooltip>
+              </>
+            )}
 
             {actionItems.length > 0 && (
               <EntityMenu
@@ -188,7 +221,9 @@ export function DetailViewSidesheet({
 
             {url && (
               <>
-                <Separator />
+                {(rowFromProps != null || actionItems.length > 0) && (
+                  <Separator />
+                )}
 
                 <Tooltip
                   label={linkCopied ? t`Copied!` : t`Copy link to a row`}
