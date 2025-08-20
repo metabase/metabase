@@ -469,7 +469,7 @@
                      (describe-schema driver conn catalog schema))))
             (jdbc/reducible-result-set rs {})))))
 
-(defmethod driver/describe-database :starburst
+(defmethod driver/describe-database* :starburst
   [driver {{:keys [catalog schema] :as _details} :details :as database}]
   (sql-jdbc.execute/do-with-connection-with-options
    driver

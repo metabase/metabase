@@ -147,6 +147,7 @@
   received-email-body?
   received-email-subject?
   regex-email-bodies
+  email-subjects
   reset-inbox!
   summarize-multipart-email
   summarize-multipart-single-email

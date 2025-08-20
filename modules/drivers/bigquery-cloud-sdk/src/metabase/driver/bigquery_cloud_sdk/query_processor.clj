@@ -8,6 +8,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.common.parameters]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -34,6 +35,8 @@
    (metabase.driver.common.parameters FieldFilter)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.driver.common.parameters/keep-me)
 
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain

@@ -42,7 +42,7 @@ export const ResponsiveParametersList = ({
       w={isSmallScreen && mobileShowParameterList ? "100%" : undefined}
       style={{ alignSelf: "center" }}
     >
-      {isSmallScreen && (
+      {parameters.length > 0 && isSmallScreen && (
         <Button
           className={ResponsiveParametersListS.filterButton}
           borderless
@@ -66,7 +66,7 @@ export const ResponsiveParametersList = ({
           [ResponsiveParametersListS.isShowingMobile]: mobileShowParameterList,
         })}
       >
-        {isSmallScreen && (
+        {parameters.length > 0 && isSmallScreen && (
           <Flex p="0.75rem 1rem" align="center" justify="space-between">
             <h3>{t`Filters`}</h3>
             <Button
