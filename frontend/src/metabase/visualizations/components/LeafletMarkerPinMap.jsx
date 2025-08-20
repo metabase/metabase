@@ -79,7 +79,7 @@ export default class LeafletMarkerPinMap extends LeafletMap {
       }
       if (i >= markers.length) {
         // create new markers for new points
-        const index = wrappedPoints[i][2] ?? i;
+        const index = shouldGetWrappedPoints ? wrappedPoints[i][2] : i;
 
         const marker = this._createMarker(index);
         pinMarkerLayer.addLayer(marker);
