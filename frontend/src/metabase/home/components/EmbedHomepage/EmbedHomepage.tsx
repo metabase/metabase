@@ -38,9 +38,8 @@ export const EmbedHomepage = () => {
   );
 
   const embedJsDocsUrl = useSelector((state) =>
-    // TODO: use real docs url
     // eslint-disable-next-line no-unconditional-metabase-links-render -- this is only visible to admins
-    getDocsUrl(state, { page: "embedding/embed-js" }),
+    getDocsUrl(state, { page: "embedding/embedded-analytics-js" }),
   );
 
   const plan = useSelector((state) =>
@@ -79,9 +78,9 @@ export const EmbedHomepage = () => {
     }
   };
 
-  const variant = match({ build: isEEBuild() })
-    .with({ build: true }, () => "ee" as const)
-    .with({ build: false }, () => "oss/starter" as const)
+  const variant = match({ eeBuild: isEEBuild() })
+    .with({ eeBuild: true }, () => "ee" as const)
+    .with({ eeBuild: false }, () => "oss/starter" as const)
     .exhaustive();
 
   return (
