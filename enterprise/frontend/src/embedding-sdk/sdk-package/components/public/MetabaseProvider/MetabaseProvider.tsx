@@ -10,33 +10,18 @@ import { useSdkLoadingState } from "embedding-sdk/sdk-shared/hooks/use-sdk-loadi
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { SdkLoadingState } from "embedding-sdk/sdk-shared/types/sdk-loading";
-import type { SdkStore } from "embedding-sdk/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
-
-type MetabaseProviderInitDataWrapperProps = Pick<
-  MetabaseProviderProps,
-  "authConfig"
-> & {
-  reduxStore: SdkStore;
-};
 
 /**
  * We call `use-init-data` hook to initialize the SDK with the initial data.
  * This is necessary when hooks are used before any SDK component is rendered.
  */
-const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper({
-  authConfig,
-  reduxStore,
-}: MetabaseProviderInitDataWrapperProps) {
+const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper() {
   const useInitData = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useInitData;
   const useLogVersionInfo =
     getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.useLogVersionInfo;
 
-  useInitData?.({
-    reduxStore,
-    authConfig,
-  });
-
+  useInitData?.();
   useLogVersionInfo?.();
 
   return null;
@@ -61,7 +46,8 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
       isLoading
         ? null
         : (existingStore ??
-          getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getSdkStore()),
+          getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getSdkStore?.() ??
+          null),
     [existingStore, isLoading],
   );
 
@@ -72,7 +58,7 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
     [props],
   );
 
-  useEffect(function cleanupMetabaseProviderPropsStore() {
+  useEffect(function cleanup() {
     return () => {
       ensureMetabaseProviderPropsStore().cleanup();
     };
@@ -101,12 +87,7 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
     return null;
   }
 
-  return (
-    <MetabaseProviderInitDataWrapper
-      authConfig={props.authConfig}
-      reduxStore={reduxStore}
-    />
-  );
+  return <MetabaseProviderInitDataWrapper />;
 });
 
 /**

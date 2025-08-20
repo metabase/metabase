@@ -4,10 +4,11 @@ import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-package/components/priv
 import { Error } from "embedding-sdk/sdk-package/components/private/Error/Error";
 import { Loader } from "embedding-sdk/sdk-package/components/private/Loader/Loader";
 import {
+  SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE,
   SDK_LOADING_ERROR_MESSAGE,
   SDK_NOT_LOADED_YET_MESSAGE,
   SDK_NOT_STARTED_LOADING_MESSAGE,
-} from "embedding-sdk/sdk-package/config";
+} from "embedding-sdk/sdk-package/constants/error-messages";
 import { EnsureSingleInstance } from "embedding-sdk/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk/sdk-shared/hooks/use-sdk-loading-state";
@@ -81,15 +82,19 @@ const ComponentWrapperInner = <TComponentProps,>({
   const ComponentProvider = isLoading
     ? null
     : getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.ComponentProvider;
-  const Component = getComponent();
 
   if (
     !ComponentProvider ||
-    !Component ||
     !metabaseProviderInternalProps.reduxStore ||
     !metabaseProviderProps
   ) {
     return <Error message={SDK_NOT_LOADED_YET_MESSAGE} />;
+  }
+
+  const Component = getComponent();
+
+  if (!Component) {
+    return <Error message={SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE} />;
   }
 
   return (
