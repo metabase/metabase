@@ -10,13 +10,11 @@ import {
 } from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { DetailViewPage } from "metabase/detail-view/components";
-import { getRowName } from "metabase/detail-view/utils";
+import { getObjectQuery, getRowName } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { extractRemappedColumns } from "metabase/visualizations";
 import type { StructuredDatasetQuery } from "metabase-types/api";
-
-import { getObjectQuery } from "./utils";
 
 interface Props {
   params: {

@@ -1,5 +1,6 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { type OptionsType, formatValue } from "metabase/lib/formatting";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
   getGlobalSettingsForColumn,
@@ -11,10 +12,16 @@ import {
   isAvatarURL,
   isEntityName,
   isImageURL,
+  isNumeric,
   isPK,
   isTitle,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, RowValue, Table } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RowValue,
+  StructuredDatasetQuery,
+  Table,
+} from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 export function renderValue(
@@ -170,3 +177,41 @@ export const getEntityIcon = (entityType?: Table["entity_type"]) => {
       return "document";
   }
 };
+
+export function getObjectQuery(
+  table: Table,
+  objectId: string | number,
+): StructuredDatasetQuery | undefined {
+  const pks = (table.fields ?? []).filter(isPK);
+
+  if (pks.length === 0) {
+    throw new Error("Table has no primary keys");
+  }
+
+  if (pks.length > 1) {
+    throw new Error("Table has multiple primary keys");
+  }
+
+  const [pk] = pks;
+
+  return {
+    database: table.db_id,
+    query: {
+      "source-table": table.id,
+      filter: [
+        "=",
+        [
+          "field",
+          getRawTableFieldId(pk),
+          {
+            "base-type": pk.base_type,
+          },
+        ],
+        isNumeric(pk) && typeof objectId === "string"
+          ? parseFloat(objectId)
+          : objectId,
+      ],
+    },
+    type: "query",
+  };
+}

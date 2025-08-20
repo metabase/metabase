@@ -7,15 +7,13 @@ import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { DetailViewPage } from "metabase/detail-view/components";
-import { getRowName } from "metabase/detail-view/utils";
+import { getObjectQuery, getRowName } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { StructuredDatasetQuery } from "metabase-types/api";
-
-import { getObjectQuery } from "./utils";
 
 interface Props {
   params: {
