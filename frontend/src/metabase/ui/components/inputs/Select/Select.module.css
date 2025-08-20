@@ -1,7 +1,6 @@
 .SelectRoot {
   border-color: var(--mb-color-border);
   padding: 0;
-  overflow: auto;
 
   & > div {
     max-height: none !important;
