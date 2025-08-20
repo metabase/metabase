@@ -49,11 +49,7 @@ registerVisualization(BarChart);
 export default {
   title: "App/Embed/PublicOrEmbeddedQuestionView",
   component: PublicOrEmbeddedQuestionView,
-  decorators: [
-    ReduxDecorator,
-    createWaitForResizeToStopDecorator(),
-    MockIsEmbeddingDecorator,
-  ],
+  decorators: [ReduxDecorator, createWaitForResizeToStopDecorator()],
   parameters: {
     layout: "fullscreen",
     msw: {
@@ -85,16 +81,6 @@ function ReduxDecorator(Story: StoryFn) {
       <Story />
     </MetabaseReduxProvider>
   );
-}
-
-declare global {
-  interface Window {
-    overrideIsWithinIframe?: boolean;
-  }
-}
-function MockIsEmbeddingDecorator(Story: StoryFn) {
-  window.overrideIsWithinIframe = true;
-  return <Story />;
 }
 
 const CARD_BAR_ID = getNextId();
