@@ -35,7 +35,7 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * @param {object} [options.additionalHashOptions]
  * @param {string} [options.additionalHashOptions.locale]
  * @param {string[]} [options.additionalHashOptions.hideFilters]
- * @param {(window: Window) => void} []options.onBeforeLoad]
+ * @param {(window: Window) => void} [options.onBeforeLoad]
  * @param {object} [options.qs]
  *
  * @example
