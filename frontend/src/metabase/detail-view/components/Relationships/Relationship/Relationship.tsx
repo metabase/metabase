@@ -15,9 +15,10 @@ interface Props {
   href: string | undefined;
   rowId: string | number;
   table: Table;
+  onClick?: () => void;
 }
 
-export const Relationship = ({ fk, href, rowId, table }: Props) => {
+export const Relationship = ({ fk, href, rowId, table, onClick }: Props) => {
   const pk = (table.fields ?? []).find(isPK);
   const fkOriginId =
     fk.origin && typeof fk.origin.id == "number" ? fk.origin.id : undefined;
@@ -62,7 +63,7 @@ export const Relationship = ({ fk, href, rowId, table }: Props) => {
         [S.clickable]: clickable,
       })}
       gap={rem(12)}
-      {...(clickable ? { component: Link, to: href } : undefined)}
+      {...(clickable ? { component: Link, to: href, onClick } : undefined)}
     >
       {isFetching && <Loader data-testid="loading-indicator" size="md" />}
 

@@ -19,6 +19,7 @@ interface Props {
   rowName: ReactNode;
   table: Table;
   tableForeignKeys: ForeignKey[];
+  onClick?: () => void;
 }
 
 export function Relationships({
@@ -28,6 +29,7 @@ export function Relationships({
   rowName,
   table,
   tableForeignKeys,
+  onClick,
 }: Props & BoxProps): JSX.Element | null {
   const sortedForeignTables = useMemo(
     () =>
@@ -64,6 +66,7 @@ export function Relationships({
               href={getUrl({ columns, row, table, fk })}
               rowId={rowId}
               table={table}
+              onClick={onClick}
             />
           );
         })}

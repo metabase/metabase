@@ -298,6 +298,7 @@ export function DetailViewSidesheet({
                 rowName={rowName}
                 table={table}
                 tableForeignKeys={tableForeignKeys}
+                onClick={onClose}
               />
             </Box>
           )}
