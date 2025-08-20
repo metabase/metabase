@@ -40,26 +40,30 @@
 }
 
 .listItem {
-  position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
   max-width: 75rem;
   cursor: pointer;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background: var(--mb-color-bg-white);
-  padding: var(--mantine-spacing-md) var(--item-padding);
+  padding: var(--mantine-spacing-md)
+    var(--item-padding, var(--mantine-spacing-md));
 
   &:hover {
     background-color: var(--mb-color-brand-lighter);
   }
 }
 
+.listItemVirtualized {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
 .listHeader,
 .listItem {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) repeat(var(--grid-columns), 14%);
+  grid-template-columns: 32px minmax(0, 1fr) repeat(var(--grid-columns), 12%);
   gap: var(--mantine-spacing-md);
   align-items: center;
 }
@@ -73,4 +77,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.listViewConfigurationInputs {
+  display: grid;
+  grid-template-columns: 32px minmax(calc(30% - 32px - 1rem), 1fr) calc(
+      70% - 1rem
+    );
+  gap: var(--mantine-spacing-md);
+  align-items: start;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  max-width: var(--max-width);
+
+  background: var(--mb-color-bg-white);
+  padding: var(--mantine-spacing-md);
 }

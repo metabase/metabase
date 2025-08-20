@@ -1097,3 +1097,8 @@ export const getIsNotebookNativePreviewShown = (state) =>
 
 export const getNotebookNativePreviewSidebarWidth = (state) =>
   getSetting(state, "notebook-native-preview-sidebar-width");
+
+export const getIsListViewConfigurationShown = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls.isShowingListViewConfiguration,
+);

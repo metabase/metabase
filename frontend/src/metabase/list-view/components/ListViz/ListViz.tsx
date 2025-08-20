@@ -4,8 +4,12 @@ import { t } from "ttag";
 
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
-import { useSelector } from "metabase/lib/redux";
-import { getQuestion } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { updateQuestion } from "metabase/query_builder/actions";
+import {
+  getIsListViewConfigurationShown,
+  getQuestion,
+} from "metabase/query_builder/selectors";
 import { Box } from "metabase/ui";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -26,6 +30,7 @@ import {
 import type { DatasetColumn } from "metabase-types/api";
 
 import { ListView } from "../ListView/ListView";
+import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
 
 const vizDefinition = {
   identifier: "list",
@@ -201,7 +206,11 @@ export const ListViz = withRouter(
     metadata,
     ...props
   }: VisualizationProps) => {
+    const dispatch = useDispatch();
     const question = useSelector(getQuestion);
+    const isShowingListViewConfiguration = useSelector(
+      getIsListViewConfigurationShown,
+    );
     const { sortedColumnName, sortingDirection } = useMemo(() => {
       if (!question) {
         return {};
@@ -243,20 +252,50 @@ export const ListViz = withRouter(
     const handleSort = (column: DatasetColumn) => {
       onVisualizationClick({ column });
     };
+    const updateListSettings = ({
+      left,
+      right,
+    }: {
+      left: string[];
+      right: string[];
+    }) => {
+      const newSettings = {
+        viewSettings: {
+          ...settings.viewSettings,
+          listSettings: {
+            leftColumns: left,
+            rightColumns: right,
+          },
+        },
+      };
+      const nextQuestion = question?.updateSettings(newSettings);
+      if (nextQuestion) {
+        dispatch(updateQuestion(nextQuestion));
+      }
+    };
 
     return (
       <Box w="100%" h="100%" pos="absolute">
-        <ListView
-          data={data}
-          settings={settings}
-          sortedColumnName={sortedColumnName}
-          sortingDirection={sortingDirection}
-          onSortClick={handleSort}
-          entityType={entityType}
-          card={card}
-          metadata={metadata}
-          rowIndex={props.location.state?.rowIndex}
-        />
+        {isShowingListViewConfiguration ? (
+          <ListViewConfiguration
+            data={data}
+            settings={settings}
+            entityType={entityType}
+            onChange={updateListSettings}
+          />
+        ) : (
+          <ListView
+            data={data}
+            settings={settings}
+            sortedColumnName={sortedColumnName}
+            sortingDirection={sortingDirection}
+            onSortClick={handleSort}
+            entityType={entityType}
+            card={card}
+            metadata={metadata}
+            rowIndex={props.location.state?.rowIndex}
+          />
+        )}
       </Box>
     );
   },

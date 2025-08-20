@@ -1,18 +1,17 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type CSSProperties, useMemo, useRef } from "react";
 import { t } from "ttag";
+import { useMount } from "react-use";
 
-import { formatValue } from "metabase/lib/formatting";
-import { Box, Flex, Icon, Image, Stack, Text } from "metabase/ui";
+import { Icon, Stack, Text } from "metabase/ui";
 import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card, DatasetColumn, DatasetData } from "metabase-types/api";
 
-import { ColumnValue } from "./ColumnValue";
 import styles from "./ListView.module.css";
-import { useMount } from "react-use";
+import { ListViewItem } from "./ListViewItem";
 
 export interface ListViewProps {
   data: DatasetData;
@@ -49,7 +48,7 @@ export function ListView({
   const virtualRows = virtualizer.getVirtualItems();
 
   const { titleColumn, subtitleColumn, imageColumn, rightColumns } =
-    useListColumns(cols);
+    useListColumns(cols, settings.viewSettings?.listSettings);
 
   const openObjectDetail = useObjectDetail(data, card, metadata);
   useMount(() => {
@@ -61,24 +60,6 @@ export function ListView({
   });
 
   // Get the appropriate icon based on entity type
-  const getEntityIcon = (entityType?: string) => {
-    switch (entityType) {
-      case "entity/UserTable":
-        return "person";
-      case "entity/CompanyTable":
-        return "company";
-      case "entity/TransactionTable":
-        return "receipt";
-      case "entity/SubscriptionTable":
-        return "sync";
-      case "entity/ProductTable":
-      case "entity/EventTable":
-      case "entity/GenericTable":
-      default:
-        return "document";
-    }
-  };
-
   const entityIcon = getEntityIcon(entityType);
 
   return (
@@ -137,96 +118,22 @@ export function ListView({
               {virtualRows.map(({ key, index, start }) => {
                 const row = rows[index];
                 return (
-                  <Box
+                  <ListViewItem
                     key={key}
-                    className={styles.listItem}
+                    row={row}
+                    cols={cols}
+                    settings={settings}
+                    entityIcon={entityIcon}
+                    imageColumn={imageColumn}
+                    titleColumn={titleColumn}
+                    subtitleColumn={subtitleColumn}
+                    rightColumns={rightColumns}
                     onClick={() => openObjectDetail(index)}
+                    className={styles.listItemVirtualized}
                     style={{
                       transform: `translateY(${start}px)`,
                     }}
-                  >
-                    {/* Entity Type Icon */}
-                    <Box
-                      w={32}
-                      h={32}
-                      style={{
-                        border: "1px solid var(--mb-color-border)",
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        backgroundColor: "var(--mb-color-background-light)",
-                      }}
-                    >
-                      <Icon name={entityIcon} size={16} c="text-light" />
-                    </Box>
-
-                    {/* Title and Subtitle Content */}
-                    <div>
-                      <Flex align="center" gap="md" style={{ flexShrink: 0 }}>
-                        {imageColumn && (
-                          <Image
-                            src={row[cols.indexOf(imageColumn)]}
-                            alt=""
-                            w={32}
-                            h={32}
-                            radius="xl"
-                            style={{ flexShrink: 0 }}
-                          />
-                        )}
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          {titleColumn && (
-                            <Text
-                              fw="bold"
-                              truncate
-                              style={{ color: "var(--mb-color-brand)" }}
-                            >
-                              {formatValue(row[cols.indexOf(titleColumn)], {
-                                ...(settings.column?.(titleColumn) || {}),
-                                jsx: true,
-                                rich: true,
-                              })}
-                            </Text>
-                          )}
-                          {subtitleColumn && (
-                            <Text
-                              size="sm"
-                              c="text-secondary"
-                              truncate
-                              fw="bold"
-                            >
-                              {formatValue(row[cols.indexOf(subtitleColumn)], {
-                                ...(settings.column?.(subtitleColumn) || {}),
-                                jsx: true,
-                                rich: true,
-                              })}
-                            </Text>
-                          )}
-                        </div>
-                      </Flex>
-                    </div>
-
-                    {/* Right Columns */}
-                    {rightColumns.map((col, colIndex) => {
-                      const rawValue = row[cols.indexOf(col)];
-                      const value = formatValue(rawValue, {
-                        ...(settings.column?.(col) || {}),
-                        jsx: true,
-                        rich: true,
-                      });
-
-                      return (
-                        <div key={colIndex}>
-                          <ColumnValue
-                            column={col}
-                            value={value}
-                            rawValue={rawValue}
-                          />
-                        </div>
-                      );
-                    })}
-                  </Box>
+                  />
                 );
               })}
             </Stack>
@@ -275,21 +182,40 @@ function ColumnHeader({
   );
 }
 
-function useListColumns(cols: DatasetColumn[]) {
+type ListSettings = {
+  leftColumns: string[];
+  rightColumns: string[];
+};
+
+export function useListColumns(
+  cols: DatasetColumn[],
+  listSettings?: ListSettings,
+) {
   const titleColumn = useMemo(() => {
-    return (
+    const defaultTitleColumn =
       cols.find((col) => Lib.isEntityName(Lib.legacyColumnTypeInfo(col))) ||
       cols.find((col) => Lib.isTitle(Lib.legacyColumnTypeInfo(col))) ||
       cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col))) ||
-      cols[0]
-    );
-  }, [cols]);
+      cols[0];
+    if (listSettings && Array.isArray(listSettings.leftColumns)) {
+      return cols.find((col) => listSettings.leftColumns.includes(col.name));
+    }
+    return defaultTitleColumn;
+  }, [cols, listSettings]);
 
   const subtitleColumn = useMemo(() => {
-    return titleColumn && Lib.isID(Lib.legacyColumnTypeInfo(titleColumn))
-      ? null
-      : cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col)));
-  }, [cols, titleColumn]);
+    const defaultSubtitleColumn =
+      titleColumn && Lib.isID(Lib.legacyColumnTypeInfo(titleColumn))
+        ? null
+        : cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col)));
+    if (listSettings && listSettings.leftColumns.length > 1) {
+      return cols.find((col) => listSettings.leftColumns[1] === col.name);
+    }
+    if (listSettings && listSettings.leftColumns.length === 1) {
+      return undefined;
+    }
+    return defaultSubtitleColumn;
+  }, [cols, listSettings, titleColumn]);
 
   const imageColumn = useMemo(() => {
     return cols.find(
@@ -304,8 +230,16 @@ function useListColumns(cols: DatasetColumn[]) {
       [titleColumn, subtitleColumn, imageColumn].filter(Boolean),
     );
 
-    return cols.filter((col) => !usedColumns.has(col)).slice(0, 4);
-  }, [cols, titleColumn, subtitleColumn, imageColumn]);
+    const defaultRightColumns = cols
+      .filter((col) => !usedColumns.has(col))
+      .slice(0, 4);
+    if (listSettings && Array.isArray(listSettings.rightColumns)) {
+      return listSettings.rightColumns
+        .map((colName) => cols.find((col) => col.name === colName))
+        .filter(Boolean);
+    }
+    return defaultRightColumns;
+  }, [cols, titleColumn, subtitleColumn, imageColumn, listSettings]);
 
   return {
     titleColumn,
@@ -314,3 +248,21 @@ function useListColumns(cols: DatasetColumn[]) {
     rightColumns,
   };
 }
+
+export const getEntityIcon = (entityType?: string) => {
+  switch (entityType) {
+    case "entity/UserTable":
+      return "person";
+    case "entity/CompanyTable":
+      return "company";
+    case "entity/TransactionTable":
+      return "receipt";
+    case "entity/SubscriptionTable":
+      return "sync";
+    case "entity/ProductTable":
+    case "entity/EventTable":
+    case "entity/GenericTable":
+    default:
+      return "document";
+  }
+};

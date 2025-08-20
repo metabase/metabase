@@ -94,7 +94,6 @@ export function EditorTabs({
           className={cx(EditorTabsS.Tab, {
             [EditorTabsS.active]: currentTab === "metadata",
             [EditorTabsS.inactive]: currentTab !== "metadata",
-            [EditorTabsS.disabled]: disabledColumns,
           })}
           htmlFor="editor-tabs-metadata"
         >
@@ -109,7 +108,6 @@ export function EditorTabs({
             onChange={() => {
               onChange("metadata");
             }}
-            disabled={disabledColumns}
             data-testid="editor-tabs-metadata"
           />
           <span data-testid="editor-tabs-metadata-name">{t`Metadata`}</span>

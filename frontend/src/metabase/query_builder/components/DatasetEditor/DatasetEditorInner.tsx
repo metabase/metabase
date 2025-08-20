@@ -20,9 +20,12 @@ import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal"
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
+import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { setDatasetEditorTab } from "metabase/query_builder/actions";
+import {
+  setDatasetEditorTab,
+  setUIControls,
+} from "metabase/query_builder/actions";
 import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
@@ -32,6 +35,7 @@ import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
+  getIsListViewConfigurationShown,
   getIsResultDirty,
   getMetadataDiff,
   getResultsMetadata,
@@ -103,6 +107,7 @@ export type DatasetEditorInnerProps = {
   isShowingTemplateTagsEditor: boolean;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
+  isShowingListViewConfiguration: boolean;
   toggleTemplateTagsEditor: () => void;
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
@@ -121,6 +126,7 @@ function mapStateToProps(state: any) {
     isMetadataDirty: isResultsMetadataDirty(state),
     resultsMetadata: getResultsMetadata(state),
     isResultDirty: getIsResultDirty(state),
+    isShowingListViewConfiguration: getIsListViewConfigurationShown(state),
   };
 }
 
@@ -265,8 +271,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     updateQuestion,
     handleResize,
     onOpenModal,
+    isShowingListViewConfiguration,
   } = props;
 
+  const dispatch = useDispatch();
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const fields = useMemo(
@@ -427,13 +435,15 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
+    const settings = question.settings();
     const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
     const questionWithVisualizationSettings =
       questionWithMetadata.updateSettings(
-        editedVisualizationSettings as VisualizationSettings,
+        merge(settings, editedVisualizationSettings) as VisualizationSettings,
       );
-
-    debugger;
+    if (isShowingListViewConfiguration) {
+      dispatch(setUIControls({ isShowingListViewConfiguration: false }));
+    }
 
     if (canBeDataset && isBrandNewDataset) {
       await updateQuestion(questionWithVisualizationSettings, {
@@ -457,12 +467,14 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   }, [
     question,
     metadataDiff,
+    editedVisualizationSettings,
+    isShowingListViewConfiguration,
+    dispatch,
     updateQuestion,
+    onOpenModal,
     onSave,
     setQueryBuilderMode,
     runQuestionQuery,
-    onOpenModal,
-    editedVisualizationSettings,
   ]);
 
   const handleColumnSelect = useCallback(
@@ -612,7 +624,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           <EditorTabs
             currentTab={datasetEditorTab}
             disabledQuery={!isEditable}
-            disabledColumns={!resultsMetadata}
+            disabledColumns={
+              !resultsMetadata ||
+              editedVisualizationSettings?.viewSettings?.defaultView === "list"
+            }
             onChange={onChangeEditorTab}
           />
         }
