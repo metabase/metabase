@@ -151,7 +151,7 @@
   Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
   Alternately, if `:async?` is false, it will also run synchronously."
   [& {:keys [async?] :or {async? true} :as opts}]
-  (if (or search.ingestion/*force-sync* async?)
+  (if (or search.ingestion/*force-sync* (not async?))
     (let [result (reindex-logic! opts)]
       (doto (promise) (deliver result)))
     (.submit ^ExecutorService reindex-pool ^Callable reindex-logic!)))
