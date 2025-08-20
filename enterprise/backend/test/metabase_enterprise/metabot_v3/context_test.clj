@@ -11,11 +11,11 @@
     (with-redefs [table-utils/used-tables (fn [_] used)
                   table-utils/database-tables (fn [_ opts]
                                                 (take (:all-tables-limit opts 100) all-tables))]
-      (let [result (#'context/database-tables-for-context 123 {:query {:native {:query "SELECT *"}} :all-tables-limit 3})]
-        (is (= (take 2 result) used) "Used tables should be first")
-        (is (= 3 (count result)) "Should respect limit")
-        (is (some #(= 3 (:id %)) result) "Should include extra table if room")
-        (is (not (some #(= 4 (:id %)) result)) "Should not exceed limit")
+      (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}, :all-tables-limit 3})]
+        (is (= used result) "Should only return used tables, in order")
+        (is (= (count result) (count used)) "Should return all used tables")
+        (is (not-any? #(= 3 (:id %)) result) "Should not include extra tables")
+        (is (not-any? #(= 4 (:id %)) result) "Should not include extra tables")
         (is (= (count (distinct (map :id result))) (count result))) ; no duplicates
         ))))
 
@@ -26,9 +26,9 @@
     (with-redefs [table-utils/used-tables (fn [_] used)
                   table-utils/database-tables (fn [_ opts]
                                                 (take (:all-tables-limit opts 100) all-tables))]
-      (let [result (#'context/database-tables-for-context 123 {:query {:native {:query "SELECT *"}} :all-tables-limit 3})]
-        (is (= 3 (count result)) "Should respect limit")
-        (is (every? (set used) result) "Only used tables should be present if they exceed limit")
+      (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}, :all-tables-limit 3})]
+        (is (= used result) "Should return all used tables")
+        (is (= (count result) (count used)) "Should return all used tables")
         (is (= (count (distinct (map :id result))) (count result))) ; no duplicates
         ))))
 
@@ -37,11 +37,8 @@
     (with-redefs [table-utils/used-tables (fn [_] [])
                   table-utils/database-tables (fn [_ opts]
                                                 (take (:all-tables-limit opts 100) extra))]
-      (let [result (#'context/database-tables-for-context 123 {:query {:native {:query "SELECT *"}} :all-tables-limit 3})]
-        (is (= 3 (count result)))
-        (is (every? (set extra) result))
-        (is (= (count (distinct (map :id result))) (count result))) ; no duplicates
-        ))))
+      (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}, :all-tables-limit 3})]
+        (is (empty? result) "Should return empty when no used tables")))))
 
 (deftest database-tables-for-context-used-tables-exact-limit
   (let [used (mapv #(hash-map :id % :name (str "used" %)) (range 1 4)) ; 3 used tables
@@ -50,17 +47,41 @@
     (with-redefs [table-utils/used-tables (fn [_] used)
                   table-utils/database-tables (fn [_ opts]
                                                 (take (:all-tables-limit opts 100) all-tables))]
-      (let [result (#'context/database-tables-for-context 123 {:query {:native {:query "SELECT *"}} :all-tables-limit 3})]
-        (is (= 3 (count result)))
+      (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}, :all-tables-limit 3})]
         (is (= used result) "Should be exactly the used tables, in order")
+        (is (= (count result) (count used)))
         (is (= (count (distinct (map :id result))) (count result))) ; no duplicates
         ))))
+
+(deftest database-tables-for-context-exception-handling
+  (testing "Returns empty when table-utils/database-tables throws"
+    (with-redefs [table-utils/used-tables (fn [_] [{:id 1}])
+                  table-utils/database-tables (fn [_ _] (throw (Exception. "boom")))]
+      (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}})]
+        (is (empty? result))))))
+
+(deftest database-tables-for-context-nil-used-tables
+  (testing "Handles nil used-tables gracefully"
+    (with-redefs [table-utils/used-tables (fn [_] nil)
+                  table-utils/database-tables (fn [_ opts]
+                                                (take (:all-tables-limit opts 100) [{:id 1} {:id 2}]))]
+      (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}})]
+        (is (empty? result) "Should return empty when used-tables is nil")))))
+
+(deftest database-tables-for-context-duplicate-ids
+  (testing "Deduplicates tables returned by database-tables"
+    (let [used [{:id 1}]
+          dup [{:id 1} {:id 1} {:id 2}]]
+      (with-redefs [table-utils/used-tables (fn [_] used)
+                    table-utils/database-tables (fn [_ opts] dup)]
+        (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}})]
+          (is (= (map :id result) [1 2]) "Should preserve order and remove duplicates"))))))
 
 ;; --- enhance-context-with-schema tests ---
 
 (deftest enhance-context-with-schema-native
   (let [mock-tables [{:id 1 :name "table1"} {:id 2 :name "table2"}]]
-    (with-redefs [context/database-tables-for-context (fn [_ _] mock-tables)]
+    (with-redefs [context/database-tables-for-context (fn [_] mock-tables)]
       (testing "Enhances context with schema for native queries"
         (let [input {:user_is_viewing [{:query {:type :native :database 123}}]}
               result (#'context/enhance-context-with-schema input)]
@@ -81,7 +102,7 @@
 (deftest enhance-context-with-schema-complete-native-query
   (testing "Enhances context with schema for complete native query structure"
     (let [mock-tables [{:id 1 :name "users"} {:id 2 :name "orders"}]]
-      (with-redefs [context/database-tables-for-context (fn [_ _] mock-tables)]
+      (with-redefs [context/database-tables-for-context (fn [_] mock-tables)]
         (let [input {:user_is_viewing [{:query {:type :native
                                                 :database 123
                                                 :native {:query "SELECT * FROM users WHERE active = true"}}}]}
@@ -91,7 +112,7 @@
 (deftest enhance-context-with-schema-complete-mbql-query
   (testing "Does not enhance context for complete MBQL query structure and doesn't call database-tables-for-context"
     (let [call-count (atom 0)]
-      (with-redefs [context/database-tables-for-context (fn [_ _]
+      (with-redefs [context/database-tables-for-context (fn [_]
                                                           (swap! call-count inc)
                                                           [{:id 1 :name "should-not-be-used"}])]
         (let [input {:user_is_viewing [{:query {:type :query
