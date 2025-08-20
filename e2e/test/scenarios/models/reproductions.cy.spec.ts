@@ -857,8 +857,8 @@ describe("issue 33844", () => {
     H.tableInteractive().findByText("ID").should("not.exist");
     H.openObjectDetail(0);
     H.modal().within(() => {
-      cy.findByText("Order").should("be.visible");
-      cy.findByText("ID").should("be.visible");
+      cy.findByText("Quantity").should("be.visible");
+      cy.findByRole("heading", { name: "1" }).should("be.visible");
       cy.findByLabelText("Close").click();
     });
 
