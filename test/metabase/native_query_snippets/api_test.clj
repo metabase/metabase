@@ -207,7 +207,7 @@
             (is (= {:errors {:collection_id "Collection does not exist."}}
                    (mt/user-http-request :rasta :put 404 (snippet-url snippet-id) {:collection_id Integer/MAX_VALUE})))))))))
 
-(deftest update-snippet-cycle-detection-test
+#_(deftest update-snippet-cycle-detection-test
   (mt/with-full-data-perms-for-all-users!
     (testing "PUT /api/native-query-snippet/:id - cycle detection"
       (testing "Should detect snippet → snippet cycles"

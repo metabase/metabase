@@ -20,7 +20,6 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -29,7 +28,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.native-query-snippets.cycle-detection :as cycle-detection]
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -40,8 +38,6 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.query-permissions.core :as query-perms]
-   ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -375,12 +371,70 @@
           (when table-id
             {:table_id table-id})))))))
 
+(defn- query->snippet-references
+  "Extract snippet IDs from a native query's template tags."
+  [query]
+  (when (= :native (:type query))
+    (let [template-tags (get-in query [:native :template-tags])]
+      (for [[_ tag] template-tags
+            :when (= (:type tag) :snippet)]
+        (:snippet-id tag)))))
+
+(defn- snippet->references
+  "Extract both card and snippet references from a snippet's template tags.
+   Can either fetch from DB or use provided data."
+  [snippet-id snippet-data]
+  (let [template-tags (or (:template_tags snippet-data)
+                          (:template_tags (t2/select-one :model/NativeQuerySnippet :id snippet-id)))]
+    (for [[_ tag] template-tags
+          :let [tag-type (:type tag)]
+          :when (#{:card :snippet} tag-type)]
+      (cond (= tag-type :card)
+            [:card (:card-id tag)]
+
+            (= tag-type :snippet)
+            [:snippet (:snippet-id tag)]))))
+
+(defn- fetch-card-query
+  "Fetch a card's dataset_query from the database."
+  [card-id]
+  (or (t2/select-one-fn :dataset_query :model/Card :id card-id)
+      (throw (ex-info (tru "Card {0} does not exist." card-id)
+                      {:status-code 404}))))
+
 (defn- check-for-circular-source-query-references
   "Check that a `card`, if it is using another Card as its source, does not have circular references between source
   Cards. (e.g. Card A cannot use itself as a source, or if A uses Card B as a source, Card B cannot use Card A, and so
   forth.) Also checks for cycles through native query snippets."
   [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
-  (cycle-detection/check-card-would-create-cycle id query))
+  (loop [entities-to-check [[:card id query]]
+         ids-already-seen #{}]
+    (if-let [[etype eid edata] (first entities-to-check)]
+      (cond
+        ;; Already seen this entity - cycle detected!
+        (ids-already-seen [etype eid])
+        (throw (ex-info (tru "Cannot save Question: circular references detected.")
+                        {:status-code 400}))
+
+        ;; Process based on entity type
+        :else
+        (let [new-seen (conj ids-already-seen [etype eid])
+              new-entities (case etype
+                             :card (concat
+                                    ;; Check for source cards
+                                    (when-let [source-id (qp.util/query->source-card-id edata)]
+                                      [[:card source-id (fetch-card-query source-id)]])
+                                    ;; Check for snippet references
+                                    (for [snippet-id (query->snippet-references edata)]
+                                      [:snippet snippet-id nil]))
+                             :snippet (for [[ref-type ref-id] (snippet->references eid edata)]
+                                        (case ref-type
+                                          :card [ref-type ref-id (fetch-card-query ref-id)]
+                                          :snippet [ref-type ref-id nil])))]
+          (recur (concat (rest entities-to-check) new-entities)
+                 new-seen)))
+      ;; No more entities to check, no cycles found
+      :ok)))
 
 (defn- maybe-normalize-query [card]
   (cond-> card
