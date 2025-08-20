@@ -124,10 +124,10 @@
 
 (defn- add-snippet-ids [metadata-providerable template-tags]
   (update-vals template-tags
-               (fn [{:keys [tag-type snippet-name] :as tag}]
+               (fn [{tag-type :type, :keys [snippet-name], :as tag}]
                  (cond-> tag
                    (= tag-type :snippet) (assoc :snippet-id
-                                            (:id (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name)))))))
+                                                (:id (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name)))))))
 
 (mu/defn extract-template-tags :- ::lib.schema.template-tag/template-tag-map
   "Extract the template tags from a native query's text.
