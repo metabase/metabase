@@ -1959,7 +1959,6 @@ describe("issue 55687", () => {
   });
 });
 
-// TODO: re-enable this test when we have a fix for metabase/metabase#58371
 describe("issue 58371", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
@@ -2006,7 +2005,7 @@ describe("issue 58371", { tags: "@skip" }, () => {
               0,
               [
                 "field",
-                "Aggregation with Dash-in-name",
+                "count_where",
                 {
                   "base-type": "type/Float",
                   "join-alias": "Other Question",
