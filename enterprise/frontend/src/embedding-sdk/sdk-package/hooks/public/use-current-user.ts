@@ -1,4 +1,4 @@
-import { useLazySelector } from "embedding-sdk/sdk-package/hooks/private/use-lazy-selector";
+import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import type { MetabaseUser } from "embedding-sdk/types/user";
 
@@ -10,4 +10,4 @@ import type { MetabaseUser } from "embedding-sdk/types/user";
  * @category useCurrentUser
  */
 export const useCurrentUser: () => MetabaseUser | null = () =>
-  useLazySelector(getWindow()?.MetabaseEmbeddingSDK?.getUser) ?? null;
+  useLazySelector(getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getUser) ?? null;
