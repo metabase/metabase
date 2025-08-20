@@ -22,14 +22,14 @@ export const EmbedJsContent = ({
 }: EmbedJsContentProps) => {
   const cta = match({ variant, hasEmbeddingFeature })
     .with({ variant: "ee", hasEmbeddingFeature: true }, () => (
-      <Link to="/embed-js">
-        <Button variant="outline">{t`Start embedding`}</Button>
-      </Link>
+      <Button component={Link} to={"/embed-js"} variant="outline">
+        {t`Start embedding`}
+      </Button>
     ))
     .with({ variant: "ee", hasEmbeddingFeature: false }, () => (
-      <Link to={"/admin/settings/license"}>
-        <Button variant="outline">{t`Activate license`}</Button>
-      </Link>
+      <Button component={Link} to={"/admin/settings/license"} variant="outline">
+        {t`Activate license`}
+      </Button>
     ))
     .otherwise(() => null);
 
@@ -47,7 +47,7 @@ export const EmbedJsContent = ({
         {t`Embedded analytics JS is a JavaScript library built on top of Metabase’s Embedded analytics SDK for React, but it does not require using React or setting up full SDK embedding. Unlike with interactive embedding, where you embed the entire Metabase app in an iframe, Embedded analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.`}
       </Text>
       {showImage && (
-        <EmbedjsImage
+        <EmbedJsImage
           src="/app/assets/img/embed-js-example.png"
           alt="Embedded analytics JS example"
         />
@@ -65,7 +65,7 @@ export const EmbedJsContent = ({
   );
 };
 
-const EmbedjsImage = styled.img`
+const EmbedJsImage = styled.img`
   width: 100%;
   margin-bottom: 1rem;
   border-radius: 8px;

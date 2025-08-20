@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useSendProductFeedbackMutation } from "metabase/api/product-feedback";
@@ -78,10 +77,7 @@ export const EmbedHomepage = () => {
     }
   };
 
-  const variant = match({ eeBuild: isEEBuild() })
-    .with({ eeBuild: true }, () => "ee" as const)
-    .with({ eeBuild: false }, () => "oss/starter" as const)
-    .exhaustive();
+  const variant = isEEBuild() ? "ee" : "oss/starter";
 
   return (
     <>
