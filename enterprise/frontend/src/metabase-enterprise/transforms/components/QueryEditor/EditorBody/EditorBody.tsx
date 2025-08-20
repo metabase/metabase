@@ -7,6 +7,9 @@ import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type { TransformSource } from "metabase-types/api";
+
+import { PythonEditor } from "../PythonEditor";
 
 import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
@@ -16,10 +19,13 @@ const EDITOR_HEIGHT = 400;
 type EditorBodyProps = {
   question: Question;
   isNative: boolean;
+  isPython?: boolean;
+  pythonSource?: TransformSource & { type: "python" };
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
   onChange: (newQuestion: Question) => void;
+  onPythonChange?: (script: string) => void;
   onRunQuery: () => Promise<void>;
   onCancelQuery: () => void;
 };
@@ -27,10 +33,13 @@ type EditorBodyProps = {
 export function EditorBody({
   question,
   isNative,
+  isPython = false,
+  pythonSource,
   isRunnable,
   isRunning,
   isResultDirty,
   onChange,
+  onPythonChange,
   onRunQuery,
   onCancelQuery,
 }: EditorBodyProps) {
@@ -60,6 +69,24 @@ export function EditorBody({
   const handleNativeQueryChange = (newNativeQuery: NativeQuery) => {
     onChange(newNativeQuery.question());
   };
+
+  const handlePythonChange = (script: string) => {
+    onPythonChange?.(script);
+  };
+
+  if (isPython) {
+    return (
+      <PythonEditor
+        script={pythonSource?.script || ""}
+        isRunnable={isRunnable}
+        isRunning={isRunning}
+        isResultDirty={isResultDirty}
+        onChange={handlePythonChange}
+        onRunScript={onRunQuery}
+        onCancelScript={onCancelQuery}
+      />
+    );
+  }
 
   return isNative ? (
     <NativeQueryEditor

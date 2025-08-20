@@ -73,6 +73,19 @@ export function CreateTransformMenu() {
             {t`SQL query`}
           </Menu.Item>
           <Menu.Item
+            component={ForwardRefLink}
+            to={getNewTransformFromTypeUrl("python")}
+            leftSection={<Icon name="code_block" />}
+            onClick={() => {
+              trackTransformCreate({
+                triggeredFrom: "transform-page-create-menu",
+                creationType: "python",
+              });
+            }}
+          >
+            {t`Python script`}
+          </Menu.Item>
+          <Menu.Item
             leftSection={<Icon name="folder" />}
             onClick={handleSavedQuestionClick}
           >

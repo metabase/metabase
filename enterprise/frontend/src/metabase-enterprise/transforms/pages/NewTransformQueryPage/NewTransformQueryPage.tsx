@@ -90,7 +90,7 @@ function getParsedParams({
   cardId,
 }: NewTransformQueryPageParams): NewTransformQueryPageParsedParams {
   return {
-    type: type === "native" ? "native" : "query",
+    type: type === "native" ? "native" : type === "python" ? "query" : "query",
     cardId: cardId != null ? Urls.extractEntityId(cardId) : undefined,
   };
 }

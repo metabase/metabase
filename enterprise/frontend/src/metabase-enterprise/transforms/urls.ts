@@ -15,7 +15,9 @@ export function getTransformListUrl() {
   return ROOT_URL;
 }
 
-export function getNewTransformFromTypeUrl(type: DatasetQuery["type"]) {
+export function getNewTransformFromTypeUrl(
+  type: DatasetQuery["type"] | "python",
+) {
   return `${ROOT_URL}/new/${type}`;
 }
 
