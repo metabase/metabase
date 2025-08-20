@@ -10,12 +10,19 @@ import S from "./Sidesheet.module.css";
 interface Props {
   actions: ReactNode;
   children: ReactNode;
+  "data-testid"?: string;
   onClose: () => void;
 }
 
-export function Sidesheet({ actions, children, onClose }: Props) {
+export function Sidesheet({
+  actions,
+  "data-testid": dataTestId,
+  children,
+  onClose,
+}: Props) {
   return (
     <Modal.Root
+      data-testid={dataTestId}
       h="100dvh"
       opened
       trapFocus={false}
