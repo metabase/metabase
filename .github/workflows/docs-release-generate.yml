@@ -5,15 +5,14 @@ on:
     - cron: "0 1 * * 1-5" # Every Monday through Friday at 1 AM UTC
   workflow_dispatch:
 
-env:
-  RELEASE_BRANCH: release-x.56.x
-
 jobs:
   update-release-docs:
     name: Call documentation update for release branch
-    uses: ./.github/workflows/reusable-doc-update.yml
+    env:
+      RELEASE_BRANCH: release-x.56.x
+    uses: ./.github/workflows/docs-generate-base.yml
     with:
       target_branch: ${{ env.RELEASE_BRANCH }}
-      m2_cache_key_suffix: 'release'
+      m2_cache_key_suffix: "release"
     secrets:
       automation_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
