@@ -169,8 +169,8 @@
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-pmbql #'limit/add-default-limit)
-   (ensure-pmbql #'qp.middleware.enterprise/apply-download-limit)
-   (ensure-pmbql #'check-features/check-features)])
+   (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
+   (ensure-legacy #'check-features/check-features)])
 
 (defn- middleware-fn-name [middleware-fn]
   (if-let [fn-name (:name (meta middleware-fn))]
