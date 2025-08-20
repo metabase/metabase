@@ -32,6 +32,7 @@
   (driver/with-driver (or driver/*driver* :h2)
     (-> query
         qp.preprocess/preprocess
+        lib/->legacy-MBQL
         :query
         nest-query/nest-expressions
         remove-source-metadata)))
@@ -635,6 +636,7 @@
                      :limit       1})
                   qp.preprocess/preprocess
                   add/add-alias-info
+                  lib/->legacy-MBQL
                   :query
                   nest-query/nest-expressions))))))
 
@@ -676,6 +678,7 @@
                                                [:field "DISCOUNT" {:base-type :type/Float}]]})
                       qp.preprocess/preprocess
                       add/add-alias-info
+                      lib/->legacy-MBQL
                       :query
                       nest-query/nest-expressions
                       (->> (assoc {:database (meta/id)

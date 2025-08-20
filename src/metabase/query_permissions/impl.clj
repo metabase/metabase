@@ -17,6 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.schema :as qp.schema]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -111,36 +112,44 @@
 
      Add the table to the table-ids set. If there's no parent-source-card-id, also add it
      to the table-query-ids set, then continue the match."
-  ([query :- :map]
+  ([query]
    (query->source-ids query nil false))
-  ([query :- :map
-    parent-source-card-id :- [:maybe :any]
-    in-sandbox? :- :boolean]
-   (apply merge-with merge-source-ids
-          (lib.util.match/match query
-            (m :guard (every-pred map? :qp/stage-is-from-source-card))
-            (merge-with merge-source-ids
-                        (when-not parent-source-card-id
-                          {:card-ids #{(:qp/stage-is-from-source-card m)}})
-                        (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
 
-            (m :guard (every-pred map? :query-permissions/gtapped-table))
-            (merge-with merge-source-ids
-                        {:table-ids #{(:query-permissions/gtapped-table m)}}
-                        (when-not (or parent-source-card-id in-sandbox?)
-                          {:table-query-ids #{(:query-permissions/gtapped-table m)}})
-                        (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id true))
+  ([query                 :- :map
+    parent-source-card-id :- [:maybe ::lib.schema.id/card]
+    in-sandbox?           :- :any]
+   (if (:lib/type query)
+     ;; convert MBQL 5 to legacy
+     ;;
+     ;; legacy usage -- don't do things like this going forward
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
+     ;; already legacy MBQL
+     (apply merge-with merge-source-ids
+            (lib.util.match/match query
+              (m :guard (every-pred map? :qp/stage-is-from-source-card))
+              (merge-with merge-source-ids
+                          (when-not parent-source-card-id
+                            {:card-ids #{(:qp/stage-is-from-source-card m)}})
+                          (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
 
-            (m :guard (every-pred map? :native))
-            (when-not parent-source-card-id
-              {:native? true})
+              (m :guard (every-pred map? :query-permissions/gtapped-table))
+              (merge-with merge-source-ids
+                          {:table-ids #{(:query-permissions/gtapped-table m)}}
+                          (when-not (or parent-source-card-id in-sandbox?)
+                            {:table-query-ids #{(:query-permissions/gtapped-table m)}})
+                          (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id true))
 
-            (m :guard (every-pred map? #(pos-int? (:source-table %))))
-            (merge-with merge-source-ids
-                        {:table-ids #{(:source-table m)}}
-                        (when-not (or parent-source-card-id in-sandbox?)
-                          {:table-query-ids #{(:source-table m)}})
-                        (query->source-ids (dissoc m :source-table) parent-source-card-id in-sandbox?))))))
+              (m :guard (every-pred map? :native))
+              (when-not parent-source-card-id
+                {:native? true})
+
+              (m :guard (every-pred map? #(pos-int? (:source-table %))))
+              (merge-with merge-source-ids
+                          {:table-ids #{(:source-table m)}}
+                          (when-not (or parent-source-card-id in-sandbox?)
+                            {:table-query-ids #{(:source-table m)}})
+                          (query->source-ids (dissoc m :source-table) parent-source-card-id in-sandbox?)))))))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if

@@ -955,7 +955,7 @@
                 (is (=? {:query {:filter [:=
                                           [:field (mt/id :checkins :date) {:base-type #(isa? % :type/Date), :temporal-unit :default}]
                                           [:absolute-datetime #t "2014-05-08" :default]]}}
-                        preprocessed)))
+                        (lib/->legacy-MBQL preprocessed))))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
                 (mt/with-native-query-testing-context query
                   (testing "Results: should return correct rows"
@@ -998,7 +998,7 @@
                                           [:<
                                            [:field (:id orders-created-at) {:temporal-unit :default}]
                                            [:absolute-datetime #t "2019-02-12T00:00-08:00" :default]]]}}
-                        preprocessed)))
+                        (lib/->legacy-MBQL preprocessed))))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
                 (mt/with-native-query-testing-context query
                   (testing "Results: should return correct rows"

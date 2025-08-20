@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -299,7 +298,7 @@
                                        [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
                                        [:absolute-datetime {} (t/offset-date-time #t "2017-10-07T00:00Z") :day]]]}]}
                 (->> query
-                     lib.convert/->legacy-MBQL
+                     lib/->legacy-MBQL
                      wrap-value-literals
                      (lib/query query))))))))
 
@@ -313,7 +312,9 @@
                     venues
                     {:source-table (str "card__" id)
                      :filter [:= [:field "ID" {:base-type :type/Integer}] 1]})
-            preprocessed (qp.preprocess/preprocess query)]
+            preprocessed (-> query
+                             qp.preprocess/preprocess
+                             lib/->legacy-MBQL)]
         ;; [:query :filter 2 2 :database_type] points to wrapped value's options
         (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))
 
@@ -331,7 +332,9 @@
                                           $id
                                           [:field "ID" {:base-type :type/Integer :join-alias "x"}]]
                               :source-table (str "card__" id)}]})
-            preprocessed (qp.preprocess/preprocess query)]
+            preprocessed (-> query
+                             qp.preprocess/preprocess
+                             lib/->legacy-MBQL)]
         ;; [:query :filter 2 2 :database_type] points to wrapped value's options
         (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))
 
@@ -343,10 +346,11 @@
                [:field "CATEGORY" {:base-type :type/Text}]
                [:value "Doohickey" {:base_type :type/Text
                                     :database_type "CHARACTER VARYING"}]]}}
-            (wrap-value-literals
-             (qp.preprocess/preprocess
-              (mt/mbql-query products
-                {:filter [:= [:field "CATEGORY" {:base-type :type/Text}] "Doohickey"]
-                 :source-query {:source-table $$products
-                                :aggregation [[:count]]
-                                :breakout [$category]}})))))))
+            (-> (mt/mbql-query products
+                  {:filter [:= [:field "CATEGORY" {:base-type :type/Text}] "Doohickey"]
+                   :source-query {:source-table $$products
+                                  :aggregation [[:count]]
+                                  :breakout [$category]}})
+                qp.preprocess/preprocess
+                lib/->legacy-MBQL
+                wrap-value-literals)))))

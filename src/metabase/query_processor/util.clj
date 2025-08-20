@@ -22,18 +22,23 @@
 
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.legacy-mbql.util]]
 
-(defn default-query->remark
+(mu/defn default-query->remark
   "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
    can access the default value."
-  [{{:keys [executed-by query-hash], :as _info} :info, query-type :type}]
-  (str "Metabase" (when executed-by
-                    (assert (bytes? query-hash) "If info includes executed-by it should also include query-hash")
-                    (format ":: userID: %s queryType: %s queryHash: %s"
-                            executed-by
-                            (case (keyword query-type)
-                              :query  "MBQL"
-                              :native "native")
-                            (codecs/bytes->hex query-hash)))))
+  [{{:keys [executed-by query-hash], :as _info} :info, :as query} :- ::qp.schema/any-query]
+  (let [query-type (if (:lib/type query)
+                     (case (keyword (:lib/type (lib/query-stage query -1)))
+                       :mbql.stage/mbql   "MBQL"
+                       :mbql.stage/native "native")
+                     (case (keyword (:type query))
+                       :query  "MBQL"
+                       :native "native"))]
+    (str "Metabase" (when executed-by
+                      (assert (bytes? query-hash) "If info includes executed-by it should also include query-hash")
+                      (format ":: userID: %s queryType: %s queryHash: %s"
+                              executed-by
+                              query-type
+                              (codecs/bytes->hex query-hash))))))
 
 (defmulti query->remark
   "Generate an appropriate remark `^String` to be prepended to a query to give DBAs additional information about the query

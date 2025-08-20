@@ -164,7 +164,7 @@
 
   4. Submit a background job to analyze field usages"
   [qp :- ::qp.schema/qp]
-  (mu/fn [query :- ::qp.schema/query
+  (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
     (if-not (qp.util/userland-query? query)
       (qp query rff)

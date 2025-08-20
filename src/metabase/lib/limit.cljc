@@ -1,6 +1,6 @@
 (ns metabase.lib.limit
   (:require
-   [metabase.lib.core :as lib]
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.page :as lib.page]
    [metabase.lib.schema :as lib.schema]
@@ -23,10 +23,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     n            :- [:maybe pos-int?]]
-   (lib.util/update-query-stage query stage-number (fn [stage]
-                                                     (if n
-                                                       (assoc stage :limit n)
-                                                       (dissoc stage :limit))))))
+   (lib.util/update-query-stage query stage-number u/assoc-dissoc :limit n)))
 
 (mu/defn ^:export current-limit :- [:maybe pos-int?]
   "Get the maximum number of rows to be returned by a stage of a query. `nil` indicates there is no limit"
@@ -61,7 +58,7 @@
   (let [mbql-limit        (when-not (lib.util/native-stage? query -1)
                             (u/safe-min (:items (lib.page/current-page query -1))
                                         (current-limit query -1)))
-        constraints-limit (or (when (empty? (lib/aggregations query -1))
+        constraints-limit (or (when (empty? (lib.aggregation/aggregations query -1))
                                 max-results-bare-rows)
                               max-results)]
     (u/safe-min mbql-limit constraints-limit)))

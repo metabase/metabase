@@ -893,7 +893,12 @@
                                                                                            :id (mt/id :products :category))
                                                           :database_type "CHARACTER VARYING"
                                                           :name "CATEGORY"}]]
-                                       (get-in (qp.preprocess/preprocess drill-thru-query) [:query :filter])))))]
+                                       (get-in (-> drill-thru-query
+                                                   qp.preprocess/preprocess
+                                                   ;; legacy usage -- don't do things like this going forward
+                                                   #_{:clj-kondo/ignore [:discouraged-var]}
+                                                   lib/->legacy-MBQL)
+                                               [:query :filter])))))]
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)

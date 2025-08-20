@@ -6,7 +6,7 @@
 
 ;; this schema is not very strict because we need to handle different types of queries (legacy MBQL, pMBQL, super-legacy
 ;; MBQL, internal audit app queries, etc.) and it might not be normalized yet.
-(mr/def ::query
+(mr/def ::any-query
   [:and
    :map
    [:fn
@@ -38,7 +38,7 @@
 
 (mr/def ::qp
   [:=>
-   [:cat ::query ::rff]
+   [:cat ::any-query ::rff]
    :some])
 
 (def export-formats

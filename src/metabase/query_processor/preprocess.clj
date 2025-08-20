@@ -185,10 +185,11 @@
     1000 ; this is egregious but we don't want to spam the logs with stuff like this in prod
     100))
 
-(mu/defn preprocess :- [:map
-                        [:database ::lib.schema.id/database]]
+(mu/defn preprocess :- ::lib.schema/query
   "Fully preprocess a query, but do not compile it to a native query or execute it."
   [query :- :map]
+  (when config/is-test?
+    ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "do not preprocess queries in top-level forms"))
   (qp.setup/with-qp-setup [query query]
     (qp.debug/debug> (list `preprocess query))
     (transduce
@@ -232,9 +233,6 @@
   [query :- :map]
   (qp.setup/with-qp-setup [query query]
     (let [preprocessed (-> query preprocess)]
-      (when-not (= (:type preprocessed) :query)
-        (throw (ex-info (i18n/tru "Can only determine expected columns for MBQL queries.")
-                        {:type qp.error-type/qp})))
-      ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
-      ;; check where this is used.
-      (not-empty (annotate/expected-cols (->mbql-5 preprocessed))))))
+      ;; TODO - we should throw an Exception if the query has a native source query with no attached metadata or at
+      ;; least warn about it. Need to check where this is used.
+      (not-empty (annotate/expected-cols preprocessed)))))

@@ -185,7 +185,7 @@
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
 (mu/defn- run-query-with-cache :- :some
-  [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/query
+  [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
    rff                                               :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see

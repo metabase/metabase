@@ -363,14 +363,15 @@
                                    [:desc [:field "count" {:base-type :type/Integer}]]
                                    [:asc &Q1.products.category]]
                     :limit        1}))]
-      (is (=? {:source-query {:source-table (meta/id :products)}
-               :expressions  {"CC" [:+ 1 1]}
-               :fields       [[:field (meta/id :products :category) nil]
-                              [:field "count" {:base-type :type/Integer}]
-                              [:expression "CC"]]}
+      (is (=? [{:source-table (meta/id :products)}
+               {:expressions  [[:+ {:lib/expression-name "CC"} 1 1]]
+                :fields       [[:field {} (meta/id :products :category)]
+                               [:field {:base-type :type/Integer} "count"]
+                               [:expression {} "CC"]]}]
               (-> query
                   qp.preprocess/preprocess
-                  :query
+                  :stages
+                  last
                   :joins
                   first
-                  :source-query))))))
+                  :stages))))))

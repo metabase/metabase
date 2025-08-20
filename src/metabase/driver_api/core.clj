@@ -110,7 +110,8 @@
  lib.util.match/match-one
  lib.util.match/replace
  lib.util/truncate-alias
- lib/->legacy-MBQL
+ ;; this is actually still allowed in driver namespaces... for now.
+ #_{:clj-kondo/ignore [:discouraged-var]} lib/->legacy-MBQL
  lib/query-from-legacy-inner-query
  limit/absolute-max-results
  limit/determine-query-max-rows

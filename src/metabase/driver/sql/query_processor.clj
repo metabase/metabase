@@ -2044,14 +2044,17 @@
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
-  [driver               :- :keyword
-   {inner-query :query} :- :map]
-  (binding [driver/*driver* driver]
-    (let [inner-query (preprocess driver inner-query)]
-      (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
-      (u/prog1 (apply-clauses driver {} inner-query)
-        (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
-        (driver-api/debug> (list '🍯 <>))))))
+  [driver :- :keyword
+   query  :- :map]
+  (if (:lib/type query)
+    (recur driver (driver-api/->legacy-MBQL query))
+    (let [{inner-query :query} query]
+      (binding [driver/*driver* driver]
+        (let [inner-query (preprocess driver inner-query)]
+          (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
+          (u/prog1 (apply-clauses driver {} inner-query)
+            (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
+            (driver-api/debug> (list '🍯 <>))))))))
 
 ;;;; MBQL -> Native
 

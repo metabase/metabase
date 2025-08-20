@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [compile])
   (:require
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -17,16 +18,20 @@
    [:query :any]
    [:params {:optional true} [:maybe [:sequential :any]]]])
 
-(defn- compile* [{query-type :type, :as query}]
+(mu/defn- compile*
+  [query :- ::qp.schema/any-query]
   (assert (not (:qp/compiled query)) "This query has already been compiled!")
-  (if (= query-type :native)
-    (:native query)
-    (driver/mbql->native driver/*driver* query)))
+  (if (:lib/type query)
+    (recur (lib/->legacy-MBQL query))
+    (let [{query-type :type, :as query} query]
+      (if (= query-type :native)
+        (:native query)
+        (driver/mbql->native driver/*driver* query)))))
 
 (mu/defn compile-preprocessed :- ::compiled
   "Compile an already-preprocessed query, if needed. Returns just the resulting 'inner' native query.
   `:native` key in a legacy query."
-  [preprocessed-query :- ::qp.schema/query]
+  [preprocessed-query :- ::qp.schema/any-query]
   (qp.setup/with-qp-setup [preprocessed-query preprocessed-query]
     (try
       (u/prog1 (compile* preprocessed-query)
@@ -38,22 +43,22 @@
 
 (mu/defn compile :- ::compiled
   "Preprocess and compile a query, if needed. Returns just the resulting 'inner' native query."
-  [query :- ::qp.schema/query]
+  [query :- ::qp.schema/any-query]
   (qp.setup/with-qp-setup [query query]
     (compile-preprocessed (qp.preprocess/preprocess query))))
 
-(mu/defn attach-compiled-query :- ::qp.schema/query
+(mu/defn attach-compiled-query :- ::qp.schema/any-query
   "If this is an MBQL query, compile it and attach it to the query under the `:qp/compiled` key. Previously, we attached
   this under `:native`, but that causes the MBQL schema to blow up. We can't just change this to a regular native
   query outright and remove the MBQL `:query`, because that would break perms checks."
-  [preprocessed :- ::qp.schema/query]
+  [preprocessed :- ::qp.schema/any-query]
   (let [preprocessed (dissoc preprocessed :qp/compiled :qp/compiled-inline)]
-    (case (:type preprocessed)
-      :native preprocessed
-      :query  (assoc preprocessed
-                     :qp/compiled        (compile-preprocessed preprocessed)
-                     :qp/compiled-inline (binding [driver/*compile-with-inline-parameters* true]
-                                           (compile-preprocessed preprocessed))))))
+    (case ((some-fn :lib/type :type) preprocessed)
+      :native              preprocessed
+      (:mbql/query :query) (assoc preprocessed
+                                  :qp/compiled        (compile-preprocessed preprocessed)
+                                  :qp/compiled-inline (binding [driver/*compile-with-inline-parameters* true]
+                                                        (compile-preprocessed preprocessed))))))
 
 (mr/def ::compiled-with-inlined-parameters
   [:map
@@ -68,7 +73,7 @@
   (Currently, this function is mostly used by tests and a few API endpoints;
   REPL; [[metabase.query-processor.middleware.splice-params-in-response/splice-params-in-response]] middleware handles
   similar functionality for queries that are actually executed.)"
-  [query :- ::qp.schema/query]
+  [query :- ::qp.schema/any-query]
   (or (:qp/compiled-inline query)
       (binding [driver/*compile-with-inline-parameters* true]
         (compile (dissoc query :qp/compiled)))))
