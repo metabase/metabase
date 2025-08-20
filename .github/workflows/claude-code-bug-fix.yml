@@ -370,7 +370,6 @@ jobs:
                 // Decode the base64-encoded analysis content
                 const analysisBase64 = '${{ steps.check_changes.outputs.analysis_content }}';
                 const analysisContent = Buffer.from(analysisBase64, 'base64').toString('utf8');
-                
                 console.log('📋 Claude provided detailed analysis:');
                 console.log('='.repeat(50));
                 console.log(analysisContent);
