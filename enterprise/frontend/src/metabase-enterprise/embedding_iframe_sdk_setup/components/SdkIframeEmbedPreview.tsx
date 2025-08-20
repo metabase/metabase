@@ -10,6 +10,7 @@ import { Card } from "metabase/ui";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import S from "./SdkIframeEmbedPreview.module.css";
@@ -39,28 +40,34 @@ export const SdkIframeEmbedPreview = () => {
     [],
   );
 
-  // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
-  // some color will not be reset to the default (e.g. text color, CSS variables).
-  // We can remove this block once EMB-696 is fixed.
-  const defaultTheme: MetabaseTheme = useMemo(() => {
-    const colors = Object.fromEntries(
-      getConfigurableThemeColors().map((color) => [
-        color.key,
-        applicationColors?.[color.originalColorKey] ??
-          defaultMetabaseColors[color.originalColorKey],
-      ]),
+  const derivedTheme = useMemo(() => {
+    // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
+    // some color will not be reset to the default (e.g. text color, CSS variables).
+    // We can remove this block once EMB-696 is fixed.
+    const defaultTheme: MetabaseTheme = {
+      colors: Object.fromEntries(
+        getConfigurableThemeColors().map((color) => [
+          color.key,
+          applicationColors?.[color.originalColorKey] ??
+            defaultMetabaseColors[color.originalColorKey],
+        ]),
+      ),
+    };
+
+    return getDerivedDefaultColorsForEmbedFlow(
+      settings.theme ?? defaultTheme,
+      applicationColors ?? undefined,
     );
-    return { colors };
-  }, [applicationColors]);
+  }, [applicationColors, settings.theme]);
 
   const metabaseConfig = useMemo(
     () => ({
       instanceUrl,
       useExistingUserSession: true,
-      theme: settings.theme ?? defaultTheme,
+      theme: derivedTheme,
       ...(localeOverride ? { locale: localeOverride } : {}),
     }),
-    [instanceUrl, localeOverride, settings.theme, defaultTheme],
+    [instanceUrl, localeOverride, derivedTheme],
   );
 
   // initial configuration, needed so that the element finds the config on first render
@@ -122,6 +129,7 @@ export const SdkIframeEmbedPreview = () => {
               : undefined,
           }),
         )
+        .with({ componentName: "metabase-browser" }, () => null)
         .exhaustive()}
     </Card>
   );

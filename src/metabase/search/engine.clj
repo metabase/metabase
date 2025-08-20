@@ -1,5 +1,7 @@
 ;; The interface encapsulating the various search engine backends.
-(ns metabase.search.engine)
+(ns metabase.search.engine
+  (:require
+   [metabase.search.settings :as settings]))
 
 (def fallback-engine-priority
   "Search engines in order of preference for fallback scenarios."
@@ -72,9 +74,11 @@
   (keys (dissoc (methods supported-engine?) :default)))
 
 (defn active-engines
-  "List the search engines that are supported. Does not mention the legacy in-place engine."
+  "List the search engines that are supported. Does not mention the legacy in-place engine.
+   Default engine comes first."
   []
-  (for [[k p] (dissoc (methods supported-engine?) :default :search.engine/in-place) :when (p k)] k))
+  (->> (for [[k p] (dissoc (methods supported-engine?) :default :search.engine/in-place) :when (p k)] k)
+       (sort-by #(if (= (name %) (name (settings/search-engine))) 0 1))))
 
 (defn known-engine?
   "Is the given engine recognized?"
