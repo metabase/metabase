@@ -9,7 +9,10 @@ const { admin } = USERS;
 const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
-  beforeEach(() => H.restore("blank"));
+  beforeEach(() => {
+    H.restore("blank");
+    H.resetSnowplow();
+  });
 
   locales.forEach((locale) => {
     it(
@@ -279,6 +282,10 @@ describe("scenarios > setup", () => {
 
     // Checks we are now in the next step
     cy.findByTestId("step-number").should("have.text", "5");
+    H.expectUnstructuredSnowplowEvent({
+      event: "invite_sent",
+      source: "setup",
+    });
   });
 
   it("should allow a quick setup for the 'embedding' use case", () => {

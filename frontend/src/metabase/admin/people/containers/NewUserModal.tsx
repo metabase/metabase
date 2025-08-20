@@ -9,7 +9,6 @@ import * as Urls from "metabase/lib/urls";
 import { Modal } from "metabase/ui";
 import type { User as UserType } from "metabase-types/api";
 
-import { trackInviteSent } from "../analytics";
 import { UserForm } from "../forms/UserForm";
 
 interface NewUserModalProps {
@@ -33,7 +32,6 @@ export const NewUserModal = ({ onClose }: NewUserModalProps) => {
         : { password: generatePassword() }),
     }).unwrap();
 
-    trackInviteSent(user.id);
     dispatch(push(Urls.newUserSuccess(user.id)));
   };
 

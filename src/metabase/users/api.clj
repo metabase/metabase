@@ -407,7 +407,7 @@
 
 (defn invite-user
   "Implementation for `POST /`, invites a user to Metabase."
-  [{:keys [email user_group_memberships] :as body}]
+  [{:keys [email user_group_memberships] :as body} request]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
@@ -418,10 +418,14 @@
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (analytics/track-event! :snowplow/invite
-                              {:event           :invite-sent
-                               :invited-user-id new-user-id
-                               :source          "admin"})
+      (let [referrer (get-in request [:headers "referer"])
+            source   (if (and referrer (re-find #"/setup" referrer))
+                       "setup"
+                       "admin")]
+        (analytics/track-event! :snowplow/invite
+                                {:event           :invite-sent
+                                 :invited-user-id new-user-id
+                                 :source          source}))
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 
@@ -434,8 +438,9 @@
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
-  (invite-user body))
+            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]
+   request]
+  (invite-user body request))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |

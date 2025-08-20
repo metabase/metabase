@@ -67,11 +67,3 @@ export const trackTrackingChanged = (isTrackingAllowed: boolean) => {
     source: "setup",
   });
 };
-
-export const trackInviteSent = (invitedUserId: number) => {
-  trackSchemaEvent("invite", {
-    event: "invite_sent",
-    source: "setup",
-    invited_user_id: invitedUserId,
-  });
-};
