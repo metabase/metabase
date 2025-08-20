@@ -7,6 +7,7 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.core :as sync]
@@ -274,9 +275,12 @@
             ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
             ;; to the correct types for the host database (e.g., datetime for MySQL)
             (log/info "Starting Sync of Audit DB to update field metadata for host engine")
-            (future
-              (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
-              (log/info "Audit DB sync complete."))))))))
+            (let [sync-future (future
+                                (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
+                                (log/info "Audit DB sync complete."))]
+              (when config/is-test?
+                ;; Tests need the sync to complete before they run
+                @sync-future))))))))
 
 (defn- maybe-install-audit-db
   []
