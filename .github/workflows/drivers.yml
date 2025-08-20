@@ -1080,6 +1080,7 @@ jobs:
 
   be-tests-vertica-ee:
     needs: determine-driver-skips
+    # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
     if: ${{ false && !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
