@@ -31,6 +31,7 @@ import {
   getMetadataDiff,
   getResultsMetadata,
   getVisualizationSettings,
+  getZoomedObjectRowIndex,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 import { getWritableColumnProperties } from "metabase/query_builder/utils";
@@ -96,6 +97,7 @@ function mapStateToProps(state) {
     isMetadataDirty: isResultsMetadataDirty(state),
     resultsMetadata: getResultsMetadata(state),
     isResultDirty: getIsResultDirty(state),
+    zoomedRowIndex: getZoomedObjectRowIndex(state),
   };
 }
 

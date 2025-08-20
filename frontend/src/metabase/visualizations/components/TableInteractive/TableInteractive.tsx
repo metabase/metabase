@@ -46,10 +46,9 @@ import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
-import { getZoomedObjectRowIndex } from "metabase/query_builder/selectors";
 import { Flex, type MantineTheme } from "metabase/ui";
 import {
   getTableCellClickedObject,
@@ -102,6 +101,7 @@ interface TableProps extends VisualizationProps {
   scrollToLastColumn?: boolean;
   theme: MantineTheme;
   renderEmptyMessage?: boolean;
+  zoomedRowIndex?: number;
   getColumnTitle: (columnIndex: number) => string;
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   renderTableHeader: HeaderCellWithColumnInfoProps["renderTableHeader"];
@@ -166,6 +166,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    zoomedRowIndex,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -177,7 +178,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isClientSideSortingEnabled = isDashboard;
   const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
-  const zoomedRowIndex = useSelector(getZoomedObjectRowIndex);
 
   const tc = useTranslateContent();
 
