@@ -23,6 +23,8 @@ export const SAMPLE_DB_ID = 1;
 export const SAMPLE_DB_SCHEMA_ID = "1:PUBLIC";
 
 // Use only for e2e helpers and custom commands. Never in e2e tests directly!
+// The ids of these tables are determined by our sync processes, especially the result of (metabase.driver.sql-jdbc.sync.describe-database/describe-database)
+// so any changes that affect the order of the tables returned by that function will change the ids of these tables. A common case is when adding a new key to table metadata
 export const SAMPLE_DB_TABLES = {
   // old tables
   STATIC_PRODUCTS_ID: 3,
