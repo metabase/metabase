@@ -27,7 +27,7 @@
   [query]
   (assoc-in query [:middleware :disable-max-results?] true))
 
-(defn- add-limit [max-rows query]
+(defn- maybe-add-limit [max-rows query]
   (let [original-limit (lib/current-limit query -1)]
     (cond-> query
       (and (not (lib/native-stage? query -1))
@@ -71,7 +71,7 @@
   "Pre-processing middleware. Add default `:limit` to MBQL queries without any aggregations."
   [query :- ::lib.schema/query]
   (if-let [max-rows (determine-query-max-rows query)]
-    (add-limit max-rows query)
+    (maybe-add-limit max-rows query)
     query))
 
 ;;;; Post-processing

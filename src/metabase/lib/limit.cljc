@@ -25,7 +25,7 @@
     n            :- [:maybe pos-int?]]
    (lib.util/update-query-stage query stage-number u/assoc-dissoc :limit n)))
 
-(mu/defn ^:export current-limit :- [:maybe pos-int?]
+(mu/defn ^:export current-limit :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
   "Get the maximum number of rows to be returned by a stage of a query. `nil` indicates there is no limit"
   ([query :- ::lib.schema/query]
    (current-limit query -1))
