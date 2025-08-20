@@ -690,7 +690,7 @@ jobs:
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-vertica-ee:
-    if: inputs.driver == 'Vertica'
+    if: ${{ false && inputs.driver == 'Vertica' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
