@@ -1,6 +1,11 @@
 import { useState } from "react";
 
-import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
+import {
+  skipToken,
+  useListActionsQuery,
+  useListDatabasesQuery,
+  useListTableForeignKeysQuery,
+} from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -34,6 +39,25 @@ export function ObjectDetailWrapper({
     shouldShowModal && rest.table ? rest.table.id : skipToken,
   );
 
+  const areImplicitActionsEnabled = Boolean(
+    question &&
+      question.canWrite() &&
+      question.type() === "model" &&
+      question.supportsImplicitActions(),
+  );
+
+  const modelId = question?.type() === "model" ? question.id() : undefined;
+
+  const { data: actions = [] } = useListActionsQuery(
+    areImplicitActionsEnabled && modelId != null && shouldShowModal
+      ? { "model-id": modelId }
+      : skipToken,
+  );
+
+  const { data: databasesResponse } = useListDatabasesQuery(
+    areImplicitActionsEnabled && shouldShowModal ? {} : skipToken,
+  );
+
   if (shouldShowModal) {
     const {
       canZoomNextRow,
@@ -56,7 +80,9 @@ export function ObjectDetailWrapper({
     ) {
       return (
         <DetailViewSidesheet
+          actions={areImplicitActionsEnabled ? actions : []}
           columns={columns}
+          databases={databasesResponse?.data ?? []}
           row={zoomedRow}
           rowId={zoomedRowID}
           table={table}
