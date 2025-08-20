@@ -539,7 +539,7 @@ The port your custom SMTP server uses for outgoing emails. Only ports 465, 587, 
 ### `MB_EMAIL_SMTP_SECURITY`
 
 - Type: keyword
-- Default: `:none`
+- Default: `none`
 - [Configuration file name](./config-file.md): `email-smtp-security`
 
 SMTP secure connection protocol. (tls, ssl, starttls, or none).
@@ -549,7 +549,7 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
-- Default: `:ssl`
+- Default: `ssl`
 - [Configuration file name](./config-file.md): `email-smtp-security-override`
 
 SMTP secure connection protocol for your custom server. (tls, ssl, or starttls).
@@ -607,7 +607,7 @@ Allow Metabase SDK access to these space delimited origins.
 ### `MB_EMBEDDING_HOMEPAGE`
 
 - Type: keyword
-- Default: `:hidden`
+- Default: `hidden`
 - [Exported as](../installation-and-operation/serialization.md): `embedding-homepage`.
 - [Configuration file name](./config-file.md): `embedding-homepage`
 
@@ -760,7 +760,7 @@ Whether to log health check requests from session middleware.
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
-- Default: `:metabase`
+- Default: `metabase`
 - [Configuration file name](./config-file.md): `help-link`
 
 Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and `:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, or be hidden if it is not set.
@@ -778,7 +778,7 @@ Custom URL for the help link.
 ### `MB_HTTP_CHANNEL_HOST_STRATEGY`
 
 - Type: keyword
-- Default: `:external-only`
+- Default: `external-only`
 
 Controls which types of hosts are allowed as HTTP channel destinations.
 Options:
@@ -790,7 +790,7 @@ Options:
 ### `MB_HUMANIZATION_STRATEGY`
 
 - Type: keyword
-- Default: `:simple`
+- Default: `simple`
 - [Exported as](../installation-and-operation/serialization.md): `humanization-strategy`.
 - [Configuration file name](./config-file.md): `humanization-strategy`
 
@@ -1056,7 +1056,7 @@ Server port, usually 389 or 636 if SSL is used.
 ### `MB_LDAP_SECURITY`
 
 - Type: keyword
-- Default: `:none`
+- Default: `none`
 - [Configuration file name](./config-file.md): `ldap-security`
 
 Use SSL, TLS or plain text.
@@ -1125,7 +1125,7 @@ Setting this environment variable to false can also come in handy when migrating
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
-- Default: `:doing-science`
+- Default: `doing-science`
 - [Exported as](../installation-and-operation/serialization.md): `loading-message`.
 - [Configuration file name](./config-file.md): `loading-message`
 
@@ -1164,7 +1164,7 @@ The map tile server URL template used in map visualizations, for example from Op
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
 - Type: keyword
-- Default: `:substring`
+- Default: `substring`
 - [Exported as](../installation-and-operation/serialization.md): `native-query-autocomplete-match-style`.
 - [Configuration file name](./config-file.md): `native-query-autocomplete-match-style`
 
@@ -1566,7 +1566,7 @@ Used for encrypting and checking whether SDK requests are signed.
 ### `MB_SEARCH_ENGINE`
 
 - Type: keyword
-- Default: `:appdb`
+- Default: `appdb`
 
 Which engine to use when performing search. Supported values are :in-place and :appdb.
 
@@ -1610,7 +1610,7 @@ Should new email notifications be sent to admins, for all new SSO users?
 ### `MB_SESSION_COOKIE_SAMESITE`
 
 - Type: keyword
-- Default: `:lax`
+- Default: `lax`
 - [Configuration file name](./config-file.md): `session-cookie-samesite`
 
 Value for the session cookie's `SameSite` directive.
@@ -1819,7 +1819,7 @@ Controls how often the heartbeats are sent when an SSH tunnel is established (in
 ### `MB_START_OF_WEEK`
 
 - Type: keyword
-- Default: `:sunday`
+- Default: `sunday`
 - [Exported as](../installation-and-operation/serialization.md): `start-of-week`.
 - [Configuration file name](./config-file.md): `start-of-week`
 
@@ -1930,7 +1930,7 @@ Turn on the Tenants feature, allowing users to be assigned to a particular Tenan
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
-- Default: `:all`
+- Default: `all`
 - [Configuration file name](./config-file.md): `user-visibility`
 
 Note: Sandboxed users will never see suggestions.
