@@ -2,7 +2,7 @@ name: Auto-update documentation (release)
 
 on:
   schedule:
-    - cron: "0 1 * * 1-5" # Every Monday through Friday at 1 AM UTC
+    - cron: "0 2 * * 1-5" # Every Monday through Friday at 2 AM UTC
   workflow_dispatch:
 
 jobs:
