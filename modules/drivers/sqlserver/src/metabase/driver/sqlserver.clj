@@ -57,7 +57,8 @@
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false
-                              :metadata/table-existence-check true}]
+                              :metadata/table-existence-check         true
+                              :transforms/table                       true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]

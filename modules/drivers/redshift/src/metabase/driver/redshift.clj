@@ -34,16 +34,17 @@
 
 (driver/register! :redshift, :parent #{:postgres})
 
-(doseq [[feature supported?] {:connection-impersonation  true
-                              :describe-fields           true
-                              :describe-fks              true
-                              :expression-literals       true
-                              :identifiers-with-spaces   false
-                              :uuid-type                 false
-                              :nested-field-columns      false
-                              :test/jvm-timezone-setting false
-                              :database-routing          true
-                              :metadata/table-existence-check true}]
+(doseq [[feature supported?] {:connection-impersonation       true
+                              :describe-fields                true
+                              :describe-fks                   true
+                              :expression-literals            true
+                              :identifiers-with-spaces        false
+                              :uuid-type                      false
+                              :nested-field-columns           false
+                              :test/jvm-timezone-setting      false
+                              :database-routing               true
+                              :metadata/table-existence-check true
+                              :transforms/table               true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

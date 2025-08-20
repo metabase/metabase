@@ -65,7 +65,8 @@
                               :split-part                             true
                               :now                                    true
                               :database-routing                       true
-                              :metadata/table-existence-check true}]
+                              :metadata/table-existence-check         true
+                              :transforms/table                       true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
