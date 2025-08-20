@@ -2633,13 +2633,13 @@
                                         :ssl false
                                         :tunnel-enabled false
                                         :advanced-options false
-                                        :destination-database false
-                                        :created_at :%now
-                                        :updated_at :%now}
+                                        :destination-database false}
                                        details)]
                     (t2/insert! :metabase_database
                                 {:name name
                                  :engine "clickhouse"
+                                 :created_at :%now
+                                 :updated_at :%now
                                  :details (mi/encrypted-json-in details)})))
                 (assert-pre-conditions []
                   (let [clickhouse-dbs (t2/select :metabase_database :engine "clickhouse")
