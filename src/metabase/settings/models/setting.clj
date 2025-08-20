@@ -23,7 +23,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang Keyword)
+   (clojure.lang ExceptionInfo Keyword)
    (com.fasterxml.jackson.core JsonParseException)
    (com.fasterxml.jackson.core.io JsonEOFException)
    (java.io StringWriter)
@@ -230,7 +230,17 @@
 
    ;; If non-nil, determines the database driver feature required for this setting. This is only valid for database-local
    ;; settings. If the database driver doesn't support the required feature, setting this will throw an exception.
-   [:driver-feature [:maybe :keyword]]])
+   [:driver-feature [:maybe :keyword]]
+
+   ;; Function that takes a database and returns true if this setting should be enabled for that specific database.
+   ;; If the function returns false, attempting to set this will fail.
+   ;;
+   ;; In cases where the admin panel should display specific reasons to the user, [[custom-disabled-reasons!]] can be
+   ;; used to throw a custom exception. This supports multiple reasons, allowing the frontend to be authoritative over
+   ;; display rules - for example, giving certain reasons higher precedence.
+   ;;
+   ;; This is only valid for database-local settings.
+   [:enabled-for-db? [:maybe ifn?]]])
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -878,6 +888,22 @@
        (when (= setter :none)
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
+(defn disabled-for-db-reasons
+  "Return the reasons, if any, for the given setting being disabled."
+  [setting-def database]
+  (when-let [f (:enabled-for-db? setting-def)]
+    (try (when-not (f database)
+           [{:key     :disabled-for-db
+             :message "This database does not support this setting"}])
+         (catch ExceptionInfo e
+           (or (:setting/disabled-reasons (ex-data e))
+               (throw e))))))
+
+(defn custom-disabled-reasons!
+  "Expose custom reasons for a setting being disabled to the admin panel."
+  [reasons]
+  (throw (ex-info "Setting is not enabled for this database" {:setting/disabled-reasons reasons})))
+
 (defn validate-settable-for-db!
   "Check whether the given setting can be set for the given database."
   [setting-definition-or-name database driver-supports?]
@@ -888,7 +914,12 @@
       (throw (ex-info (tru "Setting {0} requires driver feature {1}, but the database does not support it" s-name driver-feature)
                       {:setting s-name
                        :required-feature driver-feature
-                       :database-id (:id database)})))))
+                       :database-id (:id database)})))
+    (when-let [reasons (disabled-for-db-reasons setting database)]
+      (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
+                      {:setting     s-name
+                       :database-id (:id database)
+                       :reasons     reasons})))))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
@@ -974,7 +1005,8 @@
                  :feature            nil
                  :database-local     :never
                  :user-local         :never
-                 :driver-feature   nil
+                 :driver-feature     nil
+                 :enabled-for-db?    nil
                  :deprecated         nil
                  :enabled?           nil
                  :can-read-from-env? true
@@ -1018,7 +1050,11 @@
                              setting-name)
                         {:setting setting})))
       (when (and (:driver-feature setting) (not (database-local-only? setting)))
-        (throw (ex-info (tru "Setting {0} requires a :driver-feature, but is not limited to only database-local values."
+        (throw (ex-info (tru "Setting {0} requires a driver feature, but is not limited to only database-local values"
+                             setting-name)
+                        {:setting setting})))
+      (when (and (:enabled-for-db? setting) (not (database-local-only? setting)))
+        (throw (ex-info (tru "Setting {0} uses :enabled-for-db?, but is not limited to only database-local values"
                              setting-name)
                         {:setting setting})))
       (swap! registered-settings assoc setting-name <>))))
@@ -1207,6 +1243,18 @@
   If non-nil, determines the database driver feature required to use this setting. This is only valid for database-local
   settings (those with `:database-local` set to `:only`). When setting a database-local setting, the system will check
   if the database driver supports the specified feature. If not, an exception will be thrown.
+
+  ###### `:enabled-for-db?`
+
+  Function which takes a specific database, and returns true if this setting should be enabled for it.
+  This is only valid for database-local settings. When setting a database-local setting, the system will call this
+  function with the database. If it returns false, an exception will be thrown.
+
+  Useful for disabling settings based on database-specific conditions like routing configuration.
+
+  The [[custom-disabled-reasons!]] method can be used to override this exception with explicit reasons, in the case that
+  we want to communicate them within the admin panel. This supports multiple reasons so that the frontend can be
+  authoritative over their \n  precedence.
 
   ###### `:user-local`
 

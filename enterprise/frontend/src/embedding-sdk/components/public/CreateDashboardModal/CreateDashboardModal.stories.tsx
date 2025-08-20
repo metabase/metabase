@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 
-import { EditableDashboard } from "embedding-sdk/components/public";
+import { EditableDashboard } from "embedding-sdk/components/public/dashboard";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
 

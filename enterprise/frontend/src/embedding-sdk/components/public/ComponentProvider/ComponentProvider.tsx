@@ -3,7 +3,7 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
-import { useInitData } from "embedding-sdk/hooks";
+import { useInitDataInternal } from "embedding-sdk/hooks/private/use-init-data";
 import { EnsureSingleInstance } from "embedding-sdk/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { getSdkStore } from "embedding-sdk/store";
 import {
@@ -48,7 +48,7 @@ export const ComponentProviderInternal = ({
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
-  useInitData({ reduxStore, authConfig, allowConsoleLog });
+  useInitDataInternal({ reduxStore, authConfig });
 
   useEffect(() => {
     if (fontFamily) {
