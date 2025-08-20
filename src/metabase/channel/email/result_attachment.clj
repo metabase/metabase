@@ -4,7 +4,8 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]

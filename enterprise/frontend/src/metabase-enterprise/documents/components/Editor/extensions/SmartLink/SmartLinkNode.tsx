@@ -21,6 +21,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
+import { documentApi } from "metabase-enterprise/api";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
 import type {
   Card,
@@ -28,13 +29,20 @@ import type {
   Collection,
   Dashboard,
   Database,
+  Document,
   SearchModel,
   Table,
 } from "metabase-types/api";
 
 import styles from "./SmartLinkNode.module.css";
 
-type SmartLinkEntity = Card | Dashboard | Collection | Table | Database;
+type SmartLinkEntity =
+  | Card
+  | Dashboard
+  | Collection
+  | Table
+  | Database
+  | Document;
 
 // Utility function to parse entity URLs and extract entityId and model
 export function parseEntityUrl(
@@ -78,17 +86,22 @@ export function parseEntityUrl(
     }
 
     // Match different entity URL patterns
-    const patterns = [
-      { pattern: /^\/question\/(\d+)/, model: "card" as SearchModel },
-      { pattern: /^\/model\/(\d+)/, model: "dataset" as SearchModel },
-      { pattern: /^\/dashboard\/(\d+)/, model: "dashboard" as SearchModel },
-      { pattern: /^\/collection\/(\d+)/, model: "collection" as SearchModel },
+    const patterns: {
+      pattern: RegExp;
+      model: SearchModel;
+      idIndex?: number;
+    }[] = [
+      { pattern: /^\/question\/(\d+)/, model: "card" },
+      { pattern: /^\/model\/(\d+)/, model: "dataset" },
+      { pattern: /^\/dashboard\/(\d+)/, model: "dashboard" },
+      { pattern: /^\/collection\/(\d+)/, model: "collection" },
       {
         pattern: /^\/browse\/(\d+)\/table\/(\d+)/,
-        model: "table" as SearchModel,
+        model: "table",
         idIndex: 2,
       },
-      { pattern: /^\/browse\/(\d+)/, model: "database" as SearchModel },
+      { pattern: /^\/browse\/(\d+)/, model: "database" },
+      { pattern: /^\/document\/(\d+)/, model: "document" },
     ];
 
     for (const { pattern, model, idIndex = 1 } of patterns) {
@@ -218,6 +231,15 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
     { skip: !entityId || model !== "database" },
   );
 
+  const documentQuery = documentApi.useGetDocumentQuery(
+    {
+      id: entityId!,
+    },
+    {
+      skip: !entityId || model !== "document",
+    },
+  );
+
   // Determine which query is active and return its state
   if (model === "card" || model === "dataset") {
     return {
@@ -256,6 +278,14 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
       entity: databaseQuery.data,
       isLoading: databaseQuery.isLoading,
       error: databaseQuery.error,
+    };
+  }
+
+  if (model === "document") {
+    return {
+      entity: documentQuery.data,
+      isLoading: documentQuery.isLoading,
+      error: documentQuery.error,
     };
   }
 

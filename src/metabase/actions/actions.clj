@@ -12,7 +12,8 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]

@@ -184,5 +184,12 @@ describe("DocumentHeader", () => {
       expect(screen.queryByText("Bookmark")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
+
+    it("should not be present when document is archived", () => {
+      setup({
+        document: { ...defaultDocument, archived: true },
+      });
+      expect(screen.queryByLabelText("More options")).not.toBeInTheDocument();
+    });
   });
 });

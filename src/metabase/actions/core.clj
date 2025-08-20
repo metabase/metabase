@@ -43,6 +43,7 @@
   violate-check-constraint
   violate-foreign-key-constraint
   violate-not-null-constraint
+  violate-permission-constraint
   violate-unique-constraint]
  [metabase.actions.execution
   execute-action!
