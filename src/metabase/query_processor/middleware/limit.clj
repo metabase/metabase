@@ -5,6 +5,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.settings :as qp.settings]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
@@ -44,18 +45,27 @@
   If those three values are not set we fall back to [[metabase.query-processor.limit/absolute-max-results]],
   which is also the maximum row count allowed for xlsx downloads due to Excel sheet constraints."
   [query]
-  (when-not (disable-max-results? query)
-    (let [context             (-> query :info :context)
-          download-context?   #{:csv-download :json-download :xlsx-download}
-          attachment-context? #{:dashboard-subscription :pulse :notification}
-          download-limit      (when (download-context? context) (qp.settings/download-row-limit))
-          attachment-limit    (when (attachment-context? context) (qp.settings/attachment-row-limit))
-          res                 (u/safe-min (lib/max-rows-limit query)
-                                          download-limit
-                                          attachment-limit)]
-      (if (= context :xlsx-download)
-        (u/safe-min res qp.settings/absolute-max-results)
-        (or res qp.settings/absolute-max-results)))))
+  (if-not (:lib/type query)
+    ;; handle legacy queries... for now.
+    ;;
+    ;; TODO (Cam 8/19/25) -- update this to be MBQL 5 only once the preprocessor spits out MBQL 5.
+    (recur (lib/query (qp.store/metadata-provider) (case (:type query)
+                                                     ;; sometimes this is called with a compiled query that has both
+                                                     ;; MBQL plus native.
+                                                     :query  (dissoc query :native)
+                                                     :native query)))
+    (when-not (disable-max-results? query)
+      (let [context             (-> query :info :context)
+            download-context?   #{:csv-download :json-download :xlsx-download}
+            attachment-context? #{:dashboard-subscription :pulse :notification}
+            download-limit      (when (download-context? context) (qp.settings/download-row-limit))
+            attachment-limit    (when (attachment-context? context) (qp.settings/attachment-row-limit))
+            res                 (u/safe-min (lib/max-rows-limit query)
+                                            download-limit
+                                            attachment-limit)]
+        (if (= context :xlsx-download)
+          (u/safe-min res qp.settings/absolute-max-results)
+          (or res qp.settings/absolute-max-results))))))
 
 (mu/defn add-default-limit :- ::lib.schema/query
   "Pre-processing middleware. Add default `:limit` to MBQL queries without any aggregations."
