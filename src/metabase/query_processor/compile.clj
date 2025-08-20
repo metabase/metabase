@@ -15,7 +15,7 @@
 
 (mr/def ::compiled
   [:map
-   [:query :any]
+   [:query :any] ; e.g. a SQL string
    [:params {:optional true} [:maybe [:sequential :any]]]])
 
 (mu/defn- compile*

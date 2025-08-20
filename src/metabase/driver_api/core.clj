@@ -65,7 +65,7 @@
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
+#_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
 (p/import-vars
  actions/cached-database
  actions/cached-database-via-table-id

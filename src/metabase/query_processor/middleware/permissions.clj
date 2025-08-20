@@ -94,9 +94,7 @@
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [query :- [:merge
-             ::qp.schema/any-query
-             [:map [:database ::lib.schema.id/database]]]]
+  [query :- ::qp.schema/any-query]
   (if (:lib/type query)
     (recur (lib/->legacy-MBQL query))
     (let [{database-id :database, {gtap-perms :gtaps} :query-permissions/perms :as outer-query} query]

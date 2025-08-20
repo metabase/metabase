@@ -99,7 +99,7 @@
                       (qp/userland-query
                        query
                        {:card-id        (u/the-id card)
-                        :query-hash     (qp.util/query-hash {})}))]
+                        :query-hash     (qp.util/query-hash {:database (mt/id), :type :native, :native {:query "X"}})}))]
           (when-not (= :completed (:status result))
             (throw (ex-info "Query failed." result))))
         (is (=? (round-to-2-decimals (default-card-results-native))
@@ -179,7 +179,7 @@
                           (qp/userland-query
                            (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})
                            {:card-id    (u/the-id card)
-                            :query-hash (qp.util/query-hash {})}))
+                            :query-hash (qp.util/query-hash {:database (mt/id), :type :native, :native {:query "X"}})}))
                          :data
                          :results_metadata
                          :columns)]
@@ -196,7 +196,7 @@
                             (qp/userland-query
                              (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})
                              {:card-id    (u/the-id card)
-                              :query-hash (qp.util/query-hash {})}))]
+                              :query-hash (qp.util/query-hash {:database (mt/id), :type :native, :native {:query "X"}})}))]
                 (is (= (#'middleware.results-metadata/comparable-metadata cols-1)
                        (#'middleware.results-metadata/comparable-metadata
                         (-> result :data :results_metadata :columns))))
@@ -267,7 +267,7 @@
                  {:aggregation  [[:count]]
                   :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]})
                {:info {:card-id    (u/the-id card)
-                       :query-hash (qp.util/query-hash {})}})))
+                       :query-hash (qp.util/query-hash {:database (mt/id), :type :native, :native {:query "X"}})}})))
       (is (=? [{:base_type    :type/Date
                 :effective_type    :type/Date
                 :visibility_type :normal

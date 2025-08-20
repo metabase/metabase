@@ -122,10 +122,11 @@
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
-(defn- cached-results-rff
+(mu/defn- cached-results-rff :- ::qp.schema/rff
   "Reducing function for cached results. Merges the final object in the cached results, the `final-metdata` map, with
   the reduced value assuming it is a normal metadata map."
-  [rff query-hash]
+  [rff        :- ::qp.schema/rff
+   query-hash :- bytes?]
   (fn [{:keys [last-ran], :as metadata}]
     (let [metadata       (dissoc metadata :last-ran :cache-version)
           rf             (rff metadata)
@@ -155,7 +156,10 @@
                                           #_result
                                           :any]
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
-  [ignore-cache? query-hash strategy rff]
+  [ignore-cache?
+   query-hash    :- bytes?
+   strategy      :- :map
+   rff           :- ::qp.schema/rff]
   (try
     (or (when-not ignore-cache?
           (log/debugf "Looking for cached results for query with hash '%s' satisfying %s"
@@ -215,12 +219,12 @@
               (fn [metadata]
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
-(defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy]}]
+(defn- is-cacheable? [{:keys [cache-strategy], :as _query}]
   (and (cache/enable-query-caching)
        (some? cache-strategy)
        (not= (:type cache-strategy) :nocache)))
 
-(defn maybe-return-cached-results
+(mu/defn maybe-return-cached-results :- ::qp.schema/qp
   "Middleware for caching results of a query if applicable.
   In order for a query to be eligible for caching:
 
@@ -232,7 +236,7 @@
         (The various `/api/card/` endpoints that make use of caching do `can-read?` checks for the Card *before*
         running the query, satisfying this requirement.)
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
-  [qp]
+  [qp :- ::qp.schema/qp]
   (fn maybe-return-cached-results* [query rff]
     (let [cacheable? (is-cacheable? query)]
       (log/tracef "Query is cacheable? %s" (boolean cacheable?))

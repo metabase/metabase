@@ -1154,7 +1154,8 @@
                               :limit        10})]
             (doseq [level (range 4)]
               (testing (format "%d level(s) of nesting" level)
-                (let [query (mt/nest-query base-query level)]
+                ;; existing usage, do not use this going forward
+                (let [query #_{:clj-kondo/ignore [:deprecatedd-var]} (mt/nest-query base-query level)]
                   (testing (format "\nQuery = %s" (u/pprint-to-str query))
                     (is (= (mt/$ids products
                              {:name         "EAN"
@@ -1183,6 +1184,8 @@
                                                        :alias        "Products"}]
                                        :order-by     [[:asc $id]]
                                        :limit        2})
+                                    ;; existing usage, do not use this going forward
+                                    #_{:clj-kondo/ignore [:deprecated-var]}
                                     (mt/nest-query level))]
                       (qp/process-query query)))]
             (testing "with no FK remappings"

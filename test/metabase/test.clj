@@ -3,6 +3,10 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
+  {:clj-kondo/config '{:linters
+                       ;; people using `mt/nest-query` will still get the warning. TODO (Cam 8/20/25) -- remove this
+                       ;; from `mt/` to further discourage people from using it.
+                       {:deprecated-var {metabase.query-processor.test-util/nest-query {:level :off}}}}}
   (:require
    [clojure.test]
    [humane-are.core :as humane-are]

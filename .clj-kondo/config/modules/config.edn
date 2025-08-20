@@ -785,6 +785,7 @@
            collections
            config
            events
+           lib
            models
            premium-features
            request
@@ -1495,6 +1496,7 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
+           legacy-mbql
            lib
            permissions
            premium-features

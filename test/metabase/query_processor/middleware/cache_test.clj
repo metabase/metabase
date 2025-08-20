@@ -130,7 +130,7 @@
    :min-duration-ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
-  (merge {:cache-strategy (ttl-strategy), :lib/type :mbql/query, :stages [{:abc :def}]} query-kvs))
+  (merge {:cache-strategy (ttl-strategy), :lib/type :mbql/query, :database 1, :stages [{:abc :def}]} query-kvs))
 
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels
@@ -395,8 +395,8 @@
             (let [avg-execution-time (query/average-execution-time-ms q-hash)]
               (is (pos? avg-execution-time))
               ;; rerun query getting cached results
-              (is (instance? ZonedDateTime
-                             (:cached (qp/process-query (qp/userland-query query)))))
+              (is (=? {:cached ZonedDateTime}
+                      (qp/process-query (qp/userland-query query))))
               (mt/wait-for-result save-chan)
               (is (= 2 @save-execution-metadata-count)
                   "Saving execution times of a cache lookup")

@@ -283,10 +283,12 @@
                (m/update-existing-in db [:details :auth-provider] keyword))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-      (driver.impl/registered? driver)
+      (and driver
+           (driver.impl/registered? driver))
       (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
-      (and (driver.impl/registered? driver)
+      (and driver
+           (driver.impl/registered? driver)
            (map? (:details database))
            (not *normalizing-details*))
       normalize-details)))

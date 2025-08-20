@@ -114,7 +114,7 @@
   ([query]
    (query->source-ids query nil false))
 
-  ([query                 :- :map
+  ([query                 :- :map ; this works on either legacy or MBQL 5 but also on inner queries or other nested maps (it calls itself recursively)
     parent-source-card-id :- [:maybe ::lib.schema.id/card]
     in-sandbox?           :- :any]
    (if (:lib/type query)
