@@ -26,6 +26,7 @@ import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
@@ -108,6 +109,7 @@ type OwnProps = {
   cancelQuery?: () => void;
   closeSnippetModal?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
+  databaseIsDisabled?: (database: Database) => boolean;
 };
 
 interface ExplicitSizeProps {
@@ -298,6 +300,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             setParameterValue={this.props.setParameterValue}
             setDatasetQuery={this.props.setDatasetQuery}
             onFormatQuery={canFormatQuery ? this.handleFormatQuery : undefined}
+            databaseIsDisabled={this.props.databaseIsDisabled}
           />
         )}
         <div

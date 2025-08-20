@@ -1,0 +1,18 @@
+name: Auto-update documentation (release)
+
+on:
+  schedule:
+    - cron: "0 2 * * 1-5" # Every Monday through Friday at 2 AM UTC
+  workflow_dispatch:
+
+jobs:
+  update-release-docs:
+    name: Call documentation update for release branch
+    env:
+      RELEASE_BRANCH: release-x.56.x
+    uses: ./.github/workflows/docs-generate-base.yml
+    with:
+      target_branch: ${{ env.RELEASE_BRANCH }}
+      m2_cache_key_suffix: "release"
+    secrets:
+      automation_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}

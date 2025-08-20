@@ -30,15 +30,16 @@ import {
   StaticDashboard,
 } from "./components/public/dashboard";
 import { SdkDebugInfo } from "./components/public/debug/SdkDebugInfo";
-import { createDashboard } from "metabase/api/dashboard";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { getCollectionNumericIdFromReference } from "embedding-sdk/store/collections";
 import { getSdkStore } from "./store/index";
-import { getLoginStatus } from "embedding-sdk/store/selectors";
-import { getSetting } from "metabase/selectors/settings";
+import {
+  getAvailableFonts,
+  getLoginStatus,
+} from "embedding-sdk/store/selectors";
 import { getUser } from "metabase/selectors/user";
 import { useInitData } from "./hooks/private/use-init-data";
 import { useLogVersionInfo } from "embedding-sdk/hooks/private/use-log-version-info";
+import { createDashboard } from "embedding-sdk/lib/create-dashboard";
 
 /**
  * IMPORTANT!
@@ -57,12 +58,11 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   SdkDebugInfo,
   StaticDashboard,
   StaticQuestion,
+  getSdkStore,
   createDashboard,
   getApplicationName,
-  getCollectionNumericIdFromReference,
+  getAvailableFonts,
   getLoginStatus,
-  getSdkStore,
-  getSetting,
   getUser,
   useInitData,
   useLogVersionInfo,
