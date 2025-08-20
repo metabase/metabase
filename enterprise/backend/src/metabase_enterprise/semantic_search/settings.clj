@@ -87,3 +87,48 @@
   :export? false
   :visibility :internal
   :doc "Number of threads to use for batched index updates, including embedding requests")
+
+(defsetting ee-search-gate-write-timeout
+  (str "Timeout of gate write statements in seconds. Used to determine lag tolerance of the indexer (see the "
+       "[[metabase-enterprise.semantic-search.gate/poll]]) in conjunction "
+       "with `ee-search-indexer-lag-tolerance-multiplier`.")
+  :type :integer
+  :default 5
+  :export? false
+  :visibility :internal)
+
+(defsetting ee-search-gate-max-batch-size
+  "The maximum number of documents that can be sent to `gate-documents!` without causing an error."
+  :type :integer
+  :default 512
+  :export? false
+  :visibility :internal)
+
+(defsetting ee-search-indexer-poll-limit
+  "Indexer poll limit."
+  :type :integer
+  :default 1000
+  :export? false
+  :visibility :internal)
+
+(defsetting ee-search-indexer-exit-early-cold-duration
+  "Number of seconds indexer should wait to see new data before yielding back to quartz."
+  :type :integer
+  :default 30
+  :export? false
+  :visibility :internal)
+
+(defsetting ee-search-indexer-max-run-duration
+  "Number of minutes we expect to run the indexer loop for before yielding to quartz."
+  :type :integer
+  :default 60
+  :export? false
+  :visibility :internal)
+
+(defsetting ee-search-indexer-lag-tolerance-multiplier
+  (str "Multiplier for computation of [[metabase-enterprise.semantic-search.indexer/lag-tolerance]]. The formula "
+       "is `ee-search-gate-write-timeout * ee-search-indexer-lag-tolerance-multiplier`.")
+  :type :integer
+  :default 2
+  :export? false
+  :visibility :internal)

@@ -20,6 +20,7 @@
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
@@ -27,9 +28,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private poll-limit 1000)
-
-(def ^:private lag-tolerance (.multipliedBy semantic.gate/gate-write-timeout 2))
+(def ^:private lag-tolerance
+  (.multipliedBy semantic.gate/gate-write-timeout
+                 (semantic.settings/ee-search-indexer-lag-tolerance-multiplier)))
 
 (defn indexing-step
   "Runs a single blocking step of the indexing loop."
@@ -37,7 +38,7 @@
   (letfn [(poll []
             (let [{:keys [watermark]} @indexing-state]
               (semantic.gate/poll pgvector index-metadata watermark
-                                  :limit poll-limit
+                                  :limit (semantic.settings/ee-search-indexer-poll-limit)
                                   :lag-tolerance lag-tolerance)))
           ;; when polling within the lag-tolerance window we need to expect
           ;; to see the same gate entries when polling.
@@ -168,13 +169,13 @@
           (on-indexing-interrupted)
           (recur))))))
 
-(def default-max-run-duration
-  "The default amount of time we expect to run the loop for before yielding to quartz."
-  (Duration/ofMinutes 60))
+(def max-run-duration
+  "Duration minutes wrapper for [[semantic.settings/ee-search-indexer-max-run-duration]]."
+  (Duration/ofMinutes (semantic.settings/ee-search-indexer-max-run-duration)))
 
-(def default-exit-early-cold-duration
-  "The default time we should wait to see new data before yielding back to quartz."
-  (Duration/ofSeconds 30))
+(def exit-early-cold-duration
+  "Duration seconds wrapper for [[semantic.settings/ee-search-indexer-exit-early-cold-duration]]."
+  (Duration/ofSeconds (semantic.settings/ee-search-indexer-exit-early-cold-duration)))
 
 (defn init-indexing-state
   "Initialises the indexing state variable, contains the watermark position, statistics on
@@ -190,8 +191,8 @@
                 :last-seen-candidates     (if last-seen #{last-seen} #{})
                 :last-indexed-count       0
                 :last-poll-count          0
-                :max-run-duration         default-max-run-duration
-                :exit-early-cold-duration default-exit-early-cold-duration})))
+                :max-run-duration         max-run-duration
+                :exit-early-cold-duration exit-early-cold-duration})))
 
 (defn quartz-job-run!
   "Quartz job (execute) implementation. Determines the active index before running
