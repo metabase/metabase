@@ -29,7 +29,7 @@ export const shouldShowSaveButton = ({
 }) => {
   const canSave = question && Lib.canSave(question.query(), question.type());
   const isQuestionChanged = originalQuestion
-    ? question && question.isQueryDirtyComparedTo(originalQuestion)
+    ? question?.isDirtyComparedToWithoutParameters(originalQuestion)
     : true;
 
   return Boolean(isQuestionChanged && canSave);
@@ -56,6 +56,7 @@ export const SaveButton = ({ ...buttonProps }: SaveButtonProps = {}) => {
     <ToolbarButton
       label={t`Save`}
       disabled={!isSaveButtonEnabled}
+      data-testid="sdk-question-save-button"
       {...buttonProps}
     />
   );
