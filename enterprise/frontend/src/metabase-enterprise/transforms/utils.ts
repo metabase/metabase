@@ -1,7 +1,9 @@
 import { t } from "ttag";
 
+import { hasFeature } from "metabase/admin/databases/utils";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type {
+  Database,
   TransformRunMethod,
   TransformRunStatus,
 } from "metabase-types/api";
@@ -30,4 +32,16 @@ export function formatRunMethod(trigger: TransformRunMethod) {
     case "cron":
       return t`Schedule`;
   }
+}
+
+export function doesDatabaseSupportTransforms(database?: Database): boolean {
+  if (!database) {
+    return false;
+  }
+
+  return (
+    !database.is_sample &&
+    !database.is_audit &&
+    hasFeature(database, "transforms/table")
+  );
 }

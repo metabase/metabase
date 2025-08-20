@@ -191,8 +191,12 @@
   (case (:lib/source col)
     :source/table-defaults        (:table-id col)
     (:source/joins
-     :source/implicitly-joinable) (or (escaped-join-alias query stage-path (:metabase.lib.join/join-alias col))
-                                      (throw (ex-info "Resolved metadata is missing ::escaped-join-alias" {:col col})))
+     :source/implicitly-joinable) (let [join-alias (or (:metabase.lib.join/join-alias col)
+                                                       (throw (ex-info (format "Column with source %s is missing join alias" (:lib/source col))
+                                                                       {:col col})))]
+                                    (or (escaped-join-alias query stage-path join-alias)
+                                        (throw (ex-info (format "Resolved metadata is missing ::escaped-join-alias for %s" (pr-str (:metabase.lib.join/join-alias col)))
+                                                        {:col col}))))
     (:source/previous-stage
      :source/card)                ::source
     (:source/expressions
