@@ -17,7 +17,7 @@ import { getIsEmbedding } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { TableId } from "metabase-types/api";
+import type { RecentCollectionItem, TableId } from "metabase-types/api";
 
 import {
   type NotebookContextType,
@@ -41,7 +41,9 @@ export interface NotebookDataPickerProps {
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
   ) => void;
-  shouldDisableItem?: (item: DataPickerItem | CollectionPickerItem) => boolean;
+  shouldDisableItem?: (
+    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
+  ) => boolean;
 }
 
 export function NotebookDataPicker({
@@ -112,7 +114,9 @@ type ModernDataPickerProps = {
   hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
-  shouldDisableItem?: (item: DataPickerItem | CollectionPickerItem) => boolean;
+  shouldDisableItem?: (
+    item: DataPickerItem | CollectionPickerItem | RecentCollectionItem,
+  ) => boolean;
 };
 
 function ModernDataPicker({
