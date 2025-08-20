@@ -902,7 +902,7 @@
 (deftest partial-revokes-writable-test
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
-      (testing "`database-supports :check-table-writable` returns true normally but false with partial revokes"
+      (testing "`database-supports :metadata/table-writable-check` returns true normally but false with partial revokes"
         (tx/drop-if-exists-and-create-db! driver/*driver* "partial_revokes_test")
         (let [details (tx/dbdef->connection-details :mysql :db {:database-name "partial_revokes_test"})
               spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
@@ -919,20 +919,31 @@
                                                  :ssl true
                                                  :additional-options "trustServerCertificate=true")]
               (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details}]
-                (testing "With partial_revokes OFF (default), check-table-writable is supported"
+                (testing "With partial_revokes OFF (default), metadata/table-writable-check is supported"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
-                  (is (true? (driver/database-supports? driver/*driver* :check-table-writable database))
-                      "Should support check-table-writable when partial_revokes is OFF"))
+                  (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
+                      "Should support metadata/table-writable-check when partial_revokes is OFF"))
 
-                (testing "With partial_revokes ON, check-table-writable is not supported"
+                (testing "With partial_revokes ON, metadata/table-writable-check is not supported"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = ON;")
-                  (is (false? (driver/database-supports? driver/*driver* :check-table-writable database))
-                      "Should not support check-table-writable when partial_revokes is ON"))
+                  (is (false? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
+                      "Should not support metadata/table-writable-check when partial_revokes is ON")
+
+                  (sync/sync-database! database)
+                  (is (= {"test_table" nil}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
+                      "is_writable should sync to nil when partial_revokes is ON"))
 
                 (testing "Revoke some permissions with partial_revokes ON"
                   (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_test.test_table FROM 'partial_revokes_test_user';")
-                  (is (false? (driver/database-supports? driver/*driver* :check-table-writable database))
-                      "Should still not support check-table-writable after partial revoke"))))
+                  (is (false? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
+                      "Should still not support metadata/table-writable-check after partial revoke")
+
+                  ;; Sync database again and verify is_writable is still nil
+                  (sync/sync-database! database)
+                  (is (= {"test_table" nil}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
+                      "is_writable should still be nil after partial revoke"))))
 
             (finally
               ;; Clean up: Reset partial_revokes to OFF before exiting

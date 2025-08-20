@@ -203,15 +203,14 @@
             :select   (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
             :write nil) ; Foreign tables typically don't support write operations
           (contains? (get-in privilege-map [schema table] #{}) privilege))))
-    (let [can-check-writable?          (driver/database-supports? driver :check-table-writable {:connection conn})
+    (let [can-check-writable?          (driver/database-supports? driver :metadata/table-writable-check {:connection conn})
           check-writable-privilege-map (when can-check-writable?
                                          (build-privilege-map driver conn))]
       (fn [{schema :schema table :name} privilege]
         (case privilege
           :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-          :write  (if can-check-writable?
-                    (contains? (get-in check-writable-privilege-map [schema table] #{}) privilege)
-                    nil))))))
+          :write  (when can-check-writable?
+                    (contains? (get-in check-writable-privilege-map [schema table] #{}) privilege)))))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch

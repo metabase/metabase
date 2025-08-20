@@ -130,7 +130,7 @@
   false
   #_(and (= driver :mysql) (not (mariadb? db))))
 
-(defmethod driver/database-supports? [:mysql :check-table-writable]
+(defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
   [driver _feat db]
   (and (= driver :mysql)
        (not (mariadb? db))

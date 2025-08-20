@@ -758,7 +758,7 @@
     :database-replication
 
     ;; whether this driver supports checking table writeable permissions
-    :check-table-writable})
+    :metadata/table-writable-check})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -803,7 +803,7 @@
                               :test/dynamic-dataset-loading           true
                               :test/uuids-in-create-table-statements  true
                               :metadata/table-existence-check         false
-                              :check-table-writable                   false}]
+                              :metadata/table-writable-check          false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
