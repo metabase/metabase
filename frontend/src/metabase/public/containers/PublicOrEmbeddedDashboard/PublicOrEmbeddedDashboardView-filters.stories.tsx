@@ -60,7 +60,6 @@ export default {
   decorators: [
     ReduxDecorator,
     createWaitForResizeToStopDecorator(TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING),
-    MockIsEmbeddingDecorator,
   ],
   parameters: {
     layout: "fullscreen",
@@ -129,16 +128,6 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
       <Story />
     </MetabaseReduxProvider>
   );
-}
-
-declare global {
-  interface Window {
-    overrideIsWithinIframe?: boolean;
-  }
-}
-function MockIsEmbeddingDecorator(Story: StoryFn) {
-  window.overrideIsWithinIframe = true;
-  return <Story />;
 }
 
 const DASHBOARD_ID = getNextId();
