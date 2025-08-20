@@ -158,8 +158,7 @@
   (let [inner-query (-> (assoc inner-query
                                :remark   (driver-api/query->remark :sparksql outer-query)
                                :query    sql
-                               #_{:clj-kondo/ignore [:deprecated-var]}
-                               :max-rows (driver-api/query->max-rows-limit outer-query))
+                               :max-rows #_{:clj-kondo/ignore [:deprecated-var]} (driver-api/query->max-rows-limit outer-query))
                         (dissoc :params))
         query       (assoc outer-query :native inner-query)]
     ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
