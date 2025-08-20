@@ -72,15 +72,13 @@
 
 (t2/define-before-update :model/Table
   [table]
-  (let [changes                  (t2/changes table)
-        original-table           (t2/original table)
-        current-active           (:active original-table)
-        new-active               (:active changes)
-        current-is-authoritative (:is_authoritative original-table)
-        new-is-authoritative     (:is_authoritative changes)]
+  (let [changes        (t2/changes table)
+        original-table (t2/original table)
+        current-active (:active original-table)
+        new-active     (:active changes)]
 
-    (when (and (some? current-is-authoritative)
-               (nil? new-is-authoritative))
+    (when (and (some? (:is_authoritative original-table))
+               (nil? (:is_authoritative changes ::missing)))
       (throw (ex-info "Cannot set is_authoritative back to null once it has been set"
                       {:status-code 400})))
 
