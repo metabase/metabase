@@ -46,6 +46,7 @@ export function Sidesheet({
               <Button
                 aria-label={t`Close`}
                 c="text-dark"
+                data-testid="object-detail-close-button"
                 h={20}
                 leftSection={<Icon name="close" />}
                 p={0}
