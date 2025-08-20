@@ -187,7 +187,6 @@
            metabase.audit-app.init}
    :uses #{api
            app-db
-           config
            events
            models
            premium-features
@@ -1550,6 +1549,7 @@
    :uses #{api
            app-db
            audit-app
+           config
            classloader
            driver
            lib
