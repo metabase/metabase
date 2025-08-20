@@ -196,12 +196,8 @@
   (if (some? (::mb.viz/table-columns viz-settings))
     (let [;; Deduplicate table-columns by name to handle duplicated viz settings
           deduped-table-columns     (->> (::mb.viz/table-columns viz-settings)
-                                         (reduce (fn [acc col]
-                                                   (let [col-name (::mb.viz/table-column-name col)]
-                                                     (if (some #(= (::mb.viz/table-column-name %) col-name) acc)
-                                                       acc
-                                                       (conj acc col))))
-                                                 []))
+                                         (m/index-by ::mb.viz/table-column-name)
+                                         vals)
           deduped-viz-settings      (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
           [ordered-cols output-order] (qp.streaming/order-cols (:cols data) deduped-viz-settings)
           keep-filtered-idx           (fn [row] (if output-order
