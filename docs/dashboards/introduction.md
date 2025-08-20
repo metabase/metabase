@@ -66,7 +66,7 @@ Each text card has two modes: writing and previewing. When you click to focus on
 
 ![Markdown](images/markdown.png)
 
-You can use [Markdown](http:s//commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
+You can use [Markdown](https://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
 
 ![Result](images/result.png)
 

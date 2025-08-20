@@ -110,7 +110,7 @@ Then, start Metabase using the store:
 java -Djavax.net.ssl.trustStore=cacerts.jks -Djavax.net.ssl.trustStorePassword=changeit -jar metabase.jar
 ```
 
-Learn more about [configuring SSL with MongoDB](http:s//mongodb.github.io/mongo-java-driver/3.0/driver/reference/connecting/ssl/).
+Learn more about [configuring SSL with MongoDB](https://mongodb.github.io/mongo-java-driver/3.0/driver/reference/connecting/ssl/).
 
 ## How Metabase syncs data in MongoDB
 
