@@ -96,22 +96,23 @@ jobs:
             if gh pr create \
               --base ${{ env.RELEASE_BRANCH }} \
               --head ${{ steps.commit_and_push.outputs.branch_name }} \
-              --title "Update generated docs (${{ env.RELEASE_BRANCH }})" \
-              --body "API, config template, and environment variable doc updates.
+              --title "Auto-update documentation for ${{ env.RELEASE_BRANCH }}" \
+              --body "This PR contains automatically generated documentation updates.
 
-## Changes made
-$CHANGES_SUMMARY
-$([ "$TOTAL_CHANGES" -gt 10 ] && echo "- ... and more files")
+          ## Changes detected
+          The following documentation files were updated:
+          $CHANGES_SUMMARY
+          $([ "$TOTAL_CHANGES" -gt 10 ] && echo "- ... and more files")
 
-## Generation commands
-Documentation was generated using:
-- \`clojure -M:ee:doc environment-variables-documentation\`
-- \`clojure -M:ee:doc config-template\`
-- \`clojure -M:ee:doc api-documentation\`
+          ## Generation commands
+          Documentation was generated using:
+          - \`clojure -M:ee:doc environment-variables-documentation\`
+          - \`clojure -M:ee:doc config-template\`
+          - \`clojure -M:ee:doc api-documentation\`
 
-Review the changes before merging." \
-              --label "Type:Documentation" \
-              --label "no-backport"; then
+          Please review the changes and merge if they look correct." \
+                --label "Type:Documentation" \
+                --label "no-backport"; then
               echo "PR created successfully on attempt $i"
               break
             else
