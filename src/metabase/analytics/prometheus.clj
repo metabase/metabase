@@ -306,6 +306,12 @@
    (prometheus/counter :metabase-search/semantic-db-query-ms
                        {:description "Total number of ms spent querying the search index"
                         :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-filter-ms
+                       {:description "Total number of ms spent filtering search results"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-appdb-scores-ms
+                       {:description "Total number of ms spent adding appdb-based scores"
+                        :labels [:embedding-model]})
    (prometheus/counter :metabase-search/semantic-fallback-triggered
                        {:description "Number of times semantic search triggered fallback to appdb search due to insufficient results"
                         :labels [:fallback-engine]})

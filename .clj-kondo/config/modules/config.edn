@@ -1836,6 +1836,7 @@
            metabase-enterprise.semantic-search.init}
    :uses #{analytics
            api
+           app-db
            config
            connection-pool
            models
