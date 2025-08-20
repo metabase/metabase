@@ -151,7 +151,7 @@
     query-text            :- ::common/non-blank-string
     existing-tags         :- [:maybe ::lib.schema.template-tag/template-tag-map]]
    (let [direct-tags        (recognize-template-tags query-text)
-         query-tags (merge direct-tags (extract-snippet-tags metadata-providerable direct-tags))
+         query-tags         (merge direct-tags (extract-snippet-tags metadata-providerable direct-tags))
          query-tag-names    (not-empty (set (keys query-tags)))
          existing-tag-names (not-empty (set (keys existing-tags)))]
      (if (or query-tag-names existing-tag-names)
