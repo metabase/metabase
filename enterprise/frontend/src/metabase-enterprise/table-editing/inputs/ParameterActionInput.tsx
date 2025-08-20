@@ -2,6 +2,10 @@ import type { TableActionFormParameter } from "../api/types";
 import { TableActionFormInputType } from "../api/types";
 
 import {
+  TableActionInputBoolean,
+  type TableActionInputBooleanProps,
+} from "./TableActionInputBoolean";
+import {
   TableActionInputDate,
   type TableActionInputDateProps,
 } from "./TableActionInputDate";
@@ -27,7 +31,8 @@ type TableActionInputProps =
   | TableActionInputDateTimeProps
   | TableActionInputTextProps
   | TableActionInputTextareaProps
-  | TableActionInputSearchableSelectProps;
+  | TableActionInputSearchableSelectProps
+  | TableActionInputBooleanProps;
 
 export type ParameterActionInputProps = TableActionInputProps & {
   parameter: TableActionFormParameter;
@@ -39,10 +44,18 @@ export function ParameterActionInput(props: ParameterActionInputProps) {
   switch (parameter.input_type) {
     case TableActionFormInputType.Date:
       return <TableActionInputDate {...rest} />;
+
     case TableActionFormInputType.DateTime:
       return <TableActionInputDateTime {...rest} />;
+
+    case TableActionFormInputType.Boolean:
+      return (
+        <TableActionInputBoolean {...rest} isNullable={parameter.optional} />
+      );
+
     case TableActionFormInputType.Textarea:
       return <TableActionInputTextarea {...rest} />;
+
     case TableActionFormInputType.Dropdown:
       if (parameter.field_id) {
         return (
