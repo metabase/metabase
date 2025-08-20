@@ -19,6 +19,7 @@ import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,
+  trackInviteSent,
   trackLicenseTokenStepSubmitted,
   trackTrackingChanged,
   trackUsageReasonSelected,
@@ -177,13 +178,14 @@ export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
   SUBMIT_USER_INVITE,
   async (inviteInfo: InviteInfo, { dispatch }) => {
-    await dispatch(
+    const { id: invitedUserId } = await dispatch(
       userApi.endpoints.createUser.initiate({
         email: inviteInfo.email,
         first_name: inviteInfo.first_name || undefined,
         last_name: inviteInfo.last_name || undefined,
       }),
-    );
+    ).unwrap();
+    trackInviteSent(invitedUserId);
     dispatch(goToNextStep());
   },
 );

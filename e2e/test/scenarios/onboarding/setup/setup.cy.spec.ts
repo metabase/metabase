@@ -259,6 +259,7 @@ describe("scenarios > setup", () => {
     H.mockSessionProperty("email-configured?", true);
 
     navigateToDatabaseStep();
+    cy.findByTestId("step-number").should("have.text", "4");
 
     cy.findByLabelText("Setup section").click();
     cy.findByLabelText("First name").type("TeammateFirstName");
@@ -275,6 +276,9 @@ describe("scenarios > setup", () => {
         email: "teammate@metabase.test",
       });
     });
+
+    // Checks we are now in the next step
+    cy.findByTestId("step-number").should("have.text", "5");
   });
 
   it("should allow a quick setup for the 'embedding' use case", () => {
