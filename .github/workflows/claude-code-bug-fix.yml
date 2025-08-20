@@ -78,7 +78,7 @@ jobs:
                 org: 'metabase',
                 username: issueAuthor
               });
-              
+
               if (membership.state === 'active') {
                 console.log(`User ${issueAuthor} is an active member of the Metabase organization. Proceeding with bug fix automation.`);
                 core.setOutput('is_employee', 'true');
@@ -328,7 +328,7 @@ jobs:
 
             **Please review carefully:**
             - [ ] The fix addresses the reported issue
-            - [ ] Tests pass and code follows conventions  
+            - [ ] Tests pass and code follows conventions
             - [ ] No unrelated changes were introduced
             - [ ] The solution is appropriate and maintainable
 
