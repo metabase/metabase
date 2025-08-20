@@ -42,7 +42,7 @@
                      :query    {:source-table (str "card__" (u/the-id audit-card))}})))))
 
           (testing "A non-native query can be run on views in the audit DB"
-            (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id)]
+            (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id :name [:like "v_%"])]
               (is (partial=
                    {:status :completed}
                    (qp/process-query
@@ -83,7 +83,7 @@
             (mt/with-full-data-perms-for-all-users!
               (mt/with-test-user :rasta
                 (binding [api/*current-user-permissions-set* (delay #{})]
-                  (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id)]
+                  (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id :name [:like "v_%"])]
                     (is (thrown-with-msg?
                          clojure.lang.ExceptionInfo
                          #"You do not have access to the audit database"
