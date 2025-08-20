@@ -1,14 +1,12 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
-   [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.native-query-snippets.cycle-detection :as cycle-detection]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -53,6 +51,8 @@
   [snippet]
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)
+    (when (:content <>)
+      (cycle-detection/check-snippet-would-create-cycle (:id <>) (:template_tags <>)))
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? (t2/changes <>) :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))

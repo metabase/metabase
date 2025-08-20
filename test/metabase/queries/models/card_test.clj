@@ -221,6 +221,132 @@
            (t2/update! :model/Card (u/the-id card-a)
                        (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
+(deftest card-snippet-cycle-test
+  (testing "Should detect cycles through native query snippets"
+    (testing "Card → Snippet → Same Card cycle"
+      (mt/with-temp [:model/NativeQuerySnippet snippet {:name "test-snippet"
+                                                        :content "WHERE category = 'Gizmo'"
+                                                        :template_tags {}}
+                     :model/Card card {:dataset_query
+                                       {:database (mt/id)
+                                        :type :native
+                                        :native {:query "SELECT * FROM products {{snippet: test-snippet}}"
+                                                 :template-tags {"snippet: test-snippet"
+                                                                 {:id "abc"
+                                                                  :name "snippet: test-snippet"
+                                                                  :display-name "Test Snippet"
+                                                                  :type :snippet
+                                                                  :snippet-name "test-snippet"
+                                                                  :snippet-id (:id snippet)}}}}}]
+        ;; Attempting to update snippet to reference the card should fail due to cycle
+        (is (thrown-with-msg?
+             Exception
+             #"circular references"
+             (t2/update! :model/NativeQuerySnippet (:id snippet)
+                         {:content (format "WHERE id IN (SELECT id FROM {{#%d}})" (:id card))
+                          :template_tags {(str "card-" (:id card)) {:type :card
+                                                                    :card-id (:id card)
+                                                                    :name (str "card-" (:id card))
+                                                                    :display-name "Card Reference"}}})))
+
+        ;; Verify the snippet content wasn't changed
+        (is (= "WHERE category = 'Gizmo'"
+               (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet))))))))
+
+(deftest card-snippet-deep-cycle-test
+  (testing "Should detect deeper cycles through native query snippets"
+    (testing "Card A → Snippet 1 → Card B → Snippet 2 → Card A"
+      (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:name "snippet-1"
+                                                          :content "WHERE active = true"
+                                                          :template_tags {}}
+                     :model/NativeQuerySnippet snippet-2 {:name "snippet-2"
+                                                          :content "WHERE status = 'published'"
+                                                          :template_tags {}}
+                     :model/Card card-a {:dataset_query
+                                         {:database (mt/id)
+                                          :type :native
+                                          :native {:query "SELECT * FROM products {{snippet: snippet-1}}"
+                                                   :template-tags {"snippet: snippet-1"
+                                                                   {:id "s1"
+                                                                    :name "snippet: snippet-1"
+                                                                    :display-name "Snippet 1"
+                                                                    :type :snippet
+                                                                    :snippet-name "snippet-1"
+                                                                    :snippet-id (:id snippet-1)}}}}}
+                     :model/Card card-b {:dataset_query
+                                         {:database (mt/id)
+                                          :type :native
+                                          :native {:query "SELECT * FROM orders {{snippet: snippet-2}}"
+                                                   :template-tags {"snippet: snippet-2"
+                                                                   {:id "s2"
+                                                                    :name "snippet: snippet-2"
+                                                                    :display-name "Snippet 2"
+                                                                    :type :snippet
+                                                                    :snippet-name "snippet-2"
+                                                                    :snippet-id (:id snippet-2)}}}}}]
+        ;; Update snippet-1 to reference card-b
+        (t2/update! :model/NativeQuerySnippet (:id snippet-1)
+                    {:content (format "WHERE product_id IN ({{#%d}})" (:id card-b))
+                     :template_tags {(str "card-" (:id card-b)) {:type :card
+                                                                 :card-id (:id card-b)
+                                                                 :name (str "card-" (:id card-b))
+                                                                 :display-name "Card B"}}})
+        ;; Attempting to update snippet-2 to reference card-a, should fail due to creating a cycle
+        (is (thrown-with-msg?
+             Exception
+             #"circular references"
+             (t2/update! :model/NativeQuerySnippet (:id snippet-2)
+                         {:content (format "WHERE order_id IN ({{#%d}})" (:id card-a))
+                          :template_tags {(str "card-" (:id card-a)) {:type :card
+                                                                      :card-id (:id card-a)
+                                                                      :name (str "card-" (:id card-a))
+                                                                      :display-name "Card A"}}})))
+        ;; Verify snippet-2 content wasn't changed
+        (is (= "WHERE status = 'published'"
+               (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet-2))))))))
+
+(deftest snippet-to-snippet-cycle-test
+  (testing "Should detect cycles through snippet → snippet references"
+    (testing "Card → Snippet A → Snippet B → Same Card"
+      (mt/with-temp [:model/NativeQuerySnippet snippet-a {:name "snippet-a"
+                                                          :content "WHERE active = true"
+                                                          :template_tags {}}
+                     :model/NativeQuerySnippet snippet-b {:name "snippet-b"
+                                                          :content "WHERE deleted = false"
+                                                          :template_tags {}}
+                     :model/Card card {:dataset_query
+                                       {:database (mt/id)
+                                        :type :native
+                                        :native {:query "SELECT * FROM products {{snippet: snippet-a}}"
+                                                 :template-tags {"snippet: snippet-a"
+                                                                 {:id "sa"
+                                                                  :name "snippet: snippet-a"
+                                                                  :display-name "Snippet A"
+                                                                  :type :snippet
+                                                                  :snippet-name "snippet-a"
+                                                                  :snippet-id (:id snippet-a)}}}}}]
+        ;; Update snippet-a to reference snippet-b
+        (t2/update! :model/NativeQuerySnippet (:id snippet-a)
+                    {:content "WHERE active = true AND {{snippet: snippet-b}}"
+                     :template_tags {"snippet: snippet-b" {:type :snippet
+                                                           :snippet-id (:id snippet-b)
+                                                           :snippet-name "snippet-b"
+                                                           :name "snippet: snippet-b"
+                                                           :display-name "Snippet B"}}})
+        ;; Attempting to update snippet-b to reference the card, should fail due to creating a cycle
+        (is (thrown-with-msg?
+             Exception
+             #"circular references"
+             (t2/update! :model/NativeQuerySnippet (:id snippet-b)
+                         {:content (format "WHERE id IN ({{#%d}})" (:id card))
+                          :template_tags {(str "card-" (:id card)) {:type :card
+                                                                    :card-id (:id card)
+                                                                    :name (str "card-" (:id card))
+                                                                    :display-name "Card Ref"}}})))
+        ;; Verify snippet-b content wasn't changed
+        (is (= "WHERE deleted = false"
+               (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet-b))))))))
+
 (deftest validate-collection-namespace-test
   (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Card in a non-normal Collection"

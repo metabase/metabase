@@ -29,6 +29,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.native-query-snippets.cycle-detection :as cycle-detection]
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -377,26 +378,9 @@
 (defn- check-for-circular-source-query-references
   "Check that a `card`, if it is using another Card as its source, does not have circular references between source
   Cards. (e.g. Card A cannot use itself as a source, or if A uses Card B as a source, Card B cannot use Card A, and so
-  forth.)"
+  forth.) Also checks for cycles through native query snippets."
   [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
-  (loop [query query, ids-already-seen #{id}]
-    (let [source-card-id (qp.util/query->source-card-id query)]
-      (cond
-        (not source-card-id)
-        :ok
-
-        (ids-already-seen source-card-id)
-        (throw
-         (ex-info (tru "Cannot save Question: source query has circular references.")
-                  {:status-code 400}))
-
-        :else
-        (recur (or (if (qp.store/initialized?)
-                     (:dataset-query (lib.metadata/card (qp.store/metadata-provider) source-card-id))
-                     (t2/select-one-fn :dataset_query :model/Card :id source-card-id))
-                   (throw (ex-info (tru "Card {0} does not exist." source-card-id)
-                                   {:status-code 404})))
-               (conj ids-already-seen source-card-id))))))
+  (cycle-detection/check-card-would-create-cycle id query))
 
 (defn- maybe-normalize-query [card]
   (cond-> card

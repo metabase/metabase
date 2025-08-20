@@ -206,3 +206,55 @@
           (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id}]
             (is (= {:errors {:collection_id "Collection does not exist."}}
                    (mt/user-http-request :rasta :put 404 (snippet-url snippet-id) {:collection_id Integer/MAX_VALUE})))))))))
+
+(deftest update-snippet-cycle-detection-test
+  (mt/with-full-data-perms-for-all-users!
+    (testing "PUT /api/native-query-snippet/:id - cycle detection"
+      (testing "Should detect snippet → snippet cycles"
+        ;; Create snippet-2 first, then snippet-1 that references it
+        (mt/with-temp [:model/NativeQuerySnippet snippet-2 {:name "snippet-2"
+                                                            :content "SELECT 1"}
+                       :model/NativeQuerySnippet snippet-1 {:name "snippet-1"
+                                                            :content "SELECT * FROM {{snippet:snippet-2}}"}]
+          (testing "Creating a cycle by updating snippet-2 to reference snippet-1 should fail"
+            (is (= "Cannot save Snippet: circular references detected."
+                   (:message (mt/user-http-request :crowberto :put 400 (snippet-url (:id snippet-2))
+                                                   {:content "SELECT * FROM {{snippet:snippet-1}}"}))))
+            (testing "Original content should remain unchanged"
+              (is (= "SELECT 1"
+                     (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet-2))))))))
+
+      (testing "Should detect snippet → card → snippet cycles"
+        (mt/with-temp [:model/NativeQuerySnippet snippet {:name "test-snippet"
+                                                          :content "SELECT 1"}
+                       :model/Card card {:name "Test Card"
+                                         :database_id (mt/id)
+                                         :dataset_query {:type :native
+                                                         :database (mt/id)
+                                                         :native {:query "SELECT * FROM {{snippet:test-snippet}}"
+                                                                  :template-tags {:snippet {:id "abc"
+                                                                                            :name "snippet"
+                                                                                            :display-name "Snippet"
+                                                                                            :type :snippet
+                                                                                            :snippet-name "test-snippet"
+                                                                                            :snippet-id (:id snippet)}}}}}]
+          (testing "Creating a cycle by updating snippet to reference the card should fail"
+            (is (= "Cannot save Snippet: circular references detected."
+                   (:message (mt/user-http-request :crowberto :put 400 (snippet-url (:id snippet))
+                                                   {:content (format "SELECT * FROM {{#%d}}" (:id card))}))))
+            (testing "Original content should remain unchanged"
+              (is (= "SELECT 1"
+                     (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet))))))))
+
+      (testing "Should allow non-cyclic updates"
+        (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:name "snippet-1"
+                                                            :content "SELECT 1"}
+                       :model/NativeQuerySnippet snippet-2 {:name "snippet-2"
+                                                            :content "SELECT 2"}]
+          (testing "Updating snippet-1 to reference snippet-2 (no cycle) should succeed"
+            (let [updated (mt/user-http-request :crowberto :put 200 (snippet-url (:id snippet-1))
+                                                {:content "SELECT * FROM {{snippet:snippet-2}}"})]
+              (is (= "SELECT * FROM {{snippet:snippet-2}}"
+                     (:content updated)))
+              (is (= "SELECT * FROM {{snippet:snippet-2}}"
+                     (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet-1)))))))))))
