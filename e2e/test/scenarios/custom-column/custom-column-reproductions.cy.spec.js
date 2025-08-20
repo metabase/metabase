@@ -1959,7 +1959,6 @@ describe("issue 55687", () => {
   });
 });
 
-// TODO: re-enable this test when we have a fix for metabase/metabase#58371
 describe("issue 58371", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
@@ -2006,7 +2005,7 @@ describe("issue 58371", { tags: "@skip" }, () => {
               0,
               [
                 "field",
-                "Aggregation with Dash-in-name",
+                "count_where",
                 {
                   "base-type": "type/Float",
                   "join-alias": "Other Question",
@@ -2308,7 +2307,35 @@ describe("Issue 38498", { tags: "@external" }, () => {
   });
 });
 
-describe("Issue 61010", () => {
+describe("issue 52451", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to use a custom expression in a join condition from the same stage in the LHS (metabase#52451)", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      name: "Expr",
+      formula: "[ID] * 1000",
+    });
+    H.popover().button("Done").click();
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Reviews").click();
+    });
+    H.popover().findByText("Expr").click();
+    H.popover().findByText("ID").click();
+    H.getNotebookStep("join").findByLabelText("Change join type").click();
+    H.popover().findByText("Inner join").click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 61010", () => {
   const CUSTOM_COLUMN_NAME = "Foo";
   const AGGREGATION_NAME = "New count";
 

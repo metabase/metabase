@@ -1,3 +1,5 @@
+import { StrictMode } from "react";
+
 import { InteractiveQuestion } from "embedding-sdk/sdk-package/components/public/InteractiveQuestion/InteractiveQuestion";
 import { getHostedBundleStoryDecorator } from "embedding-sdk/sdk-package/test/getHostedBundleStoryDecorator";
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk/test/CommonSdkStoryWrapper";
@@ -19,6 +21,14 @@ export const Default = () => (
   <MetabaseProvider authConfig={config}>
     <InteractiveQuestion questionId={QUESTION_ID} />
   </MetabaseProvider>
+);
+
+export const WithStrictMode = () => (
+  <StrictMode>
+    <MetabaseProvider authConfig={config}>
+      <InteractiveQuestion questionId={QUESTION_ID} />
+    </MetabaseProvider>
+  </StrictMode>
 );
 
 export const MultipleProviders = () => (
