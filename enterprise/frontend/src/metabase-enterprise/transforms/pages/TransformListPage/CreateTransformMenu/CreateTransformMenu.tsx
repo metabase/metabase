@@ -4,14 +4,13 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import {
   type QuestionPickerItem,
   QuestionPickerModal,
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
-import { Button, Icon, Menu } from "metabase/ui";
+import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 
 import {
@@ -45,7 +44,9 @@ export function CreateTransformMenu() {
         </Menu.Target>
         <Menu.Dropdown>
           {isLoading ? (
-            <LoadingSpinner />
+            <Center>
+              <Loader size="sm" />
+            </Center>
           ) : (
             <>
               <Menu.Label>{t`Create your transform with…`}</Menu.Label>
