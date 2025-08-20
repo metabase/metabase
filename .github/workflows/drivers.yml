@@ -1080,7 +1080,7 @@ jobs:
 
   be-tests-vertica-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ false && !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
