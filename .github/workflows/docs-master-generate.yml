@@ -86,13 +86,8 @@ jobs:
           # Count total changes for conditional message
           TOTAL_CHANGES=$(git diff --name-only HEAD~1 docs/ 2>/dev/null | wc -l || echo "0")
 
-          # Retry PR creation up to 3 times
-          for i in {1..3}; do
-            if gh pr create \
-              --base master \
-              --head ${{ steps.commit_and_push.outputs.branch_name }} \
-              --title "Auto-update documentation from nightly build" \
-              --body "This PR contains automatically generated documentation updates.
+          # Create PR body content
+          PR_BODY="This PR contains automatically generated documentation updates.
 
           ## Changes detected
           The following documentation files were updated:
@@ -105,7 +100,15 @@ jobs:
           - \`clojure -M:ee:doc config-template\`
           - \`clojure -M:ee:doc api-documentation\`
 
-          Please review the changes and merge if they look correct." \
+          Please review the changes and merge if they look correct."
+
+          # Retry PR creation up to 3 times
+          for i in {1..3}; do
+            if gh pr create \
+              --base master \
+              --head ${{ steps.commit_and_push.outputs.branch_name }} \
+              --title "Auto-update documentation from nightly build" \
+              --body "$PR_BODY" \
                 --label "Type:Documentation" \
                 --label "no-backport"; then
               echo "PR created successfully on attempt $i"
