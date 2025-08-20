@@ -55,7 +55,7 @@ export function ModelDetailPage({ params }: Props) {
     return dataset ? extractRemappedColumns(dataset.data) : undefined;
   }, [dataset]);
 
-  const columns = useMemo(() => data?.results_metadata.columns ?? [], [data]);
+  const columns = useMemo(() => data?.cols ?? [], [data]);
   const row = useMemo(() => (data?.rows ?? [])[0], [data]);
   const rowName = getRowName(columns, row) || rowId;
 
