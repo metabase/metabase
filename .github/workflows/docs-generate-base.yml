@@ -72,6 +72,7 @@ jobs:
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
       - name: Create pull request
+        id: create_pr
         if: steps.check_changes.outputs.changes == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.automation_token }}
@@ -108,9 +109,24 @@ jobs:
         if: always()
         run: |
           if [ "${{ steps.check_changes.outputs.changes }}" == "true" ]; then
-            echo "## ✅ Documentation Updated Successfully" >> $GITHUB_STEP_SUMMARY
-            echo "- Created branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- Created PR for review targeting **${{ inputs.target_branch }}**" >> $GITHUB_STEP_SUMMARY
+            # Check if branch creation succeeded
+            if [ "${{ steps.commit_and_push.outcome }}" == "success" ]; then
+              # Check if PR creation succeeded
+              if [ "${{ steps.create_pr.outcome }}" == "success" ]; then
+                echo "## ✅ Documentation Updated Successfully" >> $GITHUB_STEP_SUMMARY
+                echo "- Created branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
+                echo "- Created PR for review targeting **${{ inputs.target_branch }}**" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "## ⚠️ Branch Created but PR Failed" >> $GITHUB_STEP_SUMMARY
+                echo "- Created branch: \`${{ steps.commit_and_push.outputs.branch_name }}\`" >> $GITHUB_STEP_SUMMARY
+                echo "- ❌ Failed to create pull request" >> $GITHUB_STEP_SUMMARY
+                echo "- Manual intervention required to create PR" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "## ❌ Documentation Update Failed" >> $GITHUB_STEP_SUMMARY
+              echo "- ❌ Failed to create branch and commit changes" >> $GITHUB_STEP_SUMMARY
+              echo "- Check the workflow logs for details" >> $GITHUB_STEP_SUMMARY
+            fi
           else
             echo "## ℹ️ No Documentation Changes" >> $GITHUB_STEP_SUMMARY
             echo "- All documentation on **${{ inputs.target_branch }}** is up to date" >> $GITHUB_STEP_SUMMARY
