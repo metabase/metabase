@@ -16,7 +16,7 @@
    - Different data types
    - Enough rows to verify correctness without being slow"
   ;; Table order matters!
-  [["customers"
+  [["transforms_customers"
     [{:field-name "id" :base-type :type/Integer :pk? true}
      {:field-name "name" :base-type :type/Text}
      {:field-name "email" :base-type :type/Text}
@@ -26,7 +26,7 @@
      [3 "Carol White" "carol@example.com" #t "2023-08-20T10:00:00"]
      [4 "David Brown" "david@example.com" #t "2023-09-10T10:00:00"]]]
 
-   ["products"
+   ["transforms_products"
     [{:field-name "id" :base-type :type/Integer :pk? true}
      {:field-name "name" :base-type :type/Text}
      {:field-name "category" :base-type :type/Text}
@@ -49,10 +49,10 @@
      [15 "Widget E" "Widget" 44.99 #t "2024-01-15T10:00:00"]
      [16 "Gadget Mini" "Gadget" 79.99 #t "2024-01-16T10:00:00"]]]
 
-   ["orders"
+   ["transforms_orders"
     [{:field-name "id" :base-type :type/Integer :pk? true}
-     {:field-name "product_id" :base-type :type/Integer :fk "products"}
-     {:field-name "customer_id" :base-type :type/Integer :fk "customers"}
+     {:field-name "product_id" :base-type :type/Integer :fk "transforms_products"}
+     {:field-name "customer_id" :base-type :type/Integer :fk "transforms_customers"}
      {:field-name "quantity" :base-type :type/Integer}
      {:field-name "total" :base-type :type/Float}
      {:field-name "order_date" :base-type :type/DateTime}]

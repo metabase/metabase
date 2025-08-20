@@ -43,14 +43,14 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
-            schema      (t2/select-one-fn :schema :model/Table (mt/id :products))]
+            schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
         (with-transform-cleanup! [{table1-name :name :as target1} {:type   target-type
                                                                    :schema schema
                                                                    :name   "g_products"}
                                   {table2-name :name :as target2} {:type   target-type
                                                                    :schema schema
                                                                    :name   "gizmo_products"}]
-          (let [t1-query (make-query "products" "category" lib/starts-with "G")]
+          (let [t1-query (make-query "transforms_products" "category" lib/starts-with "G")]
             (mt/with-temp [:model/Transform t1 {:name   "transform1"
                                                 :source {:type  :query
                                                          :query (lib.convert/->legacy-MBQL t1-query)}

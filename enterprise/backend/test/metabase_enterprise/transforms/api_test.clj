@@ -46,7 +46,7 @@
   [category]
   (mt/dataset transforms-dataset/transforms-test
     (let [query (query-test-util/make-query
-                 {:source-table  "products"
+                 {:source-table  "transforms_products"
                   :source-column "category"
                   :filter-fn     lib/=
                   :filter-values [category]})]
@@ -57,7 +57,7 @@
   "Get the schema from the products table in the test dataset.
    This is needed for databases like BigQuery that require a schema/dataset."
   []
-  (t2/select-one-fn :schema :model/Table (mt/id :products)))
+  (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
 
 (comment
   (binding [driver/*driver* :clickhouse]
@@ -275,7 +275,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table1-name :name :as target1} {:type   "table"
                                                                        :schema schema
                                                                        :name   "gadget_products"}
