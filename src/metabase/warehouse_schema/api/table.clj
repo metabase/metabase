@@ -100,7 +100,7 @@
    body]
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                                    :present [:description :caveats :points_of_interest :visibility_type]))]
+                                                    :present [:description :caveats :points_of_interest :visibility_type :is_authoritative]))]
     (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -152,7 +152,8 @@
             [:caveats                 {:optional true} [:maybe :string]]
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]
-            [:field_order             {:optional true} [:maybe FieldOrder]]]]
+            [:field_order             {:optional true} [:maybe FieldOrder]]
+            [:is_authoritative        {:optional true} [:maybe :boolean]]]]
   (first (update-tables! [id] body)))
 
 (api.macros/defendpoint :put "/"
@@ -167,7 +168,8 @@
                                [:description             {:optional true} [:maybe :string]]
                                [:caveats                 {:optional true} [:maybe :string]]
                                [:points_of_interest      {:optional true} [:maybe :string]]
-                               [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
+                               [:show_in_getting_started {:optional true} [:maybe :boolean]]
+                               [:is_authoritative        {:optional true} [:maybe :boolean]]]]
   (update-tables! ids body))
 
 (api.macros/defendpoint :get "/:id/query_metadata"

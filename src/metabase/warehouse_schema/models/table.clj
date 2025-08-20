@@ -72,10 +72,18 @@
 
 (t2/define-before-update :model/Table
   [table]
-  (let [changes (t2/changes table)
-        original-table (t2/original table)
-        current-active (:active original-table)
-        new-active (:active changes)]
+  (let [changes                  (t2/changes table)
+        original-table           (t2/original table)
+        current-active           (:active original-table)
+        new-active               (:active changes)
+        current-is-authoritative (:is_authoritative original-table)
+        new-is-authoritative     (:is_authoritative changes)]
+
+    (when (and (some? current-is-authoritative)
+               (nil? new-is-authoritative))
+      (throw (ex-info "Cannot set is_authoritative back to null once it has been set"
+                      {:status-code 400})))
+
     (cond
       ;; active: true -> false (table being deactivated)
       (and (true? current-active) (false? new-active))
@@ -317,7 +325,7 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable]
+               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :is_authoritative]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :archived_at (serdes/date)

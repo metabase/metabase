@@ -35,7 +35,7 @@
   ([target database _run-id]
    ;; sync the new table (note that even a failed sync status means that the execution succeeded)
    (log/info "Syncing target" (pr-str target) "for transform")
-   (transforms.util/activate-table! database target)))
+   (transforms.util/activate-table-and-mark-non-authoritative! database target)))
 
 (defn run-transform!
   "Run a compiled transform"

@@ -41,13 +41,12 @@
      (sync/sync-table! table)
      table)))
 
-(defn activate-table!
+(defn activate-table-and-mark-non-authoritative!
   "Activate table for `target` in `database` in the app db."
   [database target]
   (when-let [table (sync-table! database target {:create? true})]
-    ;; TODO this should probably be a function in the sync module
-    (when (not (:active table))
-      (t2/update! :model/Table (:id table) {:active true}))))
+    (if (or (not (:active table)) (not (false? (:is_authoritative table))))
+      (t2/update! :model/Table (:id table) {:active true, :is_authoritative false}))))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."

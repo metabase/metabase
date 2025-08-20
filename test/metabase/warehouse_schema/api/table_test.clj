@@ -472,6 +472,28 @@
       (mt/with-temp [:model/Table table]
         (mt/user-http-request :rasta :put 403 (format "table/%d" (u/the-id table)) {:display_name "Userz"})))))
 
+(deftest ^:parallel update-is-authoritative-test
+  (testing "PUT /api/table/:id"
+    (testing "is_authoritative field behavior"
+      (mt/with-temp [:model/Table table {}]
+        (testing "Initially is_authoritative should be null"
+          (is (nil? (t2/select-one-fn :is_authoritative :model/Table :id (u/the-id table)))))
+
+        (testing "Can set is_authoritative to true"
+          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                                {:is_authoritative true})
+          (is (true? (t2/select-one-fn :is_authoritative :model/Table :id (u/the-id table)))))
+
+        (testing "Can set is_authoritative between true and false"
+          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                                {:is_authoritative false})
+          (is (false? (t2/select-one-fn :is_authoritative :model/Table :id (u/the-id table)))))
+
+        (testing "Cannot set is_authoritative back to null once it has been set"
+          (is (= "Cannot set is_authoritative back to null once it has been set"
+                 (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
+                                       {:is_authoritative nil}))))))))
+
 ;; see how many times sync-table! gets called when we call the PUT endpoint. It should happen when you switch from
 ;; hidden -> not hidden at the spots marked below, twice total
 (deftest update-table-sync-test

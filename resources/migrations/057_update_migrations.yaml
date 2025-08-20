@@ -1059,6 +1059,23 @@ databaseChangeLog:
                     nullable: true
                   defaultValue: null
 
+  - changeSet:
+      id: v57.2025-08-22T00:16:00
+      author: christruter
+      comment: Add is_authoritative flag to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_authoritative
+                  remarks: Whether this table is "authoritative", as opposed to being derived from another source,
+                           for example via Metabase transforms, or external automation.
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+                    remarks: Null corresponds to "I haven't said yet"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
