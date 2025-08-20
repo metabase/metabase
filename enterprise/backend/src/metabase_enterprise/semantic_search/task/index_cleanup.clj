@@ -5,10 +5,10 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -17,6 +17,20 @@
    (org.quartz DisallowConcurrentExecution)))
 
 (set! *warn-on-reflection* true)
+
+(defn- orphan-index-tables
+  [pgvector {:keys [metadata-table-name]}]
+  (let [orphaned-tables-sql
+        (-> {:select [:t.table_name]
+             :from [[:information_schema.tables :t]]
+             :left-join [[(keyword metadata-table-name) :meta]
+                         [:= :meta.table_name :t.table_name]]
+             :where [:and
+                     [:like :t.table_name [:inline "index_table_%"]]
+                     [:= :meta.table_name nil]]}
+            (sql/format :quoted true))]
+    (->> (jdbc/execute! pgvector orphaned-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+         (map :table_name))))
 
 (defn- stale-index-tables
   [pgvector {:keys [metadata-table-name control-table-name]}]
@@ -38,14 +52,19 @@
 
 (defn- cleanup-stale-indexes!
   []
-  (let [pgvector          (semantic.env/get-pgvector-datasource!)
-        index-metadata    (semantic.env/get-index-metadata)
-        stale-table-names (stale-index-tables pgvector index-metadata)]
-    (doseq [table-name stale-table-names]
-      (log/info "Cleaning up stale semantic search index:" table-name)
-      (jdbc/execute! pgvector
-                     [(str "DROP TABLE IF EXISTS " (name table-name) " CASCADE")]
-                     {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+  (let [pgvector             (semantic.env/get-pgvector-datasource!)
+        index-metadata       (semantic.env/get-index-metadata)
+        stale-table-names    (map keyword (stale-index-tables pgvector index-metadata))
+        orphaned-table-names (map keyword (orphan-index-tables pgvector index-metadata))
+        tables-to-drop       (concat stale-table-names orphaned-table-names)
+        drop-table-sql       (sql/format
+                              (apply (partial sql.helpers/drop-table :if-exists)
+                                     (concat stale-table-names orphaned-table-names)))]
+    (when (seq tables-to-drop)
+      (log/infof "Found %d semantic search index tables to clean up" (count tables-to-drop))
+      (doseq [table-name stale-table-names]
+        (log/info "Dropping stale/orphaned semantic search index:" table-name))
+      (jdbc/execute! pgvector drop-table-sql))))
 
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.semantic-index-cleanup.trigger"))
@@ -53,8 +72,7 @@
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Clean up inactive semantic search index tables"}
   SemanticIndexCleanup [_ctx]
-  (cluster-lock/with-cluster-lock ::semantic-index-cleanup-lock
-    (cleanup-stale-indexes!)))
+  (cleanup-stale-indexes!))
 
 (defmethod task/init! ::SemanticIndexCleanup [_]
   (let [job (jobs/build

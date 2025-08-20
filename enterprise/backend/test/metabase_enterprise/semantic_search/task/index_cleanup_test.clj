@@ -24,9 +24,12 @@
                      :vector-dimensions vector-dimensions}})
 
 (defn- insert-metadata-with-timestamps!
-  "Insert an index using record-new-index-table! and then update timestamps for testing."
+  "Insert an index metadata row using record-new-index-table! and then update timestamps for testing."
   [pgvector index-metadata {:keys [table-name provider model-name vector-dimensions
-                                   index-created-at indexer-last-seen]}]
+                                   index-created-at indexer-last-seen]
+                            :or {provider "ollama"
+                                 model-name "test-model"
+                                 vector-dimensions 1024}}]
   (let [index (create-test-index table-name
                                  {:provider provider
                                   :model-name model-name
@@ -57,7 +60,7 @@
   [pgvector table-name]
   (jdbc/execute! pgvector [(str "CREATE TABLE " table-name " (id SERIAL PRIMARY KEY)")]))
 
-(deftest cleanup-stale-indexes!-integration-test
+(deftest stale-index-cleanup-test
   (mt/with-premium-features #{:semantic-search}
     (let [pgvector semantic.tu/db
           index-metadata (semantic.tu/unique-index-metadata)
@@ -66,52 +69,46 @@
           cleanup-stale-indexes! #'sut/cleanup-stale-indexes!]
       (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)]
         (semantic.index-metadata/ensure-control-row-exists! pgvector index-metadata)
-
         (testing "drops stale tables and leaves recent ones"
-          (let [stale-table "test_stale_table_1"
-                recent-table "test_recent_table_1"
-                active-table "test_active_table_1"
+          (let [stale-table "index_table_stale"
+                orphaned-table "index_table_orphaned"
+                recent-table "index_table_recent"
+                active-table "index_table_active"
                 recent-time (t/minus (t/offset-date-time) (t/hours (dec retention-hours)))]
-            (create-table! pgvector stale-table)
-            (create-table! pgvector recent-table)
-            (create-table! pgvector active-table)
-            (insert-metadata-with-timestamps! pgvector index-metadata
-                                              {:table-name stale-table
-                                               :provider "ollama"
-                                               :model-name "test-model"
-                                               :vector-dimensions 1024
-                                               :index-created-at old-time
-                                               :indexer-last-seen nil})
-            (insert-metadata-with-timestamps! pgvector index-metadata
-                                              {:table-name recent-table
-                                               :provider "ollama"
-                                               :model-name "test-model-2"
-                                               :vector-dimensions 1024
-                                               :index-created-at recent-time
-                                               :indexer-last-seen nil})
-            (let [active-index-id (insert-metadata-with-timestamps! pgvector index-metadata
-                                                                    {:table-name active-table
-                                                                     :provider "ollama"
-                                                                     :model-name "test-model-3"
-                                                                     :vector-dimensions 1024
-                                                                     :index-created-at old-time
-                                                                     :indexer-last-seen old-time})]
-              (set-active-index! pgvector (:control-table-name index-metadata) active-index-id))
-            (is (semantic.tu/table-exists-in-db? stale-table))
-            (is (semantic.tu/table-exists-in-db? recent-table))
-            (is (semantic.tu/table-exists-in-db? active-table))
+            (try
+              (create-table! pgvector stale-table)
+              (create-table! pgvector orphaned-table)
+              (create-table! pgvector recent-table)
+              (create-table! pgvector active-table)
+              (insert-metadata-with-timestamps! pgvector index-metadata {:table-name stale-table
+                                                                         :index-created-at old-time})
+              (insert-metadata-with-timestamps! pgvector index-metadata {:table-name recent-table
+                                                                         :index-created-at recent-time})
+              (let [active-index-id (insert-metadata-with-timestamps! pgvector index-metadata
+                                                                      {:table-name active-table
+                                                                       :index-created-at old-time
+                                                                       :indexer-last-seen old-time})]
+                (set-active-index! pgvector (:control-table-name index-metadata) active-index-id))
+              (is (semantic.tu/table-exists-in-db? stale-table))
+              (is (semantic.tu/table-exists-in-db? orphaned-table))
+              (is (semantic.tu/table-exists-in-db? recent-table))
+              (is (semantic.tu/table-exists-in-db? active-table))
 
-            (with-redefs [semantic.settings/stale-index-retention-hours (constantly retention-hours)
-                          semantic.env/get-pgvector-datasource! (constantly pgvector)
-                          semantic.env/get-index-metadata (constantly index-metadata)]
-              (cleanup-stale-indexes!))
+              ;; Run cleanup function and ensure only the stale & orphaned tables is dropped
+              (with-redefs [semantic.env/get-pgvector-datasource! (constantly pgvector)
+                            semantic.env/get-index-metadata (constantly index-metadata)]
+                (mt/with-temporary-setting-values [semantic.settings/stale-index-retention-hours retention-hours]
+                  (cleanup-stale-indexes!)))
+              (is (not (semantic.tu/table-exists-in-db? stale-table)))
+              (is (not (semantic.tu/table-exists-in-db? orphaned-table)))
+              (is (semantic.tu/table-exists-in-db? recent-table))
+              (is (semantic.tu/table-exists-in-db? active-table))
 
-            (is (not (semantic.tu/table-exists-in-db? stale-table)))
-            (is (semantic.tu/table-exists-in-db? recent-table))
-            (is (semantic.tu/table-exists-in-db? active-table))
-
-            (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " recent-table)])
-            (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " active-table)])))
+              (finally
+                (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " recent-table)])
+                (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " stale-table)])
+                (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " orphaned-table)])
+                (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " active-table)])))))
 
         (testing "handles non-existent tables gracefully"
           (let [nonexistent-table "nonexistent_table"]
@@ -126,4 +123,5 @@
             (with-redefs [semantic.settings/stale-index-retention-hours (constantly retention-hours)
                           semantic.env/get-pgvector-datasource! (constantly pgvector)
                           semantic.env/get-index-metadata (constantly index-metadata)]
-              (is (nil? (cleanup-stale-indexes!))))))))))
+              (cleanup-stale-indexes!)
+              (is (not (semantic.tu/table-exists-in-db? nonexistent-table))))))))))
