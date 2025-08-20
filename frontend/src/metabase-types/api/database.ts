@@ -118,6 +118,19 @@ export interface GetDatabaseRequest {
   exclude_uneditable_details?: boolean;
 }
 
+export interface GetDatabaseSettingsAvailableResponse {
+  settings: Record<string, DatabaseLocalSettingAvailability>;
+}
+
+export type DatabaseLocalSettingDisableReason = {
+  key: string;
+  message: string;
+};
+
+export type DatabaseLocalSettingAvailability =
+  | { enabled: true }
+  | { enabled: false; reasons: DatabaseLocalSettingDisableReason[] };
+
 export type GetDatabaseHealthResponse =
   | { status: "ok" }
   | { status: "error"; message: string; errors: unknown };

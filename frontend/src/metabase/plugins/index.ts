@@ -69,6 +69,7 @@ import type {
   DashboardId,
   DatabaseData,
   DatabaseId,
+  DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
   Document,
@@ -817,11 +818,12 @@ export const PLUGIN_TABLE_EDITING = {
   getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
   AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
+    settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
     updateDatabase: (
       database: { id: DatabaseId } & Partial<DatabaseData>,
     ) => Promise<void>;
   }>,
-}
+};
 
 export const PLUGIN_DOCUMENTS = {
   getRoutes: () => null as React.ReactElement | null,

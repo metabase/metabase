@@ -4,7 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useGetDatabaseQuery } from "metabase/api";
+import {
+  useGetDatabaseQuery,
+  useGetDatabaseSettingsAvailableQuery,
+} from "metabase/api";
 import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -63,6 +66,9 @@ function DatabaseEditAppInner({
     error,
   } = useGetDatabaseQuery({ id: databaseId }, { pollingInterval });
 
+  const { data: settingsAvailable } =
+    useGetDatabaseSettingsAvailableQuery(databaseId);
+
   useEffect(
     function pollDatabaseWhileSyncing() {
       const isSyncing = database?.initial_sync_status === "incomplete";
@@ -110,6 +116,7 @@ function DatabaseEditAppInner({
 
                   <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
                     database={database}
+                    settingsAvailable={settingsAvailable?.settings}
                     updateDatabase={updateDatabase}
                   />
 
