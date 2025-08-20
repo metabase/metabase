@@ -29,8 +29,7 @@
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
   (:require
-   #?(:clj [metabase.util.performance :as perf]
-      :cljs [clojure.walk :as walk])
+   #?@(:cljs [[clojure.walk :as walk]])
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
@@ -43,6 +42,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
 
 (defn- mbql-clause?
@@ -231,8 +231,8 @@
   [opts]
   (when opts
     (-> opts
-        (update-keys (fn [k]
-                       (keyword (u/->snake_case_en k))))
+        (perf/update-keys (fn [k]
+                            (keyword (u/->snake_case_en k))))
         (m/update-existing :base_type      keyword)
         (m/update-existing :effective_type keyword)
         (m/update-existing :semantic_type  keyword)
@@ -364,7 +364,7 @@
     values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % nil))))
 
 (defn- normalize-source-query [source-query]
-  (let [{native? :native, :as source-query} (update-keys source-query maybe-normalize-token)]
+  (let [{native? :native, :as source-query} (perf/update-keys source-query maybe-normalize-token)]
     (if native?
       (-> source-query
           (set/rename-keys {:native :query})
@@ -430,14 +430,14 @@
 (mu/defn- normalize-native-query :- [:maybe :map]
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
   [native-query :- [:maybe :map]]
-  (let [native-query (update-keys native-query maybe-normalize-token)]
+  (let [native-query (perf/update-keys native-query maybe-normalize-token)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
 (defn- normalize-actions-row [row]
 
   (cond-> row
-    (map? row) (update-keys u/qualified-name)))
+    (map? row) (perf/update-keys u/qualified-name)))
 
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
