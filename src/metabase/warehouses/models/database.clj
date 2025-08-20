@@ -218,7 +218,7 @@
              (try
                (log/info (u/format-color :blue "Provider detection: checking database %s {:id %d, :provider_name %s, :details %s}"
                                          (:name database) (:id database) (:provider_name database)
-                                         (select-keys details [:host :hostname])))
+                                         (select-keys details [:host])))
                (let [detected-provider (provider-detection/detect-provider-from-database
                                         (assoc database :details details))]
                  (log/info (u/format-color :blue "Provider detection: detected provider %s for database %s"
