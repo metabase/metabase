@@ -44,6 +44,7 @@ export type ClauseStepProps<T> = {
   onRemove: (item: T, index: number) => void;
   onReorder: (sourceItem: T, targetItem: T) => void;
   "data-testid"?: string;
+  renderPopoverWhenReadOnly?: boolean;
 };
 
 export const ClauseStep = <T,>({
@@ -59,6 +60,7 @@ export const ClauseStep = <T,>({
   renderPopover,
   onRemove,
   onReorder,
+  renderPopoverWhenReadOnly = false,
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
   const renderItem = ({ item, index, onOpen }: RenderItemOpts<T>) => (
@@ -96,6 +98,7 @@ export const ClauseStep = <T,>({
             key={index}
             renderItem={(onOpen) => renderItem({ item, index, onOpen })}
             renderPopover={(onClose) => renderPopover({ item, index, onClose })}
+            disabled={readOnly && !renderPopoverWhenReadOnly}
           />
         ))}
       </ClauseStepDndContext>
@@ -104,6 +107,7 @@ export const ClauseStep = <T,>({
           isInitiallyOpen={isLastOpened}
           renderItem={(onOpen) => renderNewItem({ onOpen })}
           renderPopover={(onClose) => renderPopover({ onClose })}
+          disabled={readOnly && !renderPopoverWhenReadOnly}
         />
       )}
     </NotebookCell>
