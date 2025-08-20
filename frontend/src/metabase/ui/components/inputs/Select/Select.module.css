@@ -89,12 +89,6 @@
   }
 }
 
-.SelectItems_Options {
-  padding: 0.75rem;
-  max-height: rem(500px);
-  overflow-y: auto;
-}
-
 .SelectItems_Item {
   --combobox-option-padding: 0;
 
@@ -150,9 +144,15 @@
   line-height: var(--select-item-line-height);
 }
 
+.SelectItems_Options {
+  padding: 0.75rem;
+  max-height: none;
+}
+
 .Dropdown {
   background-color: var(--mb-color-background);
   border-color: var(--mb-color-border);
+  max-height: rem(500px);
   overflow: auto;
 }
 
