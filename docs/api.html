@@ -5414,6 +5414,43 @@ redirect_from:
         },
         "required" : [ "schedule_type" ]
       },
+      "metabase.warehouses.api.available-settings" : {
+        "type" : "object",
+        "additionalProperties" : {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "enabled" : {
+                "const" : true
+              }
+            },
+            "required" : [ "enabled" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "enabled" : {
+                "const" : false
+              },
+              "reasons" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "key" : {
+                      "type" : "string"
+                    },
+                    "message" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "key", "message" ]
+                }
+              }
+            },
+            "required" : [ "enabled", "reasons" ]
+          } ]
+        }
+      },
       "metabot.reaction.redirect" : {
         "type" : "object",
         "properties" : {
@@ -11318,6 +11355,47 @@ redirect_from:
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/database" ]
+      }
+    },
+    "/api/database/{id}/settings-available" : {
+      "get" : {
+        "summary" : "GET /api/database/{id}/settings-available",
+        "description" : "Get all database-local settings and their availability for the given database.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:settings -> <map from <keyword> to <one of <true = map where {:enabled -> <must equal true>} | false = map where {:enabled -> <must equal false>, :reasons -> <sequence of map where {:key -> <keyword>, :message -> <string>}>}> dispatched by :enabled>>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "settings" : {
+                      "$ref" : "#/components/schemas/metabase.warehouses.api.available-settings"
+                    }
+                  },
+                  "required" : [ "settings" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
