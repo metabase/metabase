@@ -142,7 +142,7 @@ function getInitialValues(schemas: string[]): NewTransformValues {
     name: "",
     description: null,
     targetName: "",
-    targetSchema: schemas ? schemas[0] : null,
+    targetSchema: schemas?.[0] || null,
   };
 }
 
