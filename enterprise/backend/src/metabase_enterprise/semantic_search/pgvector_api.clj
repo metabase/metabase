@@ -52,13 +52,11 @@
 (defn switch-to-index!
   "Switches to the specified index, creating it if necessary and activating it.
 
-  Returns the activated index."
-  [tx index-metadata {:keys [index]}]
-  (let [index (if (not (:id index))
-                (semantic.index-metadata/record-new-index-table! tx index-metadata index)
-                index)]
-    (semantic.index-metadata/activate-index! tx index-metadata (:id index))
-    index))
+  Returns the id of the activated index."
+  [tx index-metadata {:keys [index metadata-row]}]
+  (let [id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! tx index-metadata index))]
+    (semantic.index-metadata/activate-index! tx index-metadata id)
+    id))
 
 (defn initialize-index!
   "Creates an index for the provided embedding model (if it does not exist or if we're asking to force reset).
@@ -69,13 +67,12 @@
         current-active    (:index (semantic.index-metadata/get-active-index-state tx index-metadata))
         needs-switch?     (not= (:index target-index-spec) current-active)]
     (semantic.index/create-index-table-if-not-exists! tx (:index target-index-spec))
-    (if needs-switch?
-      (do
-        (when current-active
-          (log/infof "Configured model does not match active index, switching. Previous active: %s"
-                     (u/pprint-to-str current-active)))
-        (switch-to-index! tx index-metadata target-index-spec))
-      (:index target-index-spec))))
+    (when needs-switch?
+      (when current-active
+        (log/infof "Configured model does not match active index, switching. Previous active: %s"
+                   (u/pprint-to-str current-active)))
+      (switch-to-index! tx index-metadata target-index-spec))
+    (:index target-index-spec)))
 
 (defn init-semantic-search!
   "Initialises a pgvector database for semantic search if it does not exist and creates an index for the provided

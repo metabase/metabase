@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.core
   "Enterprise implementations of semantic search core functions using defenterprise."
   (:require
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -103,13 +102,8 @@
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
-    (let [index (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)]
-      (if (and (:index-created-at index)
-               (< 3 (t/time-between (t/instant (:index-created-at index)) (t/instant) :days)))
-        (do
-          (log/debug "Forcing early reindex because existing index is old")
-          (search.engine/reindex! :search.engine/semantic {}))
-        (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)))
+    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)
+    (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 
 ;; TODO: force a new index

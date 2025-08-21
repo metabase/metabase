@@ -287,13 +287,13 @@
 
     (with-open [_ (open-tables! pgvector index-metadata)]
 
-      (let [index1
+      (let [id1
             (semantic.index-metadata/record-new-index-table!
              pgvector
              index-metadata
              index1)
 
-            index2
+            id2
             (semantic.index-metadata/record-new-index-table!
              pgvector
              index-metadata
@@ -314,13 +314,13 @@
                    (sort-by :id))
               [index1-meta index2-meta] indexer-records]
           (is (= 2 (count indexer-records)))
-          (is (= {:id                     (:id index1)
+          (is (= {:id                     id1
                   :indexer_last_seen_id   nil
                   :indexer_last_seen_hash nil
                   :indexer_last_poll      nil
                   :indexer_last_seen      nil}
                  index1-meta))
-          (is (=? {:id                     (:id index2)
+          (is (=? {:id                     id2
                    :indexer_last_poll      (:last-poll watermark)
                    :indexer_last_seen_id   "card_1"
                    :indexer_last_seen_hash "bar"
