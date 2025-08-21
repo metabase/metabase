@@ -371,71 +371,6 @@
           (when table-id
             {:table_id table-id})))))))
 
-(defn- query->snippet-references
-  "Extract snippet IDs from a native query's template tags."
-  [query]
-  (when (= :native (:type query))
-    (let [template-tags (get-in query [:native :template-tags])]
-      (for [[_ tag] template-tags
-            :when (= (:type tag) :snippet)]
-        (:snippet-id tag)))))
-
-(defn- snippet->references
-  "Extract both card and snippet references from a snippet's template tags.
-   Can either fetch from DB or use provided data."
-  [snippet-id snippet-data]
-  (let [template-tags (or (:template_tags snippet-data)
-                          (:template_tags (t2/select-one :model/NativeQuerySnippet :id snippet-id)))]
-    (for [[_ tag] template-tags
-          :let [tag-type (:type tag)]
-          :when (#{:card :snippet} tag-type)]
-      (cond (= tag-type :card)
-            [:card (:card-id tag)]
-
-            (= tag-type :snippet)
-            [:snippet (:snippet-id tag)]))))
-
-(defn- fetch-card-query
-  "Fetch a card's dataset_query from the database."
-  [card-id]
-  (or (t2/select-one-fn :dataset_query :model/Card :id card-id)
-      (throw (ex-info (tru "Card {0} does not exist." card-id)
-                      {:status-code 404}))))
-
-(defn- check-for-circular-source-query-references
-  "Check that a `card`, if it is using another Card as its source, does not have circular references between source
-  Cards. (e.g. Card A cannot use itself as a source, or if A uses Card B as a source, Card B cannot use Card A, and so
-  forth.) Also checks for cycles through native query snippets."
-  [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
-  (loop [entities-to-check [[:card id query]]
-         ids-already-seen #{}]
-    (if-let [[etype eid edata] (first entities-to-check)]
-      (cond
-        ;; Already seen this entity - cycle detected!
-        (ids-already-seen [etype eid])
-        (throw (ex-info (tru "Cannot save Question: circular references detected.")
-                        {:status-code 400}))
-
-        ;; Process based on entity type
-        :else
-        (let [new-seen (conj ids-already-seen [etype eid])
-              new-entities (case etype
-                             :card (concat
-                                    ;; Check for source cards
-                                    (when-let [source-id (qp.util/query->source-card-id edata)]
-                                      [[:card source-id (fetch-card-query source-id)]])
-                                    ;; Check for snippet references
-                                    (for [snippet-id (query->snippet-references edata)]
-                                      [:snippet snippet-id nil]))
-                             :snippet (for [[ref-type ref-id] (snippet->references eid edata)]
-                                        (case ref-type
-                                          :card [ref-type ref-id (fetch-card-query ref-id)]
-                                          :snippet [ref-type ref-id nil])))]
-          (recur (concat (rest entities-to-check) new-entities)
-                 new-seen)))
-      ;; No more entities to check, no cycles found
-      :ok)))
-
 (defn- maybe-normalize-query [card]
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query #(mi/maybe-normalize-query :in %))))
@@ -583,8 +518,6 @@
         card     (maybe-check-dashboard-internal-card
                   (merge defaults card))]
     (u/prog1 card
-      ;; make sure this Card doesn't have circular source query references
-      (check-for-circular-source-query-references card)
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
@@ -686,9 +619,6 @@
                         "Newly Added:" newly-added-param-field-ids)
               ;; Now update the FieldValues for the Fields referenced by this Card.
               (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
-      ;; make sure this Card doesn't have circular source query references if we're updating the query
-      (when (:dataset_query changes)
-        (check-for-circular-source-query-references card))
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (= (:type old-card-info) :model)
