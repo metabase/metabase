@@ -5,7 +5,11 @@ import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import type { NotebookStep as INotebookStep, OpenSteps } from "../../types";
+import type {
+  NotebookStep as INotebookStep,
+  NotebookDataPickerOptions,
+  OpenSteps,
+} from "../../types";
 import { NotebookStep } from "../NotebookStep";
 
 interface NotebookStepListProps {
@@ -15,6 +19,7 @@ interface NotebookStepListProps {
   reportTimezone: string;
   updateQuestion: (question: Question) => Promise<void>;
   readOnly?: boolean;
+  dataPickerOptions?: NotebookDataPickerOptions;
 }
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
@@ -36,6 +41,7 @@ export function NotebookStepList({
   reportTimezone,
   updateQuestion,
   readOnly = false,
+  dataPickerOptions,
 }: NotebookStepListProps) {
   const metadata = question.metadata();
   const [openSteps, setOpenSteps] = useState<OpenSteps>(
@@ -104,6 +110,7 @@ export function NotebookStepList({
             updateQuery={onChange}
             openStep={handleStepOpen}
             readOnly={readOnly}
+            dataPickerOptions={dataPickerOptions}
           />
         );
       })}

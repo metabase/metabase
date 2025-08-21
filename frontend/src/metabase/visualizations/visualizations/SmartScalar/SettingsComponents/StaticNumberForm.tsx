@@ -35,8 +35,8 @@ export function StaticNumberForm({
     setLabel(e.target.value);
   };
 
-  const handleChangeValue = (nextValue: number | "") => {
-    setValue(nextValue || 0);
+  const handleChangeValue = (nextValue: number | string) => {
+    setValue(typeof nextValue === "number" ? nextValue : 0);
   };
 
   const handleSubmit = (event: FormEvent) => {

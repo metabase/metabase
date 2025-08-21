@@ -15,6 +15,7 @@ import type {
 import type { EntityPickerTab } from "../../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../../EntityPicker";
 import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
+import type { CollectionPickerItem } from "../../CollectionPicker";
 import {
   QuestionPicker,
   type QuestionPickerStatePath,
@@ -47,6 +48,9 @@ interface Props {
   models?: DataPickerValue["model"][];
   onChange: (value: TableId) => void;
   onClose: () => void;
+  shouldDisableItem?: (
+    item: DataPickerItem | CollectionPickerItem | RecentItem,
+  ) => boolean;
 }
 
 type FilterOption = { label: string; value: CollectionItemModel };
@@ -75,6 +79,7 @@ export const DataPickerModal = ({
   models = ["table", "card", "dataset"],
   onChange,
   onClose,
+  shouldDisableItem,
 }: Props) => {
   const [modelFilter, setModelFilter] = useState<CollectionItemModel[]>(
     QUESTION_PICKER_MODELS,
@@ -121,15 +126,18 @@ export const DataPickerModal = ({
 
   const recentFilter = useCallback(
     (recentItems: RecentItem[]) => {
-      if (databaseId) {
-        return recentItems.filter(
-          (item) => getRecentItemDatabaseId(item) === databaseId,
-        );
-      }
-
-      return recentItems;
+      return recentItems.filter((item) => {
+        if (databaseId && getRecentItemDatabaseId(item) !== databaseId) {
+          return false;
+        }
+        if (shouldDisableItem) {
+          // Do not show items that are disabled in recents
+          return !shouldDisableItem(item);
+        }
+        return true;
+      });
     },
-    [databaseId],
+    [databaseId, shouldDisableItem],
   );
 
   const searchParams = useMemo(() => {
@@ -187,6 +195,7 @@ export const DataPickerModal = ({
             value={isTableItem(value) ? value : undefined}
             onItemSelect={onItemSelect}
             onPathChange={setTablesPath}
+            shouldDisableItem={shouldDisableItem}
           />
         ),
       });
@@ -217,6 +226,7 @@ export const DataPickerModal = ({
             onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
             onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
             onPathChange={setQuestionsPath}
+            shouldDisableItem={shouldDisableItem}
           />
         ),
       });

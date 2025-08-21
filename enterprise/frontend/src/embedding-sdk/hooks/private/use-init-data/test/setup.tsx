@@ -16,7 +16,7 @@ import {
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import type { LoginStatusError, MetabaseAuthConfig } from "embedding-sdk/types";
 
-import { useInitData } from "../use-init-data";
+import { useInitDataInternal } from "../use-init-data-internal";
 
 jest.mock("embedding/auth-common/saml-token-storage", () => {
   let token: any = null;
@@ -42,7 +42,7 @@ export const TestComponent = ({ config }: { config: MetabaseConfigProps }) => {
   const loginStatus = useSdkSelector(getLoginStatus);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
-  useInitData({
+  useInitDataInternal({
     reduxStore,
     authConfig: createMockSdkConfig({
       ...config,

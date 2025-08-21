@@ -1,4 +1,4 @@
-import { useLazySelector } from "embedding-sdk/sdk-package/hooks/private/use-lazy-selector";
+import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 
 /**
@@ -9,4 +9,6 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
  * @category useApplicationName
  */
 export const useApplicationName = () =>
-  useLazySelector(getWindow()?.MetabaseEmbeddingSDK?.getApplicationName);
+  useLazySelector(
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getApplicationName,
+  );

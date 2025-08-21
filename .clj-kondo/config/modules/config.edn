@@ -68,7 +68,8 @@
            query-processor
            search
            settings
-           util}}
+           util
+           warehouses}}
 
   activity-feed
   {:team "UX West"
@@ -603,6 +604,7 @@
            metabase.lib.schema.actions
            metabase.lib.schema.binning
            metabase.lib.schema.common
+           metabase.lib.schema.constraints
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
            metabase.lib.schema.expression.window
@@ -613,9 +615,11 @@
            metabase.lib.schema.mbql-clause
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
+           metabase.lib.schema.middleware-options
            metabase.lib.schema.order-by
            metabase.lib.schema.parameter
            metabase.lib.schema.ref
+           metabase.lib.schema.settings
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.util
@@ -947,6 +951,7 @@
            metabase.query-processor.middleware.limit
            metabase.query-processor.middleware.permissions
            metabase.query-processor.middleware.wrap-value-literals
+           metabase.query-processor.parameters.operators
            metabase.query-processor.pipeline
            metabase.query-processor.pivot
            metabase.query-processor.preprocess

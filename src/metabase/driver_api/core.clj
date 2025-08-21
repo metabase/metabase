@@ -1,4 +1,7 @@
 (ns metabase.driver-api.core
+  {:clj-kondo/config '{:linters
+                       ;; this is actually ok here since this is a drivers
+                       {:discouraged-namespace [metabase.query-processor.store {:level :off}]}}}
   (:refer-clojure :exclude [replace compile require])
   (:require
    [metabase.actions.core :as actions]
@@ -68,8 +71,10 @@
  actions/cached-value
  actions/incorrect-value-type
  actions/perform-action!*
+ actions/violate-check-constraint
  actions/violate-foreign-key-constraint
  actions/violate-not-null-constraint
+ actions/violate-permission-constraint
  actions/violate-unique-constraint
  add/add-alias-info
  add/field-reference-mlv2
@@ -137,6 +142,8 @@
  premium-features/is-hosted?
  qp.compile/compile
  qp.debug/debug>
+ ;; TODO (Cam 8/19/25) -- importing dynamic vars doesn't really work because the copies here don't pick up changes to
+ ;; the original value. We need to make these functions instead.
  qp.i/*disable-qp-logging*
  qp.preprocess/preprocess
  qp.reducible/reducible-rows

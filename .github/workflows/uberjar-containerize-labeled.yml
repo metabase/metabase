@@ -13,8 +13,6 @@ jobs:
     if: ${{ github.event.label.name == 'build-docker-uberjar' }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
-    with:
-      source_changed: false
 
   containerize:
     needs: [uberjar]

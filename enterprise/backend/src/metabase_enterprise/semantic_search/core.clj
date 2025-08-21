@@ -52,7 +52,11 @@
                       final-count threshold raw-count fallback)
           (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
           (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
-          (let [fallback-results (search.engine/results (assoc search-ctx :search-engine fallback))
+          (let [fallback-results (try
+                                   (search.engine/results (assoc search-ctx :search-engine fallback))
+                                   (catch Throwable t
+                                     (log/warn t "Semantic search fallback errored, ignoring")
+                                     []))
                 combined-results (concat results fallback-results)
                 deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
             (take (semantic.settings/semantic-search-results-limit) deduped-results)))))
@@ -60,7 +64,6 @@
       (log/error e "Error executing semantic search")
       (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e)))))
 
-;; TODO: tx-write
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
@@ -92,27 +95,27 @@
 ;; we're currently not returning stats from `init!` and `reindex!` as the async nature means
 ;; we'd report skewed values for the `metabase-search` metrics.
 
-;; TODO: add reindexing/table-swapping logic when index is detected as stale
 (defenterprise init!
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
-  [searchable-documents _opts]
+  [searchable-documents opts]
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
-    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)
     (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 
+;; TODO: force a new index
 (defenterprise reindex!
   "Reindex the semantic search index."
   :feature :semantic-search
-  [searchable-documents _opts]
+  [searchable-documents opts]
   (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)
         embedding-model (semantic.env/get-configured-embedding-model)]
-    ;; todo force a new index
-    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+    ;; TODO: once we have liquidbase-based migrations, this call should be to `initialize-index!` instead
+    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)
     (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 

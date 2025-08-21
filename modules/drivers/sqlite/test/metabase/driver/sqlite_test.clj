@@ -115,7 +115,8 @@
 (defn- default-table-result [table-name]
   {:name        table-name
    :schema      nil
-   :description nil})
+   :description nil
+   :is_writable nil})
 
 (deftest timestamp-test-db
   (let [driver :sqlite]

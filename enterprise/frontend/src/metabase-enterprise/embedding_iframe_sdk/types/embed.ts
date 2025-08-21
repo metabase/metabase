@@ -1,4 +1,6 @@
 import type {
+  CollectionBrowserListColumns,
+  EmbeddingEntityType,
   EntityTypeFilterKeys,
   MetabaseTheme,
   SqlParameterValues,
@@ -85,22 +87,34 @@ export interface ExplorationEmbedOptions {
   questionId?: never;
 }
 
-export interface CurateContentEmbedOptions {
-  template: "curate-content";
+export interface BrowserEmbedOptions {
+  componentName: "metabase-browser";
+
+  /** Which collection to start from? */
   initialCollection: CollectionId;
 
-  entityTypes?: CollectionBrowserEntityTypes[];
+  /** Whether the content manager is in read-only mode. Defaults to true. */
+  readOnly?: boolean;
 
-  questionId?: never;
-  dashboardId?: never;
-}
+  /** Which columns to show on the collection browser */
+  collectionVisibleColumns?: CollectionBrowserListColumns[];
 
-export interface ViewContentEmbedOptions {
-  template: "view-content";
-  initialCollection: CollectionId;
+  /** How many items to show per page in the collection browser */
+  collectionPageSize?: number;
 
-  entityTypes?: CollectionBrowserEntityTypes[];
+  /** Which entities to show on the collection browser */
+  collectionEntityTypes?: CollectionBrowserEntityTypes[];
 
+  /** Which entities to show on the question's data picker */
+  dataPickerEntityTypes?: EmbeddingEntityType[];
+
+  /** Whether to show the "New Exploration" button. Defaults to true. */
+  withNewQuestion?: boolean;
+
+  /** Whether to show the "New Dashboard" button. Defaults to true. Only applies when readOnly is false. */
+  withNewDashboard?: boolean;
+
+  template?: never;
   questionId?: never;
   dashboardId?: never;
 }
@@ -128,9 +142,8 @@ export type SdkIframeEmbedBaseSettings = {
 export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
-  | ExplorationEmbedOptions;
-// | CurateContentEmbedOptions
-// | ViewContentEmbedOptions;
+  | ExplorationEmbedOptions
+  | BrowserEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
@@ -146,5 +159,4 @@ export type SdkIframeEmbedSettingKey =
   | keyof DashboardEmbedOptions
   | keyof QuestionEmbedOptions
   | keyof ExplorationEmbedOptions
-  | keyof CurateContentEmbedOptions
-  | keyof ViewContentEmbedOptions;
+  | keyof BrowserEmbedOptions;

@@ -7,10 +7,6 @@ import { createMockTemplateTag } from "metabase-types/api/mocks";
 
 describe("parameters/utils/cards", () => {
   describe("getTemplateTags", () => {
-    it("should return an empty array for an invalid card", () => {
-      expect(getTemplateTags({})).toEqual([]);
-    });
-
     it("should return an empty array for a non-native query", () => {
       const card = {
         dataset_query: {

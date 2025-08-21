@@ -10,4 +10,5 @@
  [sandbox.tu
   with-gtaps!
   with-gtaps-for-user!
+  with-gtaps-for-all-users!
   with-user-attributes!])

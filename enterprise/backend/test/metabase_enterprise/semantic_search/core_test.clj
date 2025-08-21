@@ -110,6 +110,17 @@
                   (is (= (rest appdb-results)
                          (rest results))))))))))))
 
+(deftest test-semantic-search-fallback-failure-resilient
+  (testing "semantic search is resilient to fallback engine failure"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
+        (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)
+              search-ctx      search-context]
+          (with-search-engine-mocks! [semantic-result] (fn [_] (throw (ex-info "Fallback fail" {})))
+            (fn []
+              (let [results (into [] (semantic.core/results search-ctx))]
+                (is (= [semantic-result] results))))))))))
+
 (deftest test-semantic-search-above-threshold-no-fallback
   (testing "semantic search results above threshold are not supplemented"
     (mt/with-premium-features #{:semantic-search}

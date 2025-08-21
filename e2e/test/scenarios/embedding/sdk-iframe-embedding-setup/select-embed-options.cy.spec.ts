@@ -322,6 +322,40 @@ H.describeWithSnowplow(suiteTitle, () => {
     codeBlock().should("contain", 'is-save-enabled="true"');
   });
 
+  it("can toggle read-only setting for browser", () => {
+    navigateToEmbedOptionsStep({
+      experience: "browser",
+      resourceName: "First collection",
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow editing dashboards and questions")
+      .should("not.be.checked");
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New Dashboard").should("not.exist");
+    });
+
+    cy.log("turn on editing (set read-only to false)");
+    getEmbedSidebar()
+      .findByLabelText("Allow editing dashboards and questions")
+      .click()
+      .should("be.checked");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "readOnly",
+    });
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New Dashboard").should("be.visible");
+    });
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", 'read-only="false"');
+  });
+
   it("can change brand color and reset colors", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
@@ -391,5 +425,44 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.log("snippet should not contain theme colors");
     getEmbedSidebar().findByText("Get Code").click();
     codeBlock().should("not.contain", '"theme": {');
+  });
+
+  it("derives colors for dark theme palette", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    cy.log("change brand color");
+    cy.findByLabelText("#509EE3").click();
+    H.popover().within(() => {
+      cy.findByDisplayValue("#509EE3").clear().type("#BD51FD");
+    });
+
+    cy.log("change primary text color");
+    cy.findByLabelText("#4C5773").click();
+    H.popover().within(() => {
+      cy.findByDisplayValue("#4C5773").clear().type("#F1F1F1");
+    });
+
+    cy.log("change background color");
+    cy.findByLabelText("#FFFFFF").click();
+    H.popover().within(() => {
+      cy.findByDisplayValue("#FFFFFF").clear().type("#121212");
+    });
+
+    cy.log("verify the preview reflects the dark theme");
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("dashboard")
+      .should("have.css", "background-color", "rgb(18, 18, 18)");
+
+    cy.log("check that derived colors are applied to snippet");
+    getEmbedSidebar().findByText("Get Code").click();
+
+    // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
+    cy.log("dark mode colors should be derived");
+    codeBlock().should("contain", '"background-hover": "rgb(27, 27, 27)"');
+    codeBlock().should("contain", '"text-secondary": "rgb(169, 169, 169)"');
+    codeBlock().should("contain", '"brand-hover": "rgba(189, 81, 253, 0.5)"');
   });
 });
