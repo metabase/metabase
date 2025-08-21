@@ -301,9 +301,13 @@ export const CardEmbedComponent = memo(
       return (
         <NodeViewWrapper className={styles.embedWrapper}>
           <Box
-            className={cx(styles.errorContainer, EDITOR_STYLE_BOUNDARY_CLASS)}
+            className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
+              [styles.selected]: selected,
+            })}
           >
-            <Text color="error">{t`Failed to load question`}</Text>
+            <Box className={styles.errorContainer}>
+              <Text c="error">{t`Failed to load question`}</Text>
+            </Box>
           </Box>
         </NodeViewWrapper>
       );
