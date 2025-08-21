@@ -68,6 +68,14 @@
   }
 }
 
+@media not print {
+  .documentContainer {
+    [data-show-on-print] {
+      display: none;
+    }
+  }
+}
+
 .sidebar {
   width: 360px;
   flex-shrink: 0;

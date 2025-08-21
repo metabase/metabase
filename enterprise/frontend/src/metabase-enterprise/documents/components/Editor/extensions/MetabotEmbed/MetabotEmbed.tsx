@@ -304,6 +304,7 @@ export const MetabotComponent = memo(
             onClick={() => deleteNode()}
           >
             <Icon name="close" data-hide-on-print />
+            <Icon name="metabot" data-show-on-print />
           </Button>
           <Flex flex={1} direction="column" className={S.contentWrapper}>
             <Box
