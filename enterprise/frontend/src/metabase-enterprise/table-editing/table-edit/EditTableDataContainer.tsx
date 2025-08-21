@@ -3,7 +3,7 @@ import type { Location } from "history";
 import { useCallback, useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { useGetDatabaseQuery } from "metabase/api";
+import { useGetDatabaseQuery, useGetTableQuery } from "metabase/api";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -57,6 +57,8 @@ export const EditTableDataContainer = ({
   const tableId = parseInt(tableIdParam, 10);
 
   const { data: database } = useGetDatabaseQuery({ id: databaseId });
+  const { data: table } = useGetTableQuery({ id: tableId });
+
   const {
     data: rawDataset,
     isLoading,
@@ -172,6 +174,17 @@ export const EditTableDataContainer = ({
         tableId={tableId}
         title={t`Table editing is not enabled for this database`}
         message={t`Please ask your admin to enable table editing`}
+      />
+    );
+  }
+
+  if (table && !table.is_writable) {
+    return (
+      <EditTablePermissionError
+        databaseId={databaseId}
+        tableId={tableId}
+        title={t`This table is read-only`}
+        message={t`Please ask your admin to configure the connection to allow editing`}
       />
     );
   }

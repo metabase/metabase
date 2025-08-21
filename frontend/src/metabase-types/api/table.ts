@@ -44,6 +44,7 @@ export type Table = {
   visibility_type: TableVisibilityType;
   initial_sync_status: InitialSyncStatus;
   is_upload: boolean;
+  is_writable?: boolean;
   caveats?: string;
   points_of_interest?: string;
   created_at: string;
