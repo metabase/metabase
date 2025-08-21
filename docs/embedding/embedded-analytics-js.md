@@ -34,15 +34,15 @@ Currently you can choose to embed:
 2. Choose the type of entity to embed. Currently the available types are dashboard, question, and exploration (which will embed the Metabase query builder).
 3. Next, select the entity you want to embed.
 
-Once you selected what you want to embed, click Next to customize your embed.
+Once you've selected what you want to embed, click Next to customize your embed.
 
 ### 3. Customize your embed
 
-The exact customization options you see will depend on what type of entity you're embedding. You will see live preview of how the embed will look with your chosen options. See [Customizing embeds](#customizing-embeds) for more information on customization options.
+The exact customization options you see will depend on what type of entity you're embedding. You'll see a live preview of how the embed will look with your chosen options. Check out [Customizing embeds](#customizing-embeds) for more details on customization options.
 
 ![Customizing embeds](./images/embed-flow-options.png)
 
-You'll also be be able to pick brand, text, and background color used for all your embeds. To configure other colors (e.g. secondary colors, query builder colors etc), as well as font, you' can specify a theme in your embed code snippet, see [Theming](#theming).
+You'll also be be able to pick brand, text, and background color used for all your embeds. To configure other colors (e.g. secondary colors, query builder colors etc), as well as font, you' can specify a [theme](#theming) in your embed code snippet.
 
 All the customization options you select in this interactive flow will be reflected in the parameter values in the embed code, so you'll be able to adjust them later by editing the embed snippet.
 
@@ -110,7 +110,7 @@ You can also generate the code snippet for Embedded Analytics JS interactively i
 
 The exact customization options you see will depend on what type of entity you're embedding.
 
-When you're creating a new embed using **+ New > Embed**, you'll see customization the following options in the interactive creating flow. These options correspond to parameters in [components](#components).
+When you're creating a new embed using **+ New > Embed**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](#components).
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
@@ -118,7 +118,7 @@ When you're creating a new embed using **+ New > Embed**, you'll see customizati
 
 - **Allow people to save new questions**. If you embed the query builder but disable this option, people can still do their own explorations, they just won't be able to save them.
 
-- **Parameters**: for dashboard filters, SQL variables, and time grouping parameters, you can add default values. These default values set here override the default values set at the dashboard or question level. For dashboard filters and parameters, you can choose whether to hide the parameter.
+- **Parameters**: for dashboard filters, SQL variables, and time grouping parameters, you can add default values. Default values set here override the default values set at the dashboard or question level. For dashboard filters and parameters, you can choose whether to hide the parameter.
 
 - **Show title**: what it says on the tin.
 
@@ -276,7 +276,7 @@ See more examples in the [Embedding SDK docs](./sdk/authentication.md#2-add-a-ne
 
 #### 3. Embeds will use SSO automatically by default
 
-By default, lMetabase uses JWT SSO, but you can specify another auth method. To turn on SSO, make sure you _don't_ set your configuration to `apiKey` or `useExistingUserSession`.
+By default, Metabase uses JWT SSO, but you can specify another auth method. To turn on SSO, make sure you _don't_ set your configuration to `apiKey` or `useExistingUserSession`.
 
 ## Components
 
