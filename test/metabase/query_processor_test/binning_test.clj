@@ -3,7 +3,6 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -23,12 +22,18 @@
                                                                    $
                                                                    (lib.metadata/field mp (mt/id table-key field-key)))))))]
       (testing "Binning is suffixed to columns display name"
-        (is expected-display-name
-            (-> (qp/process-query query) mt/cols first :display_name)))
+        (is (= expected-display-name
+               (-> (qp/process-query query) mt/cols first :display_name))))
       (testing "Binning is visible on cards"
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib.convert/->legacy-MBQL query)}]
-          (is expected-display-name
-              (qp/process-query (lib/query mp (lib.metadata/card mp card-id)))))))))
+        (let [mp (lib.tu/mock-metadata-provider
+                  mp
+                  {:cards [{:id            1
+                            :dataset-query query}]})]
+          (is (= expected-display-name
+                 (-> (qp/process-query (lib/query mp (lib.metadata/card mp 1)))
+                     mt/cols
+                     first
+                     :display_name))))))))
 
 (deftest ^:parallel binning-on-nested-question-with-aggregation-test
   (testing "binning should work on nested question based on question that has aggregation (#16379)"
