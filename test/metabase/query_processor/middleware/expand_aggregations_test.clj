@@ -23,8 +23,8 @@
 (defn- expand-aggregations-test-query []
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
     (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-        (lib/aggregate $ (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
-        (lib/aggregate $ (lib/with-expression-name (lib/* 2 (expand-aggregaations-test-find-sum-of-total $)) "2*sum")))))
+      (lib/aggregate $ (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
+      (lib/aggregate $ (lib/with-expression-name (lib/* 2 (expand-aggregaations-test-find-sum-of-total $)) "2*sum")))))
 
 (deftest ^:parallel expand-aggregations-test
   (let [query (expand-aggregations-test-query)]
@@ -106,7 +106,8 @@
           query        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib.metadata/metric mp 1))
                            (as-> $query (lib/aggregate $query (lib/with-expression-name
-                                                                (lib/* 2 (find-col $query "Order Total"))))))]
+                                                                (lib/* 2 (find-col $query "Order Total"))
+                                                                "2*total"))))]
       (is (= {:columns ["sum" "2*total"]
               :rows    [[1510617.7 3021235.4]]}
              (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))

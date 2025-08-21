@@ -886,27 +886,27 @@
 (deftest ^:parallel expressions-from-metrics-are-spliced-to-correct-stage-test
   (testing "Integration test: Expression is spliced into correct stage during metric expansion (#48722)"
     (let [mp    (as-> (lib.metadata.jvm/application-database-metadata-provider (mt/id)) $mp
-               (lib.tu/mock-metadata-provider
-                $mp
-                {:cards [{:id            1
-                          :dataset-query (mt/mbql-query orders {})
-                          :database-id   (mt/id)
-                          :name          "source model"
-                          :type          :model}]})
-               (lib.tu/mock-metadata-provider
-                $mp
-                {:cards [{:id            2
-                          :dataset-query (mt/mbql-query
-                                           orders
-                                           {:source-table "card__1"
-                                            :expressions  {"somedays" [:datetime-diff
-                                                                       [:field "CREATED_AT" {:base-type :type/DateTime}]
-                                                                       (t/offset-date-time 2024 10 16 0 0 0)
-                                                                       :day]}
-                                            :aggregation  [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
-                          :database-id   (mt/id)
-                          :name          "somedays median"
-                          :type          :metric}]}))
+                  (lib.tu/mock-metadata-provider
+                   $mp
+                   {:cards [{:id            1
+                             :dataset-query (mt/mbql-query orders {})
+                             :database-id   (mt/id)
+                             :name          "source model"
+                             :type          :model}]})
+                  (lib.tu/mock-metadata-provider
+                   $mp
+                   {:cards [{:id            2
+                             :dataset-query (mt/mbql-query
+                                              orders
+                                              {:source-table "card__1"
+                                               :expressions  {"somedays" [:datetime-diff
+                                                                          [:field "CREATED_AT" {:base-type :type/DateTime}]
+                                                                          (t/offset-date-time 2024 10 16 0 0 0)
+                                                                          :day]}
+                                               :aggregation  [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
+                             :database-id   (mt/id)
+                             :name          "somedays median"
+                             :type          :metric}]}))
           query (-> (lib/query mp (lib.metadata/card mp 1))
                     (lib/aggregate (lib.metadata/metric mp 2)))]
       (is (= 2162

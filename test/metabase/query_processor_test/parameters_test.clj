@@ -530,23 +530,23 @@
           query      (lib/query
                       mp
                       (mt/native-query
-                       {:query         (str/join \newline
-                                                 [(format "WITH exclude_products AS {{%s}}" param-name)
-                                                  "SELECT count(*)"
-                                                  "FROM orders"
-                                                  "[[WHERE {{created_at}}]]"])
-                        :template-tags {param-name   {:type         :card
-                                                      :card-id      1
-                                                      :display-name param-name
-                                                      :id           "__source__"
-                                                      :name         param-name}
-                                        "created_at" {:type         :dimension
-                                                      :default      nil
-                                                      :dimension    [:field (mt/id :orders :created_at) nil]
-                                                      :display-name "Created At"
-                                                      :id           "__created_at__"
-                                                      :name         "created_at"
-                                                      :widget-type  :date/all-options}}}))]
+                        {:query         (str/join \newline
+                                                  [(format "WITH exclude_products AS {{%s}}" param-name)
+                                                   "SELECT count(*)"
+                                                   "FROM orders"
+                                                   "[[WHERE {{created_at}}]]"])
+                         :template-tags {param-name   {:type         :card
+                                                       :card-id      1
+                                                       :display-name param-name
+                                                       :id           "__source__"
+                                                       :name         param-name}
+                                         "created_at" {:type         :dimension
+                                                       :default      nil
+                                                       :dimension    [:field (mt/id :orders :created_at) nil]
+                                                       :display-name "Created At"
+                                                       :id           "__created_at__"
+                                                       :name         "created_at"
+                                                       :widget-type  :date/all-options}}}))]
       (testing "With no parameters"
         (mt/with-native-query-testing-context query
           (is (= [[18760]]

@@ -294,7 +294,7 @@
                (lib/query
                 (metrics-test-metadata-provider)
                 (mt/mbql-query venues
-                  {:aggregation  [:+ [:metric 1 ] 1]
+                  {:aggregation  [:+ [:metric 1] 1]
                    :breakout     [$price]
                    :source-table "card__1"})))))))))
 

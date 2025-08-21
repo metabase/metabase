@@ -1,13 +1,13 @@
 (ns metabase.util.malli.registry
   (:refer-clojure :exclude [declare def])
   (:require
+   #?(:clj [metabase.config.core :as config])
    #?@(:clj ([malli.experimental.time :as malli.time]
              [metabase.util.malli.registry.validator-cache :as mr.validator-cache]
              [net.cgrand.macrovich :as macros]))
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut]
-   #?(:clj [metabase.config.core :as config]))
+   [malli.util :as mut])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
