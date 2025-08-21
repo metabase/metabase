@@ -462,7 +462,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         });
       });
 
-      it.only("should render Mantine tooltip with our styles", () => {
+      it("should render Mantine tooltip with our styles", () => {
         cy.get("@dashboardId").then((dashboardId) => {
           mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
             sdkProviderProps: {

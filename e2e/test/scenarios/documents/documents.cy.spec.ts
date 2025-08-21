@@ -581,6 +581,13 @@ H.describeWithSnowplowEE("documents", () => {
           "not.include",
           ORDERS_BY_YEAR_QUESTION_ID.toString(),
         );
+
+        // Navigating to a question from a document should result in a back button
+        cy.findByLabelText("Back to Foo Document").click();
+
+        cy.get("@documentId").then((id) =>
+          cy.location("pathname").should("equal", `/document/${id}`),
+        );
       });
     });
   });
