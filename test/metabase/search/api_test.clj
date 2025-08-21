@@ -1592,15 +1592,16 @@
                   (into #{})))))))
 
 (deftest model-ancestors-gets-ancestor-collections-3
-  (testing "Non-models don't get collection_ancestors"
-    (mt/with-temp [:model/Card _ {:name "question"
-                                  :collection_id nil}]
-      (is (not (contains? (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "question" :models ["dataset" "card"])
-                               :data
-                               (filter #(= (:name %) "question"))
-                               first
-                               :collection)
-                          :effective_ancestors))))))
+  (search.tu/with-new-search-if-available
+    (testing "Non-models don't get collection_ancestors"
+      (mt/with-temp [:model/Card _ {:name "question"
+                                    :collection_id nil}]
+        (is (not (contains? (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "question" :models ["dataset" "card"])
+                                 :data
+                                 (filter #(= (:name %) "question"))
+                                 first
+                                 :collection)
+                            :effective_ancestors)))))))
 
 (deftest model-ancestors-gets-ancestor-collections-4
   (testing "If `model_parents` is not passed, it doesn't get populated"
