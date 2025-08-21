@@ -60,22 +60,19 @@ export function ListViewColumnsCustomization({
 
   return (
     <Stack p="2.5rem">
-      <Group justify="space-between" align="center" h="2rem">
-        <Text size="md" fw="bold">{t`Customize List layout`}</Text>
+      <Group justify="space-between" align="center" h="1.5rem">
+        <Text fw="bold">{t`Customize List layout`}</Text>
         <Button size="xs" variant="subtle" onClick={onDone}>{t`Done`}</Button>
       </Group>
-      <Stack gap="sm">
+      <Stack gap="md">
         <TextInput
-          size="xs"
           placeholder={t`Find a column...`}
           leftSection={<Icon name="search" size={14} c="text-light" />}
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
         />
-        <Text size="xs" c="text-medium" mt="xs">
-          {t`Drag a column into a well to place it there.`}
-        </Text>
-        <Stack gap="sm" mt="xs">
+        <Text mt="md">{t`Drag a column into a well to place it there.`}</Text>
+        <Stack gap="sm">
           {filtered.map((opt) => (
             <Box
               key={opt.value}
@@ -97,7 +94,7 @@ export function ListViewColumnsCustomization({
                 align="center"
                 justify="space-between"
               >
-                <Text size="sm">{opt.label}</Text>
+                <Text>{opt.label}</Text>
                 <Icon name="grabber" size={14} c="text-medium" />
               </Group>
             </Box>
