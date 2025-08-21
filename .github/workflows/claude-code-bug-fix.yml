@@ -10,6 +10,11 @@ on:
         description: "Issue number to fix"
         required: true
         type: string
+      override_employee_check:
+        description: "Override employee check for issue creator"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   check-employee-and-issue:
@@ -55,11 +60,66 @@ jobs:
               issueData = data;
             }
 
+            // Fetch issue comments
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            // Filter comments to only include those by Metabase employees
+            const employeeComments = [];
+            const membershipCache = new Map(); // Cache to avoid duplicate API calls
+            
+            for (const comment of comments) {
+              const username = comment.user.login;
+              
+              // Check cache first
+              if (membershipCache.has(username)) {
+                const isEmployee = membershipCache.get(username);
+                if (isEmployee) {
+                  employeeComments.push(comment);
+                  console.log(`Including comment by employee (cached): ${username}`);
+                } else {
+                  console.log(`Skipping comment by non-employee (cached): ${username}`);
+                }
+                continue;
+              }
+              
+              // Not in cache, check membership
+              try {
+                const { data: membership } = await github.rest.orgs.getMembershipForUser({
+                  org: 'metabase',
+                  username: username
+                });
+                
+                const isEmployee = membership.state === 'active';
+                membershipCache.set(username, isEmployee);
+                
+                if (isEmployee) {
+                  employeeComments.push(comment);
+                  console.log(`Including comment by employee: ${username}`);
+                } else {
+                  console.log(`Skipping comment by non-employee: ${username}`);
+                }
+              } catch (error) {
+                if (error.status === 404) {
+                  membershipCache.set(username, false);
+                  console.log(`Skipping comment by non-employee: ${username}`);
+                } else {
+                  console.error(`Error checking membership for ${username}:`, error);
+                  // Don't cache errors, try again next time
+                }
+              }
+            }
+
             core.setOutput('issue_number', issueNumber);
             core.setOutput('issue_data', JSON.stringify(issueData));
+            core.setOutput('issue_comments', JSON.stringify(employeeComments));
 
             console.log(`Issue #${issueNumber}: ${issueData.title}`);
             console.log(`Issue author: ${issueData.user.login}`);
+            console.log(`Issue has ${comments.length} total comments, ${employeeComments.length} from employees`);
 
       - name: Check if issue creator is a Metabase employee
         id: check_employee
@@ -71,6 +131,14 @@ jobs:
           script: |
             const issueData = JSON.parse(process.env.ISSUE_DATA);
             const issueAuthor = issueData.user.login;
+            const overrideEmployeeCheck = '${{ github.event.inputs.override_employee_check }}' === 'true';
+
+            // Check if we should override the employee check (only for workflow_dispatch)
+            if (context.eventName === 'workflow_dispatch' && overrideEmployeeCheck) {
+              console.log(`Employee check overridden for issue creator: ${issueAuthor}. Proceeding with bug fix automation.`);
+              core.setOutput('is_employee', 'true');
+              return;
+            }
 
             try {
               // Check if user is a member of the metabase organization (including private members)
@@ -104,7 +172,7 @@ jobs:
       pull-requests: write
       id-token: write
     needs: check-employee-and-issue
-    if: needs.check-employee-and-issue.outputs.is_employee == 'true'
+    if: needs.check-employee-and-issue.outputs.is_employee == 'true' || github.event.inputs.override_employee_check == 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -122,9 +190,11 @@ jobs:
         uses: actions/github-script@v7
         env:
           ISSUE_DATA: ${{ needs.check-employee-and-issue.outputs.issue_data }}
+          ISSUE_COMMENTS: ${{ needs.check-employee-and-issue.outputs.issue_comments }}
         with:
           script: |
             const issueData = JSON.parse(process.env.ISSUE_DATA);
+            const issueComments = JSON.parse(process.env.ISSUE_COMMENTS);
             const issueNumber = '${{ needs.check-employee-and-issue.outputs.issue_number }}';
 
             // Convert issue title to kebab case
@@ -146,6 +216,15 @@ jobs:
             core.exportVariable('ISSUE_AUTHOR', issueData.user.login);
             core.exportVariable('ISSUE_CREATED', issueData.created_at);
             core.exportVariable('ISSUE_BODY', issueData.body || 'No description provided');
+
+            // Format comments for the prompt
+            let commentsText = '';
+            if (issueComments.length > 0) {
+              commentsText = issueComments.map(comment => 
+                `**Comment by @${comment.user.login} on ${comment.created_at}:**\n${comment.body}`
+              ).join('\n\n---\n\n');
+            }
+            core.exportVariable('ISSUE_COMMENTS_FORMATTED', commentsText);
 
       - name: Determine branch strategy
         run: |
@@ -182,8 +261,12 @@ jobs:
           **Description:**
           ${{ env.ISSUE_BODY }}
 
+          **Comments:**
+          ${{ env.ISSUE_COMMENTS_FORMATTED }}
+
           ## Instructions
-          1. **Analyze the bug report** - Understand what the issue is describing
+          1. **Analyze the issue description and comments** - Understand what the issue is describing
+            a. Pay particular attention to reproduction steps and if there's an agreed upon fix. 
           2. **Search the codebase** - Use Grep and Glob tools to find relevant files
           3. **Implement a fix** - Follow existing code patterns and conventions
           4. **Test the fix** - Run appropriate tests using the commands in CLAUDE.md:
