@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
@@ -84,7 +86,7 @@ describe("DashCardCardParameterMapper", () => {
 
   describe("Virtual cards", () => {
     it("should render an informative parameter mapping state for link cards without variables", () => {
-      const dashcard = createMockLinkDashboardCard({ size_y: 3 });
+      const dashcard = createMockLinkDashboardCard({ size_x: 4, size_y: 4 });
       setup({
         dashcard,
       });
@@ -97,7 +99,7 @@ describe("DashCardCardParameterMapper", () => {
     });
 
     it("should render an informative parameter mapping state for text cards without variables", () => {
-      const textCard = createMockTextDashboardCard({ size_y: 3 });
+      const textCard = createMockTextDashboardCard({ size_x: 4, size_y: 4 });
       setup({
         dashcard: textCard,
       });
@@ -110,7 +112,7 @@ describe("DashCardCardParameterMapper", () => {
     });
 
     it("should render an informative parameter mapping state for iframe cards without variables", () => {
-      const textCard = createMockIFrameDashboardCard({ size_y: 3 });
+      const textCard = createMockIFrameDashboardCard({ size_x: 4, size_y: 4 });
       setup({
         dashcard: textCard,
       });
@@ -323,8 +325,27 @@ describe("DashCardCardParameterMapper", () => {
   });
 
   describe("Action parameter", () => {
-    it("should show action parameter warning if an action parameter is used", () => {
+    it("should show action parameter warning if an action parameter is used - small card", async () => {
       const dashcard = createMockActionDashboardCard();
+
+      setup({
+        card: dashcard.card,
+        dashcard,
+        target: ["variable", ["template-tag", "source"]],
+      });
+
+      const infoIcon = getIcon("info");
+      expect(infoIcon).toBeInTheDocument();
+
+      await userEvent.hover(infoIcon);
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Action parameters only accept a single value. They do not support dropdown lists",
+      );
+    });
+
+    it("should show action parameter warning if an action parameter is used - big card", () => {
+      const dashcard = createMockActionDashboardCard({ size_x: 6, size_y: 6 });
 
       setup({
         card: dashcard.card,
