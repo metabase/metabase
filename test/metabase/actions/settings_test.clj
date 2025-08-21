@@ -15,14 +15,13 @@
       (or (some->> (:setting/disabled-reasons (ex-data e)) (map :key))
           (throw e)))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- can-configure-data-editing-for-db? [db]
   (try
     (let [driver-support? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
       (setting/validate-settable-for-db! :database-enable-table-editing db driver-support?))
     true
     (catch Exception _
-      (when (:metadata-provider (ex-data _))
-        (.printStackTrace _))
       false)))
 
 (deftest database-enable-table-editing-enabled-for-db?-test
