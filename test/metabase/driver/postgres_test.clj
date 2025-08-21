@@ -1760,3 +1760,50 @@
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                              driver/*driver* conn schema table-name))))))))))))
+
+(deftest sync-writable-test
+  (mt/test-driver :postgres
+    (testing "`sync-tables-and-database!` should set is_writable correctly based on table privileges"
+      (let [db-name "sync_writable_test"
+            details (tx/dbdef->connection-details :postgres :db {:database-name db-name})]
+        (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+          (try
+            (jdbc/execute! conn "CREATE SCHEMA IF NOT EXISTS sync_test_schema")
+
+            (doseq [stmt ["CREATE TABLE sync_test_schema.readonly_table (id INTEGER);"
+                          "CREATE TABLE sync_test_schema.readwrite_table (id INTEGER);"
+                          "CREATE TABLE sync_test_schema.fullaccess_table (id INTEGER);"]]
+              (jdbc/execute! conn stmt))
+
+            (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user")
+            (jdbc/execute! conn "CREATE USER sync_writable_test_user WITH PASSWORD 'password'")
+
+            (jdbc/execute! conn "GRANT USAGE ON SCHEMA sync_test_schema TO sync_writable_test_user")
+
+            (jdbc/execute! conn "GRANT SELECT ON sync_test_schema.readonly_table TO sync_writable_test_user")
+            (jdbc/execute! conn "GRANT SELECT, INSERT ON sync_test_schema.readwrite_table TO sync_writable_test_user")
+            (jdbc/execute! conn "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_test_schema.fullaccess_table TO sync_writable_test_user")
+
+            (let [user-connection-details (assoc details
+                                                 :user "sync_writable_test_user"
+                                                 :password "password")]
+              (mt/with-temp [:model/Database database {:engine "postgres", :details user-connection-details}]
+                (sync/sync-database! database)
+                (testing "only fullaccess table has writeable permissions"
+                  (is (= {"readonly_table"   false
+                          "readwrite_table"  false
+                          "fullaccess_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
+                (testing "After granting full access to all tables and re-syncing"
+                  (doseq [table-name ["readonly_table" "readwrite_table"]]
+                    (jdbc/execute! conn (format "GRANT INSERT, UPDATE, DELETE ON sync_test_schema.%s TO sync_writable_test_user" table-name)))
+                  (sync/sync-database! database)
+                  (is (= {"readonly_table"   true
+                          "readwrite_table"  true
+                          "fullaccess_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))))
+            (finally
+              (jdbc/execute! conn "DROP SCHEMA IF EXISTS sync_test_schema CASCADE")
+              (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user"))))))))

@@ -353,6 +353,18 @@
       (is (= {:is_full_sync false}
              (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync]))))))
 
+(deftest create-db-provider-name-test
+  (testing "POST /api/database"
+    (testing "can we set `provider_name` when creating a Database?"
+      (is (= {:provider_name "AWS RDS"}
+             (select-keys (create-db-via-api! {:provider_name "AWS RDS"}) [:provider_name]))))
+    (testing "provider_name is optional and can be nil"
+      (is (= {:provider_name nil}
+             (select-keys (create-db-via-api! {}) [:provider_name]))))
+    (testing "can explicitly set provider_name to nil"
+      (is (= {:provider_name nil}
+             (select-keys (create-db-via-api! {:provider_name nil}) [:provider_name]))))))
+
 (deftest create-db-ignore-schedules-if-no-manual-sync-test
   (testing "POST /api/database"
     (testing "if `:let-user-control-scheduling` is false it will ignore any schedules provided"
@@ -544,6 +556,21 @@
             (let [curr-db (t2/select-one [:model/Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
 
+(deftest update-database-provider-name-test
+  (testing "PUT /api/database/:id"
+    (testing "should be able to set and unset `provider_name`"
+      (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
+        (let [updates1 {:provider_name "AWS RDS"}
+              updates2 {:provider_name nil}
+              updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
+              updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
+          (updates1!)
+          (let [curr-db (t2/select-one [:model/Database :provider_name], :id db-id)]
+            (is (= "AWS RDS" (:provider_name curr-db))))
+          (updates2!)
+          (let [curr-db (t2/select-one [:model/Database :provider_name], :id db-id)]
+            (is (= nil (:provider_name curr-db)))))))))
+
 (deftest update-database-audit-log-test
   (testing "Check that we get audit log entries that match the db when updating a Database"
     (mt/with-premium-features #{:audit-app}
@@ -639,7 +666,7 @@
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :created_at :updated_at] :id (mt/id :categories))
+                                    (t2/select-one [:model/Table :created_at :updated_at :is_writable] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"

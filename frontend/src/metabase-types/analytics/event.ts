@@ -219,7 +219,8 @@ export type DashboardFilterMovedEvent = ValidateEvent<{
 export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
-  | "exploration";
+  | "exploration"
+  | "browser";
 
 export type EmbedWizardExperienceSelectedEvent = ValidateEvent<{
   event: "embed_wizard_experience_selected";

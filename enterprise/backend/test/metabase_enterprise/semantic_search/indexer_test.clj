@@ -19,16 +19,6 @@
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
-(defn- open-metadata! ^Closeable [pgvector index-metadata]
-  (semantic.tu/closeable
-   (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
-   (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))))
-
-(defn- open-index! ^Closeable [pgvector index]
-  (semantic.tu/closeable
-   (semantic.index/create-index-table-if-not-exists! pgvector index)
-   (fn [_] (semantic.index/drop-index-table! pgvector index))))
-
 (defn- get-metadata-row! [pgvector index-metadata index]
   (jdbc/execute-one! pgvector
                      (sql/format {:select [:*]
@@ -53,8 +43,8 @@
         c3             {:model "card" :id "3" :name "Collie" :searchable_text "Dog Training Guide 3"}
         version        semantic.gate/search-doc->gate-doc
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))]
-    (with-open [_ (open-metadata! pgvector index-metadata)
-                _ (open-index! pgvector index)]
+    (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
+                _ (semantic.tu/open-index! pgvector index)]
       (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
 
       (let [metadata-row      (get-metadata-row! pgvector index-metadata index)
@@ -283,8 +273,8 @@
         t1             (ts "2025-01-01T00:01:00Z")
         c1             {:model "card" :id "1" :name "Dog" :searchable_text "Dog Training Guide"}
         version        semantic.gate/search-doc->gate-doc]
-    (with-open [_ (open-metadata! pgvector index-metadata)
-                _ (open-index! pgvector index)]
+    (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
+                _ (semantic.tu/open-index! pgvector index)]
       (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
 
       (testing "exits immediately after max run duration elapses"
