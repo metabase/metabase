@@ -13,7 +13,6 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         label: t`Create an embed`,
         to: "/embed-js",
         variant: "outline",
-        adminOnly: true,
       },
     ],
   };
@@ -22,7 +21,8 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     id: "add-data",
     title: t`Add your data`,
     icon: "add_data",
-    description: t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor. \${applicationName} connects to more than 15 popular databases.`,
+    // eslint-disable-next-line no-literal-metabase-strings -- only shown to admins.
+    description: t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor. Metabase connects to more than 15 popular databases.`,
     image: {
       src: "app/assets/img/onboarding_data_diagram.png",
       srcSet: "app/assets/img/onboarding_data_diagram@2x.png 2x",
@@ -33,13 +33,6 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         label: t`Add Database`,
         to: "/admin/databases/create",
         variant: "outline",
-        adminOnly: true,
-      },
-      {
-        label: t`Upload a CSV`,
-        to: "/admin/databases",
-        variant: "subtle",
-        adminOnly: true,
       },
     ],
   };
@@ -52,9 +45,8 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     actions: [
       {
         label: t`Create dashboard`,
-        to: "/dashboard/new",
+        to: "/admin/databases",
         variant: "outline",
-        adminOnly: true,
       },
     ],
   };
@@ -67,9 +59,9 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     actions: [
       {
         label: t`Configure permissions`,
-        to: "/admin/permissions",
+        // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
+        href: "https://www.metabase.com/docs/latest/permissions/sandboxing",
         variant: "outline",
-        adminOnly: true,
       },
     ],
   };
@@ -82,15 +74,14 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     actions: [
       {
         label: t`Configure embedding`,
-        to: "/admin/settings/embedding-in-other-applications",
+        // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
+        href: "https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-jwt",
         variant: "outline",
-        adminOnly: true,
       },
       {
         label: t`Manage users`,
         to: "/admin/people",
         variant: "subtle",
-        adminOnly: true,
       },
     ],
   };
@@ -103,15 +94,13 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     actions: [
       {
         label: t`View implementation guide`,
-        href: "/docs/embedding/introduction", // This will be replaced by the selector in the component
+        to: "/embed-js",
         variant: "outline",
-        showWhenMetabaseLinksEnabled: true,
       },
       {
         label: t`Review settings`,
         to: "/admin/settings/embedding-in-other-applications",
         variant: "subtle",
-        adminOnly: true,
       },
     ],
   };

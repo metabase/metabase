@@ -28,8 +28,8 @@ export const EmbeddingHub = () => {
   const embedJsDocsUrl = useDocsUrl("embedding/embedded-analytics-js");
 
   return (
-    <Box mih="100%" px="lg" py="xl">
-      <Box maw={592} m="0 auto">
+    <Box mih="100%" px="lg" py="xl" bg="bg-white">
+      <Box maw={600} mx="auto">
         <Title order={1} mb="sm" c="text-dark">{t`Embedding hub`}</Title>
 
         <Text mb="xl" c="text-medium">
