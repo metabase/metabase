@@ -126,7 +126,7 @@
 
 (mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  ^bytes [query :- [:maybe ::qp.schema/any-query]]
+  ^bytes [query :- [:maybe :map]]
   ;; convert to pMBQL first if this is a legacy query.
   (let [query (try
                 ;; Expression type check supression is necessary because coerced fields in `query` may not have
