@@ -1,15 +1,22 @@
-name: E2E Cross-version Component Tests for Embedding SDK
+# Thi workflow does the backward compatibility tests
+# between the Embedding SDK package of version N and Embedding SDK Bundle of version N - 1
+# N - 1 is a target of a PR
+name: Embedding SDK backward-compatibility E2E Component Tests
 
 on:
   workflow_call:
+    inputs:
+      cached-embedding-sdk-dist-artifact-name:
+        required: true
+        type: string
 
 jobs:
   files-changed:
-    name: "SDK cross-version E2E > Check which files changed"
+    name: "SDK backward-compatibility E2E > Check which files changed"
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -19,11 +26,31 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
+  decide-target-ref:
+    runs-on: ubuntu-latest
+    outputs:
+      target-ref: ${{ steps.get-target-ref.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Decide ref to checkout
+        id: get-target-ref
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "value=${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"
+          fi
+
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
-    name: "SDK cross-version E2E > [Backport only] Get build requirements"
+    name: "SDK backward-compatibility E2E > [Backport only] Get build requirements"
+    needs: [decide-target-ref]
     if: |
-      !cancelled()
+      !cancelled() &&
+      contains(github.base_ref || github.ref, 'release-x')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
@@ -32,6 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ needs.decide-target-ref.outputs.target-ref }}
           sparse-checkout: release
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && yarn && yarn build
@@ -54,76 +82,12 @@ jobs:
               node_version: requirements.node,
             };
 
-  build:
-    name: "SDK cross-version E2E > Build uberjar"
-    needs: [files-changed, get-build-requirements]
-    if: |
-      !cancelled()
-    runs-on: ubuntu-22.04
-    timeout-minutes: 25
-    env:
-      MB_EDITION: ee
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 11 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-cross-version
-
-  resolve-sdk-version:
-    name: "SDK cross-version E2E > Resolve SDK version"
-    if: |
-      !cancelled()
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    outputs:
-      sdk_version: ${{ fromJson(steps.dependencies.outputs.result).sdk_version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
-      - name: Get latest SDK release for this branch
-        uses: actions/github-script@v7
-        id: dependencies
-        with:
-          script: | # js
-            const { getSdkVersionFromReleaseBranchName } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const branchName = '${{ github.base_ref || github.ref }}';
-
-            const sdk_version = await getSdkVersionFromReleaseBranchName({
-              github,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              branchName,
-            });
-
-            return {
-              sdk_version,
-            };
-
   e2e-tests:
-    name: "SDK cross-version E2E > Run e2e tests"
-    needs: [get-build-requirements, build, resolve-sdk-version]
+    name: "SDK backward-compatibility E2E > Run e2e tests"
+    needs: [files-changed, decide-target-ref, get-build-requirements]
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() &&
+      needs.files-changed.outputs.e2e_embedding_sdk == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
@@ -142,44 +106,32 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      # Needed to omit newly added tests for functionality that is not yet released
-      - name: Sparse checkout tests from SDK release commit
-        uses: actions/checkout@v4
         with:
-          ref: embedding-sdk-${{ needs.resolve-sdk-version.outputs.sdk_version }}
-          path: sdk-release-e2e
-          sparse-checkout: e2e
+          ref: ${{ needs.decide-target-ref.outputs.target-ref }}
 
-      - name: Move tests from the release commit into the repo
-        run: |
-          rm -rf ./e2e/support/*
-          mv ./sdk-release-e2e/e2e/support/* ./e2e/support
-
-          rm -rf ./e2e/test-component/*
-          mv ./sdk-release-e2e/e2e/test-component/* ./e2e/test-component
-        shell: bash
-
-      - name: Retrieve uberjar artifact for ee
-        uses: actions/download-artifact@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-cross-version
+          m2-cache-key: uberjar
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-
-      - name: Prepare JDK ${{ needs.get-build-requirements.outputs.java_version || 11 }}
-        uses: actions/setup-java@v4
         with:
-          java-version: ${{ needs.get-build-requirements.outputs.java_version || 11 }}
-          distribution: "temurin"
+          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+
+      - name: Build uberjar with ./bin/build.sh
+        run: ./bin/build.sh
+
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.cached-embedding-sdk-dist-artifact-name }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
 
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
-
-      - name: Install Embedding SDK package v${{ needs.resolve-sdk-version.outputs.sdk_version }}
-        run: yarn add @metabase/embedding-sdk-react@${{ needs.resolve-sdk-version.outputs.sdk_version }}
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
