@@ -1,13 +1,16 @@
+import cx from "classnames";
 import { useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import { Box, Text, Title, rem } from "metabase/ui";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import { useDocsUrl } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
+import { Box, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
 import { getEmbeddingSteps } from "../utils";
 
 import { EmbeddingChecklist } from "./EmbeddingChecklist";
-import S from "./EmbeddingChecklist/EmbeddingChecklist.module.css";
 
 export const EmbeddingHub = () => {
   const completedSteps = useCompletedEmbeddingHubSteps();
@@ -18,21 +21,20 @@ export const EmbeddingHub = () => {
     (step) => !completedSteps[step.id],
   );
 
-  const defaultOpenStep = firstUncompletedStep?.id; // undefined means all collapsed if all completed
+  // This will be undefined when every step has been completed.
+  const defaultOpenStep = firstUncompletedStep?.id;
+
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
+  const embedJsDocsUrl = useDocsUrl("embedding/embedded-analytics-js");
 
   return (
-    <Box
-      mih="100%"
-      className={S.page}
-      px={{ base: "md", md: "lg", lg: rem(48) }}
-      pt="xl"
-      pb={212}
-    >
+    <Box mih="100%" px="lg" py="xl">
       <Box maw={592} m="0 auto">
         <Title order={1} mb="sm" c="text-dark">{t`Embedding hub`}</Title>
 
         <Text mb="xl" c="text-medium">
-          {t`Get started with Embedded Analytics JS`}
+          {c("{0} is the link to the selected embedding type.")
+            .jt`Get started with ${(<ExternalLink href={embedJsDocsUrl?.url} className={cx(CS.textBold, CS.link)}>{t`Embedded Analytics JS`}</ExternalLink>)}.`}
         </Text>
 
         <EmbeddingChecklist

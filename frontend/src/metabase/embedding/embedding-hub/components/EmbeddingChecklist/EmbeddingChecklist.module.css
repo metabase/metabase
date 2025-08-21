@@ -1,14 +1,3 @@
-/* Duplicated styles from Onboarding.module.css */
-.page {
-  background-color: var(--mb-base-color-white);
-
-  @media screen and (--breakpoint-min-lg) {
-    background-image: url("~assets/img/onboarding_bg.svg");
-    background-repeat: no-repeat;
-    background-position: bottom right;
-  }
-}
-
 .item:not([data-css-specificity-hack="🪗"]) {
   &,
   & + &,
