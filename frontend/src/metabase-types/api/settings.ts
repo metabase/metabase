@@ -266,6 +266,7 @@ export const tokenFeatures = [
   "embedding",
   "embedding_sdk",
   "embedding_simple",
+  "embedding_hub",
   "hosting",
   "official_collections",
   "sandboxes",
