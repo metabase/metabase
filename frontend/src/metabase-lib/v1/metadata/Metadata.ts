@@ -6,7 +6,6 @@ import type {
   FieldId,
   FieldReference,
   NativeQuerySnippet,
-  NativeQuerySnippetId,
   SchemaId,
   SegmentId,
   SettingKey,
@@ -159,15 +158,6 @@ class Metadata {
     }
 
     return null;
-  }
-
-  nativeQuerySnippet(
-    snippetId: NativeQuerySnippetId | undefined | null,
-  ): NativeQuerySnippet | null {
-    if (snippetId == null) {
-      return null;
-    }
-    return this.snippets[snippetId] ?? null;
   }
 
   setting<T extends SettingKey>(key: T): Settings[T] | null {
