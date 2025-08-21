@@ -121,6 +121,27 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v57.2025-08-15T10:00:00
+      author: qnkhuat
+      comment: Add metabase_table.is_writable
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: is_writable
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_writable
+                  type: ${boolean.type}
+                  remarks: true if current connection can insert, update and delete rows from this table
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v57.2025-08-21T12:00:00
       author: edpaget
       comment: Create document table
