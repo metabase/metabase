@@ -648,7 +648,7 @@
                                        :regular-docs-count (count regular-docs)
                                        :time-ms time-ms})
 
-    (analytics/inc! :metabase-search/permission-filtering-ms time-ms)
+    (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
 
     result))
 

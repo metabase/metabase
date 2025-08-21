@@ -346,7 +346,7 @@
                 (semantic.index/query-index semantic.tu/db semantic.tu/mock-index
                                             {:search-string "dog training"}))
 
-              (let [permission-calls (filter #(= :metabase-search/permission-filtering-ms (first %)) @analytics-calls)]
+              (let [permission-calls (filter #(= :metabase-search/semantic-permission-filter-ms (first %)) @analytics-calls)]
                 (is (= 1 (count permission-calls)))
                 (let [time-ms (first (second (first permission-calls)))]
                   (is (number? time-ms))
@@ -363,7 +363,7 @@
                 (is (contains? metric-names :metabase-search/semantic-search-ms))
                 (is (contains? metric-names :metabase-search/semantic-embedding-ms))
                 (is (contains? metric-names :metabase-search/semantic-db-query-ms))
-                (is (contains? metric-names :metabase-search/permission-filtering-ms))
+                (is (contains? metric-names :metabase-search/semantic-permission-filter-ms))
                 (is (contains? metric-names :metabase-search/semantic-collection-filter-ms))
                 (is (contains? metric-names :metabase-search/semantic-appdb-scores-ms)))
 
@@ -372,10 +372,10 @@
                         :when (#{:metabase-search/semantic-search-ms
                                  :metabase-search/semantic-embedding-ms
                                  :metabase-search/semantic-db-query-ms
-                                 :metabase-search/permission-filtering-ms
+                                 :metabase-search/semantic-permission-filter-ms
                                  :metabase-search/semantic-collection-filter-ms
                                  :metabase-search/semantic-appdb-scores-ms} metric)]
-                  (let [time-ms (if (#{:metabase-search/permission-filtering-ms
+                  (let [time-ms (if (#{:metabase-search/semantic-permission-filter-ms
                                        :metabase-search/semantic-collection-filter-ms
                                        :metabase-search/semantic-appdb-scores-ms}
                                      metric)
