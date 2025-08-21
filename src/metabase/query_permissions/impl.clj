@@ -243,16 +243,14 @@
         (if throw-exceptions? (throw e) (log/error e)))
       {:perms/create-queries {0 :query-builder}}))) ; table 0 will never exist
 
-(defn- pmbql-required-perms
-  "For pMBQL queries: for now, just convert it to legacy by running it thru the QP preprocessor, then hand off to the
+(defn- mbql-5-required-perms
+  "For MBQL 5 queries: for now, just convert it to legacy then hand off to the
   legacy implementation(s) of [[required-perms]]."
   [query perms-opts]
-  (let [query        (lib/normalize query)
-        ;; convert it to legacy by running it thru the QP preprocessor.
-        legacy-query (preprocess-query query)]
-    (assert (#{:query :native} (:type legacy-query))
-            (format "Expected QP preprocessing to return legacy MBQL query, got: %s" (pr-str legacy-query)))
-    (legacy-mbql-required-perms legacy-query perms-opts)))
+  (-> query
+      lib/normalize
+      lib/->legacy-MBQL
+      (legacy-mbql-required-perms perms-opts)))
 
 (defn required-perms-for-query
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys
@@ -264,7 +262,7 @@
       (case query-type
         :native     (native-query-perms query)
         :query      (legacy-mbql-required-perms query perms-opts)
-        :mbql/query (pmbql-required-perms query perms-opts)
+        :mbql/query (mbql-5-required-perms query perms-opts)
         (throw (ex-info (tru "Invalid query type: {0}" query-type)
                         {:query query}))))))
 
