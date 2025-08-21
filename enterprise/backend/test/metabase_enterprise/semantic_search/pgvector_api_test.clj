@@ -163,7 +163,7 @@
     (let [pgvector       semantic.tu/db
           index-metadata (semantic.tu/unique-index-metadata)
           model1         semantic.tu/mock-embedding-model
-          model2         (assoc semantic.tu/mock-embedding-model :model-name "judge-embedd")
+          model2         (assoc semantic.tu/mock-embedding-model :model-name "judge-embed")
           remove-scores  (fn [rows] (mapv #(dissoc % :score :all-scores) rows)) ; scores have time-sensitives components
           sut*           semantic.pgvector-api/query
           sut            #(remove-scores (:results (mt/as-admin (apply sut* %&)))) ; see notes below about perms
