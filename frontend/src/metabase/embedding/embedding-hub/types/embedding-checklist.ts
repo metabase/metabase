@@ -13,15 +13,26 @@ export interface EmbeddingHubStep {
   title: string;
   icon: IconName;
   description: string;
-  image?: {
-    src: string;
-    srcSet?: string;
-    alt: string;
-  };
-  actions?: Array<{
-    label: string;
-    to?: string;
-    docsPath?: string;
-    variant?: "outline" | "subtle" | "filled";
-  }>;
+
+  image?: EmbeddingHubImage;
+  actions?: EmbeddingHubAction[];
+}
+
+interface EmbeddingHubAction {
+  label: string;
+
+  /** Internal link to a Metabase route. */
+  to?: string;
+
+  /** Path of the documentation page, e.g. `embedding/embedded-analytics-js` */
+  docsPath?: string;
+
+  /** CTA button variant. */
+  variant?: "outline" | "subtle" | "filled";
+}
+
+interface EmbeddingHubImage {
+  src: string;
+  srcSet?: string;
+  alt: string;
 }

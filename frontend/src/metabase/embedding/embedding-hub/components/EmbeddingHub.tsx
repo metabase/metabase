@@ -16,15 +16,13 @@ export const EmbeddingHub = () => {
   const embeddingSteps = useMemo(() => getEmbeddingHubSteps(), []);
   const completedSteps = useCompletedEmbeddingHubSteps();
 
-  // Find the first unchecked step to open by default
+  // Find the first unchecked step to open by default.
+  // This is undefined when every step has been completed.
   const firstUncompletedStep = embeddingSteps.find(
     (step) => !completedSteps[step.id],
   );
 
-  // This will be undefined when every step has been completed.
-  const defaultOpenStep = firstUncompletedStep?.id;
-
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- This link only shows for admins.
   const embedJsDocsUrl = useDocsUrl("embedding/embedded-analytics-js");
 
   return (
@@ -40,7 +38,7 @@ export const EmbeddingHub = () => {
         <EmbeddingChecklist
           steps={embeddingSteps}
           completedSteps={completedSteps}
-          defaultOpenStep={defaultOpenStep}
+          defaultOpenStep={firstUncompletedStep?.id}
         />
       </Box>
     </Box>

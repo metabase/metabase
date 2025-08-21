@@ -39,7 +39,7 @@ export const EmbeddingChecklist = ({
       return <Icon name="check" c="var(--mb-color-success)" />;
     }
 
-    return <Icon name={step.icon as any} />;
+    return <Icon name={step.icon} />;
   };
 
   const renderStepActions = (step: EmbeddingHubStep) => {
@@ -51,7 +51,7 @@ export const EmbeddingChecklist = ({
       <Group gap="sm">
         {step.actions.map((action, index) => {
           const button = (
-            <Button variant={action.variant || "outline"}>
+            <Button variant={action.variant ?? "outline"}>
               {action.label}
             </Button>
           );
