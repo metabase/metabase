@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
+   [macaw.core :as macaw]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -10,6 +11,7 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -895,3 +897,31 @@
   [_driver database]
   ;; For BigQuery, return the database details directly since we don't use JDBC
   (:details database))
+
+(defmethod driver.sql/default-schema :bigquery-cloud-sdk
+  [_]
+  nil)
+
+;; TODO(rileythomp, 2025-08-21): This is duplicated across mysql and clickhouse
+;; Maybe we should have this dispatch on quote style
+(defmethod driver.sql/normalize-name :bigquery-cloud-sdk
+  [_driver name-str]
+  (if (and (= (first name-str) \`)
+           (= (last name-str) \`))
+    (-> name-str
+        (subs 1 (dec (count name-str)))
+        (str/replace #"\"\"" "\""))
+    (u/lower-case-en name-str)))
+
+(defmethod driver/native-query-deps :bigquery-cloud-sdk
+  [driver query]
+  (->> query
+       macaw/parsed-query
+       macaw/query->components
+       :tables
+       (map :component)
+       (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
+       (map #(let [parts (str/split (:table %) #"\.")]
+               {:schema (first parts) :table (second parts)}))
+       (keep #(driver.sql/find-table driver %))
+       set))

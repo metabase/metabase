@@ -9,6 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -65,12 +66,12 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           ;; TODO(rileythomp, 2025-08-20): Primary key is only needed by some drivers
-           ;; Maybe we should make driver methods responsible for getting it
-           ;; But then we'll need to make extra t2 calls or pass through more stuff like the database
+           ;; TODO(rileythomp, 2025-08-20): `:primary-key` is only needed by some drivers like clickhouse
+           ;; Maybe we should make the [[driver/run-transform!]] methods responsible for getting it
+           ;; But then we'd need to make extra t2 calls or pass through more stuff like the database
            table-id (get-in source [:query :query :source-table])
            table (t2/select-one :model/Table table-id)
-           table-fields (:fields (driver/describe-table driver database table))
+           table-fields (fetch-metadata/table-fields-metadata database table)
            primary-field (:name (or (first (filter :pk? table-fields))
                                     (first (sort-by :database-position table-fields))))
            transform-details {:transform-type (keyword (:type target))
