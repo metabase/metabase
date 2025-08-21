@@ -10,7 +10,7 @@ import { Box, Text, Title } from "metabase/ui";
 import { useCompletedEmbeddingHubSteps } from "../hooks";
 import { getEmbeddingHubSteps } from "../utils";
 
-import { EmbeddingChecklist } from "./EmbeddingChecklist";
+import { EmbeddingHubChecklist } from "./EmbeddingHubChecklist";
 
 export const EmbeddingHub = () => {
   const embeddingSteps = useMemo(() => getEmbeddingHubSteps(), []);
@@ -35,7 +35,7 @@ export const EmbeddingHub = () => {
             .jt`Get started with ${(<ExternalLink href={embedJsDocsUrl?.url} className={cx(CS.textBold, CS.link)}>{t`Embedded Analytics JS`}</ExternalLink>)}.`}
         </Text>
 
-        <EmbeddingChecklist
+        <EmbeddingHubChecklist
           steps={embeddingSteps}
           completedSteps={completedSteps}
           defaultOpenStep={firstUncompletedStep?.id}
