@@ -433,7 +433,7 @@
                                    [:field (meta/id :venues :price) {:base-type               :type/Text
                                                                      :source-field            (meta/id :checkins :venue-id)
                                                                      :source-field-join-alias "CH"}]
-                                   "Basic"]}))]
+                                   "1234"]}))]
       (is (=? {:query {:source-query {:source-table (meta/id :orders)
                                       :fields       [[:field (meta/id :orders :id)         nil]
                                                      [:field (meta/id :orders :user-id)    nil]
@@ -483,7 +483,7 @@
                                        (meta/id :venues :price)
                                        {:source-field-join-alias "CH"
                                         :join-alias              "VENUES__via__VENUE_ID__via__CH"}]
-                                      [:value "Basic" {}]]}}
+                                      [:value "1234" {}]]}}
               (-> query
                   qp.preprocess/preprocess
                   lib/->legacy-MBQL))))))

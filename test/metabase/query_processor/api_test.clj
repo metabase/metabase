@@ -319,7 +319,7 @@
               (is (= 101
                      (count (csv/read-csv result)))))))))))
 
-(deftest export-with-remapped-fields
+(deftest ^:parallel export-with-remapped-fields
   (testing "POST /api/dataset/:format"
     (testing "Downloaded CSV/JSON/XLSX results should respect remapped fields (#18440)"
       (let [query {:database (mt/id)

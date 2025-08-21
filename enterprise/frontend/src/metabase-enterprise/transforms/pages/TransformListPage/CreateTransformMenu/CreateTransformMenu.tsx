@@ -2,14 +2,17 @@ import { useDisclosure } from "@mantine/hooks";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import {
+  type QuestionPickerItem,
   QuestionPickerModal,
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
-import { Button, Icon, Menu } from "metabase/ui";
+import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
 import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
+import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 
 import {
   getNewTransformFromCardUrl,
@@ -33,6 +36,10 @@ export function CreateTransformMenu() {
     dispatch(push(getNewTransformFromCardUrl(item.id)));
   };
 
+  const { data: databases, isLoading } = useListDatabasesQuery({
+    include_analytics: true,
+  });
+
   return (
     <>
       <Menu>
@@ -45,39 +52,47 @@ export function CreateTransformMenu() {
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Label>{t`Create your transform with…`}</Menu.Label>
-          <Menu.Item
-            component={ForwardRefLink}
-            to={getNewTransformFromTypeUrl("query")}
-            leftSection={<Icon name="notebook" />}
-            onClick={() => {
-              trackTransformCreate({
-                triggeredFrom: "transform-page-create-menu",
-                creationType: "query",
-              });
-            }}
-          >
-            {t`Query builder`}
-          </Menu.Item>
-          <Menu.Item
-            component={ForwardRefLink}
-            to={getNewTransformFromTypeUrl("native")}
-            leftSection={<Icon name="sql" />}
-            onClick={() => {
-              trackTransformCreate({
-                triggeredFrom: "transform-page-create-menu",
-                creationType: "native",
-              });
-            }}
-          >
-            {t`SQL query`}
-          </Menu.Item>
-          <Menu.Item
-            leftSection={<Icon name="folder" />}
-            onClick={handleSavedQuestionClick}
-          >
-            {t`A saved question`}
-          </Menu.Item>
+          {isLoading ? (
+            <Center>
+              <Loader size="sm" />
+            </Center>
+          ) : (
+            <>
+              <Menu.Label>{t`Create your transform with…`}</Menu.Label>
+              <Menu.Item
+                component={ForwardRefLink}
+                to={getNewTransformFromTypeUrl("query")}
+                leftSection={<Icon name="notebook" />}
+                onClick={() => {
+                  trackTransformCreate({
+                    triggeredFrom: "transform-page-create-menu",
+                    creationType: "query",
+                  });
+                }}
+              >
+                {t`Query builder`}
+              </Menu.Item>
+              <Menu.Item
+                component={ForwardRefLink}
+                to={getNewTransformFromTypeUrl("native")}
+                leftSection={<Icon name="sql" />}
+                onClick={() => {
+                  trackTransformCreate({
+                    triggeredFrom: "transform-page-create-menu",
+                    creationType: "native",
+                  });
+                }}
+              >
+                {t`SQL query`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<Icon name="folder" />}
+                onClick={handleSavedQuestionClick}
+              >
+                {t`A saved question`}
+              </Menu.Item>
+            </>
+          )}
         </Menu.Dropdown>
       </Menu>
       {isPickerOpened && (
@@ -86,6 +101,25 @@ export function CreateTransformMenu() {
           models={["card", "dataset"]}
           onChange={handlePickerChange}
           onClose={closePicker}
+          shouldDisableItem={(item: QuestionPickerItem) => {
+            if (
+              // Disable questions based on unsuppported databases
+              item.model === "card" ||
+              item.model === "dataset" ||
+              item.model === "metric"
+            ) {
+              const database = databases?.data.find(
+                (database) => database.id === item.database_id,
+              );
+              return !doesDatabaseSupportTransforms(database);
+            }
+
+            if (item.model === "dashboard") {
+              return true;
+            }
+
+            return false;
+          }}
         />
       )}
     </>

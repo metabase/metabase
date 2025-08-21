@@ -18,6 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -742,7 +743,7 @@
        driver
        "metabase.driver.sql.query-processor/cast-field-id-needed with a legacy (snake_cased) :model/Field"
        "0.48.0")
-      (recur driver (update-keys field u/->kebab-case-en) honeysql-form))
+      (recur driver (perf/update-keys field u/->kebab-case-en) honeysql-form))
     (u/prog1 (match [base-type coercion-strategy]
                [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
                (unix-timestamp->honeysql driver

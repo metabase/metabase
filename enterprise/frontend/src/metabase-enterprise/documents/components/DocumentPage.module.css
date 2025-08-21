@@ -108,16 +108,3 @@
   gap: 0.25rem;
   color: var(--mb-color-text-secondary);
 }
-
-.hidable {
-  visibility: hidden;
-  width: 0;
-  opacity: 0;
-  transition: opacity 200ms;
-
-  &.visible {
-    visibility: visible;
-    width: auto;
-    opacity: 1;
-  }
-}

@@ -78,7 +78,7 @@ type NavigateToStepOptions =
       resourceName?: never;
     }
   | {
-      experience: "dashboard" | "chart";
+      experience: "dashboard" | "chart" | "browser";
       dismissEmbedTerms?: boolean;
       resourceName: string;
     };
@@ -96,6 +96,8 @@ export const navigateToEntitySelectionStep = (
     cy.findByText("Chart").click();
   } else if (experience === "exploration") {
     cy.findByText("Exploration").click();
+  } else if (experience === "browser") {
+    cy.findByText("Browser").click();
   }
 
   // exploration template does not have the entity selection step
@@ -112,6 +114,7 @@ export const navigateToEntitySelectionStep = (
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
       .with("chart", () => "Questions")
+      .with("browser", () => "Collections")
       .otherwise(() => "");
 
     cy.log(`searching for ${resourceType} via the picker modal`);
@@ -122,6 +125,11 @@ export const navigateToEntitySelectionStep = (
     entityPickerModal().within(() => {
       cy.findByText(resourceType).click();
       cy.findAllByText(resourceName).first().click();
+
+      // Collection picker requires an explicit confirmation.
+      if (experience === "browser") {
+        cy.findByText("Select").click();
+      }
     });
 
     cy.log(`${resourceType} title should be visible by default`);

@@ -85,6 +85,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
+   [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
@@ -324,12 +325,12 @@
 (defn- js-obj->cljs-map
   "Converts a JavaScript object with `\"camelCase\"` keys into a Clojure map with `:kebab-case` keys."
   [an-object]
-  (-> an-object js->clj (update-keys js-key->cljs-key)))
+  (-> an-object js->clj (perf/update-keys js-key->cljs-key)))
 
 (defn- cljs-map->js-obj
   "Converts a Clojure map with `:kebab-case` keys into a JavaScript object with `\"camelCase\"` keys."
   [a-map]
-  (-> a-map (update-keys cljs-key->js-key) clj->js))
+  (-> a-map (perf/update-keys cljs-key->js-key) clj->js))
 
 (defn- display-info-map->js* [x]
   (reduce (fn [obj [cljs-key cljs-val]]
@@ -1941,7 +1942,7 @@
       js->clj
       (update-vals (fn [tag]
                      (-> tag
-                         (update-keys keyword)
+                         (perf/update-keys keyword)
                          (update :type keyword)
                          (m/update-existing :widget-type #(some-> % keyword))
                          (m/update-existing :dimension #(some-> % legacy-ref->pMBQL)))))))
