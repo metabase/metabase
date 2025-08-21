@@ -87,7 +87,8 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
 
       cy.log("set default value for id");
-      getEmbedSidebar().findByLabelText("ID").type("123").blur();
+      getEmbedSidebar().findByLabelText("ID").type("123");
+      H.popover().findByText("Add filter").click();
 
       H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
@@ -95,7 +96,8 @@ H.describeWithSnowplow(suiteTitle, () => {
         .should("contain", "123");
 
       cy.log("set default value for product id");
-      getEmbedSidebar().findByLabelText("Product ID").type("456").blur();
+      getEmbedSidebar().findByLabelText("Product ID").type("456");
+      H.popover().findByText("Add filter").click();
 
       H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
@@ -114,8 +116,8 @@ H.describeWithSnowplow(suiteTitle, () => {
       getEmbedSidebar().within(() => {
         cy.findByText("Get Code").click();
         codeBlock().should("contain", "initial-parameters=");
-        codeBlock().should("contain", '"id":"123"');
-        codeBlock().should("contain", '"product_id":"456"');
+        codeBlock().should("contain", '"id":[123]');
+        codeBlock().should("contain", '"product_id":[456]');
       });
     });
 
@@ -189,7 +191,8 @@ H.describeWithSnowplow(suiteTitle, () => {
         .should("exist");
 
       getEmbedSidebar().within(() => {
-        cy.findByLabelText("ID").type("123").blur();
+        cy.findByLabelText("ID").type("123");
+        cy.press("Tab"); //.blur() doesn't easily work here
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
