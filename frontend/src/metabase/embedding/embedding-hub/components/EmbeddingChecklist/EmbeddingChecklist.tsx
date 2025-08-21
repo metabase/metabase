@@ -1,6 +1,4 @@
 import Link from "metabase/common/components/Link";
-import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Accordion, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { useScrollAccordionItemIntoView } from "../../hooks/use-scroll-accordion-item";
@@ -31,8 +29,6 @@ export const EmbeddingChecklist = ({
   defaultOpenStep,
   completedSteps = {},
 }: EmbeddingChecklistProps) => {
-  const applicationName = useSelector(getApplicationName);
-
   const { accordionItemRefs, scrollAccordionItemIntoView } =
     useScrollAccordionItemIntoView(steps.map((step) => step.id));
 
@@ -118,12 +114,7 @@ export const EmbeddingChecklist = ({
                   />
                 )}
 
-                <Text>
-                  {step.description.replace(
-                    /\$\{applicationName\}/g,
-                    applicationName,
-                  )}
-                </Text>
+                <Text>{step.description}</Text>
 
                 {renderStepActions(step)}
               </Stack>
