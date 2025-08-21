@@ -324,6 +324,7 @@
   native-extras
   native-query
   raw-native-query
+  recognize-template-tags
   required-native-extras
   template-tag-card-ids
   template-tags-referenced-cards

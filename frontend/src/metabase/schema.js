@@ -135,3 +135,12 @@ export const ObjectUnionSchema = new schema.Union(
 CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
+
+export const QueryMetadataSchema = {
+  databases: [DatabaseSchema],
+  tables: [TableSchema],
+  fields: [FieldSchema],
+  snippets: [SnippetSchema],
+  cards: [QuestionSchema],
+  dashboards: [DashboardSchema],
+};

@@ -28,7 +28,7 @@ import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
 } from "metabase/query_builder/actions/core/types";
-import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
+import { QueryMetadataSchema } from "metabase/schema";
 import {
   getMetadata,
   getMetadataUnfiltered,
@@ -91,11 +91,7 @@ const Questions = createEntity({
   actions: {
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
-      withNormalize({
-        databases: [DatabaseSchema],
-        tables: [TableSchema],
-        fields: [FieldSchema],
-      }),
+      withNormalize(QueryMetadataSchema),
     )(
       ({ id } = {}) =>
         (dispatch) =>
@@ -108,11 +104,7 @@ const Questions = createEntity({
     ),
     fetchAdhocMetadata: compose(
       withAction(FETCH_ADHOC_METADATA),
-      withNormalize({
-        databases: [DatabaseSchema],
-        tables: [TableSchema],
-        fields: [FieldSchema],
-      }),
+      withNormalize(QueryMetadataSchema),
     )(
       (query) => (dispatch) =>
         entityCompatibleQuery(

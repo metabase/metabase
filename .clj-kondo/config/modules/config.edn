@@ -714,7 +714,8 @@
            models
            permissions
            premium-features
-           util}}
+           util
+           lib}}
 
   notification
   {:team "Workflows"

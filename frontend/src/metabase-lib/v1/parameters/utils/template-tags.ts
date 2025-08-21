@@ -47,7 +47,7 @@ function getParameterTarget(tag: TemplateTag): ParameterTarget {
 
 export function getTemplateTagParameter(
   tag: TemplateTag,
-  oldParameter?: Parameter,
+  oldParameter?: Partial<Parameter>,
 ): ParameterWithTarget {
   return {
     id: tag.id,
