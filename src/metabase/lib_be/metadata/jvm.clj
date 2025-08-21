@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
+   [metabase.util.performance :as perf]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -51,7 +52,7 @@
                       (lib.normalize/normalize schema instance))
                     identity)]
     (-> instance
-        (update-keys memoized-kebab-key)
+        (perf/update-keys memoized-kebab-key)
         (assoc :lib/type metadata-type)
         normalize
         u.snake-hating-map/snake-hating-map

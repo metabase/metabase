@@ -1,7 +1,7 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
-  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys #?(:cljs clj->js)])
+  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys #?(:cljs clj->js)])
   #?@(:clj ()
       :cljs [(:require
               [cljs.core :as core]
@@ -19,8 +19,8 @@
      :cljs (satisfies? IEditableCollection coll)))
 
 (defn- transient? [coll]
-  #?(:clj (instance? clojure.lang.ITransientCollection coll)
-     :cljs (satisfies? ITransientCollection coll)))
+  #?(:clj (instance? clojure.lang.ITransientAssociative coll)
+     :cljs (satisfies? ITransientAssociative coll)))
 
 (defn- assoc+ [coll key value]
   (cond
@@ -269,6 +269,26 @@
                                acc
                                (assoc! acc k v))))
                          (transient {}) keyseq))))
+
+(defn update-keys
+  "Like `clojure.core/update-keys`, but doesn't recreate the collection if no keys are changed after applying `f`."
+  [m f]
+  (cond (nil? m) {}
+        ;; Fallback for non-editable collections where transients aren't supported.
+        (not (editable? m))
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (clojure.core/update-keys m f)
+        :else (-> (reduce-kv (fn [acc k v]
+                               (let [k' (f k)]
+                                 ;; Skip update if key is unchanged (=), but check for identity as it is faster.
+                                 (if (or (identical? k k') (= k k'))
+                                   acc
+                                   (-> acc
+                                       (dissoc+ k)
+                                       (assoc+ k' v)))))
+                             m m)
+                  maybe-persistent!
+                  (with-meta (meta m)))))
 
 ;; clojure.walk reimplementation. Partially adapted from https://github.com/tonsky/clojure-plus.
 
