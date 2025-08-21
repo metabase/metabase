@@ -6,6 +6,7 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
@@ -50,7 +51,7 @@
           (is (=? {:index              {:embedding-model model1}
                    :active             false
                    :index-table-exists true}
-                  (semantic.index-metadata/find-best-index! pgvector index-metadata model1))))
+                  (semantic.index-metadata/find-compatible-index! pgvector index-metadata model1))))
         (testing "switch back!"
           (let [new-index    @(sut pgvector index-metadata model1)
                 active-state (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
@@ -60,7 +61,7 @@
               (is (=? {:index              {:embedding-model model2}
                        :active             false
                        :index-table-exists true}
-                      (semantic.index-metadata/find-best-index! pgvector index-metadata model2))))))))))
+                      (semantic.index-metadata/find-compatible-index! pgvector index-metadata model2))))))))))
 
 (deftest init-recreates-missing-index-table-test
   (let [pgvector       semantic.tu/db
@@ -70,7 +71,7 @@
         cleanup        (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))
         sut            #(semantic.tu/closeable (apply sut* %&) cleanup)]
     (with-open [_ ^Closeable (sut pgvector index-metadata model1)]
-      (let [index (:index (semantic.index-metadata/find-best-index! pgvector index-metadata model1))]
+      (let [index (:index (semantic.index-metadata/find-compatible-index! pgvector index-metadata model1))]
         (testing "Base: index table exists after initialization"
           (is (true? (@#'semantic.index-metadata/index-table-exists? pgvector index))))
         (semantic.index/drop-index-table! pgvector index)
@@ -236,7 +237,8 @@
                                  (when-not (.join thread (Duration/ofSeconds 30))
                                    (log/fatal "Indexing loop thread not exiting during test!")))))))]
     (with-redefs [semantic.indexer/sleep         (fn [_])       ; do not slow down
-                  semantic.indexer/poll-limit    4              ; important to test poll / paging (not many docs in test-data)
+                  ; important to test poll / paging (not many docs in test-data)
+                  semantic.settings/ee-search-indexer-poll-limit    (constantly 4)
                   semantic.indexer/lag-tolerance Duration/ZERO] ; if too high will slow the test down significantly
 
       (with-open [index-ref  (open-semantic-search! pgvector index-metadata embedding-model)

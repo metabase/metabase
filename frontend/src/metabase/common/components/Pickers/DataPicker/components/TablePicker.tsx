@@ -34,6 +34,7 @@ interface Props {
   value: TablePickerValue | undefined;
   onItemSelect: (value: DataPickerItem) => void;
   onPathChange: (path: TablePickerStatePath) => void;
+  shouldDisableItem?: (item: DataPickerItem) => boolean;
 }
 
 export const TablePicker = ({
@@ -42,6 +43,7 @@ export const TablePicker = ({
   value,
   onItemSelect,
   onPathChange,
+  shouldDisableItem,
 }: Props) => {
   const defaultPath = useMemo<TablePickerStatePath>(() => {
     return [databaseId ?? value?.db_id, value?.schema, value?.id];
@@ -257,6 +259,7 @@ export const TablePicker = ({
             isLoading={isLoadingDatabases}
             selectedItem={selectedDbItem}
             onClick={handleFolderSelect}
+            shouldDisableItem={shouldDisableItem}
           />
         )}
 
@@ -281,6 +284,7 @@ export const TablePicker = ({
             selectedItem={selectedTableItem}
             tables={isLoadingTables ? undefined : tables}
             onClick={handleTableSelect}
+            shouldDisableItem={shouldDisableItem}
           />
         )}
       </Flex>

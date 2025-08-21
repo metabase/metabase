@@ -1,5 +1,5 @@
 (ns metabase.lib.schema
-  "Malli schema for the pMBQL query type, the version of MBQL produced and manipulated by the new Cljc
+  "Malli schema for the MBQL 5 query type, the version of MBQL produced and manipulated by the new Cljc
   Metabase lib. Currently this is a little different from the version of MBQL consumed by the QP, specified
   in [[metabase.legacy-mbql.schema]]. Hopefully these versions will converge in the future.
 
@@ -13,6 +13,7 @@
    [metabase.lib.schema.actions :as actions]
    [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.common :as common]
+   [metabase.lib.schema.constraints :as lib.schema.constraints]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.schema.expression.conditional]
@@ -25,9 +26,11 @@
    [metabase.lib.schema.join :as join]
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.ref :as ref]
+   [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -174,8 +177,13 @@
                      (ref-error-for-stage value))}
    (complement ref-error-for-stage)])
 
-;;; TODO -- should `::page` have a `:lib/type`, like all the other maps in pMBQL?
+;;; TODO -- should `::page` have a `:lib/type`, like all the other maps in MBQL 5?
 (mr/def ::page
+  "`page` = page num, starting with 1. `items` = number of items per page.
+  e.g.
+
+    {:page 1, :items 10} = items 1-10
+    {:page 2, :items 10} = items 11-20"
   [:map
    {:decode/normalize common/normalize-map}
    [:page  pos-int?]
@@ -204,7 +212,8 @@
      [:order-by           {:optional true} [:ref ::order-by/order-bys]]
      [:source-table       {:optional true} [:ref ::id/table]]
      [:source-card        {:optional true} [:ref ::id/card]]
-     [:page               {:optional true} [:ref ::page]]]]
+     [:page               {:optional true} [:ref ::page]]
+     [:limit              {:optional true} ::common/int-greater-than-or-equal-to-zero]]]
    [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
@@ -365,24 +374,6 @@
     [:* [:schema [:ref ::stage.additional]]]]
    [:ref ::stages.valid-refs]])
 
-;;; TODO -- move/copy this schema from the legacy schema to here
-(mr/def ::settings
-  [:ref
-   {:decode/normalize common/normalize-map}
-   :metabase.legacy-mbql.schema/Settings])
-
-;;; TODO -- move/copy this schema from the legacy schema to here
-(mr/def ::middleware-options
-  [:ref
-   {:decode/normalize common/normalize-map}
-   :metabase.legacy-mbql.schema/MiddlewareOptions])
-
-;;; TODO -- move/copy this schema from the legacy schema to here
-(mr/def ::constraints
-  [:ref
-   {:decode/normalize common/normalize-map}
-   :metabase.legacy-mbql.schema/Constraints])
-
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
   ;; to be part of the query itself. It doesn't get saved along with the query in the app DB.
@@ -417,9 +408,9 @@
     ;;
     ;; These keys are used to tweak behavior of the Query Processor.
     ;;
-    [:settings    {:optional true} [:maybe [:ref ::settings]]]
-    [:constraints {:optional true} [:maybe [:ref ::constraints]]]
-    [:middleware  {:optional true} [:maybe [:ref ::middleware-options]]]
+    [:settings    {:optional true} [:maybe [:ref ::lib.schema.settings/settings]]]
+    [:constraints {:optional true} [:maybe [:ref ::lib.schema.constraints/constraints]]]
+    [:middleware  {:optional true} [:maybe [:ref ::lib.schema.middleware-options/middleware-options]]]
     ;; TODO -- `:viz-settings` ?
     ;;
     ;; INFO

@@ -160,38 +160,59 @@
                    ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
                     "EXTERNAL TABLE" "DYNAMIC_TABLE"]))
 
-(defn- schema+table-with-select-privileges
+(defn- build-privilege-map
+  "Build a nested map of schema -> table -> set of permissions from current user table privileges.
+  There are 2 permissions:
+  - :select - self-explained
+  - :write - must have insert, update, and delete permisisons. used for table data editing"
   [driver conn]
   (->> (sql-jdbc.sync.interface/current-user-table-privileges driver {:connection conn})
-       (filter #(true? (:select %)))
-       (map (fn [{:keys [schema table]}]
-              [schema table]))
-       set))
+       (reduce (fn [acc {:keys [schema table select insert update delete]}]
+                 (assoc-in acc [schema table]
+                           (cond-> #{}
+                             select (conj :select)
+                             (and insert update delete) (conj :write))))
+               {})))
 
-(defn have-select-privilege-fn
-  "Returns a function that take a map with 3 keys [:schema, :name, :type], return true if we can do a select query on the table.
+(defn have-privilege-fn
+  "Returns a function that takes a map with 3 keys [:schema, :name, :type] and a privilege type,
+   returns true if the table has the specified privilege.
 
-  This function shouldn't be called a `map` or anything alike, instead use it as a cache function like so:
+   Privilege types:
+   - :select - Can read from the table
+   - :write - if table has insert, update, delete permissions
 
-    (let [have-select-privilege-fn* (have-select-privilege-fn driver database conn)
-          tables                   ...]
-      (filter have-select-privilege-fn* tables))"
+  This function shouldn't be called with `map` or anything alike, instead use it as a cache function like so:
+
+    (let [privilege-fn (have-privilege-fn driver conn)
+          tables       ...]
+      (filter #(privilege-fn % :select) tables))"
   [driver conn]
   ;; `sql-jdbc.sync.interface/have-select-privilege?` is slow because we're doing a SELECT query on each table
   ;; It's basically a N+1 operation where N is the number of tables in the database
   (if (driver/database-supports? driver :table-privileges nil)
-    (let [schema+table-with-select-privileges (schema+table-with-select-privileges driver conn)]
-      (fn [{schema :schema table :name ttype :type}]
+    (let [privilege-map (build-privilege-map driver conn)]
+      (fn [{schema :schema table :name ttype :type} privilege]
+        (assert (#{:select :write} privilege))
         ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
         ;; table on postgres, so we need to use the select method on them
         ;;
         ;; TODO FIXME What the hecc!!! We should NOT be hardcoding driver-specific hacks in functions like this!!!!
         (if (#{[:postgres "FOREIGN TABLE"]}
              [driver ttype])
-          (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-          (contains? schema+table-with-select-privileges [schema table]))))
-    (fn [{schema :schema table :name}]
-      (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table))))
+          (case privilege
+            :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+            :write  nil) ; Foreign tables typically don't support write operations
+          (contains? (get-in privilege-map [schema table] #{}) privilege))))
+    (let [can-check-writable?          (driver/database-supports? driver :metadata/table-writable-check {:connection conn})
+          check-writable-privilege-map (when can-check-writable?
+                                         (build-privilege-map driver conn))]
+      (fn [{schema :schema table :name} privilege]
+        (assert (#{:select :write} privilege))
+        (case privilege
+          :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+          :write  (when can-check-writable?
+                    (contains? (get-in check-writable-privilege-map [schema table] #{}) privilege)))))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -201,14 +222,17 @@
   vs 60)."
   [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
-  (let [metadata                  (.getMetaData conn)
-        syncable-schemas          (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
-                                                                                     schema-inclusion-filters schema-exclusion-filters)
-        have-select-privilege-fn? (have-select-privilege-fn driver conn)]
+  (let [metadata         (.getMetaData conn)
+        syncable-schemas (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
+                                                                            schema-inclusion-filters schema-exclusion-filters)
+        privilege-fn     (have-privilege-fn driver conn)]
     (eduction (mapcat (fn [schema]
                         (eduction
-                         (comp (filter have-select-privilege-fn?)
-                               (map #(dissoc % :type)))
+                         (comp (filter #(privilege-fn % :select))
+                               (map (fn [table]
+                                      (-> table
+                                          (dissoc :type)
+                                          (assoc :is_writable (privilege-fn table :write))))))
                          (db-tables driver metadata schema db-name-or-nil))))
               syncable-schemas)))
 
@@ -221,15 +245,18 @@
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
-  (let [have-select-privilege-fn? (have-select-privilege-fn driver conn)]
+  (let [privilege-fn (have-privilege-fn driver conn)]
     (eduction
      (comp
       (filter (let [excluded (sql-jdbc.sync.interface/excluded-schemas driver)]
                 (fn [{table-schema :schema :as table}]
                   (and (not (contains? excluded table-schema))
                        (include-schema-logging-exclusion schema-inclusion-filters schema-exclusion-filters table-schema)
-                       (have-select-privilege-fn? table)))))
-      (map #(dissoc % :type)))
+                       (privilege-fn table :select)))))
+      (map (fn [table]
+             (-> table
+                 (dissoc :type)
+                 (assoc :is_writable (privilege-fn table :write))))))
      (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
 (defn db-or-id-or-spec->database

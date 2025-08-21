@@ -21,7 +21,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { RecentItem, SearchResult } from "metabase-types/api";
+import type { SearchResult } from "metabase-types/api";
 
 import {
   MenuItemComponent,
@@ -33,13 +33,12 @@ import {
   SuggestionPaper,
 } from "../../shared/SuggestionPaper";
 import { EntitySearchSection } from "../shared/EntitySearchSection";
-import { EMBED_SEARCH_MODELS } from "../shared/constants";
-import { useEntitySearch } from "../shared/useEntitySearch";
+import { EMBED_SEARCH_MODELS, LINK_SEARCH_MODELS } from "../shared/constants";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
 import CommandS from "./CommandSuggestion.module.css";
 
-interface CommandSuggestionProps {
+export interface CommandSuggestionProps {
   items: SearchResult[];
   command: (item: CommandItem) => void;
   editor: Editor;
@@ -111,29 +110,14 @@ const CommandMenuItem = forwardRef<
   );
 });
 
-const CommandSuggestionComponent = forwardRef<
+export const CommandSuggestion = forwardRef<
   SuggestionRef,
   CommandSuggestionProps
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showLinkSearch, setShowLinkSearch] = useState(false);
   const [showEmbedSearch, setShowEmbedSearch] = useState(false);
-  const [pendingLinkMode, setPendingLinkMode] = useState(false);
-  const [pendingEmbedMode, setPendingEmbedMode] = useState(false);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
-
-  useEffect(() => {
-    if (pendingLinkMode) {
-      setShowLinkSearch(true);
-      setPendingLinkMode(false);
-    }
-    if (pendingEmbedMode) {
-      setShowEmbedSearch(true);
-      setPendingEmbedMode(false);
-    }
-  }, [pendingLinkMode, pendingEmbedMode]);
-
-  const effectiveQuery = query;
 
   const allCommandSections: CommandSection[] = useMemo(
     () => [
@@ -227,39 +211,39 @@ const CommandSuggestionComponent = forwardRef<
 
   const onSelectLinkEntity = useCallback(
     (item: { id: number | string; model: string }) => {
-      if (showEmbedSearch) {
-        command({
-          embedItem: true,
-          entityId: item.id,
-          model: item.model,
-        });
-      } else {
+      if (showLinkSearch) {
         command({
           selectItem: true,
           entityId: item.id,
           model: item.model,
         });
+      } else {
+        command({
+          embedItem: true,
+          entityId: item.id,
+          model: item.model,
+        });
       }
     },
-    [command, showEmbedSearch],
+    [command, showLinkSearch],
   );
 
   const executeCommand = (commandName: string) => {
     if (commandName === "linkTo") {
-      setPendingLinkMode(true);
       command({
         clearQuery: true,
         switchToLinkMode: true,
       });
+      setShowLinkSearch(true);
       return;
     }
 
     if (commandName === "embedQuestion") {
-      setPendingEmbedMode(true);
       command({
         clearQuery: true,
         switchToEmbedMode: true,
       });
+      setShowEmbedSearch(true);
       return;
     }
 
@@ -277,51 +261,25 @@ const CommandSuggestionComponent = forwardRef<
 
   // Use shared entity suggestions for link/embed mode and browse all functionality
   const entitySuggestions = useEntitySuggestions({
-    query: effectiveQuery,
+    query,
     editor,
     onSelectEntity: onSelectLinkEntity,
     enabled: showLinkSearch || showEmbedSearch || !!query,
-    searchModels: showEmbedSearch ? EMBED_SEARCH_MODELS : undefined,
+    searchModels: showLinkSearch ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
   });
 
   const {
-    menuItems: linkMenuItems,
-    isLoading: isLinkSearchLoading,
+    menuItems: searchMenuItems,
+    isLoading: isSearchLoading,
     searchResults,
     selectedIndex: entitySelectedIndex,
     modal: entityModal,
     handlers: entityHandlers,
   } = entitySuggestions;
 
-  const { menuItems: searchMenuItems } = useEntitySearch({
-    query,
-    onSelectRecent: useCallback(
-      (item: RecentItem) => {
-        command({
-          embedItem: true,
-          entityId: item.id,
-          model: item.model,
-        });
-      },
-      [command],
-    ),
-    onSelectSearchResult: useCallback(
-      (item: SearchResult) => {
-        command({
-          embedItem: true,
-          entityId: item.id,
-          model: item.model,
-        });
-      },
-      [command],
-    ),
-    enabled: !showLinkSearch && !showEmbedSearch && !!query,
-    searchModels: EMBED_SEARCH_MODELS,
-  });
-
   const currentItems = useMemo(() => {
     if (showLinkSearch || showEmbedSearch) {
-      return linkMenuItems;
+      return searchMenuItems;
     }
 
     // When searching in command mode, combine search results with matching commands
@@ -331,18 +289,11 @@ const CommandSuggestionComponent = forwardRef<
     }
 
     return commandOptions;
-  }, [
-    showLinkSearch,
-    showEmbedSearch,
-    linkMenuItems,
-    query,
-    searchMenuItems,
-    commandOptions,
-  ]);
+  }, [showLinkSearch, showEmbedSearch, query, searchMenuItems, commandOptions]);
   let totalItems = currentItems.length;
 
   if (showLinkSearch || showEmbedSearch) {
-    totalItems = linkMenuItems.length + 1;
+    totalItems = searchMenuItems.length + 1;
   } else if (currentItems.length === 0 && query) {
     totalItems = 1; // Just the browse all footer
   }
@@ -427,7 +378,7 @@ const CommandSuggestionComponent = forwardRef<
     },
   }));
 
-  if ((showLinkSearch || showEmbedSearch) && isLinkSearchLoading) {
+  if ((showLinkSearch || showEmbedSearch) && isSearchLoading) {
     return <LoadingSuggestionPaper aria-label={t`Command Dialog`} />;
   }
 
@@ -435,11 +386,11 @@ const CommandSuggestionComponent = forwardRef<
     <SuggestionPaper aria-label={t`Command Dialog`}>
       {showLinkSearch || showEmbedSearch ? (
         <EntitySearchSection
-          menuItems={linkMenuItems}
+          menuItems={searchMenuItems}
           selectedIndex={entitySelectedIndex}
           onItemSelect={entityHandlers.selectItem}
           onFooterClick={entityHandlers.openModal}
-          query={effectiveQuery}
+          query={query}
           searchResults={searchResults}
           modal={entityModal}
           onModalSelect={entityHandlers.handleModalSelect}
@@ -545,5 +496,3 @@ const CommandSuggestionComponent = forwardRef<
     </SuggestionPaper>
   );
 });
-
-export const CommandSuggestion = CommandSuggestionComponent;
