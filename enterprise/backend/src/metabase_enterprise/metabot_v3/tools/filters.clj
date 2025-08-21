@@ -165,7 +165,7 @@
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     ;; exist usage, don't do this going forward
+     ;; existing usage, don't do this going forward -- use Lib instead and persist MBQL 5 to the app DB
      :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
@@ -260,7 +260,7 @@
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
-     ;; exist usage, don't do this going forward
+     ;; existing usage, don't do this going forward -- use Lib instead and persist MBQL 5 to the app DB
      :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
@@ -330,7 +330,7 @@
       {:structured-output
        {:type :query
         :query-id query-id
-        ;; exist usage, don't do this going forward
+        ;; existing usage, don't do this going forward -- use Lib instead and persist MBQL 5 to the app DB
         :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
         :result-columns (into []
                               (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
