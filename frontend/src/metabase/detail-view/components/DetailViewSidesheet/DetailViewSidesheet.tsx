@@ -210,9 +210,7 @@ export function DetailViewSidesheet({
         <LoadingAndErrorWrapper error={error} loading={isLoading} />;
       </Sidesheet>
     );
-  }
-
-  if (!isLoading && row == null) {
+  } else if (row == null) {
     return (
       <Sidesheet data-testid="object-detail" onClose={handleClose}>
         <Group align="center" justify="center">
