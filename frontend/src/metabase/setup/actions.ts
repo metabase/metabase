@@ -184,7 +184,7 @@ export const submitUserInvite = createAsyncThunk(
         last_name: inviteInfo.last_name || undefined,
         source: "setup",
       }),
-    );
+    ).unwrap();
     dispatch(goToNextStep());
   },
 );
