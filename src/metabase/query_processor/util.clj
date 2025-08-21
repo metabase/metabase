@@ -22,13 +22,6 @@
 
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.legacy-mbql.util]]
 
-(defn query-without-aggregations-or-limits?
-  "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
-  [{{aggregations :aggregation, :keys [limit page]} :query}]
-  (and (not limit)
-       (not page)
-       (empty? aggregations)))
-
 (defn default-query->remark
   "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
    can access the default value."

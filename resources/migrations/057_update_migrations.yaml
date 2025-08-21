@@ -121,6 +121,27 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v57.2025-08-15T10:00:00
+      author: qnkhuat
+      comment: Add metabase_table.is_writable
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: is_writable
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_writable
+                  type: ${boolean.type}
+                  remarks: true if current connection can insert, update and delete rows from this table
+                  constraints:
+                    nullable: true
+
+  - changeSet:
       id: v57.2025-08-21T12:00:00
       author: edpaget
       comment: Create document table
@@ -1023,10 +1044,25 @@ databaseChangeLog:
                 tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
 
   - changeSet:
-      id: v57.2025-08-22T00:16:00
-      validCheckSum: ANY
+      id: v57.2025-08-23T10:00:00
+      author: chodorowicz
+      comment: Add provider_name column to metabase_database table
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: provider_name
+                  type: varchar(100)
+                  remarks: "The name of the hosting provider for the database (e.g., AWS RDS, Azure)."
+                  constraints:
+                    nullable: true
+                  defaultValue: null
+                  
+  - changeSet:
+      id: v57.2025-08-23T11:00:00
       author: rileythomp
-      comment: Added 0.57.0 - Migrate ClickHouse database details to be use `enable-multiple-db`
+      comment: Migrate ClickHouse database details to be use `enable-multiple-db` with db filters
       changes:
         - customChange:
             class: "metabase.app_db.custom_migrations.MigrateClickHouseDetailsToMultiDB"
