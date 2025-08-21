@@ -423,6 +423,7 @@
                               :nested-queries                  true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
+                              :test/create-table-without-data  false
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true
                               :saved-question-sandboxing       false
@@ -431,8 +432,8 @@
                               :expressions/datetime            true
                               :expressions/today               true
                               ;; Index sync is turned off across the application as it is not used ATM.
-                              :index-info                      false
-                              :database-routing                true}]
+                              :index-info false
+                              :database-routing true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)

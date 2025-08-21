@@ -54,7 +54,11 @@
                               :describe-fks                    false
                               :actions                         false
                               :metadata/key-constraints        (not driver-api/is-test?)
-                              :database-routing                false}]
+                              :database-routing                false
+                              ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
+                              :describe-is-generated           false
+                              :describe-is-nullable            true
+                              :describe-default-expr           true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details

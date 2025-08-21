@@ -53,7 +53,10 @@
                               :identifiers-with-spaces true
                               :convert-timezone        true
                               :expressions/date        false
-                              :database-routing        false}]
+                              :database-routing        false
+                              :describe-default-expr   true
+                              :describe-is-generated   true
+                              :describe-is-nullable    true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details

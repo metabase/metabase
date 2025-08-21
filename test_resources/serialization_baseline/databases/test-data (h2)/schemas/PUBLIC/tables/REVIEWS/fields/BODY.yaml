@@ -37,5 +37,9 @@ serdes/meta:
   model: Table
 - id: BODY
   model: Field
+database_default: null
 database_indexed: false
+database_is_generated: null
+database_is_nullable: null
+database_is_pk: null
 database_partitioned: null

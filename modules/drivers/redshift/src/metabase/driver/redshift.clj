@@ -37,6 +37,9 @@
 (doseq [[feature supported?] {:connection-impersonation  true
                               :describe-fields           true
                               :describe-fks              true
+                              :describe-is-generated     false
+                              :describe-is-nullable      false
+                              :describe-default-expr     false
                               :expression-literals       true
                               :identifiers-with-spaces   false
                               :uuid-type                 false
