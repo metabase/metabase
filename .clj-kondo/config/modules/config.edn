@@ -1549,8 +1549,8 @@
    :uses #{api
            app-db
            audit-app
-           config
            classloader
+           config
            driver
            lib
            models
