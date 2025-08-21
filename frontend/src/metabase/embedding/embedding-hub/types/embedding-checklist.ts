@@ -1,15 +1,15 @@
 import type { IconName } from "metabase/ui";
 
-export type EmbeddingStepId =
-  | "test-embed"
+export type EmbeddingHubStepId =
+  | "create-test-embed"
   | "add-data"
   | "create-dashboard"
   | "configure-sandboxing"
   | "secure-embeds"
   | "embed-production";
 
-export interface EmbeddingStep {
-  id: EmbeddingStepId;
+export interface EmbeddingHubStep {
+  id: EmbeddingHubStepId;
   title: string;
   icon: IconName;
   description: string;

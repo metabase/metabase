@@ -1,1 +1,4 @@
-export type { EmbeddingStep, EmbeddingStepId } from "./embedding-checklist";
+export type {
+  EmbeddingHubStep,
+  EmbeddingHubStepId,
+} from "./embedding-checklist";

@@ -88,7 +88,7 @@
 }
 
 /* Override styles for normal steps */
-.normalControl:not([data-css-specificity-hack="🪗"]) {
+.incompleteControl:not([data-css-specificity-hack="🪗"]) {
   .label {
     color: var(--mb-color-text-primary) !important;
   }
@@ -98,14 +98,14 @@
 .completedControl:not([data-css-specificity-hack="🪗"]) {
   background: linear-gradient(
     to right,
-    #eaf8de 3rem,
+    var(--mb-base-color-palm-10) 3rem,
     transparent 3rem
   ) !important;
 
   &:hover {
     background: linear-gradient(
       to right,
-      #eaf8de 3rem,
+      var(--mb-base-color-palm-10) 3rem,
       transparent 3rem
     ) !important;
   }

@@ -1,21 +1,24 @@
 import { useMemo } from "react";
 
-import type { EmbeddingStepId } from "../types";
+import type { EmbeddingHubStepId } from "../types";
 
+/**
+ * Embedding Hub completion steps should be derived by the instance state at the time, or tracked manually in instance settings for some of them.
+ *
+ * TODO: make this live.
+ */
 export const useCompletedEmbeddingHubSteps = (): Record<
-  EmbeddingStepId,
+  EmbeddingHubStepId,
   boolean
 > => {
-  const completedSteps = useMemo(() => {
+  return useMemo(() => {
     return {
-      "test-embed": true, // Example: check if user has created test embeds
-      "add-data": false, // Example: hasConnectedDatabase
-      "create-dashboard": false, // Example: hasDashboards
-      "configure-sandboxing": false, // Example: hasSandboxing
-      "secure-embeds": false, // Example: hasJWTConfigured
-      "embed-production": false, // Example: check if embeds are in production use
+      "create-test-embed": true,
+      "add-data": false,
+      "create-dashboard": false,
+      "configure-sandboxing": false,
+      "secure-embeds": false,
+      "embed-production": false,
     };
   }, []);
-
-  return completedSteps;
 };

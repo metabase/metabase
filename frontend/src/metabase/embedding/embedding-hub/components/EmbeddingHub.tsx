@@ -8,13 +8,13 @@ import CS from "metabase/css/core/index.css";
 import { Box, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
-import { getEmbeddingSteps } from "../utils";
+import { getEmbeddingHubSteps } from "../utils";
 
 import { EmbeddingChecklist } from "./EmbeddingChecklist";
 
 export const EmbeddingHub = () => {
+  const embeddingSteps = useMemo(() => getEmbeddingHubSteps(), []);
   const completedSteps = useCompletedEmbeddingHubSteps();
-  const embeddingSteps = useMemo(() => getEmbeddingSteps(), []);
 
   // Find the first unchecked step to open by default
   const firstUncompletedStep = embeddingSteps.find(
@@ -41,9 +41,6 @@ export const EmbeddingHub = () => {
           steps={embeddingSteps}
           completedSteps={completedSteps}
           defaultOpenStep={defaultOpenStep}
-          onStepChange={(_stepId) => {
-            // Handle step change if needed (currently no-op)
-          }}
         />
       </Box>
     </Box>
