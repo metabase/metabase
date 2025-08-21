@@ -1,0 +1,21 @@
+.pillsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mantine-spacing-xs);
+}
+
+.pill {
+  background: var(--mb-color-background-light);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-xl);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.dragging {
+  opacity: 0.6;
+}
+
+.inputField {
+  min-width: 6rem;
+}

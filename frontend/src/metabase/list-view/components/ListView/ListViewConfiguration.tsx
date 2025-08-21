@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { ReorderableTagsInput } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
 import { Box, Divider, Icon, MultiSelect, Stack, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
@@ -8,6 +9,7 @@ import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import { getEntityIcon, useListColumns } from "./ListView";
 import S from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
+import { DndContext } from "@dnd-kit/core";
 
 export const ListViewConfiguration = ({
   data,
@@ -27,6 +29,7 @@ export const ListViewConfiguration = ({
     cols,
     settings?.viewSettings?.listSettings,
   );
+  console.log({ titleColumn, subtitleColumn, rightColumns });
 
   // Selected values
   const [leftValues, setLeftValues] = useState(() => [
@@ -88,6 +91,7 @@ export const ListViewConfiguration = ({
     setRightValues(right);
     onChange({ left, right });
   };
+  console.log({ leftValues });
 
   return (
     <Stack
@@ -123,30 +127,26 @@ export const ListViewConfiguration = ({
           </Box>
 
           {/* Title + Subtitle */}
-          <Box>
-            <MultiSelect
-              size="xs"
-              miw="10rem"
-              maw="33%"
-              data={leftOptions}
-              value={leftValues}
-              onChange={(value) => onConfigurationChange({ left: value })}
-              maxValues={2}
-              placeholder={leftValues.length > 0 ? "" : "Title + Subtitle"}
-            />
-          </Box>
+          <ReorderableTagsInput
+            size="xs"
+            miw="10rem"
+            maw="33%"
+            data={leftOptions}
+            value={leftValues}
+            onChange={(value) => onConfigurationChange({ left: value })}
+            maxValues={2}
+            placeholder={leftValues.length > 0 ? "" : "Title + Subtitle"}
+          />
 
           {/* Right columns */}
-          <Box>
-            <MultiSelect
-              size="xs"
-              data={rightOptions}
-              value={rightValues}
-              onChange={(value) => onConfigurationChange({ right: value })}
-              maxValues={5}
-              placeholder={rightValues.length === 5 ? "" : "Right columns"}
-            />
-          </Box>
+          <ReorderableTagsInput
+            size="xs"
+            data={rightOptions}
+            value={rightValues}
+            onChange={(value) => onConfigurationChange({ right: value })}
+            maxValues={5}
+            placeholder={rightValues.length === 5 ? "" : "Right columns"}
+          />
         </Box>
       </Stack>
       <Divider w="100%" maw="var(--max-width)" />

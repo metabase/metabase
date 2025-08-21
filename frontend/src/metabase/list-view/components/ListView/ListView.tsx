@@ -198,7 +198,7 @@ export function useListColumns(
       cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col))) ||
       cols[0];
     if (listSettings && Array.isArray(listSettings.leftColumns)) {
-      return cols.find((col) => listSettings.leftColumns.includes(col.name));
+      return cols.find((col) => listSettings.leftColumns[0] === col.name);
     }
     return defaultTitleColumn;
   }, [cols, listSettings]);
@@ -208,10 +208,10 @@ export function useListColumns(
       titleColumn && Lib.isID(Lib.legacyColumnTypeInfo(titleColumn))
         ? null
         : cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col)));
-    if (listSettings && listSettings.leftColumns.length > 1) {
-      return cols.find((col) => listSettings.leftColumns[1] === col.name);
-    }
-    if (listSettings && listSettings.leftColumns.length === 1) {
+    if (listSettings && Array.isArray(listSettings.leftColumns)) {
+      if (listSettings.leftColumns.length > 1) {
+        return cols.find((col) => listSettings.leftColumns[1] === col.name);
+      }
       return undefined;
     }
     return defaultSubtitleColumn;

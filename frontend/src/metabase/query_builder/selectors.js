@@ -620,7 +620,6 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     uiControls,
   ) => {
     const isEditingModelOrMetric = queryBuilderMode === "dataset";
-    debugger;
 
     if (isEditingModelOrMetric) {
       return isDirty || isMetadataDirty;
