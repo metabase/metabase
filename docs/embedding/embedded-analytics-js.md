@@ -180,6 +180,8 @@ Add `useExistingUserSession: true` to `defineMetabaseConfig()` in your embed cod
 </script>
 ```
 
+Note that this will not work in some browsers, or in incognito mode. We recommend using Chrome if you'd like to use existing Metabase sessions to test your embeds.
+
 ### Use API keys to test embeds
 
 > API keys can only be used for testing embeds locally. To make your embeds production-ready or deploy them to another domain, you'll need to implement SSO.
