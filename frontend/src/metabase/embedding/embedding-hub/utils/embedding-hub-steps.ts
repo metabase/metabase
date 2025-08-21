@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import type { EmbeddingStep } from "../types";
+import type { EmbeddingHubStep } from "../types";
 
-export const getEmbeddingSteps = (): EmbeddingStep[] => {
-  const TEST_EMBED: EmbeddingStep = {
-    id: "test-embed",
+export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
+  const TEST_EMBED: EmbeddingHubStep = {
+    id: "create-test-embed",
     title: t`Create a test embed`,
     icon: "check",
     description: t`Test out the capabilities of Embedded Analytics JS by embedding a sample dashboard.`,
@@ -18,7 +18,7 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => {
     ],
   };
 
-  const ADD_DATA: EmbeddingStep = {
+  const ADD_DATA: EmbeddingHubStep = {
     id: "add-data",
     title: t`Add your data`,
     icon: "add_data",
@@ -44,7 +44,7 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => {
     ],
   };
 
-  const CREATE_DASHBOARD: EmbeddingStep = {
+  const CREATE_DASHBOARD: EmbeddingHubStep = {
     id: "create-dashboard",
     title: t`Create a dashboard`,
     icon: "dashboard",
@@ -59,10 +59,10 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => {
     ],
   };
 
-  const CONFIGURE_SANDBOXING: EmbeddingStep = {
+  const CONFIGURE_SANDBOXING: EmbeddingHubStep = {
     id: "configure-sandboxing",
     title: t`Configure sandboxing`,
-    icon: "key",
+    icon: "permissions_limited",
     description: t`Manage permissions to limit what data your users can access.`,
     actions: [
       {
@@ -74,7 +74,7 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => {
     ],
   };
 
-  const SECURE_EMBEDS: EmbeddingStep = {
+  const SECURE_EMBEDS: EmbeddingHubStep = {
     id: "secure-embeds",
     title: t`Secure your embeds`,
     icon: "lock",
@@ -95,7 +95,7 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => {
     ],
   };
 
-  const EMBED_PRODUCTION: EmbeddingStep = {
+  const EMBED_PRODUCTION: EmbeddingHubStep = {
     id: "embed-production",
     title: t`Embed in production`,
     icon: "bolt",

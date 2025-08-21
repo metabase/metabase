@@ -1,1 +1,1 @@
-export { getEmbeddingSteps } from "./embedding-steps";
+export { getEmbeddingHubSteps } from "./embedding-hub-steps";

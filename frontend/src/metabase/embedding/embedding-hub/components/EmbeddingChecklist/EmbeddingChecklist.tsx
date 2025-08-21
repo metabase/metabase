@@ -1,5 +1,3 @@
-import { createRef, useCallback, useMemo } from "react";
-
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
@@ -10,15 +8,15 @@ import {
 } from "metabase/selectors/whitelabel";
 import { Accordion, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
-import type { EmbeddingStep, EmbeddingStepId } from "../../types";
+import { useScrollAccordionItemIntoView } from "../../hooks/use-scroll-accordion-item";
+import type { EmbeddingHubStep, EmbeddingHubStepId } from "../../types";
 
 import S from "./EmbeddingChecklist.module.css";
 
 interface EmbeddingChecklistProps {
-  steps: EmbeddingStep[];
-  completedSteps?: Record<EmbeddingStepId, boolean>;
-  defaultOpenStep?: EmbeddingStepId;
-  onStepChange?: (stepId: EmbeddingStepId | null) => void;
+  steps: EmbeddingHubStep[];
+  completedSteps?: Record<EmbeddingHubStepId, boolean>;
+  defaultOpenStep?: EmbeddingHubStepId;
 }
 
 const accordionClassNames = {
@@ -32,43 +30,17 @@ const accordionClassNames = {
 
 export const EmbeddingChecklist = ({
   steps,
-  completedSteps = {} as Record<EmbeddingStepId, boolean>,
+  completedSteps = {} as Record<EmbeddingHubStepId, boolean>,
   defaultOpenStep,
-  onStepChange,
 }: EmbeddingChecklistProps) => {
   const applicationName = useSelector(getApplicationName);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const itemRefs = useMemo(() => {
-    return steps.reduce(
-      (refs, step) => {
-        refs[step.id] = createRef<HTMLDivElement>();
-        return refs;
-      },
-      {} as Record<EmbeddingStepId, React.RefObject<HTMLDivElement>>,
-    );
-  }, [steps]);
+  const { accordionItemRefs, scrollAccordionItemIntoView } =
+    useScrollAccordionItemIntoView(steps.map((step) => step.id));
 
-  const isValidItemKey = useCallback(
-    (key?: string | null): key is EmbeddingStepId => {
-      return key != null && key in itemRefs;
-    },
-    [itemRefs],
-  );
-
-  const handleOpenStepChange = (newValue: string | null) => {
-    const typedNewValue = isValidItemKey(newValue) ? newValue : null;
-
-    if (typedNewValue !== null) {
-      const newItem = itemRefs[typedNewValue].current;
-      scrollElementIntoView(newItem);
-    }
-
-    onStepChange?.(typedNewValue);
-  };
-
-  const renderStepIcon = (step: EmbeddingStep) => {
+  const renderStepIcon = (step: EmbeddingHubStep) => {
     const isCompleted = completedSteps[step.id];
 
     if (isCompleted) {
@@ -78,7 +50,7 @@ export const EmbeddingChecklist = ({
     return <Icon name={step.icon as any} />;
   };
 
-  const renderStepActions = (step: EmbeddingStep) => {
+  const renderStepActions = (step: EmbeddingHubStep) => {
     if (!step.actions?.length) {
       return null;
     }
@@ -124,7 +96,7 @@ export const EmbeddingChecklist = ({
     <Accordion
       defaultValue={defaultOpenStep ?? steps[0]?.id}
       classNames={accordionClassNames}
-      onChange={handleOpenStepChange}
+      onChange={scrollAccordionItemIntoView}
     >
       {steps.map((step) => {
         const isCompleted = completedSteps[step.id] ?? false;
@@ -134,12 +106,12 @@ export const EmbeddingChecklist = ({
             key={step.id}
             value={step.id}
             data-testid={`${step.id}-item`}
-            ref={itemRefs[step.id]}
+            ref={accordionItemRefs[step.id]}
             data-completed={isCompleted}
           >
             <Accordion.Control
               icon={renderStepIcon(step)}
-              className={isCompleted ? S.completedControl : S.normalControl}
+              className={isCompleted ? S.completedControl : S.incompleteControl}
             >
               {step.title}
             </Accordion.Control>
@@ -171,15 +143,4 @@ export const EmbeddingChecklist = ({
       })}
     </Accordion>
   );
-};
-
-const scrollElementIntoView = (element?: HTMLDivElement | null) => {
-  if (!element) {
-    return;
-  }
-
-  element.scrollIntoView({
-    behavior: "smooth",
-    block: "center",
-  });
 };
