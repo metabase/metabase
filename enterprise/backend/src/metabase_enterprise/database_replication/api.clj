@@ -88,9 +88,7 @@
                                      (map :estimated_row_count)
                                      (remove nil?)
                                      (reduce +))
-                                    0)
-        map-ks-fn                  #(-> (m/map-keys {:table_schema :schema, :table_name :name} %)
-                                        (select-keys [:schema :name]))]
+                                    0)]
     (log/infof "Quota left: %s. Estimate db row count: %s" free-quota total-estimated-row-count)
     {:free-quota                 free-quota
      :total-estimated-row-count  total-estimated-row-count
@@ -98,8 +96,8 @@
      :all-quotas                 all-quotas
      :all-tables                 all-tables
      :replicated-tables          replicated-tables
-     :tables-without-pk          (map map-ks-fn tables-without-pk)
-     :tables-without-owner-match (map map-ks-fn tables-without-owner-match)}))
+     :tables-without-pk          tables-without-pk
+     :tables-without-owner-match tables-without-owner-match}))
 
 (defn- m->schema-filter [m]
   (-> m

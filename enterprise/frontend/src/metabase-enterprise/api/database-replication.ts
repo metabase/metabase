@@ -12,6 +12,11 @@ export interface GetDatabaseReplicationResponse {
   type: string;
 }
 
+export interface TableInfo {
+  tableName: string;
+  tableSchema: string;
+}
+
 export interface PreviewDatabaseReplicationResponse {
   allQuotas: {
     hostingFeature: string;
@@ -23,8 +28,9 @@ export interface PreviewDatabaseReplicationResponse {
   }[];
   canSetReplication: boolean;
   freeQuota: number;
-  tablesWithoutPk: { name: string; schema: string }[];
-  tablesWithoutOwnerMatch: { name: string; schema: string }[];
+  replicatedTables: TableInfo[];
+  tablesWithoutPk: TableInfo[];
+  tablesWithoutOwnerMatch: TableInfo[];
   totalEstimatedRowCount: number;
 }
 

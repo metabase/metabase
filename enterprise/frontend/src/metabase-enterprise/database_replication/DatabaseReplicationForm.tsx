@@ -29,7 +29,10 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { PreviewDatabaseReplicationResponse } from "metabase-enterprise/api/database-replication";
+import type {
+  PreviewDatabaseReplicationResponse,
+  TableInfo,
+} from "metabase-enterprise/api/database-replication";
 import type { Database, DatabaseId } from "metabase-types/api";
 
 // const styles = {
@@ -124,6 +127,7 @@ export const DatabaseReplicationForm = ({
   );
   const isValidSchemaFilters = !!debouncedSchemaFilters.length;
   const [showNoSyncTables, setShowNoSyncTables] = useState(false);
+  const [showReplicatedTables, setShowReplicatedTables] = useState(false);
 
   const [previewResponseLoading, setPreviewResponseLoading] = useState(false);
   const [previewResponse, setPreviewResponse] =
@@ -152,15 +156,17 @@ export const DatabaseReplicationForm = ({
         100
       : undefined;
 
-  const noSyncTables: { name: string; schema: string }[] = [];
+  const noSyncTables: TableInfo[] = [];
   unionInPlace(noSyncTables, previewResponse?.tablesWithoutPk);
   unionInPlace(noSyncTables, previewResponse?.tablesWithoutOwnerMatch);
 
-  const hasNoPk = (table: { schema: string; name: string }) =>
+  const replicatedTables = previewResponse?.replicatedTables ?? [];
+
+  const hasNoPk = (table: TableInfo) =>
     previewResponse?.tablesWithoutPk?.includes(table) ?? false;
-  const hasOwnerMismatch = (table: { schema: string; name: string }) =>
+  const hasOwnerMismatch = (table: TableInfo) =>
     previewResponse?.tablesWithoutOwnerMatch?.includes(table) ?? false;
-  const noSyncReason = (table: { schema: string; name: string }) =>
+  const noSyncReason = (table: TableInfo) =>
     hasNoPk(table)
       ? "(no primary key)"
       : hasOwnerMismatch(table)
@@ -262,7 +268,7 @@ export const DatabaseReplicationForm = ({
                 </Box>
               )}
 
-              {noSyncTables.length > 0 && (
+              {
                 <Card radius="md" bg="bg-light" p={0}>
                   <Flex
                     align="flex-start"
@@ -325,7 +331,7 @@ export const DatabaseReplicationForm = ({
                         <List spacing="xs" size="sm" fz="md" ml="sm" my="md">
                           {noSyncTables.map((table) => (
                             <List.Item
-                              key={`${table.schema}.${table.name}`}
+                              key={`${table.tableSchema}.${table.tableName}`}
                               fz="md"
                             >
                               <Text fz="md">
@@ -335,10 +341,10 @@ export const DatabaseReplicationForm = ({
                                   display="inline"
                                   fw="500"
                                 >
-                                  {table.schema}
+                                  {table.tableSchema}
                                 </Text>
                                 <Text span c="text-medium" display="inline">
-                                  .{table.name}
+                                  .{table.tableName}
                                 </Text>{" "}
                                 <Text span c="text-light" display="inline">
                                   {noSyncReason(table)}
@@ -351,7 +357,96 @@ export const DatabaseReplicationForm = ({
                     </>
                   )}
                 </Card>
-              )}
+              }
+
+              {
+                <Card radius="md" bg="bg-light" p={0}>
+                  <Flex
+                    align="flex-start"
+                    direction="row"
+                    gap="sm"
+                    justify="flex-start"
+                    wrap="nowrap"
+                    p="md"
+                  >
+                    <Icon name="check" size={16} maw={16} mt={1} />
+                    <Box>
+                      <Text fz="md" lh={1.35}>
+                        {t`Tables that will be replicated`}
+                      </Text>
+                      <UnstyledButton
+                        variant="subtle"
+                        size="xs"
+                        onClick={() =>
+                          setShowReplicatedTables(!showReplicatedTables)
+                        }
+                        c="brand"
+                        fz="md"
+                        h="auto"
+                        mt="xs"
+                        p={0}
+                        w="auto"
+                      >
+                        <Flex
+                          align="center"
+                          direction="row"
+                          gap="xs"
+                          justify="flex-start"
+                          wrap="nowrap"
+                        >
+                          <Text span c="brand">
+                            {showReplicatedTables
+                              ? t`Hide tables (${replicatedTables.length})`
+                              : t`Show tables (${replicatedTables.length})`}
+                          </Text>
+                          <Icon
+                            name={
+                              showReplicatedTables ? "chevronup" : "chevrondown"
+                            }
+                            size={12}
+                          />
+                        </Flex>
+                      </UnstyledButton>
+                    </Box>
+                  </Flex>
+
+                  {showReplicatedTables && (
+                    <>
+                      <Divider />
+                      <Box
+                        mah={180}
+                        px="md"
+                        style={{
+                          overflowY: "auto",
+                        }}
+                      >
+                        <List spacing="xs" size="sm" fz="md" ml="sm" my="md">
+                          {replicatedTables.map((table) => (
+                            <List.Item
+                              key={`${table.tableSchema}.${table.tableName}`}
+                              fz="md"
+                            >
+                              <Text fz="md">
+                                <Text
+                                  span
+                                  c="text-dark"
+                                  display="inline"
+                                  fw="500"
+                                >
+                                  {table.tableSchema}
+                                </Text>
+                                <Text span c="text-medium" display="inline">
+                                  .{table.tableName}
+                                </Text>
+                              </Text>
+                            </List.Item>
+                          ))}
+                        </List>
+                      </Box>
+                    </>
+                  )}
+                </Card>
+              }
 
               <Flex justify="end">
                 <Group align="center" gap="sm">
