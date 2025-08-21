@@ -1,31 +1,43 @@
+import { useField } from "formik";
 import { useState } from "react";
-import { jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { FormSelect, type FormSelectProps } from "metabase/forms";
+import { FormField, FormSelect, type FormSelectProps } from "metabase/forms";
 import { SelectItem, Text } from "metabase/ui";
 
 export function SchemaFormSelect(props: FormSelectProps & { data: string[] }) {
-  const { data, ...rest } = props;
+  const { data, name, ...rest } = props;
   const [searchValue, setSearchValue] = useState("");
 
   const dataWithNewItem = _.uniq([...data, searchValue]);
+  const [{ value }] = useField(name);
+
+  const isNewValue = !data.includes(value);
 
   return (
-    <FormSelect
-      {...rest}
-      data={dataWithNewItem}
-      searchable
-      searchValue={searchValue}
-      onSearchChange={setSearchValue}
-      renderOption={({ option }) => {
-        const { value } = option;
-        if (data.includes(value)) {
-          return <ExistingSelectItem value={value} />;
-        }
-        return <NewSelectItem value={value} />;
-      }}
-    />
+    <FormField>
+      <FormSelect
+        {...rest}
+        name={name}
+        data={dataWithNewItem}
+        searchable
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        renderOption={({ option }) => {
+          const { value } = option;
+          if (data.includes(value)) {
+            return <ExistingSelectItem value={value} />;
+          }
+          return <NewSelectItem value={value} />;
+        }}
+      />
+      {isNewValue && (
+        <Text size="sm" c="text-secondary" mt="sm">
+          {t`This schema will be created the first time the transform runs.`}
+        </Text>
+      )}
+    </FormField>
   );
 }
 
