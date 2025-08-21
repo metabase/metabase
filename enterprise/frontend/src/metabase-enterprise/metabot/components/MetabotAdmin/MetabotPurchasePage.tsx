@@ -72,7 +72,7 @@ export const MetabotPurchasePage = () => {
   const [purchaseMetabotAddOn] = usePurchaseMetabotCloudAddOnMutation();
   const onSubmit = useCallback(
     async ({ terms_of_service }: MetabotPurchaseFormFields) => {
-      purchaseMetabotAddOn({
+      await purchaseMetabotAddOn({
         terms_of_service,
       })
         .unwrap()
