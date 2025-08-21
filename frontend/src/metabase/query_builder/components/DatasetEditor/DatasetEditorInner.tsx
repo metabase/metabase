@@ -468,29 +468,20 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
-    const settings = question.settings();
     const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
-    const questionWithVisualizationSettings =
-      questionWithMetadata.updateSettings(
-        merge(settings, editedVisualizationSettings) as VisualizationSettings,
-      );
     if (isShowingListViewConfiguration) {
       dispatch(setUIControls({ isShowingListViewConfiguration: false }));
     }
 
     if (canBeDataset && isBrandNewDataset) {
-      await updateQuestion(questionWithVisualizationSettings, {
+      await updateQuestion(questionWithMetadata, {
         rerunQuery: false,
       });
-      setEditedVisualizationSettings(
-        questionWithVisualizationSettings.settings(),
-      );
+      setEditedVisualizationSettings(questionWithMetadata.settings());
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(questionWithVisualizationSettings, { rerunQuery: true });
-      setEditedVisualizationSettings(
-        questionWithVisualizationSettings.settings(),
-      );
+      await onSave(questionWithMetadata, { rerunQuery: true });
+      setEditedVisualizationSettings(questionWithMetadata.settings());
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {
@@ -500,7 +491,6 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   }, [
     question,
     metadataDiff,
-    editedVisualizationSettings,
     isShowingListViewConfiguration,
     dispatch,
     updateQuestion,
