@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-738-setup-sidebar-and-onboarding-page-for-embedding-hub",
     "hash": "c645c616b452fbe0ee51de96f820dcf95efa73ae"
+  },
+  "upstream": {
+    "branch": "emb-751-add-the-add-data-and-create-dashboard-modals-to-embedding"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 62528,
+        "gqlID": "PR_kwDOAczgH86kwjr6"
+      }
+    }
   }
 }
