@@ -187,6 +187,18 @@
                 (testing "no metadata"
                   (is (nil? (sut' model))))))))))))
 
+(deftest create-new-index-spec-test
+  (let [pgvector         semantic.tu/db
+        index-metadata   (semantic.tu/unique-index-metadata)
+        embedding-model  semantic.tu/mock-embedding-model
+        sut              semantic.index-metadata/create-new-index-spec]
+    (testing "creates new index spec for embedding model"
+      (let [result (sut pgvector index-metadata embedding-model)]
+        (is (=? {:index              {:embedding-model embedding-model}
+                 :index-table-exists false
+                 :active             false}
+                result))))))
+
 (deftest record-new-index-table!-test
   (let [pgvector        semantic.tu/db
         index-metadata  (semantic.tu/unique-index-metadata)
