@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useCallback, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { t } from "ttag";
 
 import type {
@@ -11,12 +11,12 @@ import {
   Flex,
   Group,
   Icon,
-  NumberInput,
   Select,
   Text,
   Tooltip,
 } from "metabase/ui";
 
+import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue/NumberInputWithFallbackValue";
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
@@ -44,17 +44,11 @@ export function DateIntervalPicker({
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
-  const [intervalDisplayValue, setIntervalDisplayValue] = useState<
-    string | number
-  >(getInterval(value));
-
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
   const dateRangeText = formatDateRange(value);
 
   const handleIntervalChange = (inputValue: number | string) => {
-    setIntervalDisplayValue(inputValue);
-
     if (typeof inputValue === "number") {
       onChange(setInterval(value, inputValue));
     }
@@ -76,22 +70,15 @@ export function DateIntervalPicker({
     onSubmit();
   };
 
-  // Forces the displayed interval to the current interval when the input loses focus.
-  // E.g. user deletes the input value and then clicks outside the input.
-  const handleBlur = useCallback(() => {
-    setIntervalDisplayValue(interval);
-  }, [interval]);
-
   return (
     <form onSubmit={handleSubmit}>
       <Flex p="md" align="center">
-        <NumberInput
+        <NumberInputWithFallbackValue
           allowDecimal={false}
-          value={intervalDisplayValue}
+          value={interval}
           aria-label={t`Interval`}
           w="4rem"
           onChange={handleIntervalChange}
-          onBlur={handleBlur}
         />
         <Select
           data={unitOptions}

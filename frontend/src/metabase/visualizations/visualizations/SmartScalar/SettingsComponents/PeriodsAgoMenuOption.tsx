@@ -68,12 +68,6 @@ export function PeriodsAgoMenuOption({
         return;
       }
 
-      if (!Number.isInteger(value)) {
-        onChange({ type, value: Math.floor(value) ?? MIN_VALUE });
-        reSelectInput();
-        return;
-      }
-
       onChange({ type, value });
     },
     [maxValue, message, onChange, reSelectInput, type],
@@ -103,6 +97,7 @@ export function PeriodsAgoMenuOption({
       <Box px="sm" onClick={() => onChange({ type, value }, true)}>
         <Group gap="sm">
           <NumberInputStyled
+            allowDecimal={false}
             value={value}
             onChange={(value) => handleInputChange(value)}
             onKeyPress={handleInputEnter}
