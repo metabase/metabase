@@ -857,6 +857,7 @@
 
 ;; table privileges for mysql currently has bug unfortunately
 <<<<<<< HEAD
+<<<<<<< HEAD
 (deftest sync-writable-test
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
@@ -951,6 +952,8 @@
               (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
               (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_test_user';"))))))))
 =======
+=======
+>>>>>>> master
 #_(deftest sync-writable-test
     (mt/test-driver :mysql
       (when-not (mysql/mariadb? (mt/db))
@@ -994,4 +997,7 @@
 
               (finally
                 (jdbc/execute! spec "DROP USER IF EXISTS 'sync_writable_test_user';"))))))))
+<<<<<<< HEAD
 >>>>>>> 75d6135498 (Track whether each table can be written to (#62203))
+=======
+>>>>>>> master
