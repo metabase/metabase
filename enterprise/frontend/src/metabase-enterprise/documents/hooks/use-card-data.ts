@@ -86,10 +86,11 @@ export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
   const isDraft = id < 0;
   const shouldSkipSavedCard = !id || isDraft;
 
-  const { data: card, isLoading: isLoadingCard } = useGetCardQuery(
-    { id },
-    { skip: shouldSkipSavedCard },
-  );
+  const {
+    data: card,
+    isLoading: isLoadingCard,
+    error: cardError,
+  } = useGetCardQuery({ id }, { skip: shouldSkipSavedCard });
 
   const cardWithDraft = useSelector((state) =>
     getCardWithDraft(state, id, card),
@@ -167,7 +168,8 @@ export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
 
   const hasTriedToLoad =
     cardToUse !== undefined || isLoadingCard || isLoadingDataset;
-  const hasFailedToLoadCard = hasTriedToLoad && !isLoading && id && !cardToUse;
+  const hasFailedToLoadCard =
+    !!cardError || (hasTriedToLoad && !isLoading && id && !cardToUse);
   const error = hasFailedToLoadCard ? "Failed to load question" : null;
 
   return {
