@@ -28,6 +28,9 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(use-fixtures :each (fn [thunk]
+                      (search.index/with-temp-index-table
+                        (thunk))))
 (comment
   ;; We need this to ensure the engine hierarchy is registered
   search.engines.appdb/keep-me)
@@ -203,36 +206,35 @@
                         (merge (data-map instance-name)
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
-    (search.tu/with-temp-index-table
-      (mt/with-temp [:model/Collection  coll           (data-map "collection %s collection")
-                     :model/Card        action-model   (if in-root-collection?
-                                                         action-model-params
-                                                         (assoc action-model-params :collection_id (u/the-id coll)))
-                     :model/Action      {action-id :id
-                                         :as action}   (merge (data-map "action %s action")
-                                                              {:type :query, :model_id (u/the-id action-model)})
-                     :model/Database    {db-id :id
-                                         :as db}       (data-map "database %s database")
-                     :model/Table       table          (merge (data-map "database %s database")
-                                                              {:db_id db-id})
+    (mt/with-temp [:model/Collection  coll           (data-map "collection %s collection")
+                   :model/Card        action-model   (if in-root-collection?
+                                                       action-model-params
+                                                       (assoc action-model-params :collection_id (u/the-id coll)))
+                   :model/Action      {action-id :id
+                                       :as action}   (merge (data-map "action %s action")
+                                                            {:type :query, :model_id (u/the-id action-model)})
+                   :model/Database    {db-id :id
+                                       :as db}       (data-map "database %s database")
+                   :model/Table       table          (merge (data-map "database %s database")
+                                                            {:db_id db-id})
 
-                     :model/QueryAction _qa (query-action action-id)
-                     :model/Card        card           (coll-data-map "card %s card" coll)
-                     :model/Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
-                                                              :type :model)
-                     :model/Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                     :model/Card        metric         (assoc (coll-data-map "metric %s metric" coll)
-                                                              :type :metric)
-                     :model/Segment     segment        (data-map "segment %s segment")]
-        (f {:action     action
-            :collection coll
-            :card       card
-            :database   db
-            :dataset    dataset
-            :dashboard  dashboard
-            :metric     metric
-            :table      table
-            :segment    segment})))))
+                   :model/QueryAction _qa (query-action action-id)
+                   :model/Card        card           (coll-data-map "card %s card" coll)
+                   :model/Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
+                                                            :type :model)
+                   :model/Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
+                   :model/Card        metric         (assoc (coll-data-map "metric %s metric" coll)
+                                                            :type :metric)
+                   :model/Segment     segment        (data-map "segment %s segment")]
+      (f {:action     action
+          :collection coll
+          :card       card
+          :database   db
+          :dataset    dataset
+          :dashboard  dashboard
+          :metric     metric
+          :table      table
+          :segment    segment}))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
   `(do-with-search-items ~search-string true (fn [~'_] ~@body)))
@@ -1657,20 +1659,19 @@
 
 (deftest ^:synchronized force-reindex-test
   (when (search/supports-index?)
-    (search.tu/with-temp-index-table
-      (mt/with-temp [:model/Card {id :id} {:name "It boggles the mind!"}]
-        (mt/user-http-request :crowberto :post 200 "search/re-init")
-        (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "appdb"))]
-          (is (try (t2/delete! (search.index/active-table)) (catch Exception _ :already-deleted)))
-          (is (empty? (search-results 200)))
-          (mt/user-http-request :crowberto :post 200 "search/force-reindex")
-          (is (loop [attempts-left 5]
-                (if (and (pos? (try (t2/count (search.index/active-table)) (catch Exception _ 0)))
-                         (some (comp #{id} :id) (search-results 200)))
-                  ::success
-                  (when (pos? attempts-left)
-                    (Thread/sleep 200)
-                    (recur (dec attempts-left)))))))))))
+    (mt/with-temp [:model/Card {id :id} {:name "It boggles the mind!"}]
+      (mt/user-http-request :crowberto :post 200 "search/re-init")
+      (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "appdb"))]
+        (is (try (t2/delete! (search.index/active-table)) (catch Exception _ :already-deleted)))
+        (is (empty? (search-results 200)))
+        (mt/user-http-request :crowberto :post 200 "search/force-reindex")
+        (is (loop [attempts-left 5]
+              (if (and (pos? (try (t2/count (search.index/active-table)) (catch Exception _ 0)))
+                       (some (comp #{id} :id) (search-results 200)))
+                ::success
+                (when (pos? attempts-left)
+                  (Thread/sleep 200)
+                  (recur (dec attempts-left))))))))))
 
 (defn- weights-url
   ([]
