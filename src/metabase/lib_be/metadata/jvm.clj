@@ -54,7 +54,8 @@
         (update-keys memoized-kebab-key)
         (assoc :lib/type metadata-type)
         normalize
-        u.snake-hating-map/snake-hating-map)))
+        u.snake-hating-map/snake-hating-map
+        (vary-meta assoc :metabase/toucan-instance instance))))
 
 ;;;
 ;;; Database
