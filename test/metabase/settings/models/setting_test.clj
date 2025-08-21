@@ -933,8 +933,9 @@
          (test-database-local-only-setting! 2))))
 
   (testing "Default values should be allowed for Database-local-only Settings"
-    (is (= "DEFAULT"
-           (test-database-local-only-setting-with-default)))
+    (binding [setting/*database-local-values* {}]
+      (is (= "DEFAULT"
+             (test-database-local-only-setting-with-default))))
     (binding [setting/*database-local-values* {:test-database-local-only-setting-with-default "WOW"}]
       (is (= "WOW"
              (test-database-local-only-setting-with-default))))))
