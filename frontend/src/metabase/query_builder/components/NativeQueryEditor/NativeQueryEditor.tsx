@@ -379,15 +379,11 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               snippet={this.props.modalSnippet}
               onCreate={this.props.insertSnippet}
               onUpdate={(newSnippet, oldSnippet) => {
-                // get the query instance with updated Metadata with the updated snippet
-                let newQuery = this.props.query;
-                // update snippet names before parsing
-                newQuery =
-                  newSnippet.name !== oldSnippet.name
-                    ? newQuery.updateSnippetNames([newSnippet])
-                    : newQuery;
-                // parse the query to set tags from snippets
-                newQuery = newQuery.setQueryText(newQuery.queryText());
+                // get the query instance with the latest Metadata that has the updated snippet
+                const newQuery = this.props.query.updateSnippet(
+                  oldSnippet,
+                  newSnippet,
+                );
                 setDatasetQuery(newQuery);
               }}
               onClose={this.props.closeSnippetModal}

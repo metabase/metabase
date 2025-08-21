@@ -386,6 +386,23 @@ export default class NativeQuery {
       .filter(variableFilter);
   }
 
+  updateSnippet(
+    oldSnippet: NativeQuerySnippet,
+    newSnippet: NativeQuerySnippet,
+  ) {
+    // if the snippet name has changed, we need to update it in the query
+    const newQuery =
+      newSnippet.name !== oldSnippet.name
+        ? this.updateSnippetNames([newSnippet])
+        : this;
+
+    // if the query has changed, it was already parsed; otherwise do the parsing
+    // to expand snippet tags into the query tags
+    return newQuery !== this
+      ? newQuery.setQueryText(newQuery.queryText())
+      : newQuery;
+  }
+
   updateSnippetNames(snippets: NativeQuerySnippet[]): NativeQuery {
     const tagsBySnippetId = _.chain(this.templateTags())
       .filter((tag) => tag.type === "snippet" && tag["snippet-id"] != null)
