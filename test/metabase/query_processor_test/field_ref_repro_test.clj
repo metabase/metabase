@@ -35,8 +35,7 @@
           query (lib/join base (-> (lib/join-clause card-meta [(lib/= lhs (lib/with-join-alias rhs "j"))])
                                    (lib/with-join-fields :all)
                                    (lib/with-join-alias "j")))]
-      (mt/with-native-query-testing-context
-        query
+      (mt/with-native-query-testing-context query
         (testing "should return a single row with two columns"
           (is (= {:rows [[1 1]], :columns ["_ID" "_ID_2"]}
                  (mt/rows+column-names
@@ -55,7 +54,7 @@
                             (lib/filter (lib/contains long-name-col "a"))
                             (lib/limit 3))]
       (mt/with-native-query-testing-context query
-        ;; should return 53 rows with two columns, but fails instead
+        ;; should return 53 rows with two columns
         (is (= {:rows    [[5 "Gadget"]
                           [11 "Gadget"]
                           [16 "Gadget"]]
@@ -265,17 +264,25 @@
           (is (= [[1746]]
                  (mt/rows results))))))))
 
+;;; This one is a really tricky one to solve, the problem is that the implicit join happens in the first stage (Card 1)
+;;; because of the remappped column, but the parameter asks to be applied to stage 3... it's too late to add a new
+;;; filter against `PEOPLE__via__USER_ID.STATE` at that point because it doesn't come back from stage 1 or 2 (this is
+;;; why resolution trips up and falls back to `source.STATE`. I think the only way to fix this would be to make the
+;;; parameter logic apply the parameter to the correct stage (ignoring `:stage-number` when it's wrong) or add another
+;;; duplicate implicit join in stage 3 to power the filter
+;;;
+;;; See
+;;; also [[metabase.lib.field.resolution-test/resolve-unreturned-column-from-reified-implicit-join-in-previous-stage-test]]
 (deftest ^:parallel model-with-implicit-join-and-external-remapping-test
   (testing "Should handle models with implicit join on externally remapped field (#57596)"
-    (qp.store/with-metadata-provider
-      (lib.tu/remap-metadata-provider
-       (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-        [(mt/mbql-query orders)
-         (mt/mbql-query nil {:source-table (str "card__" 1)})])
-       (mt/id :orders :user_id)
-       (mt/id :people :email))
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                       [(mt/mbql-query orders)
+                                        (mt/mbql-query nil {:source-table "card__1"})])
+                                      (mt/id :orders :user_id)
+                                      (mt/id :people :email))
       (let [query (-> (mt/mbql-query nil
-                        {:source-table (str "card__" 2)})
+                        {:source-table "card__2"})
                       (assoc :parameters [{:value ["CA"]
                                            :type :string/=
                                            :id "72622120"
@@ -291,5 +298,5 @@
         (mt/with-native-query-testing-context query
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Column .* not found"
+               #"Column \"source\.PEOPLE__via__USER_ID__STATE\" not found"
                (-> query qp/process-query mt/rows count))))))))
