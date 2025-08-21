@@ -407,7 +407,7 @@
 
 (defn invite-user
   "Implementation for `POST /`, invites a user to Metabase."
-  [{:keys [email user_group_memberships] :as body} request]
+  [{:keys [email user_group_memberships source] :as body}]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
@@ -418,14 +418,10 @@
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (let [referrer (get-in request [:headers "referer"])
-            source   (if (and referrer (re-find #"/setup" referrer))
-                       "setup"
-                       "admin")]
-        (analytics/track-event! :snowplow/invite
-                                {:event           :invite-sent
-                                 :invited-user-id new-user-id
-                                 :source          source}))
+      (analytics/track-event! :snowplow/invite
+                              {:event           :invite-sent
+                               :invited-user-id new-user-id
+                               :source          (or source "admin")})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 
@@ -438,9 +434,9 @@
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]
-   request]
-  (invite-user body request))
+            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+            [:source                 {:optional true, :default "admin"} [:maybe ms/NonBlankString]]]]
+  (invite-user body))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |

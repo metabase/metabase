@@ -182,6 +182,7 @@ export const submitUserInvite = createAsyncThunk(
         email: inviteInfo.email,
         first_name: inviteInfo.first_name || undefined,
         last_name: inviteInfo.last_name || undefined,
+        source: "setup",
       }),
     );
     dispatch(goToNextStep());
