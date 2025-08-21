@@ -41,7 +41,6 @@ const DashboardActionMenuInner = ({
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard?.id ?? null,
     parameterQueryParams: location?.query,
-    refetchData: false,
   });
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
