@@ -251,6 +251,9 @@
                                                                                    :filter        [:in (mt/$ids $orders.product_id) 1 2]}}))]
                                  (zipmap (map first result) (map second result))))]
 
+          ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+          (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
           (testing "sanity check that we have children rows"
             (is (= {1 93
                     2 98}
@@ -312,8 +315,8 @@
           (is (= 1 (children-count 2)))
           (is (= 1 (children-count 3))))
 
-        ;; HERE NGOC
-        (sync/sync-database! (t2/select-one :model/Database (mt/id)) {:scan :full})
+        ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+        (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
 
         (testing "delete parent with self-referential children should return error without delete-children param"
           (is (=? {:errors [{:index       0
