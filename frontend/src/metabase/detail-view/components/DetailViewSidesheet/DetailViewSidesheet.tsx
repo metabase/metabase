@@ -99,6 +99,7 @@ export function DetailViewSidesheet({
   }, [columns, row, rowId]);
   const icon = getEntityIcon(table?.entity_type);
   const modelId = getModelId(table);
+  const isNavEnabled = rowFromProps != null && showNav;
 
   const [actionId, setActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
@@ -184,14 +185,16 @@ export function DetailViewSidesheet({
         (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
           activeElement.isContentEditable);
 
-      if (event.key === "ArrowUp" && !isInputFocused && !isModalOpen) {
-        event.stopPropagation();
-        onPreviousClick?.();
-      }
+      if (isNavEnabled && !isInputFocused && !isModalOpen) {
+        if (event.key === "ArrowUp" && onPreviousClick) {
+          event.stopPropagation();
+          onPreviousClick();
+        }
 
-      if (event.key === "ArrowDown" && !isInputFocused && !isModalOpen) {
-        event.stopPropagation();
-        onNextClick?.();
+        if (event.key === "ArrowDown" && onNextClick) {
+          event.stopPropagation();
+          onNextClick();
+        }
       }
     },
     {
@@ -223,7 +226,7 @@ export function DetailViewSidesheet({
       <Sidesheet
         actions={
           <>
-            {rowFromProps != null && showNav && (
+            {isNavEnabled && (
               <>
                 <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
                   <Button
