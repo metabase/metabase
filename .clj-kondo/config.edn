@@ -723,6 +723,11 @@
   {:pattern "metabase\\.driver.*$"
    :name    driver-namespaces}
   ;;
+  ;; Perf-sensitive namespaces are currently the union of metabase.lib.*, driver namespaces, and QP (without tests).
+  ;;
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*)^metabase\\.(lib|driver|legacy-mbql|query-processor).*"
+   :name    performance-sensitive}
+  ;;
   ;; general QP tests are ones that run across multiple drivers. Anything `metabase.query-processor*-test`,
   ;; `metabase.driver.sql*-test` (excluding SQLServer and SQLite), or
   ;; `metabase-enterprise.sandbox.query-processor*-test`
@@ -782,7 +787,7 @@
     ;; eventually we should do this for the whole codebase, but the args are in the opposite order so switching them
     ;; all at once isn't trivial, at least we can stop using it in new code.
     :discouraged-var
-    {medley.core/map-keys    {:message "Use clojure.core/update-keys"}
+    {medley.core/map-keys    {:message "Use metabase.util.performance/update-keys"}
      medley.core/map-vals    {:message "Use clojure.core/update-vals"}
      metabase.test/with-temp {:message "Don't use application database inside MLv2 code"}}
 
@@ -806,6 +811,11 @@
    {:discouraged-var
     {metabase.driver/database-supports? {:level :off}}}}
 
+  performance-sensitive
+  {:linters
+   {:discouraged-var
+    {clojure.core/update-keys {:message "Use metabase.util.performance/update-keys"}}}}
+
   qp-and-driver-source-namespaces
   {:linters
    {:discouraged-namespace
@@ -817,7 +827,7 @@
      toucan2.core                   {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}
 
     :discouraged-var
-    {medley.core/map-keys                 {:message "Use clojure.core/update-keys"}
+    {medley.core/map-keys                 {:message "Use metabase.util.performance/update-keys"}
      medley.core/map-vals                 {:message "Use clojure.core/update-vals"}
      metabase.app-db.core/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
      metabase.app-db.core/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
