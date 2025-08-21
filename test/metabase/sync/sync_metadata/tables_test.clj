@@ -261,8 +261,8 @@
   (testing "Tables from sample databases should be marked as :ingested"
     (mt/with-temp [:model/Database sample-db {:is_sample true}
                    :model/Database normal-db {:is_sample false}]
-      (let [sample-table-metadata {:name "sample_table" :schema nil}
-            normal-table-metadata {:name "normal_table" :schema nil}]
+      (let [sample-table-metadata {:name "sample_table"}
+            normal-table-metadata {:name "normal_table"}]
 
         (testing "creating a table in a sample database"
           (let [created-table (sync-tables/create-table! sample-db sample-table-metadata)]
@@ -273,12 +273,11 @@
             (is (= :unconfigured (:data_authority created-table)))))
 
         (testing "reactivating a table in a sample database"
-          (mt/with-temp [:model/Table existing-table {:db_id (:id sample-db)
-                                                      :name "existing_sample_table"
-                                                      :schema nil
-                                                      :active false
+          (mt/with-temp [:model/Table existing-table {:db_id          (:id sample-db)
+                                                      :name           "existing_sample_table"
+                                                      :active         false
                                                       :data_authority :computed}]
-            (sync-tables/create-or-reactivate-table! sample-db {:name "existing_sample_table" :schema nil})
+            (sync-tables/create-or-reactivate-table! sample-db {:name "existing_sample_table"})
             (let [updated-table (t2/select-one :model/Table (:id existing-table))]
               (is (= :ingested (:data_authority updated-table)))
               (is (:active updated-table)))))))))

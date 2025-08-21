@@ -70,7 +70,14 @@
               kw
               (do (log/warnf "Unknown data_authority value from database: %s, converting to :unknown" value)
                   :unknown))))
-   :in  #(some-> % name)})
+   :in  (fn [value]
+          (let [kw (some-> value keyword)]
+            (when-not (contains? writable-data-authority-types kw)
+              (throw (ex-info (str "Illegal value for data_authority: " kw)
+                              {:field       :data_authority
+                               :value       value
+                               :status-code 400}))))
+          (some-> value name))})
 
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
@@ -105,11 +112,6 @@
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
-
-    ;; Prevent setting data_authority to :unknown (read-only value)
-    (when (= :unknown (some-> changes :data_authority keyword))
-      (throw (ex-info "Cannot set data_authority to unknown - this is a read-only value"
-                      {:status-code 400})))
 
     ;; Prevent setting data_authority back to unconfigured once configured
     (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
