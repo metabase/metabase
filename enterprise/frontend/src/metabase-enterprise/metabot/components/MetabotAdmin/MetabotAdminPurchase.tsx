@@ -219,7 +219,7 @@ export const MetabotAdminPurchase = () => {
                   </Group>
                 </Flex>
                 <Text>
-                  {t`Your first month is on us.`}
+                  {t`Your first month is on us.`}{" "}
                   <Text
                     component="span"
                     fw="bold"
