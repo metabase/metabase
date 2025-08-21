@@ -28,7 +28,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
@@ -58,7 +59,7 @@
   from the driver to values calculated by MLv2."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
+  (let [driver-col (perf/update-keys driver-col u/->kebab-case-en)]
     (merge lib-col
            (m/filter-vals some? driver-col)
            ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
@@ -352,7 +353,7 @@
                      lib-cols)]
       (->> initial-cols
            (map (fn [col]
-                  (update-keys col u/->kebab-case-en)))
+                  (perf/update-keys col u/->kebab-case-en)))
            ((fn [cols]
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))

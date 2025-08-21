@@ -112,11 +112,33 @@
   [driver conn]
   (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
 
+(defn- partial-revokes-enabled?
+  [driver db]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db
+   nil
+   (fn [^java.sql.Connection conn]
+     (let [stmt (.prepareStatement conn "SHOW VARIABLES LIKE 'partial_revokes';")
+           rset (.executeQuery stmt)]
+       (when (.next rset)
+         (= "ON" (.getString rset 2)))))))
+
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
   ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
   false
   #_(and (= driver :mysql) (not (mariadb? db))))
+
+(defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
+  [driver _feat db]
+  (and (= driver :mysql)
+       (not (mariadb? db))
+       (not (try
+              (partial-revokes-enabled? driver db)
+              (catch Exception e
+                (log/warn e "Failed to check table writable")
+                false)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
