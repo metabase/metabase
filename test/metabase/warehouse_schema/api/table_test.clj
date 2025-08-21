@@ -59,7 +59,7 @@
 
 (defn- table-defaults []
   (merge
-   (mt/object-defaults :model/Table)
+   (update (mt/object-defaults :model/Table) :data_authority name)
    {:db          (db-details)
     :db_id       (mt/id)
     :entity_type "entity/GenericTable"

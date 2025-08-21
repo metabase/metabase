@@ -358,7 +358,7 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :is_authoritative :data_authority]
+               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :archived_at (serdes/date)

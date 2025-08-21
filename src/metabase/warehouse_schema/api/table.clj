@@ -66,8 +66,10 @@
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model]}
    :- [:map
-       [:include_editable_data_model {:optional true} [:maybe :boolean]]
-       [:data_authority ::data-authority-read]]]
+       [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
+  ;; partial schema only
+  :- [:map {:closed false}
+      [:data_authority ::data-authority-read]]
   (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
