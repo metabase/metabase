@@ -1060,21 +1060,20 @@ databaseChangeLog:
                   defaultValue: null
 
   - changeSet:
-      id: v57.2025-08-22T00:16:00
+      id: v57.2025-08-22T00:16:01
       author: christruter
-      comment: Add is_authoritative flag to metabase_table
+      comment: Add data_authority enum field to metabase_table
       changes:
         - addColumn:
             tableName: metabase_table
             columns:
               - column:
-                  name: is_authoritative
-                  remarks: Whether this table is "authoritative", as opposed to being derived from another source,
-                           for example via Metabase transforms, or external automation.
-                  type: ${boolean.type}
+                  name: data_authority
+                  remarks: Indicates the data authority status - unconfigured, authoritative, computed, or ingested
+                  type: varchar(20)
+                  defaultValue: 'unconfigured'
                   constraints:
-                    nullable: true
-                    remarks: Null corresponds to "I haven't said yet"
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
