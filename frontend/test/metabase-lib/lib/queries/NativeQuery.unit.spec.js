@@ -8,6 +8,7 @@ import NativeQuery, {
 import {
   createMockDatabase,
   createMockNativeQuerySnippet,
+  createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
   PRODUCTS,
@@ -274,16 +275,32 @@ describe("NativeQuery", () => {
       });
 
       it("should update query text with new snippet names", () => {
-        const q = makeQuery()
-          .setQueryText("{{ snippet: foo }}")
-          .updateSnippetNames([{ id: SNIPPET_ID, name: "bar" }]);
+        const q = makeQuery("{{ snippet: foo }}", {
+          "snippet: foo": createMockTemplateTag({
+            name: " snippet: foo ",
+            type: "snippet",
+            "snippet-id": SNIPPET_ID,
+            "snippet-name": "foo",
+          }),
+        }).updateSnippetNames([{ id: SNIPPET_ID, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}}");
       });
 
       it("should update snippet names that differ on spacing", () => {
-        const q = makeQuery()
-          .setQueryText("{{ snippet: foo }} {{snippet:  foo  }}")
-          .updateSnippetNames([{ id: SNIPPET_ID, name: "bar" }]);
+        const q = makeQuery("{{ snippet: foo }} {{snippet:  foo  }}", {
+          " snippet: foo ": createMockTemplateTag({
+            name: " snippet: foo ",
+            type: "snippet",
+            "snippet-id": SNIPPET_ID,
+            "snippet-name": "foo",
+          }),
+          "snippet:  foo  ": createMockTemplateTag({
+            name: "snippet:  foo  ",
+            type: "snippet",
+            "snippet-id": SNIPPET_ID,
+            "snippet-name": "foo",
+          }),
+        }).updateSnippetNames([{ id: SNIPPET_ID, name: "bar" }]);
         expect(q.queryText()).toEqual("{{snippet: bar}} {{snippet: bar}}");
       });
     });
