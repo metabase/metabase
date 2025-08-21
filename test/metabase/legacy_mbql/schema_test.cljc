@@ -5,6 +5,7 @@
    [malli.error :as me]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.util.malli.humanize :as mu.humanize]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel temporal-literal-test
@@ -254,3 +255,11 @@
                 [:datetime "" {:mode :iso}]
                 [:datetime 10 {:mode :unix-seconds}]]]
     (is (mr/validate mbql.s/datetime expr))))
+
+(deftest ^:parallel all-clauses-are-registered-test
+  ;; use the Lib schema to find all the known clauses.
+  (doseq [tag @@#'lib.schema.mbql-clause/tag-registry
+          :let [schema (mbql.s/tag->registered-schema-name tag)]]
+    (testing tag
+      (is (isa? schema ::mbql.s/mbql-clause)
+          (str schema " should derive from " ::mbql.s/mbql-clause)))) )

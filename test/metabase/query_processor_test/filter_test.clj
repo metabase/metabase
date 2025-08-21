@@ -7,6 +7,7 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
@@ -1070,3 +1071,59 @@
       (is (= [[3 1 105 52.72 2.9 49.2 6.42 "2019-12-06T22:22:48.544Z" 2 3 "2014-09-15T00:00:00Z" 8 56]
               [6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 6 "2015-07-04T00:00:00Z" 3 35]]
              (mt/rows (qp/process-query query)))))))
+
+(deftest ^:parallel starts-with-multiple-args-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                    (lib/filter (-> (lib/starts-with
+                                     (lib.metadata/field mp (mt/id :categories :name))
+                                     "b"
+                                     "c")
+                                    (lib.options/update-options assoc :case-sensitive false)))
+                    (lib/order-by (lib.metadata/field mp (mt/id :categories :id)))
+                    (lib/limit 2))]
+      (is (= [[5 "BBQ"] [6 "Bakery"]]
+             (mt/formatted-rows [int str] (qp/process-query query)))))))
+
+(deftest ^:parallel ends-with-multiple-args-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                    (lib/filter (-> (lib/ends-with
+                                     (lib.metadata/field mp (mt/id :categories :name))
+                                     "B"
+                                     "C")
+                                    (lib.options/update-options assoc :case-sensitive false)))
+                    (lib/order-by (lib.metadata/field mp (mt/id :categories :id)))
+                    (lib/limit 2))]
+      (is (= [[17 "Comedy Club"] [55 "Nightclub"]]
+             (mt/formatted-rows [int str] (qp/process-query query)))))))
+
+(deftest ^:parallel contains-multiple-args-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                    (lib/filter (-> (lib/contains
+                                     (lib.metadata/field mp (mt/id :categories :name))
+                                     "B"
+                                     "E")
+                                    (lib.options/update-options assoc :case-sensitive false)))
+                    (lib/order-by (lib.metadata/field mp (mt/id :categories :id)))
+                    (lib/limit 2))]
+      (is (= [[2 "American"] [5 "BBQ"]]
+             (mt/formatted-rows [int str] (qp/process-query query)))))))
+
+(deftest ^:parallel does-not-contain-multiple-args-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                    (lib/filter (-> (lib/does-not-contain
+                                     (lib.metadata/field mp (mt/id :categories :name))
+                                     "B"
+                                     "C")
+                                    (lib.options/update-options assoc :case-sensitive false)))
+                    (lib/order-by (lib.metadata/field mp (mt/id :categories :id)))
+                    (lib/limit 2))]
+      (is (= [[3 "Artisan"] [4 "Asian"]]
+             (mt/formatted-rows [int str] (qp/process-query query)))))))

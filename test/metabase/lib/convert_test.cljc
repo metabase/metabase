@@ -1602,3 +1602,20 @@
                                       {:lib/uuid "85a69d68-a2df-4c22-8a45-2203c837d3bf"}
                                       0
                                       :day]]))))
+
+(deftest ^:parallel and-or-with-options->legacy-test
+  (doseq [tag [:and :or]]
+    (is (= [tag
+            [:starts-with [:field 243 {:base-type :type/Text}] "B" {:case-sensitive false}]
+            [:starts-with [:field 243 {:base-type :type/Text}] "C" {:case-sensitive false}]]
+           (lib.convert/->legacy-MBQL
+            [tag
+             {:lib/uuid "fd823910-ffc9-4508-a6af-fa37fe29514d", :case-sensitive false}
+             [:starts-with
+              {:case-sensitive false, :lib/uuid "dc413cb8-429d-4103-aaa4-06e3d3bf0a4d"}
+              [:field {:base-type :type/Text, :lib/uuid "b94a285d-32a5-45ad-a261-d4c67f1af8db", :effective-type :type/Text} 243]
+              "B"]
+             [:starts-with
+              {:case-sensitive false, :lib/uuid "92c8ee03-6bc6-45c9-865c-57d0c5d53e23"}
+              [:field {:base-type :type/Text, :lib/uuid "044811f6-9e30-4c42-b5b6-6afde5031675", :effective-type :type/Text} 243]
+              "C"]])))))
