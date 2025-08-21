@@ -20,12 +20,12 @@
 
       (testing "returns database routing reason for destination databases"
         (mt/with-temp [:model/Database router-db {:initial_sync_status "complete"}
-                       :model/Database db        {:initial_sync_status "complete", :router_database_id (:id router-db)}
-                       :model/Table    _table    {:db_id (:id db) #_#_:is_writable true}]
-          ;; TODO oh, i guess we should also detect this case?
+                       :model/Database target-db {:initial_sync_status "complete", :router_database_id (:id router-db)}
+                       :model/Table    _table-1  {:db_id (:id router-db) :is_writable true}
+                       :model/Table    _table-2  {:db_id (:id target-db) :is_writable true}]
           (let [reasons (extract-disabled-reasons enabled-for-db? router-db)]
             (is (= [:setting/database-routing] reasons)))
-          (let [reasons (extract-disabled-reasons enabled-for-db? db)]
+          (let [reasons (extract-disabled-reasons enabled-for-db? target-db)]
             (is (= [:setting/database-routing] reasons)))))
 
       (testing "returns sync in progress reason when sync is incomplete"
@@ -35,18 +35,18 @@
 
       (testing "succeeds when database has writable tables"
         (mt/with-temp [:model/Database db     {:initial_sync_status "complete"}
-                       :model/Table    _table {:db_id (:id db) #_#_:is_writable true}]
+                       :model/Table    _table {:db_id (:id db) :is_writable true}]
           (is (= true (enabled-for-db? db)))))
 
       (testing "returns missing permissions reason when tables have unknown write-ability"
         (mt/with-temp [:model/Database db     {:initial_sync_status "complete"}
-                       :model/Table    _table {:db_id (:id db) #_#_:is_writable nil}]
+                       :model/Table    _table {:db_id (:id db) :is_writable nil}]
           (let [reasons (extract-disabled-reasons enabled-for-db? db)]
             (is (= [:warning/database-metadata-missing] reasons)))))
 
       (testing "returns no writable tables reason when all tables are not writable"
         (mt/with-temp [:model/Database db     {:initial_sync_status "complete"}
-                       :model/Table    _table {:db_id (:id db) #_#_:is_writable false}]
+                       :model/Table    _table {:db_id (:id db) :is_writable false}]
           (let [reasons (extract-disabled-reasons enabled-for-db? db)]
             (is (= [:permissions/no-writable-table] reasons)))))
 
