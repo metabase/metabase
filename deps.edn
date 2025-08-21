@@ -38,7 +38,8 @@
                                                            org.slf4j/slf4j-api]}
   com.clojure-goes-fast/jvm-alloc-rate-meter{:mvn/version "0.1.4"}              ; Monitor heap allocation rate.
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
-  com.draines/postal                        {:mvn/version "2.0.5"}              ; SMTP library
+  com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
+                                             :exclusions [com.sun.mail/jakarta.mail]}
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.0"}              ; trans dep of commons-codec
                                                                                 ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
@@ -58,7 +59,9 @@
   com.ibm.icu/icu4j                         {:mvn/version "77.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.mchange/c3p0                          {:mvn/version "0.10.1"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
-  {:mvn/version "1.0.1"}              ; Snowplow analytics
+                                            {:mvn/version "1.0.1"}              ; Snowplow analytics
+  com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
+                                            {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
   com.taoensso/nippy                        {:mvn/version "3.6.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
