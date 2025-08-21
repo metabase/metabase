@@ -856,8 +856,6 @@
                              driver/*driver* conn schema table-name))))))))))))
 
 ;; table privileges for mysql currently has bug unfortunately
-<<<<<<< HEAD
-<<<<<<< HEAD
 (deftest sync-writable-test
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
