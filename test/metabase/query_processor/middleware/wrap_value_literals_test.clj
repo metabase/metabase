@@ -276,67 +276,76 @@
 
 (deftest ^:parallel expression-test
   (testing "Value literals compared to :expression refs should get wrapped. Should give date literal strings :day bucketing (#17807)"
-    (qp.store/with-metadata-provider (mt/id)
-      (let [people     (lib.metadata/table (qp.store/metadata-provider) (mt/id :people))
-            created-at (lib.metadata/field (qp.store/metadata-provider) (mt/id :people :created_at))
-            query      (as-> (lib/query (qp.store/metadata-provider) people) query
-                         (lib/expression query "CC Created At" created-at)
-                         (lib/filter query (lib/=
-                                            (lib/expression-ref query "CC Created At")
-                                            "2017-10-07"))
-                         (lib/aggregate query (lib/count)))]
-
-        (is (=? {:stages [{:filters
-                           [[:=
-                             {}
-                             [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
-                             "2017-10-07"]]}]}
-                query))
-        (is (=? {:stages [{:lib/type :mbql.stage/mbql
-                           :filters  [[:=
-                                       {}
-                                       [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
-                                       [:absolute-datetime {} (t/offset-date-time #t "2017-10-07T00:00Z") :day]]]}]}
-                (->> query
-                     lib/->legacy-MBQL
-                     wrap-value-literals
-                     (lib/query query))))))))
+    (let [mp         meta/metadata-provider
+          people     (lib.metadata/table mp (meta/id :people))
+          created-at (lib.metadata/field mp (meta/id :people :created-at))
+          query      (as-> (lib/query mp people) query
+                       (lib/expression query "CC Created At" created-at)
+                       (lib/filter query (lib/=
+                                          (lib/expression-ref query "CC Created At")
+                                          "2017-10-07"))
+                       (lib/aggregate query (lib/count)))]
+      (is (=? {:stages [{:filters
+                         [[:=
+                           {}
+                           [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
+                           "2017-10-07"]]}]}
+              query))
+      (is (=? {:stages [{:lib/type :mbql.stage/mbql
+                         :filters  [[:=
+                                     {}
+                                     [:expression {:base-type :type/DateTimeWithLocalTZ} "CC Created At"]
+                                     [:absolute-datetime {} (t/offset-date-time #t "2017-10-07T00:00Z") :day]]]}]}
+              (->> query
+                   lib/->legacy-MBQL
+                   wrap-value-literals
+                   (lib/query query)))))))
 
 (deftest ^:parallel model-source-type-info-test
   (testing "type info is added to fields coming from model source query (#46059)"
     ;; Basically, this checks whether the [[metabase.query-processor.middleware.wrap-value-literals/type-info]] :field
     ;; adds options to values in expressions, where other arg is field clause with name instead of int id.
-    (mt/with-temp [:model/Card {id :id} {:dataset_query (mt/mbql-query venues)
-                                         :type          :model}]
-      (let [query (mt/mbql-query
-                    venues
-                    {:source-table (str "card__" id)
-                     :filter [:= [:field "ID" {:base-type :type/Integer}] 1]})
-            preprocessed (-> query
-                             qp.preprocess/preprocess
-                             lib/->legacy-MBQL)]
-        ;; [:query :filter 2 2 :database_type] points to wrapped value's options
-        (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))
+    (let [mp           (lib.tu/mock-metadata-provider
+                        meta/metadata-provider
+                        {:cards [{:id            1
+                                  :dataset-query (lib.tu.macros/mbql-query venues)
+                                  :type          :model}]})
+          query        (lib/query
+                        mp
+                        (lib.tu.macros/mbql-query venues
+                          {:source-table "card__1"
+                           :filter       [:= [:field "ID" {:base-type :type/Integer}] 1]}))
+          preprocessed (qp.preprocess/preprocess query)]
+      (is (=? {:stages [{}
+                        {:filters [[:= {}
+                                    [:field {} "ID"]
+                                    [:value {:database-type "BIGINT"} 1]]]}]}
+              preprocessed)))))
 
 (deftest ^:parallel model-join-type-info-test
   (testing "type info is added to fields coming from join"
     ;; Basically, this checks whether the [[metabase.query-processor.middleware.wrap-value-literals/type-info]] :field
     ;; adds options to values in expressions, where other arg is field clause with name instead of int id.
-    (mt/with-temp [:model/Card {id :id} {:dataset_query (mt/mbql-query venues)
-                                         :type          :model}]
-      (let [query (mt/mbql-query
-                    venues
-                    {:filter [:= [:field "ID" {:base-type :type/Integer :join-alias "x"}] 1]
-                     :joins [{:alias "x"
-                              :condition [:=
-                                          $id
-                                          [:field "ID" {:base-type :type/Integer :join-alias "x"}]]
-                              :source-table (str "card__" id)}]})
-            preprocessed (-> query
-                             qp.preprocess/preprocess
-                             lib/->legacy-MBQL)]
-        ;; [:query :filter 2 2 :database_type] points to wrapped value's options
-        (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))
+    (let [mp           (lib.tu/mock-metadata-provider
+                        meta/metadata-provider
+                        {:cards [{:id            1
+                                  :dataset-query (lib.tu.macros/mbql-query venues)
+                                  :type          :model}]})
+          query        (lib/query
+                        mp
+                        (lib.tu.macros/mbql-query venues
+                          {:filter [:= [:field "ID" {:base-type :type/Integer :join-alias "x"}] 1]
+                           :joins  [{:alias        "x"
+                                     :condition    [:=
+                                                    $id
+                                                    [:field "ID" {:base-type :type/Integer :join-alias "x"}]]
+                                     :source-table "card__1"}]}))
+          preprocessed (-> query
+                           qp.preprocess/preprocess)]
+      (is (=? {:stages [{:filters [[:= {}
+                                    [:field {} "ID"]
+                                    [:value {:database-type "BIGINT"} 1]]]}]}
+              preprocessed)))))
 
 (deftest ^:parallel type-info-gets-field-ref-data-test
   (testing "type info includes data from :field_ref as well as :source-metadata"
@@ -346,11 +355,13 @@
                [:field "CATEGORY" {:base-type :type/Text}]
                [:value "Doohickey" {:base_type :type/Text
                                     :database_type "CHARACTER VARYING"}]]}}
-            (-> (mt/mbql-query products
-                  {:filter [:= [:field "CATEGORY" {:base-type :type/Text}] "Doohickey"]
-                   :source-query {:source-table $$products
-                                  :aggregation [[:count]]
-                                  :breakout [$category]}})
+            (-> (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query products
+                   {:filter       [:= [:field "CATEGORY" {:base-type :type/Text}] "Doohickey"]
+                    :source-query {:source-table $$products
+                                   :aggregation  [[:count]]
+                                   :breakout     [$category]}}))
                 qp.preprocess/preprocess
                 lib/->legacy-MBQL
                 wrap-value-literals)))))
