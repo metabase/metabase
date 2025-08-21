@@ -145,14 +145,13 @@
 
 .SelectItems_Options {
   padding: 0.75rem;
-  max-height: none;
 }
 
 .Dropdown {
   background-color: var(--mb-color-background);
   border-color: var(--mb-color-border);
-  max-height: rem(500px);
-  overflow: auto;
+  /* need to override the inline style from Mantine */
+  max-height: rem(500px) !important;
 }
 
 .SelectError {
