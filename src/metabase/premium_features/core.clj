@@ -76,6 +76,7 @@
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
+  offer-metabase-ai?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
   table-data-editing?

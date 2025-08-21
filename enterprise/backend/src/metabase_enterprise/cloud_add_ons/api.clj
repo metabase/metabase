@@ -22,6 +22,9 @@
     (not (premium-features/is-hosted?))
     {:status 400 :body "Can only purchase add-ons for Metabase Cloud instances."}
 
+    (not (premium-features/offer-metabase-ai?))
+    {:status 400 :body "Can only purchase add-ons for eligible subscriptions."}
+
     :else
     (try
       (hm.client/call :change-add-ons, :upsert-add-ons [{:product-type product-type}])

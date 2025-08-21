@@ -32,6 +32,7 @@
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
+                              :offer-metabase-ai
                               :official-collections
                               :query-reference-validation
                               :sandboxes
@@ -74,6 +75,7 @@
             :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
+            :offer_metabase_ai              true
             :official_collections           true
             :query_reference_validation     true
             :sandboxes                      true

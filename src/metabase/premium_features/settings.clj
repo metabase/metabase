@@ -287,6 +287,10 @@
   "Should we allow users to use transforms?"
   :transforms)
 
+(define-premium-feature ^{:added "0.57.0"} offer-metabase-ai?
+  "Offer Metabase AI add-on"
+  :offer-metabase-ai)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -317,6 +321,7 @@
    :hosting                        (is-hosted?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)
+   :offer_metabase_ai              (offer-metabase-ai?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
    :sandboxes                      (enable-sandboxes?)
