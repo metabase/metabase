@@ -189,7 +189,7 @@ export const getRoutes = (store) => {
 
           <Route
             path="embedding-hub"
-            title={t`Embedding Hub`}
+            title={t`Embedding hub`}
             component={EmbeddingHub}
           />
 

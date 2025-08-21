@@ -144,9 +144,7 @@ export function MainNavbarView({
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
 
-  // TODO: remove the `?? true` fallback once the feature token is added to HM
-  const isEmbeddingHubFeatureEnabled =
-    useHasTokenFeature("embedding_hub") ?? true;
+  const isEmbeddingHubFeatureEnabled = useHasTokenFeature("embedding_hub");
 
   return (
     <ErrorBoundary>
@@ -177,7 +175,7 @@ export function MainNavbarView({
                 onClick={onItemSelect}
                 url="/embedding-hub"
               >
-                {t`Embedding Hub`}
+                {t`Embedding hub`}
               </PaddedSidebarLink>
             )}
           </SidebarSection>
