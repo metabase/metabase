@@ -1,4 +1,3 @@
-//
 import { createElement, useCallback, useEffect, useMemo } from "react";
 import { useSearchParam } from "react-use";
 import { match } from "ts-pattern";
@@ -129,7 +128,15 @@ export const SdkIframeEmbedPreview = () => {
               : undefined,
           }),
         )
-        .with({ componentName: "metabase-browser" }, () => null)
+        .with({ componentName: "metabase-browser" }, (s) =>
+          createElement("metabase-browser", {
+            "read-only": s.readOnly,
+            "initial-collection": s.initialCollection,
+            "collection-visible-columns": s.collectionVisibleColumns
+              ? JSON.stringify(s.collectionVisibleColumns)
+              : undefined,
+          }),
+        )
         .exhaustive()}
     </Card>
   );
