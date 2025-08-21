@@ -4,6 +4,7 @@
    [metabase-enterprise.semantic-search.core :as semantic]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]))
 
@@ -20,7 +21,7 @@
       (with-redefs [semantic.db.datasource/data-source (atom nil)
                     semantic.env/get-index-metadata (constantly semantic.tu/mock-index-metadata)
                     semantic.env/get-configured-embedding-model (constantly semantic.tu/mock-embedding-model)
-                    metabase-enterprise.semantic-search.index/model-table-suffix semantic.tu/mock-table-suffix]
+                    semantic.index/model-table-suffix semantic.tu/mock-table-suffix]
         (test-func))
       (finally
         (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)))))
