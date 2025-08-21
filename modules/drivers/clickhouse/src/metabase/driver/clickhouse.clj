@@ -309,3 +309,13 @@
         query (str/join " " (map first pieces))
         params (reduce into [] (map rest pieces))]
     (into [query] params)))
+
+;; TODO(rileythomp, 2025-08-21): There is probably a way to do this that doesn't require a new multimethod
+(defmethod driver.sql/normalize-name :clickhouse
+  [_driver name-str]
+  (if (and (= (first name-str) \`)
+           (= (last name-str) \`))
+    (-> name-str
+        (subs 1 (dec (count name-str)))
+        (str/replace #"\"\"" "\""))
+    (u/lower-case-en name-str)))

@@ -251,7 +251,7 @@
                             base-query)
           count-query     (lib/aggregate filtered-query (lib/count))
           result          (qp/process-query count-query)
-          actual-count    (-> result :data :rows first first)]
+          actual-count   (-> (mt/formatted-rows [int] result) first first)]
       ;; Verify we got the expected number of rows
       (is (= (count ids) actual-count)
           (str "Expected " (count ids) " rows with category " category

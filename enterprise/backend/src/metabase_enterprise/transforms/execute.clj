@@ -65,6 +65,9 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
+           ;; TODO(rileythomp, 2025-08-20): Primary key is only needed by some drivers
+           ;; Maybe we should make driver methods responsible for getting it
+           ;; But then we'll need to make extra t2 calls or pass through more stuff like the database
            table-id (get-in source [:query :query :source-table])
            table (t2/select-one :model/Table table-id)
            table-fields (:fields (driver/describe-table driver database table))
