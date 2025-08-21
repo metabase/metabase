@@ -106,10 +106,11 @@ describe("Dashboard utils", () => {
   });
 
   describe("syncParametersAndEmbeddingParams", () => {
-    it("should rename `embedding_parameters` that are renamed in `parameters`", () => {
+    it("should rename `embedding_params` that are renamed in `parameters`", () => {
       const before = {
         embedding_params: { id: "required" },
         parameters: [{ slug: "id", id: "unique-param-id" }],
+        enable_embedding: true,
       };
       const after = {
         parameters: [{ slug: "new_id", id: "unique-param-id" }],
@@ -121,10 +122,11 @@ describe("Dashboard utils", () => {
       expect(result).toEqual(expectation);
     });
 
-    it("should remove `embedding_parameters` that are removed from `parameters`", () => {
+    it("should remove `embedding_params` that are removed from `parameters`", () => {
       const before = {
         embedding_params: { id: "required" },
         parameters: [{ slug: "id", id: "unique-param-id" }],
+        enable_embedding: true,
       };
       const after = {
         parameters: [],
@@ -136,10 +138,27 @@ describe("Dashboard utils", () => {
       expect(result).toEqual(expectation);
     });
 
-    it("should not change `embedding_parameters` when `parameters` hasn't changed", () => {
+    it("should not change `embedding_params` when `parameters` hasn't changed", () => {
       const before = {
         embedding_params: { id: "required" },
         parameters: [{ slug: "id", id: "unique-param-id" }],
+        enable_embedding: true,
+      };
+      const after = {
+        parameters: [{ slug: "id", id: "unique-param-id" }],
+      };
+
+      const expectation = { id: "required" };
+
+      const result = syncParametersAndEmbeddingParams(before, after);
+      expect(result).toEqual(expectation);
+    });
+
+    it("should not try to change `embedding_params` if `enable_embedding` is false (metabase#61516)", () => {
+      const before = {
+        embedding_params: { id: "required" },
+        parameters: [{ slug: "id", id: "unique-param-id" }],
+        enable_embedding: false,
       };
       const after = {
         parameters: [{ slug: "id", id: "unique-param-id" }],
