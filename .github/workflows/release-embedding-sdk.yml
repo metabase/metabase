@@ -356,44 +356,53 @@ jobs:
           bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ env.sdk_version }}
 
       - name: Retrieve SDK changelog diff
+        if: inputs.branch != 'master'
         uses: actions/download-artifact@v4
         with:
           name: sdk-changelog-diff
 
       - name: Update changelog
+        if: inputs.branch != 'master'
         run: |
           cat changelog-diff enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md > new-changelog
           mv new-changelog enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
-        if: inputs.branch != 'master'
         run: |
           git checkout -b update-sdk-version-${{ env.sdk_version }}
-          git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
+
+          if [ "${{ inputs.branch }}" = "master" ]; then
+            COMMIT_MSG="chore(sdk): Update published npm version to ${{ env.sdk_version }}"
+            PR_TITLE="chore(sdk): Update SDK version to ${{ env.sdk_version }}"
+            PR_BODY="Update published npm package version to ${{ env.sdk_version }}"
+          else
+            COMMIT_MSG="docs(sdk): Update Readme version references and published npm version to ${{ env.sdk_version }}"
+            PR_TITLE="docs(sdk): Update SDK version to ${{ env.sdk_version }}"
+            PR_BODY="Update Readme version references and published npm package version to ${{ env.sdk_version }}"
+          fi
+
+          git commit -a -m "$COMMIT_MSG"
           git push origin HEAD
-          gh pr create --base ${{ inputs.branch }}\
-                       --assignee "${GITHUB_ACTOR}"\
-                       --title "docs(sdk): Update SDK version to ${{ env.sdk_version }}"\
-                       --body "Update Readme version references and published npm package version to ${{ env.sdk_version }}"
+          gh pr create --base "${{ inputs.branch }}" \
+                       --assignee "${GITHUB_ACTOR}" \
+                       --title "$PR_TITLE" \
+                       --body "$PR_BODY"
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Edit PR adding useful information (using Metabase bot app)
-        if: inputs.branch != 'master'
         run: |
           gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Auto approve PR (using GitHub Actions account)
-        if: inputs.branch != 'master'
         run: |
           gh pr review --approve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
-        if: inputs.branche != 'master'
         run: |
           gh pr merge --auto --squash
         env:
