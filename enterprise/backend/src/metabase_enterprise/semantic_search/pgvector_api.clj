@@ -32,37 +32,57 @@
 (defn- mark-created [index]
   (vary-meta index assoc :index-created? true))
 
+(defn determine-target-index
+  "Determines which index should be active for the given embedding model.
+
+  Returns the index specification that should be activated."
+  [tx index-metadata embedding-model {:keys [force-reset?]}]
+  (let [active-index-state (semantic.index-metadata/get-active-index-state tx index-metadata)
+        active-index       (:index active-index-state)
+        active-model       (:embedding-model active-index)
+        model-changed      (not= embedding-model active-model)]
+    (cond
+      force-reset?
+      (semantic.index-metadata/create-new-index-spec tx index-metadata embedding-model)
+
+      model-changed
+      (or (semantic.index-metadata/find-compatible-index! tx index-metadata embedding-model)
+          (semantic.index-metadata/create-new-index-spec tx index-metadata embedding-model))
+
+      :else
+      {:index active-index})))
+
+(defn switch-to-index!
+  "Switches to the specified index, creating it if necessary and activating it.
+
+  Returns the activated index."
+  [tx index-metadata target-index-spec]
+  (let [{:keys [index]} target-index-spec]
+    (semantic.index/create-index-table-if-not-exists! tx index)
+    (let [index
+          (if (not (:id index))
+            (->> index
+                 (semantic.index-metadata/record-new-index-table! tx index-metadata)
+                 (mark-created))
+            index)]
+      (semantic.index-metadata/activate-index! tx index-metadata (:id index))
+      index)))
+
 (defn initialize-index!
   "Creates an index for the provided embedding model (if it does not exist or if we're asking to force reset).
 
   Returns the index that you can use with semantic.search.index functions to operate on the index."
   [tx index-metadata embedding-model opts]
-  (let [active-index-state (semantic.index-metadata/get-active-index-state tx index-metadata)
-        active-index       (:index active-index-state)
-        active-model       (:embedding-model active-index)
-        ;; Model switching: compare configured embedding-model vs currently active model.
-        ;; If different, find/create appropriate index and activate it. This handles
-        ;; environment changes (model config updates) without losing existing indexes.
-        ;; nil active-model (no active index) is treated as model change so that a new index is created and made active
-        model-changed      (not= embedding-model active-model)
-        model-switching    (and active-model model-changed)]
-    (when model-switching
-      (log/infof "Configured model does not match active index, switching. Previous active: %s" (u/pprint-to-str active-index)))
-    (let [compatible-index-state (when-not (:force-reset? opts)
-                                   (semantic.index-metadata/find-compatible-index! tx index-metadata embedding-model))
-          {:keys [index]} (or compatible-index-state
-                              (semantic.index-metadata/create-new-index-spec tx index-metadata embedding-model))]
-      (semantic.index/create-index-table-if-not-exists! tx index)
-      (if (or model-changed (:force-reset? opts))
-        (let [index
-              (if (not (:id index))
-                (->> index
-                     (semantic.index-metadata/record-new-index-table! tx index-metadata)
-                     (mark-created))
-                index)]
-          (semantic.index-metadata/activate-index! tx index-metadata (:id index))
-          index)
-        active-index))))
+  (let [target-index-spec (determine-target-index tx index-metadata embedding-model opts)
+        current-active    (:index (semantic.index-metadata/get-active-index-state tx index-metadata))
+        needs-switch?     (not= (:index target-index-spec) current-active)]
+    (if needs-switch?
+      (do
+        (when current-active
+          (log/infof "Configured model does not match active index, switching. Previous active: %s"
+                     (u/pprint-to-str current-active)))
+        (switch-to-index! tx index-metadata target-index-spec))
+      (:index target-index-spec))))
 
 (defn init-semantic-search!
   "Initialises a pgvector database for semantic search if it does not exist and creates an index for the provided
