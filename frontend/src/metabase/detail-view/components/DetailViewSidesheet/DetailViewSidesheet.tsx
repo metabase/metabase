@@ -207,6 +207,8 @@ export function DetailViewSidesheet({
                     onClick={onNextClick}
                   />
                 </Tooltip>
+
+                <Separator />
               </>
             )}
 
@@ -233,10 +235,6 @@ export function DetailViewSidesheet({
 
             {url && (
               <>
-                {(rowFromProps != null || actionItems.length > 0) && (
-                  <Separator />
-                )}
-
                 <Tooltip
                   label={linkCopied ? t`Copied!` : t`Copy link to a row`}
                 >
@@ -269,8 +267,6 @@ export function DetailViewSidesheet({
                 </Tooltip>
               </>
             )}
-
-            <Separator />
           </>
         }
         data-testid="object-detail"
@@ -343,4 +339,4 @@ export function DetailViewSidesheet({
   );
 }
 
-const Separator = () => <Box className={S.separator} h={20} mx={rem(-8)} />;
+const Separator = () => <Box className={S.separator} h={20} />;
