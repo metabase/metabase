@@ -303,11 +303,11 @@
               (mt/metadata-provider)
               {:cards [{:id            1
                         :dataset-query (mt/mbql-query
-                                        reviews
-                                        {:breakout    [$product_id]
-                                         :aggregation [[:count]]
+                                         reviews
+                                         {:breakout    [$product_id]
+                                          :aggregation [[:count]]
                                          ;; filter on an implicit join
-                                         :filter      [:= $product_id->products.category "Doohickey"]})}]})]
+                                          :filter      [:= $product_id->products.category "Doohickey"]})}]})]
       ;; the result returned is not important, just important that the query is valid and completes
       (is (vector?
            (mt/rows
@@ -315,17 +315,17 @@
              (lib/query
               mp
               (mt/mbql-query
-               orders
-               {:joins       [{:source-table "card__1"
-                               :alias        "Question 1"
-                               :condition    [:=
-                                              $product_id
-                                              [:field
-                                               %reviews.product_id
-                                               {:join-alias "Question 1"}]]
-                               :fields       :all}]
-                :expressions {"CC" [:+ 1 1]}
-                :limit       2})))))))))
+                orders
+                {:joins       [{:source-table "card__1"
+                                :alias        "Question 1"
+                                :condition    [:=
+                                               $product_id
+                                               [:field
+                                                %reviews.product_id
+                                                {:join-alias "Question 1"}]]
+                                :fields       :all}]
+                 :expressions {"CC" [:+ 1 1]}
+                 :limit       2})))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel nest-expressions-with-joins-test

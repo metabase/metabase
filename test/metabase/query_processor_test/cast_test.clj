@@ -112,15 +112,15 @@
                   query        (-> (lib/query mp (lib.metadata/card mp 1))
                                    (lib/with-fields [])
                                    (as-> q
-                                       (lib/expression
-                                        q
-                                        "UNCAST"
-                                        (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))
+                                         (lib/expression
+                                          q
+                                          "UNCAST"
+                                          (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))
                                    (as-> q
-                                       (lib/expression
-                                        q
-                                        "INTCAST"
-                                        (lib/integer (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))))
+                                         (lib/expression
+                                          q
+                                          "INTCAST"
+                                          (lib/integer (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))))
                   result       (-> query qp/process-query)
                   cols         (mt/cols result)
                   rows         (mt/rows result)]
@@ -145,7 +145,7 @@
               query        (-> (lib/query mp (lib.metadata/card mp 1))
                                (lib/with-fields [field-md])
                                (as-> q
-                                   (lib/expression q "INTCAST" (lib/integer field-md)))
+                                     (lib/expression q "INTCAST" (lib/integer field-md)))
                                (lib/limit 100))
               result       (-> query qp/process-query)
               cols         (mt/cols result)
@@ -178,9 +178,9 @@
                 query        (-> (lib/query mp (lib.metadata/card mp 1))
                                  (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
                                  (as-> q
-                                     (lib/expression q "UNCAST" (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %))))))
+                                       (lib/expression q "UNCAST" (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %))))))
                                  (as-> q
-                                     (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %)))))))
+                                       (lib/expression q "INTCAST" (lib/integer (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %)))))))
                                  (lib/limit 10))
                 result       (-> query qp/process-query)
                 cols         (mt/cols result)
@@ -377,7 +377,7 @@
                   query        (-> (lib/query mp (lib.metadata/card mp 1))
                                    (lib/with-fields [field-md])
                                    (as-> q
-                                       (lib/expression q "FLOATCAST" (lib/float field-md)))
+                                         (lib/expression q "FLOATCAST" (lib/float field-md)))
                                    (lib/limit 100))
                   result       (-> query qp/process-query)
                   cols         (mt/cols result)
@@ -688,7 +688,7 @@
                               [native-query])
                 query        (-> (lib/query mp (lib.metadata/card mp 1))
                                  (as-> q
-                                     (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))))
+                                       (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (m/find-first #(= "uncasted" (u/lower-case-en (:name %)))))))))
                 result       (-> query qp/process-query)
                 cols         (mt/cols result)
                 rows         (mt/rows result)]
@@ -714,7 +714,7 @@
                               {:cards [{:id 1, :dataset-query nested-query}]})
                 query        (-> (lib/query mp (lib.metadata/card mp 1))
                                  (as-> q
-                                     (lib/expression q "TEXTCAST" (lib/text (lib.metadata/field mp (mt/id table field)))))
+                                       (lib/expression q "TEXTCAST" (lib/text (lib.metadata/field mp (mt/id table field)))))
                                  (lib/limit 10))
                 result       (-> query qp/process-query)
                 cols         (mt/cols result)
@@ -744,7 +744,7 @@
                               {:cards [{:id 1, :dataset-query nested-query}]})
                 query        (-> (lib/query mp (lib.metadata/card mp 1))
                                  (as-> q
-                                     (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %)))))))
+                                       (lib/expression q "TEXTCAST" (lib/text (->> q lib/visible-columns (m/find-first #(= "UNCASTED" (:name %)))))))
                                  (lib/limit 10))
                 result       (-> query qp/process-query)
                 cols         (mt/cols result)

@@ -30,23 +30,23 @@
 (gt/defgentest basic-query-execution-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
     (gt/iterate
-        #_{:gentest.default-limit/seconds 5}
-        {:gentest.default-limit/iterations 1}
-        [base-query (lib/query mp (tu.rng/rand-nth (lib.metadata/tables mp)))
-         limit (inc (tu.rng/rand-int lib.tu.gen/sane-iterations-limit))]
-        (doseq [query (lib.tu.gen/random-queries-from base-query limit)]
-          (gt/testing ["query" query]
-            (let [mp (lib.tu/mock-metadata-provider
-                      mp
-                      {:cards [{:id            1
-                                :dataset-query query}]})
-                  result (qp/process-query (lib/query mp (lib.metadata/card mp 1)))]
-              (testing "Successful query execution"
-                (is (= :completed
-                       (:status result))))
-              (testing "At least one column returned"
-                (is (<= 1 (count (mt/cols result))))
-                (is (every? valid-col? (mt/cols result))))))))))
+     #_{:gentest.default-limit/seconds 5}
+     {:gentest.default-limit/iterations 1}
+     [base-query (lib/query mp (tu.rng/rand-nth (lib.metadata/tables mp)))
+      limit (inc (tu.rng/rand-int lib.tu.gen/sane-iterations-limit))]
+     (doseq [query (lib.tu.gen/random-queries-from base-query limit)]
+       (gt/testing ["query" query]
+         (let [mp (lib.tu/mock-metadata-provider
+                   mp
+                   {:cards [{:id            1
+                             :dataset-query query}]})
+               result (qp/process-query (lib/query mp (lib.metadata/card mp 1)))]
+           (testing "Successful query execution"
+             (is (= :completed
+                    (:status result))))
+           (testing "At least one column returned"
+             (is (<= 1 (count (mt/cols result))))
+             (is (every? valid-col? (mt/cols result))))))))))
 
 (gt/defgentest execution-with-cards-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
@@ -54,20 +54,20 @@
     ;;       mp's test-data.
     (tu.gen.jvm/with-random-cards mp 8
       (gt/iterate
-          #_{:gentest.default-limit/seconds 5}
-          {:gentest.default-limit/iterations 1}
-          [base-query (lib/query mp (tu.rng/rand-nth (concat (lib.metadata/tables mp) &cards)))
-           limit      (inc (tu.rng/rand-int lib.tu.gen/sane-iterations-limit))]
-          (doseq [query (lib.tu.gen/random-queries-from base-query limit)]
-            (gt/testing ["query" query]
-              (let [mp     (lib.tu/mock-metadata-provider
-                            mp
-                            {:cards [{:id            1
-                                      :dataset-query (lib.convert/->legacy-MBQL query)}]})
-                    result (qp/process-query (lib/query mp (lib.metadata/card mp 1)))]
-                (testing "Successful query execution"
-                  (is (= :completed
-                         (:status result))))
-                (testing "At least one column returned"
-                  (is (<= 1 (count (mt/cols result))))
-                  (is (every? valid-col? (mt/cols result)))))))))))
+       #_{:gentest.default-limit/seconds 5}
+       {:gentest.default-limit/iterations 1}
+       [base-query (lib/query mp (tu.rng/rand-nth (concat (lib.metadata/tables mp) &cards)))
+        limit      (inc (tu.rng/rand-int lib.tu.gen/sane-iterations-limit))]
+       (doseq [query (lib.tu.gen/random-queries-from base-query limit)]
+         (gt/testing ["query" query]
+           (let [mp     (lib.tu/mock-metadata-provider
+                         mp
+                         {:cards [{:id            1
+                                   :dataset-query (lib.convert/->legacy-MBQL query)}]})
+                 result (qp/process-query (lib/query mp (lib.metadata/card mp 1)))]
+             (testing "Successful query execution"
+               (is (= :completed
+                      (:status result))))
+             (testing "At least one column returned"
+               (is (<= 1 (count (mt/cols result))))
+               (is (every? valid-col? (mt/cols result)))))))))))

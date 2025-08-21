@@ -223,37 +223,37 @@
                         :query    {:source-table "card__1"}})]
       (is (= :type/UUID (:base-type col)))
       (are [expected filt]
-          (= expected
-             (mt/rows (qp/process-query (lib/filter model-query filt))))
-          [[uuid]] (lib/= col (lib/normalize [:value {:base-type :type/UUID} (str uuid)]))
-          [[uuid]] (lib/= col col)
-          [[uuid]] (lib/= col (str uuid))
-          [[uuid]] (lib/!= col (str (random-uuid)))
-          [[uuid]] (lib/starts-with col (str uuid))
-          [[uuid]] (lib/ends-with col (str uuid))
-          [[uuid]] (lib/contains col (str uuid))
+           (= expected
+              (mt/rows (qp/process-query (lib/filter model-query filt))))
+        [[uuid]] (lib/= col (lib/normalize [:value {:base-type :type/UUID} (str uuid)]))
+        [[uuid]] (lib/= col col)
+        [[uuid]] (lib/= col (str uuid))
+        [[uuid]] (lib/!= col (str (random-uuid)))
+        [[uuid]] (lib/starts-with col (str uuid))
+        [[uuid]] (lib/ends-with col (str uuid))
+        [[uuid]] (lib/contains col (str uuid))
 
           ;; Test partial uuid values
-          [[uuid]] (lib/contains col (subs (str uuid) 0 1))
-          [[uuid]] (lib/starts-with col (subs (str uuid) 0 1))
-          [[uuid]] (lib/ends-with col (subs (str uuid) (dec (count (str uuid)))))
+        [[uuid]] (lib/contains col (subs (str uuid) 0 1))
+        [[uuid]] (lib/starts-with col (subs (str uuid) 0 1))
+        [[uuid]] (lib/ends-with col (subs (str uuid) (dec (count (str uuid)))))
 
           ;; Cannot match a uuid, but should not blow up
-          [[uuid]] (lib/!= col "q")
-          []       (lib/= col "q")
-          []       (lib/starts-with col "q")
-          []       (lib/ends-with col "q")
-          []       (lib/contains col "q")
+        [[uuid]] (lib/!= col "q")
+        []       (lib/= col "q")
+        []       (lib/starts-with col "q")
+        []       (lib/ends-with col "q")
+        []       (lib/contains col "q")
 
           ;; empty/null handling
-          []       (lib/is-empty col)
-          [[uuid]] (lib/not-empty col)
-          []       (lib/is-null col)
-          [[uuid]] (lib/not-null col)
+        []       (lib/is-empty col)
+        [[uuid]] (lib/not-empty col)
+        []       (lib/is-null col)
+        [[uuid]] (lib/not-null col)
 
           ;; nil value handling
-          [[uuid]] (lib/!= col nil)
-          []       (lib/= col nil))
+        [[uuid]] (lib/!= col nil)
+        []       (lib/= col nil))
       (testing ":= uses indexable query"
         (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (lib/->legacy-MBQL (lib/ref col)))]]
                  (some-fn #(= uuid %)
