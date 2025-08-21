@@ -28,11 +28,11 @@ const isRTKQueryError = (error: unknown): error is IRTKQueryError =>
   error instanceof Object && "status" in error && "data" in error;
 
 const transformSchemaFilters = (
-  schemaSelect: DatabaseReplicationFormFields["schemaSelect"],
-  schemaFilters: DatabaseReplicationFormFields["schemaFilters"],
+  schemaFiltersType: DatabaseReplicationFormFields["schemaFiltersType"],
+  schemaFiltersPatterns: DatabaseReplicationFormFields["schemaFiltersPatterns"],
 ) => ({
-  "schema-filters-type": schemaSelect,
-  "schema-filters-patterns": schemaFilters,
+  "schema-filters-type": schemaFiltersType,
+  "schema-filters-patterns": schemaFiltersPatterns,
 });
 
 export const DatabaseReplicationModal = ({
@@ -51,13 +51,13 @@ export const DatabaseReplicationModal = ({
   const [previewDatabaseReplication] = usePreviewDatabaseReplicationMutation();
   const preview = useCallback(
     (
-      { schemaSelect, schemaFilters }: DatabaseReplicationFormFields,
+      { schemaFiltersType, schemaFiltersPatterns }: DatabaseReplicationFormFields,
       handleResponse: (response: PreviewDatabaseReplicationResponse) => void,
       handleError: (error: unknown) => void,
     ) => {
       previewDatabaseReplication({
         databaseId: database.id,
-        schemaFilters: transformSchemaFilters(schemaSelect, schemaFilters),
+        replicationSchemaFilters: transformSchemaFilters(schemaFiltersType, schemaFiltersPatterns),
       })
         .unwrap()
         .then(handleResponse)
@@ -70,11 +70,11 @@ export const DatabaseReplicationModal = ({
   );
 
   const onSubmit = useCallback(
-    async ({ schemaSelect, schemaFilters }: DatabaseReplicationFormFields) => {
+    async ({ schemaFiltersType, schemaFiltersPatterns }: DatabaseReplicationFormFields) => {
       setSetupStep("setting-up");
       createDatabaseReplication({
         databaseId: database.id,
-        schemaFilters: transformSchemaFilters(schemaSelect, schemaFilters),
+        replicationSchemaFilters: transformSchemaFilters(schemaFiltersType, schemaFiltersPatterns),
       })
         .unwrap()
         .then(() => setSetupStep("success"))
@@ -118,8 +118,8 @@ export const DatabaseReplicationModal = ({
           preview={preview}
           initialValues={{
             databaseId: database.id,
-            schemaSelect: "all",
-            schemaFilters: "",
+            schemaFiltersType: "all",
+            schemaFiltersPatterns: "",
           }}
         />
       ) : setupStep === "setting-up" ? (

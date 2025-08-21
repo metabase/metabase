@@ -9,7 +9,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.sync :as driver.s]
-   [metabase.premium-features.core :refer [quotas]]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -64,7 +64,7 @@
    This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
   replicated."
   [secret & {:as replication-schema-filters}]
-  (let [all-quotas                 (quotas)
+  (let [all-quotas                 (premium-features/quotas)
         free-quota                 (or
                                     (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) all-quotas)
                                              ((juxt :soft-limit :usage))
@@ -119,7 +119,7 @@
 
 (def ^:private body-schema
   [:map
-   [:schemaFilters
+   [:replicationSchemaFilters
     {:optional true}
     [:map
      [:schema-filters-type [:enum "include" "exclude" "all"]]
@@ -127,22 +127,22 @@
 
 (api.macros/defendpoint :post "/connection/:database-id/preview"
   "Return info about pg-replication connection that is about to be created."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [schemaFilters]} :- body-schema]
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
   (let [database (t2/select-one :model/Database :id database-id)
         secret (->secret database)
-        replication-schema-filters (m->schema-filter schemaFilters)]
+        replication-schema-filters (m->schema-filter replicationSchemaFilters)]
     (u/recursive-map-keys u/->camelCaseEn (preview-replication secret replication-schema-filters))))
 
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [schemaFilters]} :- body-schema]
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [database (t2/select-one :model/Database :id database-id)]
     (api/check-404 database)
     (api/check-400 (= :postgres (:engine database)) "PG replication is only supported for PostgreSQL databases.")
     (let [conns (pruned-database-replication-connections)]
       (api/check-400 (not (database-id->connection-id conns database-id)) "Database already has an active replication connection.")
-      (let [secret (->secret database schemaFilters)]
+      (let [secret (->secret database replicationSchemaFilters)]
         (if (:can-set-replication (preview-replication secret))
           (let [{:keys [id]} (try
                                (hm.client/call :create-connection, :type "pg_replication", :secret secret)

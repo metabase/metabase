@@ -47,13 +47,13 @@ import type { Database, DatabaseId } from "metabase-types/api";
 
 export interface DatabaseReplicationFormFields {
   databaseId: DatabaseId;
-  schemaSelect: "all" | "include" | "exclude";
-  schemaFilters: string;
+  schemaFiltersType: "all" | "include" | "exclude";
+  schemaFiltersPatterns: string;
 }
 
 const validationSchema = Yup.object({
-  schemaSelect: Yup.string().oneOf(["all", "include", "exclude"]),
-  schemaFilters: Yup.string(),
+  schemaFiltersType: Yup.string().oneOf(["all", "include", "exclude"]),
+  schemaFiltersPatterns: Yup.string(),
 });
 
 type IFieldError =
@@ -119,13 +119,13 @@ export const DatabaseReplicationForm = ({
   const storeUrl = useStoreUrl("account/storage");
 
   // FIXME: Can we get all values of the form at once?
-  const [schemaSelect, setSchemaSelect] = useState(initialValues.schemaSelect);
-  const [schemaFilters, setSchemaFilters] = useState("");
-  const debouncedSchemaFilters = useDebouncedValue(
-    schemaFilters,
+  const [schemaFiltersType, setSchemaFiltersType] = useState(initialValues.schemaFiltersType);
+  const [schemaFiltersPatterns, setSchemaFiltersPatterns] = useState("");
+  const debouncedSchemaFiltersPatterns = useDebouncedValue(
+    schemaFiltersPatterns,
     SEARCH_DEBOUNCE_DURATION,
   );
-  const isValidSchemaFilters = !!debouncedSchemaFilters.length;
+  const isValidSchemaFiltersPatterns = !!debouncedSchemaFiltersPatterns.length;
   const [showNoSyncTables, setShowNoSyncTables] = useState(false);
   const [showReplicatedTables, setShowReplicatedTables] = useState(false);
 
@@ -137,8 +137,8 @@ export const DatabaseReplicationForm = ({
     preview(
       {
         databaseId: database.id,
-        schemaSelect,
-        schemaFilters: debouncedSchemaFilters,
+        schemaFiltersType,
+        schemaFiltersPatterns: debouncedSchemaFiltersPatterns,
       },
       (res) => {
         setPreviewResponse(res);
@@ -146,7 +146,7 @@ export const DatabaseReplicationForm = ({
       },
       () => setPreviewResponseLoading(false),
     );
-  }, [preview, database.id, debouncedSchemaFilters, schemaSelect]);
+  }, [preview, database.id, debouncedSchemaFiltersPatterns, schemaFiltersType]);
 
   const storageUtilizationPercent =
     typeof previewResponse?.totalEstimatedRowCount === "number" &&
@@ -238,10 +238,10 @@ export const DatabaseReplicationForm = ({
           <Form>
             <Stack>
               <FormSelect
-                name="schemaSelect"
+                name="schemaFiltersType"
                 label={t`Select schemas to replicate`}
                 onChange={(value) =>
-                  setSchemaSelect(value as typeof initialValues.schemaSelect)
+                  setSchemaFiltersType(value as typeof initialValues.schemaFiltersType)
                 }
                 data={[
                   { value: "all", label: t`All` },
@@ -250,19 +250,19 @@ export const DatabaseReplicationForm = ({
                 ]}
               />
 
-              {values.schemaSelect !== "all" && (
+              {values.schemaFiltersType !== "all" && (
                 <Box>
                   <Text
                     c="text-secondary"
                     fz="sm"
-                  >{t`Comma separated names of schemas that should ${values.schemaSelect === "exclude" ? "NOT " : ""}be replicated`}</Text>
+                  >{t`Comma separated names of schemas that should ${values.schemaFiltersType === "exclude" ? "NOT " : ""}be replicated`}</Text>
                   <FormTextarea
-                    name="schemaFilters"
+                    name="schemaFiltersPatterns"
                     placeholder="e.g. public, auth"
                     maxRows={5}
                     minRows={2}
                     onChange={({ target: { value } }) =>
-                      setSchemaFilters(value)
+                      setSchemaFiltersPatterns(value)
                     }
                   />
                 </Box>
@@ -452,7 +452,7 @@ export const DatabaseReplicationForm = ({
                 <Group align="center" gap="sm">
                   <FormSubmitButton
                     disabled={
-                      (isValidSchemaFilters && previewResponseLoading) ||
+                      (isValidSchemaFiltersPatterns && previewResponseLoading) ||
                       !previewResponse?.canSetReplication
                     }
                     label={t`Start replication`}
