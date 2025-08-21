@@ -160,7 +160,7 @@ export function MainNavbarView({
               {t`Home`}
             </PaddedSidebarLink>
 
-            {isEmbeddingHubFeatureEnabled && (
+            {isEmbeddingHubFeatureEnabled && isAdmin && (
               <PaddedSidebarLink
                 isSelected={nonEntityItem?.url === "/embedding-hub"}
                 icon={
