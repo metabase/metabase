@@ -7,7 +7,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import type { EmbeddingHubStepId } from "../../types";
 import { getEmbeddingHubSteps } from "../../utils";
 
-import { EmbeddingChecklist } from "./EmbeddingChecklist";
+import { EmbeddingHubChecklist } from "./EmbeddingHubChecklist";
 
 const setup = ({
   completedSteps = {},
@@ -23,7 +23,7 @@ const setup = ({
   });
 
   return renderWithProviders(
-    <EmbeddingChecklist
+    <EmbeddingHubChecklist
       steps={getEmbeddingHubSteps()}
       completedSteps={completedSteps}
       defaultOpenStep={defaultOpenStep}

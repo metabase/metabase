@@ -1,26 +1,25 @@
-import Link from "metabase/common/components/Link";
 import AccordionS from "metabase/home/components/Onboarding/OnboardingAccordion.module.css";
-import { Accordion, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Accordion, Icon, Stack, Text } from "metabase/ui";
 
 import { useScrollAccordionItemIntoView } from "../../hooks/use-scroll-accordion-item";
 import type { EmbeddingHubStep, EmbeddingHubStepId } from "../../types";
-import { DocsLink } from "../DocsLink";
 
-import S from "./EmbeddingChecklist.module.css";
+import S from "./EmbeddingHubChecklist.module.css";
+import { EmbeddingHubStepActions } from "./EmbeddingHubStepActions";
 
-interface EmbeddingChecklistProps {
+interface EmbeddingHubChecklistProps {
   steps: EmbeddingHubStep[];
 
   defaultOpenStep?: EmbeddingHubStepId;
   completedSteps?: Partial<Record<EmbeddingHubStepId, boolean>>;
 }
 
-export const EmbeddingChecklist = ({
+export const EmbeddingHubChecklist = ({
   steps,
 
   defaultOpenStep,
   completedSteps = {},
-}: EmbeddingChecklistProps) => {
+}: EmbeddingHubChecklistProps) => {
   const { accordionItemRefs, scrollAccordionItemIntoView } =
     useScrollAccordionItemIntoView(steps.map((step) => step.id));
 
@@ -32,42 +31,6 @@ export const EmbeddingChecklist = ({
     }
 
     return <Icon name={step.icon} />;
-  };
-
-  const renderStepActions = (step: EmbeddingHubStep) => {
-    if (!step.actions?.length) {
-      return null;
-    }
-
-    return (
-      <Group gap="sm">
-        {step.actions.map((action, index) => {
-          const button = (
-            <Button variant={action.variant ?? "outline"}>
-              {action.label}
-            </Button>
-          );
-
-          if (action.docsPath) {
-            return (
-              <DocsLink key={index} docsPath={action.docsPath}>
-                {button}
-              </DocsLink>
-            );
-          }
-
-          if (action.to) {
-            return (
-              <Link key={index} to={action.to}>
-                {button}
-              </Link>
-            );
-          }
-
-          return null;
-        })}
-      </Group>
-    );
   };
 
   return (
@@ -108,7 +71,7 @@ export const EmbeddingChecklist = ({
 
                 <Text>{step.description}</Text>
 
-                {renderStepActions(step)}
+                <EmbeddingHubStepActions step={step} />
               </Stack>
             </Accordion.Panel>
           </Accordion.Item>
