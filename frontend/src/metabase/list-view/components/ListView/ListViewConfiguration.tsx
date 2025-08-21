@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { ReorderableTagsInput } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
-import { Box, Divider, Icon, MultiSelect, Stack, Text } from "metabase/ui";
+import { Box, Divider, Icon, Pill, Stack, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import { getEntityIcon, useListColumns } from "./ListView";
 import S from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
-import { DndContext } from "@dnd-kit/core";
+//
 
 export const ListViewConfiguration = ({
   data,
@@ -29,7 +29,6 @@ export const ListViewConfiguration = ({
     cols,
     settings?.viewSettings?.listSettings,
   );
-  console.log({ titleColumn, subtitleColumn, rightColumns });
 
   // Selected values
   const [leftValues, setLeftValues] = useState(() => [
@@ -65,7 +64,6 @@ export const ListViewConfiguration = ({
     (opt) => !used.has(opt.value) || rightValues.includes(opt.value),
   );
 
-  // Helpers to map selected names to column objects
   const findColByName = (name?: string): DatasetColumn | undefined =>
     cols.find((c) => c.name === name);
 
@@ -91,7 +89,6 @@ export const ListViewConfiguration = ({
     setRightValues(right);
     onChange({ left, right });
   };
-  console.log({ leftValues });
 
   return (
     <Stack

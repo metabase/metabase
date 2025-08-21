@@ -56,6 +56,7 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   DatasetColumn,
   Field,
+  RawSeries,
   ResultsMetadata,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -73,6 +74,7 @@ type MetadataDiff = Record<string, Partial<Field>>;
 
 export type DatasetEditorInnerProps = {
   question: Question;
+  rawSeries: RawSeries;
   visualizationSettings?: VisualizationSettings | null;
   datasetEditorTab: DatasetEditorTab;
   metadata?: Metadata;
@@ -205,8 +207,9 @@ function getSidebar(
     }
     return (
       <DatasetEditorNewSidebar
+        settings={question.settings()}
+        rawSeries={props.rawSeries}
         onUpdateSettings={onUpdateModelSettings}
-        settings={visualizationSettings}
       />
     );
   }
@@ -634,9 +637,17 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           editedVisualizationSettings?.viewSettings?.defaultView !==
             settings.viewSettings.defaultView
         ) {
-          const nextQuestion = question.setDisplay(
+          let nextQuestion = question.setDisplay(
             settings.viewSettings.defaultView,
           );
+
+          const newSettings = {
+            viewSettings: {
+              ...settings.viewSettings,
+              defaultView: settings.viewSettings.defaultView,
+            },
+          };
+          nextQuestion = nextQuestion?.updateSettings(newSettings);
           updateQuestion(nextQuestion);
         }
       },

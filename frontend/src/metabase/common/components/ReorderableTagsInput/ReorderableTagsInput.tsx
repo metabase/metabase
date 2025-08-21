@@ -135,7 +135,6 @@ export function ReorderableTagsInput({
 
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    debugger;
     if (!over || active.id === over.id) {
       return;
     }
@@ -175,11 +174,28 @@ export function ReorderableTagsInput({
             }
             combobox.openDropdown();
           }}
+          onDragOver={(e) => {
+            // Allow dropping external items
+            e.preventDefault();
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const val = e.dataTransfer.getData("text/plain");
+            if (!val) {
+              return;
+            }
+            if (maxValues && value.length >= maxValues) {
+              return;
+            }
+            if (selectedSet.has(val)) {
+              return;
+            }
+            addValue(val);
+          }}
           size={size}
           classNames={{ input: S.pillsRow }}
         >
           <DndContext
-            id="test"
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragStart={() => {
@@ -193,12 +209,9 @@ export function ReorderableTagsInput({
                 draggingRef.current = false;
               }, 0);
             }}
-            onDragOver={() => {
-              // debugger;
-            }}
+            onDragOver={() => {}}
           >
             <SortableContext
-              id="test"
               items={value}
               strategy={horizontalListSortingStrategy}
             >
