@@ -102,8 +102,8 @@
         (mt/with-temporary-setting-values [is-hosted? true, store-api-url "foo", api-key "foo", database-replication-connections {}]
           (mt/with-temp [:model/Database db {:engine :postgres :details db-details}]
             (let [url (str "ee/database-replication/connection/" (:id db))
-                  body {:schemaFilters {:schema-filters-type "exclude"
-                                        :schema-filters-patterns "not_pub*"}}]
+                  body {:replicationSchemaFilters {:schema-filters-type "exclude"
+                                                   :schema-filters-patterns "not_pub*"}}]
               (testing "previews"
                 (let [resp (mt/user-http-request :crowberto :post 200 (str url "/preview") body)]
                   (is (= {:freeQuota 10,
