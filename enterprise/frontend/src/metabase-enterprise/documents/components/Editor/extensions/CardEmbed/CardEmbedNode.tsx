@@ -17,6 +17,7 @@ import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
+import { navigateToCardFromDocument } from "metabase-enterprise/documents/actions";
 import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import Question from "metabase-lib/v1/Question";
@@ -201,14 +202,14 @@ export const CardEmbedComponent = memo(
     const handleTitleClick = () => {
       if (card && metadata) {
         try {
-          dispatch(setShowNavigateBackToDocumentButton(true));
+          // dispatch(setShowNavigateBackToDocumentButton(true));
           const isDraftCard = card.id < 0;
           const question = new Question(
             isDraftCard ? { ...card, id: null } : card,
             metadata,
           );
           const url = getUrl(question, { includeDisplayIsLocked: true });
-          dispatch(push(url));
+          dispatch(navigateToCardFromDocument(url, document));
         } catch (error) {
           console.error("Failed to navigate to question:", error);
         }

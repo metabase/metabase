@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -156,7 +155,6 @@ export function ViewTitleHeader({
         data-testid="qb-header"
       >
         <QueryBuilderBackButton mr="sm" />
-        <PLUGIN_DOCUMENTS.DocumentBackButton mr="sm" />
         {isSaved ? (
           <SavedQuestionLeftSide
             question={question}
