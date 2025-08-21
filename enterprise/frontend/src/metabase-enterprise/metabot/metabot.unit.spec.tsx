@@ -791,8 +791,8 @@ describe("metabot-streaming", () => {
       await enterChatMessage("Who is your favorite?");
 
       expect(
-        _.pick((await lastReqBody(agentSpy))?.context, "available_actions"),
-      ).toEqual({ available_actions: ["edit_sql:gui"] });
+        _.pick((await lastReqBody(agentSpy))?.context, "capabilities"),
+      ).toEqual({ capabilities: ["frontend:write_notebook_query_v1"] });
     });
 
     it("should allow components to register additional context", async () => {

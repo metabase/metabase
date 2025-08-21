@@ -41,6 +41,24 @@
 (mr/def ::context
   [:map-of :keyword :any])
 
+(mr/def ::capabilities
+  [:set :string])
+
+;; Backend Metabot tool capabilities
+(def backend-metabot-capabilities
+  "Set of backend capabilities available to the AI service. Those are determined by the endpoints available to ai-service. When an endpoint would change in a non-backward compatible way, we should create a new version of this capability."
+  #{"backend:query_model_v1"
+    "backend:query_metric_v1"
+    "backend:dashboard_details_v1"
+    "backend:metric_details_v1"
+    "backend:report_details_v1"
+    "backend:table_details_v1"
+    "backend:get_tables_v1"
+    "backend:query_details_v1"
+    "backend:answer_sources_v1"
+    "backend:field_values_v1"
+    "backend:generate_insights_v1"})
+
 (def ^:private max-database-tables
   "If the number of tables in the database doesn't exceed this number, we send them all to the agent."
   100)
@@ -82,6 +100,11 @@
       (assoc context :user_is_viewing enhanced-viewing))
     context))
 
+(defn- add-backend-capabilities
+  "Add backend capabilities to context, merging with any existing capabilities."
+  [context]
+  (update context :capabilities (fnil into #{}) backend-metabot-capabilities))
+
 (defn- set-user-time
   [context {:keys [date-format] :or {date-format DateTimeFormatter/ISO_INSTANT}}]
   (let [offset-time (or (some-> context :current_time_with_timezone OffsetDateTime/parse)
@@ -98,4 +121,5 @@
     opts    :- [:maybe [:map-of :keyword :any]]]
    (-> context
        enhance-context-with-schema
+       add-backend-capabilities
        (set-user-time opts))))

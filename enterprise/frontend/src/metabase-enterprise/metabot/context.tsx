@@ -53,9 +53,10 @@ export const MetabotProvider = ({
     const ctx = {
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
-      available_actions: _.compact([
-        hasDataAccess && "edit_sql:gui",
-        hasNativeWrite && "edit_sql:native",
+      capabilities: _.compact([
+        "frontend:navigate_user_v1",
+        hasDataAccess && "frontend:write_notebook_query_v1",
+        hasNativeWrite && "frontend:write_sql_query_v1",
       ]),
     };
 
