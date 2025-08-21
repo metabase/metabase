@@ -2,11 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/hoc/Title";
-import { MetabotAdminPurchase } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotAdminPurchase";
+
+import { MetabotPurchasePage } from "./MetabotPurchasePage";
 
 const setup = async () => {
   renderWithProviders(
-    <Route path="/admin/metabot*" component={MetabotAdminPurchase} />,
+    <Route path="/admin/metabot*" component={MetabotPurchasePage} />,
     {
       withRouter: true,
       initialRoute: `/admin/metabot`,
@@ -14,7 +15,7 @@ const setup = async () => {
   );
 };
 
-describe("MetabotAdminPurchase", () => {
+describe("MetabotPurchasePage", () => {
   it("requires Terms of Service to be accepted", async () => {
     await setup();
     expect(
