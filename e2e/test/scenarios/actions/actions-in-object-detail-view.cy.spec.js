@@ -132,6 +132,7 @@ describe(
                   "does not close object detail modal when pressing Esc while action modal is open",
                 );
                 openUpdateObjectModal();
+                cy.wait("@prefetchValues");
                 actionExecuteModal().should("be.visible");
                 cy.realPress("Escape");
                 actionExecuteModal().should("not.exist");
