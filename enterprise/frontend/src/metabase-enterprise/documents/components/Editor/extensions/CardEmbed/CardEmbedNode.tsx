@@ -370,7 +370,7 @@ export const CardEmbedComponent = memo(
                   </Box>
                 )}
                 {!isEditingTitle && (
-                  <Menu withinPortal position="bottom-end">
+                  <Menu withinPortal position="bottom-end" data-hide-on-print>
                     <Menu.Target>
                       <Flex
                         component="button"
