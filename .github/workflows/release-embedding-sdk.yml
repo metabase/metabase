@@ -17,7 +17,7 @@ on:
           - release-x.54.x
           - release-x.55.x
           - release-x.56.x
-          - esbuild-main
+          - hosted-bundle-main
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -402,7 +402,7 @@ jobs:
            "release-x.54.x": "54-stable",
            "release-x.55.x": "55-stable",
            "release-x.56.x": "56-stable",
-           "esbuild-main": "56-esbuild"
+           "hosted-bundle-main": "57-hosted-bundle-main"
            }')[inputs.branch]}}
 
       - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
