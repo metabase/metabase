@@ -28,11 +28,8 @@ import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi } from "metabase/services";
 import { Box, Button, Group, Icon, Stack, Tooltip, rem } from "metabase/ui";
-import { extractRemappedColumns } from "metabase/visualizations";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   DatasetColumn,
   ForeignKey,
@@ -44,7 +41,7 @@ import type {
 
 import S from "./DetailViewSidesheet.module.css";
 import { Sidesheet } from "./Sidesheet";
-import { getActionItems } from "./utils";
+import { extractData, getActionItems, getModelId } from "./utils";
 
 interface Props {
   columnSettings: TableColumnOrderSetting[] | undefined;
@@ -88,34 +85,10 @@ export function DetailViewSidesheet({
       ? Lib.toLegacyQuery(query)
       : skipToken,
   );
-  const data = useMemo(() => {
-    return dataset ? extractRemappedColumns(dataset.data) : undefined;
-  }, [dataset]);
-  const unsortedColumns = data?.cols ?? columnsFromProp;
-  const columnIndexes = useMemo(() => {
-    if (!columnSettings) {
-      return unsortedColumns.map((_value, index) => index);
-    }
-
-    return findColumnIndexesForColumnSettings(
-      unsortedColumns,
-      columnSettings.filter(({ enabled }) => enabled),
-    ).filter((columnIndex: number) => columnIndex >= 0);
-  }, [columnSettings, unsortedColumns]);
-  const columns = useMemo(() => {
-    return columnIndexes.map((index) => unsortedColumns[index]);
-  }, [columnIndexes, unsortedColumns]);
-
-  const rowFromQuery = useMemo(() => (data?.rows ?? [])[0], [data]);
-  const row = useMemo(() => {
-    const row = rowFromProps ?? rowFromQuery;
-
-    if (!row) {
-      return undefined;
-    }
-
-    return columnIndexes.map((index) => row[index]);
-  }, [columnIndexes, rowFromProps, rowFromQuery]);
+  const { columns, row } = useMemo(
+    () => extractData(dataset, columnsFromProp, columnSettings, rowFromProps),
+    [dataset, columnsFromProp, columnSettings, rowFromProps],
+  );
 
   const dispatch = useDispatch();
   const [linkCopied, setLinkCopied] = useState(false);
@@ -124,6 +97,7 @@ export function DetailViewSidesheet({
     return getRowName(columns, row) || rowId;
   }, [columns, row, rowId]);
   const icon = getEntityIcon(table?.entity_type);
+  const modelId = getModelId(table);
 
   const [actionId, setActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
@@ -132,10 +106,6 @@ export function DetailViewSidesheet({
   const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
   const initialValues = useMemo(() => ({ id: rowId ?? null }), [rowId]);
 
-  const modelId =
-    table?.type === "model"
-      ? getQuestionIdFromVirtualTableId(table.id)
-      : undefined;
   const { data: actions } = useListActionsQuery(
     showImplicitActions && modelId != null
       ? { "model-id": modelId }
@@ -210,7 +180,9 @@ export function DetailViewSidesheet({
         <LoadingAndErrorWrapper error={error} loading={isLoading} />;
       </Sidesheet>
     );
-  } else if (row == null) {
+  }
+
+  if (row == null) {
     return (
       <Sidesheet data-testid="object-detail" onClose={handleClose}>
         <Group align="center" justify="center">
