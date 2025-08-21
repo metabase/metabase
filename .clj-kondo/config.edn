@@ -848,8 +848,8 @@
     {#_metabase.query-processor.test-util/card-with-source-metadata-for-query #_{:message "Use qp.test-util/metadata-provider-with-card-with-metadata-for-query instead of card-with-source-metadata-for-query in QP tests"}
      metabase.test/with-column-remappings                                   {:message "Use lib.tu/remap-metadata-provider instead of with-column-remappings in QP tests"}
      metabase.test.util/with-column-remappings                              {:message "Use lib.tu/remap-metadata-provider instead of with-column-remappings in QP tests"}
-     metabase.test/with-temp                                                {:message "Use lib.tu/mock-metadata-provider instead of with-temp in QP tests. Exceptions: REST API tests and temp Collections"}
-     toucan2.tools.with-temp/with-temp                                      {:message "Use lib.tu/mock-metadata-provider instead of with-temp in QP tests. Exceptions: REST API tests and temp Collections"}}
+     metabase.test/with-temp                                                {:message "Use lib.tu/mock-metadata-provider in QP tests. Exceptions: tests for code that doesn't use MPs or models not supported by MPs"}
+     toucan2.tools.with-temp/with-temp                                      {:message "Use lib.tu/mock-metadata-provider in QP tests. Exceptions: tests for code that doesn't use MPs or models not supported by MPs"}}
 
     :metabase/disallow-hardcoded-driver-names-in-tests
     {:level :warning}}}}}

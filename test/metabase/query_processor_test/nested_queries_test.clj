@@ -756,6 +756,8 @@
           (mt/with-no-data-perms-for-all-users!
             (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
             (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+            ;; allowing `with-temp` here since we need it to make Collections
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection collection {}
                            :model/Card       card-1 {:collection_id (u/the-id collection)
                                                      :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
@@ -800,6 +802,8 @@
   using Rasta. Use this to test how the API endpoint behaves based on certain permissions grants for the `All Users`
   group."
   [expected-status-code db-or-id source-collection-or-id-or-nil dest-collection-or-id-or-nil]
+  ;; allowing `with-temp` here since we hit the REST API
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (mt/with-temp [:model/Card card {:collection_id (some-> source-collection-or-id-or-nil u/the-id)
                                    :dataset_query {:database (u/the-id db-or-id)
                                                    :type     :native
@@ -817,6 +821,8 @@
     (mt/with-temp-copy-of-db
       (testing (str "To save a Card that uses another Card as its source, you only need read permissions for the Collection "
                     "the Source Card is in, and write permissions for the Collection you're trying to save the new Card in")
+        ;; allowing `with-temp` here since we need it to make Collections
+        #_{:clj-kondo/ignore [:discouraged-var]}
         (mt/with-temp [:model/Collection source-card-collection {}
                        :model/Collection dest-card-collection   {}]
           (perms/grant-collection-read-permissions!      (perms/all-users-group) source-card-collection)
@@ -826,12 +832,16 @@
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
+          ;; allowing `with-temp` here since we need it to make Collections
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Collection dest-card-collection]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
+          ;; allowing `with-temp` here since we need it to make Collections
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Collection source-card-collection {}
                          :model/Collection dest-card-collection   {}]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
@@ -840,12 +850,16 @@
 
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
+            ;; allowing `with-temp` here since we need it to make Collections
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection source-card-collection]
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
+            ;; allowing `with-temp` here since we need it to make Collections
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection source-card-collection {}
                            :model/Collection dest-card-collection   {}]
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)

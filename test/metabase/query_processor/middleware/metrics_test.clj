@@ -507,11 +507,10 @@
                                 :dataset-query (lib.convert/->legacy-MBQL source-query)
                                 :database-id   (mt/id)
                                 :name          "new_metric"
-                                :type          :metric}]})]
-    (let [query (lib/query mp (lib.metadata/card mp 1))]
-      (is (=
-           (mt/rows (qp/process-query source-query))
-           (mt/rows (qp/process-query query)))))))
+                                :type          :metric}]})
+        query        (lib/query mp (lib.metadata/card mp 1))]
+    (is (= (mt/rows (qp/process-query source-query))
+           (mt/rows (qp/process-query query))))))
 
 (deftest ^:parallel e2e-source-table-results-test
   (let [mp           (lib.metadata.jvm/application-database-metadata-provider (mt/id))

@@ -1,4 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.results-metadata-test
+  {:clj-kondo/config '{:linters
+                       ;; allowing with-temp in this namespace since it's checking whether we actually save stuff to the
+                       ;; app DB
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

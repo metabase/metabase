@@ -10,10 +10,7 @@
   I tried at least 20 different cache implentations and settled on this one and the current value of [[max-entries]]
   as the most performant -- significantly faster then [[clojure.core.memoize/lru]]
 
-  -- Cam."
-  (:require
-   [clojure.core.memoize]
-   [metabase.config.core :as config]))
+  -- Cam.")
 
 (set! *warn-on-reflection* true)
 

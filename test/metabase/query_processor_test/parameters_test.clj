@@ -644,6 +644,8 @@
   (testing "If we have full SQL perms for a DW but no Card perms we shouldn't be able to include it with a ref or template tag"
     (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries :native-parameter-card-reference)
       (mt/with-non-admin-groups-no-root-collection-perms
+        ;; allowing `with-temp` here since we need it to make Collections
+        #_{:clj-kondo/ignore [:discouraged-var]}
         (mt/with-temp [:model/Collection {collection-1-id :id} {}
                        :model/Collection {collection-2-id :id} {}
 
