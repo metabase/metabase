@@ -8,7 +8,6 @@ import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormSelect,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
@@ -21,6 +20,8 @@ import type {
   DatasetQuery,
   Transform,
 } from "metabase-types/api";
+
+import { SchemaFormSelect } from "./SchemaFormSelect";
 
 type CreateTransformModalProps = {
   query: DatasetQuery;
@@ -116,7 +117,11 @@ function CreateTransformForm({
             label={t`Description`}
             placeholder={t`This is optional`}
           />
-          <FormSelect name="targetSchema" label={t`Schema`} data={schemas} />
+          <SchemaFormSelect
+            name="targetSchema"
+            label={t`Schema`}
+            data={schemas}
+          />
           <FormTextInput
             name="targetName"
             label={t`Table name`}
