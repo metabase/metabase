@@ -54,6 +54,7 @@ export type SetupOpts = {
   hasDWHAttached?: boolean;
   isEmbeddingIframe?: boolean;
   hasWhitelabelToken?: boolean;
+  hasEmbeddingHubFeature?: boolean;
   applicationName?: string;
   activeUsersCount?: number;
 };
@@ -86,6 +87,7 @@ export async function setup({
   hasDWHAttached = false,
   isEmbeddingIframe,
   hasWhitelabelToken,
+  hasEmbeddingHubFeature,
   applicationName = "Metabase",
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
@@ -191,6 +193,7 @@ export async function setup({
         hosting: true,
         upload_management: true,
         whitelabel: hasWhitelabelToken,
+        embedding_hub: hasEmbeddingHubFeature,
       }),
       "show-google-sheets-integration": true,
       "active-users-count": activeUsersCount,
