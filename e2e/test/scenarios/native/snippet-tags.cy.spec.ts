@@ -209,6 +209,39 @@ describe("scenarios > native > snippet tags", () => {
       cy.findByText("Cannot save card with cycles.").should("be.visible");
     });
   });
+
+  it("should not be able to create snippet cycles via snippets", () => {
+    cy.log("create two snippets, one using another");
+    H.createSnippet({
+      name: "snippet1",
+      content: "1",
+    });
+    H.createSnippet({
+      name: "snippet2",
+      content: "{{snippet: snippet1}}",
+    });
+
+    cy.log("open the modal for the first snippet");
+    H.startNewNativeQuestion();
+    getEditorTopBar().icon("snippet").click();
+    getEditorSidebar().within(() => {
+      cy.icon("chevrondown")
+        .should("have.length", 2)
+        .first()
+        .click({ force: true });
+      cy.button(/Edit/).click();
+    });
+
+    cy.log("create a cycle and try to save the snippet");
+    H.modal().within(() => {
+      getSnippetContentInput()
+        .clear()
+        .type("{{snippet: snippet2}}", { parseSpecialCharSequences: false })
+        .click();
+      cy.button("Save").click();
+      cy.findByText("Cannot save snippet with cycles.").should("be.visible");
+    });
+  });
 });
 
 function getEditorSidebar() {
