@@ -181,15 +181,11 @@ export const getEntityIcon = (entityType?: Table["entity_type"]) => {
 export function getObjectQuery(
   table: Table,
   objectId: string | number,
-): StructuredDatasetQuery {
+): StructuredDatasetQuery | undefined {
   const pks = (table.fields ?? []).filter(isPK);
 
-  if (pks.length === 0) {
-    throw new Error("Table has no primary keys");
-  }
-
-  if (pks.length > 1) {
-    throw new Error("Table has multiple primary keys");
+  if (pks.length !== 1) {
+    return undefined;
   }
 
   const [pk] = pks;

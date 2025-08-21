@@ -526,9 +526,9 @@ function changeSorting(columnName, direction) {
         H.openObjectDetail(0);
 
         cy.findByRole("dialog").within(() => {
-          cy.findAllByText("Duck").should("have.length", 2);
-          cy.icon("chevrondown").click();
-          cy.findAllByText("Horse").should("have.length", 2);
+          cy.findByRole("heading", { name: "Duck" }).should("be.visible");
+          cy.findByLabelText("Next row").click();
+          cy.findByRole("heading", { name: "Horse" }).should("be.visible");
         });
       });
 
@@ -543,13 +543,13 @@ function changeSorting(columnName, direction) {
         H.openObjectDetail(5);
 
         cy.findByRole("dialog").within(() => {
-          cy.findAllByText("Rabbit").should("have.length", 2);
+          cy.findByRole("heading", { name: "Rabbit" }).should("be.visible");
         });
 
         cy.get("body").type("{downarrow}");
 
         cy.findByRole("dialog").within(() => {
-          cy.findAllByText("Rabbit").should("have.length", 2);
+          cy.findByRole("heading", { name: "Rabbit" }).should("be.visible");
           cy.findByText("Empty").should("not.exist");
         });
       });
@@ -577,9 +577,9 @@ function changeSorting(columnName, direction) {
         H.openObjectDetail(0);
 
         cy.findByRole("dialog").within(() => {
-          cy.findAllByText("Duck").should("have.length", 2);
-          cy.icon("chevrondown").click();
-          cy.findAllByText("Horse").should("have.length", 2);
+          cy.findByRole("heading", { name: "Duck" }).should("be.visible");
+          cy.findByLabelText("Next row").click();
+          cy.findByRole("heading", { name: "Horse" }).should("be.visible");
         });
       });
     },

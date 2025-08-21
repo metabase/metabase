@@ -77,7 +77,9 @@ export function DetailViewSidesheet({
     data: dataset,
     error,
     isLoading,
-  } = useGetAdhocQueryQuery(rowFromProps == null ? objectQuery : skipToken);
+  } = useGetAdhocQueryQuery(
+    objectQuery && rowFromProps == null ? objectQuery : skipToken,
+  );
   const data = useMemo(() => {
     return dataset ? extractRemappedColumns(dataset.data) : undefined;
   }, [dataset]);
