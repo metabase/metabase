@@ -1154,7 +1154,6 @@
            app-db
            appearance
            channel
-           classloader
            config
            events
            permissions
