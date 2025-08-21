@@ -62,7 +62,6 @@ function SortablePill({
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
-    color: "var(--mb-color-text-light)",
   } as CSSProperties;
 
   return (
@@ -100,6 +99,7 @@ export function ReorderableTagsInput({
   );
 
   const draggingRef = useRef(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const [search, setSearch] = useState("");
 
@@ -160,6 +160,15 @@ export function ReorderableTagsInput({
       <Combobox.DropdownTarget>
         <PillsInput
           radius="xl"
+          size={size}
+          classNames={{
+            input: cx(S.pillsRow, {
+              [S.max]: maxValues && value.length >= maxValues,
+            }),
+            root: cx(S.container, {
+              [S.dragOver]: isDragOver,
+            }),
+          }}
           onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
             const target = e.target as HTMLElement;
             // Do not open when interacting with a pill (likely starting a drag or clicking remove)
@@ -178,6 +187,24 @@ export function ReorderableTagsInput({
             // Allow dropping external items
             e.preventDefault();
           }}
+          onDragEnter={(e) => {
+            const related = e.relatedTarget as Node | null;
+            // Only set drag-over when entering from outside the top-level container
+            if (related && e.currentTarget.contains(related)) {
+              return;
+            }
+            draggingRef.current = true;
+            // Highlight the input when an external draggable is over it
+            setIsDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            const related = e.relatedTarget as Node | null;
+            // Only clear drag-over when leaving to outside the top-level container
+            if (related && e.currentTarget.contains(related)) {
+              return;
+            }
+            setIsDragOver(false);
+          }}
           onDrop={(e) => {
             e.preventDefault();
             const val = e.dataTransfer.getData("text/plain");
@@ -191,9 +218,8 @@ export function ReorderableTagsInput({
               return;
             }
             addValue(val);
+            setIsDragOver(false);
           }}
-          size={size}
-          classNames={{ input: S.pillsRow }}
         >
           <DndContext
             sensors={sensors}
@@ -227,7 +253,7 @@ export function ReorderableTagsInput({
           </DndContext>
           {!maxValues || value.length < maxValues ? (
             <PillsInput.Field
-              disabled={draggingRef.current}
+              // disabled={draggingRef.current}
               className={S.inputField}
               placeholder={value.length ? undefined : placeholder}
               value={search}

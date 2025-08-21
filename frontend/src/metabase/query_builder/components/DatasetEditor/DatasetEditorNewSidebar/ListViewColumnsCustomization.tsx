@@ -33,7 +33,7 @@ export function ListViewColumnsCustomization({
       label: col.display_name,
     }));
 
-    const used = new Set<string>(
+    const used = new Set<string | undefined>(
       [
         ...(titleColumn ? [titleColumn.name] : []),
         ...(subtitleColumn ? [subtitleColumn.name] : []),
@@ -41,12 +41,10 @@ export function ListViewColumnsCustomization({
       ].filter(Boolean),
     );
 
-    console.log({ used });
-
     const unusedOptions = allOptions.filter((opt) => !used.has(opt.value));
 
     return { unusedOptions };
-  }, [cols, titleColumn, subtitleColumn, rightColumns, settings]);
+  }, [cols, titleColumn, subtitleColumn, rightColumns]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -62,8 +60,8 @@ export function ListViewColumnsCustomization({
 
   return (
     <Stack p="2.5rem">
-      <Group justify="space-between" align="center" mb="sm">
-        <Text size="md" fw={600}>{t`Customize List layout`}</Text>
+      <Group justify="space-between" align="center" h="2rem">
+        <Text size="md" fw="bold">{t`Customize List layout`}</Text>
         <Button size="xs" variant="subtle" onClick={onDone}>{t`Done`}</Button>
       </Group>
       <Stack gap="sm">

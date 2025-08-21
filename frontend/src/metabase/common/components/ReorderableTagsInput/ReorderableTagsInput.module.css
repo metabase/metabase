@@ -2,14 +2,29 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--mantine-spacing-xs);
+  border: 1px dashed var(--mb-color-border);
+}
+
+.container {
+  transition: box-shadow 250ms ease;
+}
+
+.max {
+  cursor: not-allowed;
+}
+
+.dragOver {
+  box-shadow: 0 0 2px 1px var(--mb-color-border);
 }
 
 .pill {
-  background: var(--mb-color-background-light);
+  font-weight: 400;
+  background: var(--mb-color-white);
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-xl);
   flex-shrink: 0;
   cursor: pointer;
+  color: var(--mb-color-text-primary);
 }
 
 .dragging {

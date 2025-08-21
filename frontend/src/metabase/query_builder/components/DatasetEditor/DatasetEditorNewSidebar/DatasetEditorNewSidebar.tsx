@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { getIsListViewConfigurationShown } from "metabase/query_builder/selectors";
-import { Button, SegmentedControl, Stack, Text } from "metabase/ui";
+import { Button, Group, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { RawSeries } from "metabase-types/api";
 
 import { ListViewColumnsCustomization } from "./ListViewColumnsCustomization";
@@ -40,9 +40,11 @@ export const DatasetEditorNewSidebar = ({
 
   return (
     <Stack p="2.5rem">
-      <Text size="md" fw="bold">{t`Model Settings`}</Text>
+      <Group justify="space-between" align="center" h="2rem">
+        <Text size="md" fw="bold">{t`Model Settings`}</Text>
+      </Group>
 
-      <Stack>
+      <Stack gap="sm">
         <Text size="md">{t`What should the default view of this data be?`}</Text>
         <Stack gap="sm">
           <SegmentedControl
