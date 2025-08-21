@@ -53,15 +53,12 @@
   "Switches to the specified index, creating it if necessary and activating it.
 
   Returns the activated index."
-  [tx index-metadata target-index-spec]
-  (let [{:keys [index]} target-index-spec]
-    (semantic.index/create-index-table-if-not-exists! tx index)
-    (let [index
-          (if (not (:id index))
-            (semantic.index-metadata/record-new-index-table! tx index-metadata index)
-            index)]
-      (semantic.index-metadata/activate-index! tx index-metadata (:id index))
-      index)))
+  [tx index-metadata {:keys [index]}]
+  (let [index (if (not (:id index))
+                (semantic.index-metadata/record-new-index-table! tx index-metadata index)
+                index)]
+    (semantic.index-metadata/activate-index! tx index-metadata (:id index))
+    index))
 
 (defn initialize-index!
   "Creates an index for the provided embedding model (if it does not exist or if we're asking to force reset).
@@ -71,6 +68,7 @@
   (let [target-index-spec (determine-target-index tx index-metadata embedding-model opts)
         current-active    (:index (semantic.index-metadata/get-active-index-state tx index-metadata))
         needs-switch?     (not= (:index target-index-spec) current-active)]
+    (semantic.index/create-index-table-if-not-exists! tx (:index target-index-spec))
     (if needs-switch?
       (do
         (when current-active
