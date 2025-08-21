@@ -65,6 +65,7 @@ export function ObjectDetailWrapper({
 
       return (
         <DetailViewSidesheet
+          columnSettings={settings?.["table.columns"]}
           columns={columns}
           columnsSettings={columnsSettings}
           query={filterByPk(question.query(), columns, zoomedRowID)}
