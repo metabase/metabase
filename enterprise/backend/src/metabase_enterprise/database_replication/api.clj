@@ -58,7 +58,7 @@
 (def ^:private preview-memo
   (memoize/ttl preview :ttl/threshold (u/minutes->ms 5)))
 
-(defn- token-check-quotas-info
+(defn- preview-replication
   "Predicate that signals if replication looks right from the quota perspective.
 
    This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
@@ -75,7 +75,9 @@
                                         ;; apply filter over the memoized result for snappy UI
                                         preview-memo
                                         :tables
-                                        (filter (comp (schema-filters->fn [replication-schema-filters])
+                                        (filter (comp (schema-filters->fn
+                                                       (when (not-empty replication-schema-filters)
+                                                         [replication-schema-filters]))
                                                       :table_schema)))
         replicated-tables          (->> all-tables
                                         (filter :has_pkey)
@@ -129,7 +131,7 @@
   (let [database (t2/select-one :model/Database :id database-id)
         secret (->secret database)
         replication-schema-filters (m->schema-filter schemaFilters)]
-    (u/recursive-map-keys u/->camelCaseEn (token-check-quotas-info secret replication-schema-filters))))
+    (u/recursive-map-keys u/->camelCaseEn (preview-replication secret replication-schema-filters))))
 
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
@@ -141,7 +143,7 @@
     (let [conns (pruned-database-replication-connections)]
       (api/check-400 (not (database-id->connection-id conns database-id)) "Database already has an active replication connection.")
       (let [secret (->secret database schemaFilters)]
-        (if (:can-set-replication (token-check-quotas-info secret))
+        (if (:can-set-replication (preview-replication secret))
           (let [{:keys [id]} (try
                                (hm.client/call :create-connection, :type "pg_replication", :secret secret)
                                (catch Exception e
