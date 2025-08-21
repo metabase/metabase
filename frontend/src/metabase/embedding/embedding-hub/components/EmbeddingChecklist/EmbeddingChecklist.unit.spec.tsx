@@ -18,22 +18,18 @@ const setup = ({
   defaultOpenStep?: EmbeddingHubStepId;
   isAdmin?: boolean;
 } = {}) => {
-  const steps = getEmbeddingHubSteps();
-
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
   });
 
-  const utils = renderWithProviders(
+  return renderWithProviders(
     <EmbeddingChecklist
-      steps={steps}
+      steps={getEmbeddingHubSteps()}
       completedSteps={completedSteps}
       defaultOpenStep={defaultOpenStep}
     />,
     { storeInitialState: state },
   );
-
-  return { ...utils };
 };
 
 describe("EmbeddingChecklist", () => {
@@ -59,11 +55,32 @@ describe("EmbeddingChecklist", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show database actions when clicking 'Add your data' step", async () => {
+  it("shows docs links on call-to-action buttons", async () => {
     setup();
 
-    const addDataStep = screen.getByText("Add your data");
-    await userEvent.click(addDataStep);
+    await userEvent.click(screen.getByText("Configure sandboxing"));
+
+    expect(
+      await screen.findByRole("link", { name: "Configure permissions" }),
+    ).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/permissions/embedding.html",
+    );
+
+    await userEvent.click(screen.getByText("Secure your embeds"));
+
+    expect(
+      await screen.findByRole("link", { name: "Learn more" }),
+    ).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-jwt.html",
+    );
+  });
+
+  it("should show database button on 'Add your data' step", async () => {
+    setup();
+
+    await userEvent.click(screen.getByText("Add your data"));
 
     expect(screen.getByText("Add Database")).toBeInTheDocument();
   });
