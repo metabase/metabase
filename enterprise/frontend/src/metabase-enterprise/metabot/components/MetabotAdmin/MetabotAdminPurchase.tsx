@@ -146,12 +146,11 @@ export const MetabotAdminPurchase = () => {
   const [purchaseMetabotAddOn] = usePurchaseMetabotCloudAddOnMutation();
   const onSubmit = useCallback(
     async ({ terms_of_service }: MetabotPurchaseFormFields) => {
-      setMetabotAdminSettingUpModal(true);
       purchaseMetabotAddOn({
         terms_of_service,
       })
         .unwrap()
-        .then()
+        .then(() => setMetabotAdminSettingUpModal(true))
         .catch((error: unknown) => {
           isFetchBaseQueryError(error) && handleFieldError(error.data);
         });
