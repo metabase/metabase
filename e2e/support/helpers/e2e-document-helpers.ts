@@ -1,5 +1,8 @@
 export const documentContent = () => cy.findByTestId("document-content");
 
+export const documentSaveButton = () =>
+  cy.findByRole("button", { name: "Save" });
+
 export const documentFormattingMenu = () =>
   cy.findByTestId("document-formatting-menu");
 
