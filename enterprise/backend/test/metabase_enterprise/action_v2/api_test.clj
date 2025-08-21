@@ -312,6 +312,9 @@
           (is (= 1 (children-count 2)))
           (is (= 1 (children-count 3))))
 
+        ;; HERE NGOC
+        (sync/sync-database! (t2/select-one :model/Database (mt/id)) {:scan :full})
+
         (testing "delete parent with self-referential children should return error without delete-children param"
           (is (=? {:errors [{:index       0
                              :type        "metabase.actions.error/violate-foreign-key-constraint",
