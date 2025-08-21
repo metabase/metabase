@@ -28,9 +28,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(use-fixtures :each (fn [thunk]
-                      (search.index/with-temp-index-table
-                        (thunk))))
 (comment
   ;; We need this to ensure the engine hierarchy is registered
   search.engines.appdb/keep-me)
@@ -206,35 +203,36 @@
                         (merge (data-map instance-name)
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
-    (mt/with-temp [:model/Collection  coll           (data-map "collection %s collection")
-                   :model/Card        action-model   (if in-root-collection?
-                                                       action-model-params
-                                                       (assoc action-model-params :collection_id (u/the-id coll)))
-                   :model/Action      {action-id :id
-                                       :as action}   (merge (data-map "action %s action")
-                                                            {:type :query, :model_id (u/the-id action-model)})
-                   :model/Database    {db-id :id
-                                       :as db}       (data-map "database %s database")
-                   :model/Table       table          (merge (data-map "database %s database")
-                                                            {:db_id db-id})
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Collection  coll           (data-map "collection %s collection")
+                     :model/Card        action-model   (if in-root-collection?
+                                                         action-model-params
+                                                         (assoc action-model-params :collection_id (u/the-id coll)))
+                     :model/Action      {action-id :id
+                                         :as action}   (merge (data-map "action %s action")
+                                                              {:type :query, :model_id (u/the-id action-model)})
+                     :model/Database    {db-id :id
+                                         :as db}       (data-map "database %s database")
+                     :model/Table       table          (merge (data-map "database %s database")
+                                                              {:db_id db-id})
 
-                   :model/QueryAction _qa (query-action action-id)
-                   :model/Card        card           (coll-data-map "card %s card" coll)
-                   :model/Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
-                                                            :type :model)
-                   :model/Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                   :model/Card        metric         (assoc (coll-data-map "metric %s metric" coll)
-                                                            :type :metric)
-                   :model/Segment     segment        (data-map "segment %s segment")]
-      (f {:action     action
-          :collection coll
-          :card       card
-          :database   db
-          :dataset    dataset
-          :dashboard  dashboard
-          :metric     metric
-          :table      table
-          :segment    segment}))))
+                     :model/QueryAction _qa (query-action action-id)
+                     :model/Card        card           (coll-data-map "card %s card" coll)
+                     :model/Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
+                                                              :type :model)
+                     :model/Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
+                     :model/Card        metric         (assoc (coll-data-map "metric %s metric" coll)
+                                                              :type :metric)
+                     :model/Segment     segment        (data-map "segment %s segment")]
+        (f {:action     action
+            :collection coll
+            :card       card
+            :database   db
+            :dataset    dataset
+            :dashboard  dashboard
+            :metric     metric
+            :table      table
+            :segment    segment})))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
   `(do-with-search-items ~search-string true (fn [~'_] ~@body)))
@@ -461,7 +459,7 @@
                    :model/DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}
                    :model/DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}]
       ;; We do not synchronously update dashboard count
-      (search/reindex! {:async? false})
+      (search/reindex! {:async? false :in-place? true})
       (is (= (sort-by :dashboardcard_count (cleaned-results dashboard-count-results))
              (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count")))))))
 
@@ -654,7 +652,7 @@
                (search-request-data :crowberto :q "test"))))))
 
   ;; TODO need to isolate these two tests properly, they're sharing  temp index
-  (search/reindex! {:async? false})
+  (search/reindex! {:async? false :in-place? true})
 
   (testing "Basic search, should find 1 of each entity type and include bookmarks when available"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
@@ -1387,7 +1385,7 @@
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
 
        ;; TODO investigate why the actions don't get indexed automatically
-        (search/reindex! {:async? false})
+        (search/reindex! {:async? false :in-place? true})
 
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]
@@ -1659,19 +1657,20 @@
 
 (deftest ^:synchronized force-reindex-test
   (when (search/supports-index?)
-    (mt/with-temp [:model/Card {id :id} {:name "It boggles the mind!"}]
-      (mt/user-http-request :crowberto :post 200 "search/re-init")
-      (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "appdb"))]
-        (is (try (t2/delete! (search.index/active-table)) (catch Exception _ :already-deleted)))
-        (is (empty? (search-results 200)))
-        (mt/user-http-request :crowberto :post 200 "search/force-reindex")
-        (is (loop [attempts-left 5]
-              (if (and (pos? (try (t2/count (search.index/active-table)) (catch Exception _ 0)))
-                       (some (comp #{id} :id) (search-results 200)))
-                ::success
-                (when (pos? attempts-left)
-                  (Thread/sleep 200)
-                  (recur (dec attempts-left))))))))))
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Card {id :id} {:name "It boggles the mind!"}]
+        (mt/user-http-request :crowberto :post 200 "search/re-init")
+        (let [search-results #(:data (mt/user-http-request :rasta :get % "search" :q "boggle" :search_engine "appdb"))]
+          (is (try (t2/delete! (search.index/active-table)) (catch Exception _ :already-deleted)))
+          (is (empty? (search-results 200)))
+          (mt/user-http-request :crowberto :post 200 "search/force-reindex")
+          (is (loop [attempts-left 5]
+                (if (and (pos? (try (t2/count (search.index/active-table)) (catch Exception _ 0)))
+                         (some (comp #{id} :id) (search-results 200)))
+                  ::success
+                  (when (pos? attempts-left)
+                    (Thread/sleep 200)
+                    (recur (dec attempts-left)))))))))))
 
 (defn- weights-url
   ([]

@@ -80,10 +80,7 @@
   []
   (api/check-superuser)
   (if (search/supports-index?)
-    ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
-    (if (and (task/job-exists? task.search-index/reindex-job-key) (or (not ingestion/*force-sync*) config/is-test?))
-      (do (search/reindex! {:async? false}) {:message "done"})
-      (do (search/reindex!) {:message "done"}))
+    (do (search/reindex!) {:message "done"})))
 
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
