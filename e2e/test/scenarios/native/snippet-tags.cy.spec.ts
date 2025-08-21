@@ -96,6 +96,21 @@ describe("scenarios > native > snippet tags", () => {
     H.tableInteractive().should("be.visible");
   });
 
+  it("should be able to create a tag with the same name as the inner snippet tag", () => {
+    createQuestionAndSnippet().then(({ card }) => {
+      H.visitQuestion(card.id);
+    });
+
+    cy.log("add a local tag with the same name");
+    getEditorVisibilityToggler().click();
+    H.NativeEditor.type(" and category = {{filter}}");
+
+    cy.log("assert that the parameter can be used");
+    H.filterWidget().findByPlaceholderText("Filter").type("Widget");
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(54);
+  });
+
   it("should be able to update a snippet and change tags", () => {
     createQuestionAndSnippet().then(({ card }) => {
       H.visitQuestion(card.id);
