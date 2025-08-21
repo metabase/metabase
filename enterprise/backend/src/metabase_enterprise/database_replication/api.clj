@@ -94,7 +94,8 @@
     (log/infof "Quota left: %s. Estimate db row count: %s" free-quota total-estimated-row-count)
     {:free-quota                 free-quota
      :total-estimated-row-count  total-estimated-row-count
-     :can-set-replication        (< total-estimated-row-count free-quota)
+     :can-set-replication        (and (not-empty replicated-tables)
+                                      (< total-estimated-row-count free-quota))
      :all-quotas                 all-quotas
      :all-tables                 all-tables
      :replicated-tables          replicated-tables
