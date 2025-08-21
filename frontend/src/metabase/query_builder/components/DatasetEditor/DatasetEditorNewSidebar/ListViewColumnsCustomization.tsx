@@ -66,7 +66,7 @@ export function ListViewColumnsCustomization({
       </Group>
       <Stack gap="sm">
         <TextInput
-          size="sm"
+          size="xs"
           placeholder={t`Find a column...`}
           leftSection={<Icon name="search" size={14} c="text-light" />}
           value={query}
