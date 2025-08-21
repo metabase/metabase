@@ -1,4 +1,5 @@
 import Link from "metabase/common/components/Link";
+import AccordionS from "metabase/home/components/Onboarding/OnboardingAccordion.module.css";
 import { Accordion, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { useScrollAccordionItemIntoView } from "../../hooks/use-scroll-accordion-item";
@@ -13,15 +14,6 @@ interface EmbeddingChecklistProps {
   defaultOpenStep?: EmbeddingHubStepId;
   completedSteps?: Partial<Record<EmbeddingHubStepId, boolean>>;
 }
-
-const accordionClassNames = {
-  chevron: S.chevron,
-  content: S.content,
-  control: S.control,
-  icon: S.icon,
-  item: S.item,
-  label: S.label,
-};
 
 export const EmbeddingChecklist = ({
   steps,
@@ -106,7 +98,7 @@ export const EmbeddingChecklist = ({
                 {step.image && (
                   <img
                     alt={step.image.alt}
-                    className={S.image}
+                    className={AccordionS.image}
                     loading="lazy"
                     src={step.image.src}
                     srcSet={step.image.srcSet}
@@ -124,4 +116,13 @@ export const EmbeddingChecklist = ({
       })}
     </Accordion>
   );
+};
+
+const accordionClassNames = {
+  chevron: AccordionS.chevron,
+  content: AccordionS.content,
+  control: AccordionS.control,
+  icon: AccordionS.icon,
+  item: AccordionS.item,
+  label: AccordionS.label,
 };

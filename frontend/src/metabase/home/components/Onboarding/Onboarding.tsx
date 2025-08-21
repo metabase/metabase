@@ -41,6 +41,7 @@ import {
 } from "metabase/ui";
 
 import S from "./Onboarding.module.css";
+import AccordionS from "./OnboardingAccordion.module.css";
 import {
   trackChecklistItemCTAClicked,
   trackChecklistItemExpanded,
@@ -215,12 +216,12 @@ export const Onboarding = () => {
         <Accordion
           defaultValue={lastItemOpened || DEFAULT_ITEM}
           classNames={{
-            chevron: S.chevron,
-            content: S.content,
-            control: S.control,
-            icon: S.icon,
-            item: S.item,
-            label: S.label,
+            chevron: AccordionS.chevron,
+            content: AccordionS.content,
+            control: AccordionS.control,
+            icon: AccordionS.icon,
+            item: AccordionS.item,
+            label: AccordionS.label,
           }}
           onChange={(value: string | null) =>
             handleValueChange(value as ChecklistItemValue | null)
@@ -244,7 +245,7 @@ export const Onboarding = () => {
                   <Stack gap="lg">
                     <img
                       alt={`${applicationName} ${t`data stack`}`}
-                      className={S.image}
+                      className={AccordionS.image}
                       loading="lazy"
                       src="app/assets/img/onboarding_data_diagram.png"
                       srcSet="app/assets/img/onboarding_data_diagram@2x.png 2x"
@@ -277,7 +278,7 @@ export const Onboarding = () => {
                   <Stack gap="lg">
                     <img
                       alt={t`Admin panel with the "Invite someone" button`}
-                      className={S.image}
+                      className={AccordionS.image}
                       loading="lazy"
                       src="app/assets/img/onboarding_invite.png"
                       srcSet="app/assets/img/onboarding_invite@2x.png 2x"
