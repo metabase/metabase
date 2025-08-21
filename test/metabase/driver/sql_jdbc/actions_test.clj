@@ -260,7 +260,7 @@
    (fn [{:keys [db-id]}]
      (testing "violate fk constraint"
        (testing "when deleting"
-         (is (=? {:message "Other tables rely on this row so it cannot be deleted."
+         (is (=? {:message "Other rows refer to this row so it cannot be deleted."
                   :errors {}
                   :type        actions.error/violate-foreign-key-constraint
                   :status-code 400}

@@ -31,6 +31,10 @@
         (str/replace "``" "`")
         (str/replace #"^`?(.+?)`?$" "$1"))))
 
+(defn- remove-backticks-table [id]
+  (when id
+    (remove-backticks (last (str/split id #"`.`")))))
+
 (defn- constraint->column-names
   "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
   [database constraint-name]
@@ -78,18 +82,18 @@
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
   (or
-   (when-let [[_match _ref-table _constraint _fkey-cols column _key-cols]
+   (when-let [[_match ref-table _constraint _fkey-cols column _key-cols]
               (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
      (merge {:type error-type}
             (case action-type
               (:table.row/delete :model.row/delete)
-              {:message (tru "Other tables rely on this row so it cannot be deleted.")
-               :errors  {}}
+              {:message (tru "Other rows refer to this row so it cannot be deleted.")
+               :errors  {(remove-backticks column) (tru "Referenced in table \"{0}\"." (remove-backticks-table ref-table))}}
 
               :model.row/update
 
-              {:message (tru "Other tables rely on this row so it cannot be changed.")
-               :errors  {}})))
+              {:message (tru "Other rows refer to this row so it cannot be changed.")
+               :errors  {(remove-backticks column) (tru "Referenced in table \"{0}\"." (remove-backticks-table ref-table))}})))
    (when-let [[_match _ref-table _constraint column fk-table _fk-col]
               (re-find #"Cannot add or update a child row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
      (let [column (remove-backticks column)]
@@ -100,7 +104,7 @@
 
                    (:table.row/update :model.row/update)
                    (tru "Unable to update the record."))
-        :errors  {(remove-backticks column) (tru "This value does not exist in table \"{0}\"." (remove-backticks fk-table))}}))))
+        :errors  {(remove-backticks column) (tru "This value does not exist in table \"{0}\"." (remove-backticks-table fk-table))}}))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/incorrect-value-type]
   [_driver error-type _database _action-type error-message]

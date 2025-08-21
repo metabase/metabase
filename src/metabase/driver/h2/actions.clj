@@ -96,7 +96,7 @@
                 :errors {column (tru "This value does not exist in table \"{0}\"." table)}}
 
                (:table.row/delete :model.row/delete)
-               {:message (tru "Other tables rely on this row so it cannot be deleted.")
+               {:message (tru "Other rows refer to this row so it cannot be deleted.")
                 :errors  {}}
 
                (:table.row/update :model.row/update)
