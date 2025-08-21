@@ -6,91 +6,87 @@ describe("scenarios > native > snippet tags", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("creation", () => {
-    it("should be able to create a snippet with tags", () => {
-      H.startNewNativeQuestion();
-      H.NativeEditor.type("select id from products where ");
+  it("should be able to create a snippet with tags", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select id from products where ");
 
-      cy.log("create a snippet");
-      getSnippetSidebarIcon().click();
-      cy.findByTestId("sidebar-content").findByText("Create snippet").click();
-      H.modal().within(() => {
-        getSnippetContentInput().type("category = {{category}}", {
-          parseSpecialCharSequences: false,
-        });
-        getSnippetNameInput().type("filter-snippet");
-        cy.button("Save").click();
+    cy.log("create a snippet");
+    getSnippetSidebarIcon().click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
+    H.modal().within(() => {
+      getSnippetContentInput().type("category = {{category}}", {
+        parseSpecialCharSequences: false,
       });
-
-      cy.log("assert that the snippet was inserted");
-      H.NativeEditor.get().should(
-        "contain",
-        "select id from products where {{snippet: filter-snippet}}",
-      );
-
-      cy.log("assert that the parameter can be used");
-      H.filterWidget().findByPlaceholderText("Category").type("Widget");
-      H.runNativeQuery();
-      H.assertQueryBuilderRowCount(54);
+      getSnippetNameInput().type("filter-snippet");
+      cy.button("Save").click();
     });
 
-    it("should be able to open a question with an old snippet name", () => {
-      createQuestionAndSnippet().then(({ card, snippet }) => {
-        cy.request("PUT", `/api/native-query-snippet/${snippet.id}`, {
-          name: "category-snippet",
-        });
-        cy.visit(`/question/${card.id}`);
-      });
+    cy.log("assert that the snippet was inserted");
+    H.NativeEditor.get().should(
+      "contain",
+      "select id from products where {{snippet: filter-snippet}}",
+    );
 
-      cy.log("assert that the parameter can be used");
-      H.filterWidget().findByPlaceholderText("Filter").type("Widget");
-      H.queryBuilderHeader().icon("play").click();
-      H.assertQueryBuilderRowCount(54);
-    });
+    cy.log("assert that the parameter can be used");
+    H.filterWidget().findByPlaceholderText("Category").type("Widget");
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(54);
   });
 
-  describe("types", () => {
-    it("should be able to change the inner tag type to Number", () => {
-      createQuestionAndSnippet({ content: "ID = {{filter}}" }).then(
-        ({ card }) => {
-          H.visitQuestion(card.id);
-        },
-      );
-
-      cy.log("change the type");
-      getEditorVisibilityToggler().click();
-      getVariableSidebarIcon().click();
-      getVariableTypeSelect().click();
-      H.popover().findByText("Number").click();
-
-      cy.log("assert that the parameter can be used");
-      H.filterWidget().findByPlaceholderText("Filter").type("10");
-      H.runNativeQuery();
-      H.assertQueryBuilderRowCount(1);
+  it("should be able to open a question with an old snippet name", () => {
+    createQuestionAndSnippet().then(({ card, snippet }) => {
+      cy.request("PUT", `/api/native-query-snippet/${snippet.id}`, {
+        name: "category-snippet",
+      });
+      cy.visit(`/question/${card.id}`);
     });
 
-    it("should be able to change the inner tag type to Field Filter", () => {
-      createQuestionAndSnippet({ content: "{{filter}}" }).then(({ card }) => {
+    cy.log("assert that the parameter can be used");
+    H.filterWidget().findByPlaceholderText("Filter").type("Widget");
+    H.queryBuilderHeader().icon("play").click();
+    H.assertQueryBuilderRowCount(54);
+  });
+
+  it("should be able to change the inner tag type to Number", () => {
+    createQuestionAndSnippet({ content: "ID = {{filter}}" }).then(
+      ({ card }) => {
         H.visitQuestion(card.id);
-      });
+      },
+    );
 
-      cy.log("change the type");
-      getEditorVisibilityToggler().click();
-      getVariableSidebarIcon().click();
-      getVariableTypeSelect().click();
-      H.popover().findByText("Field Filter").click();
-      H.popover().findByText("Products").click();
-      H.popover().findByText("Category").click();
+    cy.log("change the type");
+    getEditorVisibilityToggler().click();
+    getVariableSidebarIcon().click();
+    getVariableTypeSelect().click();
+    H.popover().findByText("Number").click();
 
-      cy.log("assert that the parameter can be used");
-      H.filterWidget().click();
-      H.popover().within(() => {
-        cy.findByText("Gadget").click();
-        cy.button("Add filter").click();
-      });
-      H.runNativeQuery();
-      H.assertQueryBuilderRowCount(53);
+    cy.log("assert that the parameter can be used");
+    H.filterWidget().findByPlaceholderText("Filter").type("10");
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(1);
+  });
+
+  it("should be able to change the inner tag type to Field Filter", () => {
+    createQuestionAndSnippet({ content: "{{filter}}" }).then(({ card }) => {
+      H.visitQuestion(card.id);
     });
+
+    cy.log("change the type");
+    getEditorVisibilityToggler().click();
+    getVariableSidebarIcon().click();
+    getVariableTypeSelect().click();
+    H.popover().findByText("Field Filter").click();
+    H.popover().findByText("Products").click();
+    H.popover().findByText("Category").click();
+
+    cy.log("assert that the parameter can be used");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(53);
   });
 });
 
