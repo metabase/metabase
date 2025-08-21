@@ -509,6 +509,132 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("queries", () => {
+    it("should render a readOnly preview of the MBQL query", () => {
+      cy.log("create a new transform that has all the steps");
+      createMbqlTransform({ visitTransform: true });
+      H.getTableId({ name: "Animals" }).then((tableId) => {
+        H.getFieldId({ tableId, name: "score" }).then((ANIMAL_SCORE) => {
+          H.getFieldId({ tableId, name: "name" }).then((ANIMAL_NAME) => {
+            H.createTransform(
+              {
+                name: "MBQL transform",
+                source: {
+                  type: "query",
+                  query: {
+                    database: WRITABLE_DB_ID,
+                    type: "query",
+                    query: {
+                      "source-table": tableId,
+                      filter: [">", ["field", ANIMAL_SCORE, {}], 10],
+                      aggregation: [["count"]],
+                      expressions: {
+                        ScorePlusOne: ["+", ["field", ANIMAL_SCORE, {}], 1],
+                      },
+                      breakout: [
+                        [
+                          "field",
+                          ANIMAL_SCORE,
+                          { binning: { strategy: "num-bins", "num-bins": 10 } },
+                        ],
+                      ],
+                      joins: [
+                        {
+                          "source-table": tableId,
+                          condition: [
+                            "=",
+                            ["field", ANIMAL_SCORE, {}],
+                            ["field", ANIMAL_SCORE, {}],
+                          ],
+                          alias: "animal_score",
+                        },
+                      ],
+                      limit: 10,
+                      "order-by": [["asc", ["field", ANIMAL_NAME, {}]]],
+                    },
+                  },
+                },
+                target: {
+                  type: "table",
+                  name: TARGET_TABLE,
+                  schema: TARGET_SCHEMA,
+                },
+                tag_ids: [],
+              },
+              { visitTransform: true },
+            );
+          });
+        });
+      });
+
+      cy.log("Data step should be read-only");
+      H.getNotebookStep("data").findByText("Animals").click();
+      assertNoModals();
+
+      cy.log("Join step should be read-only");
+      H.getNotebookStep("join")
+        .findAllByText("Animals")
+        .should("have.length", 4)
+        .eq(1)
+        .should("have.css", "pointer-events", "none");
+
+      H.getNotebookStep("join")
+        .findAllByText("Score")
+        .should("have.length", 2)
+        .first()
+        .click();
+      assertNoModals();
+
+      H.getNotebookStep("join")
+        .findAllByText("Score")
+        .should("have.length", 2)
+        .eq(1)
+        .click();
+      assertNoModals();
+
+      cy.log("Expression step should be read-only, but render editor");
+      H.getNotebookStep("expression").findByText("ScorePlusOne").click();
+      H.CustomExpressionEditor.value().should("equal", "[Score] + 1");
+      H.CustomExpressionEditor.nameInput()
+        .should("have.value", "ScorePlusOne")
+        .should("have.attr", "readonly");
+      H.popover().button("Done").click();
+
+      cy.log("Expression step should be read-only, but render popover");
+      H.getNotebookStep("filter")
+        .findByText("Score is greater than 10")
+        .click();
+      H.popover().within(() => {
+        cy.findByText("Score").should("be.visible");
+        cy.findByText("Greater than").should("be.visible");
+        cy.findByPlaceholderText("Enter a number")
+          .should("be.visible")
+          .should("have.value", 10);
+      });
+      H.main().click();
+
+      cy.log("Summarize step should be read-only");
+      H.getNotebookStep("summarize").findByText("Count").click();
+      assertNoModals();
+
+      H.getNotebookStep("summarize").findByText("Score: 10 bins").click();
+      assertNoModals();
+
+      cy.log("Sort step should be read-only");
+      H.getNotebookStep("sort").findByText("Name").click();
+      assertNoModals();
+
+      cy.log("Limit step should be read-only");
+      H.getNotebookStep("limit")
+        .findByPlaceholderText("Enter a limit")
+        .should("have.value", 10)
+        .should("have.attr", "readonly");
+
+      function assertNoModals() {
+        H.entityPickerModal().should("not.exist");
+        H.popover({ skipVisibilityCheck: true }).should("not.exist");
+      }
+    });
+
     it("should be able to update a MBQL query", () => {
       cy.log("create a new transform");
       createMbqlTransform({ visitTransform: true });
