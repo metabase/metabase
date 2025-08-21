@@ -132,3 +132,12 @@
   :default 2
   :export? false
   :visibility :internal)
+
+(defsetting stale-index-retention-hours
+  (deferred-tru "Number of hours to retain stale semantic search indexes before cleanup.")
+  :type :integer
+  :default 24
+  :encryption :no
+  :export? false
+  :visibility :internal
+  :doc "Number of hours to retain stale semantic search indexes before cleanup.")
