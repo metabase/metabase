@@ -82,14 +82,6 @@
   }
 }
 
-.list {
-  list-style-type: circle;
-
-  li {
-    margin-left: 2rem;
-  }
-}
-
 .image {
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;

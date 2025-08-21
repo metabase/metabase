@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import type { EmbeddingStep } from "../components/EmbeddingChecklist";
+import type { EmbeddingStep } from "../types";
 
-export const getEmbeddingSteps = (): EmbeddingStep[] => [
-  {
+export const getEmbeddingSteps = (): EmbeddingStep[] => {
+  const TEST_EMBED: EmbeddingStep = {
     id: "test-embed",
     title: t`Create a test embed`,
     icon: "check",
@@ -16,8 +16,9 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => [
         adminOnly: true,
       },
     ],
-  },
-  {
+  };
+
+  const ADD_DATA: EmbeddingStep = {
     id: "add-data",
     title: t`Add your data`,
     icon: "add_data",
@@ -41,8 +42,9 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => [
         adminOnly: true,
       },
     ],
-  },
-  {
+  };
+
+  const CREATE_DASHBOARD: EmbeddingStep = {
     id: "create-dashboard",
     title: t`Create a dashboard`,
     icon: "dashboard",
@@ -55,8 +57,9 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => [
         adminOnly: true,
       },
     ],
-  },
-  {
+  };
+
+  const CONFIGURE_SANDBOXING: EmbeddingStep = {
     id: "configure-sandboxing",
     title: t`Configure sandboxing`,
     icon: "key",
@@ -69,8 +72,9 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => [
         adminOnly: true,
       },
     ],
-  },
-  {
+  };
+
+  const SECURE_EMBEDS: EmbeddingStep = {
     id: "secure-embeds",
     title: t`Secure your embeds`,
     icon: "lock",
@@ -89,8 +93,9 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => [
         adminOnly: true,
       },
     ],
-  },
-  {
+  };
+
+  const EMBED_PRODUCTION: EmbeddingStep = {
     id: "embed-production",
     title: t`Embed in production`,
     icon: "bolt",
@@ -109,5 +114,14 @@ export const getEmbeddingSteps = (): EmbeddingStep[] => [
         adminOnly: true,
       },
     ],
-  },
-];
+  };
+
+  return [
+    TEST_EMBED,
+    ADD_DATA,
+    CREATE_DASHBOARD,
+    CONFIGURE_SANDBOXING,
+    SECURE_EMBEDS,
+    EMBED_PRODUCTION,
+  ];
+};

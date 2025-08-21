@@ -10,36 +10,9 @@ import {
 } from "metabase/selectors/whitelabel";
 import { Accordion, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
+import type { EmbeddingStep, EmbeddingStepId } from "../../types";
+
 import S from "./EmbeddingChecklist.module.css";
-
-export type EmbeddingStepId =
-  | "test-embed"
-  | "add-data"
-  | "create-dashboard"
-  | "configure-sandboxing"
-  | "secure-embeds"
-  | "embed-production";
-
-export interface EmbeddingStep {
-  id: EmbeddingStepId;
-  title: string;
-  icon: string;
-  description: string;
-  features?: string[];
-  image?: {
-    src: string;
-    srcSet?: string;
-    alt: string;
-  };
-  actions?: Array<{
-    label: string;
-    href?: string;
-    to?: string;
-    variant?: "outline" | "subtle" | "filled";
-    adminOnly?: boolean;
-    showWhenMetabaseLinksEnabled?: boolean;
-  }>;
-}
 
 interface EmbeddingChecklistProps {
   steps: EmbeddingStep[];
@@ -47,6 +20,15 @@ interface EmbeddingChecklistProps {
   defaultOpenStep?: EmbeddingStepId;
   onStepChange?: (stepId: EmbeddingStepId | null) => void;
 }
+
+const accordionClassNames = {
+  chevron: S.chevron,
+  content: S.content,
+  control: S.control,
+  icon: S.icon,
+  item: S.item,
+  label: S.label,
+};
 
 export const EmbeddingChecklist = ({
   steps,
@@ -75,18 +57,9 @@ export const EmbeddingChecklist = ({
     [itemRefs],
   );
 
-  const scrollElementIntoView = (element?: HTMLDivElement | null) => {
-    if (!element) {
-      return;
-    }
-    element.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  };
-
-  const handleValueChange = (newValue: string | null) => {
+  const handleOpenStepChange = (newValue: string | null) => {
     const typedNewValue = isValidItemKey(newValue) ? newValue : null;
+
     if (typedNewValue !== null) {
       const newItem = itemRefs[typedNewValue].current;
       scrollElementIntoView(newItem);
@@ -149,19 +122,13 @@ export const EmbeddingChecklist = ({
 
   return (
     <Accordion
-      defaultValue={defaultOpenStep || steps[0]?.id}
-      classNames={{
-        chevron: S.chevron,
-        content: S.content,
-        control: S.control,
-        icon: S.icon,
-        item: S.item,
-        label: S.label,
-      }}
-      onChange={handleValueChange}
+      defaultValue={defaultOpenStep ?? steps[0]?.id}
+      classNames={accordionClassNames}
+      onChange={handleOpenStepChange}
     >
       {steps.map((step) => {
-        const isCompleted = completedSteps[step.id];
+        const isCompleted = completedSteps[step.id] ?? false;
+
         return (
           <Accordion.Item
             key={step.id}
@@ -196,18 +163,6 @@ export const EmbeddingChecklist = ({
                   )}
                 </Text>
 
-                {step.features && (
-                  <Text>
-                    {step.features.length > 0 && (
-                      <ul className={S.list}>
-                        {step.features.map((feature, index) => (
-                          <li key={index}>{feature}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </Text>
-                )}
-
                 {renderStepActions(step)}
               </Stack>
             </Accordion.Panel>
@@ -216,4 +171,15 @@ export const EmbeddingChecklist = ({
       })}
     </Accordion>
   );
+};
+
+const scrollElementIntoView = (element?: HTMLDivElement | null) => {
+  if (!element) {
+    return;
+  }
+
+  element.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+  });
 };
