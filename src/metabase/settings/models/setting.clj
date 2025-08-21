@@ -169,7 +169,7 @@
 (defn- warning?
   "Warnings don't block you saving a setting, but the value won't be used until the warning is resolved."
   [reason]
-  (= "warning" (namespace (:key reason))))
+  (isa? (:key reason) :setting/disabled-warning))
 
 (defn custom-disabled-reasons!
   "Expose custom reasons for a setting being disabled to the admin panel.
