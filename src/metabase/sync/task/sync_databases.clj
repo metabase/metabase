@@ -28,6 +28,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
+   (java.util TimeZone)
    (org.quartz
     CronTrigger
     JobDetail
@@ -251,6 +252,7 @@
      (triggers/with-schedule
       (cron/schedule
        (cron/cron-schedule task-schedule)
+       (cron/in-time-zone (TimeZone/getTimeZone (driver.settings/report-timezone-long)))
         ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
         ;; Just wait until the next sync cycle.
         ;;
