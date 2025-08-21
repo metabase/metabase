@@ -31,14 +31,22 @@
    (java.util.concurrent TimeUnit)
    (java.util.concurrent.locks ReentrantLock)))
 
+(def ^:dynamic *database*
+  "The database upon which we are operating, from which [[*database-local-values*]] are taken.
+  This is used to do a just-in-time check whether a given setting is enabled for the given database, so that we can
+  revert to the default value even if there is a vestigial value saved against it.
+
+  This is normally bound automatically in Query Processor context by [[metabase.query-processor.setup/do-with-database]].
+  You may need to manually bind it in other places where you want to use Database-local values."
+  nil)
+
 (def ^:dynamic *database-local-values*
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
   `Database.settings` in the application DB. When bound, any Setting that *can* be Database-local will have a value
   from this map returned preferentially to the site-wide value.
 
-  This is normally bound automatically in Query Processor context
-  by [[metabase.query-processor.setup/do-with-database-local-settings]]. You may need to manually bind it in other
-  places where you want to use Database-local values."
+  This is normally bound automatically in Query Processor context by [[metabase.query-processor.setup/do-with-database]].
+  You may need to manually bind it in other places where you want to use Database-local values."
   nil)
 
 (def ^:dynamic *user-local-values*
@@ -146,6 +154,23 @@
                                 (pr-str default)
                                 (.getCanonicalName ^Class klass))
                         {:tag klass}))))))
+
+(defn disabled-for-db-reasons
+  "Return the reasons, if any, for the given setting being disabled."
+  [setting-def database]
+  (when-let [f (:enabled-for-db? setting-def)]
+    (try (when-not (f database)
+           [{:key     :disabled-for-db
+             :message "This database does not support this setting"}])
+         (catch ExceptionInfo e
+           (or (:setting/disabled-reasons (ex-data e))
+               (throw e))))))
+
+(defn custom-disabled-reasons!
+  "Expose custom reasons for a setting being disabled to the admin panel."
+  [reasons]
+  (assert (seq reasons) "At least one reason must be given")
+  (throw (ex-info "Setting is not enabled for this database" {:setting/disabled-reasons reasons})))
 
 ;; This is called `LocalOption` rather than `DatabaseLocalOption` or something like that because we intend to also add
 ;; User-Local Settings at some point in the future. The will use the same options
@@ -639,6 +664,11 @@
 (defn- default-getter-for-type [setting-type]
   (partial get-value-of-type (keyword setting-type)))
 
+(defn- throw-or-log
+  "Given an error that should never happen, throw it for us, log it for customers."
+  [e]
+  (if config/is-prod? (log/warn e) (throw e)))
+
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
@@ -647,11 +677,28 @@
   Note: If the setting has an initializer, and this is the first time accessing, a value will be generated and saved
   unless *disable-init* has been bound to a truthy value."
   [setting-definition-or-name]
-  (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
-        disable-cache?                                   (or config/*disable-setting-cache* (not cache?))]
+  (let [setting-def                       (resolve-setting setting-definition-or-name)
+        {:keys [getter enabled? feature]} setting-def
+        disable-cache?                    (or config/*disable-setting-cache* (not (:cache? setting-def)))]
+
+    ;; Reading database-local settings is failure prone, so catch easy mistakes.
+    (when (= :only (:database-local setting-def))
+      (cond
+        (not *database-local-values*)
+        (throw-or-log
+         (ex-info (format "Trying to read database-local setting %s without surrounding [[setting/with-database]] call."
+                          (:name setting-def))
+                  {:setting setting-def}))
+
+        ;; This likely means we're in a test using hand-crafted metadata. Just stub the instance too.
+        (and (:enabled-for-db? setting-def) (not *database*))
+        (log/warnf "Skipping enabled-for-db? check for %s as we don't have the underlying toucan2 db instance."
+                   (:name setting-def))))
+
     (if (or (and feature (not (has-feature? feature)))
-            (and enabled? (not (enabled?))))
-      default
+            (and enabled? (not (enabled?)))
+            (and *database* (disabled-for-db-reasons setting-def *database*)))
+      (:default setting-def)
       (if (= config/*disable-setting-cache* disable-cache?) ;; Optimization: only bind dynvar if necessary.
         (getter)
         (binding [config/*disable-setting-cache* disable-cache?]
@@ -887,22 +934,6 @@
      (when-not bypass-read-only?
        (when (= setter :none)
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
-
-(defn disabled-for-db-reasons
-  "Return the reasons, if any, for the given setting being disabled."
-  [setting-def database]
-  (when-let [f (:enabled-for-db? setting-def)]
-    (try (when-not (f database)
-           [{:key     :disabled-for-db
-             :message "This database does not support this setting"}])
-         (catch ExceptionInfo e
-           (or (:setting/disabled-reasons (ex-data e))
-               (throw e))))))
-
-(defn custom-disabled-reasons!
-  "Expose custom reasons for a setting being disabled to the admin panel."
-  [reasons]
-  (throw (ex-info "Setting is not enabled for this database" {:setting/disabled-reasons reasons})))
 
 (defn validate-settable-for-db!
   "Check whether the given setting can be set for the given database."

@@ -20,6 +20,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { SetTitle } from "metabase/hoc/Title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -364,6 +365,7 @@ export const DocumentPage = ({
 
   return (
     <Box className={styles.documentPage}>
+      <SetTitle title={documentData?.name || t`New document`} />
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
