@@ -14,8 +14,7 @@
    [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [potemkin :as p])
-  (:import (java.util.concurrent ArrayBlockingQueue ExecutorService ThreadPoolExecutor TimeUnit)))
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
@@ -117,13 +116,6 @@
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
-(defonce ^:private reindex-pool
-  (ThreadPoolExecutor.
-   1 ; pool size
-   1 ; max pool size
-   0 TimeUnit/MILLISECONDS ; keepalive
-   (ArrayBlockingQueue. 1)))
-
 (defn- reindex-logic! [opts]
   (when (supports-index?)
     (try
@@ -153,7 +145,7 @@
   (let [f #(reindex-logic! opts)]
     (if (or search.ingestion/*force-sync* (not async?))
       (doto (promise) (deliver (f)))
-      (.submit ^ExecutorService reindex-pool ^Callable f))))
+      (future (f)))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."
