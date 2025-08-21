@@ -126,8 +126,9 @@
   (update-vals template-tags
                (fn [{tag-type :type, :keys [snippet-name], :as tag}]
                  (cond-> tag
-                   (= tag-type :snippet) (assoc :snippet-id
-                                                (:id (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name)))))))
+                   ;; A snippet can be referenced by a previous name. If it cannot be found, preserve the previous `snippet-id`.
+                   (= tag-type :snippet) (m/assoc-some :snippet-id
+                                                       (:id (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name)))))))
 
 (mu/defn extract-template-tags :- ::lib.schema.template-tag/template-tag-map
   "Extract the template tags from a native query's text.
