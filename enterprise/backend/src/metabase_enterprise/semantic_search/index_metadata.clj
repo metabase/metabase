@@ -256,14 +256,17 @@
     nil))
 
 (defn find-compatible-index!
-  "Locates the optimal index to be used for the given embedding model.
+  "Locates a compatible existing index for the given embedding model.
 
-  Returns information that helps you decide what to do next in order to start using the index.
+  Returns information about the compatible index if found, or nil if no compatible index exists.
 
-  Returns map with
+  Returns map with:
   - :index              the index parameters, table name, version etc.
-  - :metadata-row       the unqualified next.jdbc row, nil if it is a new index or if the metadata row has somehow been deleted
-  - :index-table-exists whether the table named by the `:index` actually exists in the database"
+  - :metadata-row       the unqualified next.jdbc row
+  - :index-table-exists whether the table named by the `:index` actually exists in the database
+  - :active             whether this index is currently active
+
+  Returns nil if no compatible index is found."
   [pgvector index-metadata embedding-model]
   (let [{:keys [metadata-table-name
                 control-table-name]}
