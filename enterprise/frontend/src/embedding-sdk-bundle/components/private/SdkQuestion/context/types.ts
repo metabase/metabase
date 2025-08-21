@@ -83,6 +83,7 @@ type SdkQuestionConfig = {
    */
   backToDashboard?: {
     id: DashboardId;
+    model: "dashboard";
     name: string;
   };
 };

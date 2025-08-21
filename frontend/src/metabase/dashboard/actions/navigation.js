@@ -61,6 +61,6 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         dispatch(openUrl(url));
       }
 
-      return { dashboardId };
+      return { model: "dashboard", id: dashboardId, name: dashboard.name };
     },
 );
