@@ -542,7 +542,7 @@
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
-  ;; we assume that all h2 tables are writable
+  ;; HACK: we assume that all h2 tables are writable
   (eduction (map #(assoc % :is_writable true))
             (apply sql-jdbc.sync/post-filtered-active-tables args)))
 
