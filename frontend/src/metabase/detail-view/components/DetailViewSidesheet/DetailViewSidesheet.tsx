@@ -31,8 +31,8 @@ import { Box, Button, Group, Icon, Stack, Tooltip, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
-  CardId,
   DatasetColumn,
   ForeignKey,
   RowValues,
@@ -105,7 +105,10 @@ export function DetailViewSidesheet({
   const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
   const initialValues = useMemo(() => ({ id: rowId ?? null }), [rowId]);
 
-  const modelId = table?.type === "model" ? (table.id as CardId) : undefined;
+  const modelId =
+    table?.type === "model"
+      ? getQuestionIdFromVirtualTableId(table.id)
+      : undefined;
   const { data: actions } = useListActionsQuery(
     showImplicitActions && modelId != null
       ? { "model-id": modelId }

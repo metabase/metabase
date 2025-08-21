@@ -153,9 +153,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
 
-    H.modal()
-      .findByRole("link", { name: /77 Orders/ })
-      .click();
+    H.modal().findByRole("link", { name: "77 Orders" }).click();
 
     cy.findByTestId("qb-filters-panel")
       .findByText("Product ID is 3")
