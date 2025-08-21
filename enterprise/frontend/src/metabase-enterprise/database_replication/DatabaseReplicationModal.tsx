@@ -51,13 +51,19 @@ export const DatabaseReplicationModal = ({
   const [previewDatabaseReplication] = usePreviewDatabaseReplicationMutation();
   const preview = useCallback(
     (
-      { schemaFiltersType, schemaFiltersPatterns }: DatabaseReplicationFormFields,
+      {
+        schemaFiltersType,
+        schemaFiltersPatterns,
+      }: DatabaseReplicationFormFields,
       handleResponse: (response: PreviewDatabaseReplicationResponse) => void,
       handleError: (error: unknown) => void,
     ) => {
       previewDatabaseReplication({
         databaseId: database.id,
-        replicationSchemaFilters: transformSchemaFilters(schemaFiltersType, schemaFiltersPatterns),
+        replicationSchemaFilters: transformSchemaFilters(
+          schemaFiltersType,
+          schemaFiltersPatterns,
+        ),
       })
         .unwrap()
         .then(handleResponse)
@@ -70,11 +76,17 @@ export const DatabaseReplicationModal = ({
   );
 
   const onSubmit = useCallback(
-    async ({ schemaFiltersType, schemaFiltersPatterns }: DatabaseReplicationFormFields) => {
+    async ({
+      schemaFiltersType,
+      schemaFiltersPatterns,
+    }: DatabaseReplicationFormFields) => {
       setSetupStep("setting-up");
       createDatabaseReplication({
         databaseId: database.id,
-        replicationSchemaFilters: transformSchemaFilters(schemaFiltersType, schemaFiltersPatterns),
+        replicationSchemaFilters: transformSchemaFilters(
+          schemaFiltersType,
+          schemaFiltersPatterns,
+        ),
       })
         .unwrap()
         .then(() => setSetupStep("success"))

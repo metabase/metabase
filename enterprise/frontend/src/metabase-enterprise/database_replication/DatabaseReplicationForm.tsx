@@ -119,7 +119,9 @@ export const DatabaseReplicationForm = ({
   const storeUrl = useStoreUrl("account/storage");
 
   // FIXME: Can we get all values of the form at once?
-  const [schemaFiltersType, setSchemaFiltersType] = useState(initialValues.schemaFiltersType);
+  const [schemaFiltersType, setSchemaFiltersType] = useState(
+    initialValues.schemaFiltersType,
+  );
   const [schemaFiltersPatterns, setSchemaFiltersPatterns] = useState("");
   const debouncedSchemaFiltersPatterns = useDebouncedValue(
     schemaFiltersPatterns,
@@ -241,7 +243,9 @@ export const DatabaseReplicationForm = ({
                 name="schemaFiltersType"
                 label={t`Select schemas to replicate`}
                 onChange={(value) =>
-                  setSchemaFiltersType(value as typeof initialValues.schemaFiltersType)
+                  setSchemaFiltersType(
+                    value as typeof initialValues.schemaFiltersType,
+                  )
                 }
                 data={[
                   { value: "all", label: t`All` },
@@ -452,7 +456,8 @@ export const DatabaseReplicationForm = ({
                 <Group align="center" gap="sm">
                   <FormSubmitButton
                     disabled={
-                      (isValidSchemaFiltersPatterns && previewResponseLoading) ||
+                      (isValidSchemaFiltersPatterns &&
+                        previewResponseLoading) ||
                       !previewResponse?.canSetReplication
                     }
                     label={t`Start replication`}
