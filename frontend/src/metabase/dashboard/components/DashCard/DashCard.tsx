@@ -387,6 +387,7 @@ function DashCardInner({
             isTrashedOnRemove={isTrashedOnRemove}
             onAddParameter={handleAddParameter}
             onEditVisualization={onEditVisualizationClick}
+            cardRootRef={cardRootRef} // <-- pass ref for copy as image
           />
         )}
         <DashCardVisualization
