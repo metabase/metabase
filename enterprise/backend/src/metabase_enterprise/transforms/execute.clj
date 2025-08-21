@@ -9,7 +9,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -71,7 +70,11 @@
            ;; But then we'd need to make extra t2 calls or pass through more stuff like the database
            table-id (get-in source [:query :query :source-table])
            table (t2/select-one :model/Table table-id)
-           table-fields (fetch-metadata/table-fields-metadata database table)
+           table-fields (if (driver.u/supports? driver :describe-fields database)
+                          (set (driver/describe-fields driver database
+                                                       :table-names [(:name table)]
+                                                       :schema-names [(:schema table)]))
+                          (:fields (driver/describe-table driver database table)))
            primary-field (:name (or (first (filter :pk? table-fields))
                                     (first (sort-by :database-position table-fields))))
            transform-details {:transform-type (keyword (:type target))
