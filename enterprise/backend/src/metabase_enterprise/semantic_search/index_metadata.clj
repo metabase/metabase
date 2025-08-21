@@ -255,7 +255,7 @@
     (jdbc/execute! pgvector activation-sql)
     nil))
 
-(defn find-best-index!
+(defn find-compatible-index!
   "Locates the optimal index to be used for the given embedding model.
 
   Returns information that helps you decide what to do next in order to start using the index.

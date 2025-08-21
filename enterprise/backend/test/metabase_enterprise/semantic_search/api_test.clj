@@ -81,7 +81,7 @@
           (is (semantic.tu/table-exists-in-db? original-table-name))
           (is (not (semantic.tu/table-exists-in-db? new-table-name)))
 
-          (let [best-index (semantic.index-metadata/find-best-index! semantic.tu/db semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
+          (let [best-index (semantic.index-metadata/find-compatible-index! semantic.tu/db semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
             (is (=? original-index (:index best-index)))
             (is (:active best-index)))
 
@@ -97,7 +97,7 @@
 
             (is (zero? (semantic.tu/index-count new-index))))
 
-          (let [best-index (semantic.index-metadata/find-best-index! semantic.tu/db semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
+          (let [best-index (semantic.index-metadata/find-compatible-index! semantic.tu/db semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model)]
             (is (=? new-index (:index best-index)))
             (is (:active best-index)))
 
