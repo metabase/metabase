@@ -951,53 +951,47 @@
               ;; Clean up: Reset partial_revokes to OFF before exiting
               (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
               (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_test_user';"))))))))
-=======
-=======
->>>>>>> master
-#_(deftest sync-writable-test
-    (mt/test-driver :mysql
-      (when-not (mysql/mariadb? (mt/db))
-        (testing "`sync-tables-and-database!` should set is_writable correctly based on table privileges"
-          (tx/drop-if-exists-and-create-db! driver/*driver* "sync_writable_test")
-          (let [details (tx/dbdef->connection-details :mysql :db {:database-name "sync_writable_test"})
-                spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
-            (try
-              (doseq [stmt ["CREATE TABLE `readonly_table` (id INTEGER);"
-                            "CREATE TABLE `readwrite_table` (id INTEGER);"
-                            "CREATE TABLE `fullaccess_table` (id INTEGER);"
-                            "CREATE USER 'sync_writable_test_user' IDENTIFIED BY 'password';"]]
-                (jdbc/execute! spec stmt))
 
-              (doseq [stmt ["GRANT SELECT ON sync_writable_test.`readonly_table` TO 'sync_writable_test_user'"
-                            "GRANT SELECT, INSERT ON sync_writable_test.`readwrite_table` TO 'sync_writable_test_user'"
-                            "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_writable_test.`fullaccess_table` TO 'sync_writable_test_user'"]]
-                (jdbc/execute! spec stmt))
+(deftest sync-writable-test
+  (mt/test-driver :mysql
+    (when-not (mysql/mariadb? (mt/db))
+      (testing "`sync-tables-and-database!` should set is_writable correctly based on table privileges"
+        (tx/drop-if-exists-and-create-db! driver/*driver* "sync_writable_test")
+        (let [details (tx/dbdef->connection-details :mysql :db {:database-name "sync_writable_test"})
+              spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+          (try
+            (doseq [stmt ["CREATE TABLE `readonly_table` (id INTEGER);"
+                          "CREATE TABLE `readwrite_table` (id INTEGER);"
+                          "CREATE TABLE `fullaccess_table` (id INTEGER);"
+                          "CREATE USER 'sync_writable_test_user' IDENTIFIED BY 'password';"]]
+              (jdbc/execute! spec stmt))
 
-              (let [user-connection-details (assoc details
-                                                   :user "sync_writable_test_user"
-                                                   :password "password"
-                                                   :ssl true
-                                                   :additional-options "trustServerCertificate=true")]
-                (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details}]
+            (doseq [stmt ["GRANT SELECT ON sync_writable_test.`readonly_table` TO 'sync_writable_test_user'"
+                          "GRANT SELECT, INSERT ON sync_writable_test.`readwrite_table` TO 'sync_writable_test_user'"
+                          "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_writable_test.`fullaccess_table` TO 'sync_writable_test_user'"]]
+              (jdbc/execute! spec stmt))
+
+            (let [user-connection-details (assoc details
+                                                 :user "sync_writable_test_user"
+                                                 :password "password"
+                                                 :ssl true
+                                                 :additional-options "trustServerCertificate=true")]
+              (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details}]
+                (sync/sync-database! database)
+                (testing "only fullaccess table has writeable permissions"
+                  (is (= {"readonly_table"   false
+                          "readwrite_table"  false
+                          "fullaccess_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
+                (testing "After granting full access to all tables and re-syncing"
+                  (doseq [table-name ["readonly_table" "readwrite_table"]]
+                    (jdbc/execute! spec (format "GRANT INSERT, UPDATE, DELETE ON sync_writable_test.`%s` TO 'sync_writable_test_user'" table-name)))
+
                   (sync/sync-database! database)
-                  (testing "only fullaccess table has writeable permissions"
-                    (is (= {"readonly_table"   false
-                            "readwrite_table"  false
-                            "fullaccess_table" true}
-                           (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
-                  (testing "After granting full access to all tables and re-syncing"
-                    (doseq [table-name ["readonly_table" "readwrite_table"]]
-                      (jdbc/execute! spec (format "GRANT INSERT, UPDATE, DELETE ON sync_writable_test.`%s` TO 'sync_writable_test_user'" table-name)))
+                  (is (= {"readonly_table"   false
+                          "readwrite_table"  false
+                          "fullaccess_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))))
 
-                    (sync/sync-database! database)
-                    (is (= {"readonly_table"   false
-                            "readwrite_table"  false
-                            "fullaccess_table" true}
-                           (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))))
-
-              (finally
-                (jdbc/execute! spec "DROP USER IF EXISTS 'sync_writable_test_user';"))))))))
-<<<<<<< HEAD
->>>>>>> 75d6135498 (Track whether each table can be written to (#62203))
-=======
->>>>>>> master
+            (finally
+              (jdbc/execute! spec "DROP USER IF EXISTS 'sync_writable_test_user';"))))))))
