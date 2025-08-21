@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useListColumns } from "metabase/list-view/components/ListView";
 import { Box, Button, Group, Icon, Stack, Text, TextInput } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn } from "metabase-types/api";
-import { useListColumns } from "metabase/list-view/components/ListView";
 
 export type ListViewColumnsCustomizationProps = {
   cols?: DatasetColumn[];

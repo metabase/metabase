@@ -2,14 +2,13 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { ReorderableTagsInput } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
-import { Box, Divider, Icon, Pill, Stack, Text } from "metabase/ui";
+import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import { getEntityIcon, useListColumns } from "./ListView";
 import S from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
-//
 
 export const ListViewConfiguration = ({
   data,

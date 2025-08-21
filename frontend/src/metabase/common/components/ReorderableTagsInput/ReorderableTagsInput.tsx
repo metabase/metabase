@@ -75,6 +75,10 @@ function SortablePill({
       {...listeners}
       style={style}
       radius="xl"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", id);
+      }}
     >
       {label}
     </Pill>
@@ -196,6 +200,7 @@ export function ReorderableTagsInput({
             draggingRef.current = true;
             // Highlight the input when an external draggable is over it
             setIsDragOver(true);
+            console.log("drag enter", e.dataTransfer.getData("text/plain"));
           }}
           onDragLeave={(e) => {
             const related = e.relatedTarget as Node | null;
@@ -206,6 +211,7 @@ export function ReorderableTagsInput({
             setIsDragOver(false);
           }}
           onDrop={(e) => {
+            debugger;
             e.preventDefault();
             const val = e.dataTransfer.getData("text/plain");
             if (!val) {
