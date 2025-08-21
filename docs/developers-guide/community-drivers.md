@@ -18,7 +18,7 @@ To use a Community driver on a self-hosted Metabase:
 1. Download the latest JAR file from the driver's repository (see the repo's Releases section for the JAR files).
 2. Copy the JAR file into the plugins directory in your Metabase directory (the directory where you run the Metabase JAR).
 
-You can change the location of the plugins directory by setting the environment variable [`MB_PLUGINS_DIR`](../configuring-metabase/environment-variables#mb_plugins_dir).
+You can change the location of the plugins directory by setting the environment variable [`MB_PLUGINS_DIR`](../configuring-metabase/environment-variables.md#mb_plugins_dir).
 
 ## Community drivers
 
