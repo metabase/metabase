@@ -3,7 +3,6 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -527,8 +526,8 @@
                                                             (seq options)
                                                             (conj options)))
           ::mbql.s/options-style.𝕨𝕚𝕝𝕕                   (if (> (count args) 2)
-                                                          (recur ::mbql.s/options-style.mbql-5 (options->legacy-MBQL options))
-                                                          (recur ::mbql.s/options-style.last-unless-empty options)))))))
+                                                              (recur ::mbql.s/options-style.mbql-5 (options->legacy-MBQL options))
+                                                              (recur ::mbql.s/options-style.last-unless-empty options)))))))
 
 (defmethod ->legacy-MBQL :default
   [x]
