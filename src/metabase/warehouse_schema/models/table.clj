@@ -76,6 +76,7 @@
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
    :field_order     mi/transform-keyword
+   ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
    :data_authority  transform-data-authority})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]

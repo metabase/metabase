@@ -518,7 +518,11 @@
                      :where  [:= :id (:id table)]})
 
       (testing "Unexpected values are converted to :unknown"
-        (is (= :unknown (t2/select-one-fn :data_authority [:model/Table :data_authority] :id (:id table))))))))
+        (is (= :unknown (t2/select-one-fn :data_authority [:model/Table :data_authority] :id (:id table)))))
+
+      (testing "API GET endpoint returns :unknown for tables with unknown data_authority"
+        (let [api-response (mt/user-http-request :crowberto :get 200 (format "table/%d" (:id table)))]
+          (is (= "unknown" (:data_authority api-response))))))))
 
 ;; see how many times sync-table! gets called when we call the PUT endpoint. It should happen when you switch from
 ;; hidden -> not hidden at the spots marked below, twice total
