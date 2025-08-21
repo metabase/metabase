@@ -36,7 +36,6 @@
         clause-name-kw          (keyword clause-name)
         clause-registry-name    (keyword "metabase.legacy-mbql.schema" (name clause-name))]
     `(do
-       (derive ~clause-registry-name :metabase.legacy-mbql.schema/mbql-clause)
        (mr/register! ~clause-registry-name
                      (metabase.legacy-mbql.schema.helpers/clause ~clause-name-kw ~@(stringify-names arg-names-and-schemas)))
        (def ~(vary-meta symb-name assoc :doc (format "Schema for a valid %s clause." clause-name))
