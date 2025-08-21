@@ -8,6 +8,7 @@ import {
   getTitleForColumn,
 } from "metabase/visualizations/lib/settings/column";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import * as Lib from "metabase-lib";
 import {
   isAvatarURL,
   isEntityName,
@@ -216,4 +217,39 @@ export function getObjectQuery(
     },
     type: "query",
   };
+}
+
+export function filterByPk(
+  query: Lib.Query,
+  columns: DatasetColumn[],
+  rowId: string | number | undefined,
+) {
+  if (typeof rowId === "undefined") {
+    return undefined;
+  }
+
+  const pks = columns.filter(isPK);
+
+  if (pks.length !== 1) {
+    return undefined;
+  }
+
+  const [pk] = pks;
+  const stageIndex = -1;
+  const column = Lib.fromLegacyColumn(query, stageIndex, pk);
+  const filterClause =
+    typeof rowId === "number"
+      ? Lib.numberFilterClause({
+          operator: "=",
+          column,
+          values: [rowId],
+        })
+      : Lib.stringFilterClause({
+          operator: "=",
+          column,
+          values: [rowId],
+          options: {},
+        });
+
+  return Lib.filter(query, stageIndex, filterClause);
 }
