@@ -57,6 +57,7 @@
       padding: 0;
     }
 
+    :global(.node-metabot),
     :global(.node-cardEmbed) {
       break-inside: avoid;
     }
