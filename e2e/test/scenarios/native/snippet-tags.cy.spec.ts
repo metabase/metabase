@@ -12,7 +12,7 @@ describe("scenarios > native > snippet tags", () => {
 
     cy.log("create a snippet");
     getSnippetSidebarIcon().click();
-    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
+    getEditorSidebar().findByText("Create snippet").click();
     H.modal().within(() => {
       getSnippetContentInput().type("category = {{category}}", {
         parseSpecialCharSequences: false,
