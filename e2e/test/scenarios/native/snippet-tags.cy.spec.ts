@@ -128,7 +128,7 @@ describe("scenarios > native > snippet tags", () => {
   });
 
   it("should be able to change the inner tag type to Number", () => {
-    createQuestionAndSnippet({ content: "ID = {{filter}}" }).then(
+    createQuestionAndSnippet({ snippetContent: "ID = {{filter}}" }).then(
       ({ card }) => {
         H.visitQuestion(card.id);
       },
@@ -147,9 +147,11 @@ describe("scenarios > native > snippet tags", () => {
   });
 
   it("should be able to change the inner tag type to Field Filter", () => {
-    createQuestionAndSnippet({ content: "{{filter}}" }).then(({ card }) => {
-      H.visitQuestion(card.id);
-    });
+    createQuestionAndSnippet({ snippetContent: "{{filter}}" }).then(
+      ({ card }) => {
+        H.visitQuestion(card.id);
+      },
+    );
 
     cy.log("change the type");
     getEditorVisibilityToggler().click();
@@ -181,6 +183,31 @@ describe("scenarios > native > snippet tags", () => {
     H.filterWidget().findByPlaceholderText("Filter").type("Widget");
     H.queryBuilderHeader().icon("play").click();
     H.assertQueryBuilderRowCount(54);
+  });
+
+  it("should not be able to create card cycles via snippets", () => {
+    cy.log("create a card and a snippet referencing this card");
+    H.createNativeQuestion({
+      native: {
+        query: "select 1",
+      },
+    }).then(({ body: card }) => {
+      H.createSnippet({
+        name: "cycle-snippet",
+        content: `{{#${card.id}}}`,
+      });
+      H.visitQuestion(card.id);
+    });
+
+    cy.log("create a cycle and try to save the card");
+    getEditorVisibilityToggler().click();
+    H.NativeEditor.clear();
+    H.NativeEditor.type("select * from {{snippet: cycle-snippet}}");
+    H.queryBuilderHeader().button("Save").click();
+    H.modal().within(() => {
+      cy.button("Save").click();
+      cy.findByText("Cannot save card with cycles.").should("be.visible");
+    });
   });
 });
 
@@ -217,13 +244,13 @@ function getSnippetContentInput() {
 }
 
 function createQuestionAndSnippet({
-  content = "category = {{filter}}",
+  snippetContent = "category = {{filter}}",
 }: {
-  content?: string;
+  snippetContent?: string;
 } = {}) {
   return H.createSnippet({
     name: "filter-snippet",
-    content,
+    content: snippetContent,
   }).then(({ body: snippet }) => {
     return H.createNativeQuestion({
       native: {
