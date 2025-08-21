@@ -28,6 +28,8 @@
       (catch Exception e
         (case (-> e ex-data :status)
           404 {:status 404 :body "Could not establish a connection to Metabase Cloud."}
+          403 {:status 403 :body "Could not establish a connection to Metabase Cloud."}
+          401 {:status 401 :body "Could not establish a connection to Metabase Cloud."}
           400 {:status 400 :body "Could not purchase this add-on."}
           {:status 500 :body ""})))))
 
