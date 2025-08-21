@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-738-setup-sidebar-and-onboarding-page-for-embedding-hub"
+    }
+  ]
 }
