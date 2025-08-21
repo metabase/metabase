@@ -376,7 +376,7 @@ export const DatabaseReplicationForm = ({
                     <Icon name="check" size={16} maw={16} mt={1} />
                     <Box>
                       <Text fz="md" lh={1.35}>
-                        {t`Tables that will be replicated`}
+                        {t`The following tables will be replicated.`}
                       </Text>
                       <UnstyledButton
                         variant="subtle"
