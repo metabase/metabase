@@ -89,7 +89,8 @@ const SdkIframeEmbedView = ({
         componentName: "metabase-browser",
       },
       (settings) => (
-        <SdkBreadcrumbsProvider>
+        // re-mount breadcrumbs when initial collection changes
+        <SdkBreadcrumbsProvider key={settings.initialCollection}>
           <MetabaseBrowser settings={settings} />
         </SdkBreadcrumbsProvider>
       ),

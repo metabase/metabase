@@ -22,6 +22,7 @@ describe("documents", () => {
     cy.visit("/");
 
     H.newButton("Document").click();
+    cy.title().should("eq", "New document · Metabase");
 
     cy.findByRole("textbox", { name: "Document Title" })
       .should("be.focused")
@@ -39,6 +40,7 @@ describe("documents", () => {
     );
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+    cy.title().should("eq", "Test Document · Metabase");
 
     H.appBar()
       .findByRole("link", { name: /First collection/ })

@@ -3,12 +3,14 @@ import cx from "classnames";
 import dayjs from "dayjs";
 import type { HTMLAttributes } from "react";
 
+import { getEmbeddingSdkBundleBuildData } from "embedding-sdk/lib/get-embedding-sdk-bundle-build-data";
 import {
   EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
   getEmbeddingSdkPackageBuildData,
 } from "embedding-sdk/lib/get-embedding-sdk-package-build-data";
-import { useLazySelector } from "embedding-sdk/sdk-shared/hooks/use-lazy-selector";
+import { useSdkSelector } from "embedding-sdk/store";
 import { getMetabaseInstanceVersion } from "embedding-sdk/store/selectors";
+import type { BuildInfo } from "metabase/embedding-sdk/types/build-info";
 
 import S from "./SdkDebugInfo.module.css";
 
@@ -42,30 +44,14 @@ type DebugTableProps = {
 
 type DebugInfoData = Omit<DebugTableProps, "titlePrefix">;
 
-const useSdkPackageDebugInfo = (): DebugInfoData => {
-  const {
-    version,
-    gitBranch,
-    gitCommit: fullCommit,
-    buildTime,
-  } = getEmbeddingSdkPackageBuildData() ?? {};
+const getDebugInfoData = (buildInfo: BuildInfo): DebugInfoData => {
+  const { version, gitBranch, gitCommit: fullCommit, buildTime } = buildInfo;
 
   return {
     version,
     gitBranch,
     gitCommit: fullCommit?.slice(0, 7),
     buildTimeData: getFormattedBuildTimeData(buildTime),
-  };
-};
-
-const useSdkBundleDebugInfo = (): DebugInfoData => {
-  const version = useLazySelector(getMetabaseInstanceVersion);
-
-  return {
-    version,
-    gitBranch: process.env.GIT_BRANCH,
-    gitCommit: process.env.GIT_COMMIT?.slice(0, 7),
-    buildTimeData: getFormattedBuildTimeData(process.env.BUILD_TIME),
   };
 };
 
@@ -109,8 +95,14 @@ const DebugTable = ({
 );
 
 export const SdkDebugInfo = (props: HTMLAttributes<HTMLDivElement>) => {
-  const sdkPackageInfo = useSdkPackageDebugInfo();
-  const sdkBundleInfo = useSdkBundleDebugInfo();
+  const sdkPackageDebugInfoData = getDebugInfoData(
+    getEmbeddingSdkPackageBuildData(),
+  );
+
+  const sdkBundleVersion = useSdkSelector(getMetabaseInstanceVersion);
+  const sdkBundleDebugInfoData = getDebugInfoData(
+    getEmbeddingSdkBundleBuildData(sdkBundleVersion ?? undefined),
+  );
 
   return (
     <div
@@ -118,8 +110,8 @@ export const SdkDebugInfo = (props: HTMLAttributes<HTMLDivElement>) => {
       className={cx("mb-wrapper", S.sdkDebugInfo, props.className)}
       style={props.style}
     >
-      <DebugTable titlePrefix="SDK Package" {...sdkPackageInfo} />
-      <DebugTable titlePrefix="SDK Bundle" {...sdkBundleInfo} />
+      <DebugTable titlePrefix="SDK Package" {...sdkPackageDebugInfoData} />
+      <DebugTable titlePrefix="SDK Bundle" {...sdkBundleDebugInfoData} />
     </div>
   );
 };

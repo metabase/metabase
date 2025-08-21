@@ -6,6 +6,7 @@ import DateTime, {
 } from "metabase/common/components/DateTime";
 import {
   ActionIcon,
+  Box,
   Button,
   Flex,
   Icon,
@@ -13,12 +14,20 @@ import {
   Text,
   TextInput,
   Tooltip,
+  Transition,
+  type TransitionProps,
 } from "metabase/ui";
 import type { Document } from "metabase-types/api";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
 import S from "./DocumentHeader.module.css";
+
+const saveButtonTransition: TransitionProps["transition"] = {
+  in: { opacity: 1, visibility: "visible", width: "auto" },
+  out: { opacity: 0, visibility: "hidden", width: 0 },
+  transitionProperty: "opacity",
+};
 
 interface DocumentHeaderProps {
   document: Document | undefined;
@@ -99,11 +108,24 @@ export const DocumentHeader = ({
         )}
       </Flex>
       <Flex gap="md" align="center" className={S.actionsContainer}>
-        {showSaveButton && (
-          <Button onClick={onSave} variant="filled" data-hide-on-print>
-            {t`Save`}
-          </Button>
-        )}
+        <Transition
+          mounted={showSaveButton}
+          transition={saveButtonTransition}
+          duration={200}
+          keepMounted
+        >
+          {(style) => (
+            <Box
+              style={
+                style.display === "none" ? saveButtonTransition.out : style
+              }
+            >
+              <Button onClick={onSave} variant="filled" data-hide-on-print>
+                {t`Save`}
+              </Button>
+            </Box>
+          )}
+        </Transition>
         {!document?.archived && (
           <Menu position="bottom-end">
             <Menu.Target>
