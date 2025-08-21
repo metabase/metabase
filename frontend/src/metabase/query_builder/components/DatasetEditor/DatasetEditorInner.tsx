@@ -277,6 +277,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   const dispatch = useDispatch();
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
+
   const fields = useMemo(
     () =>
       getSortedModelFields(
@@ -409,8 +410,34 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     (tab: DatasetEditorTab) => {
       setDatasetEditorTab(tab);
       setEditorHeight(tab === "query" ? initialEditorHeight : 0);
+      /**
+       * The only way to properly display interface for "Columns" tab is to
+       * set model's display type to "table". Otherwise, the interface will
+       * display the list, without providing an option to configure columns.
+       */
+
+      if (editedVisualizationSettings?.viewSettings.defaultView === "list") {
+        if (tab === "columns") {
+          const updatedQuestion = question.setDisplay("table");
+          updateQuestion(updatedQuestion, {
+            rerunQuery: false,
+          });
+        }
+        if (tab === "metadata") {
+          const updatedQuestion = question.setDisplay("list");
+          updateQuestion(updatedQuestion, {
+            rerunQuery: false,
+          });
+        }
+      }
     },
-    [initialEditorHeight, setDatasetEditorTab],
+    [
+      editedVisualizationSettings?.viewSettings.defaultView,
+      initialEditorHeight,
+      question,
+      setDatasetEditorTab,
+      updateQuestion,
+    ],
   );
 
   const handleCancelEdit = () => {
@@ -627,10 +654,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           <EditorTabs
             currentTab={datasetEditorTab}
             disabledQuery={!isEditable}
-            disabledColumns={
-              !resultsMetadata ||
-              editedVisualizationSettings?.viewSettings?.defaultView === "list"
-            }
+            disabledColumns={!resultsMetadata}
             onChange={onChangeEditorTab}
           />
         }

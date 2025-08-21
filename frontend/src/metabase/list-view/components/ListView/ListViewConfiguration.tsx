@@ -28,9 +28,6 @@ export const ListViewConfiguration = ({
     settings?.viewSettings?.listSettings,
   );
 
-  console.log("settings", settings?.viewSettings);
-  console.log({ titleColumn, subtitleColumn, rightColumns });
-
   // Selected values
   const [leftValues, setLeftValues] = useState(() => [
     ...(titleColumn ? [titleColumn.name] : []),
@@ -147,7 +144,7 @@ export const ListViewConfiguration = ({
               value={rightValues}
               onChange={(value) => onConfigurationChange({ right: value })}
               maxValues={5}
-              placeholder="Right columns"
+              placeholder={rightValues.length === 5 ? "" : "Right columns"}
             />
           </Box>
         </Box>

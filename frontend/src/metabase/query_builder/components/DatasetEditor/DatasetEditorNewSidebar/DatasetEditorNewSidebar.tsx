@@ -1,9 +1,9 @@
 import { t } from "ttag";
+
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-
-import { Button, Flex, SegmentedControl, Stack, Text } from "metabase/ui";
 import { getIsListViewConfigurationShown } from "metabase/query_builder/selectors";
+import { Button, SegmentedControl, Stack, Text } from "metabase/ui";
 
 type DatasetEditorNewSidebarProps = {
   onUpdateSettings: (settings: any) => void;
@@ -58,7 +58,7 @@ export const DatasetEditorNewSidebar = ({
                     setUIControls({ isShowingListViewConfiguration: false }),
                   );
                 }}
-              >{t`Show full list`}</Button>
+              >{t`Done`}</Button>
             ))}
         </Stack>
       </Stack>
