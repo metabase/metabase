@@ -264,7 +264,7 @@
   - :index              the index parameters, table name, version etc.
   - :metadata-row       the unqualified next.jdbc row, nil if it is a new index or if the metadata row has somehow been deleted
   - :index-table-exists whether the table named by the `:index` actually exists in the database"
-  [pgvector index-metadata embedding-model & {:keys [force-new?]}]
+  [pgvector index-metadata embedding-model]
   (let [{:keys [metadata-table-name
                 control-table-name]}
         index-metadata
@@ -280,10 +280,10 @@
                             :where  [:and
                                      [:= :provider provider]
                                      [:= :model_name model-name]
-                                     [:= :vector_dimensions vector-dimensions]]}
+                                     [:= :vector_dimensions vector-dimensions]]
+                            :order-by [[:index_created_at :desc]]}
                            (sql/format :quoted true))
-        model-rows     (when-not force-new?
-                         (jdbc/execute! pgvector model-rows-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+        model-rows     (jdbc/execute! pgvector model-rows-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
 
         {[active] true
          inactive false}
@@ -301,7 +301,7 @@
 
       ;; has an inactive index
       (seq inactive)
-      (let [best-index-row (first inactive)                 ; 'best' is undefined right now, not sure if it matters
+      (let [best-index-row (first inactive)
             best-index     (row->index best-index-row)]
         {:index              best-index
          :index-table-exists (index-table-exists? pgvector best-index)
