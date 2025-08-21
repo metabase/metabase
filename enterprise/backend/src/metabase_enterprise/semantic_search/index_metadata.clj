@@ -308,12 +308,18 @@
          :metadata-row       best-index-row
          :active             false})
 
-      ;; new or untracked index
+      ;; no compatible index found
       :else
-      (let [index (qualify-index (semantic.index/default-index embedding-model) index-metadata)]
-        {:index              index
-         :index-table-exists (index-table-exists? pgvector index)
-         :active             false}))))
+      nil)))
+
+(defn create-new-index-spec
+  "Creates a new index specification for the given embedding model.
+  This is used when no compatible index exists and a new one needs to be created."
+  [pgvector index-metadata embedding-model]
+  (let [index (qualify-index (semantic.index/default-index embedding-model) index-metadata)]
+    {:index              index
+     :index-table-exists (index-table-exists? pgvector index)
+     :active             false}))
 
 (defn record-new-index-table!
   "Records an index in the metadata table and returns the index with its assigned ID + index-created-at.
