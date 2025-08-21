@@ -31,6 +31,7 @@ import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/Ar
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
+import { EmbeddingHub } from "metabase/embedding/components/EmbeddingHub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
@@ -185,6 +186,12 @@ export const getRoutes = (store) => {
           <Route
             path="embed-js"
             component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
+          />
+
+          <Route
+            path="embedding-hub"
+            title={t`Embedding Hub`}
+            component={EmbeddingHub}
           />
 
           <Route
