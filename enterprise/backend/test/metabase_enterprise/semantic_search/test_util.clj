@@ -379,6 +379,20 @@
        (jdbc/execute! pgvector)
        (mapv :tables/table_name)))
 
+(defn open-metadata!
+  "Create metadata tables and return a closeable that will clean them up when closed."
+  ^Closeable [pgvector index-metadata]
+  (closeable
+   (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
+   (fn [_] (cleanup-index-metadata! pgvector index-metadata))))
+
+(defn open-index!
+  "Create an index table and return a closeable that will drop it when closed."
+  ^Closeable [pgvector index]
+  (closeable
+   (semantic.index/create-index-table-if-not-exists! pgvector index)
+   (fn [_] (semantic.index/drop-index-table! pgvector index))))
+
 (defn- decode-column
   [row column]
   (update row column #'semantic.index/decode-pgobject))
