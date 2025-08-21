@@ -356,21 +356,29 @@
               (reset! analytics-calls [])
               (mt/with-test-user :crowberto
                 (semantic.index/query-index semantic.tu/db semantic.tu/mock-index
-                                            {:search-string "elephant migration"}))
+                                            {:search-string "elephant migration"
+                                             :filter-items-in-personal-collection "only"}))
 
               (let [metric-names (set (map first @analytics-calls))]
                 (is (contains? metric-names :metabase-search/semantic-search-ms))
                 (is (contains? metric-names :metabase-search/semantic-embedding-ms))
                 (is (contains? metric-names :metabase-search/semantic-db-query-ms))
-                (is (contains? metric-names :metabase-search/permission-filtering-ms)))
+                (is (contains? metric-names :metabase-search/permission-filtering-ms))
+                (is (contains? metric-names :metabase-search/semantic-collection-filter-ms))
+                (is (contains? metric-names :metabase-search/semantic-appdb-scores-ms)))
 
               (testing "timing values  are reasonable"
                 (doseq [[metric args] @analytics-calls
                         :when (#{:metabase-search/semantic-search-ms
                                  :metabase-search/semantic-embedding-ms
                                  :metabase-search/semantic-db-query-ms
-                                 :metabase-search/permission-filtering-ms} metric)]
-                  (let [time-ms (if (= metric :metabase-search/permission-filtering-ms)
+                                 :metabase-search/permission-filtering-ms
+                                 :metabase-search/semantic-collection-filter-ms
+                                 :metabase-search/semantic-appdb-scores-ms} metric)]
+                  (let [time-ms (if (#{:metabase-search/permission-filtering-ms
+                                       :metabase-search/semantic-collection-filter-ms
+                                       :metabase-search/semantic-appdb-scores-ms}
+                                     metric)
                                   (first args)
                                   (second args))]
                     (is (number? time-ms) (str "Time for " metric " should be numeric"))

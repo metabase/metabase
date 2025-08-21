@@ -743,12 +743,14 @@
     (if (or (nil? filter-type) (= filter-type "all"))
       docs
       (let [timer (u/start-timer)
-            filtered-docs (filter-by-collection docs search-context)]
+            filtered-docs (filter-by-collection docs search-context)
+            time-ms (u/since-ms timer)]
         (log/debug "Collection filter" {:filter  filter-type
                                         :before  (count docs)
                                         :after   (count filtered-docs)
                                         :dropped (- (count docs) (count filtered-docs))
-                                        :time_ms (u/since-ms timer)})
+                                        :time_ms time-ms})
+        (analytics/inc! :metabase-search/semantic-collection-filter-ms time-ms)
         filtered-docs))))
 
 (defn query-index
@@ -785,7 +787,6 @@
             final-results (->> filtered-results
                                (scoring/with-appdb-scores search-context))
             appdb-scores-time-ms (u/since-ms appdb-scores-timer)
-
             total-time-ms (u/since-ms timer)]
 
         (log/debug "Semantic search"
@@ -804,11 +805,7 @@
         (analytics/inc! :metabase-search/semantic-db-query-ms
                         {:embedding-model (:name embedding-model)}
                         db-query-time-ms)
-        (analytics/inc! :metabase-search/semantic-filter-ms
-                        {:embedding-model (:name embedding-model)}
-                        filter-time-ms)
         (analytics/inc! :metabase-search/semantic-appdb-scores-ms
-                        {:embedding-model (:name embedding-model)}
                         appdb-scores-time-ms)
         (analytics/inc! :metabase-search/semantic-search-ms
                         {:embedding-model (:name embedding-model)}
