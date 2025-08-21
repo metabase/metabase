@@ -65,10 +65,16 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
+           table-id (get-in source [:query :query :source-table])
+           table (t2/select-one :model/Table table-id)
+           table-fields (:fields (driver/describe-table driver database table))
+           primary-field (:name (or (first (filter :pk? table-fields))
+                                    (first (sort-by :database-position table-fields))))
            transform-details {:transform-type (keyword (:type target))
                               :connection-details (driver/connection-details driver database)
                               :query (transforms.util/compile-source source)
-                              :output-table (transforms.util/qualified-table-name driver target)}
+                              :output-table (transforms.util/qualified-table-name driver target)
+                              :primary-key primary-field}
            opts {:overwrite? true}]
        (when-not (driver.u/supports? driver feature database)
          (throw (ex-info "The database does not support the requested transform target type."

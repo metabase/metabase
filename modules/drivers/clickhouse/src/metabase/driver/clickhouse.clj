@@ -55,7 +55,8 @@
                               :describe-fks                    false
                               :actions                         false
                               :metadata/key-constraints        (not driver-api/is-test?)
-                              :database-routing                false}]
+                              :database-routing                false
+                              :transforms/table                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
@@ -297,14 +298,14 @@
   (str/starts-with? (.getMessage e) "Code: 60."))
 
 (defmethod driver/compile-transform :clickhouse
-  [driver {:keys [sql output-table primary-key]}]
+  [driver {:keys [query output-table primary-key]}]
   (let [primary-key (if (vector? primary-key)
                       (mapv keyword primary-key)
                       (keyword primary-key))
         pieces [(sql.qp/format-honeysql driver {:create-table output-table})
                 (sql.qp/format-honeysql driver {:order-by primary-key})
                 ["AS"]
-                (sql.qp/format-honeysql driver {:raw sql})]
+                (sql.qp/format-honeysql driver {:raw query})]
         query (str/join " " (map first pieces))
         params (reduce into [] (map rest pieces))]
     (into [query] params)))

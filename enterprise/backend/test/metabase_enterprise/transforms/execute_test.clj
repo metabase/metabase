@@ -64,10 +64,13 @@
                                                     :target target2}]
                   (transforms.execute/run-mbql-transform! t2 {:run-method :cron})
                   (let [table2      (wait-for-table table2-name 10000)
-                        check-query (lib/aggregate (make-query table2) (lib/count))]
+                        check-query (lib/aggregate (make-query table2) (lib/count))
+                        query-result (qp/process-query check-query)]
                     ;; The transforms-test dataset has exactly 4 Gizmo products (IDs 6, 8, 12, 14)
                     ;; First transform filters for categories starting with "G" (Gadget and Gizmo)
                     ;; Second transform filters for category = "Gizmo", resulting in 4 products
-                    (is (=? {:data {:cols [{:name "count"}]
-                                    :rows [[4]]}}
-                            (qp/process-query check-query)))))))))))))
+                    (is (= [[4]]
+                           (mt/formatted-rows [int] query-result)))
+                    (is (= [{:name "count"}]
+                           (map #(select-keys % [:name])
+                                (mt/cols query-result))))))))))))))
