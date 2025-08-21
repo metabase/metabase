@@ -1,12 +1,11 @@
-import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Accordion, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { useScrollAccordionItemIntoView } from "../../hooks/use-scroll-accordion-item";
 import type { EmbeddingHubStep, EmbeddingHubStepId } from "../../types";
+import { DocsLink } from "../DocsLink";
 
 import S from "./EmbeddingChecklist.module.css";
 
@@ -33,7 +32,6 @@ export const EmbeddingChecklist = ({
   completedSteps = {},
 }: EmbeddingChecklistProps) => {
   const applicationName = useSelector(getApplicationName);
-  const isAdmin = useSelector(getUserIsAdmin);
 
   const { accordionItemRefs, scrollAccordionItemIntoView } =
     useScrollAccordionItemIntoView(steps.map((step) => step.id));
@@ -53,28 +51,20 @@ export const EmbeddingChecklist = ({
       return null;
     }
 
-    const visibleActions = step.actions.filter((action) => {
-      return !(action.adminOnly && !isAdmin);
-    });
-
-    if (visibleActions.length === 0) {
-      return null;
-    }
-
     return (
-      <Group gap="sm" data-testid={`${step.id}-cta`}>
-        {visibleActions.map((action, index) => {
+      <Group gap="sm">
+        {step.actions.map((action, index) => {
           const button = (
             <Button variant={action.variant || "outline"}>
               {action.label}
             </Button>
           );
 
-          if (action.href) {
+          if (action.docsPath) {
             return (
-              <ExternalLink key={index} href={action.href}>
+              <DocsLink key={index} docsPath={action.docsPath}>
                 {button}
-              </ExternalLink>
+              </DocsLink>
             );
           }
 
