@@ -326,11 +326,11 @@ To render a dashboard:
 
 ### Question
 
+To render a question (chart).
+
 ```html
 <metabase-question question-id="1"></metabase-question>
 ```
-
-Renders a question (chart).
 
 **Required parameters:**
 
