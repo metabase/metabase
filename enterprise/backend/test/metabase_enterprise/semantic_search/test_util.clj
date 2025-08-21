@@ -169,11 +169,14 @@
      :gate-table-name       (format fmt "gate")
      :index-table-qualifier fmt}))
 
+(defn mock-table-suffix [] 123)
+
 (def mock-index
   "A mock index for testing low level indexing functions.
   Coincides with what the index-metadata system would create for the mock-embedding-model."
-  (-> (semantic.index/default-index mock-embedding-model)
-      (semantic.index-metadata/qualify-index mock-index-metadata)))
+  (with-redefs [metabase-enterprise.semantic-search.index/model-table-suffix mock-table-suffix]
+    (-> (semantic.index/default-index mock-embedding-model)
+        (semantic.index-metadata/qualify-index mock-index-metadata))))
 
 (defmethod semantic.embedding/get-embedding        "mock" [_ text] (get-mock-embedding text))
 (defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts] (get-mock-embeddings-batch texts))
@@ -321,7 +324,8 @@
   [& body]
   `(with-indexable-documents!
      (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
-                   semantic.index-metadata/default-index-metadata mock-index-metadata]
+                   semantic.index-metadata/default-index-metadata mock-index-metadata
+                   metabase-enterprise.semantic-search.index/model-table-suffix mock-table-suffix]
        (with-open [_# (open-temp-index-and-metadata!)]
          (binding [search.ingestion/*force-sync* true]
            (blocking-index!

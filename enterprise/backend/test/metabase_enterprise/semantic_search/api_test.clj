@@ -73,9 +73,10 @@
       (semantic.tu/with-index!
         (let [original-index semantic.tu/mock-index
               original-table-name (:table-name original-index)
-              new-index (-> (semantic.index/default-index semantic.tu/mock-embedding-model)
-                            (semantic.index-metadata/qualify-index
-                             (assoc semantic.tu/mock-index-metadata :index-table-unique-suffix true)))
+              new-index (with-redefs [metabase-enterprise.semantic-search.index/model-table-suffix (fn [] 345)]
+                          (-> (semantic.index/default-index semantic.tu/mock-embedding-model)
+                              (semantic.index-metadata/qualify-index
+                               semantic.tu/mock-index-metadata)))
               new-table-name (:table-name new-index)]
 
           (is (semantic.tu/table-exists-in-db? original-table-name))

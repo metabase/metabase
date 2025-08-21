@@ -7,7 +7,6 @@
   (:require
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [java-time.api :as t]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase.util :as u]
@@ -57,24 +56,17 @@
     ;; even if they do not, as a redundancy filtering optimisation - nothing too bad happens.
     [:document_hash :text :null]]})
 
-(defn model-table-suffix
-  "Returns a new suffix for a table name, based on current timestamp"
-  []
-  (mod (.toEpochSecond (t/offset-date-time)) 10000000))
-
 (defn qualify-index
-  "Qualifies an index-map, returning a new index-map that might have additional disambiguating prefixes applied
-  to table names.
+  "Qualifies an index-map, returning a new index-map that might have additional disambiguating prefixes
+   applied to table names.
 
   This ensures tables/constraints created as part of operating a meta index can be isolated within
   the same database."
   [index index-metadata]
   ;; if created databases for namespacing in tests we could probably remove this whole idea.
-  (let [{:keys [index-table-qualifier index-table-unique-suffix]} index-metadata
+  (let [{:keys [index-table-qualifier]} index-metadata
         qualify (fn [table-name]
-                  (cond-> (format index-table-qualifier table-name)
-                    index-table-unique-suffix
-                    (str "_" (model-table-suffix))))]
+                  (format index-table-qualifier table-name))]
     (-> index
         (update :table-name qualify))))
 
@@ -84,8 +76,7 @@
    :metadata-table-name       "index_metadata"
    :control-table-name        "index_control"
    :gate-table-name           "index_gate"
-   :index-table-qualifier     "%s"
-   :index-table-unique-suffix true})
+   :index-table-qualifier     "%s"})
 
 (defn- create-index-metadata-table-if-not-exists-sql [index-metadata]
   (let [{:keys [metadata-table-name]} index-metadata

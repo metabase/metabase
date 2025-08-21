@@ -19,7 +19,8 @@
       (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)
       (with-redefs [semantic.db.datasource/data-source (atom nil)
                     semantic.env/get-index-metadata (constantly semantic.tu/mock-index-metadata)
-                    semantic.env/get-configured-embedding-model (constantly semantic.tu/mock-embedding-model)]
+                    semantic.env/get-configured-embedding-model (constantly semantic.tu/mock-embedding-model)
+                    metabase-enterprise.semantic-search.index/model-table-suffix semantic.tu/mock-table-suffix]
         (test-func))
       (finally
         (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)))))
