@@ -17,7 +17,6 @@ on:
           - release-x.54.x
           - release-x.55.x
           - release-x.56.x
-          - hosted-bundle-main
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -190,7 +189,7 @@ jobs:
           VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk-package/package.template.json)
           echo "sdk_current_version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Get next SDK patch version
+      - name: Get next SDK patch or pre-release version
         id: new-sdk-version
         uses: actions/github-script@v7
         with:
@@ -198,19 +197,31 @@ jobs:
             const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
             const [currentVersionWithoutSuffix, suffix] = currentVersion.split("-");
             const versionParts = currentVersionWithoutSuffix.split(".");
-            versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
-            const newVersion = versionParts.join(".");
             const [_, majorVersion] = versionParts
 
-            if (!suffix) {
+            if (branch === "master") {
+              if (!suffix) {
+                throw new Error("Expected pre-release suffix on master branch, got: " + currentVersion);
+              }
+
+              const suffixParts = suffix ? suffix.split(".") : [];
+
+              const preReleaseLabel = suffixParts[0] ?? "";
+              const preReleaseVersion = suffixParts[1] ? parseInt(suffixParts[1]) : 0;
+              const nextPreReleaseVersion = preReleaseVersion + 1;
+
               return {
-                version: newVersion,
-                majorVersion
+                version: `${currentVersionWithoutSuffix}-${preReleaseLabel}.${nextPreReleaseVersion}`,
+                "pre-release-label": preReleaseLabel,
+                majorVersion,
               };
             }
 
+            versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
+            const newVersion = versionParts.join(".");
+
             return {
-              version: `${newVersion}-${suffix}`,
+              version: suffix ? `${newVersion}-${suffix}` : newVersion,
               majorVersion
             }
 
@@ -336,6 +347,7 @@ jobs:
           git config --global user.name "Metabase Automation"
 
       - name: Update readme
+        if: inputs.branch != 'master'
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ env.sdk_version }}
 
@@ -354,6 +366,7 @@ jobs:
           mv new-changelog enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
+        if: inputs.branch != 'master'
         run: |
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
@@ -366,18 +379,21 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Edit PR adding useful information (using Metabase bot app)
+        if: inputs.branch != 'master'
         run: |
           gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Auto approve PR (using GitHub Actions account)
+        if: inputs.branch != 'master'
         run: |
           gh pr review --approve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+        if: inputs.branche != 'master'
         run: |
           gh pr merge --auto --squash
         env:
@@ -395,14 +411,13 @@ jobs:
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           # Please keep the value in sync with `inputs.branch`'s release branch
           npm publish --tag ${{fromJson('{
-           "master": "nightly",
+           "master": "${{ needs.determine-sdk-version.outputs.pre-release-label || 'nightly' }}",
            "release-x.51.x": "51-stable",
            "release-x.52.x": "52-stable",
            "release-x.53.x": "53-stable",
            "release-x.54.x": "54-stable",
            "release-x.55.x": "55-stable",
-           "release-x.56.x": "56-stable",
-           "hosted-bundle-main": "57-hosted-bundle-main"
+           "release-x.56.x": "56-stable"
            }')[inputs.branch]}}
 
       - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
