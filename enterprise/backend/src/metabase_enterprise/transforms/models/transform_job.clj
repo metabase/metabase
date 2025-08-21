@@ -98,7 +98,7 @@
   []
   (let [un-localized (t2/select :model/TransformJob :built_in_type [:is-not nil])]
     (when (seq un-localized)
-      (log/info (str "Localizing jobs for site locale."))
+      (log/info "Localizing jobs for site locale.")
       (let [values {"hourly"
                     [(i18n/trs "Hourly job")
                      (i18n/trs "Executes transforms tagged with ''hourly'' every hour")]

@@ -29,7 +29,7 @@
   []
   (let [un-localized (t2/select :model/TransformTag :built_in_type [:is-not nil])]
     (when (seq un-localized)
-      (log/info (str "Localizing initial tags for site locale."))
+      (log/info "Localizing initial tags for site locale.")
       (let [values {"hourly"  (i18n/trs "hourly")
                     "daily"   (i18n/trs "daily")
                     "weekly"  (i18n/trs "weekly")
