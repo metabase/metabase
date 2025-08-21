@@ -304,9 +304,10 @@ describe("NativeQuery", () => {
         const newMetadata = createMockMetadata({
           snippets: [newSnippet],
         });
-        const queryWithNewMetadata = new NativeQuery(
-          Question.create({ type: "native", metadata: newMetadata }),
-          oldQuery.datasetQuery(),
+        const queryWithNewMetadata = makeQuery(
+          oldQuery.queryText(),
+          oldQuery.templateTagsMap(),
+          newMetadata,
         );
         const queryWithNewSnippet = queryWithNewMetadata.updateSnippet(
           oldSnippet,
