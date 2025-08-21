@@ -1,9 +1,7 @@
 (ns metabase.util.malli.registry
   (:refer-clojure :exclude [declare def])
   (:require
-   #?(:clj [metabase.config.core :as config])
    #?@(:clj ([malli.experimental.time :as malli.time]
-             [metabase.util.malli.registry.validator-cache :as mr.validator-cache]
              [net.cgrand.macrovich :as macros]))
    [malli.core :as mc]
    [malli.registry]
@@ -42,36 +40,18 @@
           (swap! cache assoc-in [k schema-key] v)
           v))))
 
-;; WITHOUT CACHE =
-;; Finding and running tests took 4.7 mins.
-
-;; WITH CLOJURE CORE MEMOIZE LRU CACHE =
-;; Finding and running tests took 3.9 mins.
-
-;; WITH CACHE =
-;; Finding and running tests took 2.7 mins.
-
 (defn validator
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
   changes."
   [schema]
-  (letfn [(make-validator* []
+  (letfn [(make-validator []
             (try
               #_{:clj-kondo/ignore [:discouraged-var]}
               (mc/validator schema)
               (catch #?(:clj Throwable :cljs :default) e
                 (throw (ex-info (str "Error making validator for " (pr-str schema) ":" (ex-message e))
                                 {:schema schema}
-                                e)))))
-          (make-validator []
-            (let [validator (make-validator*)]
-              ;; Only memoize in tests/dev for now, in prod validation is mostly disabled and this stuff is fairly
-              ;; experimental, and we don't want to blow up instances because of the increased memory usage. Once it
-              ;; bakes a bit we can see whether it's useful to enable it in prod
-              #?(:clj  (if config/is-prod?
-                         validator
-                         (mr.validator-cache/memoized-validator validator))
-                 :cljs validator)))]
+                                e)))))]
     (cached :validator schema make-validator)))
 
 (defn validate
@@ -86,7 +66,7 @@
   (letfn [(make-explainer []
             (try
               #_{:clj-kondo/ignore [:discouraged-var]}
-              (let [validator* (validator schema)
+              (let [validator* (mc/validator schema)
                     explainer* (mc/explainer schema)]
                 ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
                 ;; of calls whose values are valid.

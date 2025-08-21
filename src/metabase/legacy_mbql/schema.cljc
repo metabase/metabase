@@ -846,12 +846,9 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
-(mr/def ::Emptyable
-  [:or StringExpressionArg Field])
-
 (def Emptyable
   "Schema for a valid is-empty or not-empty argument."
-  [:ref ::Emptyable])
+  [:or StringExpressionArg Field])
 
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
 ;; `[:and [:not= <field> nil] [:not= <field> ""]]`

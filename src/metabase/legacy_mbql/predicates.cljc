@@ -2,29 +2,29 @@
   "Predicate functions for checking whether something is a valid instance of a given MBQL clause."
   (:require
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
-(defn Field?
+(def ^{:arglists '([unit])} DateTimeUnit?
+  "Is `unit` a valid datetime bucketing unit?"
+  (mr/validator ::lib.schema.temporal-bucketing/unit))
+
+(def ^{:arglists '([field-clause])} Field?
   "Is this a valid Field clause?"
-  [x]
-  ((mr/validator ::mbql.s/field-or-expression-ref) x))
+  (mr/validator mbql.s/Field))
 
-(defn Filter?
+(def ^{:arglists '([filter-clause])} Filter?
   "Is this a valid `:filter` clause?"
-  [x]
-  ((mr/validator ::mbql.s/Filter) x))
+  (mr/validator mbql.s/Filter))
 
-(defn Emptyable?
+(def ^{:arglists '([emptyable-clause])} Emptyable?
   "Is this a valid Emptyable clause?"
-  [x]
-  ((mr/validator ::mbql.s/Emptyable) x))
+  (mr/validator mbql.s/Emptyable))
 
-(defn DatetimeExpression?
+(def ^{:arglists '([filter-clause])} DatetimeExpression?
   "Is this a valid DatetimeExpression clause?"
-  [x]
-  ((mr/validator ::mbql.s/DatetimeExpression) x))
+  (mr/validator mbql.s/DatetimeExpression))
 
-(defn FieldOrExpressionDef?
+(def ^{:arglists '([field-clause])} FieldOrExpressionDef?
   "Is this a something that is valid as a top-level expression definition?"
-  [x]
-  ((mr/validator ::mbql.s/FieldOrExpressionDef) x))
+  (mr/validator ::mbql.s/FieldOrExpressionDef))
