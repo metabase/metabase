@@ -3,7 +3,12 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetAdhocQueryQuery,
+  useListActionsQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import EntityMenu from "metabase/common/components/EntityMenu";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import Modal from "metabase/common/components/Modal";
@@ -26,12 +31,11 @@ import { Box, Button, Group, Icon, Stack, Tooltip, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import type {
-  Database,
+  CardId,
   DatasetColumn,
   ForeignKey,
   RowValues,
   Table,
-  WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
 
@@ -42,12 +46,11 @@ import { getActionItems } from "./utils";
 const EMPTY_ROW: RowValues = [];
 
 interface Props {
-  actions: WritebackAction[];
   columns: DatasetColumn[];
   columnsSettings: (OptionsType | undefined)[];
-  databases: Database[];
   row: RowValues | undefined;
   rowId: string | number;
+  showImplicitActions: boolean;
   showNav: boolean;
   table: Table | undefined;
   tableForeignKeys?: ForeignKey[];
@@ -58,12 +61,11 @@ interface Props {
 }
 
 export function DetailViewSidesheet({
-  actions,
   columns,
   columnsSettings,
-  databases,
   row: rowFromProps,
   rowId,
+  showImplicitActions,
   showNav,
   table,
   tableForeignKeys,
@@ -104,9 +106,20 @@ export function DetailViewSidesheet({
   const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
   const initialValues = useMemo(() => ({ id: rowId ?? null }), [rowId]);
 
+  const modelId = table?.type === "model" ? (table.id as CardId) : undefined;
+  const { data: actions } = useListActionsQuery(
+    showImplicitActions && modelId != null
+      ? { "model-id": modelId }
+      : skipToken,
+  );
+
+  const { data: databases } = useListDatabasesQuery(
+    showImplicitActions ? {} : skipToken,
+  );
+
   const actionItems = getActionItems({
-    actions,
-    databases,
+    actions: actions ?? [],
+    databases: databases?.data ?? [],
     onDelete: (action) => setDeleteActionId(action.id),
     onUpdate: (action) => setActionId(action.id),
   });

@@ -1,11 +1,6 @@
 import { useState } from "react";
 
-import {
-  skipToken,
-  useListActionsQuery,
-  useListDatabasesQuery,
-  useListTableForeignKeysQuery,
-} from "metabase/api";
+import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -47,18 +42,6 @@ export function ObjectDetailWrapper({
       question.supportsImplicitActions(),
   );
 
-  const modelId = question?.type() === "model" ? question.id() : undefined;
-
-  const { data: actions = [] } = useListActionsQuery(
-    areImplicitActionsEnabled && modelId != null && shouldShowModal
-      ? { "model-id": modelId }
-      : skipToken,
-  );
-
-  const { data: databasesResponse } = useListDatabasesQuery(
-    areImplicitActionsEnabled && shouldShowModal ? {} : skipToken,
-  );
-
   if (shouldShowModal) {
     const {
       canZoom,
@@ -74,17 +57,16 @@ export function ObjectDetailWrapper({
     const table = getApiTable(tableWrapper);
     const columns = data?.cols;
 
-    if (columns != null && zoomedRowID != null && question) {
+    if (columns != null && zoomedRowID != null && question != null) {
       const columnsSettings = columns.map((column) => {
         return settings?.column_settings?.[getColumnKey(column)];
       });
 
       return (
         <DetailViewSidesheet
-          actions={areImplicitActionsEnabled ? actions : []}
           columns={columns}
           columnsSettings={columnsSettings}
-          databases={databasesResponse?.data ?? []}
+          showImplicitActions={areImplicitActionsEnabled}
           showNav={Boolean(canZoom && (canZoomNextRow || canZoomPreviousRow))}
           row={zoomedRow}
           rowId={zoomedRowID}
