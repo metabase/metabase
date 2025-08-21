@@ -42,6 +42,7 @@ jobs:
         id: get_issue
         uses: actions/github-script@v7
         with:
+          github-token: ${{ steps.app-token.outputs.token }}
           script: |
             let issueNumber, issueData;
 
@@ -106,9 +107,14 @@ jobs:
                 if (error.status === 404) {
                   membershipCache.set(username, false);
                   console.log(`Skipping comment by non-employee: ${username}`);
+                } else if (error.status === 403) {
+                  console.error(`Permission denied checking membership for ${username}. GitHub App may lack organization member permissions.`);
+                  core.setFailed(`Unable to check organization membership: ${error.message}`);
+                  return;
                 } else {
                   console.error(`Error checking membership for ${username}:`, error);
-                  // Don't cache errors, try again next time
+                  core.setFailed(`Failed to check organization membership: ${error.message}`);
+                  return;
                 }
               }
             }
