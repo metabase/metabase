@@ -56,7 +56,24 @@ const setup = (options) => {
     />,
   );
 
-  return { rerender };
+  const resultRerender = (newOptions) => {
+    const card = newOptions.card ?? createMockCard();
+
+    return rerender(
+      <DashCardCardParameterMapper
+        card={card}
+        dashcard={createMockDashboardCard({ card })}
+        question={new Question(card, metadata)}
+        editingParameter={createMockParameter()}
+        isRecentlyAutoConnected={false}
+        mappingOptions={[]}
+        isMobile={false}
+        {...newOptions}
+      />,
+    );
+  };
+
+  return { rerender: resultRerender };
 };
 
 describe("DashCardCardParameterMapper", () => {
@@ -137,6 +154,56 @@ describe("DashCardCardParameterMapper", () => {
       });
 
       expect(screen.getByText(/Variable to map to/i)).toBeInTheDocument();
+    });
+
+    it("should not cut off warning text", async () => {
+      const dashcard_1_1 = createMockActionDashboardCard();
+      const dashcard_2_4 = createMockActionDashboardCard({
+        size_x: 2,
+        size_y: 4,
+      });
+      const dashcard_4_4 = createMockActionDashboardCard({
+        size_x: 4,
+        size_y: 4,
+      });
+
+      const expectCardText = (text) => {
+        expect(screen.getByText(text)).toBeInTheDocument();
+      };
+
+      const expectTooltipText = async (text) => {
+        const infoIcon = getIcon("info");
+        expect(infoIcon).toBeInTheDocument();
+
+        await userEvent.hover(infoIcon);
+
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(text);
+      };
+
+      const { rerender } = setup({
+        card: dashcard_1_1.card,
+        dashcard: dashcard_1_1,
+      });
+
+      await expectTooltipText(
+        "Open this card's action settings to connect variables",
+      );
+
+      rerender({
+        card: dashcard_2_4.card,
+        dashcard: dashcard_2_4,
+      });
+
+      await expectTooltipText(
+        "Open this card's action settings to connect variables",
+      );
+
+      rerender({
+        card: dashcard_4_4.card,
+        dashcard: dashcard_4_4,
+      });
+
+      expectCardText("Open this card's action settings to connect variables");
     });
   });
 
@@ -325,26 +392,7 @@ describe("DashCardCardParameterMapper", () => {
   });
 
   describe("Action parameter", () => {
-    it("should show action parameter warning if an action parameter is used - small card", async () => {
-      const dashcard = createMockActionDashboardCard();
-
-      setup({
-        card: dashcard.card,
-        dashcard,
-        target: ["variable", ["template-tag", "source"]],
-      });
-
-      const infoIcon = getIcon("info");
-      expect(infoIcon).toBeInTheDocument();
-
-      await userEvent.hover(infoIcon);
-
-      expect(await screen.findByRole("tooltip")).toHaveTextContent(
-        "Action parameters only accept a single value. They do not support dropdown lists",
-      );
-    });
-
-    it("should show action parameter warning if an action parameter is used - big card", () => {
+    it("should show action parameter warning if an action parameter is used", () => {
       const dashcard = createMockActionDashboardCard({ size_x: 6, size_y: 6 });
 
       setup({
@@ -357,6 +405,73 @@ describe("DashCardCardParameterMapper", () => {
           /Action parameters only accept a single value\. They do not support dropdown lists/i,
         ),
       ).toBeInTheDocument();
+    });
+
+    it("should not cut off warning text", async () => {
+      const dashcard_1_1 = createMockActionDashboardCard();
+      const dashcard_2_4 = createMockActionDashboardCard({
+        size_x: 2,
+        size_y: 4,
+      });
+      const dashcard_4_4 = createMockActionDashboardCard({
+        size_x: 4,
+        size_y: 4,
+      });
+      const dashcard_6_6 = createMockActionDashboardCard({
+        size_x: 6,
+        size_y: 6,
+      });
+
+      const expectCardText = () => {
+        expect(
+          screen.getByText(
+            "Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.",
+          ),
+        ).toBeInTheDocument();
+      };
+
+      const expectTooltipText = async () => {
+        const infoIcon = getIcon("info");
+        expect(infoIcon).toBeInTheDocument();
+
+        await userEvent.hover(infoIcon);
+
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          "Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.",
+        );
+      };
+
+      const { rerender } = setup({
+        card: dashcard_1_1.card,
+        dashcard: dashcard_1_1,
+        target: ["variable", ["template-tag", "source"]],
+      });
+
+      await expectTooltipText();
+
+      rerender({
+        card: dashcard_2_4.card,
+        dashcard: dashcard_2_4,
+        target: ["variable", ["template-tag", "source"]],
+      });
+
+      await expectTooltipText();
+
+      rerender({
+        card: dashcard_4_4.card,
+        dashcard: dashcard_4_4,
+        target: ["variable", ["template-tag", "source"]],
+      });
+
+      await expectTooltipText();
+
+      rerender({
+        card: dashcard_6_6.card,
+        dashcard: dashcard_6_6,
+        target: ["variable", ["template-tag", "source"]],
+      });
+
+      expectCardText();
     });
   });
 
