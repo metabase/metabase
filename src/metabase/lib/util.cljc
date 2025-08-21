@@ -629,7 +629,7 @@
            stage-number
            (fn [stage]
              (-> stage
-                 (dissoc :order-by :fields)
+                 (dissoc :order-by)
                  (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
