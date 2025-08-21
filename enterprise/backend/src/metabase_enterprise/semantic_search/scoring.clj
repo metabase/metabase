@@ -4,6 +4,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase.activity-feed.core :as activity-feed]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
@@ -145,72 +146,62 @@
 ;;
 
 (defn- search-doc->values
-  [idx {:keys [id model]}]
-  ;; If you don't :inline these, then H2 can't deduce the types from the query params, so the idx and id are returned
-  ;; as text and you get lexicographic ordering on the results idx.
-  [[:inline idx] [:inline id] [:inline model]])
+  [{:keys [id model]}]
+  ;; If we don't :inline these, then H2 can't deduce the types from the query params, so the id is returned
+  ;; as text and you get lexicographic ordering on the results id.
+  [[:inline id] [:inline model]])
 
 (defn- user-recency-query
   [{:keys [current-user-id]} search-results]
-  {:with      [[[:search_docs {:columns [:idx :model_id :model]}]
-                ;; TODO filter to docs with models in rv-models
-                {:values (map-indexed search-doc->values search-results)}]]
-   :select    [[:sd.idx :idx]
-               [:sd.model_id :id]
-               [:sd.model :model]
-               [(search.scoring/inverse-duration [:max :rv.timestamp] [:now] search.config/stale-time-in-days)
-                :user_recency]]
-   :from      [[:search_docs :sd]]
-   :left-join [[:recent_views :rv]
-               [:and
-                [:= :rv.user_id current-user-id]
-                [:= :rv.model_id :sd.model_id]
-                [:=
-                 :rv.model
-                 [:case
-                  [:in :sd.model [[:inline "dataset"] [:inline "metric"]]]
-                  [:inline "card"]
-                  :else
-                  :sd.model]]]]
-   :group-by  [:sd.idx :sd.model_id :sd.model]
-   :order-by  [[:sd.idx :asc]]})
-
-(comment
-  (execute-user-recency-query! {:current-user-id 3}
-                               [{:id 123 :model "dataset"}
-                                {:id 456 :model "dashboard"}
-                                {:id 789 :model "metric"}])
-  (-> (user-recency-query {:current-user-id 3}
-                          [{:id 123 :model "dataset"}
-                           {:id 456 :model "dashboard"}
-                           {:id 789 :model "metric"}])
-      sql/format))
+  {:with     [[[:search_docs {:columns [:model_id :model]}]
+               {:values (map search-doc->values search-results)}]]
+   :select   [[:sd.model_id :id]
+              [:sd.model :model]
+              [(search.scoring/inverse-duration [:max :rv.timestamp] [:now] search.config/stale-time-in-days)
+               :user_recency]]
+   :from     [[:search_docs :sd]]
+   :join     [[:recent_views :rv]
+              [:and
+               [:= :rv.user_id current-user-id]
+               [:= :rv.model_id :sd.model_id]
+               [:=
+                :rv.model
+                [:case
+                 [:in :sd.model [[:inline "dataset"] [:inline "metric"]]]
+                 [:inline "card"]
+                 :else
+                 :sd.model]]]]
+   :group-by [:sd.model_id :sd.model]})
 
 (defn- execute-user-recency-query!
   [search-ctx search-results]
   (t2/query (user-recency-query search-ctx search-results)))
 
 (defn- update-result-with-user-recency
-  [weight search-result user-recency-result]
-  ;; TODO remove
-  (assert (= (:id search-result) (:id user-recency-result)))
-  (assert (= (:model search-result) (:model user-recency-result)))
-  (if-let [user-recency (:user_recency user-recency-result)]
-    (let [contribution (* weight user-recency)]
-      (-> search-result
-          (update :score + contribution)
-          (update :all-scores conj {:score user-recency
-                                    :name :user-recency
-                                    :weight weight
-                                    :contribution contribution})))
-    search-result))
+  [weight grouped-recency-results search-result]
+  (let [id-model-key ((juxt :id :model) search-result)
+        user-recency-rows (get grouped-recency-results id-model-key)
+        _ (assert (>= 1 (count user-recency-rows))) ; TODO m/index-by and remove
+        user-recency (-> user-recency-rows first (:user_recency 0))
+        contribution (* weight user-recency)]
+    (-> search-result
+        (update :score + contribution)
+        (update :all-scores conj {:score user-recency
+                                  :name :user-recency
+                                  :weight weight
+                                  :contribution contribution}))))
 
 (defn- update-results-with-user-recency
   [search-ctx search-results user-recency-results]
-  (map (let [weight (search.config/weight (:context search-ctx) :user-recency)]
-         (partial update-result-with-user-recency weight))
-       search-results
-       user-recency-results))
+  (if-not (seq user-recency-results)
+    search-results
+    (map (let [weight (search.config/weight (:context search-ctx) :user-recency)
+               grouped-recency-results (group-by (juxt :id :model) user-recency-results)]
+           (partial update-result-with-user-recency weight grouped-recency-results))
+         search-results)))
+
+(def ^:private recent-views-models
+  (into #{} (map name activity-feed/rv-models)))
 
 (defn with-appdb-scores
   "Add appdb-based scores to `search-results` and re-rank the results based on the new combined scores.
@@ -219,11 +210,30 @@
   additional scorers, combine those with the existing `:score` and `:all-scores` in the `search-results`, then
   re-order the results by the new combined `:score`."
   [search-ctx search-results]
-  (if-not (and (seq search-results)
-               ;; The user-recency-query needs to be modified to work with mysql / mariadb
-               (#{:postgres :h2} (mdb/db-type)))
-    search-results
-    (->> (execute-user-recency-query! search-ctx search-results)
-         (update-results-with-user-recency search-ctx search-results)
-         (sort-by :score >)
-         vec)))
+  ;; filtered-search-results are the search-results that have models that are tracked in the recent_views table,
+  ;; i.e. results that might possibly have user-recency info.
+  (let [filtered-search-results (filter (comp recent-views-models :model) search-results)]
+    (if-not (and (seq filtered-search-results)
+                 ;; The user-recency-query needs to be modified to work with mysql / mariadb
+                 (#{:postgres :h2} (mdb/db-type)))
+      search-results
+      (->> (execute-user-recency-query! search-ctx filtered-search-results)
+           (update-results-with-user-recency search-ctx search-results)
+           (sort-by :score >)
+           vec))))
+
+(comment
+  (def search-ctx {:current-user-id 3})
+  (def search-docs (-> (map-indexed
+                        (fn [idx doc]
+                          (assoc doc :score idx :all-scores []))
+                        [{:id 1 :model "dataset"}
+                         {:id 1 :model "dashboard"}
+                         {:id 2 :model "table"}
+                         {:id 2 :model "card"}
+                         {:id 4 :model "indexed-entity"}
+                         {:id 7 :model "card"}])
+                       vec))
+  (with-appdb-scores search-ctx search-docs)
+  (->> (execute-user-recency-query! search-ctx search-docs)
+       (update-results-with-user-recency search-ctx search-docs)))

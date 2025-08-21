@@ -1834,7 +1834,8 @@
    :api  #{metabase-enterprise.semantic-search.api
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.init}
-   :uses #{analytics
+   :uses #{activity-feed
+           analytics
            api
            app-db
            config
