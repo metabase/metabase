@@ -160,8 +160,8 @@
   "Transform a `:if` expression to an `:case` expression."
   [expr :- ::clause]
   (lib.util.match/replace expr
-    [:if opts cases]
-    (-> (lib.expression/case cases)
+    [:if opts & args]
+    (-> (apply lib.expression/case args)
         (merge-options opts))))
 
 (mu/defn- desugar-in :- ::clause

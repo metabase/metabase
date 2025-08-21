@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.case-test
   (:require
    [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
 (defn- test-case
@@ -123,3 +124,20 @@
                                             [:case [[[:> $rating 4] 1]] {:default 0}]]}
                  :limit    2
                  :order-by [[:asc $id]]})))))))
+
+(deftest ^:parallel if-test
+  (testing "If should work as syntactic sugar for case"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+      (let [query (mt/mbql-query products
+                    {:expressions {"If"
+                                   [:if [[[:= $id 1] "First"]
+                                         [[:= $id 2] "Second"]]
+                                    {:default "Other"}]}
+                     :fields      [$id
+                                   [:expression "If"]]
+                     :filter      [:= [:expression "If" {:base-type :type/Text}] "Other"]
+                     :order-by    [[:asc $id]]
+                     :limit       2})]
+        (is (= [[3 "Other"]
+                [4 "Other"]]
+               (mt/formatted-rows [int str] (qp/process-query query))))))))

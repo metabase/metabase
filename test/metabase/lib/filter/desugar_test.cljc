@@ -194,6 +194,25 @@
              [:if (opts :default 3)
               [[[:< (opts) [:field (opts) 1] 1] 2]]])))))
 
+(deftest ^:parallel desugar-if-with-default-value-test
+  (is (= [:case {:lib/uuid "00000000-0000-0000-0000-000000000000", :lib/expression-name "If"}
+          [[[:= {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 255] 1]
+            "First"]
+           [[:= {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000004"} 255] 2]
+            "Second"]]
+          "Other"]
+         (lib.filter.desugar/desugar-filter-clause
+          [:if {:lib/uuid "00000000-0000-0000-0000-000000000000", :lib/expression-name "If"}
+           [[[:= {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 255] 1]
+             "First"]
+            [[:= {:lib/uuid "00000000-0000-0000-0000-000000000003"}
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000004"} 255] 2]
+             "Second"]]
+           "Other"]))))
+
 (deftest ^:parallel desugar-in-test
   (testing "Desugaring in and not-in produces expected [:= ..] and [:!= ..] expressions"
     (are [clause expected] (=? expected
