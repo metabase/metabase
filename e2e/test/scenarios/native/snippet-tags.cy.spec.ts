@@ -1,3 +1,5 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
 const { H } = cy;
 
 describe("scenarios > native > snippet tags", () => {
@@ -6,7 +8,7 @@ describe("scenarios > native > snippet tags", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be able to create a snippet with tags", () => {
+  it("should be able to create a snippet with variable tags", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select id from products where ");
 
@@ -17,20 +19,81 @@ describe("scenarios > native > snippet tags", () => {
       getSnippetContentInput().type("category = {{category}}", {
         parseSpecialCharSequences: false,
       });
-      getSnippetNameInput().type("filter-snippet");
+      getSnippetNameInput().type("variable-snippet");
       cy.button("Save").click();
     });
 
     cy.log("assert that the snippet was inserted");
     H.NativeEditor.get().should(
       "contain",
-      "select id from products where {{snippet: filter-snippet}}",
+      "select id from products where {{snippet: variable-snippet}}",
     );
 
     cy.log("assert that the parameter can be used");
     H.filterWidget().findByPlaceholderText("Category").type("Widget");
     H.runNativeQuery();
     H.assertQueryBuilderRowCount(54);
+  });
+
+  it("should be able to create a snippet with card tags", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select * from ");
+
+    cy.log("create a snippet");
+    getSnippetSidebarIcon().click();
+    getEditorSidebar().findByText("Create snippet").click();
+    H.modal().within(() => {
+      getSnippetContentInput().type(`{{#${ORDERS_QUESTION_ID}}}`, {
+        parseSpecialCharSequences: false,
+      });
+      getSnippetNameInput().type("card-snippet");
+      cy.button("Save").click();
+    });
+
+    cy.log("assert that the snippet was inserted");
+    H.NativeEditor.get().should(
+      "contain",
+      "select * from {{snippet: card-snippet}}",
+    );
+
+    cy.log("assert that the query can be run");
+    H.runNativeQuery();
+    H.tableInteractive().should("be.visible");
+  });
+
+  it("should be able to create a snippet with snippet tags", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select * from ");
+
+    cy.log("create a snippet");
+    getSnippetSidebarIcon().click();
+    getEditorSidebar().findByText("Create snippet").click();
+    H.modal().within(() => {
+      getSnippetContentInput().type("category = {{category}}", {
+        parseSpecialCharSequences: false,
+      });
+      getSnippetNameInput().type("snippet1");
+      cy.button("Save").click();
+    });
+
+    cy.log("create a snippet that uses the previous snippet");
+    getSnippetSidebarIcon().click();
+    getEditorSidebar().icon("add").click();
+    H.popover().findByText("New snippet").click();
+    H.modal().within(() => {
+      getSnippetContentInput().type("{{snippet: snippet1}}", {
+        parseSpecialCharSequences: false,
+      });
+      getSnippetNameInput().type("snippet2");
+      cy.button("Save").click();
+    });
+
+    cy.log("assert that the snippet can used");
+    H.NativeEditor.clear();
+    H.NativeEditor.type("select id from products where {{snippet: snippet2}}");
+    getEditorTopBar().findByLabelText("Category").type("Gizmo");
+    H.runNativeQuery();
+    H.tableInteractive().should("be.visible");
   });
 
   it("should be able to update a snippet and change tags", () => {
