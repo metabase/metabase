@@ -21,6 +21,7 @@ const PARAMETER_ICON_MAP: Record<TableActionFormInputType, IconName> = {
   [TableActionFormInputType.Date]: "calendar",
   [TableActionFormInputType.DateTime]: "calendar",
   [TableActionFormInputType.Dropdown]: "string",
+  [TableActionFormInputType.Boolean]: "string",
 };
 
 export function TableActionFormModalParameter({
