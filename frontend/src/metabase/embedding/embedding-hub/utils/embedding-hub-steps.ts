@@ -59,7 +59,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     description: t`Manage permissions to limit what data your users can access.`,
     actions: [
       {
-        label: t`Configure Permissions`,
+        label: t`Configure permissions`,
         docsPath: "permissions/embedding",
         variant: "outline",
       },
@@ -73,14 +73,9 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
     actions: [
       {
-        label: t`Configure Embedding`,
+        label: t`Learn more`,
         docsPath: "people-and-groups/authenticating-with-jwt",
         variant: "outline",
-      },
-      {
-        label: t`Manage Users`,
-        to: "/admin/people",
-        variant: "subtle",
       },
     ],
   };
@@ -92,7 +87,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
     actions: [
       {
-        label: t`Setup Embed`,
+        label: t`Create an embed`,
         to: "/embed-js",
         variant: "outline",
       },

@@ -87,7 +87,7 @@
   border-radius: 0.5rem;
 }
 
-/* Override styles for normal steps */
+/* Override styles for incomplete steps */
 .incompleteControl:not([data-css-specificity-hack="🪗"]) {
   .label {
     color: var(--mb-color-text-primary) !important;
