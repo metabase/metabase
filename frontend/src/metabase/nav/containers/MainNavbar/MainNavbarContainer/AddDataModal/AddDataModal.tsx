@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -14,17 +14,23 @@ import { CSVPanel } from "./Panels/CSVPanel";
 import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
-import { isValidTab } from "./utils";
+import { type AddDataTab, isValidTab } from "./utils";
 
 interface AddDataModalProps {
   opened: boolean;
   onClose: () => void;
+
+  initialTab?: AddDataTab;
 }
 
-export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
+export const AddDataModal = ({
+  opened,
+  onClose,
+  initialTab = "csv",
+}: AddDataModalProps) => {
   const { data: databaseResponse } = useListDatabasesQuery();
 
-  const [activeTab, setActiveTab] = useState<string | null>("csv");
+  const [activeTab, setActiveTab] = useState<AddDataTab | null>(initialTab);
 
   const isHosted = useSetting("is-hosted?");
 
@@ -52,11 +58,15 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
       db: "database_tab_clicked",
       csv: "csv_tab_clicked",
       gsheets: "sheets_tab_clicked",
-    } as const;
+    } as const satisfies Record<AddDataTab, string>;
 
     trackAddDataEvent(eventMapping[tabValue]);
     setActiveTab(tabValue);
   };
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   return (
     <Modal.Root opened={opened} onClose={onClose} size="auto">

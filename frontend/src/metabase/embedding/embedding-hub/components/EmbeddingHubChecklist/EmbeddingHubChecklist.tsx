@@ -4,7 +4,11 @@ import AccordionS from "metabase/home/components/Onboarding/OnboardingAccordion.
 import { Accordion, Icon, Stack, Text } from "metabase/ui";
 
 import { useScrollListItemIntoView } from "../../hooks/use-scroll-list-item-into-view";
-import type { EmbeddingHubStep, EmbeddingHubStepId } from "../../types";
+import type {
+  EmbeddingHubModalToTrigger,
+  EmbeddingHubStep,
+  EmbeddingHubStepId,
+} from "../../types";
 
 import S from "./EmbeddingHubChecklist.module.css";
 import { EmbeddingHubStepActions } from "./EmbeddingHubStepActions";
@@ -15,7 +19,7 @@ interface EmbeddingHubChecklistProps {
 
   defaultOpenStep?: EmbeddingHubStepId;
   completedSteps?: Partial<Record<EmbeddingHubStepId, boolean>>;
-  onModalAction?: (modalType: "add-data" | "new-dashboard") => void;
+  onModalAction?: (modal: EmbeddingHubModalToTrigger) => void;
 }
 
 export const EmbeddingHubChecklist = ({

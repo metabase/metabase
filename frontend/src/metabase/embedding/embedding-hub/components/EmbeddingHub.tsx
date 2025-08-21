@@ -10,6 +10,7 @@ import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarConta
 import { Box, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
+import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
 import { getEmbeddingHubSteps } from "../utils";
 
 import { EmbeddingHubChecklist } from "./EmbeddingHubChecklist";
@@ -18,10 +19,9 @@ export const EmbeddingHub = () => {
   const embeddingSteps = useMemo(() => getEmbeddingHubSteps(), []);
   const completedSteps = useCompletedEmbeddingHubSteps();
 
-  // Modal state
-  const [openModal, setOpenModal] = useState<
-    "add-data" | "new-dashboard" | null
-  >(null);
+  const [openModal, setOpenModal] = useState<EmbeddingHubModalToTrigger | null>(
+    null,
+  );
 
   // Find the first unchecked step to open by default.
   // This is undefined when every step has been completed.
@@ -29,13 +29,7 @@ export const EmbeddingHub = () => {
     (step) => !completedSteps[step.id],
   );
 
-  const handleModalAction = (modalType: "add-data" | "new-dashboard") => {
-    setOpenModal(modalType);
-  };
-
-  const closeModal = () => {
-    setOpenModal(null);
-  };
+  const closeModal = () => setOpenModal(null);
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
   const embedJsDocsUrl = useDocsUrl("embedding/embedded-analytics-js");
@@ -54,13 +48,19 @@ export const EmbeddingHub = () => {
           steps={embeddingSteps}
           completedSteps={completedSteps}
           defaultOpenStep={firstUncompletedStep?.id}
-          onModalAction={handleModalAction}
+          onModalAction={setOpenModal}
         />
 
-        <AddDataModal opened={openModal === "add-data"} onClose={closeModal} />
+        <AddDataModal
+          opened={openModal?.type === "add-data"}
+          onClose={closeModal}
+          initialTab={
+            openModal?.type === "add-data" ? openModal?.initialTab : undefined
+          }
+        />
 
         <CreateDashboardModal
-          opened={openModal === "new-dashboard"}
+          opened={openModal?.type === "new-dashboard"}
           onClose={closeModal}
         />
       </Box>
