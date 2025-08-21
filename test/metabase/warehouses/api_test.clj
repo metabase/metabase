@@ -2417,9 +2417,9 @@
 
                     :api-test-disabled-for-multiple-reasons
                     {:enabled false
-                     :reasons [{:key "driver-feature-missing"
+                     :reasons [{:key     "driver-feature-missing"
                                 :message "The H2 driver does not support the `jvm-timezone-setting` feature"}
-                               {:key "custom/three"
+                               {:key     "custom/three"
                                 :message "Never"}]}}
 
                    (select-keys settings [:unaggregated-query-row-limit

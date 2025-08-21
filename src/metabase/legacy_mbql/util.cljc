@@ -788,7 +788,10 @@
      *  `:max-results-bare-rows` is returned if set and Query does not have any aggregations
      *  `:max-results` is returned otherwise
   *  If none of the above are set, returns `nil`. In this case, you should use something like the Metabase QP's
-     `max-rows-limit`"
+     `max-rows-limit`
+
+  DEPRECATED: this will be removed in the near future. Prefer [[metabase.lib.limit/max-rows-limit]] for new code."
+  {:deprecated "0.57.0"}
   [{{:keys [max-results max-results-bare-rows]}                      :constraints
     {limit :limit, aggregations :aggregation, {:keys [items]} :page} :query
     query-type                                                       :type}]
