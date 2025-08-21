@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { EmbeddingStepId } from "../components";
+import type { EmbeddingStepId } from "../types";
 
 export const useCompletedEmbeddingHubSteps = (): Record<
   EmbeddingStepId,
