@@ -3,7 +3,23 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.initialize :as initialize]
+   [metabase.test.fixtures :as fixtures]))
+
+;;; you don't NEED to use these fixtures but since this test namespace often runs first doing it here will make things
+;;; run a little faster since they won't have to all sit around in lock hell waiting for test data to load.
+(use-fixtures :once
+  (fixtures/initialize :db)
+  (fn [thunk]
+    ;; load test data for the driver(s) we are going to test
+    (dorun
+     (pmap (fn [driver]
+             (mt/test-driver driver
+               (mt/id))
+             (mt/id))
+           (mt/normal-drivers-with-feature :expressions)))
+    (thunk)))
 
 (defn- test-math-expression
   [expr]

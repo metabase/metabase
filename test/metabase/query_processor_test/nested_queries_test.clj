@@ -1155,7 +1155,7 @@
             (doseq [level (range 4)]
               (testing (format "%d level(s) of nesting" level)
                 ;; existing usage, do not use this going forward
-                (let [query #_{:clj-kondo/ignore [:deprecatedd-var]} (mt/nest-query base-query level)]
+                (let [query #_{:clj-kondo/ignore [:deprecated-var]} (mt/nest-query base-query level)]
                   (testing (format "\nQuery = %s" (u/pprint-to-str query))
                     (is (= (mt/$ids products
                              {:name         "EAN"

@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
