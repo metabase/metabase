@@ -60,6 +60,7 @@ export function ObjectDetailWrapper({
 
   if (shouldShowModal) {
     const {
+      canZoom,
       canZoomNextRow,
       canZoomPreviousRow,
       table: tableWrapper,
@@ -77,6 +78,7 @@ export function ObjectDetailWrapper({
           actions={areImplicitActionsEnabled ? actions : []}
           columns={columns}
           databases={databasesResponse?.data ?? []}
+          showNav={Boolean(canZoom && (canZoomNextRow || canZoomPreviousRow))}
           row={zoomedRow}
           rowId={zoomedRowID}
           table={table}

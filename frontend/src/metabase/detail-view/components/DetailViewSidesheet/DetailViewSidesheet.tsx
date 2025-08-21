@@ -46,6 +46,7 @@ interface Props {
   databases: Database[];
   row: RowValues | undefined;
   rowId: string | number;
+  showNav: boolean;
   table: Table;
   tableForeignKeys?: ForeignKey[];
   url: string | undefined;
@@ -60,6 +61,7 @@ export function DetailViewSidesheet({
   databases,
   row: rowFromProps,
   rowId,
+  showNav,
   table,
   tableForeignKeys,
   url,
@@ -160,7 +162,7 @@ export function DetailViewSidesheet({
       <Sidesheet
         actions={
           <>
-            {rowFromProps != null && (
+            {rowFromProps != null && showNav && (
               <>
                 <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
                   <Button
