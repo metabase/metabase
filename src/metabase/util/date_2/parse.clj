@@ -151,5 +151,3 @@
   [^String s]
   (or (try-parse-as-iso-timestamp s) ;; Try the fastpath first.
       (parse-with-formatter formatter s)))
-
-(parse "2005-15T04:01:00-07:00")
