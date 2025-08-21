@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "c3b7b724372c1fbe10871d261b9de50d6ddff627"
+  },
+  "upstream": {
+    "branch": "emb-738-setup-sidebar-and-onboarding-page-for-embedding-hub"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 62517,
+        "gqlID": "PR_kwDOAczgH86kvMP3"
+      }
+    }
   }
 }
