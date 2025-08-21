@@ -33,18 +33,35 @@ describe("scenarios > native > snippet tags", () => {
     H.assertQueryBuilderRowCount(54);
   });
 
-  it("should be able to open a question with an old snippet name", () => {
-    createQuestionAndSnippet().then(({ card, snippet }) => {
-      cy.request("PUT", `/api/native-query-snippet/${snippet.id}`, {
-        name: "category-snippet",
-      });
-      cy.visit(`/question/${card.id}`);
+  it("should be able to update a snippet and change tags", () => {
+    createQuestionAndSnippet().then(({ card }) => {
+      H.visitQuestion(card.id);
     });
 
-    cy.log("assert that the parameter can be used");
-    H.filterWidget().findByPlaceholderText("Filter").type("Widget");
-    H.queryBuilderHeader().icon("play").click();
-    H.assertQueryBuilderRowCount(54);
+    cy.log("update the snippet");
+    getEditorVisibilityToggler().click();
+    getSnippetSidebarIcon().click();
+    getEditorSidebar().within(() => {
+      cy.icon("chevrondown").click({ force: true });
+      cy.button(/Edit/).click();
+    });
+    H.modal().within(() => {
+      getSnippetContentInput()
+        .clear()
+        .type("ean = {{ean}} or vendor = {{vendor}}", {
+          parseSpecialCharSequences: false,
+        });
+      cy.button("Save").click();
+    });
+
+    cy.log("verify that the tags in the query were updated");
+    getEditorTopBar().within(() => {
+      cy.findByPlaceholderText("Filter").should("not.exist");
+      cy.findByPlaceholderText("Ean").type("1018947080336");
+      cy.findByPlaceholderText("Vendor").type("Balistreri-Ankunding");
+    });
+    H.runNativeQuery();
+    H.assertTableRowsCount(2);
   });
 
   it("should be able to change the inner tag type to Number", () => {
@@ -60,7 +77,7 @@ describe("scenarios > native > snippet tags", () => {
     getVariableTypeSelect().click();
     H.popover().findByText("Number").click();
 
-    cy.log("assert that the parameter can be used");
+    cy.log("verify that the parameter can be used");
     H.filterWidget().findByPlaceholderText("Filter").type("10");
     H.runNativeQuery();
     H.assertQueryBuilderRowCount(1);
@@ -79,7 +96,7 @@ describe("scenarios > native > snippet tags", () => {
     H.popover().findByText("Products").click();
     H.popover().findByText("Category").click();
 
-    cy.log("assert that the parameter can be used");
+    cy.log("verify that the parameter can be used");
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText("Gadget").click();
@@ -88,7 +105,29 @@ describe("scenarios > native > snippet tags", () => {
     H.runNativeQuery();
     H.assertQueryBuilderRowCount(53);
   });
+
+  it("should be able to open a question with an old snippet name", () => {
+    createQuestionAndSnippet().then(({ card, snippet }) => {
+      cy.request("PUT", `/api/native-query-snippet/${snippet.id}`, {
+        name: "category-snippet",
+      });
+      cy.visit(`/question/${card.id}`);
+    });
+
+    cy.log("verify that the parameter can be used");
+    H.filterWidget().findByPlaceholderText("Filter").type("Widget");
+    H.queryBuilderHeader().icon("play").click();
+    H.assertQueryBuilderRowCount(54);
+  });
 });
+
+function getEditorSidebar() {
+  return cy.findByTestId("sidebar-right");
+}
+
+function getEditorTopBar() {
+  return cy.findByTestId("native-query-top-bar");
+}
 
 function getEditorVisibilityToggler() {
   return cy.findByTestId("visibility-toggler");
