@@ -29,7 +29,7 @@
         (case (-> e ex-data :status)
           404 {:status 404 :body "Could not establish a connection to Metabase Cloud."}
           400 {:status 400 :body "Could not purchase this add-on."}
-          {:status 500})))))
+          {:status 500 :body ""})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/cloud-add-ons` routes."
