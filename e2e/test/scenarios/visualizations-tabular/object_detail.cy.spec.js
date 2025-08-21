@@ -252,44 +252,37 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.visit(`/question/${id}/${OUT_OF_RANGE_ID}`);
       cy.wait("@cardQuery");
       cy.findByTestId("object-detail").within(() => {
-        // should appear in header and body of the modal
-        cy.findAllByText(/Marcelina Kuhn/i).should("have.length", 2);
+        cy.findByRole("heading", { name: "Marcelina Kuhn" }).should(
+          "be.visible",
+        );
       });
     });
   });
 
   it("should allow to browse linked entities by FKs (metabase#21757)", () => {
-    const PRODUCT_ID = 7;
-    const EXPECTED_LINKED_ORDERS_COUNT = 92;
-    const EXPECTED_LINKED_REVIEWS_COUNT = 8;
     H.openProductsTable();
 
     drillPK({ id: 5 });
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByTestId("fk-relation-orders").findByText(97);
-      cy.findByTestId("fk-relation-reviews").findByText(4);
-      cy.findByTestId("view-next-object-detail").click();
+      cy.findByRole("link", { name: "4 Reviews" }).should("be.visible");
+      cy.findByRole("link", { name: "97 Orders" }).should("be.visible");
+      cy.findByLabelText("Next row").click();
 
-      cy.findByTestId("fk-relation-orders").findByText(88);
-      cy.findByTestId("fk-relation-reviews").findByText(5);
-      cy.findByTestId("view-next-object-detail").click();
+      cy.findByRole("link", { name: "5 Reviews" }).should("be.visible");
+      cy.findByRole("link", { name: "88 Orders" }).should("be.visible");
+      cy.findByLabelText("Next row").click();
 
-      cy.findByTestId("fk-relation-reviews").findByText(
-        EXPECTED_LINKED_REVIEWS_COUNT,
-      );
-      cy.findByTestId("fk-relation-orders")
-        .findByText(EXPECTED_LINKED_ORDERS_COUNT)
-        .click();
+      cy.findByRole("link", { name: "8 Reviews" }).should("be.visible");
+      cy.findByRole("link", { name: "92 Orders" }).should("be.visible").click();
     });
 
     cy.wait("@dataset");
 
-    cy.findByTestId("qb-filters-panel").findByText(
-      `Product ID is ${PRODUCT_ID}`,
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`Showing ${EXPECTED_LINKED_ORDERS_COUNT} rows`);
+    cy.findByTestId("qb-filters-panel").findByText("Product ID is 7");
+    cy.findByTestId("view-footer")
+      .findByText("Showing 92 rows")
+      .should("be.visible");
   });
 
   it("should fetch linked entities data only once per entity type when reopening the modal (metabase#32720)", () => {
@@ -304,10 +297,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByLabelText("Close").click();
 
     drillPK({ id: 5 });
-    cy.get("@fetchDataset").should("have.callCount", 5);
+    cy.get("@fetchDataset").should("have.callCount", 3);
 
     cy.wait(100);
-    cy.get("@fetchDataset").should("have.callCount", 5);
+    cy.get("@fetchDataset").should("have.callCount", 3);
   });
 
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
@@ -445,7 +438,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         .and("eq", "https://metabase.test?rating=5");
     });
 
-    cy.findByTestId("view-next-object-detail").click();
+    cy.findByLabelText("Next row").click();
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("Link to review 2")
