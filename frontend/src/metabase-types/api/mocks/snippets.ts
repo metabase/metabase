@@ -12,6 +12,7 @@ export const createMockNativeQuerySnippet = ({
   name: "My Snippet",
   description: null,
   content: "SELECT * FROM my_table",
+  template_tags: null,
   collection_id: null,
   creator,
   creator_id,

@@ -398,7 +398,7 @@ export default class NativeQuery {
 
     // if the query has changed, it was already parsed; otherwise do the parsing
     // to expand snippet tags into the query tags
-    return newQuery !== this
+    return newQuery === this
       ? newQuery.setQueryText(newQuery.queryText())
       : newQuery;
   }

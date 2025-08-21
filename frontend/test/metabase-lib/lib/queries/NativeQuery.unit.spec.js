@@ -19,7 +19,7 @@ import {
 const MONGO_DB_ID = SAMPLE_DB_ID + 1;
 const SNIPPET_ID = 1;
 
-const metadata = createMockMetadata({
+const METADATA = createMockMetadata({
   databases: [
     createSampleDatabase(),
     createMockDatabase({
@@ -53,14 +53,14 @@ function makeDatasetQuery(queryText, templateTags, databaseId) {
   };
 }
 
-function makeQuery(query, templateTags) {
+function makeQuery(query, templateTags, metadata = METADATA) {
   return new NativeQuery(
     Question.create({ type: "native", metadata }),
     makeDatasetQuery(query, templateTags, SAMPLE_DB_ID),
   );
 }
 
-function makeMongoQuery(query, templateTags) {
+function makeMongoQuery(query, templateTags, metadata = METADATA) {
   return new NativeQuery(
     Question.create({ type: "native", metadata }),
     makeDatasetQuery(query, templateTags, MONGO_DB_ID),
@@ -272,6 +272,51 @@ describe("NativeQuery", () => {
         expect(snippetName).toEqual("foo");
         expect(displayName).toEqual("Snippet: Foo");
         expect(type).toEqual("snippet");
+      });
+
+      it.each([
+        { oldName: "snippet1", newName: "snippet1" },
+        { oldName: "snippet1", newName: "snippet2" },
+      ])("should update a snippet with inner tags", ({ oldName, newName }) => {
+        const oldSnippet = createMockNativeQuerySnippet({
+          name: oldName,
+          content: "SELECT",
+        });
+        const oldMetadata = createMockMetadata({
+          snippets: [oldSnippet],
+        });
+        const oldQuery = makeQuery("SELECT", {}, oldMetadata).setQueryText(
+          `{{snippet: ${oldName}}}`,
+        );
+
+        const newSnippet = createMockNativeQuerySnippet({
+          id: oldSnippet.id,
+          name: newName,
+          content: "{{var}}",
+          template_tags: {
+            var: createMockTemplateTag({
+              id: "1",
+              name: "var",
+              type: "text",
+            }),
+          },
+        });
+        const newMetadata = createMockMetadata({
+          snippets: [newSnippet],
+        });
+        const queryWithNewMetadata = new NativeQuery(
+          Question.create({ type: "native", metadata: newMetadata }),
+          oldQuery.datasetQuery(),
+        );
+        const queryWithNewSnippet = queryWithNewMetadata.updateSnippet(
+          oldSnippet,
+          newSnippet,
+        );
+
+        expect(queryWithNewSnippet.templateTags()).toMatchObject([
+          { name: `snippet: ${newName}`, type: "snippet" },
+          { name: "var", type: "text" },
+        ]);
       });
 
       it("should update query text with new snippet names", () => {
