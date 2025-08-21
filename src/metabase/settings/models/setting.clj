@@ -155,13 +155,13 @@
                                 (.getCanonicalName ^Class klass))
                         {:tag klass}))))))
 
-(defn- disabled-for-db-reasons
+(defn disabled-for-db-reasons
   "Return the reasons, if any, for the given setting being disabled."
   [setting-def database]
   (when-let [f (:enabled-for-db? setting-def)]
     (try (when-not (f database)
            [{:key     :disabled-for-db
-             :message "This database does not support this setting"}])
+             :message (tru "This database does not support this setting")}])
          (catch ExceptionInfo e
            (or (:setting/disabled-reasons (ex-data e))
                (throw e))))))
