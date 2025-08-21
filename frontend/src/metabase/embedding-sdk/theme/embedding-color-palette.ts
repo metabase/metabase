@@ -28,6 +28,7 @@ export type SemanticColorKey =
   | "background-selected"
   | "background-disabled"
   | "background-inverse"
+  | "background-light"
   | "background-brand"
   | "brand-light"
   | "brand-lighter";
@@ -53,6 +54,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "background-hover": ["bg-light", "background-hover"],
   "background-secondary": ["bg-medium"],
   "background-disabled": ["background-disabled"],
+  "background-light": ["background-light"],
   shadow: ["shadow"],
   positive: ["success"],
   negative: ["danger"],
