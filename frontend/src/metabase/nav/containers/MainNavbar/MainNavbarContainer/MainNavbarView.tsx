@@ -10,7 +10,11 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
-import { useSetting, useUserSetting } from "metabase/common/hooks";
+import {
+  useHasTokenFeature,
+  useSetting,
+  useUserSetting,
+} from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import CS from "metabase/css/core/index.css";
 import {
@@ -90,7 +94,6 @@ export function MainNavbarView({
   );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
-  const showEmbeddingHub = true; // Feature flag - enabled by default for now
 
   const [
     addDataModalOpened,
@@ -141,6 +144,10 @@ export function MainNavbarView({
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
 
+  // TODO: remove the `?? true` fallback once the feature token is added to HM
+  const isEmbeddingHubFeatureEnabled =
+    useHasTokenFeature("embedding_hub") ?? true;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -155,7 +162,7 @@ export function MainNavbarView({
               {t`Home`}
             </PaddedSidebarLink>
 
-            {showEmbeddingHub && (
+            {isEmbeddingHubFeatureEnabled && (
               <PaddedSidebarLink
                 isSelected={nonEntityItem?.url === "/embedding-hub"}
                 icon={
