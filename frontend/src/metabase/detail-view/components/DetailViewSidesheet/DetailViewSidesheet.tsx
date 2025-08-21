@@ -10,6 +10,7 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import EntityMenu from "metabase/common/components/EntityMenu";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import Modal from "metabase/common/components/Modal";
 import {
@@ -20,7 +21,6 @@ import {
 import {
   getEntityIcon,
   getHeaderColumns,
-  getObjectQuery,
   getRowName,
 } from "metabase/detail-view/utils";
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -30,6 +30,7 @@ import { ActionsApi } from "metabase/services";
 import { Box, Button, Group, Icon, Stack, Tooltip, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
+import * as Lib from "metabase-lib";
 import type {
   CardId,
   DatasetColumn,
@@ -43,11 +44,10 @@ import S from "./DetailViewSidesheet.module.css";
 import { Sidesheet } from "./Sidesheet";
 import { getActionItems } from "./utils";
 
-const EMPTY_ROW: RowValues = [];
-
 interface Props {
   columns: DatasetColumn[];
   columnsSettings: (OptionsType | undefined)[];
+  query: Lib.Query | undefined;
   row: RowValues | undefined;
   rowId: string | number;
   showImplicitActions: boolean;
@@ -63,6 +63,7 @@ interface Props {
 export function DetailViewSidesheet({
   columns,
   columnsSettings,
+  query,
   row: rowFromProps,
   rowId,
   showImplicitActions,
@@ -74,22 +75,20 @@ export function DetailViewSidesheet({
   onNextClick,
   onPreviousClick,
 }: Props) {
-  const objectQuery = useMemo(() => {
-    return table ? getObjectQuery(table, rowId) : undefined;
-  }, [table, rowId]);
-
   const {
     data: dataset,
     error,
     isLoading,
   } = useGetAdhocQueryQuery(
-    objectQuery && rowFromProps == null ? objectQuery : skipToken,
+    query != null && rowFromProps == null
+      ? Lib.toLegacyQuery(query)
+      : skipToken,
   );
   const data = useMemo(() => {
     return dataset ? extractRemappedColumns(dataset.data) : undefined;
   }, [dataset]);
   const rowFromQuery = useMemo(() => (data?.rows ?? [])[0], [data]);
-  const row = rowFromProps ?? rowFromQuery ?? EMPTY_ROW;
+  const row = rowFromProps ?? rowFromQuery;
 
   const dispatch = useDispatch();
   const [linkCopied, setLinkCopied] = useState(false);
@@ -179,6 +178,16 @@ export function DetailViewSidesheet({
     return (
       <Sidesheet data-testid="object-detail" onClose={handleClose}>
         <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+      </Sidesheet>
+    );
+  }
+
+  if (!isLoading && row == null) {
+    return (
+      <Sidesheet data-testid="object-detail" onClose={handleClose}>
+        <Group align="center" justify="center">
+          <NotFound message={t`We couldn't find that record`} />
+        </Group>
       </Sidesheet>
     );
   }

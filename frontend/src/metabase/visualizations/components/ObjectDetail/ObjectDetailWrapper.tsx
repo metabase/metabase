@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
@@ -66,10 +67,11 @@ export function ObjectDetailWrapper({
         <DetailViewSidesheet
           columns={columns}
           columnsSettings={columnsSettings}
-          showImplicitActions={areImplicitActionsEnabled}
-          showNav={Boolean(canZoom && (canZoomNextRow || canZoomPreviousRow))}
+          query={filterByPk(question.query(), columns, zoomedRowID)}
           row={zoomedRow}
           rowId={zoomedRowID}
+          showImplicitActions={areImplicitActionsEnabled}
+          showNav={Boolean(canZoom && (canZoomNextRow || canZoomPreviousRow))}
           table={table}
           tableForeignKeys={tableForeignKeys}
           url={getRowUrl(question, columns, table, zoomedRowID)}
@@ -148,4 +150,39 @@ function getRowUrl(
   }
 
   return undefined;
+}
+
+function filterByPk(
+  query: Lib.Query,
+  columns: DatasetColumn[],
+  rowId: string | number | undefined,
+) {
+  if (typeof rowId === "undefined") {
+    return undefined;
+  }
+
+  const pks = columns.filter(isPK);
+
+  if (pks.length !== 1) {
+    return undefined;
+  }
+
+  const [pk] = pks;
+  const stageIndex = -1;
+  const column = Lib.fromLegacyColumn(query, stageIndex, pk);
+  const filterClause =
+    typeof rowId === "number"
+      ? Lib.numberFilterClause({
+          operator: "=",
+          column,
+          values: [rowId],
+        })
+      : Lib.stringFilterClause({
+          operator: "=",
+          column,
+          values: [rowId],
+          options: {},
+        });
+
+  return Lib.filter(query, stageIndex, filterClause);
 }
