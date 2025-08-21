@@ -18,7 +18,6 @@ export const Nav = ({ rowName, table, ...props }: Props) => {
       table && table.db_id && table.schema ? { id: table.db_id } : skipToken,
     );
 
-  // TODO: error handling, loading state handling
   if (!table || !table.db || isLoadingSchemas) {
     return null;
   }
