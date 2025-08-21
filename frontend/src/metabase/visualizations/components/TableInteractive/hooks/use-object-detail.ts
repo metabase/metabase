@@ -10,10 +10,15 @@ import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/t
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
+const getZoomedObjectIdSafe = (state: State) => {
+  return state.qb ? getZoomedObjectId(state) : undefined;
+};
 
 export const useObjectDetail = ({ rows, cols }: DatasetData) => {
   const dispatch = useDispatch();
-  const zoomedObjectId = useSelector(getZoomedObjectId);
+  const zoomedObjectId = useSelector(getZoomedObjectIdSafe);
   const rowIndexToPkMap: Record<number, ObjectId> = useSelector((state) =>
     state.qb != null ? getRowIndexToPKMap(state) : {},
   );
