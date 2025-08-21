@@ -18,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
@@ -294,7 +295,19 @@
                                        (if (sequential? fields)
                                          (mapv ->pMBQL fields)
                                          (keyword fields))))
-      (not (:alias join)) (assoc :alias legacy-default-join-alias))))
+      (not (:alias join)) (assoc :alias legacy-default-join-alias)
+      ;; MBQL 5 does not support `:parameters` at the top level of a join, so move them to the join's first stage.
+      ;;
+      ;; TODO (Cam 8/8/25) -- this is not really a 100% correct transformation, parameters that specify
+      ;; `:stage-number` should get moved to the corresponding stage. (The first stage is the default tho so this is
+      ;; correct if `:stage-number` is unspecified.) We do this in the QP
+      ;; in [[metabase.query-processor.middleware.parameters/move-top-level-params-to-stage*]].
+      ;;
+      ;; IRL parameters are never actually attached to joins at all, and the only reason we're even pretending
+      ;; to "support them" (in air quotes) even this much is because we had a few tests that act like this is ok and I
+      ;; don't want to fix them. But we don't really need to be serious about actually supporting this.
+      (:parameters join) (-> (update-in [:stages 0 :parameters] #(into (vec %) (:parameters join)))
+                             (dissoc :parameters)))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]
@@ -456,7 +469,7 @@
          (dissoc :metabase.lib.query/transformation-added-base-type :base-type)
 
          ;; Removing the namespaces from a few
-         true (update-keys #(get options-preserved-in-legacy % %)))
+         true (perf/update-keys #(get options-preserved-in-legacy % %)))
        (into {} (comp (disqualify)
                       (remove (fn [[k _v]]
                                 (#{:effective-type :ident} k)))))
@@ -701,7 +714,15 @@
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
       disqualify
-      (update-vals ->legacy-MBQL)))
+      (update-vals ->legacy-MBQL)
+      ;; a native stage becomes
+      ;;
+      ;;    {:native "SELECT ..."}
+      ;;
+      ;; IF it is used as a source query. If it's a top-level inner query it's
+      ;;
+      ;;    {:database 1, :type :native, :native {:query "SELECT ..."}}
+      (set/rename-keys {:query :native})))
 
 (defmethod ->legacy-MBQL :mbql/query [query]
   (try

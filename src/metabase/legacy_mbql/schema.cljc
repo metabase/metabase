@@ -12,6 +12,7 @@
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.constraints :as lib.schema.constraints]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.expression.window :as lib.schema.expression.window]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -20,6 +21,8 @@
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
+   [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.i18n :as i18n]
@@ -1329,13 +1332,13 @@
   [:merge
    NativeQuery:Common
    [:map
-    [:query :any]]])
+    [:query :some]]])
 
 (mr/def ::NativeSourceQuery
   [:merge
    NativeQuery:Common
    [:map
-    [:native :any]]])
+    [:native :some]]])
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
@@ -1555,16 +1558,6 @@
 (mr/def ::OrderBys
   (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]]))
 
-(mr/def ::Page
-  "`page` = page num, starting with 1. `items` = number of items per page.
-  e.g.
-
-    {:page 1, :items 10} = items 1-10
-    {:page 2, :items 10} = items 11-20"
-  [:map
-   [:page  pos-int?]
-   [:items pos-int?]])
-
 (mr/def ::MBQLQuery
   [:and
    [:map
@@ -1577,7 +1570,7 @@
     [:filter       {:optional true} Filter]
     [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
     [:order-by     {:optional true} [:ref ::OrderBys]]
-    [:page         {:optional true} [:ref ::Page]]
+    [:page         {:optional true} [:ref :metabase.lib.schema/page]]
     [:joins        {:optional true} [:ref ::Joins]]
 
     [:source-metadata
@@ -1629,7 +1622,7 @@
 (defclause variable
   target template-tag)
 
-(def ^:private ParameterTarget
+(mr/def ::parameter.target
   "Schema for the value of `:target` in a [[Parameter]]."
   ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
   ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
@@ -1643,7 +1636,7 @@
   [:merge
    [:ref :metabase.lib.schema.parameter/parameter]
    [:map
-    [:target {:optional true} ParameterTarget]]])
+    [:target {:optional true} [:ref ::parameter.target]]]])
 
 (def Parameter
   "Alias for ::Parameter. Prefer using that directly going forward."
@@ -1655,100 +1648,6 @@
 (def ParameterList
   "Schema for a list of `:parameters` as passed in to a query."
   [:ref ::ParameterList])
-
-;;; ---------------------------------------------------- Options -----------------------------------------------------
-
-(mr/def ::Settings
-  "Options that tweak the behavior of the query processor."
-  [:map
-   [:report-timezone
-    {:optional    true
-     :description "The timezone the query should be ran in, overriding the default report timezone for the instance."}
-    TimezoneId]])
-
-(mr/def ::Constraints
-  "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful
-  because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will
-  override these values."
-  [:and
-   [:map
-    [:max-results
-     {:optional true
-      :description
-      "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
-  applies to all queries"}
-     ::lib.schema.common/int-greater-than-or-equal-to-zero]
-
-    [:max-results-bare-rows
-     {:optional true
-      :description
-      "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than
-  `:max-results`."}
-     ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-
-   [:fn
-    {:error/message "max-results-bare-rows must be less or equal to than max-results"}
-    (fn [{:keys [max-results max-results-bare-rows]}]
-      (if-not (core/and max-results max-results-bare-rows)
-        true
-        (core/>= max-results max-results-bare-rows)))]])
-
-(mr/def ::MiddlewareOptions
-  "Additional options that can be used to toggle middleware on or off."
-  [:map
-   [:skip-results-metadata?
-    {:optional true
-     :description
-     "Should we skip adding `results_metadata` to query results after running the query? Used by
-     `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this
-     column in the near future, to `result_metadata`, to fix inconsistencies in how we name things.)"}
-    :boolean]
-
-   [:format-rows?
-    {:optional true
-     :description
-     "Should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
-     results? Used by `metabase.query-processor.middleware.format-rows`default `false`."}
-    :boolean]
-
-   [:disable-mbql->native?
-    {:optional true
-     :description
-     "Disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
-  you should set this yourself. This is only used by the `metabase.query-processor.preprocess/preprocess` function to
-  get the fully pre-processed query without attempting to convert it to native."}
-    :boolean]
-
-   [:disable-max-results?
-    {:optional true
-     :description
-     "Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware. If true,
-  this will override the `:max-results` and `:max-results-bare-rows` values in `Constraints`."}
-    :boolean]
-
-   [:userland-query?
-    {:optional true
-     :description
-     "Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in
-  certain userland-only middleware for such queries -- results are returned in a slightly different format, and
-  QueryExecution entries are normally saved, unless you pass `:no-save` as the option."}
-    [:maybe :boolean]]
-
-   [:add-default-userland-constraints?
-    {:optional true
-     :description
-     "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,
-  although the functions that ultimately power most API endpoints tend to set this to `true`. See
-  `add-constraints` middleware for more details."}
-    [:maybe :boolean]]
-
-   [:process-viz-settings?
-    {:optional true
-     :description
-     "Whether to process a question's visualization settings and include them in the result metadata so that they can
-  incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default
-  `false`."}
-    [:maybe :boolean]]])
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 
@@ -1816,9 +1715,9 @@
     ;;
     ;; These keys are used to tweak behavior of the Query Processor.
     ;;
-    [:settings    {:optional true} [:maybe [:ref ::Settings]]]
-    [:constraints {:optional true} [:maybe [:ref ::Constraints]]]
-    [:middleware  {:optional true} [:maybe [:ref ::MiddlewareOptions]]]
+    [:settings    {:optional true} [:maybe [:ref ::lib.schema.settings/settings]]]
+    [:constraints {:optional true} [:maybe [:ref ::lib.schema.constraints/constraints]]]
+    [:middleware  {:optional true} [:maybe [:ref ::lib.schema.middleware-options/middleware-options]]]
     ;;
     ;; INFO
     ;;

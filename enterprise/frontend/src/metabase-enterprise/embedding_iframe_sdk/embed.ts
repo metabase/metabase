@@ -288,6 +288,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     this._iframe.style.width = "100%";
     this._iframe.style.height = "100%";
     this._iframe.style.border = "none";
+    this._iframe.style.minHeight = "600px";
 
     this._iframe.setAttribute("data-metabase-embed", "true");
 
@@ -487,6 +488,17 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "entity-types",
 ]);
 
+const MetabaseManageContentElement = createCustomElement("metabase-browser", [
+  "initial-collection",
+  "collection-visible-columns",
+  "collection-page-size",
+  "collection-entity-types",
+  "data-picker-entity-types",
+  "with-new-question",
+  "with-new-dashboard",
+  "read-only",
+]);
+
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
   (window as any)["metabase.embed"] = {
@@ -494,4 +506,8 @@ if (typeof window !== "undefined") {
   };
 }
 
-export { MetabaseDashboardElement, MetabaseQuestionElement };
+export {
+  MetabaseDashboardElement,
+  MetabaseQuestionElement,
+  MetabaseManageContentElement,
+};

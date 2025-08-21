@@ -5,7 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
@@ -42,8 +42,13 @@ export const SdkIframeEmbedSetupProvider = ({
 
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
-  const { recentDashboards, recentQuestions, addRecentItem, isRecentsLoading } =
-    useRecentItems();
+  const {
+    recentDashboards,
+    recentQuestions,
+    recentCollections,
+    addRecentItem,
+    isRecentsLoading,
+  } = useRecentItems();
 
   const defaultSettings = useMemo(() => {
     return getDefaultSdkIframeEmbedSettings(
@@ -65,8 +70,10 @@ export const SdkIframeEmbedSetupProvider = ({
         settings,
       )
         .with({ template: "exploration" }, () => "exploration")
-        .with({ questionId: P.nonNullable }, () => "chart")
-        .otherwise(() => "dashboard"),
+        .with({ componentName: "metabase-question" }, () => "chart")
+        .with({ componentName: "metabase-browser" }, () => "browser")
+        .with({ componentName: "metabase-dashboard" }, () => "dashboard")
+        .exhaustive(),
     [settings],
   );
 
@@ -119,6 +126,7 @@ export const SdkIframeEmbedSetupProvider = ({
     updateSettings,
     recentDashboards,
     recentQuestions,
+    recentCollections,
     addRecentItem,
     isEmbedSettingsLoaded,
     isLoadingParameters,

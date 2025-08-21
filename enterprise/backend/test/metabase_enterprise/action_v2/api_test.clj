@@ -14,7 +14,6 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -251,6 +250,9 @@
                                                                                    :filter        [:in (mt/$ids $orders.product_id) 1 2]}}))]
                                  (zipmap (map first result) (map second result))))]
 
+          ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+          (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
           (testing "sanity check that we have children rows"
             (is (= {1 93
                     2 98}
@@ -258,12 +260,12 @@
           (testing "delete without delete-children param will return errors with children count"
             (is (=? {:errors [{:index       0
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {}
                                :status-code 400}
                               {:index       1,
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {},
                                :status-code 400}]}
                     (mt/user-http-request :crowberto :post 400 execute-bulk-url
@@ -312,10 +314,13 @@
           (is (= 1 (children-count 2)))
           (is (= 1 (children-count 3))))
 
+        ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+        (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
         (testing "delete parent with self-referential children should return error without delete-children param"
           (is (=? {:errors [{:index       0
                              :type        "metabase.actions.error/violate-foreign-key-constraint",
-                             :message     "Other tables rely on this row so it cannot be deleted.",
+                             :message     "Other rows refer to this row so it cannot be deleted.",
                              :errors      {}
                              :status-code 400}]}
                   (mt/user-http-request :crowberto :post 400 execute-bulk-url body))))
@@ -361,7 +366,10 @@
                                           {:table-name "user"}
                                           {:fk :team :field-name "team_id"})
                        {:transaction? false})
-        (sync/sync-database! (mt/db))
+
+        ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+        (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
         (let [users-table-id (mt/id :user)
               #_teams-table-id #_(mt/id :team)
               delete-user-body {:action "data-grid.row/delete"
@@ -371,7 +379,7 @@
           (testing "delete user involved in mutual recursion should return error without delete-children param"
             (is (=? {:errors [{:index       0
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {}
                                :status-code 400}]}
                     (mt/user-http-request :crowberto :post 400 execute-bulk-url delete-user-body))))
@@ -678,3 +686,46 @@
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action delete-id})))))))))))
+
+(deftest validate-inputs-api-test
+  (testing "Validation via bulk execute endpoint"
+    (mt/with-premium-features #{actions-feature-flag}
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+        (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
+                                                    :name [:text :not-null]
+                                                    :price [:int]
+                                                    :active [:boolean]
+                                                    :created_at [:timestamp]}
+                                                   {:primary-key [:id]}]]
+
+          (testing "Valid inputs return no errors"
+            (let [result (action-v2.tu/create-rows! table-id [{"name"       "Test Product"
+                                                               "price"      "123"
+                                                               "active"     (if (= driver/*driver* :postgres) "true" "1")
+                                                               "created_at" "2024-03-15T14:30:00"}])]
+              (is (nil? (:errors result)))
+              (is (seq (:outputs result)))))
+
+          (testing "Invalid inputs return validation errors"
+            (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name"       "Test Product"
+                                                                              "price"      "not-a-number"
+                                                                              "active"     "yes"
+                                                                              "created_at" "2024-03-15T14:30:00"}])]
+              (is (= {table-id [{:price  "Must be an integer"
+                                 :active "Must be true, false, 0, or 1"}]} (:errors result)))))
+
+          (testing "Required field validation"
+            (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name" nil
+                                                                              "price" "123"}])]
+              (is (= {table-id [{:name "This field is required"}]} (:errors result)))))
+
+          (testing "Multiple rows with mixed validity"
+            (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name"  "Valid Product"
+                                                                              "price" "100"}
+                                                                             {"name"  "Invalid Product"
+                                                                              "price" "abc"}
+                                                                             {"name"  nil
+                                                                              "price" "200"}])]
+              (is (= {table-id [nil
+                                {:price "Must be an integer"}
+                                {:name  "This field is required"}]} (:errors result))))))))))

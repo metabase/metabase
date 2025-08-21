@@ -48,7 +48,9 @@ const HookTemplate: StoryFn<
   return (
     <MetabaseProvider authConfig={config}>
       <Box p="md">
-        <Button onClick={handleDashboardCreate}>Create dashboard</Button>
+        <Button disabled={!result} onClick={handleDashboardCreate}>
+          Create dashboard
+        </Button>
       </Box>
     </MetabaseProvider>
   );

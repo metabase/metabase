@@ -147,6 +147,14 @@ export const DashboardTableEmbeddingThemeWithStickyBackgroundColor = {
   },
 };
 
+export const DashboardTableWithRowId = {
+  render: DefaultTemplate,
+  args: {
+    series: data.groupedOrders,
+    isDashboard: true,
+  },
+};
+
 export const Watermark = {
   parameters: {
     loki: { skip: true },

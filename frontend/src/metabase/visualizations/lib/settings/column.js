@@ -17,6 +17,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getVisualizationRaw } from "metabase/visualizations";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,
   getDefaultCurrencyInHeader,
@@ -509,12 +510,20 @@ export const tableColumnSettings = {
     getValue: ([{ data }], vizSettings) => {
       const { cols } = data;
       const settings = vizSettings["table.columns"] ?? [];
-      const columnIndexes = findColumnIndexesForColumnSettings(cols, settings);
-      const settingIndexes = findColumnSettingIndexesForColumns(cols, settings);
+      const uniqColumnSettings = getDeduplicatedTableColumnSettings(settings);
+
+      const columnIndexes = findColumnIndexesForColumnSettings(
+        cols,
+        uniqColumnSettings,
+      );
+      const settingIndexes = findColumnSettingIndexesForColumns(
+        cols,
+        uniqColumnSettings,
+      );
 
       return [
         // retain settings with matching columns only
-        ...settings.filter(
+        ...uniqColumnSettings.filter(
           (_, settingIndex) => columnIndexes[settingIndex] >= 0,
         ),
         // add columns that do not have matching settings to the end

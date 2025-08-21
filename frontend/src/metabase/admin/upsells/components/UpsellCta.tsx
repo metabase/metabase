@@ -14,6 +14,8 @@ type UpsellCtaProps = {
   url: string | undefined;
   onClickCapture: () => void;
   size?: "default" | "large";
+  className?: string;
+  style?: React.CSSProperties;
 };
 
 export function UpsellCta({
@@ -23,8 +25,10 @@ export function UpsellCta({
   buttonText,
   url,
   size = "default",
+  className,
+  style,
 }: UpsellCtaProps) {
-  const className = cx(S.UpsellCTALink, {
+  const finalClassnames = cx(S.UpsellCTALink, className, {
     [S.Large]: size === "large",
   });
 
@@ -41,7 +45,8 @@ export function UpsellCta({
             args.onClick();
             onClickCapture?.();
           }}
-          className={className}
+          className={finalClassnames}
+          style={style}
         >
           {buttonText}
         </UnstyledButton>
@@ -57,7 +62,8 @@ export function UpsellCta({
         <ExternalLink
           onClickCapture={onClickCapture}
           href={url}
-          className={className}
+          className={finalClassnames}
+          style={style}
         >
           {buttonText}
         </ExternalLink>
@@ -73,7 +79,8 @@ export function UpsellCta({
         <Link
           onClickCapture={onClickCapture}
           to={args.internalLink}
-          className={className}
+          className={finalClassnames}
+          style={style}
         >
           {buttonText}
         </Link>

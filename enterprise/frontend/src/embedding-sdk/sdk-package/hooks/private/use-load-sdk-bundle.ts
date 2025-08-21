@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 // eslint-disable-next-line no-external-references-for-sdk-package-code
 import { SDK_BUNDLE_FULL_PATH } from "build-configs/embedding-sdk/constants/sdk-bundle";
-import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-package/config";
+import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-package/constants/sdk-bundle-script-data-attribute-name";
 import { getSdkBundleScriptElement } from "embedding-sdk/sdk-package/lib/private/get-sdk-bundle-script-element";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import {
@@ -50,10 +50,10 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
   useEffect(() => {
     const metabaseProviderPropsStore = ensureMetabaseProviderPropsStore();
     const { loadingPromise: existingLoadingPromise, loadingState } =
-      metabaseProviderPropsStore.getSnapshot();
+      metabaseProviderPropsStore.getState().internalProps;
 
     // The SDK bundle script was loaded before
-    if (window.MetabaseEmbeddingSDK) {
+    if (window.METABASE_EMBEDDING_SDK_BUNDLE) {
       // After the SDK bundle script was loaded, the MetabaseProviderProps store may be cleaned up.
       // It happens when the MetabaseProvider component is unmounted and remounted later.
       // In this case we don't need to load the SDK bundle again, but we have to set the proper `Loaded` state.

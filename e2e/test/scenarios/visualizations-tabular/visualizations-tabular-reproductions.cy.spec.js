@@ -250,7 +250,7 @@ describe("issue 18976, 18817", () => {
   });
 });
 
-describe.skip("issue 19373", () => {
+describe("issue 19373", { tags: "@skip" }, () => {
   const questiondDetails = {
     name: "Products, Distinct values of Rating, Grouped by Category and Created At (year)",
     query: {
@@ -638,7 +638,7 @@ describe("issue 37726", () => {
 });
 
 // unskip once metabase#42049 is addressed
-describe.skip("issue 42049", () => {
+describe("issue 42049", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -827,7 +827,7 @@ describe("issue 14148", { tags: "@external" }, () => {
   });
 });
 
-describe.skip("issue 25415", () => {
+describe("issue 25415", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1467,7 +1467,7 @@ WHERE NOT (
   });
 });
 
-describe("issue 55673", { tags: "@flaky" }, () => {
+describe("issue 55673", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();

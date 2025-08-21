@@ -53,7 +53,7 @@
   []
   (conj (set
          (filter
-          #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))
+          #(identical? (get-method driver/describe-database* :sql-jdbc) (get-method driver/describe-database* %))
           (descendants driver/hierarchy :sql-jdbc)))
         ;; redshift wraps the default implementation, but additionally filters tables according to the database name
         :redshift))
@@ -83,14 +83,14 @@
                  sort))))))
 
 (deftest describe-database-test
-  (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
-                    {:name "VENUES", :schema "PUBLIC", :description nil}
-                    {:name "CATEGORIES", :schema "PUBLIC", :description nil}
-                    {:name "CHECKINS", :schema "PUBLIC", :description nil}
-                    {:name "ORDERS", :schema "PUBLIC", :description nil}
-                    {:name "PEOPLE", :schema "PUBLIC", :description nil}
-                    {:name "PRODUCTS", :schema "PUBLIC", :description nil}
-                    {:name "REVIEWS", :schema "PUBLIC", :description nil}}}
+  (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil, :is_writable nil}
+                    {:name "VENUES", :schema "PUBLIC", :description nil, :is_writable nil}
+                    {:name "CATEGORIES", :schema "PUBLIC", :description nil, :is_writable nil}
+                    {:name "CHECKINS", :schema "PUBLIC", :description nil, :is_writable nil}
+                    {:name "ORDERS", :schema "PUBLIC", :description nil, :is_writable nil}
+                    {:name "PEOPLE", :schema "PUBLIC", :description nil, :is_writable nil}
+                    {:name "PRODUCTS", :schema "PUBLIC", :description nil, :is_writable nil}
+                    {:name "REVIEWS", :schema "PUBLIC", :description nil, :is_writable nil}}}
          (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
 
 (defn- describe-database-with-open-resultset-count!
@@ -254,8 +254,8 @@
 
 (deftest resilient-to-conn-close?-test
   (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
-    (let [jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc)
-                                              (get-method driver/describe-database %))]
+    (let [jdbc-describe-database #(identical? (get-method driver/describe-database* :sql-jdbc)
+                                              (get-method driver/describe-database* %))]
       (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                                  :+fns [jdbc-describe-database]
                                                  :-features [:table-privileges]})
@@ -269,7 +269,7 @@
                             (.close conn))
                           (execute-select-probe-query driver conn query))]
             (let [table-names #(->> % :tables (map :name) set)
-                  all-tables-sans-one (table-names (driver/do-with-resilient-connection driver/*driver* (mt/id) driver/describe-database))]
+                  all-tables-sans-one (table-names (driver/describe-database driver/*driver* (mt/id)))]
               ;; there is at maximum one missing table
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
 

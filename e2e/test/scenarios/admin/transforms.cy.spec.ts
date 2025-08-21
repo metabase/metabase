@@ -1,11 +1,14 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   CardType,
   ListTransformRunsResponse,
   TransformTagId,
 } from "metabase-types/api";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const DB_NAME = "Writable Postgres12";
 const SOURCE_TABLE = "Animals";
@@ -14,10 +17,11 @@ const TARGET_TABLE_2 = "transform_table_2";
 const TARGET_SCHEMA = "Schema A";
 const TARGET_SCHEMA_2 = "Schema B";
 
-describe("scenarios > admin > transforms", () => {
+H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -34,12 +38,23 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
   });
 
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
   describe("creation", () => {
     it("should be able to create and run an mbql transform", () => {
       cy.log("create a new transform");
       visitTransformListPage();
       getTransformListPage().button("Create a transform").click();
       H.popover().findByText("Query builder").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_create",
+        event_detail: "query",
+        triggered_from: "transform-page-create-menu",
+      });
+
       H.entityPickerModal().within(() => {
         cy.findByText(DB_NAME).click();
         cy.findByText(SOURCE_TABLE).click();
@@ -54,9 +69,17 @@ describe("scenarios > admin > transforms", () => {
 
       cy.log("run the transform and make sure its table can be queried");
       runTransformAndWaitForSuccess();
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_trigger_manual_run",
+        triggered_from: "transform-page",
+      });
+
       getTableLink().click();
       H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
       H.assertQueryBuilderRowCount(3);
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_created",
+      });
     });
 
     it("should be able to create and run a SQL transform", () => {
@@ -64,6 +87,13 @@ describe("scenarios > admin > transforms", () => {
       visitTransformListPage();
       getTransformListPage().button("Create a transform").click();
       H.popover().findByText("SQL query").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_create",
+        event_detail: "native",
+        triggered_from: "transform-page-create-menu",
+      });
+
       H.popover().findByText(DB_NAME).click();
       H.NativeEditor.type(`SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`);
       getQueryEditor().button("Save").click();
@@ -74,8 +104,17 @@ describe("scenarios > admin > transforms", () => {
         cy.wait("@createTransform");
       });
 
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_created",
+      });
+
       cy.log("run the transform and make sure its table can be queried");
       runTransformAndWaitForSuccess();
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_trigger_manual_run",
+        triggered_from: "transform-page",
+      });
+
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(3);
@@ -89,6 +128,8 @@ describe("scenarios > admin > transforms", () => {
         type: CardType;
         label: string;
       }) {
+        H.resetSnowplow();
+
         cy.log("create a query in the target database");
         H.getTableId({ name: SOURCE_TABLE, databaseId: WRITABLE_DB_ID }).then(
           (tableId) =>
@@ -106,6 +147,12 @@ describe("scenarios > admin > transforms", () => {
         visitTransformListPage();
         getTransformListPage().button("Create a transform").click();
         H.popover().findByText("A saved question").click();
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_create",
+          event_detail: "saved-question",
+          triggered_from: "transform-page-create-menu",
+        });
+
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab(label);
           cy.findByText("Test").click();
@@ -118,8 +165,17 @@ describe("scenarios > admin > transforms", () => {
           cy.wait("@createTransform");
         });
 
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_created",
+        });
+
         cy.log("run the transform and make sure its table can be queried");
         runTransformAndWaitForSuccess();
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_trigger_manual_run",
+          triggered_from: "transform-page",
+        });
+
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(3);
@@ -150,6 +206,95 @@ describe("scenarios > admin > transforms", () => {
           "be.visible",
         );
       });
+    });
+
+    it("should not be possible to create an mbql transform from a table from an unsupported database", () => {
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findAllByTestId("picker-item")
+          .contains("Sample Database")
+          .should("have.attr", "data-disabled", "true");
+
+        cy.findAllByTestId("picker-item")
+          .contains("Orders")
+          .should("have.attr", "data-disabled", "true");
+      });
+    });
+
+    it("should not be possible to create an mbql transform from metrics", () => {
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (tableId) =>
+          H.createQuestion({
+            name: "Metric",
+            type: "metric",
+            query: {
+              "source-table": tableId,
+              aggregation: [["count"]],
+            },
+          }),
+      );
+
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findByText("Collections").click();
+        cy.findAllByTestId("picker-item")
+          .contains("Metric")
+          .should("have.attr", "data-disabled", "true");
+      });
+    });
+
+    it("should not be possible to create a sql transform from a table from an unsupported database", () => {
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("SQL query").click();
+
+      H.popover()
+        .findByRole("option", { name: "Sample Database" })
+        .should("have.attr", "aria-disabled", "true")
+        .click();
+
+      cy.log("Clicking the disabled item does not close the popover");
+      H.popover().should("be.visible");
+    });
+
+    it("should not be possible to create a transform from a question or a model that is based of an unsupported database", () => {
+      function testCardSource({
+        type,
+        label,
+      }: {
+        type: CardType;
+        label: string;
+      }) {
+        cy.log("create a query in the target database");
+        H.createQuestion({
+          name: "Test",
+          type,
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+          },
+        });
+
+        cy.log("create a new transform");
+        visitTransformListPage();
+        getTransformListPage().button("Create a transform").click();
+        H.popover().findByText("A saved question").click();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab(label);
+          cy.findAllByTestId("picker-item")
+            .contains("Test")
+            .should("have.attr", "data-disabled", "true");
+        });
+      }
+
+      testCardSource({ type: "question", label: "Questions" });
+      testCardSource({ type: "model", label: "Models" });
     });
   });
 
@@ -746,7 +891,11 @@ describe("scenarios > admin > transforms > jobs", () => {
     });
   });
 
-  describe("runs", () => {
+  H.describeWithSnowplowEE("runs", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+    });
+
     it("should be able to manually run a job", () => {
       H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
         createMbqlTransform({
@@ -758,6 +907,10 @@ describe("scenarios > admin > transforms > jobs", () => {
         );
       });
       runJobAndWaitForSuccess();
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_job_trigger_manual_run",
+        triggered_from: "job-page",
+      });
       getNavSidebar().findByText("Runs").click();
       getContentTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");

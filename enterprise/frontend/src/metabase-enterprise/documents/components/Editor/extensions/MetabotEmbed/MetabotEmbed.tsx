@@ -7,12 +7,13 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api/metabot";
 import {
@@ -148,6 +149,7 @@ export const MetabotComponent = memo(
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = useLazyMetabotGenerateContentQuery();
+    const isMetabotEnabled = PLUGIN_METABOT.isEnabled();
 
     const handleRunMetabot = async () => {
       const serializePrompt =
@@ -272,6 +274,13 @@ export const MetabotComponent = memo(
       };
     }, [editor, onRunMetabotRef]);
 
+    const tooltip = useMemo(() => {
+      if (!isMetabotEnabled) {
+        return t`Metabot is disabled`;
+      }
+      return isLoading ? t`Stop generating` : null;
+    }, [isMetabotEnabled, isLoading]);
+
     return (
       <NodeViewWrapper>
         <Flex
@@ -328,12 +337,13 @@ export const MetabotComponent = memo(
               ) : null}
             </Flex>
             <Tooltip
-              label={t`Stop generating`}
-              disabled={!isLoading}
+              label={tooltip}
+              disabled={tooltip == null}
               position="bottom"
             >
               <Button
                 size="sm"
+                disabled={!isMetabotEnabled}
                 onClick={() =>
                   isLoading ? handleStopMetabot() : handleRunMetabot()
                 }

@@ -136,7 +136,7 @@
    (ensure-pmbql #'metrics/adjust)
    (ensure-pmbql #'expand-macros/expand-macros)
    (ensure-pmbql #'qp.resolve-referenced/resolve-referenced-card-resources)
-   (ensure-legacy #'parameters/substitute-parameters)
+   (ensure-pmbql #'parameters/substitute-parameters)
    (ensure-pmbql #'qp.resolve-source-table/resolve-source-tables)
    (ensure-pmbql #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
    (ensure-pmbql #'ensure-joins-use-source-query/ensure-joins-use-source-query)
@@ -146,18 +146,18 @@
    (ensure-pmbql #'qp.middleware.enterprise/attach-destination-db-middleware)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
-   (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
+   (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses) ; #61398
    ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
    ;; after adding any implicit joins. Implicit joins do not need to get remaps since we only use them for fetching
    ;; specific columns.
-   (ensure-legacy #'resolve-joins/resolve-joins)
+   (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
    #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
    (ensure-pmbql #'binning/update-binning-strategy)
-   (ensure-legacy #'desugar/desugar)
+   (ensure-legacy #'desugar/desugar) ; #62319
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
-   (ensure-legacy #'resolve-joins/resolve-joins)
+   (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
    (ensure-pmbql #'resolve-joined-fields/resolve-joined-fields)
    (ensure-pmbql #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
@@ -168,7 +168,7 @@
    (ensure-pmbql-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
-   (ensure-legacy #'limit/add-default-limit)
+   (ensure-pmbql #'limit/add-default-limit)
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)])
 

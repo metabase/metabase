@@ -60,6 +60,8 @@
 (defn- path-error-data [error-type expanding path]
   (let [last-model (:model (last path))]
     {:path       (mapv (partial into {}) path)
+     :local-id   (when-let [entity (serdes/load-find-local path)]
+                   ((t2/select-pks-fn entity) entity))
      :deps-chain expanding
      :model      last-model
      :table      (some->> last-model (keyword "model") t2/table-name)
@@ -186,4 +188,4 @@
     ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
     ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
     ;;       while we're figuring that out, here's a crude stopgap.
-    (search/reindex!)))
+    (search/reindex! {:async? false})))
