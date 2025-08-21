@@ -13,7 +13,7 @@ describe("scenarios > native > snippet tags", () => {
     H.NativeEditor.type("select id from products where ");
 
     cy.log("create a snippet");
-    getSnippetSidebarIcon().click();
+    getEditorTopBar().icon("snippet").click();
     getEditorSidebar().findByText("Create snippet").click();
     H.modal().within(() => {
       getSnippetContentInput().type("category = {{category}}", {
@@ -40,7 +40,7 @@ describe("scenarios > native > snippet tags", () => {
     H.NativeEditor.type("select * from ");
 
     cy.log("create a snippet");
-    getSnippetSidebarIcon().click();
+    getEditorTopBar().icon("snippet").click();
     getEditorSidebar().findByText("Create snippet").click();
     H.modal().within(() => {
       getSnippetContentInput().type(`{{#${ORDERS_QUESTION_ID}}}`, {
@@ -66,7 +66,7 @@ describe("scenarios > native > snippet tags", () => {
     H.NativeEditor.type("select * from ");
 
     cy.log("create a snippet");
-    getSnippetSidebarIcon().click();
+    getEditorTopBar().icon("snippet").click();
     getEditorSidebar().findByText("Create snippet").click();
     H.modal().within(() => {
       getSnippetContentInput().type("category = {{category}}", {
@@ -77,7 +77,7 @@ describe("scenarios > native > snippet tags", () => {
     });
 
     cy.log("create a snippet that uses the previous snippet");
-    getSnippetSidebarIcon().click();
+    getEditorTopBar().icon("snippet").click();
     getEditorSidebar().icon("add").click();
     H.popover().findByText("New snippet").click();
     H.modal().within(() => {
@@ -103,7 +103,7 @@ describe("scenarios > native > snippet tags", () => {
 
     cy.log("update the snippet");
     getEditorVisibilityToggler().click();
-    getSnippetSidebarIcon().click();
+    getEditorTopBar().icon("snippet").click();
     getEditorSidebar().within(() => {
       cy.icon("chevrondown").click({ force: true });
       cy.button(/Edit/).click();
@@ -136,7 +136,7 @@ describe("scenarios > native > snippet tags", () => {
 
     cy.log("change the type");
     getEditorVisibilityToggler().click();
-    getVariableSidebarIcon().click();
+    getEditorTopBar().icon("variable").click();
     getVariableTypeSelect().click();
     H.popover().findByText("Number").click();
 
@@ -155,7 +155,7 @@ describe("scenarios > native > snippet tags", () => {
 
     cy.log("change the type");
     getEditorVisibilityToggler().click();
-    getVariableSidebarIcon().click();
+    getEditorTopBar().icon("variable").click();
     getVariableTypeSelect().click();
     H.popover().findByText("Field Filter").click();
     H.popover().findByText("Products").click();
@@ -221,14 +221,6 @@ function getEditorTopBar() {
 
 function getEditorVisibilityToggler() {
   return cy.findByTestId("visibility-toggler");
-}
-
-function getVariableSidebarIcon() {
-  return cy.findByTestId("native-query-editor-action-buttons").icon("variable");
-}
-
-function getSnippetSidebarIcon() {
-  return cy.findByTestId("native-query-editor-action-buttons").icon("snippet");
 }
 
 function getVariableTypeSelect() {
