@@ -483,7 +483,7 @@
                                        (meta/id :venues :price)
                                        {:source-field-join-alias "CH"
                                         :join-alias              "VENUES__via__VENUE_ID__via__CH"}]
-                                      [:value "1234" {}]]}}
+                                      [:value 1234 {}]]}}
               (-> query
                   qp.preprocess/preprocess
                   lib/->legacy-MBQL))))))
