@@ -48,7 +48,7 @@ export function PeriodsAgoMenuOption({
 
   const value = editedValue?.value ?? MIN_VALUE;
   const handleInputChange = useCallback(
-    (value: number | "") => {
+    (value: number | string) => {
       if (message) {
         setMessage(null);
       }
@@ -103,7 +103,6 @@ export function PeriodsAgoMenuOption({
       <Box px="sm" onClick={() => onChange({ type, value }, true)}>
         <Group gap="sm">
           <NumberInputStyled
-            type="number"
             value={value}
             onChange={(value) => handleInputChange(value)}
             onKeyPress={handleInputEnter}

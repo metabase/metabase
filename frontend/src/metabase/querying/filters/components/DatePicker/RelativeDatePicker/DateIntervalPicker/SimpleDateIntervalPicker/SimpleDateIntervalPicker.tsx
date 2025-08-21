@@ -24,8 +24,8 @@ export function SimpleDateIntervalPicker({
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
 
-  const handleIntervalChange = (inputValue: number | "") => {
-    if (inputValue !== "") {
+  const handleIntervalChange = (inputValue: number | string) => {
+    if (typeof inputValue === "number") {
       onChange(setInterval(value, inputValue));
     }
   };

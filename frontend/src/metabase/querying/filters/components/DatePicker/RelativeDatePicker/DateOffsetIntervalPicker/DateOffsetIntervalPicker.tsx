@@ -58,8 +58,8 @@ export function DateOffsetIntervalPicker({
   const directionText = getDirectionText(value);
   const dateRangeText = formatDateRange(value);
 
-  const handleIntervalChange = (inputValue: number | "") => {
-    if (inputValue !== "") {
+  const handleIntervalChange = (inputValue: number | string) => {
+    if (typeof inputValue === "number") {
       onChange(setInterval(value, inputValue));
     }
   };
@@ -71,8 +71,8 @@ export function DateOffsetIntervalPicker({
     }
   };
 
-  const handleOffsetIntervalChange = (inputValue: number | "") => {
-    if (inputValue !== "") {
+  const handleOffsetIntervalChange = (inputValue: number | string) => {
+    if (typeof inputValue === "number") {
       onChange(setOffsetInterval(value, inputValue));
     }
   };
