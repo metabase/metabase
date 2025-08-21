@@ -24,6 +24,5 @@ export interface EmbeddingHubStep {
     to?: string;
     variant?: "outline" | "subtle" | "filled";
     adminOnly?: boolean;
-    showWhenMetabaseLinksEnabled?: boolean;
   }>;
 }
