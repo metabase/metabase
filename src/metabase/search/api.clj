@@ -80,8 +80,7 @@
   []
   (api/check-superuser)
   (if (search/supports-index?)
-    (do (search/reindex!) {:message "done"})))
-
+    (do (search/reindex!) {:message "done"})
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 (mu/defn- set-weights!
