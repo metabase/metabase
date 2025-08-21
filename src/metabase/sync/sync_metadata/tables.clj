@@ -158,7 +158,6 @@
                                              true
                                              (assoc :active true)
 
-                                             ;; Set data_authority to :ingested for sample database tables
                                              (:is_sample database)
                                              (assoc :data_authority :ingested))))
     ;; otherwise create a new Table

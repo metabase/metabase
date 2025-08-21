@@ -41,7 +41,7 @@
      (sync/sync-table! table)
      table)))
 
-(defn activate-table-and-mark-non-authoritative!
+(defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
   [database target]
   (when-let [table (sync-table! database target {:create? true})]
