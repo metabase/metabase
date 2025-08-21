@@ -58,11 +58,13 @@ export const ExpressionStep = ({
           reportTimezone={reportTimezone}
           updateQuery={updateQuery}
           onClose={onClose}
+          readOnly={readOnly}
         />
       )}
       isLastOpened={isLastOpened}
       onReorder={handleReorderExpression}
       onRemove={handleRemoveExpression}
+      renderPopoverWhenReadOnly
     />
   );
 };
@@ -75,6 +77,7 @@ type ExpressionPopoverProps = {
   reportTimezone: string;
   updateQuery: (query: Lib.Query) => Promise<void>;
   onClose: () => void;
+  readOnly?: boolean;
 };
 
 function ExpressionPopover({
@@ -85,6 +88,7 @@ function ExpressionPopover({
   reportTimezone,
   updateQuery,
   onClose,
+  readOnly,
 }: ExpressionPopoverProps) {
   const expressionInfo = useMemo(
     () =>
@@ -133,6 +137,7 @@ function ExpressionPopover({
       onChangeClause={handleChangeClause}
       reportTimezone={reportTimezone}
       onClose={onClose}
+      readOnly={readOnly}
     />
   );
 }
