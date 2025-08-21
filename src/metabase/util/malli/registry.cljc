@@ -42,15 +42,6 @@
           (swap! cache assoc-in [k schema-key] v)
           v))))
 
-;; WITHOUT CACHE =
-;; Finding and running tests took 4.7 mins.
-
-;; WITH CLOJURE CORE MEMOIZE LRU CACHE =
-;; Finding and running tests took 3.9 mins.
-
-;; WITH CACHE =
-;; Finding and running tests took 2.7 mins.
-
 (defn validator
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
   changes."
