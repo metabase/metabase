@@ -7,13 +7,17 @@ import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { DetailViewPage } from "metabase/detail-view/components";
-import { getObjectQuery, getRowName } from "metabase/detail-view/utils";
+import {
+  filterByPk,
+  getRowName,
+  getTableQuery,
+} from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { extractRemappedColumns } from "metabase/visualizations";
+import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { StructuredDatasetQuery } from "metabase-types/api";
 
 interface Props {
   params: {
@@ -36,15 +40,20 @@ export function ModelDetailPage({ params }: Props) {
     (table) => table.id === getQuestionVirtualTableId(cardId),
   );
 
-  const objectQuery = useMemo<StructuredDatasetQuery | undefined>(() => {
-    return table ? getObjectQuery(table, rowId) : undefined;
-  }, [table, rowId]);
+  const tableQuery = useMemo(() => getTableQuery(table), [table]);
+  const objectQuery = useMemo(() => {
+    return tableQuery && table
+      ? filterByPk(tableQuery, table.fields ?? [], rowId)
+      : undefined;
+  }, [rowId, table, tableQuery]);
 
   const {
     data: dataset,
     error: queryError,
     isLoading: isQueryLoading,
-  } = useGetAdhocQueryQuery(objectQuery ? objectQuery : skipToken);
+  } = useGetAdhocQueryQuery(
+    objectQuery ? Lib.toLegacyQuery(objectQuery) : skipToken,
+  );
 
   const error = metadataError ?? queryError;
   const isLoading = isMetadataLoading || isQueryLoading;
