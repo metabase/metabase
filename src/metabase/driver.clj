@@ -1362,3 +1362,14 @@
   :hierarchy #'hierarchy)
 
 (defmethod set-database-used! ::driver [_driver _conn _db] nil)
+
+(defmulti do-with-resilient-connection
+  "Execute function `f` within a context that may recover (on-demand) from connection failures.
+  `f` must be eager."
+  {:added "0.55.9" :arglists '([driver database f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod do-with-resilient-connection
+  ::driver
+  [driver database f] (f driver database))

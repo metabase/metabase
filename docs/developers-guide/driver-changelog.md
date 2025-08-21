@@ -29,6 +29,12 @@ title: Driver interface changelog
 
 - Added the driver multi-method `driver/set-database-used!` for drivers to set a database on the connection with statements like `USE DATABASE`.
 
+
+## Metabase 0.55.9
+
+- Add multi-method `driver/do-with-resilient-connection` for executing functions in a context where closed connections may be automatically reopened
+
+
 ## Metabase 0.55.0
 
 - Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.
