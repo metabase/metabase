@@ -59,9 +59,9 @@
          all-tables (concat priority-tables fill-tables)
          all-tables (take all-tables-limit all-tables)]
      (mapv (fn [{:keys [fields] :as table}]
-             (merge (select-keys table [:name :schema :description])
+             (merge (select-keys table [:id :name :schema :description])
                     {:columns (mapv (fn [{:keys [database_type] :as field}]
-                                      (merge (select-keys field [:name :description])
+                                      (merge (select-keys field [:id :name :description])
                                              {:data_type database_type}))
                                     fields)}))
            all-tables))))

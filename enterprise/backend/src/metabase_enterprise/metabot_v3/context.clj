@@ -73,7 +73,7 @@
                            (get-in item [:query :database]))
                     (let [tables (database-tables-for-context {:query (:query item)})]
                       (if (seq tables)
-                        (assoc item :database_schema tables)
+                        (assoc item :used_tables tables)
                         item))
                     item))
                 user-viewing)]
