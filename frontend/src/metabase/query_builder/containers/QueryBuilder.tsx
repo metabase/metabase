@@ -84,6 +84,7 @@ import {
   getVisibleTimelineEventIds,
   getVisibleTimelineEvents,
   getVisualizationSettings,
+  getZoomedObjectRowIndex,
   isResultsMetadataDirty,
 } from "../selectors";
 import { getIsObjectDetail, getMode } from "../selectors/mode";
@@ -183,6 +184,8 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
+
+    zoomedRowIndex: getZoomedObjectRowIndex(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
     didFirstNonTableChartGenerated: getSetting(
