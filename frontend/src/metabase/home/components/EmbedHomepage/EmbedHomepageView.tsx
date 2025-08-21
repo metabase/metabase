@@ -76,14 +76,14 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
             showImage
           />
 
-          <StaticEmbedContent
-            exampleDashboardLink={exampleDashboardLink}
-            learnMoreStaticEmbedUrl={learnMoreStaticEmbedUrl}
-          />
-
           <SDKContent
             sdkQuickstartUrl={sdkQuickstartUrl}
             sdkDocsUrl={sdkDocsUrl}
+          />
+
+          <StaticEmbedContent
+            exampleDashboardLink={exampleDashboardLink}
+            learnMoreStaticEmbedUrl={learnMoreStaticEmbedUrl}
           />
         </>
       );
