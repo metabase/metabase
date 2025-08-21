@@ -367,7 +367,10 @@
                                           {:table-name "user"}
                                           {:fk :team :field-name "team_id"})
                        {:transaction? false})
-        (sync/sync-database! (mt/db))
+
+        ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+        (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
         (let [users-table-id (mt/id :user)
               #_teams-table-id #_(mt/id :team)
               delete-user-body {:action "data-grid.row/delete"
