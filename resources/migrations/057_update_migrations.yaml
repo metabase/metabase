@@ -1059,6 +1059,22 @@ databaseChangeLog:
                     nullable: true
                   defaultValue: null
 
+  - changeSet:
+      id: v57.2025-08-23T15:00:00
+      author: christruter
+      comment: Add data_authority enum field to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: data_authority
+                  remarks: Indicates the data authority status - unconfigured, authoritative, computed, or ingested
+                  type: varchar(20)
+                  defaultValue: 'unconfigured'
+                  constraints:
+                    nullable: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
