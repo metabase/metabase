@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.cycle-detection :as snippet-cycle]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -58,6 +59,12 @@
     (api/create-check :model/NativeQuerySnippet snippet)
     (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
 
+(defn- throw-circular!
+  [e]
+  (throw (ex-info (tru "Cannot save snippet with circular references.")
+                  {:status-code 400}
+                  e)))
+
 (defn- check-perms-and-update-snippet!
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
@@ -71,6 +78,7 @@
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
+      (snippet-cycle/check-for-cycles id changes throw-circular!)
       (t2/update! :model/NativeQuerySnippet id changes))
     (hydrated-native-query-snippet id)))
 

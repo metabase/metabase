@@ -711,11 +711,13 @@
            metabase.native-query-snippets.core}
    :uses #{api
            collections
+           lib
+           lib-be
            models
            permissions
            premium-features
-           util
-           lib}}
+           queries
+           util}}
 
   notification
   {:team "Workflows"

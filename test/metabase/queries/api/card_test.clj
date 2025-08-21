@@ -4346,7 +4346,7 @@
                                            {:dataset_query (lib/->legacy-MBQL query-cycle)
                                             :type          :question}))))))))))
 
-(deftest ^:parallel cannot-create-card-snippet-cycle-test
+(deftest cannot-create-card-snippet-cycle-test
   (testing "Cannot create card → snippet → card cycle"
     (mt/with-temp [:model/NativeQuerySnippet snippet {:name "test-snippet"
                                                       :content "WHERE true"
@@ -4377,7 +4377,7 @@
                                                                :name (str "snippet:" (:name snippet))
                                                                :display-name "Test Snippet"}}}}}))))))
 
-(deftest ^:parallel cannot-create-multi-hop-card-snippet-cycle-test
+(deftest cannot-create-multi-hop-card-snippet-cycle-test
   (testing "Cannot create cycles through multiple cards and snippets"
     (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:name "snippet-1"
                                                         :content "WHERE category = 'Electronics'"

@@ -353,6 +353,7 @@
   can-run
   can-save
   check-overwrite
+  check-snippet-overwrite
   preview-query
   query
   query-from-legacy-inner-query
