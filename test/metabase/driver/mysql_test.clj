@@ -622,7 +622,7 @@
   (testing "violate fk constraints"
     (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint
              :message "Unable to create a new record."
-             :errors {"group-id" "This Group-id does not exist."}}
+             :errors {"group-id" "This value does not exist in table \"group\"."}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :mysql actions.error/violate-foreign-key-constraint nil :model.row/create
              "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
@@ -630,17 +630,17 @@
 (deftest ^:parallel actions-maybe-parse-sql-error-test-5
   (testing "violate fk constraints"
     (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint,
-             :message "Unable to update the record.",
-             :errors {"group" "This Group does not exist."}}
+             :message "Other rows refer to this row so it cannot be changed."
+             :errors {"group" "Referenced in table \"user\"."}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :mysql actions.error/violate-foreign-key-constraint nil :model.row/update
              "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-6
   (testing "violate fk constraints"
-    (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint
-             :message "Other tables rely on this row so it cannot be deleted."
-             :errors {}}
+    (is (=? {:type    :metabase.actions.error/violate-foreign-key-constraint
+             :message "Other rows refer to this row so it cannot be deleted."
+             :errors  {"group" "Referenced in table \"user\"."}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :mysql actions.error/violate-foreign-key-constraint nil :model.row/delete
              "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
