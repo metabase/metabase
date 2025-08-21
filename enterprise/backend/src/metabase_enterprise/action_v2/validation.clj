@@ -8,11 +8,10 @@
   (:require
    [java-time.api :as t]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2])
   (:import
-   [java.time OffsetDateTime LocalDate LocalTime LocalDateTime]
-   [java.time.format DateTimeFormatter DateTimeParseException]))
+   (java.time OffsetDateTime LocalDate LocalTime LocalDateTime)
+   (java.time.format DateTimeParseException)))
 
 (set! *warn-on-reflection* true)
 
