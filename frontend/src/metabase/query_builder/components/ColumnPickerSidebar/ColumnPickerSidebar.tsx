@@ -1,4 +1,5 @@
 import { DndContext, type DragEndEvent, closestCenter } from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   SortableContext,
   useSortable,
@@ -242,6 +243,7 @@ export function ColumnPickerSidebar({
             <DndContext
               onDragEnd={handleDragEnd}
               collisionDetection={closestCenter}
+              modifiers={[restrictToVerticalAxis]}
             >
               <SortableContext
                 items={filteredItems.map((item) => item.columnInfo.displayName)}

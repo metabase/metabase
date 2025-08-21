@@ -2,6 +2,9 @@
   color: var(--mb-color-text-secondary);
   min-width: 10ch;
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ItemIcon {
@@ -14,6 +17,7 @@
   padding: 0;
   margin: 0;
   list-style: none;
+  overflow-x: hidden;
 }
 
 .Label {
@@ -24,6 +28,8 @@
   cursor: pointer;
   min-height: 2.25rem;
   transition: background-color 0.15s ease;
+  overflow: hidden;
+  width: 100%;
 
   &:hover {
     background: var(--mb-color-bg-medium);
@@ -42,6 +48,7 @@
 .ColumnsList {
   max-height: calc(100vh - 200px);
   overflow-y: auto;
+  overflow-x: hidden;
   border: 1px solid var(--mb-color-border);
   border-radius: 8px;
   background: var(--mb-color-bg-white);
