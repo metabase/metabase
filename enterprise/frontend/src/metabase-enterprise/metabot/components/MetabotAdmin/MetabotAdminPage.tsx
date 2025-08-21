@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -27,6 +27,7 @@ import {
   useListMetabotsQuery,
   useUpdateMetabotEntitiesMutation,
 } from "metabase-enterprise/api";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase-enterprise/metabot/constants";
 import type {
   CollectionEssentials,
   MetabotEntity,
@@ -39,55 +40,60 @@ import { useMetabotIdPath } from "./utils";
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
   const { data, isLoading, error } = useListMetabotsQuery();
-  const metabotName =
-    data?.items?.find((bot) => bot.id === metabotId)?.name ?? t`Metabot`;
-  const isEmbeddedMetabot = metabotName.toLowerCase().includes("embed");
 
   const { data: entityList } = useListMetabotsEntitiesQuery(
     metabotId ? { id: metabotId } : skipToken,
   );
   const hasEntities = (entityList?.items?.length ?? 0) > 0;
+  const metabot = data?.items?.find((bot) => bot.id === metabotId);
 
-  if (isLoading || !data) {
+  if (isLoading || !data || !metabotId || !metabot) {
     return (
       <LoadingAndErrorWrapper
         loading={isLoading}
-        error={error ? t`Error fetching Metabots` : null}
+        error={match({ isLoading, error, metabot })
+          .with(
+            { isLoading: false, error: P.not(null) },
+            () => t`Error fetching Metabots`,
+          )
+          .with({ isLoading: false, metabot: undefined }, () => t`Not found.`)
+          .otherwise(() => null)}
       />
     );
   }
 
+  const isEmbedMetabot =
+    metabot.entity_id === FIXED_METABOT_ENTITY_IDS.EMBEDDED;
+
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
       <ErrorBoundary>
-        <SettingsSection>
+        <SettingsSection key={metabotId}>
           <Box>
             <SettingHeader
               id="configure-metabot"
               title={c("{0} is the name of an AI assistant")
-                .t`Configure ${metabotName}`}
+                .t`Configure ${metabot.name}`}
               description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
-                .t`${metabotName} is Metabase's AI agent. To help ${metabotName} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
+                .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
             />
-            {isEmbeddedMetabot && (
+            {isEmbedMetabot && (
               <Text c="text-medium" maw="40rem">
                 {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
               </Text>
             )}
           </Box>
-          {metabotId && (
-            <>
-              <MetabotConfigurationPane
-                metabotId={metabotId}
-                metabotName={metabotName}
-              />
-              {hasEntities && (
-                <MetabotPromptSuggestionPane
-                  key={metabotId}
-                  metabotId={metabotId}
-                />
-              )}
-            </>
+          {isEmbedMetabot && (
+            <MetabotCollectionConfigurationPane
+              metabotId={metabotId}
+              metabotName={metabot.name}
+            />
+          )}
+          {hasEntities && (
+            <MetabotPromptSuggestionPane
+              key={metabotId}
+              metabotId={metabotId}
+            />
           )}
         </SettingsSection>
       </ErrorBoundary>
@@ -130,7 +136,7 @@ function MetabotNavPane() {
   );
 }
 
-function MetabotConfigurationPane({
+function MetabotCollectionConfigurationPane({
   metabotId,
   metabotName,
 }: {
@@ -184,7 +190,12 @@ function MetabotConfigurationPane({
     await handleDelete();
     const result = await updateEntities({
       id: metabotId,
-      entities: [_.pick(newEntity, "model", "id")],
+      entities: [
+        {
+          id: newEntity.id === "root" ? null : newEntity.id,
+          model: newEntity.model,
+        },
+      ],
     });
 
     if (result.error) {
@@ -219,8 +230,6 @@ function MetabotConfigurationPane({
       {isOpen && (
         <CollectionPickerModal
           title={t`Select a collection`}
-          shouldDisableItem={(item) => item.id === "root"}
-          canSelectItem={(item) => item && item.id !== "root"}
           value={{
             id: collection?.id ?? null,
             model: "collection",

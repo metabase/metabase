@@ -218,7 +218,11 @@ export type MetabotName = string;
 
 export type MetabotInfo = {
   id: MetabotId;
+  entity_id: string;
   name: MetabotName;
+  description: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type MetabotEntity = {
