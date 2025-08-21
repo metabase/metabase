@@ -30,6 +30,7 @@ jobs:
       is_employee: ${{ steps.check_employee.outputs.is_employee }}
       issue_number: ${{ steps.get_issue.outputs.issue_number }}
       issue_data: ${{ steps.get_issue.outputs.issue_data }}
+      issue_comments: ${{ steps.get_issue.outputs.issue_comments }}
     steps:
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
