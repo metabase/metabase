@@ -821,7 +821,7 @@
   "Add a new `Database`."
   [_route-params
    _query-params
-   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]}
+   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source provider_name]}
    :- [:map
        [:name              ms/NonBlankString]
        [:engine            DBEngineString]
@@ -831,7 +831,8 @@
        [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:auto_run_queries  {:optional true}  [:maybe :boolean]]
        [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
-       [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]]]
+       [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
+       [:provider_name     {:optional true}  [:maybe :string]]]]
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
@@ -840,7 +841,7 @@
   (let [details-or-error (test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
-      ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
+      ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
                                       :model/Database
@@ -851,6 +852,7 @@
                                         :is_full_sync is_full_sync
                                         :is_on_demand is_on_demand
                                         :cache_ttl    cache_ttl
+                                        :provider_name provider_name
                                         :creator_id   api/*current-user-id*}
                                        (when schedules
                                          (sync.schedules/schedule-map->cron-strings schedules))
@@ -916,18 +918,19 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-           auto_run_queries refingerprint cache_ttl settings]} :- [:map
-                                                                   [:name               {:optional true} [:maybe ms/NonBlankString]]
-                                                                   [:engine             {:optional true} [:maybe DBEngineString]]
-                                                                   [:refingerprint      {:optional true} [:maybe :boolean]]
-                                                                   [:details            {:optional true} [:maybe ms/Map]]
-                                                                   [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
-                                                                   [:description        {:optional true} [:maybe :string]]
-                                                                   [:caveats            {:optional true} [:maybe :string]]
-                                                                   [:points_of_interest {:optional true} [:maybe :string]]
-                                                                   [:auto_run_queries   {:optional true} [:maybe :boolean]]
-                                                                   [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
-                                                                   [:settings           {:optional true} [:maybe ms/Map]]]]
+           auto_run_queries refingerprint cache_ttl settings provider_name]} :- [:map
+                                                                                 [:name               {:optional true} [:maybe ms/NonBlankString]]
+                                                                                 [:engine             {:optional true} [:maybe DBEngineString]]
+                                                                                 [:refingerprint      {:optional true} [:maybe :boolean]]
+                                                                                 [:details            {:optional true} [:maybe ms/Map]]
+                                                                                 [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+                                                                                 [:description        {:optional true} [:maybe :string]]
+                                                                                 [:caveats            {:optional true} [:maybe :string]]
+                                                                                 [:points_of_interest {:optional true} [:maybe :string]]
+                                                                                 [:auto_run_queries   {:optional true} [:maybe :boolean]]
+                                                                                 [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
+                                                                                 [:provider_name      {:optional true} [:maybe :string]]
+                                                                                 [:settings           {:optional true} [:maybe ms/Map]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one :model/Database :id id))
         incoming-details  details
@@ -954,21 +957,22 @@
                         ;; TODO - is there really a reason to let someone change the engine on an existing database?
                         ;;       that seems like the kind of thing that will almost never work in any practical way
                         ;; TODO - this means one cannot unset the description. Does that matter?
-                        (m/remove-vals
-                         nil?
-                         (merge
-                          {:name               name
-                           :engine             engine
-                           :details            details
-                           :refingerprint      refingerprint
-                           :is_full_sync       full-sync?
-                           :is_on_demand       on-demand?
-                           :description        description
-                           :caveats            caveats
-                           :points_of_interest points_of_interest
-                           :auto_run_queries   auto_run_queries}
-                          (when (seq settings)
-                            {:settings pending-settings})))
+                        (u/select-keys-when
+                         {:name               name
+                          :engine             engine
+                          :details            details
+                          :refingerprint      refingerprint
+                          :is_full_sync       full-sync?
+                          :is_on_demand       on-demand?
+                          :description        description
+                          :caveats            caveats
+                          :points_of_interest points_of_interest
+                          :auto_run_queries   auto_run_queries
+                          :settings           (when (seq settings) pending-settings)
+                          :provider_name      provider_name}
+                         :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
+                                    :description :caveats :points_of_interest :auto_run_queries :settings}
+                         :present #{:provider_name})
                         ;; cache_field_values_schedule can be nil
                         (when schedules
                           (sync.schedules/schedule-map->cron-strings schedules)))
