@@ -64,7 +64,7 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
-} else {
+} else if (hasPremiumFeature("hosting")) {
   PLUGIN_METABOT.getAdminPaths = () => [
     {
       name: t`AI`,
