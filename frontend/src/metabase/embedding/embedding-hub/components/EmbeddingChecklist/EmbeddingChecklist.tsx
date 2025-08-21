@@ -1,4 +1,4 @@
-import { createRef, useCallback, useMemo, useState } from "react";
+import { createRef, useCallback, useMemo } from "react";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
@@ -12,8 +12,16 @@ import { Accordion, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import S from "./EmbeddingChecklist.module.css";
 
+export type EmbeddingStepId =
+  | "test-embed"
+  | "add-data"
+  | "create-dashboard"
+  | "configure-sandboxing"
+  | "secure-embeds"
+  | "embed-production";
+
 export interface EmbeddingStep {
-  id: string;
+  id: EmbeddingStepId;
   title: string;
   icon: string;
   description: string;
@@ -35,14 +43,14 @@ export interface EmbeddingStep {
 
 interface EmbeddingChecklistProps {
   steps: EmbeddingStep[];
-  completedSteps?: Record<string, boolean>;
-  defaultOpenStep?: string;
-  onStepChange?: (stepId: string | null) => void;
+  completedSteps?: Record<EmbeddingStepId, boolean>;
+  defaultOpenStep?: EmbeddingStepId;
+  onStepChange?: (stepId: EmbeddingStepId | null) => void;
 }
 
 export const EmbeddingChecklist = ({
   steps,
-  completedSteps = {},
+  completedSteps = {} as Record<EmbeddingStepId, boolean>,
   defaultOpenStep,
   onStepChange,
 }: EmbeddingChecklistProps) => {
@@ -56,18 +64,16 @@ export const EmbeddingChecklist = ({
         refs[step.id] = createRef<HTMLDivElement>();
         return refs;
       },
-      {} as Record<string, React.RefObject<HTMLDivElement>>,
+      {} as Record<EmbeddingStepId, React.RefObject<HTMLDivElement>>,
     );
   }, [steps]);
 
   const isValidItemKey = useCallback(
-    (key?: string | null): key is string => {
+    (key?: string | null): key is EmbeddingStepId => {
       return key != null && key in itemRefs;
     },
     [itemRefs],
   );
-
-  const [itemValue, setItemValue] = useState<string | null>(null);
 
   const scrollElementIntoView = (element?: HTMLDivElement | null) => {
     if (!element) {
@@ -80,20 +86,13 @@ export const EmbeddingChecklist = ({
   };
 
   const handleValueChange = (newValue: string | null) => {
-    if (isValidItemKey(itemValue)) {
-      const currentItem = itemRefs[itemValue].current;
-      const iframe = currentItem?.querySelector("iframe");
-
-      stopVideo(iframe);
-    }
-
-    if (newValue !== null && isValidItemKey(newValue)) {
-      const newItem = itemRefs[newValue].current;
+    const typedNewValue = isValidItemKey(newValue) ? newValue : null;
+    if (typedNewValue !== null) {
+      const newItem = itemRefs[typedNewValue].current;
       scrollElementIntoView(newItem);
     }
 
-    setItemValue(newValue);
-    onStepChange?.(newValue);
+    onStepChange?.(typedNewValue);
   };
 
   const renderStepIcon = (step: EmbeddingStep) => {
@@ -115,9 +114,11 @@ export const EmbeddingChecklist = ({
       if (action.adminOnly && !isAdmin) {
         return false;
       }
+
       if (action.showWhenMetabaseLinksEnabled && !showMetabaseLinks) {
         return false;
       }
+
       return true;
     });
 
@@ -214,20 +215,5 @@ export const EmbeddingChecklist = ({
         );
       })}
     </Accordion>
-  );
-};
-
-const stopVideo = (iframe?: HTMLIFrameElement | null) => {
-  if (!iframe) {
-    return;
-  }
-
-  iframe.contentWindow?.postMessage(
-    JSON.stringify({
-      event: "command",
-      func: "stopVideo",
-      args: [],
-    }),
-    "*",
   );
 };

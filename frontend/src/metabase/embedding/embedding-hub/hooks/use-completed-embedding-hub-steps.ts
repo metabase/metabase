@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 
-export const useCompletedEmbeddingHubSteps = (): Record<string, boolean> => {
+import type { EmbeddingStepId } from "../components";
+
+export const useCompletedEmbeddingHubSteps = (): Record<
+  EmbeddingStepId,
+  boolean
+> => {
   const completedSteps = useMemo(() => {
     return {
       "test-embed": true, // Example: check if user has created test embeds
