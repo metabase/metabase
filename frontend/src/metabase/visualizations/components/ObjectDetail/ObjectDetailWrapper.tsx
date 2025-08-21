@@ -10,7 +10,7 @@ import { DetailViewSidesheet } from "metabase/detail-view/components";
 import Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { Table as ApiTable } from "metabase-types/api";
+import type { Table as ApiTable, DatasetColumn } from "metabase-types/api";
 
 import { PaginationFooter } from "../PaginationFooter/PaginationFooter";
 
@@ -72,7 +72,7 @@ export function ObjectDetailWrapper({
     const table = getApiTable(tableWrapper);
     const columns = data?.cols;
 
-    if (columns != null && table != null && zoomedRowID != null && question) {
+    if (columns != null && zoomedRowID != null && question) {
       return (
         <DetailViewSidesheet
           actions={areImplicitActionsEnabled ? actions : []}
@@ -83,7 +83,7 @@ export function ObjectDetailWrapper({
           rowId={zoomedRowID}
           table={table}
           tableForeignKeys={tableForeignKeys}
-          url={getRowUrl(question, table, zoomedRowID)}
+          url={getRowUrl(question, columns, table, zoomedRowID)}
           onClose={closeObjectDetail}
           onNextClick={canZoomNextRow ? viewNextObjectDetail : undefined}
           onPreviousClick={
@@ -140,10 +140,11 @@ function getApiTable(table: Table | undefined | null): ApiTable | undefined {
 
 function getRowUrl(
   question: Question,
-  table: ApiTable,
+  columns: DatasetColumn[],
+  table: ApiTable | undefined,
   rowId: string | number,
 ): string | undefined {
-  const pks = table.fields?.filter(isPK) ?? [];
+  const pks = columns.filter(isPK);
 
   if (pks.length !== 1) {
     return undefined;
@@ -153,7 +154,7 @@ function getRowUrl(
     return `/model/${question.slug()}/detail/${rowId}`;
   }
 
-  if (typeof table.id === "number") {
+  if (typeof table?.id === "number") {
     return `/table/${table.id}/detail/${rowId}`;
   }
 

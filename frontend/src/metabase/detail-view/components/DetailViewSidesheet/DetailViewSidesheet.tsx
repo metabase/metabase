@@ -47,7 +47,7 @@ interface Props {
   row: RowValues | undefined;
   rowId: string | number;
   showNav: boolean;
-  table: Table;
+  table: Table | undefined;
   tableForeignKeys?: ForeignKey[];
   url: string | undefined;
   onClose: () => void;
@@ -70,7 +70,7 @@ export function DetailViewSidesheet({
   onPreviousClick,
 }: Props) {
   const objectQuery = useMemo(() => {
-    return getObjectQuery(table, rowId);
+    return table ? getObjectQuery(table, rowId) : undefined;
   }, [table, rowId]);
 
   const {
@@ -92,7 +92,7 @@ export function DetailViewSidesheet({
   const rowName = useMemo(() => {
     return getRowName(columns, row) || rowId;
   }, [columns, row, rowId]);
-  const icon = getEntityIcon(table.entity_type);
+  const icon = getEntityIcon(table?.entity_type);
 
   const [actionId, setActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
@@ -292,7 +292,7 @@ export function DetailViewSidesheet({
             </Stack>
           </Group>
 
-          {tableForeignKeys && tableForeignKeys.length > 0 && (
+          {table && tableForeignKeys && tableForeignKeys.length > 0 && (
             <Box
               flex="1"
               bg="var(--mb-color-background-light)"

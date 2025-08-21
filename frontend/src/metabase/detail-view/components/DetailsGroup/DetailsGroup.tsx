@@ -16,7 +16,7 @@ import { Value } from "./Value";
 interface Props {
   columns: DatasetColumn[];
   row: RowValues;
-  table: Table;
+  table: Table | undefined;
 }
 
 export const DetailsGroup = ({ columns, row, table }: Props) => {
