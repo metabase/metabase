@@ -98,6 +98,7 @@ export function DetailViewSidesheet({
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
   const isActionExecuteModalOpen = typeof actionId === "number";
   const isDeleteModalOpen = typeof deleteActionId === "number";
+  const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
   const initialValues = useMemo(() => ({ id: rowId ?? null }), [rowId]);
 
   const actionItems = getActionItems({
@@ -106,6 +107,13 @@ export function DetailViewSidesheet({
     onDelete: (action) => setDeleteActionId(action.id),
     onUpdate: (action) => setActionId(action.id),
   });
+
+  const handleClose = () => {
+    // prevent Esc key from closing both modal and the sidesheet
+    if (!isModalOpen) {
+      onClose();
+    }
+  };
 
   const handleExecuteModalClose = () => {
     setActionId(undefined);
@@ -153,7 +161,7 @@ export function DetailViewSidesheet({
 
   if (error || isLoading) {
     return (
-      <Sidesheet data-testid="object-detail" onClose={onClose}>
+      <Sidesheet data-testid="object-detail" onClose={handleClose}>
         <LoadingAndErrorWrapper error={error} loading={isLoading} />;
       </Sidesheet>
     );
@@ -266,7 +274,7 @@ export function DetailViewSidesheet({
           </>
         }
         data-testid="object-detail"
-        onClose={onClose}
+        onClose={handleClose}
       >
         <Stack gap={0} mih="100%">
           {headerColumns.length > 0 && (
