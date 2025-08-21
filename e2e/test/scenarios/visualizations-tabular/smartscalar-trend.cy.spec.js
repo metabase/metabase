@@ -95,7 +95,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.get("input").click().type("0");
       cy.get("input").should("have.value", 2);
 
-      // should not allow floor input (ignores dot input)
+      // should not allow decimal input (ignores dot input)
       cy.get("input").click().type("1.2");
       cy.get("input").should("have.value", 12);
 
