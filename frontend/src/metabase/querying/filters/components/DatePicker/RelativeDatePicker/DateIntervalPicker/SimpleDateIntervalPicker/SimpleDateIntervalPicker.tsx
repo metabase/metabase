@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import type {
@@ -21,10 +22,16 @@ export function SimpleDateIntervalPicker({
   availableUnits,
   onChange,
 }: SimpleDateIntervalPickerProps) {
+  const [intervalDisplayValue, setIntervalDisplayValue] = useState<
+    string | number
+  >(getInterval(value));
+
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
 
   const handleIntervalChange = (inputValue: number | string) => {
+    setIntervalDisplayValue(inputValue);
+
     if (typeof inputValue === "number") {
       onChange(setInterval(value, inputValue));
     }
@@ -37,14 +44,22 @@ export function SimpleDateIntervalPicker({
     }
   };
 
+  // Forces the displayed interval to the current interval when the input loses focus.
+  // E.g. user deletes the input value and then clicks outside the input.
+  const handleBlur = useCallback(() => {
+    setIntervalDisplayValue(interval);
+  }, [interval]);
+
   return (
     <>
       <Group>
         <NumberInput
-          value={interval}
+          allowDecimal={false}
+          value={intervalDisplayValue}
           aria-label={t`Interval`}
           w="4rem"
           onChange={handleIntervalChange}
+          onBlur={handleBlur}
         />
         <Select
           data={unitOptions}
