@@ -29,6 +29,7 @@
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
    [metabase.util.number :as u.number]
+   [metabase.util.performance :as perf]
    [metabase.util.polyfills]
    [nano-id.core :as nano-id]
    [net.cgrand.macrovich :as macros]
@@ -284,7 +285,7 @@
 (defn snake-keys
   "Convert the top-level keys in a map to `snake_case`."
   [m]
-  (update-keys m ->snake_case_en))
+  (perf/update-keys m ->snake_case_en))
 
 (defn deep-snake-keys
   "Recursively convert the keys in a map to `snake_case`."
@@ -305,7 +306,7 @@
                 :cljs (if (object? m)
                         (js->clj m)
                         m))]
-    (update-keys base (comp keyword ->kebab-case-en))))
+    (perf/update-keys base (comp keyword ->kebab-case-en))))
 
 ;; Log the maximum memory available to the JVM at launch time as well since it is very handy for debugging things
 #?(:clj
@@ -665,7 +666,7 @@
 (defn lower-case-map-keys
   "Changes the keys of a given map to lower case."
   [m]
-  (update-keys m #(-> % name lower-case-en keyword)))
+  (perf/update-keys m #(-> % name lower-case-en keyword)))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing `x` as a string.

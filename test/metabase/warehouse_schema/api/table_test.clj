@@ -65,7 +65,8 @@
     :field_order "database"
     :view_count  0
     :metrics     []
-    :segments    []}))
+    :segments    []
+    :is_writable nil}))
 
 (defn- field-defaults []
   (merge
