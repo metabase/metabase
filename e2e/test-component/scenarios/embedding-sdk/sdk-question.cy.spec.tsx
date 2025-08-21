@@ -586,7 +586,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         cy.findByText("Trend").click();
       });
 
-      cy.findByTestId("sdk-question-save-button").should("exist");
+      cy.findByTestId("interactive-question-top-toolbar").within(() => {
+        cy.findByText("Save").should("exist");
+      });
     });
   });
 
@@ -602,7 +604,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         cy.findByTestId("User ID-hide-button").click();
       });
 
-      cy.findByTestId("sdk-question-save-button").should("exist");
+      cy.findByTestId("interactive-question-top-toolbar").within(() => {
+        cy.findByText("Save").should("exist");
+      });
     });
   });
 });

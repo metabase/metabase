@@ -57,7 +57,6 @@ export const SaveButton = ({ ...buttonProps }: SaveButtonProps = {}) => {
     <ToolbarButton
       label={t`Save`}
       disabled={!isSaveButtonEnabled}
-      data-testid="sdk-question-save-button"
       {...buttonProps}
     />
   );
