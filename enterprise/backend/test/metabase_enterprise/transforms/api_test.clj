@@ -44,25 +44,20 @@
   "Create a query filtering products by category, using shared utility.
    Returns a legacy MBQL query structure for API compatibility."
   [category]
-  (mt/dataset transforms-dataset/transforms-test
-    (let [query (query-test-util/make-query
-                 {:source-table  "transforms_products"
-                  :source-column "category"
-                  :filter-fn     lib/=
-                  :filter-values [category]})]
+  (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+        query (query-test-util/make-query
+               {:source-table  table-name
+                :source-column "category"
+                :filter-fn     lib/=
+                :filter-values [category]})]
       ;; Convert to legacy MBQL which the transform API expects
-      (lib.convert/->legacy-MBQL query))))
+    (lib.convert/->legacy-MBQL query)))
 
 (defn- get-test-schema
   "Get the schema from the products table in the test dataset.
    This is needed for databases like BigQuery that require a schema/dataset."
   []
   (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
-
-(comment
-  (binding [driver/*driver* :clickhouse]
-    (make-query "Gadget"))
-  -)
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
