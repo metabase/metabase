@@ -39,6 +39,11 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         modal: { type: "add-data", initialTab: "db" },
         variant: "outline",
       },
+      {
+        label: t`Upload a CSV`,
+        modal: { type: "add-data", initialTab: "csv" },
+        variant: "subtle",
+      },
     ],
   };
 
