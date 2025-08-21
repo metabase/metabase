@@ -20,9 +20,8 @@ export interface EmbeddingHubStep {
   };
   actions?: Array<{
     label: string;
-    href?: string;
     to?: string;
+    docsPath?: string;
     variant?: "outline" | "subtle" | "filled";
-    adminOnly?: boolean;
   }>;
 }

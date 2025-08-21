@@ -44,8 +44,9 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     description: t`Automatically generate a dashboard from your data using x-rays or build one manually.`,
     actions: [
       {
-        label: t`Create dashboard`,
-        to: "/admin/databases",
+        label: t`Generate dashboard`,
+        // TODO(EMB-741): use a wizard
+        to: "/auto/dashboard/table/1",
         variant: "outline",
       },
     ],
@@ -58,9 +59,8 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     description: t`Manage permissions to limit what data your users can access.`,
     actions: [
       {
-        label: t`Configure permissions`,
-        // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
-        href: "https://www.metabase.com/docs/latest/permissions/sandboxing",
+        label: t`Configure Permissions`,
+        docsPath: "permissions/embedding",
         variant: "outline",
       },
     ],
@@ -73,13 +73,12 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
     actions: [
       {
-        label: t`Configure embedding`,
-        // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
-        href: "https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-jwt",
+        label: t`Configure Embedding`,
+        docsPath: "people-and-groups/authenticating-with-jwt",
         variant: "outline",
       },
       {
-        label: t`Manage users`,
+        label: t`Manage Users`,
         to: "/admin/people",
         variant: "subtle",
       },
@@ -93,14 +92,9 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
     actions: [
       {
-        label: t`View implementation guide`,
+        label: t`Setup Embed`,
         to: "/embed-js",
         variant: "outline",
-      },
-      {
-        label: t`Review settings`,
-        to: "/admin/settings/embedding-in-other-applications",
-        variant: "subtle",
       },
     ],
   };
