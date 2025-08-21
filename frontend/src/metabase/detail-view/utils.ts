@@ -58,6 +58,7 @@ export function renderValue(
   const formattedValue = formatValue(tc(value), {
     ...column.settings,
     ...finalSettings,
+    ...optionsOverride,
     column,
     type: "cell",
     jsx: true,
@@ -74,7 +75,6 @@ export function renderValue(
         },
       ],
     },
-    ...optionsOverride,
   });
 
   return formattedValue != null && formattedValue !== ""
@@ -154,10 +154,16 @@ export function getRowValue(
   return value;
 }
 
-export const getColumnTitle = (column: DatasetColumn) => {
+export const getColumnTitle = (
+  column: DatasetColumn,
+  settings: OptionsType,
+) => {
   const series = [{ data: { cols: [column] }, card: createMockCard() }];
-  const settings = getComputedSettingsForSeries(series);
-  return getTitleForColumn(column, series, settings);
+
+  return getTitleForColumn(column, series, {
+    ...getComputedSettingsForSeries(series),
+    ...settings,
+  });
 };
 
 export const getEntityIcon = (entityType?: Table["entity_type"]) => {

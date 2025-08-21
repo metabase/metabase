@@ -9,6 +9,7 @@ import {
 import { DetailViewSidesheet } from "metabase/detail-view/components";
 import Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { Table as ApiTable, DatasetColumn } from "metabase-types/api";
 
@@ -63,6 +64,7 @@ export function ObjectDetailWrapper({
       canZoom,
       canZoomNextRow,
       canZoomPreviousRow,
+      settings,
       table: tableWrapper,
       viewNextObjectDetail,
       viewPreviousObjectDetail,
@@ -73,10 +75,15 @@ export function ObjectDetailWrapper({
     const columns = data?.cols;
 
     if (columns != null && zoomedRowID != null && question) {
+      const columnsSettings = columns.map((column) => {
+        return settings?.column_settings?.[getColumnKey(column)];
+      });
+
       return (
         <DetailViewSidesheet
           actions={areImplicitActionsEnabled ? actions : []}
           columns={columns}
+          columnsSettings={columnsSettings}
           databases={databasesResponse?.data ?? []}
           showNav={Boolean(canZoom && (canZoomNextRow || canZoomPreviousRow))}
           row={zoomedRow}

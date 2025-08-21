@@ -18,6 +18,7 @@ import {
   getObjectQuery,
   getRowName,
 } from "metabase/detail-view/utils";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi } from "metabase/services";
@@ -43,6 +44,7 @@ const EMPTY_ROW: RowValues = [];
 interface Props {
   actions: WritebackAction[];
   columns: DatasetColumn[];
+  columnsSettings: (OptionsType | undefined)[];
   databases: Database[];
   row: RowValues | undefined;
   rowId: string | number;
@@ -58,6 +60,7 @@ interface Props {
 export function DetailViewSidesheet({
   actions,
   columns,
+  columnsSettings,
   databases,
   row: rowFromProps,
   rowId,
@@ -287,7 +290,12 @@ export function DetailViewSidesheet({
           <Group pb={rem(48)} pt="xl" px={rem(56)}>
             <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
               {columns.length - headerColumns.length > 0 && (
-                <DetailsGroup columns={columns} row={row} table={table} />
+                <DetailsGroup
+                  columns={columns}
+                  columnsSettings={columnsSettings}
+                  row={row}
+                  table={table}
+                />
               )}
             </Stack>
           </Group>
