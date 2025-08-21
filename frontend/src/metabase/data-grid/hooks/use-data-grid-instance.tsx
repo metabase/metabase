@@ -129,9 +129,13 @@ export const useDataGridInstance = <TData, TValue>({
 
   // Handler for expand button click - expands column and adjusts width
   const handleExpandButtonClick = useCallback(
-    (columnName: string, content: React.ReactNode) => {
+    (
+      columnName: string,
+      content: React.ReactNode,
+      preserveWhitespace?: boolean,
+    ) => {
       const newColumnWidth = Math.max(
-        measureBodyCellDimensions(content).width,
+        measureBodyCellDimensions(content, undefined, preserveWhitespace).width,
         measuredColumnSizingMap[columnName],
       );
       const newColumnSizing = {
@@ -269,6 +273,7 @@ export const useDataGridInstance = <TData, TValue>({
           const cellDimensions = measureBodyCellDimensions(
             formattedValue,
             tableColumn?.getSize(),
+            tableColumn?.columnDef?.meta?.preserveWhitespace,
           );
           return cellDimensions.height;
         }),

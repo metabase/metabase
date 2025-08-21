@@ -24,6 +24,7 @@ declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     wrap?: boolean;
+    preserveWhitespace?: boolean;
     enableReordering?: boolean;
     enableSelection?: boolean;
     headerClickTargetSelector?: string;
@@ -44,13 +45,18 @@ export type BodyCellBaseProps<TValue> = {
   backgroundColor?: string;
   align?: CellAlign;
   wrap?: boolean;
+  preserveWhitespace?: boolean;
   canExpand?: boolean;
   columnId: string;
   rowIndex: number;
   isSelected?: boolean;
   className?: string;
   style?: React.CSSProperties;
-  onExpand?: (id: string, formattedValue: React.ReactNode) => void;
+  onExpand?: (
+    id: string,
+    formattedValue: React.ReactNode,
+    preserveWhitespace?: boolean,
+  ) => void;
 };
 
 /**
@@ -109,6 +115,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to format cell values when copying to clipboard */
   clipboardFormatter?: PlainCellFormatter<TValue>;
+
+  /** Whether to preserve whitespace in the cell */
+  preserveWhitespace?: boolean;
 }
 
 /**

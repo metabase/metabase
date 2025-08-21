@@ -12,6 +12,7 @@ import type { DataGridTheme } from "../types";
 export type CellMeasurer = (
   content: React.ReactNode,
   width?: number,
+  preserveWhitespace?: boolean,
 ) => CellSize;
 
 export interface CellSize {
@@ -46,7 +47,11 @@ export const useCellMeasure = (
   }, [cell]);
 
   const measureDimensions: CellMeasurer = useCallback(
-    (content: React.ReactNode, containerWidth?: number) => {
+    (
+      content: React.ReactNode,
+      containerWidth?: number,
+      preserveWhitespace?: boolean,
+    ) => {
       const rootEl = rootRef.current;
       const contentCell = rootEl?.querySelector(contentNodeSelector);
       if (!rootEl || !contentCell) {
@@ -57,6 +62,14 @@ export const useCellMeasure = (
 
       rootEl.style.width =
         containerWidth != null ? `${containerWidth}px` : "auto";
+
+      const whiteSpaceCollapse = preserveWhitespace
+        ? "break-spaces"
+        : "collapse";
+      (contentCell as HTMLElement).style.setProperty(
+        "white-space-collapse",
+        whiteSpaceCollapse,
+      );
 
       if (typeof content === "string") {
         contentCell.textContent = content;

@@ -277,7 +277,7 @@ class Table extends Component<TableProps, TableState> {
     }
 
     if (isString(column)) {
-      const canWrapText = (columnSettings: OptionsType) =>
+      const isNotImage = (columnSettings: OptionsType) =>
         columnSettings["view_as"] !== "image";
 
       settings["text_wrapping"] = {
@@ -286,10 +286,23 @@ class Table extends Component<TableProps, TableState> {
         widget: "toggle",
         inline: true,
         isValid: (_column, columnSettings) => {
-          return canWrapText(columnSettings);
+          return isNotImage(columnSettings);
         },
         getHidden: (_column, columnSettings) => {
-          return !canWrapText(columnSettings);
+          return !isNotImage(columnSettings);
+        },
+      };
+
+      settings["preserve_whitespace"] = {
+        title: t`Preserve whitespace`,
+        default: false,
+        widget: "toggle",
+        inline: true,
+        isValid: (_column, columnSettings) => {
+          return isNotImage(columnSettings);
+        },
+        getHidden: (_column, columnSettings) => {
+          return !isNotImage(columnSettings);
         },
       };
     }

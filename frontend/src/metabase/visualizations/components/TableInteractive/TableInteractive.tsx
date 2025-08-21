@@ -471,6 +471,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const wrap =
         !settings["table.pagination"] &&
         Boolean(columnSettings["text_wrapping"]);
+      const preserveWhitespace = Boolean(columnSettings["preserve_whitespace"]);
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
       const isImage = columnSettings["view_as"] === "image";
@@ -540,6 +541,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         headerClickTargetSelector: "[data-header-click-target]",
         align,
         wrap,
+        preserveWhitespace,
         sortDirection,
         enableResizing: true,
         getBackgroundColor,

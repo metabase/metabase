@@ -23,6 +23,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
   align = "left",
   variant = "text",
   wrap = false,
+  preserveWhitespace = false,
   canExpand = false,
   columnId,
   rowIndex,
@@ -40,9 +41,9 @@ export const BodyCell = memo(function BodyCell<TValue>({
   const handleExpandClick: MouseEventHandler<HTMLButtonElement> = useCallback(
     (e) => {
       e.stopPropagation();
-      onExpand?.(columnId, formattedValue);
+      onExpand?.(columnId, formattedValue, preserveWhitespace);
     },
-    [columnId, formattedValue, onExpand],
+    [columnId, formattedValue, onExpand, preserveWhitespace],
   );
 
   const hasExpandButton = variant === "text" && canExpand;
@@ -78,6 +79,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
           data-grid-cell-content
           className={cx(S.content, {
             [S.noWrap]: !wrap,
+            [S.preserveWhitespace]: preserveWhitespace,
           })}
           data-testid={contentTestId}
         >

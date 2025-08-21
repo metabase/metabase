@@ -20,6 +20,10 @@
   text-overflow: ellipsis;
 }
 
+.preserveWhitespace {
+  white-space-collapse: break-spaces;
+}
+
 .clickable {
   cursor: pointer;
 }
