@@ -3,6 +3,7 @@
    [clojure.core.memoize :as memoize]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.app-db.core :as mdb]
@@ -180,9 +181,8 @@
 (defn- update-result-with-user-recency
   [weight grouped-recency-results search-result]
   (let [id-model-key ((juxt :id :model) search-result)
-        user-recency-rows (get grouped-recency-results id-model-key)
-        _ (assert (>= 1 (count user-recency-rows))) ; TODO m/index-by and remove
-        user-recency (-> user-recency-rows first (:user_recency 0))
+        user-recency-row (get grouped-recency-results id-model-key)
+        user-recency (:user_recency user-recency-row 0)
         contribution (* weight user-recency)]
     (-> search-result
         (update :score + contribution)
@@ -196,7 +196,7 @@
   (if-not (seq user-recency-results)
     search-results
     (map (let [weight (search.config/weight (:context search-ctx) :user-recency)
-               grouped-recency-results (group-by (juxt :id :model) user-recency-results)]
+               grouped-recency-results (m/index-by (juxt :id :model) user-recency-results)]
            (partial update-result-with-user-recency weight grouped-recency-results))
          search-results)))
 
