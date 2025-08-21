@@ -1,3 +1,4 @@
+import { useWindowEvent } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -173,6 +174,31 @@ export function DetailViewSidesheet({
       return () => clearTimeout(timeout);
     }
   }, [linkCopied]);
+
+  useWindowEvent(
+    "keydown",
+    (event) => {
+      const activeElement = document.activeElement;
+      const isInputFocused =
+        activeElement instanceof HTMLElement &&
+        (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
+          activeElement.isContentEditable);
+
+      if (event.key === "ArrowUp" && !isInputFocused && !isModalOpen) {
+        event.stopPropagation();
+        onPreviousClick?.();
+      }
+
+      if (event.key === "ArrowDown" && !isInputFocused && !isModalOpen) {
+        event.stopPropagation();
+        onNextClick?.();
+      }
+    },
+    {
+      // otherwise modals get closed ealier and isModalOpen evaluates to false in the handler
+      capture: true,
+    },
+  );
 
   if (error || isLoading) {
     return (
