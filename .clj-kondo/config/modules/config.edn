@@ -1928,7 +1928,6 @@
            query-processor
            request
            settings
-           setup
            sync
            task
            task-history
