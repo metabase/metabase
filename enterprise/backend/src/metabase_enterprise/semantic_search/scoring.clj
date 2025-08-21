@@ -148,8 +148,7 @@
 
 (defn- search-doc->values
   [{:keys [id model]}]
-  ;; If we don't :inline these, then H2 can't deduce the types from the query params, so the id is returned
-  ;; as text and you get lexicographic ordering on the results id.
+  ;; :inline otherwise H2 can't deduce the types from the query params and the id is returned as text.
   [[:inline id] [:inline model]])
 
 (defn- user-recency-query
@@ -203,18 +202,26 @@
 (def ^:private recent-views-models
   (into #{} (map name activity-feed/rv-models)))
 
-(defn with-appdb-scores
-  "Add appdb-based scores to `search-results` and re-rank the results based on the new combined scores.
+(comment
+  (require '[clojure.set :as set]
+           '[metabase.search.spec :as search.spec])
+  ;; #{"segment" "database" "action" "indexed-entity"}
+  (set/difference search.spec/search-models recent-views-models))
 
-  This will extract required info like model ids from `search-results`, make a separate appdb query to select
-  additional scorers, combine those with the existing `:score` and `:all-scores` in the `search-results`, then
-  re-order the results by the new combined `:score`."
+(defn with-appdb-scores
+  "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.
+
+  Supported appdb based scorers: `:user-recency` (postgres and H2)
+
+  This will extract required info from `search-results`, make an appdb query to select additional scorers, combine
+  those with the existing `:score` and `:all-scores` in the `search-results`, then re-sort the results by the new
+  combined `:score`."
   [search-ctx search-results]
   ;; filtered-search-results are the search-results that have models that are tracked in the recent_views table,
   ;; i.e. results that might possibly have user-recency info.
   (let [filtered-search-results (filter (comp recent-views-models :model) search-results)]
     (if-not (and (seq filtered-search-results)
-                 ;; The user-recency-query needs to be modified to work with mysql / mariadb
+                 ;; The user-recency-query needs to be modified to work with mysql / mariadb (BOT-360)
                  (#{:postgres :h2} (mdb/db-type)))
       search-results
       (->> (execute-user-recency-query! search-ctx filtered-search-results)
