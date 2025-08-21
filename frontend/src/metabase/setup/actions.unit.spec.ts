@@ -29,16 +29,18 @@ describe("submitUserInvite", () => {
   it("should dispatch createUser with correct parameters", async () => {
     const thunk = submitUserInvite(mockInviteInfo);
     await thunk(dispatch, getState, undefined);
-    expect(mockCreateUser).toHaveBeenCalledWith(mockInviteInfo);
+    expect(mockCreateUser).toHaveBeenCalledWith(
+      expect.objectContaining(mockInviteInfo),
+    );
   });
 
-  it("should handle unset first_name and last_name", async () => {
-    const inviteWithoutNames: InviteInfo = {
+  it("should handle invite params properly", async () => {
+    const incompleteInviteInfo: InviteInfo = {
       email: "test@example.com",
       first_name: null,
       last_name: null,
     };
-    const thunk = submitUserInvite(inviteWithoutNames);
+    const thunk = submitUserInvite(incompleteInviteInfo);
 
     await thunk(dispatch, getState, undefined);
 
@@ -46,6 +48,7 @@ describe("submitUserInvite", () => {
       email: "test@example.com",
       first_name: undefined,
       last_name: undefined,
+      source: "setup",
     });
   });
 });
