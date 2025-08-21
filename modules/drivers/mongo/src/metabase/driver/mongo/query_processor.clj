@@ -156,8 +156,8 @@
   driver-api/dispatch-by-clause-name-or-class)
 
 (defn- col->name-components [{:keys [parent-id], field-name :name, :as _col}]
+  ;; TODO (Cam 8/11/25) -- this should be using `:nfc-path` instead of looking this up the hard way
   (concat
-   ;; TODO (Cam 8/11/25) -- this should be using `:nfc-path` instead of looking this up the hard way
    (when parent-id
      (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
    [field-name]))
@@ -345,7 +345,7 @@ function(bin) {
 
 (defn- truncate-to-resolution [column resolution]
   (mongo-let [parts {:$dateToParts {:timezone (driver-api/results-timezone-id)
-                                    :date column}}]
+                                    :date     column}}]
     {:$dateFromParts (into {:timezone (driver-api/results-timezone-id)}
                            (for [part (concat (take-while (partial not= resolution)
                                                           [:year :month :day :hour :minute :second :millisecond])
@@ -363,7 +363,7 @@ function(bin) {
   [column mode]
   (let [doy    (with-rvalue-temporal-bucketing column :day-of-year)
         dtsofw (binding [driver.common/*start-of-week* (case mode
-                                                         :us :sunday
+                                                         :us       :sunday
                                                          :instance nil)]
                  (days-till-start-of-first-full-week column))]
     {:$toInt {:$add [1 {:$ceil {:$divide [{:$subtract [doy dtsofw]} 7]}}]}}))
@@ -379,40 +379,40 @@ function(bin) {
     (let [supports-dateTrunc? (-> (get-mongo-version)
                                   :semantic-version
                                   (driver.u/semantic-version-gte [5]))
-          column field]
+          column              field]
       (letfn [(truncate [unit]
                 (if supports-dateTrunc?
-                  {:$dateTrunc {:date column
-                                :unit (name unit)
-                                :timezone (driver-api/results-timezone-id)
+                  {:$dateTrunc {:date        column
+                                :unit        (name unit)
+                                :timezone    (driver-api/results-timezone-id)
                                 :startOfWeek (name (driver-api/start-of-week))}}
                   (truncate-to-resolution column unit)))]
         (case unit
-          :default          column
-          :second-of-minute (extract $second column)
-          :minute           (truncate :minute)
-          :minute-of-hour   (extract $minute column)
-          :hour             (truncate :hour)
-          :hour-of-day      (extract $hour column)
-          :day              (truncate :day)
-          :day-of-week      (day-of-week column)
-          :day-of-week-iso  (binding [driver.common/*start-of-week* :monday]
-                              (day-of-week column))
-          :day-of-month     (extract $dayOfMonth column)
-          :day-of-year      (extract $dayOfYear column)
-          :week             (if supports-dateTrunc?
-                              (truncate :week)
-                              (truncate-to-resolution (week column) :day))
-          :week-of-year     (let [week-start (if supports-dateTrunc?
-                                               (truncate :week)
-                                               (week column))]
-                              {:$ceil {$divide [{$dayOfYear week-start}
-                                                7.0]}})
-          :week-of-year-iso (extract :$isoWeek column)
-          :week-of-year-us  (week-of-year column :us)
-          :week-of-year-instance  (week-of-year column :instance)
-          :month            (truncate :month)
-          :month-of-year    (extract $month column)
+          :default               column
+          :second-of-minute      (extract $second column)
+          :minute                (truncate :minute)
+          :minute-of-hour        (extract $minute column)
+          :hour                  (truncate :hour)
+          :hour-of-day           (extract $hour column)
+          :day                   (truncate :day)
+          :day-of-week           (day-of-week column)
+          :day-of-week-iso       (binding [driver.common/*start-of-week* :monday]
+                                   (day-of-week column))
+          :day-of-month          (extract $dayOfMonth column)
+          :day-of-year           (extract $dayOfYear column)
+          :week                  (if supports-dateTrunc?
+                                   (truncate :week)
+                                   (truncate-to-resolution (week column) :day))
+          :week-of-year          (let [week-start (if supports-dateTrunc?
+                                                    (truncate :week)
+                                                    (week column))]
+                                   {:$ceil {$divide [{$dayOfYear week-start}
+                                                     7.0]}})
+          :week-of-year-iso      (extract :$isoWeek column)
+          :week-of-year-us       (week-of-year column :us)
+          :week-of-year-instance (week-of-year column :instance)
+          :month                 (truncate :month)
+          :month-of-year         (extract $month column)
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
@@ -420,10 +420,10 @@ function(bin) {
           (if supports-dateTrunc?
             (truncate :quarter)
             (mongo-let [#_{:clj-kondo/ignore [:unused-binding]} parts {:$dateToParts {:date column :timezone (driver-api/results-timezone-id)}}]
-              {:$dateFromParts {:year  :$$parts.year
-                                :month {$subtract [:$$parts.month
-                                                   {$mod [{$add [:$$parts.month 2]}
-                                                          3]}]}
+              {:$dateFromParts {:year     :$$parts.year
+                                :month    {$subtract [:$$parts.month
+                                                      {$mod [{$add [:$$parts.month 2]}
+                                                             3]}]}
                                 :timezone (driver-api/results-timezone-id)}}))
 
           :quarter-of-year
@@ -437,7 +437,7 @@ function(bin) {
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit join-alias] :as opts} :as field]]
-  (let [join-field (get-join-alias join-alias)
+  (let [join-field   (get-join-alias join-alias)
         source-alias (driver-api/qp.add.source-alias opts)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
@@ -612,7 +612,7 @@ function(bin) {
 (defmethod ->rvalue :substring
   [[_ & [expr idx cnt]]]
   (let [expr-val (->rvalue expr)
-        idx-val {"$subtract" [(->rvalue idx) 1]}]
+        idx-val  {"$subtract" [(->rvalue idx) 1]}]
     {"$substrCP" [expr-val
                   idx-val
                   ;; The last argument is not optional in mongo
@@ -623,14 +623,14 @@ function(bin) {
 (defmethod ->rvalue :/
   [[_ & [_ & divisors :as args]]]
   ;; division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
-  (let [division (reduce
-                  (fn [accum head]
-                    (if accum
-                      {"$divide" [accum head]}
-                      head))
-                  nil
-                  (map ->rvalue args))
-        literal-zero? (some #(and (number? %) (zero? %)) divisors)
+  (let [division               (reduce
+                                (fn [accum head]
+                                  (if accum
+                                    {"$divide" [accum head]}
+                                    head))
+                                nil
+                                (map ->rvalue args))
+        literal-zero?          (some #(and (number? %) (zero? %)) divisors)
         non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) (remove number? divisors))]
     (cond
       literal-zero?
@@ -666,14 +666,14 @@ function(bin) {
 
 (defn- summarize-interval [op date-expr [_ amount unit]]
   {op {:startDate date-expr
-       :unit unit
-       :amount amount}})
+       :unit      unit
+       :amount    amount}})
 
 (defn- summarize-num-or-interval [number-op date-op mongo-expr mbql-expr]
   (cond
-    (interval? mbql-expr) (summarize-interval date-op mongo-expr mbql-expr)
+    (interval? mbql-expr)            (summarize-interval date-op mongo-expr mbql-expr)
     (contains? mongo-expr number-op) (update mongo-expr number-op conj (->rvalue mbql-expr))
-    :else {number-op [mongo-expr (->rvalue mbql-expr)]}))
+    :else                            {number-op [mongo-expr (->rvalue mbql-expr)]}))
 
 (def ^:private num-or-interval-reducer
   {:+ (partial summarize-num-or-interval "$add" "$dateAdd")
@@ -799,9 +799,9 @@ function(bin) {
 (defmethod datetime-diff :month
   [x y _unit]
   {$add [{"$dateDiff" {:startDate x, :endDate y, :unit "month"}}
-           ;; dateDiff counts month boundaries not whole months, so we need to adjust
-           ;; if x<y but x>y in the month calendar then subtract one month
-           ;; if x>y but x<y in the month calendar then add one month
+         ;; dateDiff counts month boundaries not whole months, so we need to adjust
+         ;; if x<y but x>y in the month calendar then subtract one month
+         ;; if x>y but x<y in the month calendar then add one month
          {:$switch {:branches [{:case {:$and [{$lt [x y]}
                                               {$gt [{$dayOfMonth x} {$dayOfMonth y}]}]}
                                 :then -1}
@@ -859,12 +859,12 @@ function(bin) {
     (do
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
               "Wrong prefix or suffix value.")
-      {$regexMatch {"input" (->rvalue field)
-                    "regex" (if (= (first value) :value)
-                              (str prefix (->rvalue value) suffix)
-                              {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
-                                                               (->rvalue value)
-                                                               (when (some? suffix) {$literal suffix})])})
+      {$regexMatch {"input"   (->rvalue field)
+                    "regex"   (if (= (first value) :value)
+                                (str prefix (->rvalue value) suffix)
+                                {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
+                                                                 (->rvalue value)
+                                                                 (when (some? suffix) {$literal suffix})])})
                     "options" (if (get options :case-sensitive true) "" "i")}})))
 
 ;; these are changed to {field {$regex "regex"}} instead of {field #regex} for serialization purposes. When doing
@@ -1059,7 +1059,7 @@ function(bin) {
   (when source-query
     (if-let [native (:native source-query)]
       {:projections (:projections source-query)
-       :query (:query native)}
+       :query       (:query native)}
       (binding [*query* (assoc (select-keys *query* [:database :type])
                                :query source-query)]
         (mbql->native-rec source-query)))))
@@ -1068,35 +1068,35 @@ function(bin) {
                     {:keys [alias condition source-query strategy] :as join}]
   (let [{:keys [projections], pipeline :query, :or {projections [], pipeline []}} (compile-join-source source-query)
         ;; Get the mappings introduced by the source query.
-        source-field-mappings (get-field-mappings source-query projections)
+        source-field-mappings                                                     (get-field-mappings source-query projections)
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
-        own-fields (driver-api/match condition
-                     [:field _ (_ :guard #(not= (:join-alias %) alias))])
+        own-fields                                                                (driver-api/match condition
+                                                                                    [:field _ (_ :guard #(not= (:join-alias %) alias))])
         ;; Map the own fields to a fresh alias and to its rvalue.
-        mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
-                                             ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
-                                             ;; aliases should also contain no . characters (#32182).
-                                             ;; - Spaces are allowed in columns and need to be replaced in let (#52807)
-                                             (str/replace #"[~\. -]" "_")
-                                             (str "__" (next-alias-index)))]
-                               {:field f, :rvalue (->rvalue f), :alias alias}))
-                     own-fields)]
+        mapping                                                                   (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
+                                                                                                               ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
+                                                                                                               ;; aliases should also contain no . characters (#32182).
+                                                                                                               ;; - Spaces are allowed in columns and need to be replaced in let (#52807)
+                                                                                                               (str/replace #"[~\. -]" "_")
+                                                                                                               (str "__" (next-alias-index)))]
+                                                                                                 {:field f, :rvalue (->rvalue f), :alias alias}))
+                                                                                       own-fields)]
     ;; Add the mappings from the source query and the let bindings of $lookup to the field mappings.
     ;; In the join pipeline the let bindings have to referenced with the prefix $$, so we add $ to the name.
     (binding [*field-mappings* (merge *field-mappings*
                                       source-field-mappings
                                       (into {} (map (juxt :field #(str \$ (:alias %)))) mapping))]
-      (let [pipeline (cond-> pipeline
-                       condition (conj {$match (compile-filter (localize-join-alias condition alias))}))
+      (let [pipeline  (cond-> pipeline
+                        condition (conj {$match (compile-filter (localize-join-alias condition alias))}))
             lookup-as (get-join-alias alias)
-            stages [{$lookup {:from (find-source-collection join)
-                              :let (into {} (map (juxt :alias :rvalue)) mapping)
-                              :pipeline pipeline
-                              :as lookup-as}}
-                    {$unwind {:path (str \$ lookup-as)
-                              ;; left and inner joins are supported, the default is left join
-                              :preserveNullAndEmptyArrays (not= strategy :inner-join)}}]]
+            stages    [{$lookup {:from     (find-source-collection join)
+                                 :let      (into {} (map (juxt :alias :rvalue)) mapping)
+                                 :pipeline pipeline
+                                 :as       lookup-as}}
+                       {$unwind {:path                       (str \$ lookup-as)
+                                 ;; left and inner joins are supported, the default is left join
+                                 :preserveNullAndEmptyArrays (not= strategy :inner-join)}}]]
         (-> pipeline-ctx
             (update :projections into projections)
             (update :query into stages))))))
@@ -1166,7 +1166,7 @@ function(bin) {
   (concat
    (for [field-or-expr breakout-fields]
      [(field-alias field-or-expr) (format "$_id.%s" (field-alias field-or-expr))])
-   (for [ag aggregations
+   (for [ag   aggregations
          :let [ag-name (driver-api/aggregation-name (:query *query*) ag)]]
      [ag-name true])))
 
@@ -1211,13 +1211,13 @@ function(bin) {
   [ag]
   (let [[_ expr] (unwrap-named-ag ag)
         sum-expr (name (gensym "$sum-"))]
-    {:group {(subs sum-expr 1) (aggregation->rvalue [:sum expr])}
+    {:group  {(subs sum-expr 1) (aggregation->rvalue [:sum expr])}
      :window {(driver-api/aggregation-name (:query *query*) ag) sum-expr}}))
 
 (defmethod expand-aggregation :cum-count
   [ag]
   (let [count-expr (name (gensym "$count-"))]
-    {:group {(subs count-expr 1) (aggregation->rvalue [:count])}
+    {:group  {(subs count-expr 1) (aggregation->rvalue [:count])}
      :window {(driver-api/aggregation-name (:query *query*) ag) count-expr}}))
 
 (defmethod expand-aggregation :default
@@ -1247,7 +1247,7 @@ function(bin) {
   ([aggr-expr parent-name aggregations-seen]
    (if (and (vector? aggr-expr) (seq aggr-expr))
      (let [[op & args] aggr-expr
-           seen (get aggregations-seen aggr-expr)]
+           seen        (get aggregations-seen aggr-expr)]
        (cond
          seen
          [(str \$ seen) aggregations-seen]
@@ -1257,15 +1257,15 @@ function(bin) {
 
          (aggregation-op op)
          (let [aliases-taken (set (vals aggregations-seen))
-               aggr-name (driver-api/aggregation-name (:query *query*) aggr-expr)
+               aggr-name     (driver-api/aggregation-name (:query *query*) aggr-expr)
                desired-alias (str parent-name "~" aggr-name)
                ;; find a free alias by appending increasing integers
                ;; to the desired alias
-               aggr-name (some (fn [suffix]
-                                 (let [alias (str desired-alias suffix)]
-                                   (when-not (aliases-taken alias)
-                                     alias)))
-                               (cons "" (iterate inc 1)))]
+               aggr-name     (some (fn [suffix]
+                                     (let [alias (str desired-alias suffix)]
+                                       (when-not (aliases-taken alias)
+                                         alias)))
+                                   (cons "" (iterate inc 1)))]
            [(str \$ aggr-name) (assoc aggregations-seen aggr-expr aggr-name)])
 
          :else
@@ -1323,18 +1323,18 @@ function(bin) {
   fields generated by the groups. Each map in the `:post` vector may (and
   usually does) refer to the fields introduced by the preceding maps."
   [aggr-expr]
-  (let [aggr-name (driver-api/aggregation-name (:query *query*) aggr-expr)
+  (let [aggr-name                      (driver-api/aggregation-name (:query *query*) aggr-expr)
         [aggr-expr' aggregations-seen] (->> (extract-aggregations aggr-expr aggr-name)
                                             (simplify-extracted-aggregations aggr-name)
                                             adjust-distinct-aggregations)
 
         raggr-expr (->rvalue aggr-expr')
-        expandeds (map (fn [[aggr name]]
-                         (expand-aggregation [:aggregation-options aggr {:name name}]))
-                       aggregations-seen)]
-    {:group (into {} (map :group) expandeds)
-     :post (cond-> [(into {} (mapcat :post) expandeds)]
-             (not= raggr-expr (str \$ aggr-name)) (conj {aggr-name raggr-expr}))
+        expandeds  (map (fn [[aggr name]]
+                          (expand-aggregation [:aggregation-options aggr {:name name}]))
+                        aggregations-seen)]
+    {:group  (into {} (map :group) expandeds)
+     :post   (cond-> [(into {} (mapcat :post) expandeds)]
+               (not= raggr-expr (str \$ aggr-name)) (conj {aggr-name raggr-expr}))
      :window (into {} (map :window) expandeds)}))
 
 (defn- order-postprocessing
@@ -1355,14 +1355,14 @@ function(bin) {
    (ordered-map/ordered-map)
    (for [[direction field] order-by]
      [(->lvalue field) (case direction
-                         :asc   1
+                         :asc  1
                          :desc -1)])))
 
 (defn- window-output-clause
   "Takes a pair of [output-name input-name] and generates an output clause suitable for
   including in a `$setWindowFields` output block."
   [input-name]
-  {$sum input-name
+  {$sum     input-name
    "window" {"documents" ["unbounded" "current"]}})
 
 (defn- sort-lookup
@@ -1387,33 +1387,33 @@ function(bin) {
   (let [finest-temporal-index
         (driver-api/finest-temporal-breakout-index breakouts 2)
 
-        sort-index (or finest-temporal-index
-                       (dec (count breakouts)))
-        sort-name (first (nth (seq id) sort-index))
+        sort-index   (or finest-temporal-index
+                         (dec (count breakouts)))
+        sort-name    (first (nth (seq id) sort-index))
         default-sort {(sort-lookup id sort-name) 1}
-        user-sort (when order-by
-                    (binding [*field-mappings*
-                              (merge *field-mappings*
-                                     (into {} (map (juxt identity field-alias)) breakouts))]
-                      (order-by->$sort order-by)))
-        sort-expr (or
+        user-sort    (when order-by
+                       (binding [*field-mappings*
+                                 (merge *field-mappings*
+                                        (into {} (map (juxt identity field-alias)) breakouts))]
+                         (order-by->$sort order-by)))
+        sort-expr    (or
                    ;; if there is only one breakout, always use the user's sort order
-                   (when (= (count id) 1)
-                     (window-sort id user-sort))
+                      (when (= (count id) 1)
+                        (window-sort id user-sort))
 
                    ;; if we don't have a temporal breakout, sort by the last breakout, but
                    ;; use the user's sort direction if specified
-                   (when-not finest-temporal-index
-                     (->> user-sort
-                          (filter #(= sort-name (first %)))
-                          (window-sort id)))
+                      (when-not finest-temporal-index
+                        (->> user-sort
+                             (filter #(= sort-name (first %)))
+                             (window-sort id)))
 
-                   default-sort)
+                      default-sort)
 
         partition-expr (into {}
                              (map (fn [[name]] [name (str "$_id." name)]))
                              (m/remove-nth sort-index id))]
-    {:sort-expr sort-expr
+    {:sort-expr      sort-expr
      :partition-expr partition-expr}))
 
 (defn- window-accumulators
@@ -1441,10 +1441,10 @@ function(bin) {
    Meanwhile, cumulative aggregations cannot be done in either a `$group` or a `$addFields` stage
    and instead need their own `$setWindowFields` stage."
   [id breakouts aggregations order-by]
-  (let [expanded-ags (map expand-aggregations aggregations)
-        group-ags    (mapcat :group expanded-ags)
-        post-ags     (order-postprocessing (map :post expanded-ags))
-        window-values   (into {} (map :window) expanded-ags)]
+  (let [expanded-ags  (map expand-aggregations aggregations)
+        group-ags     (mapcat :group expanded-ags)
+        post-ags      (order-postprocessing (map :post expanded-ags))
+        window-values (into {} (map :window) expanded-ags)]
     (into [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}]
           cat
           [(when (seq window-values)
@@ -1470,6 +1470,35 @@ function(bin) {
    (ordered-map/ordered-map)
    fields))
 
+;; Starting with MongoDB 4.4, the database enforces stricter rules about field path collisions in $project stages.
+;; Specifically, you cannot:
+;;  - project a document and one of its child fields in the same projection
+;;  - suppress a document and project one of its child fields in the same projection
+;;
+;; When users query nest fields within MongoDB's special "_id" field (e.g., grouping by _id.widgetType),
+;; we must not generate projections like:
+;;   {$project: {"_id": false, "_id.widgetType": "$_id.widgetType"}}
+;;
+;; Why we care:
+;;; 1. MongoDB documents can have compound _id fields: {_id: {widgetType: "button", userId: 123}}
+;;;    - in fact, it is encouraged as best practice in Mongoland
+;; 2. Users want to group/breakout by these nested fields in Metabase
+;; 3. We typically wish to suppress _id to avoid cluttering results
+;; 4. But suppressing _id while projecting _id.widgetType creates the collision error
+
+(defn- build-projections
+  [projected-fields]
+  ;; A case could be made for writing a nested projection into `_id`, but in my tests
+  ;; it doesn't make a difference to Mongo and it's a marginal difference in our codebase.
+  ;; See `projection-syntax-efficiency-test`
+  (let [projects-id-subfields? (some
+                                (fn [[field-name _]]
+                                  (str/starts-with? field-name "_id."))
+                                projected-fields)]
+    (if projects-id-subfields?
+      (into (ordered-map/ordered-map) projected-fields)
+      (into (ordered-map/ordered-map "_id" false) projected-fields))))
+
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
   [projected-fields breakout-fields aggregations order-by]
@@ -1485,9 +1514,7 @@ function(bin) {
     [;; Sort by _id (group)
      {$sort {"_id" 1}}
      ;; now project back to the fields we expect
-     {$project (into
-                (ordered-map/ordered-map "_id" false)
-                projected-fields)}]]))
+     {$project (build-projections projected-fields)}]]))
 
 (defn- handle-breakout+aggregation
   "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for
@@ -1551,18 +1578,18 @@ function(bin) {
             fields)))
 
 (defn- handle-order-by [{:keys [order-by breakout aggregation]} pipeline-ctx]
-  (let [breakout-fields (set breakout)
-        sort-fields (for [field (remove-parent-fields (map second order-by))
-                          ;; We only care about expressions and bucketing not added as breakout
-                          :when (and (not (contains? breakout-fields field))
-                                     (let [dispatch-value
-                                           (driver-api/dispatch-by-clause-name-or-class field)]
-                                       (or (= :expression dispatch-value)
-                                           (and (= :field dispatch-value)
-                                                (let [[_ _ {:keys [temporal-unit]}] field]
-                                                  (and (some? temporal-unit)
-                                                       (not= temporal-unit :default)))))))]
-                      [(->lvalue field) (->rvalue field)])
+  (let [breakout-fields         (set breakout)
+        sort-fields             (for [field (remove-parent-fields (map second order-by))
+                                      ;; We only care about expressions and bucketing not added as breakout
+                                      :when (and (not (contains? breakout-fields field))
+                                                 (let [dispatch-value
+                                                       (driver-api/dispatch-by-clause-name-or-class field)]
+                                                   (or (= :expression dispatch-value)
+                                                       (and (= :field dispatch-value)
+                                                            (let [[_ _ {:keys [temporal-unit]}] field]
+                                                              (and (some? temporal-unit)
+                                                                   (not= temporal-unit :default)))))))]
+                                  [(->lvalue field) (->rvalue field)])
         ;; We have already compiled breakout fields into the document.
         breakout-field-mappings (into {} (map (juxt identity field-alias)) breakout)
         ;; We have already sorted ascending by the breakout fields so we don't have to repeat the
@@ -1603,14 +1630,11 @@ function(bin) {
     (let [new-projections (for [field (remove-child-fields fields)]
                             [(field-alias field) (->rvalue field)])]
       (-> pipeline-ctx
-          ;; we can't ask mongo for both a parent field and its child at the same time, because mongo will throw an
+          ;; We can't ask mongo for both a parent field and its child at the same time, because mongo will throw an
           ;; error. It's also unnecessary, because the parent includes the child. However, we need to list all fields
           ;; we think we want in :projections so that we know to look for them all once we get data back.
           (assoc :projections (map field-alias fields))
-          ;; add project _id = false to keep _id from getting automatically returned unless explicitly specified
-          (update :query conj {$project (into
-                                         (ordered-map/ordered-map "_id" false)
-                                         new-projections)})))))
+          (update :query conj {$project (build-projections new-projections)})))))
 
 ;;; ----------------------------------------------------- limit ------------------------------------------------------
 
@@ -1776,12 +1800,12 @@ function(bin) {
   "Compile an MBQL query."
   [query]
   (let [query (update query :query preprocess)]
-    (binding [*query* query
+    (binding [*query*            query
               *next-alias-index* (volatile! 0)]
       (let [source-table-name (if-let [source-table-id (driver-api/query->source-table-id query)]
                                 (:name (driver-api/table (driver-api/metadata-provider) source-table-id))
                                 (query->collection-name query))
-            compiled (mbql->native-rec (:query query))]
+            compiled          (mbql->native-rec (:query query))]
         (log-aggregation-pipeline (:query compiled))
         (assoc compiled
                :collection source-table-name
