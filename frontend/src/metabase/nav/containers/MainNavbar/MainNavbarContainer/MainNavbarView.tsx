@@ -12,6 +12,7 @@ import {
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
+import CS from "metabase/css/core/index.css";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -22,6 +23,7 @@ import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import {
   ActionIcon,
+  Box,
   Flex,
   Icon,
   type IconName,
@@ -88,6 +90,7 @@ export function MainNavbarView({
   );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
+  const showEmbeddingHub = true; // Feature flag - enabled by default for now
 
   const [
     addDataModalOpened,
@@ -151,6 +154,25 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
+
+            {showEmbeddingHub && (
+              <PaddedSidebarLink
+                isSelected={nonEntityItem?.url === "/embedding-hub"}
+                icon={
+                  <Box
+                    w="10px"
+                    h="10px"
+                    bg="brand"
+                    mx="7px"
+                    className={CS.rounded}
+                  />
+                }
+                onClick={onItemSelect}
+                url="/embedding-hub"
+              >
+                {t`Embedding Hub`}
+              </PaddedSidebarLink>
+            )}
           </SidebarSection>
 
           {shouldDisplayGettingStarted && (

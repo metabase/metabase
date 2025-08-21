@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent, ReactElement, ReactNode } from "react";
 import { isValidElement, useCallback, useMemo } from "react";
 import _ from "underscore";
 
@@ -19,7 +19,7 @@ import {
 interface SidebarLinkProps {
   children: string;
   url?: string;
-  icon?: IconName | IconProps;
+  icon?: IconName | IconProps | ReactElement;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
   left?: ReactNode;
