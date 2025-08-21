@@ -306,6 +306,46 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.findByText("hourly").should("not.exist");
       });
     });
+
+    it("should update tags on all transforms when deleting them from another transform", () => {
+      createMbqlTransform({ name: "Transform B" });
+      createMbqlTransform({
+        name: "Transform A",
+        visitTransform: true,
+      });
+
+      cy.log("Add new tag to transform A");
+      getTagsInput().type("New tag");
+      H.popover().findByText("New tag").click();
+      cy.wait("@createTag");
+      H.popover().findByText("New tag").should("be.visible");
+
+      cy.log("Navigate to transform B");
+      cy.findByTestId("admin-layout-sidebar").findByText("Transforms").click();
+      H.main().findByText("Transform B").click();
+
+      cy.log("Remove the new tag from transform B");
+      getTagsInput().click();
+      H.popover()
+        .findByRole("option", { name: "New tag" })
+        .findByLabelText("Delete tag")
+        .click({ force: true });
+      H.modal().within(() => {
+        cy.button("Delete tag").click();
+        cy.wait("@deleteTag");
+      });
+
+      cy.log("Navigate to transform A");
+      cy.findByTestId("admin-layout-sidebar").findByText("Transforms").click();
+      H.main().findByText("Transform A").click();
+
+      cy.log("The tag should be gone");
+      getTagsInput()
+        .parent()
+        // Select the tag pill
+        .get("[data-with-remove=true]")
+        .should("not.exist");
+    });
   });
 
   describe("targets", () => {
@@ -1189,18 +1229,20 @@ function createMbqlTransform({
   targetTable = TARGET_TABLE,
   targetSchema = TARGET_SCHEMA,
   tagIds,
+  name = "MBQL transform",
   visitTransform,
 }: {
   sourceTable?: string;
   targetTable?: string;
   targetSchema?: string;
   tagIds?: TransformTagId[];
+  name?: string;
   visitTransform?: boolean;
 } = {}) {
-  H.getTableId({ name: sourceTable }).then((tableId) => {
-    H.createTransform(
+  return H.getTableId({ name: sourceTable }).then((tableId) => {
+    return H.createTransform(
       {
-        name: "MBQL transform",
+        name,
         source: {
           type: "query",
           query: {
