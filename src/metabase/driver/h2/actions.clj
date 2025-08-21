@@ -88,7 +88,7 @@
   (when-let [[_match column table]
              (re-find #"Referential integrity constraint violation: \"[^\:]+: [^\s]+ FOREIGN KEY\(([^\s]+)\) REFERENCES ([^(]+)" error-message)]
     (let [column (db-identifier->name column)
-          table  (-> table (str/replace #"^PUBLIC\." "") (str/replace "\"\"" "") str/lower-case)]
+          table  (-> table (str/replace #"^PUBLIC\." "") (str/replace "\"\"" "") u/lower-case-en)]
       (merge {:type error-type}
              (case action-type
                (:table.row/create :model.row/create)
