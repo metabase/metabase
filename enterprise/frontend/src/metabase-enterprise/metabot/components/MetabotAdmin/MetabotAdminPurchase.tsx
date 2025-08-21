@@ -141,8 +141,7 @@ const MetabotAdminSettingUpModal = ({
 );
 
 export const MetabotAdminPurchase = () => {
-  const [showMetabotAdminSettingUpModal, setMetabotAdminSettingUpModal] =
-    useState(false);
+  const [showSettingUpModal, setSettingUpModal] = useState(false);
   const [purchaseMetabotAddOn] = usePurchaseMetabotCloudAddOnMutation();
   const onSubmit = useCallback(
     async ({ terms_of_service }: MetabotPurchaseFormFields) => {
@@ -150,7 +149,7 @@ export const MetabotAdminPurchase = () => {
         terms_of_service,
       })
         .unwrap()
-        .then(() => setMetabotAdminSettingUpModal(true))
+        .then(() => setSettingUpModal(true))
         .catch((error: unknown) => {
           isFetchBaseQueryError(error) && handleFieldError(error.data);
         });
@@ -231,8 +230,8 @@ export const MetabotAdminPurchase = () => {
         </FormProvider>
       </SettingsSection>
       <MetabotAdminSettingUpModal
-        opened={showMetabotAdminSettingUpModal}
-        onClose={() => setMetabotAdminSettingUpModal(false)}
+        opened={showSettingUpModal}
+        onClose={() => setSettingUpModal(false)}
       />
     </SettingsPageWrapper>
   );
