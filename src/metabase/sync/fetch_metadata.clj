@@ -113,8 +113,6 @@
                                 ;; In version 52 we'll remove [[driver/describe-table-fks]]
                                 ;; and we'll just use [[driver/describe-fks]] here
                                 describe-fks-using-describe-table-fks)]
-          (println "run-mode: " metabase.config.core/run-mode)
-          (println "instrument-always: " (:instrument/always (meta *ns*)))
           (cond->> (describe-fks-fn driver database args)
             ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
             (mu.fn/instrument-ns? *ns*)
