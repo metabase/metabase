@@ -1,6 +1,6 @@
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-
 const { H } = cy;
+
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > native > snippet tags", () => {
   beforeEach(() => {
@@ -23,14 +23,14 @@ describe("scenarios > native > snippet tags", () => {
       cy.button("Save").click();
     });
 
-    cy.log("assert that the snippet was inserted");
+    cy.log("verify that the snippet was inserted");
     H.NativeEditor.get().should(
       "contain",
       "select id from products where {{snippet: variable-snippet}}",
     );
 
-    cy.log("assert that the parameter can be used");
-    H.filterWidget().findByPlaceholderText("Category").type("Widget");
+    cy.log("verify that the query can be run");
+    getEditorTopBar().findByPlaceholderText("Category").type("Widget");
     H.runNativeQuery();
     H.assertQueryBuilderRowCount(54);
   });
@@ -50,13 +50,13 @@ describe("scenarios > native > snippet tags", () => {
       cy.button("Save").click();
     });
 
-    cy.log("assert that the snippet was inserted");
+    cy.log("verify that the snippet was inserted");
     H.NativeEditor.get().should(
       "contain",
       "select * from {{snippet: card-snippet}}",
     );
 
-    cy.log("assert that the query can be run");
+    cy.log("verify that the query can be run");
     H.runNativeQuery();
     H.tableInteractive().should("be.visible");
   });
@@ -88,7 +88,7 @@ describe("scenarios > native > snippet tags", () => {
       cy.button("Save").click();
     });
 
-    cy.log("assert that the snippet can used");
+    cy.log("verify that the snippet can used");
     H.NativeEditor.clear();
     H.NativeEditor.type("select id from products where {{snippet: snippet2}}");
     getEditorTopBar().findByLabelText("Category").type("Gizmo");
@@ -105,10 +105,34 @@ describe("scenarios > native > snippet tags", () => {
     getEditorVisibilityToggler().click();
     H.NativeEditor.type(" and category = {{filter}}");
 
-    cy.log("assert that the parameter can be used");
-    H.filterWidget().findByPlaceholderText("Filter").type("Widget");
+    cy.log("verify that the query can be run");
+    getEditorTopBar().findByPlaceholderText("Filter").type("Widget");
     H.runNativeQuery();
     H.assertQueryBuilderRowCount(54);
+  });
+
+  it("should be able to use snippets where tags overlap", () => {
+    cy.log("create snippets with overlapping tags");
+    H.createSnippet({
+      name: "snippet1",
+      content: "category = {{category1}} or category = {{category2}}",
+    });
+    H.createSnippet({
+      name: "snippet2",
+      content: "category = {{category2}}",
+    });
+
+    cy.log("use both snippets in a query");
+    H.startNewNativeQuestion();
+    H.NativeEditor.type(
+      "select id from products where {{snippet: snippet1}} or {{snippet: snippet2}}",
+    );
+
+    cy.log("verify that the query can be run");
+    getEditorTopBar().findByPlaceholderText("Category1").type("Widget");
+    getEditorTopBar().findByPlaceholderText("Category2").type("Gadget");
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(107);
   });
 
   it("should be able to update a snippet and change tags", () => {
@@ -156,7 +180,7 @@ describe("scenarios > native > snippet tags", () => {
     H.popover().findByText("Number").click();
 
     cy.log("verify that the parameter can be used");
-    H.filterWidget().findByPlaceholderText("Filter").type("10");
+    getEditorTopBar().findByPlaceholderText("Filter").type("10");
     H.runNativeQuery();
     H.assertQueryBuilderRowCount(1);
   });
@@ -195,7 +219,7 @@ describe("scenarios > native > snippet tags", () => {
     });
 
     cy.log("verify that the parameter can be used");
-    H.filterWidget().findByPlaceholderText("Filter").type("Widget");
+    getEditorTopBar().findByPlaceholderText("Filter").type("Widget");
     H.queryBuilderHeader().icon("play").click();
     H.assertQueryBuilderRowCount(54);
   });
