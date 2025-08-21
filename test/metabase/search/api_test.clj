@@ -18,6 +18,7 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -35,7 +36,8 @@
 
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
-(use-fixtures :each (fn [thunk] (search.tu/with-new-search-if-available (thunk))))
+(use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
+                                  (search.tu/with-new-search-if-available (thunk)))))
 
 (def ^:private default-search-row
   {:archived                   false
@@ -457,7 +459,7 @@
                    :model/DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}
                    :model/DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}]
       ;; We do not synchronously update dashboard count
-      (search/reindex!)
+      (search/reindex! {:async? false :in-place? true})
       (is (= (sort-by :dashboardcard_count (cleaned-results dashboard-count-results))
              (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count")))))))
 
@@ -650,7 +652,7 @@
                (search-request-data :crowberto :q "test"))))))
 
   ;; TODO need to isolate these two tests properly, they're sharing  temp index
-  (search/reindex!)
+  (search/reindex! {:async? false :in-place? true})
 
   (testing "Basic search, should find 1 of each entity type and include bookmarks when available"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
@@ -1383,7 +1385,7 @@
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
 
        ;; TODO investigate why the actions don't get indexed automatically
-        (search/reindex!)
+        (search/reindex! {:async? false :in-place? true})
 
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]

@@ -48,16 +48,15 @@ ${getEmbedCustomElementSnippet({ settings, experience })}`;
 export function getEmbedCustomElementSnippet({
   settings,
   experience,
-  id,
 }: {
   settings: SdkIframeEmbedSetupSettings;
   experience: SdkIframeEmbedSetupExperience;
-  id?: string;
 }): string {
   const elementName = match(experience)
     .with("dashboard", () => "metabase-dashboard")
     .with("chart", () => "metabase-question")
     .with("exploration", () => "metabase-question")
+    .with("browser", () => "metabase-browser")
     .exhaustive();
 
   const settingsWithExplorationOverride = match(experience)
@@ -77,7 +76,7 @@ export function getEmbedCustomElementSnippet({
     ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 
-  return `<${elementName} ${attributes} ${id ? `id="${id}"` : ""}></${elementName}>`;
+  return `<${elementName} ${attributes}></${elementName}>`;
 }
 
 // Convert camelCase keys to lower-dash-case for web components

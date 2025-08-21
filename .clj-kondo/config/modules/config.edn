@@ -606,6 +606,7 @@
            metabase.lib.schema.actions
            metabase.lib.schema.binning
            metabase.lib.schema.common
+           metabase.lib.schema.constraints
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
            metabase.lib.schema.expression.window
@@ -616,9 +617,11 @@
            metabase.lib.schema.mbql-clause
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
+           metabase.lib.schema.middleware-options
            metabase.lib.schema.order-by
            metabase.lib.schema.parameter
            metabase.lib.schema.ref
+           metabase.lib.schema.settings
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.util
