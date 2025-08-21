@@ -32,9 +32,9 @@
                               semantic.db.migration.impl/migrate-schema! (constantly nil)]
                   (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-search.db.migration :info]]
                     (semantic.db.connection/with-migrate-tx [tx]
-                      (semantic.db.migration/maybe-migrate! tx nil)
+                      (semantic.db.migration/maybe-migrate! tx nil "migration")
                       {:messages (messages)
-                       :db-version (@#'semantic.db.migration/db-version tx)}))))]
+                       :db-version (@#'semantic.db.migration/db-version tx "migration")}))))]
         (testing "Migration up works"
           (u/prog1 (migrate-and-get-db-version 130)
             (is (= 130 (:db-version <>)))

@@ -73,6 +73,7 @@
    :metadata-table-name   "index_metadata"
    :control-table-name    "index_control"
    :gate-table-name       "index_gate"
+   :migration-table-name  "migration"
    :index-table-qualifier "%s"})
 
 (defn- create-index-metadata-table-if-not-exists-sql [index-metadata]

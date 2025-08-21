@@ -95,9 +95,9 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn ensure-no-migration-table-fixture [f]
-  (semantic.db.migration/drop-migration-table! db)
+  (semantic.db.migration/drop-migration-table! db "migration")
   (f)
-  (semantic.db.migration/drop-migration-table! db))
+  (semantic.db.migration/drop-migration-table! db "migration"))
 
 (def db
   "Proxies the semantic.db.datasource/data-source, avoids the deref and prettifies a little"
@@ -157,6 +157,7 @@
    :metadata-table-name   "mock_index_metadata"
    :control-table-name    "mock_index_control"
    :gate-table-name       "mock_index_gate"
+   :migration-table-name  "mock_migration"
    :index-table-qualifier "_%s"})
 
 (defn unique-index-metadata
@@ -167,6 +168,7 @@
      :metadata-table-name   (format fmt "metadata")
      :control-table-name    (format fmt "control")
      :gate-table-name       (format fmt "gate")
+     :migration-table-name  (format fmt "migration")
      :index-table-qualifier fmt}))
 
 (def mock-index
@@ -372,7 +374,7 @@
             (get-metadata-rows pgvector index-metadata))]
     (semantic.index/drop-index-table! pgvector {:table-name table_name}))
   (semantic.index-metadata/drop-tables-if-exists! pgvector index-metadata)
-  (semantic.db.migration/drop-migration-table! pgvector))
+  (semantic.db.migration/drop-migration-table! pgvector (:migration-table-name index-metadata)))
 
 (defn get-table-names [pgvector]
   (->> ["select table_name from information_schema.tables"]
