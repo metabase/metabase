@@ -35,7 +35,6 @@
     (with-open [index-ref ^Closeable (sut pgvector index-metadata model1)]
       (testing "sets up active index for model1"
         (let [active-state (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
-          (is (:index-created? (meta @index-ref)))
           (is (= @index-ref (:index active-state)))
           (is (= model1 (:embedding-model (:index active-state))))
           (is (= (:model-name model1) (:model_name (:metadata-row active-state))))
@@ -47,7 +46,6 @@
         (let [new-index    @(sut pgvector index-metadata model2)
               active-state (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
           (is (= model2 (:embedding-model new-index)))
-          (is (:index-created? (meta new-index)))
           (is (= new-index (:index active-state))))
         (testing "model1 index still exists"
           (is (=? {:index              {:embedding-model model1}

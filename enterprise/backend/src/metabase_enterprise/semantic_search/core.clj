@@ -109,8 +109,7 @@
         (do
           (log/debug "Forcing early reindex because existing index is old")
           (search.engine/reindex! :search.engine/semantic {}))
-        (when (:index-created? (meta index))
-          (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents))))
+        (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)))
     nil))
 
 ;; TODO: force a new index

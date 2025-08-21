@@ -29,9 +29,6 @@
   (require '[metabase-enterprise.semantic-search.embedding :as semantic.embedding])
   (def embedding-model (semantic.embedding/get-configured-model)))
 
-(defn- mark-created [index]
-  (vary-meta index assoc :index-created? true))
-
 (defn determine-target-index
   "Determines which index should be active for the given embedding model.
 
@@ -61,9 +58,7 @@
     (semantic.index/create-index-table-if-not-exists! tx index)
     (let [index
           (if (not (:id index))
-            (->> index
-                 (semantic.index-metadata/record-new-index-table! tx index-metadata)
-                 (mark-created))
+            (semantic.index-metadata/record-new-index-table! tx index-metadata index)
             index)]
       (semantic.index-metadata/activate-index! tx index-metadata (:id index))
       index)))
