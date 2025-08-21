@@ -131,12 +131,12 @@
       (semantic.index-metadata/activate-index! pgvector index-metadata index-id)))
   (run! #(add-index! pgvector index-metadata %) inactive))
 
-(deftest find-best-index!-test
+(deftest find-compatible-index!-test
   (let [pgvector         semantic.tu/db
         embedding-model1 semantic.tu/mock-embedding-model
         embedding-model2 (assoc semantic.tu/mock-embedding-model
                                 :model-name "mock2")
-        sut              semantic.index-metadata/find-best-index!
+        sut              semantic.index-metadata/find-compatible-index!
         ;; warning: the setup-scenario can currently only set up a happy path
         ;; other variables include:
         ;; - table not existing
@@ -171,24 +171,33 @@
               (cond
                 is-active
                 (testing "is already active"
-                  (is (= {:index              (index' model)
-                          :index-table-exists true
-                          :metadata-row       (model-row model)
-                          :active             true}
-                         (sut' model))))
+                  (is (=? {:index              (index' model)
+                           :index-table-exists true
+                           :metadata-row       (model-row model)
+                           :active             true}
+                          (sut' model))))
                 is-inactive
                 (testing "is inactive"
-                  (is (= {:index              (index' model)
-                          :index-table-exists true
-                          :metadata-row       (model-row model)
-                          :active             false}
-                         (sut' model))))
+                  (is (=? {:index              (index' model)
+                           :index-table-exists true
+                           :metadata-row       (model-row model)
+                           :active             false}
+                          (sut' model))))
                 :else
                 (testing "no metadata"
-                  (is (= {:index              (index' model)
-                          :index-table-exists false
-                          :active             false}
-                         (sut' model))))))))))))
+                  (is (nil? (sut' model))))))))))))
+
+(deftest create-new-index-spec-test
+  (let [pgvector         semantic.tu/db
+        index-metadata   (semantic.tu/unique-index-metadata)
+        embedding-model  semantic.tu/mock-embedding-model
+        sut              semantic.index-metadata/create-new-index-spec]
+    (testing "creates new index spec for embedding model"
+      (let [result (sut pgvector index-metadata embedding-model)]
+        (is (=? {:index              {:embedding-model embedding-model}
+                 :index-table-exists false
+                 :active             false}
+                result))))))
 
 (deftest record-new-index-table!-test
   (let [pgvector        semantic.tu/db
