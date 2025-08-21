@@ -54,14 +54,20 @@ const isFieldError = (error: unknown): error is IFieldError =>
         typeof error.errors.terms_of_service === "string")));
 
 export const handleFieldError = (error: unknown) => {
-  if (isFieldError(error)) {
-    if (typeof error === "string") {
-      throw { data: { errors: { terms_of_service: error } } };
-    } else if ("message" in error) {
-      throw { data: { errors: { terms_of_service: error.message } } };
-    } else if ("errors" in error) {
-      throw { data: error };
-    }
+  if (!isFieldError(error)) {
+    return;
+  }
+
+  if (typeof error === "string") {
+    throw { data: { errors: { terms_of_service: error } } };
+  }
+
+  if ("message" in error) {
+    throw { data: { errors: { terms_of_service: error.message } } };
+  }
+
+  if ("errors" in error) {
+    throw { data: error };
   }
 };
 
