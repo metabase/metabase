@@ -94,10 +94,10 @@
    "acquireRetryAttempts"         (if driver-api/is-test? 1 0)
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
-   ;; In the case of serverless databases, we don't want to periodically 
+   ;; In the case of serverless databases, we don't want to periodically
    ;; wake them up to keep a connection open (#58373).
    "minPoolSize"                  0
-   "initialPoolSize"              0 
+   "initialPoolSize"              0
    "maxPoolSize"                  (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
@@ -147,12 +147,12 @@
    ;; stack trace, but clj-memory-meter reports ~800 bytes for a fresh Exception created at the REPL (which presumably
    ;; has a smaller-than-average stack).
    "debugUnreturnedConnectionStackTraces" (u/prog1 (driver.settings/jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
-                                            (when (and <> (not (driver-api/level-enabled? 'com.mchange Level/INFO)))
-                                              (log/warn "jdbc-data-warehouse-debug-unreturned-connection-stack-traces"
-                                                        "is enabled, but INFO logging is not enabled for the"
-                                                        "com.mchange namespace. You must raise the log level for"
-                                                        "com.mchange to INFO via a custom log4j config in order to"
-                                                        "see stacktraces in the logs.")))
+                                                   (when (and <> (not (driver-api/level-enabled? 'com.mchange Level/INFO)))
+                                                     (log/warn "jdbc-data-warehouse-debug-unreturned-connection-stack-traces"
+                                                               "is enabled, but INFO logging is not enabled for the"
+                                                               "com.mchange namespace. You must raise the log level for"
+                                                               "com.mchange to INFO via a custom log4j config in order to"
+                                                               "see stacktraces in the logs.")))
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"
@@ -325,7 +325,7 @@
           (get-fn database-id false)
           ;; create a new pool and add it to our cache, then return it
           (u/prog1 (create-pool! db)
-            (set-pool! database-id <> db))))))
+                   (set-pool! database-id <> db))))))
 
     ;; already a `clojure.java.jdbc` spec map
     (map? db-or-id-or-spec)
