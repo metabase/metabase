@@ -202,7 +202,7 @@ API keys should only be used for testing with trusted people. Anyone with access
 
 ### Set up SSO
 
-SSO is required to embed in a domain other than localhost. You can use JWT or SAML SSO. To configure SAML, check out [Authenticating with SAML](./sdk/authentication#authenticating-with-saml-sso). To configure JWT, follow the steps below.
+SSO is required to embed in a domain other than localhost. You can use JWT or SAML SSO. To configure SAML, check out [Authenticating with SAML](./sdk/authentication.md#authenticating-with-saml-sso). To configure JWT, follow the steps below.
 
 #### 1. In Metabase, configure [JWT SSO](../people-and-groups/authenticating-with-jwt.md).
 
