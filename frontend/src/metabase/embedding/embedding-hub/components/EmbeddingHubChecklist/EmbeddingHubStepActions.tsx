@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 import { Button, Group } from "metabase/ui";
 
-import type { EmbeddingHubStep } from "../../types";
+import type { EmbeddingHubModalToTrigger, EmbeddingHubStep } from "../../types";
 import { DocsLink } from "../DocsLink";
 
 export const EmbeddingHubStepActions = ({
@@ -10,7 +10,7 @@ export const EmbeddingHubStepActions = ({
   onModalAction,
 }: {
   step: EmbeddingHubStep;
-  onModalAction?: (modalType: "add-data" | "new-dashboard") => void;
+  onModalAction?: (modal: EmbeddingHubModalToTrigger) => void;
 }) => {
   if (!step.actions?.length) {
     return null;

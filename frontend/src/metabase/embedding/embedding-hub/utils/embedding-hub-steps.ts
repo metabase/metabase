@@ -36,8 +36,13 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     actions: [
       {
         label: t`Add data`,
-        modal: "add-data",
+        modal: { type: "add-data", initialTab: "db" },
         variant: "outline",
+      },
+      {
+        label: t`Upload a CSV`,
+        modal: { type: "add-data", initialTab: "csv" },
+        variant: "subtle",
       },
     ],
   };
@@ -62,7 +67,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       },
       {
         label: t`Build your own`,
-        modal: "new-dashboard",
+        modal: { type: "new-dashboard" },
         variant: "subtle",
       },
     ],
