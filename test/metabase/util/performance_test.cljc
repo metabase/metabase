@@ -1,6 +1,6 @@
 (ns metabase.util.performance-test
   (:require
-   [clojure.test :refer [are deftest is]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.util.performance :as perf]))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -95,3 +95,26 @@
     [:a :b :q] {:a 1 :b 2}
     [:a :b :c :d :e] {:a 1 :b 2 :c 3 :d 4 :e 5}
     [:a :b :c :d :e :f] {:a 1 :b 2 :c 3 :d 4 :e 5}))
+
+(deftest test-update-keys
+  (is (= {"a" 1 "b" 2 "c" 3} (perf/update-keys {:a 1 :b 2 :c 3} name)))
+  (is (= {} (perf/update-keys nil keyword)))
+
+  (testing "no changes"
+    (let [original {:a 1 :b 2 :c 3}
+          result (perf/update-keys original identity)]
+      (is (identical? original result))))
+
+  (testing "empty"
+    (is (identical? {} (perf/update-keys {} str))))
+
+  (testing "partial key transformation"
+    (is (= {:keep-me 1 :changed 2}
+           (perf/update-keys {:keep-me 1 :change-me 2} #(if (= % :change-me) :changed %)))))
+
+  (testing "key collision - later keys should overwrite"
+    (is (= {:same 20}
+           (perf/update-keys {:a 10 :b 20} (constantly :same)))))
+
+  (testing "f returns nil keys"
+    (is (= {nil 2} (perf/update-keys {:a 1 :b 2} (constantly nil))))))
