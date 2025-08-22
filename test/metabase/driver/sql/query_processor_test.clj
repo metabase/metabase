@@ -9,7 +9,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.sql.query-processor.deprecated]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -643,7 +642,7 @@
 (deftest ^:parallel expressions-and-coercions-test
   (testing "Don't cast in both inner select and outer select when expression (#12430)"
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:fields [{:id                (mt/id :venues :price)
                                                  :coercion-strategy :Coercion/UNIXSeconds->DateTime
                                                  :effective-type    :type/DateTime}]})
@@ -1439,5 +1438,34 @@
                          "  ) AS \"source\""
                          "LIMIT"
                          "  20"]}
+               (-> (qp.compile/compile query)
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+(deftest ^:parallel field-name-ref-in-parameters-test
+  (testing "Should generate correct SQL if we use a field name ref in parameters"
+    (let [query {:type       :query
+                 :database   (meta/id)
+                 :query      {:source-table (meta/id :products)}
+                 :parameters [{:type   :id
+                               :value  [144]
+                               :id     "92eb69ea"
+                               :target [:dimension [:field "ID" {:base-type :type/BigInteger}]]}]}]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (= {:query  ["SELECT"
+                         "  \"PUBLIC\".\"PRODUCTS\".\"ID\" AS \"ID\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"EAN\" AS \"EAN\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"TITLE\" AS \"TITLE\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"VENDOR\" AS \"VENDOR\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"PRICE\" AS \"PRICE\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"RATING\" AS \"RATING\","
+                         "  \"PUBLIC\".\"PRODUCTS\".\"CREATED_AT\" AS \"CREATED_AT\""
+                         "FROM"
+                         "  \"PUBLIC\".\"PRODUCTS\""
+                         "WHERE"
+                         "  \"PUBLIC\".\"PRODUCTS\".\"ID\" = 144"
+                         "LIMIT"
+                         "  1048575"]
+                :params nil}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))

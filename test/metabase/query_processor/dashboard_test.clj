@@ -1,5 +1,9 @@
 (ns metabase.query-processor.dashboard-test
   "There are more e2e tests in [[metabase.dashboards.api-test]]."
+  {:clj-kondo/config '{:linters
+                       ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
+                       ;; metadata providers.
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.api-test :as api.dashboard-test]

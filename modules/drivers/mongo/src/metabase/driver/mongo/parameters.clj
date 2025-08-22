@@ -131,13 +131,14 @@
           (let [param (:value v)
                 compiled-clause (-> (assoc param
                                            :target
-                                           [:template-tag
+                                           [:dimension
                                             [:field (field->name (:field v) false)
                                              {:base-type (get-in v [:field :base-type])}]])
                                     params.ops/to-clause
                                     ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
                                     ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that
                                     ;; desugars to [:or [:= 'field 1] ...].
+                                    #_{:clj-kondo/ignore [:deprecated-var]}
                                     driver-api/desugar-filter-clause
                                     driver-api/wrap-value-literals-in-mbql
                                     mongo.qp/compile-filter
