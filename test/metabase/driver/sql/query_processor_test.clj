@@ -1469,3 +1469,63 @@
                 :params nil}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+(deftest ^:parallel no-double-coercion-when-joining-coerced-fields-test
+  (testing "Should generate correct SQL when joining a field that has coercion applied"
+    (let [mp    (lib.tu/merged-mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [(merge (meta/field-metadata :products :id)
+                                  {:coercion-strategy :Coercion/UNIXSeconds->DateTime})]})
+          query {:type       :query
+                 :database   (meta/id)
+                 :query      {:source-table (meta/id :orders)
+                              :joins        [{:source-table (meta/id :products)
+                                              :fields       :all
+                                              :alias        "Products__CREATED_AT"
+                                              :condition
+                                              [:=
+                                               [:field (meta/id :orders :created-at) {:temporal-unit :month}]
+                                               [:field (meta/id :products :created-at) {:temporal-unit :month}]]}]}}]
+      (qp.store/with-metadata-provider mp
+        (is (= {:query  ["SELECT"
+                         "  \"PUBLIC\".\"ORDERS\".\"ID\" AS \"ID\","
+                         "  \"PUBLIC\".\"ORDERS\".\"USER_ID\" AS \"USER_ID\","
+                         "  \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" AS \"PRODUCT_ID\","
+                         "  \"PUBLIC\".\"ORDERS\".\"SUBTOTAL\" AS \"SUBTOTAL\","
+                         "  \"PUBLIC\".\"ORDERS\".\"TAX\" AS \"TAX\","
+                         "  \"PUBLIC\".\"ORDERS\".\"TOTAL\" AS \"TOTAL\","
+                         "  \"PUBLIC\".\"ORDERS\".\"DISCOUNT\" AS \"DISCOUNT\","
+                         "  \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS \"CREATED_AT\","
+                         "  \"PUBLIC\".\"ORDERS\".\"QUANTITY\" AS \"QUANTITY\","
+                         "  \"Products__CREATED_AT\".\"ID\" AS \"Products__CREATED_AT__ID\","
+                         "  \"Products__CREATED_AT\".\"EAN\" AS \"Products__CREATED_AT__EAN\","
+                         "  \"Products__CREATED_AT\".\"TITLE\" AS \"Products__CREATED_AT__TITLE\","
+                         "  \"Products__CREATED_AT\".\"CATEGORY\" AS \"Products__CREATED_AT__CATEGORY\","
+                         "  \"Products__CREATED_AT\".\"VENDOR\" AS \"Products__CREATED_AT__VENDOR\","
+                         "  \"Products__CREATED_AT\".\"PRICE\" AS \"Products__CREATED_AT__PRICE\","
+                         "  \"Products__CREATED_AT\".\"RATING\" AS \"Products__CREATED_AT__RATING\","
+                         "  \"Products__CREATED_AT\".\"CREATED_AT\" AS \"Products__CREATED_AT__CREATED_AT\""
+                         "FROM"
+                         "  \"PUBLIC\".\"ORDERS\""
+                         "  LEFT JOIN ("
+                         "    SELECT"
+                         "      TIMESTAMPADD("
+                         "        'second',"
+                         "        \"PUBLIC\".\"PRODUCTS\".\"ID\","
+                         "        timestamp '1970-01-01T00:00:00Z'"
+                         "      ) AS \"ID\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"EAN\" AS \"EAN\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"TITLE\" AS \"TITLE\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"VENDOR\" AS \"VENDOR\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"PRICE\" AS \"PRICE\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"RATING\" AS \"RATING\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"CREATED_AT\" AS \"CREATED_AT\""
+                         "    FROM"
+                         "      \"PUBLIC\".\"PRODUCTS\""
+                         "  ) AS \"Products__CREATED_AT\" ON DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = DATE_TRUNC('month', \"Products__CREATED_AT\".\"CREATED_AT\")"
+                         "LIMIT"
+                         "  1048575"]
+                :params nil}
+               (-> (qp.compile/compile query)
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
