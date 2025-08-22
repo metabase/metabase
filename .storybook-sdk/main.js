@@ -11,7 +11,7 @@ const { isEmbeddingSdkPackageInstalled, embeddingSdkPackageVersion } =
   resolveEmbeddingSdkPackage();
 
 module.exports = {
-  stories: ["../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx"],
+  stories: ["../enterprise/frontend/src/embedding-sdk-bundle/**/*.stories.tsx"],
   staticDirs: ["../resources/frontend_client", "./msw-public"],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
@@ -58,7 +58,9 @@ module.exports = {
         ...appConfig.resolve.alias,
         ...(isEmbeddingSdkPackageInstalled && {
           // $ means that only exact "embedding-sdk" imports will be rerouted, all nested embedding-sdk/* will still be resolved locally
-          "embedding-sdk$": require.resolve("@metabase/embedding-sdk-react"),
+          "embedding-sdk-bundle$": require.resolve(
+            "@metabase/embedding-sdk-react",
+          ),
         }),
       },
       extensions: appConfig.resolve.extensions,
@@ -89,7 +91,7 @@ function resolveEmbeddingSdkPackage() {
   } catch (err) {
     const sdkPackageTemplateJson = fs.readFileSync(
       path.resolve(
-        "./enterprise/frontend/src/embedding-sdk/package.template.json",
+        "./enterprise/frontend/src/embedding-sdk-bundle/package.template.json",
       ),
       "utf-8",
     );

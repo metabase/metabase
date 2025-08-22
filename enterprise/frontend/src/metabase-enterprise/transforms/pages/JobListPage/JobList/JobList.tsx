@@ -58,12 +58,12 @@ export function JobList() {
             onClick={() => handleRowClick(job)}
           >
             <td>{job.name}</td>
-            <td>
+            <td className={S.nowrap}>
               {job.last_run?.start_time
                 ? parseLocalTimestamp(job.last_run?.start_time).format("lll")
                 : null}
             </td>
-            <td>
+            <td className={S.nowrap}>
               {job.last_run != null ? (
                 <RunStatusInfo
                   status={job.last_run.status}

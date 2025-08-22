@@ -4,10 +4,10 @@ import type {
   EntityTypeFilterKeys,
   MetabaseTheme,
   SqlParameterValues,
-} from "embedding-sdk";
-import type { MetabaseError } from "embedding-sdk/errors";
-import type { MetabaseAuthMethod } from "embedding-sdk/types";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
+} from "embedding-sdk-bundle";
+import type { MetabaseError } from "embedding-sdk-bundle/errors";
+import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { CollectionId } from "metabase-types/api";
 
