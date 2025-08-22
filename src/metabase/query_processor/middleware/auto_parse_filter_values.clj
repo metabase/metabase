@@ -38,17 +38,17 @@
                       e)))))
 
 ;;; I guess we probably want this to work on join conditions as well as normal stage filters.
-(defn- auto-parse-filter-values-this-stage-or-join
-  [_query _path-type _path stage-or-join]
-  (lib.util.match/replace stage-or-join
+(defn- auto-parse-filter-values-in-clause
+  [_query _path-type _path clause]
+  (lib.util.match/match-lite clause
     [:value
-     (info :guard (fn [{:keys [effective-type], :as _value-options}]
+     (opts :guard (fn [{:keys [effective-type], :as _value-options}]
                     (and effective-type
                          (not (isa? effective-type :type/Text)))))
      (v :guard string?)]
-    [:value info (parse-value-for-base-type v (:effective-type info))]))
+    [:value opts (parse-value-for-base-type v (:effective-type opts))]))
 
 (mu/defn auto-parse-filter-values :- ::lib.schema/query
   "Automatically parse String filter clause values to the appropriate type."
   [query :- ::lib.schema/query]
-  (lib.walk/walk query auto-parse-filter-values-this-stage-or-join))
+  (lib.walk/walk-clauses query auto-parse-filter-values-in-clause))
