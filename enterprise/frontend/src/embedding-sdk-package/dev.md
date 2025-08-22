@@ -9,7 +9,7 @@ You can build the SDK bundle with `yarn build-release:embedding-sdk-bundle`
 
 #### embedding-sdk:dev
 
-Builds both SDK NPM package and SDK bundle in the `watch` mode.
+The `embedding-sdk:dev` command builds both SDK NPM package and SDK bundle in the `watch` mode.
 
 It runs a local dev server that serves compiled files; the server is used by `Cypress`.
 
