@@ -4,6 +4,7 @@
    [com.climate.claypoole :as cp]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
@@ -209,13 +210,18 @@
                      :length (count resource-name)
                      :limit 63}))))
 
+(defn model-table-suffix
+  "Returns a new suffix for a table name, based on current timestamp"
+  []
+  (mod (.toEpochSecond (t/offset-date-time)) 10000000))
+
 (defn model-table-name
   "Returns the table name for a model."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
         abbrev-model-name (embedding/abbrev-model-name model-name)
-        result (str "index_table_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
+        result (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions "_" (model-table-suffix))]
     (throw-if-max-pg-len result "Table name exceeds PostgreSQL limit")
     result))
 
@@ -642,7 +648,7 @@
                                        :regular-docs-count (count regular-docs)
                                        :time-ms time-ms})
 
-    (analytics/inc! :metabase-search/permission-filtering-ms time-ms)
+    (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
 
     result))
 
@@ -737,12 +743,14 @@
     (if (or (nil? filter-type) (= filter-type "all"))
       docs
       (let [timer (u/start-timer)
-            filtered-docs (filter-by-collection docs search-context)]
+            filtered-docs (filter-by-collection docs search-context)
+            time-ms (u/since-ms timer)]
         (log/debug "Collection filter" {:filter  filter-type
                                         :before  (count docs)
                                         :after   (count filtered-docs)
                                         :dropped (- (count docs) (count filtered-docs))
-                                        :time_ms (u/since-ms timer)})
+                                        :time_ms time-ms})
+        (analytics/inc! :metabase-search/semantic-collection-filter-ms time-ms)
         filtered-docs))))
 
 (defn query-index
@@ -768,35 +776,45 @@
             raw-results (into [] xform reducible)
             db-query-time-ms (u/since-ms db-timer)
 
+            filter-timer (u/start-timer)
             filtered-results (->> raw-results
                                   filter-read-permitted
                                   (apply-collection-filter search-context)
                                   (mapv search/collapse-id))
+            filter-time-ms (u/since-ms filter-timer)
 
+            appdb-scores-timer (u/start-timer)
+            final-results (->> filtered-results
+                               (scoring/with-appdb-scores search-context))
+            appdb-scores-time-ms (u/since-ms appdb-scores-timer)
             total-time-ms (u/since-ms timer)]
 
         (log/debug "Semantic search"
                    {:search-string-length (count search-string)
+                    :raw-results-count (count raw-results)
+                    :final-results-count (count final-results)
                     :embedding-time-ms embedding-time-ms
                     :db-query-time-ms db-query-time-ms
-                    :raw-results-count (count raw-results)
-                    :final-results-count (count filtered-results)
+                    :filter-time-ms filter-time-ms
+                    :appdb-scores-time-ms appdb-scores-time-ms
                     :total-time-ms total-time-ms})
 
-        (analytics/inc! :metabase-search/semantic-search-ms
-                        {:embedding-model (:name embedding-model)}
-                        total-time-ms)
         (analytics/inc! :metabase-search/semantic-embedding-ms
                         {:embedding-model (:name embedding-model)}
                         embedding-time-ms)
         (analytics/inc! :metabase-search/semantic-db-query-ms
                         {:embedding-model (:name embedding-model)}
                         db-query-time-ms)
+        (analytics/inc! :metabase-search/semantic-appdb-scores-ms
+                        appdb-scores-time-ms)
+        (analytics/inc! :metabase-search/semantic-search-ms
+                        {:embedding-model (:name embedding-model)}
+                        total-time-ms)
 
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
 
-        {:results filtered-results
+        {:results final-results
          :raw-count (count raw-results)}))))
 
 (comment

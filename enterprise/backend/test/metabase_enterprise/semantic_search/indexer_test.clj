@@ -46,7 +46,6 @@
     (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
                 _ (semantic.tu/open-index! pgvector index)]
       (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
-
       (let [metadata-row      (get-metadata-row! pgvector index-metadata index)
             initial-watermark (semantic.gate/resume-watermark metadata-row)
             indexing-state    (semantic.indexer/init-indexing-state metadata-row)
@@ -276,7 +275,6 @@
     (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
                 _ (semantic.tu/open-index! pgvector index)]
       (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
-
       (testing "exits immediately after max run duration elapses"
         (let [run-time       (u/start-timer)
               indexing-state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
@@ -300,7 +298,6 @@
                     (is (<= (u/since-ms run-time) 500)))
                   (testing "did not crash"
                     (is (nil? @caught-ex)))))))))
-
       (testing "exists early if no new records after a time"
         (let [run-time       (u/start-timer)
               indexing-state (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))
