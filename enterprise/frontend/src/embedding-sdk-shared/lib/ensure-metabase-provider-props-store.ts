@@ -1,8 +1,6 @@
 import type { ComponentProviderProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
-import {
-  type SdkLoadingError,
-  SdkLoadingState,
-} from "embedding-sdk-bundle/sdk-shared/types/sdk-loading";
+
+import { type SdkLoadingError, SdkLoadingState } from "../types/sdk-loading";
 
 import { getWindow } from "./get-window";
 

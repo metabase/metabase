@@ -3,8 +3,8 @@ import { useContext, useId, useMemo } from "react";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk-bundle/lib/theme";
-import { EnsureSingleInstance } from "embedding-sdk-bundle/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import type { MetabaseTheme } from "embedding-sdk-bundle/types/ui";
+import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/lib/redux";
 import { getSettings } from "metabase/selectors/settings";

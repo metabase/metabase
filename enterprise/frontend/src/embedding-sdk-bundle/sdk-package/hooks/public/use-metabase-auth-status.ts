@@ -1,5 +1,5 @@
-import { useLazySelector } from "embedding-sdk-bundle/sdk-shared/hooks/use-lazy-selector";
-import { getWindow } from "embedding-sdk-bundle/sdk-shared/lib/get-window";
+import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
 
 /**
  * Returns the authentication status of the current user in the Metabase embedding SDK.

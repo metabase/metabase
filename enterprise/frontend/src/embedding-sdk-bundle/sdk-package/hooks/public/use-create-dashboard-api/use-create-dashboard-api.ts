@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
-import { useLazySelector } from "embedding-sdk-bundle/sdk-shared/hooks/use-lazy-selector";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/hooks/use-metabase-provider-props-store";
-import { getWindow } from "embedding-sdk-bundle/sdk-shared/lib/get-window";
+import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
 
 /**
  * Creates a dashboard.

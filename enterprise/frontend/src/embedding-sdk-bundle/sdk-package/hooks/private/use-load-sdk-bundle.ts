@@ -4,11 +4,11 @@ import { useEffect } from "react";
 import { SDK_BUNDLE_FULL_PATH } from "build-configs/embedding-sdk/constants/sdk-bundle";
 import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk-bundle/sdk-package/constants/sdk-bundle-script-data-attribute-name";
 import { getSdkBundleScriptElement } from "embedding-sdk-bundle/sdk-package/lib/private/get-sdk-bundle-script-element";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/lib/ensure-metabase-provider-props-store";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import {
   SdkLoadingError,
   SdkLoadingState,
-} from "embedding-sdk-bundle/sdk-shared/types/sdk-loading";
+} from "embedding-sdk-shared/types/sdk-loading";
 
 const ERROR_MESSAGE = "Failed to load Embedding SDK bundle";
 

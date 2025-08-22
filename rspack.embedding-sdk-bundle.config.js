@@ -39,7 +39,7 @@ const {
   getBuildInfoValues,
 } = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
 
-const SDK_SRC_PATH =
+const SDK_BUNDLE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
@@ -55,7 +55,7 @@ const config = {
 
   name: "embedding_sdk_bundle",
 
-  context: SDK_SRC_PATH,
+  context: SDK_BUNDLE_SRC_PATH,
 
   entry: "./bundle.ts",
 
@@ -199,7 +199,7 @@ config.resolve.alias = {
   "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
 
   // Allows importing side effects that applies only to the SDK.
-  "sdk-specific-imports": SDK_SRC_PATH + "/lib/sdk-specific-imports.ts",
+  "sdk-specific-imports": SDK_BUNDLE_SRC_PATH + "/lib/sdk-specific-imports.ts",
 };
 
 if (config.cache) {

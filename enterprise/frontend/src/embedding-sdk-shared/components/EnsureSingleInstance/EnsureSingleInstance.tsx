@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo } from "react";
 
-import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/hooks/use-metabase-provider-props-store";
+import { useMetabaseProviderPropsStore } from "../../hooks/use-metabase-provider-props-store";
 
 export const useSingleInstanceIdsData = () => {
   const {

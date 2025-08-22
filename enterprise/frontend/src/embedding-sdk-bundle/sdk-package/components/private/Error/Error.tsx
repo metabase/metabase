@@ -1,4 +1,4 @@
-import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/hooks/use-metabase-provider-props-store";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 // eslint-disable-next-line no-external-references-for-sdk-package-code
 import { colors } from "metabase/lib/colors/colors";
 

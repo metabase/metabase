@@ -1,4 +1,4 @@
-import { getWindow } from "embedding-sdk-bundle/sdk-shared/lib/get-window";
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { BuildInfo } from "metabase/embedding-sdk/types/build-info";
 
 export const EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION = "unknown";

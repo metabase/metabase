@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-external-references-for-sdk-package-code
 import { getSdkLoaderCss } from "embedding/sdk-common/lib/get-sdk-loader-css";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/hooks/use-metabase-provider-props-store";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 
 type SpinnerProps = {
   size?: string;

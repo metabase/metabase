@@ -7,7 +7,7 @@ module.exports = {
       webpack: {
         config: path.resolve(
           __dirname,
-          "../../../../rspack.embedding-sdk-bundle.config.js",
+          "../../../rspack.embedding-sdk-bundle.config.js",
         ),
         typescript: true,
       },
@@ -20,6 +20,7 @@ module.exports = {
     "no-restricted-imports": [
       "error",
       {
+        patterns: ["cljs/metabase.lib*"],
         paths: [
           {
             name: "@mantine/core",
@@ -41,15 +42,42 @@ module.exports = {
           {
             name: "react-redux",
             importNames: ["useSelector", "useDispatch", "connect"],
-            message: 'Please use "useSdkSelector", "useSdkDispatch"',
-          },
-          {
-            name: "metabase/lib/redux",
-            importNames: ["useStore", "useDispatch"],
-            message: 'Please use "useSdkStore", "useSdkDispatch"',
+            message: "Please import from `metabase/lib/redux` instead.",
           },
         ],
       },
     ],
+    "ttag/no-module-declaration": 2,
   },
+  overrides: [
+    {
+      files: ["**/*.stories.tsx"],
+      rules: {
+        "import/no-default-export": 0,
+        "no-restricted-imports": 0,
+      },
+    },
+    {
+      files: [
+        "embedding-sdk-bundle/sdk-package/**/*.{ts,tsx,js,jsx}",
+        "embedding-sdk-shared/**/*.{ts,tsx,js,jsx}",
+      ],
+      excludedFiles: [
+        "**/test/**",
+        "**/*.spec.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx}",
+      ],
+      rules: {
+        "no-external-references-for-sdk-package-code": [
+          "error",
+          {
+            allowedPaths: [
+              path.join(__dirname, "embedding-sdk-bundle/sdk-package"),
+              path.join(__dirname, "embedding-sdk-shared"),
+            ],
+          },
+        ],
+      },
+    },
+  ],
 };

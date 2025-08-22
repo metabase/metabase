@@ -5,7 +5,7 @@ import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-ve
 import { getEmbeddingSdkPackageBuildData } from "embedding-sdk-bundle/lib/get-embedding-sdk-package-build-data";
 import { getMetabaseInstanceVersion } from "embedding-sdk-bundle/store/selectors";
 
-jest.mock("embedding-sdk-bundle/sdk-shared/hooks/use-lazy-selector", () => ({
+jest.mock("embedding-sdk-shared/hooks/use-lazy-selector", () => ({
   useLazySelector: jest.fn((selector) => selector()),
 }));
 jest.mock(

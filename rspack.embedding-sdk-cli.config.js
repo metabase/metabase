@@ -5,7 +5,7 @@ const path = require("path");
 const rspack = require("@rspack/core");
 
 const SDK_CLI_DIST_PATH = path.join(__dirname, "/resources/embedding-sdk/dist");
-const SDK_SRC_PATH =
+const SDK_BUNDLE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 const SDK_CLI_PATH = path.join(
   __dirname,
@@ -35,7 +35,7 @@ const config = {
     alias: {
       metabase: METABASE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,
-      "embedding-sdk-bundle": SDK_SRC_PATH,
+      "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
     },
   },
   module: {

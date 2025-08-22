@@ -1,7 +1,8 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/hooks/use-metabase-provider-props-store";
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+
+import { useMetabaseProviderPropsStore } from "./use-metabase-provider-props-store";
 
 const noop = () => {};
 

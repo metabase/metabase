@@ -9,15 +9,15 @@ import {
   SDK_NOT_LOADED_YET_MESSAGE,
   SDK_NOT_STARTED_LOADING_MESSAGE,
 } from "embedding-sdk-bundle/sdk-package/constants/error-messages";
-import { EnsureSingleInstance } from "embedding-sdk-bundle/sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/hooks/use-metabase-provider-props-store";
-import { useSdkLoadingState } from "embedding-sdk-bundle/sdk-shared/hooks/use-sdk-loading-state";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/lib/ensure-metabase-provider-props-store";
-import { getWindow } from "embedding-sdk-bundle/sdk-shared/lib/get-window";
+import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import {
   SdkLoadingError,
   SdkLoadingState,
-} from "embedding-sdk-bundle/sdk-shared/types/sdk-loading";
+} from "embedding-sdk-shared/types/sdk-loading";
 
 type Props<TComponentProps> = {
   getComponent: () => FunctionComponent<TComponentProps> | null | undefined;

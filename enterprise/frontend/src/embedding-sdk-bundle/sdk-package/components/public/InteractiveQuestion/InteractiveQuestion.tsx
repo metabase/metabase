@@ -1,6 +1,6 @@
 import type { InteractiveQuestionComponents } from "embedding-sdk-bundle/components/public/InteractiveQuestion/InteractiveQuestion";
 import { createComponent } from "embedding-sdk-bundle/sdk-package/components/private/ComponentWrapper/ComponentWrapper";
-import { getWindow } from "embedding-sdk-bundle/sdk-shared/lib/get-window";
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
 
 const _InteractiveQuestion = createComponent(
   () => getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion,

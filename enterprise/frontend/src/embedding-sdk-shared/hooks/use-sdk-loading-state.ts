@@ -1,8 +1,6 @@
-import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/hooks/use-metabase-provider-props-store";
-import {
-  SdkLoadingError,
-  SdkLoadingState,
-} from "embedding-sdk-bundle/sdk-shared/types/sdk-loading";
+import { SdkLoadingError, SdkLoadingState } from "../types/sdk-loading";
+
+import { useMetabaseProviderPropsStore } from "./use-metabase-provider-props-store";
 
 export function useSdkLoadingState() {
   const {
