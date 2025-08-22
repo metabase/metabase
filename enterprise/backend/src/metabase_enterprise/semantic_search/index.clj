@@ -103,6 +103,17 @@
 
     :else (Instant/ofEpochMilli (inst-ms document-timestamp))))
 
+(defn- to-boolean
+  "MySQL booleans are represented as 0/1, so we must ensure we're casting them to
+   real booleans when inserting them int our postgres db"
+  [b]
+  {:pre [(some? b)]}
+  (cond
+    (boolean? b) b
+    (= 0 b) false
+    (= 1 b) true
+    :else (throw (ex-info "Unexpected boolean value" {:v b}))))
+
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
@@ -117,10 +128,10 @@
    :name                (:name doc)
    :content             searchable_text
    :display_type        display_type
-   :archived            archived
-   :official_collection official_collection
-   :pinned              pinned
-   :verified            verified
+   :archived            (some-> archived to-boolean)
+   :official_collection (some-> official_collection to-boolean)
+   :pinned              (some-> pinned to-boolean)
+   :verified            (some-> verified to-boolean)
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
    :model_created_at    (some-> created_at to-instant)
