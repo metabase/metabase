@@ -30,6 +30,7 @@ export const Value = ({ children, column, field, value }: Props) => {
   if (isFK(column) && newTableId != null) {
     return (
       <Text
+        bg="var(--mb-color-bg-light)"
         c="text-primary"
         className={S.fk}
         component={Link}

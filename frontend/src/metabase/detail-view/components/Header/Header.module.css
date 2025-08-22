@@ -1,6 +1,6 @@
 .avatarFrame {
-  background-color: #fafafb;
-  border: 1px solid #d8dadd;
+  background-color: var(--mb-color-bg-light);
+  border: 1px solid var(--mb-color-border);
   border-radius: 50%;
   overflow: hidden;
 }
