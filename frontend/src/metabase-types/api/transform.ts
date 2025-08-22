@@ -47,7 +47,12 @@ export type TransformRun = {
   transform?: Transform;
 };
 
-export type TransformRunStatus = "started" | "succeeded" | "failed" | "timeout";
+export type TransformRunStatus =
+  | "started"
+  | "succeeded"
+  | "failed"
+  | "timeout"
+  | "canceled";
 
 export type TransformRunMethod = "manual" | "cron";
 
