@@ -37,6 +37,7 @@ const config = {
   devtool: false,
 
   entry: "./index.ts",
+
   output: {
     path: BUILD_PATH + "/dist",
     publicPath: "",

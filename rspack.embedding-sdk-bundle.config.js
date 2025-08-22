@@ -57,7 +57,7 @@ const config = {
 
   context: SDK_BUNDLE_SRC_PATH,
 
-  entry: "./bundle.ts",
+  entry: "./index.ts",
 
   output: {
     // we must use a different directory than the main rspack config,

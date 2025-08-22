@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle";
 import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
@@ -10,6 +9,7 @@ import {
   InteractiveDashboard,
   StaticDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
+import type { MetabaseAuthConfig } from "embedding-sdk-package";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
