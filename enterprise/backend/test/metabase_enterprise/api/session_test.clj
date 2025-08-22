@@ -19,11 +19,12 @@
                               :disable-password-login
                               :database-auth-providers
                               :development-mode
+                              :documents
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
                               :embedding-sdk
-                              :embedding-iframe-sdk
+                              :embedding-simple
                               :hosting
                               :llm-autodescription
                               :metabot-v3
@@ -35,6 +36,7 @@
                               :query-reference-validation
                               :sandboxes
                               :scim
+                              :semantic-search
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -42,6 +44,7 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :transforms
                               :upload-management
                               :whitelabel
                               :collection-cleanup
@@ -59,11 +62,12 @@
             :disable_password_login         true
             :database_auth_providers        true
             :development_mode               true
+            :documents                      true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
             :embedding_sdk                  true
-            :embedding_iframe_sdk           true
+            :embedding_simple               true
             :hosting                        true
             :llm_autodescription            true
             :metabot_v3                     true
@@ -74,6 +78,7 @@
             :query_reference_validation     true
             :sandboxes                      true
             :scim                           true
+            :semantic_search                true
             :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true
@@ -81,6 +86,8 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
+            :table_data_editing             false
+            :transforms                     true
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true

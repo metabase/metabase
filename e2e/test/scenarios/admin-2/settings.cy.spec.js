@@ -268,30 +268,38 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
-    H.setupMetabaseCloud();
-    cy.visit("/admin/settings/general");
+  it(
+    "should hide self-hosted settings when running Metabase Cloud",
+    { tags: "@skip" },
+    () => {
+      H.setupMetabaseCloud();
+      cy.visit("/admin/settings/general");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Site Name");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Site URL").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Site Name");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Site URL").should("not.exist");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Email").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Updates").should("not.exist");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Email").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Updates").should("not.exist");
+    },
+  );
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide the store link when running Metabase Cloud", () => {
-    H.setupMetabaseCloud();
-    cy.visit("/admin/settings/general");
+  it(
+    "should hide the store link when running Metabase Cloud",
+    { tags: "@skip" },
+    () => {
+      H.setupMetabaseCloud();
+      cy.visit("/admin/settings/general");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Metabase Admin");
-    cy.findByLabelText("store icon").should("not.exist");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Metabase Admin");
+      cy.findByLabelText("store icon").should("not.exist");
+    },
+  );
 
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
@@ -331,15 +339,19 @@ describe("scenarios > admin > settings (EE)", () => {
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
-  it.skip("should hide Enterprise page when running Metabase Cloud", () => {
-    H.setupMetabaseCloud();
-    cy.visit("/admin/settings/general");
+  it(
+    "should hide Enterprise page when running Metabase Cloud",
+    { tags: "@skip" },
+    () => {
+      H.setupMetabaseCloud();
+      cy.visit("/admin/settings/general");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Site Name");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Enterprise").should("not.exist");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Site Name");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Enterprise").should("not.exist");
+    },
+  );
 
   it("should hide the store link when running Metabase EE", () => {
     cy.visit("/admin/settings/license");
@@ -354,9 +366,9 @@ describe("scenarios > admin > settings (EE)", () => {
  * Disabled and quarantined until we fix the caching issues, and especially:
  * https://github.com/metabase/metabase/issues/13262
  */
-describe.skip(
+describe(
   "scenarios > admin > settings > cache",
-  { tags: "@external" },
+  { tags: ["@external", "@skip"] },
   () => {
     function enableCaching() {
       cy.findByText("Disabled")
@@ -487,7 +499,7 @@ describe("Cloud settings section", () => {
     cy.findByTestId("admin-layout-sidebar").findByText(/Cloud/i).click();
     cy.findByTestId("admin-layout-content")
       .findByText("Go to the Metabase Store")
-      .should("have.attr", "href", "https://store.metabase.com/");
+      .should("have.attr", "href", "https://test-store.metabase.com/");
   });
 
   it("should prompt us to migrate to cloud if we are not hosted", () => {
@@ -1109,13 +1121,13 @@ describe("scenarios > admin > localization", () => {
 describe("scenarios > admin > settings > map settings", () => {
   beforeEach(() => {
     H.restore();
+    cy.intercept("GET", "/api/geojson*").as("getGeoJson");
     cy.signInAsAdmin();
   });
 
   it("should be able to load and save a custom map", () => {
     cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a map").click();
+    cy.button("Add a map").click();
     cy.findByPlaceholderText("e.g. United Kingdom, Brazil, Mars").type(
       "Test Map",
     );
@@ -1124,20 +1136,17 @@ describe("scenarios > admin > settings > map settings", () => {
     ).type(
       "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    cy.wait(2000).findAllByText("Select…").first().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("NAME").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByText("Select…").last().click();
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByText("NAME").last().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add map").click();
-    cy.wait(3000).findByText("NAME").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Test Map");
+    cy.button("Load").click();
+    cy.wait("@getGeoJson");
+    cy.findByTestId("map-region-key-select").click();
+    H.popover().contains("NAME").click();
+    cy.findByTestId("map-region-name-select").click();
+    H.popover().contains("NAME").click();
+    cy.button("Add map").click();
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.contains("NAME").should("not.exist");
+      cy.contains("Test Map");
+    });
   });
 
   it("should be able to load a custom map even if a name has not been added yet (#14635)", () => {
@@ -1434,10 +1443,6 @@ describe("admin > settings > updates", () => {
       .findByText("Check for updates")
       .should("be.visible");
 
-    cy.findByTestId("update-channel-setting")
-      .findByText("Types of releases to check for")
-      .should("be.visible");
-
     cy.findByTestId("settings-updates").within(() => {
       cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70.");
       cy.findByText("Some old feature").should("be.visible");
@@ -1450,36 +1455,7 @@ describe("admin > settings > updates", () => {
       .click();
 
     cy.findByTestId("settings-updates").within(() => {
-      cy.findByText("Types of releases to check for").should("not.exist");
       cy.findByText("Some old feature").should("not.exist");
-    });
-  });
-
-  it("should change release notes based on the selected update channel", () => {
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
-      cy.findByText("Some old feature").should("be.visible");
-      cy.findByText("New latest feature").should("be.visible");
-      cy.findByDisplayValue("Stable releases").click();
-    });
-
-    H.popover().findByText("Beta releases").click();
-
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
-        "be.visible",
-      );
-      cy.findByText("New beta feature").should("be.visible");
-      cy.findByDisplayValue("Beta releases").click();
-    });
-
-    H.popover().findByText("Nightly builds").click();
-
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.75\.311 is available/).should(
-        "be.visible",
-      );
-      cy.findByText("New nightly feature").should("be.visible");
     });
   });
 });

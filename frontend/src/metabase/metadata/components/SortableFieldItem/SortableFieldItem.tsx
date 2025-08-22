@@ -30,7 +30,9 @@ export const SortableFieldItem = ({
 
   return (
     <Sortable
-      className={S.sortableField}
+      className={cx(S.sortableField, {
+        [S.active]: active,
+      })}
       disabled={disabled}
       draggingStyle={{ opacity: 0.5 }}
       id={id}

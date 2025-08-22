@@ -214,9 +214,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         setDefaultDate("2023", "11", "01");
         H.filterWidget().icon("close").click();
         SQLFilter.toggleRequired();
-        H.filterWidget()
-          .findByTestId("field-set-content")
-          .should("have.text", "November 1, 2023");
+        H.filterWidget().should("contain.text", "November 1, 2023");
       });
 
       it("when there's a default value and template tag is required, can reset it back", () => {
@@ -228,9 +226,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
           cy.findByText("Update filter").click();
         });
         H.filterWidget().icon("revert").click();
-        H.filterWidget()
-          .findByTestId("field-set-content")
-          .should("have.text", "November 1, 2023");
+        H.filterWidget().should("contain.text", "November 1, 2023");
       });
     });
   });
@@ -243,8 +239,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     SQLFilter.setWidgetValue("Gizmo");
     SQLFilter.runQuery();
 
-    cy.get("fieldset")
-      .findByText("Testingparamvisbility77")
+    H.filterWidget()
+      .findByPlaceholderText("Testingparamvisbility77")
       .should("be.visible");
 
     // close sidebar
@@ -260,24 +256,200 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1 active filter").click();
 
-    cy.get("fieldset")
-      .findByText("Testingparamvisbility77")
+    H.filterWidget()
+      .findByPlaceholderText("Testingparamvisbility77")
       .should("be.visible");
   });
 
   // flaky test (#19454)
-  it.skip("should show an info popover when hovering over fields in the field filter field picker", () => {
-    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{cat}}");
+  it(
+    "should show an info popover when hovering over fields in the field filter field picker",
+    { tags: "@skip" },
+    () => {
+      SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{cat}}");
 
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Field Filter");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
 
+      H.popover().within(() => {
+        cy.findByText("People").click();
+        cy.findByText("City").trigger("mouseenter");
+      });
+
+      H.popover().contains("City");
+      H.popover().contains("1,966 distinct values");
+    },
+  );
+});
+
+describe("scenarios > filters > sql filters > multiple values", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  function setFilterAndVerify({ values, isQueryBuilder } = {}) {
+    H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByText("People").click();
-      cy.findByText("City").trigger("mouseenter");
+      H.multiAutocompleteInput().type(values.join(","));
+      cy.button("Add filter").click();
+    });
+    if (isQueryBuilder) {
+      cy.findAllByTestId("run-button").first().click();
+    }
+    values.forEach((value) => {
+      H.tableInteractive().within(() => {
+        cy.findAllByText(value).should("have.length.gte", 1);
+        cy.findAllByText(value).should("have.length.gte", 1);
+      });
+    });
+  }
+
+  it("should allow multiple values for Text variables", () => {
+    const questionDetails = {
+      name: "SQL",
+      native: {
+        query: "SELECT * FROM products WHERE category IN ({{text}})",
+        "template-tags": {
+          text: {
+            id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+            name: "text",
+            "display-name": "Text",
+            type: "text",
+          },
+        },
+      },
+      parameters: [
+        {
+          id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+          type: "string/=",
+          name: "Text",
+          slug: "text",
+          target: ["variable", ["template-tag", "text"]],
+          isMultiSelect: true,
+        },
+      ],
+      enable_embedding: true,
+      embedding_params: {
+        text: "enabled",
+      },
+    };
+
+    cy.log("ad-hoc question");
+    H.startNewNativeQuestion();
+    SQLFilter.enterParameterizedQuery(
+      "SELECT * FROM products WHERE category IN ({{text}})",
+    );
+    H.rightSidebar().findByLabelText("Multiple values").click();
+    setFilterAndVerify({
+      values: ["Gadget", "Widget"],
+      isQueryBuilder: true,
     });
 
-    H.popover().contains("City");
-    H.popover().contains("1,966 distinct values");
+    cy.log("regular question");
+    H.createNativeQuestion(questionDetails, {
+      visitQuestion: true,
+      wrapId: true,
+    });
+    setFilterAndVerify({
+      values: ["Gadget", "Widget"],
+      isQueryBuilder: true,
+    });
+
+    cy.log("public question");
+    cy.get("@questionId").then((questionId) =>
+      H.visitPublicQuestion(questionId),
+    );
+    setFilterAndVerify({
+      values: ["Gadget", "Widget"],
+      isQueryBuilder: false,
+    });
+
+    cy.log("embedded question");
+    cy.get("@questionId").then((questionId) =>
+      H.visitEmbeddedPage({
+        resource: { question: questionId },
+        params: {},
+      }),
+    );
+    setFilterAndVerify({
+      values: ["Gadget", "Widget"],
+      isQueryBuilder: false,
+    });
+  });
+
+  it("should allow multiple values for Number variables", () => {
+    const questionDetails = {
+      name: "SQL",
+      native: {
+        query: "SELECT ID FROM products WHERE ID IN ({{number}})",
+        "template-tags": {
+          number: {
+            id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+            name: "number",
+            "display-name": "Number",
+            type: "number",
+          },
+        },
+      },
+      parameters: [
+        {
+          id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+          type: "number/=",
+          name: "Number",
+          slug: "number",
+          target: ["variable", ["template-tag", "number"]],
+          isMultiSelect: true,
+        },
+      ],
+      enable_embedding: true,
+      embedding_params: {
+        number: "enabled",
+      },
+    };
+
+    cy.log("ad-hoc question");
+    H.startNewNativeQuestion();
+    SQLFilter.enterParameterizedQuery(
+      "SELECT ID FROM products WHERE ID IN ({{number}})",
+    );
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    H.popover().findByText("Number").click();
+    H.rightSidebar().findByLabelText("Multiple values").click();
+    setFilterAndVerify({
+      values: ["10", "20"],
+      isQueryBuilder: true,
+    });
+
+    cy.log("regular question");
+    H.createNativeQuestion(questionDetails, {
+      visitQuestion: true,
+      wrapId: true,
+    });
+    setFilterAndVerify({
+      values: ["10", "20"],
+      isQueryBuilder: true,
+    });
+
+    cy.log("public question");
+    cy.get("@questionId").then((questionId) =>
+      H.visitPublicQuestion(questionId),
+    );
+    setFilterAndVerify({
+      values: ["10", "20"],
+      isQueryBuilder: false,
+    });
+
+    cy.log("embedded question");
+    cy.get("@questionId").then((questionId) =>
+      H.visitEmbeddedPage({
+        resource: { question: questionId },
+        params: {},
+      }),
+    );
+    setFilterAndVerify({
+      values: ["10", "20"],
+      isQueryBuilder: false,
+    });
   });
 });

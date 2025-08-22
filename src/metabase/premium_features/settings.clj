@@ -250,9 +250,10 @@
   "Should Metabase generate SQL queries?"
   :ai-sql-generation)
 
-(define-premium-feature ^{:added "0.55.0"} enable-embedding-iframe-sdk?
-  "Should we allow users to embed the SDK in iframes?"
-  :embedding-iframe-sdk)
+; the "-feature" suffix avoids name collision with the setting getter
+(define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
+  "Should we enable Embedded Analytics JS?"
+  :embedding-simple)
 
 (define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
   "Should Metabase do AI analysis on entities?"
@@ -269,6 +270,22 @@
 (define-premium-feature ^{:added "0.56.0"} enable-etl-connections-pg?
   "Does the Metabase Cloud instance have ETL connections with PG?"
   :etl-connections-pg)
+
+(define-premium-feature ^{:added "0.56.0"} enable-semantic-search?
+  "Should we enable the semantic search backend?"
+  :semantic-search)
+
+(define-premium-feature ^{:added "0.57.0"} table-data-editing?
+  "Should we allow users to edit the data within tables?"
+  :table-data-editing)
+
+(define-premium-feature ^{:added "0.57.0"} enable-documents?
+  "Does this instance support the new document entity."
+  :documents)
+
+(define-premium-feature ^{:added "0.57.0"} enable-transforms?
+  "Should we allow users to use transforms?"
+  :transforms)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
@@ -289,11 +306,12 @@
    :database_routing               (enable-database-routing?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
+   :documents                      (enable-documents?)
    :email_allow_list               (enable-email-allow-list?)
    :email_restrict_recipients      (enable-email-restrict-recipients?)
    :embedding                      (hide-embed-branding?)
    :embedding_sdk                  (enable-embedding-sdk-origins?)
-   :embedding_iframe_sdk           (enable-embedding-iframe-sdk?)
+   :embedding_simple               (enable-embedding-simple-feature?)
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
@@ -303,6 +321,7 @@
    :query_reference_validation     (enable-query-reference-validation?)
    :sandboxes                      (enable-sandboxes?)
    :scim                           (enable-scim?)
+   :semantic_search                (enable-semantic-search?)
    :serialization                  (enable-serialization?)
    :session_timeout_config         (enable-session-timeout-config?)
    :snippet_collections            (enable-snippet-collections?)
@@ -310,6 +329,8 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :table_data_editing             (table-data-editing?)
+   :transforms                     (enable-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)})
 

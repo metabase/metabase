@@ -1,6 +1,6 @@
 (ns metabase.pivot.core
   (:require
-   #?(:clj [metabase.util.json :as json])
+   #?(:cljs [metabase.util.performance :as perf])
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.models.visualization-settings :as mb.viz]
@@ -18,12 +18,31 @@
      [x]
      (js->clj (js/JSON.parse x))))
 
-(defn- json-roundtrip
-  "Round-trips a value to JSON and back in Clojure to ensure it can be used as a key with consistent type.
+(defn- ensure-consistent-type
+  "Convert Clojure value that may have ambigous type into canonical type to ensure it can be used as a key.
   Does nothing in CLJS."
   [x]
   #?(:cljs x
-     :clj (json/decode (json/encode x))))
+     :clj (cond (integer? x) (int x) ;; Handles BigInteger
+                (decimal? x) (double x) ;; Handles BigDecimal
+                :else x)))
+
+(defn- ensure-is-int
+  "Convert a clojure value that may not be a type bitwise operations can use into one it can. Or throw an
+  error if it is not losslessly convertible into an integer. "
+  [x]
+  #?(:cljs x
+     :clj (cond
+            (int? x) x
+            (integer? x) (long x)
+            (decimal? x) (try (.longValueExact ^BigDecimal x)
+                              ;; catch this error since java.lang.ArithmeticException doesn't make sense
+                              (catch java.lang.ArithmeticException e
+                                (throw (ex-info "Non-Integer cannot be used as pivot-grouping column"
+                                                {:data x}
+                                                e))))
+            :else (throw (ex-info "Non-Integer cannot be used as pivot-grouping column"
+                                  {:data x})))))
 
 (defn- pivot-group-column?
   "Is the given column the pivot-grouping column?"
@@ -42,7 +61,7 @@
   (memoize
    (fn [pivot-group num-breakouts]
      (let [breakout-indexes (range num-breakouts)]
-       (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) pivot-group)) breakout-indexes))))))
+       (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) (ensure-is-int pivot-group))) breakout-indexes))))))
 
 (defn- remove-item-by-index
   "Remove an item with the given `index` from collection `v`."
@@ -91,7 +110,7 @@
               (persistent!
                (reduce
                 (fn [acc row]
-                  (let [grouping-key (json-roundtrip (mapv #(nth row %) column-indexes))
+                  (let [grouping-key (ensure-consistent-type (mapv #(nth row %) column-indexes))
                         values (mapv #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})
@@ -144,7 +163,7 @@
     ;; In `add-is-collapsed` we parse JSON from the viz settings to determine
     ;; the path of values to collapse. So we have to roundtrip values from the QP
     ;; to JSON and back to make sure their types match.
-    (let [v (json-roundtrip (first path))]
+    (let [v (ensure-consistent-type (first path))]
       (update tree v
               (fn [node]
                 (let [subtree (or (:children node) (ordered-map/ordered-map))]
@@ -165,7 +184,7 @@
   (let [col-and-row-indexes (into (vec col-indexes) row-indexes)]
     (reduce
      (fn [acc row]
-       (let [value-key  (json-roundtrip (select-indexes row col-and-row-indexes))
+       (let [value-key  (ensure-consistent-type (select-indexes row col-and-row-indexes))
              values     (select-indexes row val-indexes)
              data       (into []
                               (map-indexed
@@ -561,7 +580,7 @@
                    (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
                    (get-normal-cell-values values-by-key index-values value-formatters color-getter))]
       ;; Convert to JavaScript object if in ClojureScript context
-      #?(:cljs (clj->js result)
+      #?(:cljs (perf/clj->js result)
          :clj result))))
 
 (defn- tree-to-array

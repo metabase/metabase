@@ -1,10 +1,11 @@
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useMemo, useState } from "react";
 
 import {
   CollectionNotFoundError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
@@ -13,17 +14,14 @@ import type {
   SdkCollectionId,
 } from "embedding-sdk/types/collection";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
+import { useGetCollectionQuery } from "metabase/api";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { isNotNull } from "metabase/lib/types";
-import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs/CollectionBreadcrumbs";
+import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs";
 import { Stack } from "metabase/ui";
-import type {
-  CollectionEssentials,
-  CollectionId,
-  CollectionItemModel,
-} from "metabase-types/api";
+import type { CollectionId, CollectionItemModel } from "metabase-types/api";
 
 const USER_FACING_ENTITY_NAMES = [
   "collection",
@@ -109,25 +107,57 @@ export const CollectionBrowserInner = ({
     getCollectionIdSlugFromReference(state, collectionId),
   );
 
-  const [currentCollectionId, setCurrentCollectionId] =
+  // Internal collection state.
+  const [internalCollectionId, setInternalCollectionId] =
     useState<CollectionId>(baseCollectionId);
 
+  const {
+    isBreadcrumbEnabled: isGlobalBreadcrumbEnabled,
+    currentLocation,
+    reportLocation,
+  } = useSdkBreadcrumbs();
+
+  const effectiveCollectionId = useMemo(() => {
+    if (isGlobalBreadcrumbEnabled && currentLocation?.type === "collection") {
+      return currentLocation.id as CollectionId;
+    }
+
+    return internalCollectionId;
+  }, [isGlobalBreadcrumbEnabled, currentLocation, internalCollectionId]);
+
+  const { data: collection, isFetching: isFetchingCollection } =
+    useGetCollectionQuery({ id: effectiveCollectionId });
+
   useEffect(() => {
-    setCurrentCollectionId(baseCollectionId);
+    setInternalCollectionId(baseCollectionId);
   }, [baseCollectionId]);
 
-  const onClickItem = (item: MetabaseCollectionItem) => {
-    if (onClick) {
-      onClick(item);
+  useEffect(() => {
+    if (isGlobalBreadcrumbEnabled && !isFetchingCollection && collection) {
+      reportLocation({
+        type: "collection",
+        id: collection.id,
+        name: collection.name || "Collection",
+      });
     }
+  }, [
+    isGlobalBreadcrumbEnabled,
+    isFetchingCollection,
+    collection,
+    reportLocation,
+  ]);
+
+  const onClickItem = (item: MetabaseCollectionItem) => {
+    onClick?.(item);
 
     if (item.model === "collection") {
-      setCurrentCollectionId(item.id as CollectionId);
-    }
-  };
+      if (isGlobalBreadcrumbEnabled) {
+        reportLocation({ type: "collection", id: item.id, name: item.name });
+        return;
+      }
 
-  const onClickBreadcrumbItem = (item: CollectionEssentials) => {
-    setCurrentCollectionId(item.id);
+      setInternalCollectionId(item.id as CollectionId);
+    }
   };
 
   const collectionTypes = visibleEntityTypes
@@ -136,13 +166,16 @@ export const CollectionBrowserInner = ({
 
   return (
     <Stack w="100%" h="100%" gap="sm" className={className} style={style}>
-      <CollectionBreadcrumbs
-        collectionId={currentCollectionId}
-        onClick={onClickBreadcrumbItem}
-        baseCollectionId={baseCollectionId}
-      />
+      {!isGlobalBreadcrumbEnabled && (
+        <CollectionBreadcrumbs
+          collectionId={internalCollectionId}
+          onClick={(item) => setInternalCollectionId(item.id)}
+          baseCollectionId={baseCollectionId}
+        />
+      )}
+
       <CollectionItemsTable
-        collectionId={currentCollectionId}
+        collectionId={effectiveCollectionId}
         onClick={onClickItem}
         pageSize={pageSize}
         models={collectionTypes}
@@ -173,12 +206,6 @@ const CollectionBrowserWrapper = ({
   return <CollectionBrowserInner collectionId={id} {...restProps} />;
 };
 
-/**
- * A component that allows you to browse collections and their items.
- *
- * @function
- * @category CollectionBrowser
- */
 export const CollectionBrowser = withPublicComponentWrapper(
   CollectionBrowserWrapper,
 );

@@ -165,23 +165,30 @@ describe("scenarios > question > custom column", () => {
   });
 
   // flaky test (#19454)
-  it.skip("should show info popovers when hovering over custom column dimensions in the summarize sidebar", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
+  it(
+    "should show info popovers when hovering over custom column dimensions in the summarize sidebar",
+    { tags: "@skip" },
+    () => {
+      H.openOrdersTable({ mode: "notebook" });
+      cy.findByLabelText("Custom column").click();
 
-    H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
-    cy.button("Done").click();
+      H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+      cy.button("Done").click();
 
-    H.visualize();
+      H.visualize();
 
-    H.summarize();
+      H.summarize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Group by").parent().findByText("Math").trigger("mouseenter");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Group by")
+        .parent()
+        .findByText("Math")
+        .trigger("mouseenter");
 
-    H.popover().contains("Math");
-    H.popover().contains("No description");
-  });
+      H.popover().contains("Math");
+      H.popover().contains("No description");
+    },
+  );
 
   it("can create a custom column with an existing column name", () => {
     const customFormulas = [
@@ -558,25 +565,29 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "Sum([MyCC \\[2027\\]])");
   });
 
-  it.skip("should work with `isNull` function (metabase#15922)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom column").click();
-    H.enterCustomColumnDetails({
-      formula: "isnull([Discount])",
-      name: "No discount",
-    });
-    cy.button("Done").click();
+  it(
+    "should work with `isNull` function (metabase#15922)",
+    { tags: "@skip" },
+    () => {
+      H.openOrdersTable({ mode: "notebook" });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Custom column").click();
+      H.enterCustomColumnDetails({
+        formula: "isnull([Discount])",
+        name: "No discount",
+      });
+      cy.button("Done").click();
 
-    H.visualize((response) => {
-      expect(response.body.error).to.not.exist;
-    });
+      H.visualize((response) => {
+        expect(response.body.error).to.not.exist;
+      });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No discount");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("37.65");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("No discount");
+    },
+  );
 
   it("should be able to add a date range filter to a custom column", () => {
     H.visitQuestionAdhoc({
@@ -843,16 +854,20 @@ describe("scenarios > question > custom column", () => {
   });
 
   // TODO: fixme!
-  it.skip("should render custom expression helper near the custom expression field", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
+  it(
+    "should render custom expression helper near the custom expression field",
+    { tags: "@skip" },
+    () => {
+      H.openOrdersTable({ mode: "notebook" });
+      cy.findByLabelText("Custom column").click();
 
-    H.popover().within(() => {
-      H.enterCustomColumnDetails({ formula: "floor" });
+      H.popover().within(() => {
+        H.enterCustomColumnDetails({ formula: "floor" });
 
-      H.checkExpressionEditorHelperPopoverPosition();
-    });
-  });
+        H.checkExpressionEditorHelperPopoverPosition();
+      });
+    },
+  );
 
   it("should allow to use `if` function", () => {
     H.openProductsTable({ mode: "notebook" });
@@ -2138,10 +2153,6 @@ describe("scenarios > question > custom column > aggregation", () => {
               },
             ],
           ],
-          "aggregation-idents": {
-            0: "S9C0DETiO434MYRP83IwM",
-            1: "EHbjfRmmyZ8Xd2WNrh4wq",
-          },
         },
       }).then((res) => {
         H.visitQuestionAdhoc(
@@ -2290,10 +2301,6 @@ describe("scenarios > question > custom column > aggregation", () => {
                 },
               ],
             ],
-            "aggregation-idents": {
-              0: "S9C0DETiO434MYRP83IwM",
-              1: "EHbjfRmmyZ8Xd2WNrh4wq",
-            },
           },
         },
         { visitQuestion: true },
@@ -2393,10 +2400,6 @@ describe("scenarios > question > custom column > aggregation", () => {
                 },
               ],
             ],
-            "aggregation-idents": {
-              0: "S9C0DETiO434MYRP83IwM",
-              1: "EHbjfRmmyZ8Xd2WNrh4wq",
-            },
             breakout: [
               [
                 "field",

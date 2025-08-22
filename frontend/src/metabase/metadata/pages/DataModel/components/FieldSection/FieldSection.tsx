@@ -2,24 +2,27 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { NameDescriptionInput } from "metabase/metadata/components";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, Field } from "metabase-types/api";
+import type { DatabaseId, Field, Table } from "metabase-types/api";
+
+import { ResponsiveButton } from "../ResponsiveButton";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
+import { useResponsiveButtons } from "./hooks";
 
 interface Props {
   databaseId: DatabaseId;
   field: Field;
-  isPreviewOpen: boolean;
+  table: Table;
   parent?: Field;
   onFieldValuesClick: () => void;
   onPreviewClick: () => void;
@@ -28,69 +31,68 @@ interface Props {
 const FieldSectionBase = ({
   databaseId,
   field,
-  isPreviewOpen,
   parent,
+  table,
   onFieldValuesClick,
   onPreviewClick,
 }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
+  const {
+    buttonsContainerRef,
+    showButtonLabel,
+    setFieldValuesButtonWidth,
+    setPreviewButtonWidth,
+  } = useResponsiveButtons();
 
   const handleNameChange = async (name: string) => {
-    if (field.display_name === name) {
-      return;
-    }
-
     const { error } = await updateField({ id, display_name: name });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update name of ${field.display_name}`,
-      });
+      sendErrorToast(t`Failed to update name of ${field.display_name}`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Name of ${field.display_name} updated`,
+      sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
+        const { error } = await updateField({
+          id,
+          display_name: field.display_name,
+        });
+        sendUndoToast(error);
       });
     }
   };
 
   const handleDescriptionChange = async (description: string) => {
-    const newDescription = description.trim();
-
-    if ((field.description ?? "") === newDescription) {
-      return;
-    }
-
     const { error } = await updateField({
       id,
       // API does not accept empty strings
-      description: newDescription.length === 0 ? null : newDescription,
+      description: description.length === 0 ? null : description,
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update description of ${field.display_name}`,
-      });
+      sendErrorToast(t`Failed to update description of ${field.display_name}`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Description of ${field.display_name} updated`,
-      });
+      sendSuccessToast(
+        t`Description of ${field.display_name} updated`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            description: field.description ?? "",
+          });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 
   return (
     <Stack data-testid="field-section" gap={0} pb="xl">
-      <Box
+      <Stack
         bg="accent-gray-light"
         className={S.header}
-        pb="lg"
+        gap="lg"
+        pb={12}
         pos="sticky"
         pt="xl"
         px="xl"
@@ -107,44 +109,46 @@ const FieldSectionBase = ({
           onDescriptionChange={handleDescriptionChange}
           onNameChange={handleNameChange}
         />
-      </Box>
 
-      <Stack gap={12} mb={12} px="xl">
-        <Group align="center" gap="md" justify="space-between">
+        <Group
+          align="center"
+          gap="md"
+          justify="space-between"
+          miw={0}
+          wrap="nowrap"
+        >
           <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
           <Group
-            className={S.buttons}
             flex="1"
             gap="md"
             justify="flex-end"
+            miw={0}
+            ref={buttonsContainerRef}
             wrap="nowrap"
           >
-            {!isPreviewOpen && (
-              <Button
-                leftSection={<Icon name="eye" />}
-                px="sm"
-                py="xs"
-                size="xs"
-                onClick={onPreviewClick}
-              >{t`Preview`}</Button>
-            )}
+            {/* keep this in sync with getRequiredWidth in useResponsiveButtons */}
 
-            <Button
-              h={32}
-              leftSection={<Icon name="gear_settings_filled" />}
-              px="sm"
-              py="xs"
-              size="xs"
+            <ResponsiveButton
+              icon="eye"
+              showLabel={showButtonLabel}
+              onClick={onPreviewClick}
+              onRequestWidth={setPreviewButtonWidth}
+            >{t`Preview`}</ResponsiveButton>
+
+            <ResponsiveButton
+              icon="gear_settings_filled"
+              showLabel={showButtonLabel}
               onClick={onFieldValuesClick}
-            >{t`Field values`}</Button>
+              onRequestWidth={setFieldValuesButtonWidth}
+            >{t`Field values`}</ResponsiveButton>
           </Group>
         </Group>
       </Stack>
 
       <Stack gap="xl" px="xl">
         <DataSection field={field} />
-        <MetadataSection databaseId={databaseId} field={field} />
+        <MetadataSection databaseId={databaseId} field={field} table={table} />
         <BehaviorSection databaseId={databaseId} field={field} />
         <FormattingSection field={field} />
       </Stack>

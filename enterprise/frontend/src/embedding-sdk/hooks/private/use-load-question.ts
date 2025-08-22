@@ -6,7 +6,7 @@ import {
   runQuestionOnNavigateSdk,
   runQuestionQuerySdk,
   updateQuestionSdk,
-} from "embedding-sdk/lib/interactive-question";
+} from "embedding-sdk/lib/sdk-question";
 import { useSdkDispatch } from "embedding-sdk/store";
 import type {
   LoadSdkQuestionParams,
@@ -46,7 +46,9 @@ export interface LoadQuestionHookResult {
    */
   replaceQuestion(question: Question): void;
 
-  navigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
+  navigateToNewCard:
+    | ((params: NavigateToNewCardParams) => Promise<void>)
+    | null;
 }
 
 export function useLoadQuestion({

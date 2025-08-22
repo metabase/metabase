@@ -14,6 +14,8 @@ export interface MarkdownProps
   unstyleLinks?: boolean;
   children: string;
   lineClamp?: number;
+  c?: string;
+  components?: Record<string, any>;
 }
 
 const Markdown = ({
@@ -22,6 +24,7 @@ const Markdown = ({
   dark,
   disallowHeading = false,
   unstyleLinks = false,
+  c,
   ...rest
 }: MarkdownProps): JSX.Element => {
   const additionalOptions = {
@@ -38,6 +41,7 @@ const Markdown = ({
       remarkPlugins={REMARK_PLUGINS}
       linkTarget={"_blank"}
       unstyleLinks={unstyleLinks}
+      c={c}
       {...additionalOptions}
       {...rest}
     >

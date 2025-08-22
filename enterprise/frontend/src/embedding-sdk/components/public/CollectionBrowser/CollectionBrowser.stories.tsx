@@ -1,7 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 import type { ComponentProps } from "react";
 
-import { CollectionBrowser } from "embedding-sdk";
+import { CollectionBrowser } from "embedding-sdk/components/public/CollectionBrowser";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { collectionIdArgType } from "embedding-sdk/test/storybook-id-args";
 

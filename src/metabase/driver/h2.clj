@@ -58,6 +58,7 @@
 
 (doseq [[feature supported?] {:actions                   true
                               :actions/custom            true
+                              :actions/data-editing      true
                               :datetime-diff             true
                               :expression-literals       true
                               :full-join                 false
@@ -69,7 +70,8 @@
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
                               :uploads                   true
-                              :database-routing          true}]
+                              :database-routing          true
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -264,11 +266,20 @@
   (check-read-only-statements query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
-(defmethod driver/execute-write-query! :h2
-  [driver query]
+(mu/defmethod driver/execute-write-query! :h2
+  [driver :- :keyword
+   query  :- [:map
+              [:type   [:= :native]]
+              [:native [:map
+                        [:query :string]]]]]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
+
+(defmethod driver/execute-raw-queries! :h2
+  [driver connection-details queries]
+  ;; FIXME: need to check the equivalent of check-native-query-not-using-default-user and check-action-commands-allowed
+  ((get-method driver/execute-raw-queries! :sql-jdbc) driver connection-details queries))
 
 (defn- dateadd [unit amount expr]
   (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone" "date"} expr)]

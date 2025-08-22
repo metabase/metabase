@@ -263,7 +263,7 @@
 
 (defn- card-columns-from-names
   [card names]
-  (when-let [names (set names)]
+  (when-let [names (not-empty (set names))]
     (filter #(names (:name %)) (:result_metadata card))))
 
 (defn- cols->kebab-case
@@ -488,29 +488,33 @@
 
       :else nil)))
 
+(def CardCreateSchema
+  "Schema for creating a new card"
+  [:map
+   [:name                   ms/NonBlankString]
+   [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   [:dataset_query          ms/Map]
+                            ;; TODO: Make entity_id a NanoID regex schema?
+   [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
+   [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
+   [:description            {:optional true} [:maybe ms/NonBlankString]]
+   [:display                ms/NonBlankString]
+   [:visualization_settings ms/Map]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
+   [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
+   [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
+
 (api.macros/defendpoint :post "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [_route-params
    _query-params
    {query         :dataset_query
     card-type     :type
-    :as           body} :- [:map
-                            [:name                   ms/NonBlankString]
-                            [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
-                            [:dataset_query          ms/Map]
-                            ;; TODO: Make entity_id a NanoID regex schema?
-                            [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
-                            [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
-                            [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
-                            [:description            {:optional true} [:maybe ms/NonBlankString]]
-                            [:display                ms/NonBlankString]
-                            [:visualization_settings ms/Map]
-                            [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-                            [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-                            [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
-                            [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
+    :as           body} :- CardCreateSchema]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
   (query-perms/check-run-permissions-for-query query)
@@ -558,6 +562,13 @@
     (check-allowed-to-remove-from-existing-dashboards card-before-update))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
+(defn- check-update-result-metadata-data-perms
+  [card-before-updates card-updates]
+  (when (api/column-will-change? :result_metadata card-before-updates card-updates)
+    (let [database-id (some :database_id [card-before-updates card-updates])
+          result-metadata (:result_metadata card-updates)]
+      (query-perms/check-result-metadata-data-perms database-id result-metadata))))
+
 (def ^:private CardUpdateSchema
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
@@ -576,7 +587,7 @@
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:collection_preview     {:optional true} [:maybe :boolean]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (defn- maybe-populate-collection-id
   "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.
@@ -613,7 +624,8 @@
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
     ;; Do various permissions checks
-    (doseq [f [check-allowed-to-move
+    (doseq [f [check-update-result-metadata-data-perms
+               check-allowed-to-move
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))

@@ -16,4 +16,5 @@
   generate-sql]
  [metabase-enterprise.metabot-v3.table-utils
   database-tables
-  used-tables])
+  used-tables
+  schema-sample])

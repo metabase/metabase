@@ -1,4 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
+import type { ReactNode } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Box, Group, Icon, type IconName, Text, rem } from "metabase/ui";
@@ -15,6 +16,7 @@ interface Props {
   nameMaxLength?: number;
   namePlaceholder: string;
   namePrefix?: string;
+  nameRightSection?: ReactNode;
   onDescriptionChange: (description: string) => void;
   onNameChange: (name: string) => void;
 }
@@ -27,12 +29,29 @@ export const NameDescriptionInput = ({
   nameMaxLength,
   namePlaceholder,
   namePrefix,
+  nameRightSection,
   onDescriptionChange,
   onNameChange,
 }: Props) => {
   const { ref, width } = useElementSize();
   const { ref: sectionRef, width: sectionWidth } = useElementSize();
-  const leftSectionWidth = sectionWidth > 0 ? sectionWidth : 40;
+  const leftSectionWidth = Math.max(sectionWidth, 40);
+
+  const handleDescriptionChange = (value: string) => {
+    const newDescription = value.trim();
+
+    if (description !== newDescription) {
+      onDescriptionChange(newDescription);
+    }
+  };
+
+  const handleNameChange = (value: string) => {
+    const newName = value.trim();
+
+    if (name !== newName) {
+      onNameChange(newName);
+    }
+  };
 
   return (
     <Box ref={ref}>
@@ -84,6 +103,7 @@ export const NameDescriptionInput = ({
         maxLength={nameMaxLength}
         placeholder={namePlaceholder}
         required
+        rightSection={nameRightSection}
         size="lg"
         styles={{
           section: {
@@ -95,7 +115,7 @@ export const NameDescriptionInput = ({
           },
         }}
         value={name}
-        onChange={onNameChange}
+        onChange={handleNameChange}
       />
 
       <Textarea
@@ -108,7 +128,7 @@ export const NameDescriptionInput = ({
         minRows={2}
         placeholder={descriptionPlaceholder}
         value={description}
-        onChange={onDescriptionChange}
+        onChange={handleDescriptionChange}
       />
     </Box>
   );

@@ -46,6 +46,7 @@ import { ParameterValueWidget } from "../ParameterValueWidget";
 import { RequiredParamToggle } from "../RequiredParamToggle";
 import { ValuesSourceSettings } from "../ValuesSourceSettings";
 
+import { MoveParameterMenu } from "./MoveParameterMenu";
 import S from "./ParameterSettings.module.css";
 import { TemporalUnitSettings } from "./TemporalUnitSettings";
 
@@ -289,21 +290,21 @@ export const ParameterSettings = ({
         ></RequiredParamToggle>
       </Box>
 
+      <MoveParameterMenu parameterId={parameter.id} />
+
       {hasMapping && (
-        <Box>
-          <Button
-            variant="subtle"
-            pl={0}
-            onClick={() => {
-              dispatch(resetParameterMapping(parameter.id));
-            }}
-          >
-            {editingParameterInlineDashcard != null &&
-            isQuestionDashCard(editingParameterInlineDashcard)
-              ? t`Disconnect from card`
-              : t`Disconnect from cards`}
-          </Button>
-        </Box>
+        <Button
+          mt="sm"
+          w="100%"
+          onClick={() => {
+            dispatch(resetParameterMapping(parameter.id));
+          }}
+        >
+          {editingParameterInlineDashcard != null &&
+          isQuestionDashCard(editingParameterInlineDashcard)
+            ? t`Disconnect from card`
+            : t`Disconnect from cards`}
+        </Button>
       )}
     </Box>
   );

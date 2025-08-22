@@ -71,6 +71,7 @@
 
 (defn- last-stage-number
   [outer-query]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/legacy-last-stage-number (:query outer-query)))
 
 (defn- nest-query
@@ -325,7 +326,6 @@
         info       (cond-> {:executed-by            api/*current-user-id*
                             :context                context
                             :card-id                card-id
-                            :card-entity-id         (:entity_id card)
                             :card-name              (:name card)
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}

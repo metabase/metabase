@@ -51,11 +51,13 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [clojure.main]
    [clojure.string :as str]
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
    [dev.h2 :as dev.h2]
+   [dev.malli :as dev.malli]
    [dev.memory :as dev.memory]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
@@ -99,6 +101,8 @@
   model-tracking/keep-me
   dev.h2/keep-me)
 
+(apply require clojure.main/repl-requires)
+
 #_:clj-kondo/ignore
 (defn tap>-spy [x]
   (doto x tap>))
@@ -108,6 +112,8 @@
   pprint-sql]
  [dev.explain
   explain-query]
+ [dev.malli
+  visualize-schema!]
  [dev.migrate
   migrate!
   rollback!

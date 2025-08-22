@@ -27,9 +27,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -90,7 +88,7 @@
   compatibility."
   [tag :- mbql.s/TemplateTag]
   (let [target-type (case (:type tag)
-                      :dimension     :dimension
+                      (:dimension :temporal-unit) :dimension
                       :variable)]
     #{[target-type [:template-tag (:name tag)]]
       [target-type [:template-tag {:id (:id tag)}]]}))
@@ -126,9 +124,9 @@
                 param-display-name)
            {:type qp.error-type/missing-required-parameter}))
 
-(mu/defn- field-filter->field-id :- ::lib.schema.id/field
-  [field-filter]
-  (second field-filter))
+(mu/defn- dimension->field-id :- ::lib.schema.id/field
+  [dimension]
+  (second dimension))
 
 (mu/defn- field-filter-value
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
@@ -157,12 +155,16 @@
                                (first params)
                                params)))
         nil-value?        (and (seq matching-params)
-                               (every? (fn [param]
-                                         (nil? (:value param)))
+                               (every? (fn [{:keys [value], :as _param}]
+                                         (or (nil? value)
+                                             (and (sequential? value)
+                                                  (every? nil? value))))
                                        matching-params))]
     (cond
       ;; if we have matching parameter(s) with at least one actual value, return them.
-      (and (seq matching-params) (some :value matching-params))
+      (and (seq matching-params)
+           (some :value matching-params)
+           (not nil-value?))
       (normalize-params (filter :value matching-params))
       ;; If a FieldFilter has value=nil, return a [[params/no-value]]
       ;; so that this filter can be substituted with "1 = 1" regardless of whether or not this tag has default value
@@ -193,14 +195,15 @@
       params/no-value)))
 
 (mu/defmethod parse-tag :dimension :- [:maybe FieldFilter]
-  [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag
+  [{:keys [dimension alias], :as tag} :- mbql.s/TemplateTag
    params                             :- [:maybe [:sequential mbql.s/Parameter]]]
   (params/map->FieldFilter
-   {:field (let [field-id (field-filter->field-id field-filter)]
+   {:field (let [field-id (dimension->field-id dimension)]
              (or (lib.metadata/field (qp.store/metadata-provider) field-id)
                  (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                  {:field-id field-id, :type qp.error-type/invalid-parameter}))))
-    :value (field-filter-value tag params)}))
+    :value (field-filter-value tag params)
+    :alias alias}))
 
 (mu/defmethod parse-tag :card :- ReferencedCardQuery
   [{:keys [card-id], :as tag} :- mbql.s/TemplateTag _params]
@@ -239,7 +242,7 @@
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
-        snippet    (or (t2/select-one :model/NativeQuerySnippet :id snippet-id)
+        snippet    (or (lib.metadata/native-query-snippet (qp.store/metadata-provider) snippet-id)
                        (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
                                        {:snippet-id   snippet-id
                                         :snippet-name snippet-name
@@ -250,7 +253,7 @@
       :content    (:content snippet)})))
 
 (defmethod parse-tag :temporal-unit
-  [{:keys [required] tag-name :name :as tag} params]
+  [{:keys [required dimension alias] :as tag} params]
   (let [matching-param       (when-let [matching-params (not-empty (tag-params tag params))]
                                (when (> (count matching-params) 1)
                                  (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
@@ -270,14 +273,18 @@
                       {:value param-value
                        :expected valid-temporal-units})))
     (params/map->TemporalUnit
-     {:name tag-name
+     {:field (let [field-id (dimension->field-id dimension)]
+               (or (lib.metadata/field (qp.store/metadata-provider) field-id)
+                   (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
+                                   {:field-id field-id, :type qp.error-type/invalid-parameter}))))
       :value (or (:value matching-param)
                  (when (and nil-value? (not required))
                    params/no-value)
                  (:default tag)
                  (if required
                    (throw (missing-required-param-exception (:display-name tag)))
-                   params/no-value))})))
+                   params/no-value))
+      :alias alias})))
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 
@@ -316,6 +323,10 @@
   (param-value-for-raw-value-tag tag params))
 
 (defmethod parse-tag :date
+  [tag params]
+  (param-value-for-raw-value-tag tag params))
+
+(defmethod parse-tag :boolean
   [tag params]
   (param-value-for-raw-value-tag tag params))
 

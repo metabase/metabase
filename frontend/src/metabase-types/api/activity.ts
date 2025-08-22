@@ -11,6 +11,7 @@ export const ACTIVITY_MODELS = [
   "metric",
   "dashboard",
   "collection",
+  "document",
 ] as const;
 
 export type ActivityModel = (typeof ACTIVITY_MODELS)[number];
@@ -47,7 +48,13 @@ export type RecentTableItem = BaseRecentItem & {
 };
 
 export type RecentCollectionItem = BaseRecentItem & {
-  model: "collection" | "dashboard" | "card" | "dataset" | "metric";
+  model:
+    | "collection"
+    | "dashboard"
+    | "card"
+    | "dataset"
+    | "metric"
+    | "document";
   can_write: boolean;
   database_id?: DatabaseId; // for models and questions
   parent_collection: {

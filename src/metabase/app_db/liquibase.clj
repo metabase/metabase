@@ -372,12 +372,12 @@
               unrun-migrations-count (count to-run-migrations)]
           (if (pos? unrun-migrations-count)
             (let [^Contexts contexts nil
-                  start-time         (System/currentTimeMillis)]
+                  timer              (u/start-timer)]
               (log/infof "Running %s migrations ..." unrun-migrations-count)
               (doseq [^ChangeSet change to-run-migrations]
                 (log/tracef "To run migration %s" (.getId change)))
               (.update liquibase contexts)
-              (log/infof "Migration complete in %s" (u/format-milliseconds (- (System/currentTimeMillis) start-time))))
+              (log/infof "Migration complete in %s" (u/format-milliseconds (u/since-ms timer))))
             (log/info "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
     (log/info "No unrun migrations found.")))
 
@@ -478,10 +478,22 @@
             "v45.00-001" legacy-migrations-file
             "v56.0000-00-00T00:00:00" update001-migrations-file]))))))
 
+(def ^:private special-case-migrations #{"v56.2025-06-05T16:48:48" "v56.2025-05-19T16:48:48"})
+
+(defn- handle-special-case-migrations
+  "This handles v56 migrations that were checked into the v55 branch to resolve an issue with
+  inadventently backported migrations in 55. We check if this or the bad backports are the most recent
+  available migration and explicitly return 55 as the available major version if so."
+  [s]
+  (when (contains? special-case-migrations s)
+    55))
+
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
   [s]
-  (map #(Integer/parseInt %) (re-seq #"\d+" s)))
+  (if-let [special-cased (handle-special-case-migrations s)]
+    [special-cased]
+    (map #(Integer/parseInt %) (re-seq #"\d+" s))))
 
 (defn latest-available-major-version
   "Get the latest version that Liquibase would apply if we ran migrations right now."

@@ -197,7 +197,6 @@ describe("parameters/utils/mapping-options", () => {
           joins: [
             {
               alias: "Product",
-              ident: "Y_wEKVMtSNd3v5I4vYs05",
               fields: "all",
               "source-table": PRODUCTS_ID,
               condition: [
@@ -480,6 +479,46 @@ describe("parameters/utils/mapping-options", () => {
     it("should return empty array if link URL is undefined", () => {
       const options = getLinkOptions(undefined);
       expect(options).toEqual([]);
+    });
+  });
+
+  describe("parameterDashcard filtering", () => {
+    it("should return empty array when parameterDashcard is from a different tab", () => {
+      const card = structured({ "source-table": ORDERS_ID });
+      const question = new Question(card, metadata);
+      const dashcard = createMockDashboardCard({ dashboard_tab_id: 1 });
+      const parameterDashcard = createMockDashboardCard({
+        dashboard_tab_id: 2,
+      });
+
+      const options = getParameterMappingOptions(
+        question,
+        { type: "date/single" },
+        card,
+        dashcard,
+        parameterDashcard,
+      );
+
+      expect(options).toEqual([]);
+    });
+
+    it("should return normal options when parameterDashcard is on same tab", () => {
+      const card = structured({ "source-table": ORDERS_ID });
+      const question = new Question(card, metadata);
+      const dashcard = createMockDashboardCard({ dashboard_tab_id: 1 });
+      const parameterDashcard = createMockDashboardCard({
+        dashboard_tab_id: 1,
+      });
+
+      const options = getParameterMappingOptions(
+        question,
+        { type: "date/single" },
+        card,
+        dashcard,
+        parameterDashcard,
+      );
+
+      expect(options.length).toBeGreaterThan(0);
     });
   });
 });

@@ -14,7 +14,10 @@ import {
 } from "metabase-lib/v1/operators/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
-import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  getIsMultiSelect,
+  hasValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dashboard, RowValue } from "metabase-types/api";
 
 import { Footer } from "../Widget";
@@ -51,8 +54,7 @@ export function ParameterFieldWidget({
   const { numFields = 1, multi = false, verboseName } = operator || {};
   const isEqualsOp = isEqualsOperator(operator);
 
-  const supportsMultipleValues =
-    multi && !parameter.hasVariableTemplateTagTarget;
+  const supportsMultipleValues = multi && getIsMultiSelect(parameter);
 
   const isValid =
     unsavedValue.every((value) => value != null) &&

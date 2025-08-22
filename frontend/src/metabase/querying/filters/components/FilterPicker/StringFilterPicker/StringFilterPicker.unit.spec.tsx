@@ -59,6 +59,7 @@ function setup({
 
   renderWithProviders(
     <StringFilterPicker
+      autoFocus
       query={query}
       stageIndex={0}
       column={column}

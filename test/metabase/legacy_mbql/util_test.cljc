@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.util-test
   (:require
-   #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
+   #?@(:clj  (^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :as t]
@@ -181,58 +181,6 @@
              [:= [:field 3 nil] 300]
              [:= [:field 4 nil] 300]]))
         "Should be able to combine multiple compound clauses"))
-
-(t/deftest ^:parallel add-filter-clause-test-1-single-stage
-  (t/is (= {:database 1
-            :type     :query
-            :query    {:source-table 1
-                       :filter       [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]}}
-           (mbql.u/add-filter-clause
-            {:database 1
-             :type     :query
-             :query    {:source-table 1
-                        :filter       [:= [:field 1 nil] 100]}}
-            0
-            [:= [:field 2 nil] 200]))
-        "Should be able to add a filter clause to a query"))
-
-(t/deftest ^:parallel add-filter-clause-test-2-earlier-stage
-  (doseq [stage-number [0 -2]]
-    (t/is (= {:database 1
-              :type     :query
-              :query    {:source-query {:source-table 1
-                                        :filter       [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
-                                        :aggregation  [[:count]]}
-                         :expressions  {"negated" [:* [:field 1 nil] -1]}}}
-             (mbql.u/add-filter-clause
-              {:database 1
-               :type     :query
-               :query    {:source-query {:source-table 1
-                                         :filter       [:= [:field 1 nil] 100]
-                                         :aggregation  [[:count]]}
-                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
-              stage-number
-              [:= [:field 2 nil] 200]))
-          "Should be able to add a filter clause to an earlier stage of a query")))
-
-(t/deftest ^:parallel add-filter-clause-test-3-later-stage
-  (doseq [stage-number [-1 1]]
-    (t/is (= {:database 1
-              :type     :query
-              :query    {:source-query {:source-table 1
-                                        :filter       [:= [:field 1 nil] 100]
-                                        :aggregation  [[:count]]}
-                         :expressions  {"negated" [:* [:field 1 nil] -1]}
-                         :filter       [:= [:field 2 nil] 200]}}
-             (mbql.u/add-filter-clause
-              {:database 1
-               :type     :query
-               :query    {:source-query {:source-table 1
-                                         :filter       [:= [:field 1 nil] 100]
-                                         :aggregation  [[:count]]}
-                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
-              stage-number
-              [:= [:field 2 nil] 200])))))
 
 (t/deftest ^:parallel map-stages-test
   (let [test-fn (fn [inner-query stage-number]
@@ -894,6 +842,7 @@
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (t/deftest ^:parallel query->max-rows-limit-test
   (doseq [[group query->expected]
           {"should return `:limit` if set"
@@ -962,29 +911,19 @@
   (t/is (= [:+ 1 1]
            (mbql.u/expression-with-name {:expressions  {"two" [:+ 1 1]}
                                          :source-table 1}
-                                        "two")))
+                                        "two"))))
 
+(t/deftest ^:parallel expression-with-name-test-2
   (t/testing "Make sure `expression-with-name` knows how to reach into the parent query if need be"
     (t/is (= [:+ 1 1]
              (mbql.u/expression-with-name {:source-query {:expressions  {"two" [:+ 1 1]}
                                                           :source-table 1}}
-                                          "two"))))
+                                          "two")))))
 
-  (t/testing "Should work if passed in a keyword as well"
-    (t/is (= [:+ 1 1]
-             (mbql.u/expression-with-name {:source-query {:expressions  {"two" [:+ 1 1]}
-                                                          :source-table 1}}
-                                          :two))))
-
-  (t/testing "Should work if the key in the expression map is a keyword in pre-Metabase 43 query maps"
-    (t/is (= [:+ 1 1]
-             (mbql.u/expression-with-name {:source-query {:expressions  {:two [:+ 1 1]}
-                                                          :source-table 1}}
-                                          "two"))))
-
+(t/deftest ^:parallel expression-with-name-test-3
   (t/testing "Should throw an Exception if expression does not exist"
     (t/is (thrown-with-msg?
-           #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
+           #?(:clj clojure.lang.ExceptionInfo :cljs :default)
            #"No expression named"
            (mbql.u/expression-with-name {} "wow")))))
 
@@ -1123,3 +1062,8 @@
                  {:default ""}]
                 (mbql.u/desugar-expression [:day-name [:field 1 nil]]))
              "`day-name` should desugar to a `:case` clause with values for each weekday"))))
+
+(t/deftest ^:parallel normalize-token-handle-types-test
+  (t/testing "If this gets called incorrectly with a base type keyword then handle it gracefully"
+    (t/is (= :type/Text
+             (mbql.u/normalize-token "type/Text")))))

@@ -14,12 +14,15 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -227,7 +230,7 @@
             (do-test)))))))
 
 (deftest native-query-with-long-column-alias
-  (testing "nested native query with long column alias (metabase#47584)"
+  (testing "nested native query with long column alias (#47584)"
     (let [short-col-name "coun"
           long-col-name  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
 
@@ -312,7 +315,7 @@
               (is (= 101
                      (count (csv/read-csv result)))))))))))
 
-(deftest export-with-remapped-fields
+(deftest ^:parallel export-with-remapped-fields
   (testing "POST /api/dataset/:format"
     (testing "Downloaded CSV/JSON/XLSX results should respect remapped fields (#18440)"
       (let [query {:database (mt/id)
@@ -326,14 +329,20 @@
                 :let     [query (cond-> query
                                   encoded? json/encode)]]
           (testing (format "encoded? %b" encoded?)
-            (mt/with-column-remappings [venues.category_id categories.name]
-              (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
-                                                 {:query query})]
-                (is (str/includes? result "Asian"))))
-            (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-              (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
-                                                 {:query query})]
-                (is (str/includes? result "Asian"))))))))))
+            (doseq [mp [(lib.tu/remap-metadata-provider
+                         (mt/application-database-metadata-provider (mt/id))
+                         (mt/id :venues :category_id)
+                         (mt/id :categories :name))
+                        (lib.tu/remap-metadata-provider
+                         (mt/application-database-metadata-provider (mt/id))
+                         (mt/id :venues :category_id)
+                         (mapv first (mt/rows (qp/process-query
+                                               (mt/mbql-query categories
+                                                 {:fields [$name], :order-by [[:asc $id]]})))))]]
+              (qp.store/with-metadata-provider mp
+                (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                                   {:query query})]
+                  (is (str/includes? result "Asian")))))))))))
 
 (deftest non-download-queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "

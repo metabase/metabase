@@ -122,6 +122,11 @@
    (and (can-write? pk)
         (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
 
+(mu/defmethod mi/visible-filter-clause :model/Database
+  [_model column-or-exp user-info permission-mapping]
+  [:in column-or-exp
+   (perms/visible-database-filter-select user-info permission-mapping)])
+
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
   [{:keys [details is_full_sync is_on_demand cache_field_values_schedule metadata_sync_schedule] :as database}]
@@ -146,7 +151,7 @@
     ;; so we just manually nullify it here
     (assoc database :cache_field_values_schedule nil)))
 
-(defn- is-destination?
+(defn is-destination?
   "Is this database a destination database for some router database?"
   [db]
   (boolean (:router_database_id db)))
@@ -372,6 +377,14 @@
           (throw (ex-info (trs "The database does not support actions.")
                           {:status-code     400
                            :existing-engine existing-engine
+                           :new-engine      new-engine})))
+        ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
+        ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
+        (when (and (:database-enable-table-editing (or new-settings existing-settings))
+                   (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
+          (throw (ex-info (trs "The database does not support table editing.")
+                          {:status-code     400
+                           :existing-engine existing-engine
                            :new-engine      new-engine})))))))
 
 (t2/define-after-update :model/Database
@@ -493,7 +506,7 @@
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
                :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
-               :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
+               :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field
                :cache_ttl]

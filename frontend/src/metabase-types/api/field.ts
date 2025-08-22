@@ -59,6 +59,7 @@ export type FieldValuesType = "list" | "search" | "none";
 export type FieldDimensionType = "internal" | "external";
 
 export type FieldDimension = {
+  id: number;
   type: FieldDimensionType;
   name: string;
   human_readable_field_id?: FieldId;

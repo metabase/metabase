@@ -3,7 +3,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.add-rows-truncated :as qp.add-rows-truncated]
    [metabase.query-processor.middleware.add-timezone-info :as qp.add-timezone-info]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -53,12 +53,12 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   [(ensure-legacy #'format-rows/format-rows)
    (ensure-legacy #'results-metadata/record-and-return-metadata!)
-   (ensure-legacy #'limit/limit-result-rows)
+   (ensure-pmbql #'limit/limit-result-rows)
    (ensure-legacy #'qp.middleware.enterprise/limit-download-result-rows)
    (ensure-legacy #'qp.add-rows-truncated/add-rows-truncated)
    (ensure-legacy #'qp.add-timezone-info/add-timezone-info)
    (ensure-legacy #'qp.middleware.enterprise/merge-sandboxing-metadata)
-   (ensure-legacy #'qp.add-dimension-projections/remap-results)
+   (ensure-legacy #'qp.add-remaps/remap-results)
    (ensure-legacy #'pivot-export/add-data-for-pivot-export)
    (ensure-legacy #'large-int/convert-large-int-to-string)
    (ensure-legacy #'viz-settings/update-viz-settings)

@@ -10,6 +10,7 @@ import { TimeFilterPicker } from "../TimeFilterPicker";
 import type { FilterChangeOpts } from "../types";
 
 interface FilterPickerBodyProps {
+  autoFocus?: boolean;
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -22,6 +23,7 @@ interface FilterPickerBodyProps {
 }
 
 export function FilterPickerBody({
+  autoFocus = true,
   query,
   stageIndex,
   column,
@@ -39,6 +41,7 @@ export function FilterPickerBody({
 
   return (
     <FilterWidget
+      autoFocus={autoFocus}
       query={query}
       stageIndex={stageIndex}
       column={column}

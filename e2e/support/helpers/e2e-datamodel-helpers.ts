@@ -22,7 +22,9 @@ export const DataModel = {
     get: getTableSection,
     getNameInput: getTableNameInput,
     getDescriptionInput: getTableDescriptionInput,
+    getQueryBuilderLink: getTableQueryBuilderLink,
     getSortButton: getTableSortButton,
+    getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
     getSyncOptionsButton: getTableSyncOptionsButton,
     getField: getTableSectionField,
@@ -51,6 +53,8 @@ export const DataModel = {
     getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
     getUnfoldJsonInput: getFieldUnfoldJsonInput,
     getStyleInput: getFieldStyleInput,
+    getMiniBarChartToggle: getFieldMiniBarChartToggle,
+    getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
   },
@@ -211,6 +215,10 @@ function getTableNameInput() {
   return getTableSection().findByPlaceholderText("Give this table a name");
 }
 
+function getTableQueryBuilderLink() {
+  return getTableSection().findByLabelText("Go to this table");
+}
+
 function getTableDescriptionInput() {
   return getTableSection().findByPlaceholderText(
     "Give this table a description",
@@ -219,6 +227,10 @@ function getTableDescriptionInput() {
 
 function getTableSortButton() {
   return getTableSection().button(/Sorting/);
+}
+
+function getTableSortDoneButton() {
+  return getTableSection().button(/Done/);
 }
 
 function getTableSortOrderInput() {
@@ -328,6 +340,14 @@ function getFieldUnfoldJsonInput() {
   return getFieldSection().findByPlaceholderText(
     "Select whether to unfold JSON",
   );
+}
+
+function getFieldMiniBarChartToggle() {
+  return getFieldSection().findByLabelText("Show a mini bar chart");
+}
+
+function getFieldMultiplyByNumberInput() {
+  return getFieldSection().findByLabelText("Multiply by a number");
 }
 
 function getFieldStyleInput() {

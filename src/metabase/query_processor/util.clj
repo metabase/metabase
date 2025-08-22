@@ -22,13 +22,6 @@
 
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.legacy-mbql.util]]
 
-(defn query-without-aggregations-or-limits?
-  "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
-  [{{aggregations :aggregation, :keys [limit page]} :query}]
-  (and (not limit)
-       (not page)
-       (empty? aggregations)))
-
 (defn default-query->remark
   "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
    can access the default value."
@@ -106,13 +99,13 @@
                                                                         :constraints
                                                                         :destination-database/id
                                                                         :impersonation/role])]
-    (cond-> query
-      (empty? constraints) (dissoc :constraints)
-      true                 (update :parameters sort-parameter-values)
-      (empty? parameters)  (dissoc :parameters)
-      true                 lib.schema.util/indexed-order-bys
-      true                 lib.schema.util/remove-randomized-idents
-      true                 walk-query-sort-maps)))
+    (-> query
+        (cond-> (empty? constraints) (dissoc :constraints))
+        (update :parameters sort-parameter-values)
+        (cond-> (empty? parameters) (dissoc :parameters))
+        lib.schema.util/indexed-order-bys
+        lib.schema.util/remove-lib-uuids
+        walk-query-sort-maps)))
 
 (defn- ->metadata-provider [legacy-query]
   (if (qp.store/initialized?)

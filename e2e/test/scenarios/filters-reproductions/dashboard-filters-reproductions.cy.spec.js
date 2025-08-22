@@ -409,62 +409,66 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     cy.findByText("Ergonomic Silk Coat");
   });
 
-  it.skip("should work for aggregated questions (metabase#12985-2)", () => {
-    const questionDetails = {
-      name: "12985-v2",
-      query: {
-        "source-query": {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", PRODUCTS.CATEGORY, null]],
+  it(
+    "should work for aggregated questions (metabase#12985-2)",
+    { tags: "@skip" },
+    () => {
+      const questionDetails = {
+        name: "12985-v2",
+        query: {
+          "source-query": {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [["field", PRODUCTS.CATEGORY, null]],
+          },
+          filter: [">", ["field", "count", { "base-type": "type/Integer" }], 1],
         },
-        filter: [">", ["field", "count", { "base-type": "type/Integer" }], 1],
-      },
-    };
+      };
 
-    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        cy.log("Connect dashboard filter to the aggregated card");
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: { id, card_id, dashboard_id } }) => {
+          cy.log("Connect dashboard filter to the aggregated card");
 
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          dashcards: [
-            {
-              id,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 11,
-              size_y: 6,
-              series: [],
-              visualization_settings: {},
-              // Connect filter to the card
-              parameter_mappings: [
-                {
-                  parameter_id: categoryFilter.id,
-                  card_id,
-                  target: [
-                    "dimension",
-                    ["field", "CATEGORY", { "base-type": "type/Text" }],
-                  ],
-                },
-              ],
-            },
-          ],
-        });
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 11,
+                size_y: 6,
+                series: [],
+                visualization_settings: {},
+                // Connect filter to the card
+                parameter_mappings: [
+                  {
+                    parameter_id: categoryFilter.id,
+                    card_id,
+                    target: [
+                      "dimension",
+                      ["field", "CATEGORY", { "base-type": "type/Text" }],
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
 
-        H.visitDashboard(dashboard_id);
-      },
-    );
+          H.visitDashboard(dashboard_id);
+        },
+      );
 
-    H.filterWidget().contains("Category").click();
-    // It will fail at this point until the issue is fixed because popover never appears
-    H.popover().contains("Gadget").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filter").click();
-    cy.url().should("contain", "?category=Gadget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Ergonomic Silk Coat");
-  });
+      H.filterWidget().contains("Category").click();
+      // It will fail at this point until the issue is fixed because popover never appears
+      H.popover().contains("Gadget").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Add filter").click();
+      cy.url().should("contain", "?category=Gadget");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Ergonomic Silk Coat");
+    },
+  );
 });
 
 describe("issues 15119 and 16112", () => {
@@ -833,9 +837,7 @@ describe("issue 17775", () => {
     H.editDashboard();
 
     // Make sure filter can be connected to the custom column using UI, rather than using API.
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .find(".Icon-gear")
-      .click();
+    H.filterWidget({ isEditing: true }).click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
@@ -879,7 +881,9 @@ describe("issue 19494", () => {
     sectionId: "string",
   };
   function connectFilterToCard({ filterName, cardPosition }) {
-    cy.findByText(filterName).find(".Icon-gear").click();
+    H.filterWidget({ isEditing: true })
+      .filter(`:contains("${filterName}")`)
+      .click();
 
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("Select…").eq(cardPosition).click();
@@ -1042,9 +1046,7 @@ describe("issue 20656", () => {
     // Trying to edit the filter should not show mapping fields and shouldn't break frontend (metabase#24536)
     H.editDashboard();
 
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .find(".Icon-gear")
-      .click();
+    H.filterWidget({ isEditing: true }).click();
 
     H.getDashboardCard().within(() => {
       cy.findByText("Column to filter on");
@@ -1258,9 +1260,7 @@ describe("issue 22788", () => {
   }
 
   function openFilterSettings() {
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .find(".Icon-gear")
-      .click();
+    H.filterWidget({ isEditing: true }).click();
   }
 
   beforeEach(() => {
@@ -1498,10 +1498,7 @@ describe("issues 15279 and 24500", () => {
     cy.log("Make sure corrupted filter cannot connect to any field");
     // The corrupted filter is only visible when editing the dashboard
     H.editDashboard();
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText("unnamed")
-      .icon("gear")
-      .click();
+    H.filterWidget({ name: "unnamed", isEditing: true }).click();
     cy.findByTestId("parameter-mapper-container").should(
       "contain",
       "No valid fields",
@@ -2136,10 +2133,6 @@ describe("issue 27768", () => {
     sectionId: "string",
   };
 
-  function getFilterOptions(filterName) {
-    cy.findByText(filterName).find(".Icon-gear").click();
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -2159,7 +2152,7 @@ describe("issue 27768", () => {
     // We need to manually connect the filter to the custom column using the UI,
     // but when we fix the issue, it should be safe to do this via API
     H.editDashboard();
-    getFilterOptions(filter.name);
+    H.filterWidget({ isEditing: true, name: filter.name }).click();
 
     H.getDashboardCard().findByText("Select…").click();
     H.popover().contains("CCategory").click();
@@ -2175,7 +2168,7 @@ describe("issue 27768", () => {
 
     // Make sure the filter is still connected to the custom column
     H.editDashboard();
-    getFilterOptions(filter.name);
+    H.filterWidget({ isEditing: true, name: filter.name }).click();
 
     H.getDashboardCard().within(() => {
       cy.findByText("Select…").should("not.exist");
@@ -4346,7 +4339,7 @@ describe("issue 17061", () => {
 });
 
 // TODO ranquild unskip after v54 release
-describe.skip("issue 48824", () => {
+describe("issue 48824", { tags: "@skip" }, () => {
   const dateParameter = {
     id: "abc",
     name: "Date filter",

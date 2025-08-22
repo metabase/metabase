@@ -1,9 +1,7 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   NativeQuestionDetails,
-  QuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import type { IconName } from "metabase/ui";
@@ -103,12 +101,12 @@ describe("issue 38083", () => {
       visitQuestion: true,
     });
 
-    cy.get("legend")
-      .contains(QUESTION.native["template-tags"].state["display-name"])
-      .parent("fieldset")
-      .within(() => {
-        cy.icon("revert").should("not.exist");
-      });
+    H.filterWidget()
+      .filter(
+        `:contains("${QUESTION.native["template-tags"].state["display-name"]}")`,
+      )
+      .icon("revert")
+      .should("not.exist");
   });
 });
 
@@ -390,46 +388,20 @@ describe("issues 52811, 52812", () => {
 });
 
 describe("issue 52806", () => {
-  const questionDetails: QuestionDetails = {
-    name: "SQL",
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      type: "native",
-      native: {
-        query: "SELECT * FROM ORDERS WHERE ID = {{id}}",
-        "template-tags": {
-          id: {
-            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
-            name: "id",
-            "display-name": "ID",
-            type: "number",
-            default: "1",
-          },
-        },
-      },
-    },
-    visualization_settings: {},
-  };
-
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
-  it(
-    "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
-    { tags: "@flaky" },
-    () => {
-      cy.intercept("/api/automagic-dashboards/database/*/candidates").as(
-        "candidates",
-      );
-      H.visitQuestionAdhoc(questionDetails);
-      cy.findByTestId("main-logo-link").click();
-      H.modal().button("Discard changes").click();
-      cy.wait("@candidates");
-      cy.location().should((location) => expect(location.search).to.eq(""));
-    },
-  );
+  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
+    cy.visit("/");
+    H.newButton("SQL query").click();
+    H.NativeEditor.focus().type("select {{x}}");
+    cy.findByTestId("main-logo-link").click();
+    H.modal().button("Discard changes").click();
+    cy.findByTestId("home-page");
+    cy.location().should((location) => expect(location.search).to.eq(""));
+  });
 });
 
 describe("issue 55951", () => {

@@ -82,6 +82,20 @@
                                  :strategy     :left-join
                                  :fk-field-id  (meta/id :venues :category-id)}]}}))))
 
+(deftest ^:parallel pipeline-joins-test-2
+  (testing "Make sure we don't add unnecessary stages to joins when pipelining"
+    (let [query {:database 33001
+                 :type     :query
+                 :query    {:aggregation  [[:count]]
+                            :joins        [{:source-query {:source-table 33010
+                                                           :parameters   [{:name "id", :type :category, :target [:field 33100 nil], :value 5}]}
+                                            :alias        "c"
+                                            :condition    [:= [:field 33402 nil] [:field 33100 {:join-alias "c"}]]
+                                            :parameters   [{:type "category", :target [:field 33101 nil], :value "BBQ"}]}]
+                            :source-table 33040}}]
+      (is (=? {:stages [{:joins [{:stages [{}]}]}]}
+              (lib.util/pipeline query))))))
+
 (deftest ^:parallel pipeline-source-metadata-test
   (testing "`:source-metadata` should get moved to the previous stage as `:lib/stage-metadata`"
     (is (=? {:lib/type :mbql/query
@@ -462,3 +476,65 @@
            (lib.util/find-stage-index-and-clause-by-uuid query "a1898aa6-4928-4e97-837d-e440ce21085e")))
     (is (nil? (lib.util/find-stage-index-and-clause-by-uuid query "00000000-0000-0000-0000-000000000002")))
     (is (nil? (lib.util/find-stage-index-and-clause-by-uuid query 0 "a1898aa6-4928-4e97-837d-e440ce21085e")))))
+
+(deftest ^:parallel do-not-add-extra-stages-to-join-test
+  (is (=? {:stages [{:source-table 45060
+                     :joins        [{:alias  "PRODUCTS__via__PRODUCT_ID"
+                                     :stages [{:source-table 45050
+                                               :fields       [[:field 45500 {:base-type :type/BigInteger}]
+                                                              [:field 45507 {:base-type :type/Text}]]}]}]}]}
+          (lib.util/pipeline '{:database 45001
+                               :type     :query
+                               :query    {:source-table 45060
+                                          :joins        [{:strategy     :left-join
+                                                          :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                          :fk-field-id  45607
+                                                          :condition    [:=
+                                                                         [:field 45607 nil]
+                                                                         [:field 45500 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                          :source-query {:source-table 45050
+                                                                         :fields       [[:field 45500 {:base-type :type/BigInteger}]
+                                                                                        [:field 45507 {:base-type :type/Text}]]}}]}}))))
+
+(deftest ^:parallel pipeline-puts-join-metadata-in-the-correct-place-test
+  (testing "Should be able to convert a query with metadata to MBQL 5 correctly (without normalization errors)"
+    (let [query {:database 83001
+                 :type     :query
+                 :query    {:joins        [{:alias           "Q1"
+                                            :fields          :all
+                                            :condition       [:=
+                                                              [:field "CC" {:base-type :type/Integer}]
+                                                              [:field "CC" {:base-type :type/Integer, :join-alias "Q1"}]]
+                                            :source-query    {:expressions     {"CC" [:+ 1 1]}
+                                                              :source-query    {:source-table 83050
+                                                                                :aggregation  [[:count]]
+                                                                                :breakout     [[:field 83502 nil]]}
+                                                              :source-metadata [{:name "CATEGORY"}
+                                                                                {:name "count"}]}
+                                            :source-metadata [{:name "CATEGORY"}
+                                                              {:name "count"}
+                                                              {:name "CC", :lib/expression-name "CC"}]}]
+                            :source-query {:expressions  {"CC" [:+ 1 1]}
+                                           :source-query {:source-table 83050
+                                                          :aggregation  [[:count]]
+                                                          :breakout     [[:field 83502 nil]]}}}}]
+      (is (=? {:stages [{:source-table 83050
+                         :aggregation  [[:count]]
+                         :breakout     [[:field 83502 nil]]}
+                        {:expressions {"CC" [:+ 1 1]}}
+                        {:joins [{:alias           "Q1"
+                                  :fields          :all
+                                  :source-metadata (symbol "nil #_\"key is not present.\"")
+                                  :conditions      [[:=
+                                                     [:field "CC" {:base-type :type/Integer}]
+                                                     [:field "CC" {:base-type :type/Integer, :join-alias "Q1"}]]]
+                                  :stages          [{:source-table       83050
+                                                     :aggregation        [[:count]]
+                                                     :breakout           [[:field 83502 nil]]
+                                                     :lib/stage-metadata {:columns [{:name "CATEGORY"}
+                                                                                    {:name "count"}]}}
+                                                    {:expressions        {"CC" [:+ 1 1]}
+                                                     :lib/stage-metadata {:columns [{:name "CATEGORY"}
+                                                                                    {:name "count"}
+                                                                                    {:name "CC", :lib/expression-name "CC"}]}}]}]}]}
+              (lib.util/pipeline query))))))

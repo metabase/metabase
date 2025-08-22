@@ -7,7 +7,10 @@
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor :as qp]
@@ -16,7 +19,8 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]))
 
 (mu/defn- metadata-from-preprocessing :- [:maybe [:sequential :map]]
   "For MBQL queries or native queries with result metadata attached to them already we can infer the columns just by
@@ -91,7 +95,7 @@
             (infer-semantic-type-by-name [col]
               (let [legacy-col    (cond-> col
                                     (= legacy-or-mlv2 ::mlv2)
-                                    (update-keys u/->snake_case_en))
+                                    (perf/update-keys u/->snake_case_en))
                     semantic-type (analyze/infer-semantic-type-by-name legacy-col)]
                 (merge col
                        (when semantic-type
@@ -127,26 +131,26 @@
           (add-extra-column-metadata ::mlv2)))
     (result-metadata* query current-user-id))))
 
-(mu/defn- ensure-legacy :- [:ref :metabase.analyze.query-results/ResultColumnMetadata]
+(mu/defn- ensure-legacy :- ::mbql.s/legacy-column-metadata
   [col :- :map]
-  (letfn [(->legacy [col]
-            (-> col
-                (dissoc :lib/type)
-                (update-keys u/->snake_case_en)))
-          (ensure-field-ref [col]
+  (letfn [(ensure-field-ref [col]
             ;; HACK for backward compatibility with FE stuff -- ideally we would be able to remove this entirely but
             ;; if we do some e2e tests fail that I don't really have the energy to spend all day debugging -- Cam
             (cond-> col
               (not (:field_ref col)) (assoc :field_ref [:field (:name col) {:base-type (or (:base_type col) :type/*)}])))]
     (-> col
-        ->legacy
+        lib/lib-metadata-column->legacy-metadata-column
         (add-extra-column-metadata ::legacy)
-        ensure-field-ref)))
+        ensure-field-ref
+        mbql.normalize/normalize-source-metadata)))
 
-(mu/defn legacy-result-metadata :- [:ref :metabase.analyze.query-results/ResultsMetadata]
+(mu/defn legacy-result-metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
   "Like [[result-metadata]], but return metadata in legacy format rather than MLv2 format. This should be considered
   deprecated, as we're working on moving towards using MLv2-style metadata everywhere; avoid new usages of this function
-  if possible, and prefer [[result-metadata]] instead."
+  if possible, and prefer [[result-metadata]] instead.
+
+  Note: it is preferable to use [[metabase.lib.core/lib-metadata-column->legacy-metadata-column]] directly if you really
+  need to do this sort of conversion."
   {:deprecated "0.51.0"}
   [query           :- :map
    current-user-id :- [:maybe ::lib.schema.id/user]]

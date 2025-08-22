@@ -651,7 +651,7 @@ describe("issue 21665", () => {
     ).click();
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(Q2.name);
+      H.selectDataset(Q2.name);
       cy.button("Save").click();
     });
 
@@ -675,7 +675,7 @@ describe("issue 21665", () => {
   });
 });
 
-describe.skip("issue 22527", () => {
+describe("issue 22527", { tags: "@skip" }, () => {
   const questionDetails = {
     native: {
       query:

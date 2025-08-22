@@ -1,5 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -58,7 +59,7 @@ describe("issue 47058", () => {
 });
 
 describe("issue 44171", () => {
-  const METRIC_A: H.StructuredQuestionDetails = {
+  const METRIC_A: StructuredQuestionDetails = {
     name: "Metric 44171-A",
     type: "metric",
     display: "line",
@@ -75,7 +76,7 @@ describe("issue 44171", () => {
     },
   };
 
-  const METRIC_B: H.StructuredQuestionDetails = {
+  const METRIC_B: StructuredQuestionDetails = {
     name: "Metric 44171-B",
     type: "metric",
     display: "line",
@@ -142,7 +143,7 @@ describe("issue 44171", () => {
     ).click();
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset("Metric 44171-B");
+      H.selectDataset("Metric 44171-B");
       H.chartLegendItem("Metric 44171-A").should("exist");
       H.chartLegendItem("Metric 44171-B").should("exist");
     });

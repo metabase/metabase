@@ -1,12 +1,6 @@
 const { H } = cy;
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  createNativeQuestion,
-  createQuestion,
-  getTableId,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 import {
   advanceServerClockBy,
@@ -43,10 +37,14 @@ describe(
         });
       });
 
+      after(() => {
+        resetServerTime();
+      });
+
       function runPreemptiveCachingTest(questionId: string) {
         function visitCachedQuestion(questionId: string) {
           cy.log("Visiting the question");
-          visitQuestion(questionId);
+          H.visitQuestion(questionId);
         }
 
         visitCachedQuestion(questionId);
@@ -86,11 +84,11 @@ describe(
       }
 
       it("Returns matching results when an MBQL query is cached preemptively", () => {
-        getTableId({
+        H.getTableId({
           databaseId: WRITABLE_DB_ID,
           name: WRITABLE_TEST_TABLE,
         }).then((tableId) => {
-          createQuestion(
+          H.createQuestion(
             {
               name: "Cached question",
               database: WRITABLE_DB_ID,
@@ -110,7 +108,7 @@ describe(
       });
 
       it("Returns matching results when a native query is cached preemptively", () => {
-        createNativeQuestion(
+        H.createNativeQuestion(
           {
             name: "Cached question",
             database: WRITABLE_DB_ID,

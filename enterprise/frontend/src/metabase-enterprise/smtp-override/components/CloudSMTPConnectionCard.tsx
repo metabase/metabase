@@ -55,40 +55,40 @@ export const CloudSMTPConnectionCard = () => {
 
   return (
     <div className={S.root} data-testid="cloud-smtp-connection-card">
-      <Radio.Group
-        value={localValue ? "custom" : "metabase"}
-        onChange={handleChange}
-      >
-        <Paper radius="md" p="lg" className={S.card}>
-          {isSMTPOverrideConfigured ? (
-            <Radio
-              key={"metabase"}
-              value={"metabase"}
-              // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-              label={t`Managed by Metabase`}
-              // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-              description={t`Emails come from Metabase Cloud email server`}
-              classNames={{
-                label: S.label,
-                description: S.description,
-              }}
-            />
-          ) : (
-            <Flex gap={"md"}>
-              <Icon name="check" c="success" size={20} />
-              <Stack gap={0}>
-                <Text
-                  className={S.cardTitle}
-                  // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-                >{t`Managed by Metabase`}</Text>
-                {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-                <Text>{t`Emails come from Metabase Cloud email server`}</Text>
-              </Stack>
-            </Flex>
-          )}
-        </Paper>
-        <Divider />
-        <Paper radius="md" className={S.card}>
+      <Paper radius="md" className={S.card}>
+        <Radio.Group
+          value={localValue ? "custom" : "metabase"}
+          onChange={handleChange}
+        >
+          <Box p={"lg"}>
+            {isSMTPOverrideConfigured ? (
+              <Radio
+                key={"metabase"}
+                value={"metabase"}
+                // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+                label={t`Managed by Metabase`}
+                // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+                description={t`Emails come from Metabase Cloud email server`}
+                classNames={{
+                  label: S.label,
+                  description: S.description,
+                }}
+              />
+            ) : (
+              <Flex gap={"md"}>
+                <Icon name="check" c="success" size={20} />
+                <Stack gap={0}>
+                  <Text
+                    className={S.cardTitle}
+                    // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+                  >{t`Managed by Metabase`}</Text>
+                  {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+                  <Text>{t`Emails come from Metabase Cloud email server`}</Text>
+                </Stack>
+              </Flex>
+            )}
+          </Box>
+          <Divider />
           {isSMTPOverrideConfigured && (
             <Group p="lg" justify="space-between" style={{ cursor: "pointer" }}>
               <Radio
@@ -115,8 +115,8 @@ export const CloudSMTPConnectionCard = () => {
               >{t`Set up a custom SMTP server`}</Button>
             </Box>
           )}
-        </Paper>
-      </Radio.Group>
+        </Radio.Group>
+      </Paper>
       {showModal && <SMTPOverrideConnectionForm onClose={closeModal} />}
     </div>
   );

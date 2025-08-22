@@ -132,7 +132,7 @@ describe("getFieldDisplayName", () => {
     const field = createMockField({
       name: "Name",
       display_name: "My field",
-      dimensions: [{ type: "internal", name: "Dimension Name" }],
+      dimensions: [{ id: 1, type: "internal", name: "Dimension Name" }],
     });
 
     expect(getFieldDisplayName(field)).toBe("Dimension Name");

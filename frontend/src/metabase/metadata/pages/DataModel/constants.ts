@@ -10,7 +10,7 @@ export const COLUMN_CONFIG: Record<Column, ColumnSizeConfig> = {
   },
   table: {
     flex: "8 1 0",
-    min: 280,
+    min: 320,
     max: 640,
   },
   field: {

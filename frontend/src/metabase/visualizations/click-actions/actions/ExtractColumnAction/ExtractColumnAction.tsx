@@ -7,7 +7,7 @@ import { trackColumnExtractViaPlusModal } from "metabase/query_builder/analytics
 import {
   ExtractColumn,
   hasExtractions,
-} from "metabase/query_builder/components/expressions/ExtractColumn";
+} from "metabase/query_builder/components/expressions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, rem } from "metabase/ui";
 import type { LegacyDrill } from "metabase/visualizations/types";

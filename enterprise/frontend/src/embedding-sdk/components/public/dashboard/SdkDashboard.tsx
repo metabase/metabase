@@ -10,15 +10,15 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { InteractiveQuestionProvider } from "embedding-sdk/components/private/InteractiveQuestion/context";
-import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { SdkAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -49,12 +49,11 @@ import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmb
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
-import type { DashboardId } from "metabase-types/api";
 
 import type {
   DrillThroughQuestionProps,
-  InteractiveQuestionProps,
-} from "../InteractiveQuestion";
+  SdkQuestionProps,
+} from "../SdkQuestion";
 
 import {
   SdkDashboardStyledWrapper,
@@ -101,13 +100,14 @@ type RenderMode = "dashboard" | "question" | "queryBuilder";
 
 /**
  * Despite being a prop for a specific component, to avoid circular dependencies, the type is defined here.
+ * @interface
  * @inline
  */
 export type EditableDashboardOwnProps = {
   /**
    * Additional props to pass to the query builder rendered by `InteractiveQuestion` when creating a new dashboard question.
    */
-  dataPickerProps?: Pick<InteractiveQuestionProps, "entityTypes">;
+  dataPickerProps?: Pick<SdkQuestionProps, "entityTypes">;
 };
 
 export type SdkDashboardInnerProps = SdkDashboardProps &
@@ -139,7 +139,7 @@ const SdkDashboardInner = ({
   },
   renderDrillThroughQuestion: AdHocQuestionView,
   dashboardActions,
-  dashcardMenu = plugins?.dashboard?.dashboardCardMenu,
+  dashcardMenu,
   getClickActionMode,
   navigateToNewCardFromDashboard = undefined,
   className,
@@ -153,6 +153,8 @@ const SdkDashboardInner = ({
   });
 
   const { isLocaleLoading } = useLocale();
+  const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
+
   const { displayOptions } = useSdkDashboardParams({
     dashboardId,
     withDownloads,
@@ -170,6 +172,9 @@ const SdkDashboardInner = ({
   } = useCommonDashboardParams({
     dashboardId,
   });
+
+  const finalDashcardMenu =
+    plugins?.dashboard?.dashboardCardMenu ?? dashcardMenu;
 
   const [renderModeState, setRenderMode] = useState<
     "dashboard" | "queryBuilder"
@@ -192,6 +197,23 @@ const SdkDashboardInner = ({
       )?.id,
     [dashboard?.dashcards, newDashboardQuestionId],
   );
+
+  useEffect(() => {
+    if (dashboard && isBreadcrumbEnabled && finalRenderMode === "dashboard") {
+      reportLocation({
+        type: "dashboard",
+        id: dashboard.id,
+        name: dashboard.name,
+        onNavigate: onNavigateBackToDashboard,
+      });
+    }
+  }, [
+    dashboard,
+    isBreadcrumbEnabled,
+    reportLocation,
+    finalRenderMode,
+    onNavigateBackToDashboard,
+  ]);
 
   const errorPage = useSdkSelector(getErrorPage);
   const dispatch = useSdkDispatch();
@@ -281,7 +303,7 @@ const SdkDashboardInner = ({
       onLoadWithoutCards={handleLoadWithoutCards}
       onError={(error) => dispatch(setErrorPage(error))}
       getClickActionMode={getClickActionMode}
-      dashcardMenu={dashcardMenu}
+      dashcardMenu={finalDashcardMenu}
       dashboardActions={dashboardActions}
       onAddQuestion={(dashboard) => {
         dispatch(setEditingDashboard(dashboard));
@@ -292,14 +314,14 @@ const SdkDashboardInner = ({
       {match(finalRenderMode)
         .with("question", () => (
           <SdkDashboardStyledWrapperWithRef className={className} style={style}>
-            <InteractiveAdHocQuestion
+            <SdkAdHocQuestion
               // `adhocQuestionUrl` would have value if renderMode is "question"
               questionPath={adhocQuestionUrl!}
               onNavigateBack={onNavigateBackToDashboard}
               {...drillThroughQuestionProps}
             >
               {AdHocQuestionView && <AdHocQuestionView />}
-            </InteractiveAdHocQuestion>
+            </SdkAdHocQuestion>
           </SdkDashboardStyledWrapperWithRef>
         ))
         .with("dashboard", () => (
@@ -319,7 +341,6 @@ const SdkDashboardInner = ({
         ))
         .with("queryBuilder", () => (
           <DashboardQueryBuilder
-            targetDashboardId={dashboardId}
             onCreate={(question) => {
               setNewDashboardQuestionId(question.id);
               setRenderMode("dashboard");
@@ -366,7 +387,6 @@ SdkDashboard.NightModeButton = Dashboard.NightModeButton;
 SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
 
 type DashboardQueryBuilderProps = {
-  targetDashboardId: DashboardId;
   onCreate: (question: MetabaseQuestion) => void;
   onNavigateBack: () => void;
   dataPickerProps: EditableDashboardOwnProps["dataPickerProps"];
@@ -376,7 +396,6 @@ type DashboardQueryBuilderProps = {
  * The sole reason this is extracted into a separate component is to access the dashboard context
  */
 function DashboardQueryBuilder({
-  targetDashboardId,
   onCreate,
   onNavigateBack,
   dataPickerProps,
@@ -394,9 +413,9 @@ function DashboardQueryBuilder({
   }
 
   return (
-    <InteractiveQuestionProvider
+    <SdkQuestion
       questionId="new"
-      targetDashboardId={targetDashboardId}
+      targetDashboardId={dashboard.id}
       onSave={(question, { isNewQuestion, dashboardTabId }) => {
         if (isNewQuestion) {
           onCreate(question);
@@ -409,13 +428,10 @@ function DashboardQueryBuilder({
       onNavigateBack={onNavigateBack}
       backToDashboard={dashboard}
       entityTypes={dataPickerProps?.entityTypes}
-    >
-      <InteractiveQuestionDefaultView
-        withResetButton
-        withChartTypeSelector
-        // The default value is 600px and it cuts off the "Visualize" button.
-        height="700px"
-      />
-    </InteractiveQuestionProvider>
+      withResetButton
+      withChartTypeSelector
+      // The default value is 600px and it cuts off the "Visualize" button.
+      height="700px"
+    />
   );
 }

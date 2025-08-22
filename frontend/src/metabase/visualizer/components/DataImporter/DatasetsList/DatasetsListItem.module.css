@@ -9,6 +9,12 @@
   display: none;
 }
 
+.WarningIcon {
+  position: absolute;
+  top: 13px;
+  left: 19px;
+}
+
 .RemoveButton {
   display: none;
 }

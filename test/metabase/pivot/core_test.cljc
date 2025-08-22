@@ -97,25 +97,25 @@
            :source "aggregation",
            :field_ref ["aggregation" 0],
            :effective_type "type/BigInteger",
-           :ident "S75TeXxnjAh0tJJDbzKg2",
            :display_name "Count",
            :remapping nil,
            :remapped_from_index nil,
            :base_type "type/BigInteger"}]})
 
-(deftest json-roundtrip-test
+(deftest ensure-consistent-type-test
   #?(:clj
-     (testing "Normalizes types (like BigInt/BigDecimal) by passing them through JSON encoding/decoding"
-       (is (= java.lang.Integer (type (@#'pivot/json-roundtrip 3))))
-       (is (= java.lang.Integer (type (@#'pivot/json-roundtrip 3N))))
-       (is (= java.lang.Double (type (@#'pivot/json-roundtrip 3.0))))
-       (is (= java.lang.Double (type (@#'pivot/json-roundtrip 3.0M)))))
+     (testing "Normalizes types (like BigInt/BigDecimal)"
+       (is (= java.lang.Integer (type (@#'pivot/ensure-consistent-type 3))))
+       (is (= java.lang.Integer (type (@#'pivot/ensure-consistent-type 3N))))
+       (is (= java.lang.Integer (type (@#'pivot/ensure-consistent-type (BigInteger. "3")))))
+       (is (= java.lang.Double (type (@#'pivot/ensure-consistent-type 3.0))))
+       (is (= java.lang.Double (type (@#'pivot/ensure-consistent-type 3.0M)))))
      :cljs
      (testing "Does nothing on CLJS (intentional! values are already normalized)"
-       (is (= js/Number (type (@#'pivot/json-roundtrip 3))))
-       (is (= js/Number (type (@#'pivot/json-roundtrip 3N))))
-       (is (= js/Number (type (@#'pivot/json-roundtrip 3.0))))
-       (is (= js/Number (type (@#'pivot/json-roundtrip 3.0M)))))))
+       (is (= js/Number (type (@#'pivot/ensure-consistent-type 3))))
+       (is (= js/Number (type (@#'pivot/ensure-consistent-type 3N))))
+       (is (= js/Number (type (@#'pivot/ensure-consistent-type 3.0))))
+       (is (= js/Number (type (@#'pivot/ensure-consistent-type 3.0M)))))))
 
 (deftest columns-without-pivot-group-test
   (testing "Correctly filters out the pivot grouping column based on name"
@@ -526,3 +526,91 @@
                :span 1
                :maxDepthBelow 0}]
              result)))))
+
+#?(:clj
+   (deftest ^:parallel ensure-is-int-test
+     (testing "ensure-is-int properly converts different numeric types for bitwise operations"
+       (testing "Should handle regular integers"
+         (is (= 5 (#'pivot/ensure-is-int 5)))
+         (is (= 0 (#'pivot/ensure-is-int 0)))
+         (is (= 7 (#'pivot/ensure-is-int 7))))
+
+       (testing "Should handle long values"
+         (is (= 5 (#'pivot/ensure-is-int 5N)))
+         (is (= 0 (#'pivot/ensure-is-int 0N)))
+         (is (= 7 (#'pivot/ensure-is-int 7N))))
+
+       (testing "Should convert BigDecimal values that are losslessly convertible to int"
+         (is (= 5 (#'pivot/ensure-is-int (BigDecimal. "5"))))
+         (is (= 0 (#'pivot/ensure-is-int (BigDecimal. "0"))))
+         (is (= 7 (#'pivot/ensure-is-int (BigDecimal. "7"))))
+         (is (= 123 (#'pivot/ensure-is-int (BigDecimal. "123"))))
+
+         ;; Test with explicitly integer-valued BigDecimals
+         (is (= 5 (#'pivot/ensure-is-int (BigDecimal. "5.0"))))
+         (is (= 42 (#'pivot/ensure-is-int (BigDecimal. "42.00")))))
+
+       (testing "Should handle edge cases"
+         ;; Test with maximum int value as BigDecimal
+         (is (= Integer/MAX_VALUE
+                (#'pivot/ensure-is-int (BigDecimal. (str Integer/MAX_VALUE)))))
+
+         ;; Test with zero as BigDecimal
+         (is (= 0 (#'pivot/ensure-is-int BigDecimal/ZERO))))
+       (testing "Should throw if it has decimal places"
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Non-Integer cannot be used as pivot-grouping column"
+                               (#'pivot/ensure-is-int (BigDecimal. "42.11")))))
+       (testing "Should throw if not convertible"
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Non-Integer cannot be used as pivot-grouping column"
+                               (#'pivot/ensure-is-int "1232")))))))
+
+#?(:clj
+   (deftest ^:parallel bigdecimal-bitwise-operations-integration-test
+     (testing "Full integration test showing BigDecimal pivot-grouping values work through the bitwise pipeline"
+       (testing "Bitwise operations work correctly after ensure-is-int conversion"
+         (let [pivot-group-bigdecimal (BigDecimal. "5") ; binary: 101
+               pivot-group-int 5 ; same value as int
+               num-breakouts 3]
+
+           (doseq [bit-index (range num-breakouts)]
+             (let [bit-mask (bit-shift-left 1 bit-index)
+                   bigdecimal-result (bit-and bit-mask (#'pivot/ensure-is-int pivot-group-bigdecimal))
+                   int-result (bit-and bit-mask pivot-group-int)]
+               (is (= int-result bigdecimal-result)
+                   (str "Bitwise AND with bit-mask " bit-mask " should be same for BigDecimal and int"))))
+
+           ;; Test the full active breakout logic
+           (is (= (#'pivot/get-active-breakout-indexes pivot-group-int num-breakouts)
+                  (#'pivot/get-active-breakout-indexes pivot-group-bigdecimal num-breakouts))
+               "get-active-breakout-indexes should return same result for BigDecimal and int")))
+
+       (testing "Works with decimal representations that are integers"
+         (let [pivot-group-decimal (BigDecimal. "3.0") ; Should convert to 3
+               pivot-group-int 3
+               num-breakouts 3]
+
+           (is (= (#'pivot/get-active-breakout-indexes pivot-group-int num-breakouts)
+                  (#'pivot/get-active-breakout-indexes pivot-group-decimal num-breakouts))
+               "BigDecimal with .0 should work same as integer")))
+
+       (testing "Handles edge case BigDecimal values"
+         (is (= [0 1 2]
+                (#'pivot/get-active-breakout-indexes BigDecimal/ZERO 3))
+             "BigDecimal/ZERO should work like integer 0")
+
+         (is (= [1 2]
+                (#'pivot/get-active-breakout-indexes BigDecimal/ONE 3))
+             "BigDecimal/ONE should work like integer 1")))
+
+     (testing "Memoization works correctly with BigDecimal values"
+       (let [pivot-group (BigDecimal. "6")
+             num-breakouts 3
+             first-call (#'pivot/get-active-breakout-indexes pivot-group num-breakouts)
+             second-call (#'pivot/get-active-breakout-indexes pivot-group num-breakouts)]
+
+         (is (= first-call second-call))
+         (is (= [0] first-call) "pivot-group 6 with 3 breakouts should return [0]")
+
+         (let [equivalent-pivot-group (BigDecimal. "6.0")
+               third-call (#'pivot/get-active-breakout-indexes equivalent-pivot-group num-breakouts)]
+           (is (= first-call third-call) "Equivalent BigDecimal values should return same result"))))))

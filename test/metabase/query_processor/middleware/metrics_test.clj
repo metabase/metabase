@@ -24,6 +24,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
+;;; TODO (Cam 7/18/25) -- update the tests in this namespace to use mock metadata providers instead of with-temp
+
 (def ^:private counter (atom 2000))
 
 (defn- add-aggregation-options
@@ -369,8 +371,7 @@
                                          ;; Empty stage added by resolved-source-cards to nest join
                                          (=?/exactly {:lib/type                 :mbql.stage/mbql
                                                       :qp/stage-had-source-card (:id question)
-                                                      :source-query/model?      false
-                                                      :source-query/entity-id   (:entity-id question)})]}]}]}
+                                                      :source-query/model?      false})]}]}]}
             (adjust query)))))
 
 (defn- model-based-metric-question

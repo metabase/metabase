@@ -9,11 +9,14 @@
    [metabase.search.impl :as search.impl]
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.semantic.core :as search.engines.semantic]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]))
+
+(set! *warn-on-reflection* true)
 
 (comment
   ;; Make sure to import all the engine implementations. In future this can happen automatically, as per drivers.
@@ -21,6 +24,7 @@
   ;; TODO -- maybe engine loading should be moved to [[metabase.search.init]] instead
   search.engine/keep-me
   search.engines.appdb/keep-me
+  search.engines.semantic/keep-me
   search.legacy/keep-me
 
   search.config/keep-me
@@ -43,7 +47,16 @@
   searchable-value-trim-sql]
 
  [search.spec
-  define-spec])
+  spec
+  define-spec]
+
+ [search.util
+  collapse-id
+  indexed-entity-id->model-index-id
+  indexed-entity-id->model-pk
+  tsv-language
+  to-tsquery-expr
+  weighted-tsvector])
 
 (defmethod analytics/known-labels :metabase-search/index-updates
   [_]
@@ -103,10 +116,7 @@
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
-(defn reindex!
-  "Populate a new index, and make it active. Simultaneously updates the current index."
-  [& {:as opts}]
-  ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
+(defn- reindex-logic! [opts]
   (when (supports-index?)
     (try
       (log/info "Reindexing searchable entities")
@@ -125,6 +135,17 @@
       (catch Exception e
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
+
+(defn reindex!
+  "Populate a new index, and make it active. Simultaneously updates the current index.
+  Returns a future that will complete when the reindexing is done.
+  Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
+  Alternately, if `:async?` is false, it will also run synchronously."
+  [& {:keys [async?] :or {async? true} :as opts}]
+  (let [f #(reindex-logic! opts)]
+    (if (or search.ingestion/*force-sync* (not async?))
+      (doto (promise) (deliver (f)))
+      (future (f)))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."

@@ -119,7 +119,7 @@ export const Onboarding = () => {
     });
   };
 
-  // Scroll the last opened item into view when the user navigates back go this page
+  // Scroll the last opened item into view when the user navigates back to this page
   useEffect(() => {
     if (isValidItemKey(lastItemOpened)) {
       const item = itemRefs[lastItemOpened].current;

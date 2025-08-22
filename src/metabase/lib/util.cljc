@@ -14,7 +14,6 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -24,8 +23,10 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -105,8 +106,7 @@
          clause])
       (lib.options/update-options (fn [opts]
                                     (-> opts
-                                        (assoc :lib/expression-name a-name
-                                               :ident (lib.ident/random-ident))
+                                        (assoc :lib/expression-name a-name)
                                         (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
@@ -136,10 +136,7 @@
   (let [new-clause (if (= :expressions (first location))
                      (-> new-clause
                          (top-level-expression-clause (or (custom-name new-clause)
-                                                          (expression-name target-clause)))
-                         ;; TODO (Cam 7/10/25) -- remove soon. Not removing now so I don't need to update 1000 tests
-                         #_{:clj-kondo/ignore [:deprecated-var]}
-                         (lib.common/preserve-ident-of target-clause))
+                                                          (expression-name target-clause))))
                      new-clause)]
     (m/update-existing-in
      stage
@@ -215,26 +212,29 @@
   "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
   [source-metadata]
   (when source-metadata
-    (-> (if (seqable? source-metadata)
-          {:columns source-metadata}
-          source-metadata)
-        (update :columns (fn [columns]
-                           (mapv (fn [column]
-                                   (-> column
-                                       (update-keys u/->kebab-case-en)
-                                       (assoc :lib/type :metadata/column)))
-                                 columns)))
-        (assoc :lib/type :metadata/results))))
+    (when-let [m (cond
+                   (seqable? source-metadata) {:columns source-metadata}
+                   (map? source-metadata)     source-metadata
+                   :else                      (do
+                                                (log/warnf "Ignoring invalid source metadata: expected sequence of columns, got %s" (pr-str (type source-metadata)))
+                                                nil))]
+      (-> m
+          (update :columns (fn [columns]
+                             (mapv (fn [column]
+                                     (-> column
+                                         (perf/update-keys u/->kebab-case-en)
+                                         (assoc :lib/type :metadata/column)))
+                                   columns)))
+          (assoc :lib/type :metadata/results)))))
 
 (defn- join->pipeline [join]
-  (let [source (select-keys join [:source-table :source-query])
-        stages (inner-query->stages source)
-        stages (if-let [source-metadata (and (>= (count stages) 2)
-                                             (:source-metadata join))]
-                 (assoc-in stages [(- (count stages) 2) :lib/stage-metadata] (->stage-metadata source-metadata))
+  (let [stages (inner-query->stages (or (:source-query join)
+                                        (select-keys join [:source-table])))
+        stages (if-let [source-metadata (:source-metadata join)]
+                 (assoc-in stages [(dec (count stages)) :lib/stage-metadata] (->stage-metadata source-metadata))
                  stages)]
     (-> join
-        (dissoc :source-table :source-query)
+        (dissoc :source-table :source-query :source-metadata)
         (update-legacy-boolean-expression->list :condition :conditions)
         (assoc :lib/type :mbql/join
                :stages stages)
@@ -590,15 +590,6 @@
   results metadata."
   (unique-name-generator-factory {::truncate? false}))
 
-(mu/defn identity-generator :- ::unique-name-generator
-  "Identity unique name generator that just returns strings as-is."
-  ([]
-   identity-generator)
-  ([s]
-   s)
-  ([_id s]
-   s))
-
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
      ;; `(?i)` is JVM-specific magic to turn on the `i` case-insensitive flag.
@@ -629,7 +620,6 @@
                    (fn [summary-clauses]
                      (->> a-summary-clause
                           lib.common/->op-arg
-                          lib.common/ensure-ident
                           (conj (vec summary-clauses)))))]
     (if new-summary?
       (-> new-query
@@ -711,8 +701,9 @@
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:maybe :map]]
   (when (map? query)
-    (when-let [query-type (keyword (some #(get query %)
-                                         [:lib/type :type "lib/type" "type"]))]
+    (when-let [query-type (some-> (some #(get query %)
+                                        [:lib/type :type "lib/type" "type"])
+                                  keyword)]
       (when (#{:mbql/query :query :native :internal} query-type)
         query-type))))
 

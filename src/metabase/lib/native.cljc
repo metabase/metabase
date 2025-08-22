@@ -36,17 +36,6 @@
    :name tag-name
    :id   (str (random-uuid))})
 
-(defn- fresh-function-tag [function-name args]
-  (case function-name
-    "mb.time_grouping" (let [param-name (first args)]
-                         (when (and (string? param-name)
-                                    (= (count args) 2)
-                                    (every? (comp not empty?) args))
-                           {:type :temporal-unit
-                            :name param-name
-                            :id (str (random-uuid))}))
-    nil))
-
 (defn- recognize-template-tags [query-text]
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found {}
@@ -60,12 +49,6 @@
                              (recur (cond-> found
                                       (and matched-name (not (found matched-name))) (assoc matched-name (fresh-tag matched-name)))
                                     more))
-        [{:type ::lib.parse/function-param
-          :name function-name
-          :args args}] (let [new-tag (fresh-function-tag function-name args)]
-                         (if (and new-tag (not (found (:name new-tag))))
-                           (recur (assoc found (:name new-tag) new-tag) more)
-                           (recur found more)))
         [{:type ::lib.parse/optional
           :contents contents}] (recur found (apply conj more contents))))))
 
@@ -104,20 +87,6 @@
         (dissoc old-name)
         (assoc new-name new-tag))))
 
-(defn- update-tags
-  [tags query-tags]
-  (into {}
-        (map (fn [[tag-name current-tag]]
-               (let [new-tag (query-tags tag-name)]
-                 ;; if a tag swapped to or from temporal unit, use the new tag instead of the old tag
-                 (if (and new-tag current-tag
-                          (not= (:type new-tag) (:type current-tag))
-                          (or (= (:type new-tag) :temporal-unit)
-                              (= (:type current-tag) :temporal-unit)))
-                   [tag-name new-tag]
-                   [tag-name current-tag]))))
-        tags))
-
 (defn- unify-template-tags
   [query-tags query-tag-names existing-tags existing-tag-names]
   (let [new-tags (set/difference query-tag-names existing-tag-names)
@@ -128,8 +97,7 @@
                    ;; With more than one change, just drop the old ones and add the new.
                    (merge (m/remove-keys old-tags existing-tags)
                           (m/filter-keys new-tags query-tags)))]
-    (-> (update-tags tags query-tags)
-        (update-vals finish-tag))))
+    (update-vals tags finish-tag)))
 
 (mu/defn extract-template-tags :- ::lib.schema.template-tag/template-tag-map
   "Extract the template tags from a native query's text.
@@ -157,7 +125,7 @@
        ;; Otherwise just an empty map, no tags.
        {}))))
 
-(defn- assert-native-query! [stage]
+(defn- assert-native-query [stage]
   (assert (= (:lib/type stage) :mbql.stage/native) (i18n/tru "Must be a native query")))
 
 (def ^:private all-native-extra-keys
@@ -188,7 +156,7 @@
              stage-without-old-extras (apply dissoc stage extras-to-remove)
              result (merge stage-without-old-extras (select-keys native-extras required-extras))
              missing-keys (set/difference required-extras (set (keys native-extras)))]
-         (assert-native-query! (lib.util/query-stage query 0))
+         (assert-native-query (lib.util/query-stage query 0))
          (assert (empty? missing-keys)
                  (i18n/tru "Missing extra, required keys for native query: {0}"
                            (pr-str missing-keys)))
@@ -214,103 +182,12 @@
                                         :native             sql-or-other-native-query}])
          (with-native-extras native-extras)))))
 
-;; map of function names to min/max expected arguments
-(def ^:private function-expected-args
-  {"mb.time_grouping" {:args-count      [2 2]
-                       :args-validators [(comp not empty?) (comp not empty?)]}})
-
-(def ^:private tag-type->display-name
-  {:temporal-unit "time grouping"
-   :text "variable"
-   :card "card reference"
-   :snippet "snippet"})
-
-(defn- validate-function-tags
-  [query-text]
-  (let [parsed (lib.parse/parse {} query-text)]
-    (loop [found {}
-           errors []
-           [current & more] (vec parsed)]
-      (match [current]
-        [nil] errors
-        [_ :guard string?] (recur found errors more)
-        [{:type ::lib.parse/param
-          :name tag-name}]
-        (let [full-tag         (str "{{" tag-name "}}")
-              [_ matched-name] (some #(re-matches % full-tag) tag-regexes)
-              prev             (found matched-name)
-              current          (some-> matched-name fresh-tag finish-tag)
-              error            (cond
-                                 (not current)
-                                 (str "Syntax error in: " tag-name)
-
-                                 (and prev (not= (:type prev) (:type current)))
-                                 (str "Parameter " matched-name
-                                      " is used as both a " (-> prev :type tag-type->display-name)
-                                      " and a " (-> current :type tag-type->display-name)
-                                      ". This is not allowed.")
-
-                                 (function-expected-args matched-name)
-                                 (str matched-name " should be used as a function call, e.g. "
-                                      matched-name "('arg1', ...)"))]
-          (recur (cond-> found
-                   (and current (not error)) (assoc matched-name current))
-                 (cond-> errors
-                   error (conj error))
-                 more))
-        [{:type ::lib.parse/function-param
-          :name function-name
-          :args args}]
-        (let [current (fresh-function-tag function-name args)
-              args-count (count args)
-              {[args-min args-max] :args-count
-               :keys               [args-validators]} (function-expected-args function-name)
-              prev (some-> current :name found)
-              error (cond
-                      (not args-min)
-                      (str "Unknown function: " function-name)
-
-                      (< args-count args-min)
-                      (str function-name " got too few parameters.  Got "
-                           args-count ", expected at least " args-min ".")
-
-                      (> args-count args-max)
-                      (str function-name " got too many parameters.  Got "
-                           args-count ", expected at most " args-max ".")
-
-                      (not-every? identity (map #(%1 %2) args-validators args))
-                      (str function-name " got invalid parameters")
-
-                      (not current)
-                      (str "Invalid call to function: " function-name)
-
-                      (and prev (not= (:type prev) (:type current)))
-                      (str "Parameter " (:name current)
-                           " is used as both a " (-> prev :type tag-type->display-name)
-                           " and a " (-> current :type tag-type->display-name)
-                           ". This is not allowed."))]
-          (recur (cond-> found
-                   (and current (not error)) (assoc (:name current) current))
-                 (cond-> errors
-                   error (conj error))
-                 more))
-        [{:type ::lib.parse/optional
-          :contents contents}] (recur found errors (apply conj more contents))))))
-
-(defn validate-native-query
-  "Validates the syntax of a native query.
-
-  Native in this sense means a pMBQL query with a first stage that is a native query."
-  [query]
-  (let [sql (get-in query [:stages 0 :native])]
-    (validate-function-tags sql)))
-
 (mu/defn with-different-database :- ::lib.schema/query
   "Changes the database for this query. The first stage must be a native type.
    Native extras must be provided if the new database requires it."
   [query :- ::lib.schema/query
    metadata-provider :- ::lib.schema.metadata/metadata-providerable]
-  (assert-native-query! (lib.util/query-stage query 0))
+  (assert-native-query (lib.util/query-stage query 0))
   (let [stages-without-fields (->> (:stages query)
                                    (mapv (fn [stage]
                                            (update stage :template-tags update-vals #(dissoc % :dimension)))))]
@@ -329,19 +206,21 @@
   (lib.util/update-query-stage
    query 0
    (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query! stage)
+     (assert-native-query stage)
      (assoc stage
             :native inner-query
             :template-tags (extract-template-tags inner-query existing-tags)))))
 
+;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
+;;; `with-replaced-template-tags`
 (mu/defn with-template-tags :- ::lib.schema/query
   "Updates the native query's template tags."
   [query :- ::lib.schema/query
-   tags :- ::lib.schema.template-tag/template-tag-map]
+   tags  :- ::lib.schema.template-tag/template-tag-map]
   (lib.util/update-query-stage
    query 0
    (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query! stage)
+     (assert-native-query stage)
      (let [valid-tags (keys existing-tags)]
        (assoc stage :template-tags
               (merge existing-tags (select-keys tags valid-tags)))))))
@@ -383,7 +262,7 @@
    This is only filled in by [[metabase.warehouses.api/add-native-perms-info]]
    and added to metadata when pulling a database from the list of dbs in js."
   [query :- ::lib.schema/query]
-  (assert-native-query! (lib.util/query-stage query 0))
+  (assert-native-query (lib.util/query-stage query 0))
   (= :write (:native-permissions (lib.metadata/database query))))
 
 (defmethod lib.query/can-run-method :mbql.stage/native
@@ -392,7 +271,7 @@
    (set/subset? (required-native-extras query)
                 (set (keys (native-extras query))))
    (not (str/blank? (raw-native-query query)))
-   (every? #(if (= :dimension (:type %))
+   (every? #(if (#{:dimension :temporal-unit} (:type %))
               (:dimension %)
               true)
            (vals (template-tags query)))))
@@ -401,5 +280,5 @@
   "Returns the database engine.
    Must be a native query"
   [query :- ::lib.schema/query]
-  (assert-native-query! (lib.util/query-stage query 0))
+  (assert-native-query (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))

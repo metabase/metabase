@@ -6,7 +6,7 @@ import type { StructuredQuestionDetails } from "e2e/support/helpers";
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 43075", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],
@@ -37,7 +37,7 @@ describe("issue 43075", () => {
 });
 
 describe("issue 41133", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
     },
@@ -439,5 +439,59 @@ describe("issue 59671", () => {
       index: 0,
     });
     H.visualize();
+  });
+});
+
+describe("issue 59830", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when saved dimension settings refer to a non-existent column (metabase#59830)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+        aggregation: [["count"], ["avg", ["field", ORDERS.TOTAL, null]]],
+      },
+      visualization_settings: {
+        "graph.dimensions": ["DOES_NOT_EXIST"],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.icon("warning").should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("be.visible");
+  });
+});
+
+describe("issue 54755", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should show an empty state when no dimensions are available (metabase#54755)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      visualization_settings: {
+        "graph.dimensions": [],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.icon("warning").should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("be.visible");
   });
 });

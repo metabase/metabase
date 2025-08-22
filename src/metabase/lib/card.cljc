@@ -7,7 +7,6 @@
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.query :as lib.query]
@@ -21,7 +20,8 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata _style]
@@ -40,16 +40,6 @@
     (= (:type card-metadata) :metric) (assoc :metric? true)
     (= (lib.util/source-card-id query) (:id card-metadata)) (assoc :is-source-card true)))
 
-(mu/defmethod lib.metadata.calculation/visible-columns-method :metadata/card :- ::lib.metadata.calculation/visible-columns
-  [query                                              :- ::lib.schema/query
-   stage-number                                       :- :int
-   {:keys [fields result-metadata] :as card-metadata} :- ::lib.schema.metadata/card
-   {:keys [include-implicitly-joinable?] :as options} :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
-  (concat
-   (lib.metadata.calculation/returned-columns query stage-number card-metadata options)
-   (when include-implicitly-joinable?
-     (lib.metadata.calculation/implicitly-joinable-columns query stage-number (concat fields result-metadata)))))
-
 (mu/defn fallback-display-name :- ::lib.schema.common/non-blank-string
   "If for some reason the metadata is unavailable. This is better than returning nothing I guess."
   [card-id :- ::lib.schema.id/card]
@@ -64,14 +54,10 @@
           (fallback-display-name source-card)))))
 
 (mu/defn- infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  [metadata-providerable                :- ::lib.schema.metadata/metadata-providerable
-   {card-query :dataset-query :as card} :- :map]
+  [metadata-providerable                 :- ::lib.schema.metadata/metadata-providerable
+   {card-query :dataset-query :as _card} :- :map]
   (when (some? card-query)
-    (let [cols      (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))
-          model-eid (when (= (:type card) :model)
-                      (:entity-id card))]
-      (cond->> cols
-        model-eid (map #(lib.metadata.ident/add-model-ident % model-eid))))))
+    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
 
 (mu/defn- ->card-metadata-column :- ::lib.schema.metadata/column
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata. Note that `card` might be unavailable so we
@@ -84,7 +70,7 @@
    card-id               :- [:maybe ::lib.schema.id/card]
    field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
-                                (update-keys u/->kebab-case-en))
+                                (perf/update-keys u/->kebab-case-en))
         ;; use the (possibly user-specified) display name as the "original display name" going forward ONLY IF THE
         ;; CARD THIS CAME FROM WAS A MODEL! BUT DON'T USE IT IF IT ALREADY CONTAINS A `→`!!!
         source-metadata-col (cond-> source-metadata-col
@@ -95,16 +81,13 @@
                                      (when-some [card (lib.metadata/card metadata-providerable card-id)]
                                        (= (:type card) :model))))
                               (assoc :lib/model-display-name (:display-name source-metadata-col)))
-        col (cond-> (merge
-                     {:base-type :type/*, :lib/type :metadata/column}
-                     field-metadata
-                     (m/filter-vals some? source-metadata-col)
-                     {:lib/type                :metadata/column
-                      :lib/source              :source/card
-                      :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
-              card-id
-              (assoc :lib/card-id card-id)
-
+        col (merge
+             {:base-type :type/*, :lib/type :metadata/column}
+             field-metadata
+             (m/filter-vals some? source-metadata-col)
+             {:lib/type                :metadata/column
+              :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
+        col (cond-> col
               (:metabase.lib.field/temporal-unit source-metadata-col)
               (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit source-metadata-col)))
 
@@ -116,6 +99,8 @@
               (assoc :fk-target-field-id nil))]
     (-> col
         lib.field.util/update-keys-for-col-from-previous-stage
+        (merge (when card-id
+                 {:lib/source :source/card, :lib/card-id card-id}))
         ;; :effective-type is required, but not always set, see e.g.,
         ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
         (u/assoc-default :effective-type (:base-type col))
@@ -130,9 +115,9 @@
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     card-or-id-or-nil     :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     cols                  :- [:maybe [:or
-                                      [:sequential ::lib.schema.metadata/card.result-metadata.map]
+                                      [:sequential ::lib.schema.metadata/lib-or-legacy-column]
                                       [:map
-                                       [:columns [:sequential ::lib.schema.metadata/card.result-metadata.map]]]]]]
+                                       [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
    ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
    ;; contains` :columns` as well.
    (when-let [cols (not-empty (cond
@@ -231,7 +216,10 @@
                           (source-model-cols metadata-providerable card))]
         (not-empty
          (into []
-               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable)
+               ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
+               ;; 'crazy long' column name then we need to use that in the next stage.
+               ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
+               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util/non-truncating-unique-name-generator))
                (cond-> result-cols
                  (seq model-cols) (merge-model-metadata model-cols))))))))
 
@@ -250,15 +238,15 @@
    card          :- ::lib.schema.metadata/card
    options       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (mapv (fn [col]
-          (assoc col :lib/source :source/card))
+          (assoc col :lib/source :source/card, :lib/card-id (:id card)))
         (if (= (:type card) :metric)
           (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
                                  (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
-            (not-empty (lib.metadata.calculation/returned-columns
-                        (assoc metric-query :lib/metadata (:lib/metadata query))
-                        -1
-                        (lib.util/query-stage metric-query -1)
-                        options)))
+            (lib.metadata.calculation/returned-columns
+             (assoc metric-query :lib/metadata (:lib/metadata query))
+             -1
+             (lib.util/query-stage metric-query -1)
+             options))
           (card-metadata-columns query card))))
 
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]

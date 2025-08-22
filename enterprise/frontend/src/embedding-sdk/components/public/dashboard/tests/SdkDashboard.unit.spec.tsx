@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
-import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import { screen, waitFor, within } from "__support__/ui";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
 import type { SdkDashboardProps } from "../SdkDashboard";
 import { SdkDashboard } from "../SdkDashboard";
@@ -64,7 +64,7 @@ describe("SdkDashboard", () => {
 
     // do not reload dashboard data on navigate back
     expect(
-      fetchMock.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}`),
+      fetchMock.callHistory.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}`),
     ).toHaveLength(1);
   });
 
@@ -85,7 +85,7 @@ describe("SdkDashboard", () => {
 
     // do not reload dashboard data on navigate back
     expect(
-      fetchMock.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}`),
+      fetchMock.callHistory.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}`),
     ).toHaveLength(1);
   });
 
@@ -100,7 +100,7 @@ describe("SdkDashboard", () => {
     expect(onLoadWithoutCards).toHaveBeenLastCalledWith(dashboard);
 
     await waitFor(() => {
-      return fetchMock.called(
+      return fetchMock.callHistory.called(
         `path:/api/card/${dashboard.dashcards[0].card_id}/query`,
       );
     });
@@ -125,12 +125,61 @@ describe("SdkDashboard", () => {
     expect(onLoadWithoutCards).toHaveBeenLastCalledWith(dashboard);
 
     await waitFor(() => {
-      return fetchMock.called(
+      return fetchMock.callHistory.called(
         `path:/api/card/${dashboard.dashcards[0].card_id}/query`,
       );
     });
 
     expect(onLoad).toHaveBeenCalledTimes(1);
     expect(onLoad).toHaveBeenLastCalledWith(dashboard);
+  });
+
+  it("should render a custom dashcard menu if one is provided with a user plugin", async () => {
+    const onClickCustomAction = jest.fn();
+    await setup({
+      props: {
+        withDownloads: true,
+        plugins: {
+          dashboard: {
+            dashboardCardMenu: {
+              withDownloads: true,
+              withEditLink: true,
+              customItems: [
+                {
+                  iconName: "chevronright",
+                  label: "Custom Action",
+                  onClick: onClickCustomAction,
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+
+    const dashcard = screen.getAllByTestId("dashcard").at(0);
+    expect(dashcard).toBeInTheDocument();
+
+    await userEvent.click(within(dashcard!).getByTestId("dashcard-menu"));
+
+    const dashcardMenuPopover = await screen.findByRole("menu");
+    expect(
+      within(dashcardMenuPopover).getByText("Download results"),
+    ).toBeInTheDocument();
+    expect(
+      within(dashcardMenuPopover).getByText("Edit question"),
+    ).toBeInTheDocument();
+    expect(
+      within(dashcardMenuPopover).getByText("Custom Action"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(dashcardMenuPopover).getByText("Custom Action"),
+    );
+
+    expect(dashcardMenuPopover).not.toBeInTheDocument();
+    expect(onClickCustomAction).toHaveBeenCalled();
   });
 });

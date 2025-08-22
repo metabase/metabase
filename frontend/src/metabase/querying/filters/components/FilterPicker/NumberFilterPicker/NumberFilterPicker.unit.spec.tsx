@@ -60,6 +60,7 @@ function setup({
 
   renderWithProviders(
     <NumberFilterPicker
+      autoFocus
       query={query}
       stageIndex={0}
       column={column}

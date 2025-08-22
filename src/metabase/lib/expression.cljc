@@ -14,6 +14,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.expression.conditional :as lib.schema.expression.conditional]
+   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -85,16 +86,18 @@
   (let [expression (resolve-expression query stage-number expression-name)]
     (lib.metadata.calculation/type-of query stage-number expression)))
 
-(defmethod lib.metadata.calculation/metadata-method :expression
+(mu/defmethod lib.metadata.calculation/metadata-method :expression :- ::lib.metadata.calculation/visible-column
   [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
-  (merge {:lib/type            :metadata/column
-          :lib/source-uuid     (:lib/uuid opts)
-          :name                expression-name
-          :lib/expression-name expression-name
-          :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
-          :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
-          :lib/source          :source/expressions}
-         {:ident (lib.options/ident (resolve-expression query stage-number expression-name))}
+  (merge {:lib/type                :metadata/column
+          ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
+          ;; of the expression definition??
+          :lib/source-uuid         (:lib/uuid opts)
+          :name                    expression-name
+          :lib/expression-name     expression-name
+          :lib/source-column-alias expression-name
+          :display-name            (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+          :base-type               (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
+          :lib/source              :source/expressions}
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
            {:metabase.lib.field/temporal-unit unit})
          (when lib.metadata.calculation/*propagate-binning-and-bucketing*
@@ -265,8 +268,7 @@
   temporal-unit)
 
 #_(defn- conflicting-name? [query stage-number expression-name]
-    (let [stage     (lib.util/query-stage query stage-number)
-          cols      (lib.metadata.calculation/visible-columns query stage-number stage)
+    (let [cols      (lib.metadata.calculation/visible-columns query stage-number)
           expr-name (u/lower-case-en expression-name)]
       (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
 
@@ -335,7 +337,6 @@
 (lib.common/defop round [x])
 (lib.common/defop power [n expo])
 (lib.common/defop interval [n unit])
-(lib.common/defop relative-datetime [t unit])
 (lib.common/defop time [t unit])
 (lib.common/defop absolute-datetime [t unit])
 (lib.common/defop now [])
@@ -385,6 +386,15 @@
                      :mode mode}]
          (map lib.common/->op-arg) [value])))
 
+(mu/defn relative-datetime :- :mbql.clause/relative-datetime
+  "Create a standalone `:relative-datetime` clause."
+  ([t :- [:= :current]]
+   [:relative-datetime {:lib/uuid (str (random-uuid))} t])
+
+  ([t    :- ::lib.schema.expression.temporal/relative-datetime.amount
+    unit :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
+   [:relative-datetime {:lib/uuid (str (random-uuid))} t unit]))
+
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
   [literal :- [:or :string number? :boolean [:fn u.number/bigint?]]]
@@ -393,7 +403,8 @@
                               {:base-type base-type, :effective-type base-type}
                               (cond-> literal (u.number/bigint? literal) str)])))
 
-(mu/defn- expression-metadata :- ::lib.schema.metadata/column
+(mu/defn expression-metadata :- ::lib.schema.metadata/column
+  "Return column metadata for an `expression-definition` MBQL clause."
   [query                 :- ::lib.schema/query
    stage-number          :- :int
    expression-definition :- ::lib.schema.expression/expression]
@@ -406,10 +417,11 @@
         ;; not the properties of the expression.
         (select-keys [:base-type :effective-type :lib/desired-column-alias
                       :lib/source-column-alias :lib/source-uuid :lib/type])
-        (assoc :lib/source   :source/expressions
-               :name         expression-name
-               :display-name expression-name
-               :ident        (lib.options/ident expression-definition)))))
+        (assoc :lib/source          :source/expressions
+               :lib/source-uuid     (lib.options/uuid expression-definition)
+               :lib/expression-name expression-name
+               :name                expression-name
+               :display-name        expression-name))))
 
 (mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."
@@ -456,7 +468,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    ;; The legacy format, which uses a map to represent the expressions loses the ordering,
+    ;; The legacy format, which uses a map to represent the expressions, loses the ordering
     ;; if ten or more expressions are used. Preserving the order would require to use a
     ;; map type preserving the order both when converting to the legacy format and when
     ;; converting from JS to CLJ. This could be done by changing the legacy format or
@@ -467,9 +479,14 @@
     ;; Clojure map, so there are plenty of possibilities to mess this up.)
     ;; Changing the legacy/wire format is probably the right way to go, but that's a bigger
     ;; endeavor.
-    _expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)]
+    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (let [expr-name (when expression-position
+                     (some-> (expressions query stage-number)
+                             (nth expression-position nil)
+                             lib.util/expression-name))
+         columns (cond->> (lib.metadata.calculation/visible-columns query stage-number)
+                   expr-name (into [] (remove #(and (= (:lib/source %) :source/expressions)
+                                                    (= (:name %) expr-name)))))]
      (not-empty columns))))
 
 (mu/defn expression-ref :- :mbql.clause/expression
@@ -525,7 +542,7 @@
   (mr/validator ::lib.schema.aggregation/aggregation))
 
 (def ^:private filter-validator
-  (mr/validator ::lib.schema/filterable))
+  (mr/validator ::lib.schema.expression/boolean))
 
 (defn- expression->name
   [expr]
@@ -643,7 +660,7 @@
           (when-let [nested (invalid-nesting expr)]
             {:message (i18n/tru "Embedding {0} in aggregation functions is not supported"
                                 ;; special names duplicated from
-                                ;; frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts
+                                ;; frontend/src/metabase/querying/expressions/config.ts
                                 (clojure.core/case nested
                                   :avg            "Average"
                                   :count-where    "CountIf"

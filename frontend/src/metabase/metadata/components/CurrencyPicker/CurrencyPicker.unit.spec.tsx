@@ -37,11 +37,7 @@ describe("CurrencyPicker", () => {
       screen.getByPlaceholderText("Select a currency type"),
     );
     await userEvent.click(screen.getByText("Euro"));
-    expect(onChange).toHaveBeenCalledWith("EUR", {
-      label: "Euro",
-      symbol: "€",
-      value: "EUR",
-    });
+    expect(onChange).toHaveBeenCalledWith("EUR");
   });
 
   it("does not call onChange when the same currency is selected", async () => {

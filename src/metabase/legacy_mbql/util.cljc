@@ -6,7 +6,6 @@
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
         [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
@@ -25,15 +24,24 @@
   is-clause?
   check-clause])
 
-(mu/defn normalize-token :- :keyword
+(mu/defn normalize-token :- [:or :keyword :string]
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (-> (u/qualified-name token)
-      str/lower-case
-      (str/replace #"_" "-")
-      keyword))
+  (let [s (u/qualified-name token)]
+    (if (str/starts-with? s "type/")
+      ;; TODO (Cam 8/12/25) -- there's tons of code using incorrect parameter types or normalizing base types
+      ;; incorrectly, for example [[metabase.actions.models/implicit-action-parameters]]. We need to actually start
+      ;; validating parameters against the `:metabase.lib.schema.parameter/parameter` schema. We should probably throw
+      ;; an error here instead of silently correcting it... I was going to do that but it broke too many things
+      (do
+        (log/error "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
+        (keyword s))
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (-> s
+          #?(:clj u/lower-case-en :cljs str/lower-case)
+          (str/replace \_ \-)
+          keyword))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
@@ -103,7 +111,8 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
-(defn legacy-last-stage-number
+;;; TODO (Cam 7/16/25) -- why does the LEGACY MBQL UTILS have STAGE STUFF IN IT!
+(defn ^:deprecated legacy-last-stage-number
   "Returns the canonical stage number of the last stage of the legacy `inner-query`."
   [inner-query]
   (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
@@ -111,42 +120,6 @@
             stage-had-source-card)
       n
       (recur source-query (inc n)))))
-
-(defn stage-path
-  "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
-  specified by `stage-number`.
-
-  Stage numbers are used as described in [[add-filter-clause]]."
-  [inner-query stage-number]
-  (if-not stage-number
-    []
-    (let [elements (if (neg? stage-number)
-                     (dec (- stage-number))
-                     (- (legacy-last-stage-number inner-query) stage-number))]
-      (into [] (repeat elements :source-query)))))
-
-(mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
-  "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
-  needed.
-
-  Stage numbers work as in [[add-filter-clause]]."
-  [inner-query  :- mbql.s/MBQLQuery
-   stage-number :- [:maybe number?]
-   new-clause   :- [:maybe mbql.s/Filter]]
-  (if (not new-clause)
-    inner-query
-    (let [path (stage-path inner-query stage-number)]
-      (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
-
-(mu/defn add-filter-clause :- mbql.s/Query
-  "Add an additional filter clause to an `outer-query` at stage `stage-number`
-  or at the last stage if `stage-number` is `nil`. If `new-clause` is `nil` this is a no-op.
-
-  Stage numbers can be negative: `-1` refers to the last stage, `-2` to the penultimate stage, etc."
-  [outer-query  :- mbql.s/Query
-   stage-number :- [:maybe number?]
-   new-clause   :- [:maybe mbql.s/Filter]]
-  (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
 (defn- map-stages*
   "Helper for [[map-stages]]; call that instead."
@@ -560,10 +533,7 @@
   (let [existing-orderables (into #{}
                                   (map (fn [[_dir orderable]]
                                          orderable))
-                                  (:order-by inner-query))
-        ;; Remove any :ident the orderable might have had. `:ident` in the options of a ref is for clauses that
-        ;; create columns, eg. breakouts; it's not referring to another clause by ident.
-        orderable           (m/update-existing orderable 2 #(not-empty (dissoc % :ident)))]
+                                  (:order-by inner-query))]
     (if (existing-orderables orderable)
       ;; Field already referenced, nothing to do
       inner-query
@@ -593,23 +563,25 @@
 
 (mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
   "Return the expression referenced by a given `expression-name`."
-  [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
-  (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
-    (loop [{:keys [expressions source-query]} inner-query, found #{}]
-      (or
-       ;; look for either string or keyword version of `expression-name` in `expressions`
-       (some (partial get expressions) allowed-names)
-       ;; otherwise, if we have a source query recursively look in that (do we allow that??)
-       (let [found (into found (keys expressions))]
-         (if source-query
-           (recur source-query found)
-           ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
-           ;; were
-           (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
-                           {:type            :invalid-query
-                            :expression-name expression-name
-                            :tried           allowed-names
-                            :found           found}))))))))
+  [inner-query expression-name :- ::lib.schema.common/non-blank-string]
+  (loop [{:keys [expressions source-query]} inner-query, found #{}]
+    (when (seq expressions)
+      (assert (every? string? (keys expressions))
+              (str ":expressions should always use string keys, got: " (pr-str expressions))))
+    (or
+     ;; look for`expression-name` in `expressions`
+     (get expressions expression-name)
+     ;; otherwise, if we have a source query recursively look in that (do we allow that??)
+     (let [found (into found (keys expressions))]
+       (if source-query
+         (recur source-query found)
+         ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
+         ;; were
+         (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
+                         {:type            :invalid-query
+                          :expression-name expression-name
+                          :tried           expression-name
+                          :found           found})))))))
 
 (mu/defn aggregation-at-index :- ::mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
@@ -816,7 +788,10 @@
      *  `:max-results-bare-rows` is returned if set and Query does not have any aggregations
      *  `:max-results` is returned otherwise
   *  If none of the above are set, returns `nil`. In this case, you should use something like the Metabase QP's
-     `max-rows-limit`"
+     `max-rows-limit`
+
+  DEPRECATED: this will be removed in the near future. Prefer [[metabase.lib.limit/max-rows-limit]] for new code."
+  {:deprecated "0.57.0"}
   [{{:keys [max-results max-results-bare-rows]}                      :constraints
     {limit :limit, aggregations :aggregation, {:keys [items]} :page} :query
     query-type                                                       :type}]

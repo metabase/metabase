@@ -559,7 +559,7 @@
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
 
-(deftest ^:parallel uniqe-alias-index-test
+(deftest ^:parallel unique-alias-index-test
   (mt/test-driver
     :mongo
     (testing "Field aliases have deterministic unique indices"
@@ -586,7 +586,7 @@
             indices (reduce (fn [acc lookup-stage]
                               (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                    ;; Following expression ensures index is an integer.
-                                    index (Integer/parseInt (re-find #"\d+$" let-var-name))]
+                                    index (parse-long (re-find #"\d+$" let-var-name))]
                                ;; Following expression tests that index is unique.
                                 (is (not (contains? acc index)))
                                 (conj acc index)))
@@ -635,7 +635,8 @@
                     :let {"let__id___1" "$_id",
                           "let_name___2" "$name"}
                     :pipeline
-                    [{"$match"
+                    [{"$project" {"_id" "$_id", "date" "$date", "user_id" "$user_id", "venue_id" "$venue_id"}}
+                     {"$match"
                       {"$and" [{"$expr" {"$eq" ["$$let__id___1" "$user_id"]}}
                                {"$expr" {"$eq" ["$$let_name___2" "Felipinho Asklepios"]}}]}}]}}
                   {"$unwind" {:path "$join_alias_c"
@@ -657,17 +658,17 @@
   (testing "should be able to join multiple mongo collections"
     (mt/test-driver :mongo
       (mt/dataset (mt/dataset-definition "multi-join-db"
-                                         ["table_a"
-                                          [{:field-name "a_id" :base-type :type/Text}
-                                           {:field-name "b_id" :base-type :type/Text}]
-                                          [["a_id" "b_id"]]]
-                                         ["table_b"
-                                          [{:field-name "b_id" :base-type :type/Text}
-                                           {:field-name "c_id" :base-type :type/Text}]
-                                          [["b_id" "c_id"]]]
-                                         ["table_c"
-                                          [{:field-name "c_id" :base-type :type/Text}]
-                                          [["c_id"]]])
+                                         [["table_a"
+                                           [{:field-name "a_id" :base-type :type/Text}
+                                            {:field-name "b_id" :base-type :type/Text}]
+                                           [["a_id" "b_id"]]]
+                                          ["table_b"
+                                           [{:field-name "b_id" :base-type :type/Text}
+                                            {:field-name "c_id" :base-type :type/Text}]
+                                           [["b_id" "c_id"]]]
+                                          ["table_c"
+                                           [{:field-name "c_id" :base-type :type/Text}]
+                                           [["c_id"]]]])
         (let [mp (mt/metadata-provider)
               table-a (lib.metadata/table mp (mt/id :table_a))
               table-b (lib.metadata/table mp (mt/id :table_b))

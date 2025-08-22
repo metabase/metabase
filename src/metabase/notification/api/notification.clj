@@ -99,7 +99,7 @@
     [:creator_or_recipient_id {:optional true} ms/PositiveInt]
     [:card_id                 {:optional true} ms/PositiveInt]
     [:include_inactive        {:optional true} ms/BooleanValue]
-    [:pyaload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
+    [:payload_type            {:optional true} [:maybe (into [:enum] models.notification/notification-types)]]]]
   (list-notifications {:creator_id              creator_id
                        :recipient_id            recipient_id
                        :creator_or_recipient_id creator_or_recipient_id

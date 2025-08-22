@@ -13,6 +13,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -55,7 +56,9 @@
        (lib.metadata.calculation/display-name query stage-number aggregation :long)))))
 
 (defmethod lib.metadata.calculation/metadata-method :aggregation
-  [query stage-number [_ag {:keys [base-type effective-type], :as _opts} index, :as _aggregation-ref]]
+  [query
+   stage-number
+   [_ag {:keys [base-type effective-type display-name], agg-name :name, :as _opts} index, :as _aggregation-ref]]
   (let [aggregation (resolve-aggregation query stage-number index)]
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
@@ -64,7 +67,11 @@
      (when base-type
        {:base-type base-type})
      (when effective-type
-       {:effective-type effective-type}))))
+       {:effective-type effective-type})
+     (when agg-name
+       {:name agg-name})
+     (when display-name
+       {:display-name display-name}))))
 
 ;;; TODO -- merge this stuff into `defop` somehow.
 
@@ -153,8 +160,11 @@
     :sum       "sum"
     :var       "var"))
 
-(defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg] style]
+(mu/defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
+  [query
+   stage-number
+   [tag _opts arg] :- [:ref ::lib.schema.mbql-clause/clause]
+   style]
   (let [arg (lib.metadata.calculation/display-name query stage-number arg style)]
     (case tag
       :avg       (i18n/tru "Average of {0}"            arg)
@@ -229,8 +239,7 @@
      ;; This might be an inner aggregation expression without an ident of its own, but that's fine since we're only
      ;; here for its type!
      (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
-   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)
-   {:ident (lib.options/ident clause)}))
+   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
 
 (lib.common/defop count       [] [x])
 (lib.common/defop cum-count   [] [x])
@@ -295,7 +304,7 @@
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
                                   (assoc :lib/source      :source/aggregations
-                                         :lib/source-uuid (lib.options/uuid  aggregation))))))))))
+                                         :lib/source-uuid (lib.options/uuid aggregation))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge
@@ -327,8 +336,7 @@
 
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+   (let [columns (lib.metadata.calculation/visible-columns query stage-number)
          with-columns (fn [{:keys [requires-column? supported-field] :as operator}]
                         (cond
                           (not requires-column?)
@@ -439,10 +447,13 @@
    (aggregable-columns query -1 aggregation-position))
   ([query :- ::lib.schema/query
     stage-number :- :int
-    _aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   (let [stage (lib.util/query-stage query stage-number)
-         columns (into (vec (lib.metadata.calculation/visible-columns query stage-number stage))
-                       (aggregations-metadata query stage-number))]
+    aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (let [agg-cols (aggregations-metadata query stage-number)
+         columns (into (vec (lib.metadata.calculation/visible-columns query stage-number))
+                       (cond->> agg-cols
+                         aggregation-position (keep-indexed (fn [i a]
+                                                              (when (not= i aggregation-position)
+                                                                a)))))]
      (not-empty columns))))
 
 (defmethod lib.metadata.calculation/type-of-method :aggregation

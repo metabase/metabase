@@ -36,6 +36,7 @@ export const ScheduleOptionIndicator = styled.div<ScheduleOptionIndicatorProps>`
   border: 0.125rem solid
     ${(props) => (props.isSelected ? color("brand") : color("text-light"))};
   border-radius: 50%;
+  flex: 0 0 1.125rem;
 `;
 
 interface ScheduleOptionIndicatorBackgroundProps {

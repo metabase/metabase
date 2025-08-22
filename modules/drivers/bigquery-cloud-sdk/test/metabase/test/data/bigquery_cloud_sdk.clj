@@ -58,16 +58,21 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
+  (cond
+    tx/*use-routing-dataset*
+    "metabase_routing_dataset"
+
+    (str/starts-with? database-name "sha_")
     database-name
+
+    :else
     (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
-  (reduce
-   (fn [acc env-var]
-     (assoc acc env-var (tx/db-test-env-var :bigquery-cloud-sdk env-var)))
-   {}
-   [:project-id :service-account-json]))
+  {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
+   :service-account-json (if tx/*use-routing-details*
+                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json-routing)
+                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json))})
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
@@ -426,7 +431,7 @@
       (tx/tracking-access-note)])))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
-  [_ {:keys [database-name table-definitions] :as db-def} & _]
+  [driver {:keys [database-name table-definitions options] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (delete-old-datasets-if-needed!)
   (let [dataset-id (test-dataset-id db-def)]
@@ -438,6 +443,8 @@
         ;; now create tables and load data.
         (doseq [tabledef table-definitions]
           (load-tabledef! dataset-id tabledef))
+        (doseq [native-ddl (:native-ddl options)]
+          (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
         (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
         (catch Throwable e
           (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))

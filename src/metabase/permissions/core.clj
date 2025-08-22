@@ -57,6 +57,7 @@
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
+  visible-database-filter-select
   visible-table-filter-select
   select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
@@ -88,7 +89,8 @@
  [metabase.permissions.path
   application-perms-path
   collection-read-path
-  collection-readwrite-path]
+  collection-readwrite-path
+  collection-path?]
  [metabase.permissions.user
   user-permissions-set]
  [metabase.permissions.util

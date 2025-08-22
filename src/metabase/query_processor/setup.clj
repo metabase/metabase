@@ -176,8 +176,8 @@
       (f query)
 
       :else
-      (let [{:keys [settings]} (lib.metadata/database (qp.store/metadata-provider))]
-        (setting/with-database-local-values (or settings {})
+      (let [db (lib.metadata/database (qp.store/metadata-provider))]
+        (setting/with-database db
           (f query))))))
 
 (mu/defn- do-with-canceled-chan :- fn?

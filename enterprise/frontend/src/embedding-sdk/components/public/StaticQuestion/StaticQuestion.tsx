@@ -1,28 +1,76 @@
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
-import {
-  InteractiveQuestionProvider,
-  type InteractiveQuestionProviderProps,
-} from "embedding-sdk/components/private/InteractiveQuestion/context";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { Group, Stack } from "metabase/ui";
+import type { PropsWithChildren } from "react";
 
-import { InteractiveQuestion } from "../InteractiveQuestion";
-import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/types";
+import { FlexibleSizeComponent } from "embedding-sdk/components/private/FlexibleSizeComponent";
+import {
+  Breakout,
+  BreakoutDropdown,
+  ChartTypeDropdown,
+  ChartTypeSelector,
+  DownloadWidget,
+  DownloadWidgetDropdown,
+  Filter,
+  FilterDropdown,
+  QuestionResetButton,
+  QuestionSettings,
+  QuestionSettingsDropdown,
+  QuestionVisualization,
+  Summarize,
+  SummarizeDropdown,
+  Title,
+} from "embedding-sdk/components/private/SdkQuestion/components";
+import { DefaultViewTitle } from "embedding-sdk/components/private/SdkQuestionDefaultView/DefaultViewTitle";
+import {
+  SdkQuestion,
+  type SdkQuestionProps,
+} from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+import { StaticQuestionSdkMode } from "embedding-sdk/components/public/StaticQuestion/mode";
+import { Group, Stack } from "metabase/ui";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 
 /**
  * @interface
  * @expand
  * @category StaticQuestion
  */
-export type StaticQuestionProps = InteractiveQuestionQuestionIdProps & {
-  withChartTypeSelector?: boolean;
-} & Pick<
-    InteractiveQuestionProviderProps,
-    "initialSqlParameters" | "withDownloads"
-  > &
-  FlexibleSizeProps;
+export type StaticQuestionProps = PropsWithChildren<
+  Pick<
+    SdkQuestionProps,
+    | "questionId"
+    | "withChartTypeSelector"
+    | "height"
+    | "width"
+    | "className"
+    | "style"
+    | "initialSqlParameters"
+    | "withDownloads"
+    | "title"
+  >
+>;
 
-const StaticQuestionInner = ({
+/**
+ * @interface
+ */
+export type StaticQuestionComponents = {
+  Filter: typeof Filter;
+  FilterDropdown: typeof FilterDropdown;
+  ResetButton: typeof QuestionResetButton;
+  Title: typeof Title;
+  Summarize: typeof Summarize;
+  SummarizeDropdown: typeof SummarizeDropdown;
+  QuestionVisualization: typeof QuestionVisualization;
+  ChartTypeSelector: typeof ChartTypeSelector;
+  ChartTypeDropdown: typeof ChartTypeDropdown;
+  QuestionSettings: typeof QuestionSettings;
+  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
+  Breakout: typeof Breakout;
+  BreakoutDropdown: typeof BreakoutDropdown;
+  DownloadWidget: typeof DownloadWidget;
+  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+};
+
+const _StaticQuestion = ({
   questionId: initialQuestionId,
   withChartTypeSelector,
   height,
@@ -31,34 +79,77 @@ const StaticQuestionInner = ({
   style,
   initialSqlParameters,
   withDownloads,
-}: StaticQuestionProps): JSX.Element | null => (
-  <InteractiveQuestionProvider
-    questionId={initialQuestionId}
-    variant="static"
-    initialSqlParameters={initialSqlParameters}
-    withDownloads={withDownloads}
-  >
-    <Stack gap="sm" w="100%" h="100%">
-      {(withChartTypeSelector || withDownloads) && (
-        <Group justify="space-between">
-          {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
-          {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
-        </Group>
-      )}
-      <InteractiveQuestion.QuestionVisualization
-        height={height}
-        width={width}
-        className={className}
-        style={style}
-      />
-    </Stack>
-  </InteractiveQuestionProvider>
-);
+  title = false, // Hidden by default for backwards-compatibility.
+  children,
+}: StaticQuestionProps): JSX.Element | null => {
+  const getClickActionMode: ClickActionModeGetter = ({
+    question,
+  }: {
+    question: Question;
+  }) => {
+    return (
+      question &&
+      getEmbeddingMode({
+        question,
+        queryMode: StaticQuestionSdkMode,
+      })
+    );
+  };
 
-/**
- * A component that renders a static question.
- *
- * @function
- * @category StaticQuestion
- */
-export const StaticQuestion = withPublicComponentWrapper(StaticQuestionInner);
+  return (
+    <SdkQuestion
+      questionId={initialQuestionId}
+      getClickActionMode={getClickActionMode}
+      navigateToNewCard={null}
+      initialSqlParameters={initialSqlParameters}
+      withDownloads={withDownloads}
+    >
+      {children ?? (
+        <FlexibleSizeComponent
+          width={width}
+          height={height}
+          className={className}
+          style={style}
+        >
+          <Stack gap="sm" w="100%" h="100%">
+            {title && <DefaultViewTitle title={title} />}
+
+            {(withChartTypeSelector || withDownloads) && (
+              <Group justify="space-between">
+                {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
+                {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
+              </Group>
+            )}
+
+            <SdkQuestion.QuestionVisualization
+              height={height}
+              width={width}
+              className={className}
+              style={style}
+            />
+          </Stack>
+        </FlexibleSizeComponent>
+      )}
+    </SdkQuestion>
+  );
+};
+
+const subComponents: StaticQuestionComponents = {
+  Filter: Filter,
+  FilterDropdown: FilterDropdown,
+  ResetButton: QuestionResetButton,
+  Title: Title,
+  Summarize: Summarize,
+  SummarizeDropdown: SummarizeDropdown,
+  QuestionVisualization: QuestionVisualization,
+  ChartTypeSelector: ChartTypeSelector,
+  ChartTypeDropdown: ChartTypeDropdown,
+  QuestionSettings: QuestionSettings,
+  QuestionSettingsDropdown: QuestionSettingsDropdown,
+  Breakout: Breakout,
+  BreakoutDropdown: BreakoutDropdown,
+  DownloadWidget: DownloadWidget,
+  DownloadWidgetDropdown: DownloadWidgetDropdown,
+};
+
+export const StaticQuestion = Object.assign(_StaticQuestion, subComponents);

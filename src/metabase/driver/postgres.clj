@@ -76,7 +76,9 @@
                               :expressions/integer      true
                               :expressions/float        true
                               :expressions/date         true
-                              :database-routing         true}]
+                              :database-routing         true
+                              :transforms/table         true
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -86,6 +88,7 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
+                 :actions/data-editing
                  :table-privileges
                  ;; Index sync is turned off across the application as it is not used ATM.
                  #_:index-info
@@ -275,13 +278,16 @@
           rf
           init
           (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
-            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+            (let [have-privilege-fn (sql-jdbc.describe-database/have-privilege-fn driver conn)]
               (eduction
-               (comp (filter have-select-privilege?)
-                     (map #(dissoc % :type)))
+               (comp (filter #(have-privilege-fn % :select))
+                     (map (fn [table]
+                            (-> table
+                                (dissoc :type)
+                                (assoc :is_writable (have-privilege-fn table :write))))))
                (get-tables database syncable-schemas nil))))))))))
 
-(defmethod driver/describe-database :postgres
+(defmethod driver/describe-database* :postgres
   [_driver database]
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
   ;; memory in a set like this

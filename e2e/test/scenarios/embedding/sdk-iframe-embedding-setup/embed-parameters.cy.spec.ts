@@ -21,6 +21,8 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+    H.updateSetting("enable-embedding-simple", true);
+    H.mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
@@ -87,7 +89,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("set default value for id");
       getEmbedSidebar().findByLabelText("ID").type("123").blur();
 
-      H.getIframeBody()
+      H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
         .findByLabelText("ID")
         .should("contain", "123");
@@ -95,7 +97,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("set default value for product id");
       getEmbedSidebar().findByLabelText("Product ID").type("456").blur();
 
-      H.getIframeBody()
+      H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
         .findByLabelText("Product ID")
         .should("contain", "456");
@@ -111,9 +113,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("both default values should be in the code snippet");
       getEmbedSidebar().within(() => {
         cy.findByText("Get Code").click();
-        codeBlock().should("contain", '"initialParameters"');
-        codeBlock().should("contain", '"id": "123"');
-        codeBlock().should("contain", '"product_id": "456"');
+        codeBlock().should("contain", "initial-parameters=");
+        codeBlock().should("contain", '"id":"123"');
+        codeBlock().should("contain", '"product_id":"456"');
       });
     });
 
@@ -130,7 +132,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
 
       cy.log("parameter widget container should not exist");
-      H.getIframeBody()
+      H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
         .should("not.exist");
 
@@ -145,7 +147,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("code snippet should contain the hidden parameters");
       getEmbedSidebar().within(() => {
         cy.findByText("Get Code").click();
-        codeBlock().should("contain", '"hiddenParameters"');
+        codeBlock().should("contain", "hidden-parameters=");
         codeBlock().should("contain", '"id"');
         codeBlock().should("contain", '"product_id"');
       });
@@ -182,7 +184,7 @@ H.describeWithSnowplow(suiteTitle, () => {
         cy.findByLabelText("ID").should("be.visible");
       });
 
-      H.getIframeBody()
+      H.getSimpleEmbedIframeContent()
         .findByText(/missing required parameters/)
         .should("exist");
 
@@ -190,7 +192,7 @@ H.describeWithSnowplow(suiteTitle, () => {
         cy.findByLabelText("ID").type("123").blur();
       });
 
-      H.getIframeBody().within(() => {
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.findByText(/missing required parameters/).should("not.exist");
         cy.findByText("123").should("be.visible");
 
@@ -205,9 +207,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       getEmbedSidebar().within(() => {
         cy.findByText("Get Code").click();
-        codeBlock().should("contain", '"initialSqlParameters"');
-        codeBlock().should("not.contain", '"hiddenParameters"'); // not supported for questions yet
-        codeBlock().should("contain", '"id": "123"');
+        codeBlock().should("contain", "initial-sql-parameters=");
+        codeBlock().should("not.contain", "hidden-parameters="); // not supported for questions yet
+        codeBlock().should("contain", '"id":"123"');
       });
     });
   });

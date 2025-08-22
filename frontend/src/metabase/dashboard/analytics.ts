@@ -167,3 +167,16 @@ export const trackFilterCreated = (
     event_detail: filterType ?? null,
   });
 };
+
+export const trackFilterMoved = (
+  dashboardId: DashboardId,
+  origin: VisualizationDisplay | null,
+  destination: VisualizationDisplay | null,
+) => {
+  trackSimpleEvent({
+    event: "dashboard_filter_moved",
+    target_id: getDashboardId(dashboardId),
+    triggered_from: origin,
+    event_detail: destination,
+  });
+};

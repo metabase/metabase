@@ -85,6 +85,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
+   [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
@@ -324,12 +325,12 @@
 (defn- js-obj->cljs-map
   "Converts a JavaScript object with `\"camelCase\"` keys into a Clojure map with `:kebab-case` keys."
   [an-object]
-  (-> an-object js->clj (update-keys js-key->cljs-key)))
+  (-> an-object js->clj (perf/update-keys js-key->cljs-key)))
 
 (defn- cljs-map->js-obj
   "Converts a Clojure map with `:kebab-case` keys into a JavaScript object with `\"camelCase\"` keys."
   [a-map]
-  (-> a-map (update-keys cljs-key->js-key) clj->js))
+  (-> a-map (perf/update-keys cljs-key->js-key) clj->js))
 
 (defn- display-info-map->js* [x]
   (reduce (fn [obj [cljs-key cljs-val]]
@@ -677,9 +678,10 @@
                                         ;; We ignore the order of the fields in the lists, but need to make sure any
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
                                         (assoc :fields (frequencies fields))
-                                        ;; Remove the randomized idents, which are of course not going to match.
+                                        ;; Remove the randomized idents, which are of course not going to match. These
+                                        ;; are deprecated and should no longer be populated
                                         (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
-      ;; Ignore :info since it contains the randomized :card-entity-id.
+      ;; Ignore :info since it contains the randomized :card-entity-id. (This is no longer populated either.)
       (dissoc :info)))
 
 (defn- prep-query-for-equals-pMBQL
@@ -690,7 +692,7 @@
     (lib.util/update-query-stage a-query -1
                                  #(-> %
                                       (assoc :fields (frequencies fields))
-                                      lib.schema.util/remove-randomized-idents))))
+                                      lib.schema.util/remove-lib-uuids))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (when-let [normalized-query (some-> a-query normalize-to-clj)]
@@ -721,10 +723,10 @@
          (= (first x) (first y) :field))
     (compare-field-refs x y)
 
-    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid and :ident values don't have to match.
+    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't have to match.
     (and (map? x) (map? y))
-    (let [x (dissoc x :lib/uuid :ident)
-          y (dissoc y :lib/uuid :ident)]
+    (let [x (dissoc x :lib/uuid)
+          y (dissoc y :lib/uuid)]
       (and (= (set (keys x)) (set (keys y)))
            (every? (fn [[k v]]
                      (query=* v (get y k)))
@@ -821,10 +823,12 @@
   "Get a translated description of a temporal bucketing interval.
 
   > **Code health:** Healthy"
-  [n unit]
-  (let [n    (if (string? n) (keyword n) n)
-        unit (if (string? unit) (keyword unit) unit)]
-    (lib.core/describe-temporal-interval n unit)))
+  ([n unit]
+   (describe-temporal-interval n unit {}))
+  ([n unit opts]
+   (let [n    (if (string? n) (keyword n) n)
+         unit (if (string? unit) (keyword unit) unit)]
+     (lib.core/describe-temporal-interval n unit (js->clj opts :keywordize-keys true)))))
 
 (defn ^:export describe-relative-datetime
   "Get a translated description of a relative datetime interval.
@@ -1426,9 +1430,8 @@
 (defn- visible-columns*
   "Inner implementation for [[visible-columns]], which wraps this with caching."
   [a-query stage-number]
-  (let [stage       (lib.util/query-stage a-query stage-number)
-        vis-columns (lib.metadata.calculation/visible-columns a-query stage-number stage)
-        ret-columns (lib.metadata.calculation/returned-columns a-query stage-number stage)]
+  (let [vis-columns (lib.metadata.calculation/visible-columns a-query stage-number)
+        ret-columns (lib.metadata.calculation/returned-columns a-query stage-number)]
     (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
 
 (defn ^:export visible-columns
@@ -1917,15 +1920,6 @@
   [database-id metadata inner-query]
   (lib.core/native-query (metadataProvider database-id metadata) inner-query))
 
-(defn ^:export validate-native-query
-  "Validates the syntax of a native query.
-
-  *Native* in this sense means a pMBQL query where the first stage is `:mbql.stage/native`.
-
-  > **Code health:** Healthy"
-  [a-native-query]
-  (to-array (lib.core/validate-native-query a-native-query)))
-
 (defn ^:export with-native-query
   "Update the raw native query. The first stage of `a-query` must already be a native stage.
 
@@ -1948,7 +1942,7 @@
       js->clj
       (update-vals (fn [tag]
                      (-> tag
-                         (update-keys keyword)
+                         (perf/update-keys keyword)
                          (update :type keyword)
                          (m/update-existing :widget-type #(some-> % keyword))
                          (m/update-existing :dimension #(some-> % legacy-ref->pMBQL)))))))

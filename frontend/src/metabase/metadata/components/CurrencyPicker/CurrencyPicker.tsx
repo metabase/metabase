@@ -88,7 +88,7 @@ export const CurrencyPicker = ({
       }
       searchable
       value={value}
-      onChange={onChange}
+      onChange={(value) => onChange(value)}
       onFocus={handleFocus}
       {...props}
     />

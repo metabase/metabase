@@ -45,33 +45,58 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres driver-api/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
-  (or (when-let [[_match _table _constraint _ref-table column _value _ref-table-2]
+  (or (when-let [[_match _table _constraint ref-table column _value _ref-table-2]
                  (re-find #"update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is still referenced from table \"([^\"]+)\"" error-message)]
         (merge {:type error-type}
                (case action-type
-                 :row/delete
-                 {:message (tru "Other tables rely on this row so it cannot be deleted.")
-                  :errors  {}}
+                 (:table.row/delete :model.row/delete)
+                 {:message (tru "Other rows refer to this row so it cannot be deleted.")
+                  :errors  {column (tru "Referenced in table \"{0}\"." ref-table)}}
 
-                 :row/update
-                 {:message (tru "Unable to update the record.")
-                  :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
-      (when-let [[_match _table _constraint column _value _ref-table]
+                 (:table.row/update :model.row/update)
+                 {:message (tru "Other rows refer to this value so it cannot be changed.")
+                  :errors  {column (tru "Referenced in table \"{0}\"." ref-table)}})))
+      (when-let [[_match _table _constraint column _value ref-table]
                  (re-find #"insert or update on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is not present in table \"([^\"]+)\"" error-message)]
         {:type    error-type
          :message (case action-type
-                    :row/create
+                    (:table.row/create :model.row/create)
                     (tru "Unable to create a new record.")
 
-                    :row/update
+                    (:table.row/update :model.row/update)
                     (tru "Unable to update the record."))
-         :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
+         :errors  {column (tru "This value does not exist in table \"{0}\"." ref-table)}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres driver-api/incorrect-value-type]
   [_driver error-type _database _action-type error-message]
   (when-let [[_] (re-find #"invalid input syntax for .*" error-message)]
     {:type    error-type
      :message (tru "Some of your values aren’t of the correct type for the database.")
+     :errors  {}}))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres driver-api/violate-permission-constraint]
+  [_driver error-type _database action-type error-message]
+  (when (re-find #"permission denied for" error-message)
+    (merge {:type error-type}
+           (case action-type
+             (:table.row/create :model.row/create)
+             {:message (tru "You don''t have permission to add data to this table.")
+              :errors  {}}
+
+             (:table.row/update :model.row/update)
+             {:message (tru "You don''t have permission to update data in this table.")
+              :errors  {}}
+
+             (:table.row/delete :model.row/delete)
+             {:message (tru "You don''t have permission to delete data from this table.")
+              :errors  {}}))))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres driver-api/violate-check-constraint]
+  [_driver error-type _database _action-type error-message]
+  (when-let [[_match constraint-name]
+             (re-find #"violates check constraint \"([^\"]+)\"" error-message)]
+    {:type    error-type
+     :message (tru "Some of your values violate the constraint: {0}" constraint-name)
      :errors  {}}))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :postgres
@@ -106,7 +131,7 @@
         (.releaseSavepoint conn savepoint)))))
 
 ;;; Add returning * so that we don't have to make an additional query.
-(defmethod sql-jdbc.actions/prepare-query* [:postgres :row/create]
+(defmethod sql-jdbc.actions/prepare-query* [:postgres :model.row/create]
   [_driver _action hsql-query]
   (assoc hsql-query :returning [:*]))
 

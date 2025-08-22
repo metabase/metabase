@@ -37,6 +37,8 @@
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.warehouse-schema.models.dimension
+    :model/Document                          metabase-enterprise.documents.models.document
+    :model/DocumentBookmark                  metabase-enterprise.bookmarks.models.bookmark
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
@@ -83,6 +85,15 @@
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
+    :model/Transform                         metabase-enterprise.transforms.models.transform
+    :model/TransformJob                      metabase-enterprise.transforms.models.transform-job
+    :model/TransformJobRun                   metabase-enterprise.transforms.models.job-run
+    :model/TransformJobTransformTag metabase-enterprise.transforms.models.transform-job-transform-tag
+    :model/TransformRun                      metabase-enterprise.transforms.models.transform-run
+    :model/TransformRunCancelation           metabase-enterprise.transforms.models.transform-run-cancelation
+    :model/TransformTag                      metabase-enterprise.transforms.models.transform-tag
+    :model/TransformTransformTag metabase-enterprise.transforms.models.transform-transform-tag
+    :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value

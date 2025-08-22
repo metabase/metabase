@@ -118,60 +118,6 @@ export const getSdkVersionFromReleaseTagName = (tagName: string) => {
   return match[1];
 };
 
-export const getSdkVersionFromReleaseBranchName = async ({
-  github,
-  owner,
-  repo,
-  branchName,
-}: GithubProps & { branchName: string }) => {
-  const majorVersion = getMajorVersionNumberFromReleaseBranch(branchName);
-
-  let sdkVersion: string;
-
-  console.log(
-    `Resolved latest major release version - ${Number(majorVersion)}`,
-  );
-
-  console.log(
-    `Looking for git tag - "embedding-sdk-0.${Number(majorVersion)}.*"`,
-  );
-
-  const latestSdkTagForMajorRelease = await getLastEmbeddingSdkReleaseTag({
-    github,
-    owner,
-    repo,
-    majorVersion,
-  });
-
-  console.log(
-    `Resolved SDK latest release tag for v${majorVersion} - ${latestSdkTagForMajorRelease}`,
-  );
-
-  if (latestSdkTagForMajorRelease) {
-    sdkVersion = getSdkVersionFromReleaseTagName(latestSdkTagForMajorRelease);
-
-    console.log(
-      `Resolved SDK latest release version for v${majorVersion} - ${sdkVersion}`,
-    );
-
-    return sdkVersion;
-  }
-
-  const latestSdkTag = await getLastEmbeddingSdkReleaseTag({
-    github,
-    owner,
-    repo,
-  });
-
-  sdkVersion = getSdkVersionFromReleaseTagName(latestSdkTag);
-
-  console.warn(
-    `Failed to resolve latest SDK package version! Using latest SDK version available - ${sdkVersion}`,
-  );
-
-  return sdkVersion;
-};
-
 export const getDotXs = (version: string, number: number) => {
   const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
   return pieces.slice(0, number + 1).join(".") + ".x";
@@ -269,6 +215,7 @@ export const versionRequirements: Record<
   53: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   54: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   55: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  56: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {

@@ -120,7 +120,6 @@
   driver-select
   format-name
   id
-  ident
   mbql-query
   metadata-provider
   native-query
@@ -148,6 +147,7 @@
   received-email-body?
   received-email-subject?
   regex-email-bodies
+  email-subjects
   reset-inbox!
   summarize-multipart-email
   summarize-multipart-single-email
@@ -245,6 +245,7 @@
   user->id
   user-descriptor
   user-http-request
+  user-http-request-full-response
   user-real-request
   with-group
   with-group-for-user
@@ -329,6 +330,7 @@
   arbitrary-select-query
   count-with-template-tag-query
   count-with-field-filter-query
+  make-alias
   dataset-definition
   db-qualified-table-name
   db-test-env-var
@@ -338,7 +340,6 @@
   defdataset
   dispatch-on-driver-with-test-extensions
   get-dataset-definition
-  field-reference
   has-test-extensions?
   metabase-instance
   native-query-with-card-template-tag

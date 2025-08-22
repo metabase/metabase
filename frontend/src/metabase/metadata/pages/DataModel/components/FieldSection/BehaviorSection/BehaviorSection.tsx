@@ -2,12 +2,12 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { useGetDatabaseQuery, useUpdateFieldMutation } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
 import {
   FieldValuesTypePicker,
   FieldVisibilityPicker,
   UnfoldJsonPicker,
 } from "metabase/metadata/components";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   canFieldUnfoldJson,
   getRawTableFieldId,
@@ -37,7 +37,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const [updateField] = useUpdateFieldMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
 
   const handleVisibilityChange = async (
     visibilityType: FieldVisibilityType,
@@ -48,16 +49,18 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update visibility of ${field.display_name}`,
-      });
+      sendErrorToast(t`Failed to update visibility of ${field.display_name}`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Visibility of ${field.display_name} updated`,
-      });
+      sendSuccessToast(
+        t`Visibility of ${field.display_name} updated`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            visibility_type: field.visibility_type,
+          });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 
@@ -68,16 +71,18 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update filtering of ${field.display_name}`,
-      });
+      sendErrorToast(t`Failed to update filtering of ${field.display_name}`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Filtering of ${field.display_name} updated`,
-      });
+      sendSuccessToast(
+        t`Filtering of ${field.display_name} updated`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            has_field_values: field.has_field_values,
+          });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 
@@ -90,20 +95,24 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: jsonUnfolding
+      sendErrorToast(
+        jsonUnfolding
           ? t`Failed to enable JSON unfolding for ${field.display_name}`
           : t`Failed to disable JSON unfolding for ${field.display_name}`,
-      });
+      );
     } else {
-      sendToast({
-        icon: "check",
-        message: jsonUnfolding
+      sendSuccessToast(
+        jsonUnfolding
           ? t`JSON unfolding enabled for ${field.display_name}`
           : t`JSON unfolding disabled for ${field.display_name}`,
-      });
+        async () => {
+          const { error } = await updateField({
+            id,
+            json_unfolding: field.json_unfolding ?? false,
+          });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 

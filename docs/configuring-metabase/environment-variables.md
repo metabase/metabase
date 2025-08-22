@@ -259,6 +259,22 @@ Maximum number of rows to render in an alert or subscription image.
 Range: 1-100. To limit the total number of rows included in the file attachment
         for an email dashboard subscription, use MB_ATTACHMENT_ROW_LIMIT.
 
+### `MB_AUDIT_MAX_RETENTION_DAYS`
+
+- Type: string
+- Default: `null`
+
+Number of days to retain data in audit-related tables. Minimum value is 30; set to 0 to retain data indefinitely.
+
+Sets the maximum number of days Metabase preserves rows for the following application database tables:
+
+- `query_execution`
+- `audit_log`
+- `view_log`
+
+Twice a day, Metabase will delete rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
+If set to 0, Metabase will keep all rows.
+
 ### `MB_BCC_ENABLED`
 
 - Type: boolean
@@ -402,6 +418,46 @@ Enable AI features.
 
 This feature is experimental.
 
+### `MB_EE_EMBEDDING_MODEL`
+
+- Type: string
+- Default: `Snowflake/snowflake-arctic-embed-l-v2.0`
+- [Configuration file name](./config-file.md): `ee-embedding-model`
+
+Set the embedding model for the selected provider.
+
+This feature is experimental.
+
+### `MB_EE_EMBEDDING_MODEL_DIMENSIONS`
+
+- Type: positive-integer
+- Default: `1024`
+- [Configuration file name](./config-file.md): `ee-embedding-model-dimensions`
+
+Set the dimension size for the selected embedding model.
+
+This feature is experimental.
+
+### `MB_EE_EMBEDDING_PROVIDER`
+
+- Type: string
+- Default: `ai-service`
+- [Configuration file name](./config-file.md): `ee-embedding-provider`
+
+The embedding provider to use (:openai, :ollama, or :ai-service).
+
+This feature is experimental.
+
+### `MB_EE_OPENAI_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.openai.com`
+- [Configuration file name](./config-file.md): `ee-openai-api-base-url`
+
+The OpenAI embeddings base URL used in Metabase Enterprise.
+
+This feature is experimental.
+
 ### `MB_EE_OPENAI_API_KEY`
 
 - Type: string
@@ -422,6 +478,48 @@ The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo').
 
 This feature is experimental.
 
+### `MB_EE_SEARCH_GATE_MAX_BATCH_SIZE`
+
+- Type: integer
+- Default: `512`
+
+The maximum number of documents that can be sent to `gate-documents!` without causing an error.
+
+### `MB_EE_SEARCH_GATE_WRITE_TIMEOUT`
+
+- Type: integer
+- Default: `5`
+
+Timeout of gate write statements in seconds. Used to determine lag tolerance of the indexer (see the metabase-enterprise.semantic-search.gate/poll) in conjunction with `ee-search-indexer-lag-tolerance-multiplier`.
+
+### `MB_EE_SEARCH_INDEXER_EXIT_EARLY_COLD_DURATION`
+
+- Type: integer
+- Default: `30`
+
+Number of seconds indexer should wait to see new data before yielding back to quartz.
+
+### `MB_EE_SEARCH_INDEXER_LAG_TOLERANCE_MULTIPLIER`
+
+- Type: integer
+- Default: `2`
+
+Multiplier for computation of metabase-enterprise.semantic-search.indexer/lag-tolerance. The formula is `ee-search-gate-write-timeout * ee-search-indexer-lag-tolerance-multiplier`.
+
+### `MB_EE_SEARCH_INDEXER_MAX_RUN_DURATION`
+
+- Type: integer
+- Default: `60`
+
+Number of minutes we expect to run the indexer loop for before yielding to quartz.
+
+### `MB_EE_SEARCH_INDEXER_POLL_LIMIT`
+
+- Type: integer
+- Default: `1000`
+
+Indexer poll limit.
+
 ### `MB_EMAIL_FROM_ADDRESS`
 
 - Type: string
@@ -429,6 +527,16 @@ This feature is experimental.
 - [Configuration file name](./config-file.md): `email-from-address`
 
 The email address you want to use for the sender of emails.
+
+### `MB_EMAIL_FROM_ADDRESS_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `notifications@metabase.com`
+- [Configuration file name](./config-file.md): `email-from-address-override`
+
+The email address you want to use for the sender of emails from your custom SMTP server.
 
 ### `MB_EMAIL_FROM_NAME`
 
@@ -464,6 +572,16 @@ The email address you want the replies to go to, if different from the from addr
 
 The address of the SMTP server that handles your emails.
 
+### `MB_EMAIL_SMTP_HOST_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-host-override`
+
+The address of the custom SMTP server that handles your emails.
+
 ### `MB_EMAIL_SMTP_PASSWORD`
 
 - Type: string
@@ -471,6 +589,16 @@ The address of the SMTP server that handles your emails.
 - [Configuration file name](./config-file.md): `email-smtp-password`
 
 SMTP password.
+
+### `MB_EMAIL_SMTP_PASSWORD_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-password-override`
+
+Custom SMTP server password.
 
 ### `MB_EMAIL_SMTP_PORT`
 
@@ -480,13 +608,33 @@ SMTP password.
 
 The port your SMTP server uses for outgoing emails.
 
+### `MB_EMAIL_SMTP_PORT_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: integer
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-port-override`
+
+The port your custom SMTP server uses for outgoing emails. Only ports 465, 587, and 2525 are supported.
+
 ### `MB_EMAIL_SMTP_SECURITY`
 
 - Type: keyword
-- Default: `:none`
+- Default: `none`
 - [Configuration file name](./config-file.md): `email-smtp-security`
 
 SMTP secure connection protocol. (tls, ssl, starttls, or none).
+
+### `MB_EMAIL_SMTP_SECURITY_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: keyword
+- Default: `ssl`
+- [Configuration file name](./config-file.md): `email-smtp-security-override`
+
+SMTP secure connection protocol for your custom server. (tls, ssl, or starttls).
 
 ### `MB_EMAIL_SMTP_USERNAME`
 
@@ -495,6 +643,16 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 - [Configuration file name](./config-file.md): `email-smtp-username`
 
 SMTP username.
+
+### `MB_EMAIL_SMTP_USERNAME_OVERRIDE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `email-smtp-username-override`
+
+Custom SMTP server username.
 
 ### `MB_EMBEDDING_APP_ORIGIN [DEPRECATED]`
 
@@ -531,7 +689,7 @@ Allow Metabase SDK access to these space delimited origins.
 ### `MB_EMBEDDING_HOMEPAGE`
 
 - Type: keyword
-- Default: `:hidden`
+- Default: `hidden`
 - [Exported as](../installation-and-operation/serialization.md): `embedding-homepage`.
 - [Configuration file name](./config-file.md): `embedding-homepage`
 
@@ -571,6 +729,14 @@ Allow admins to embed Metabase via interactive embedding?
 - [Configuration file name](./config-file.md): `enable-embedding-sdk`
 
 Allow admins to embed Metabase via the SDK?
+
+### `MB_ENABLE_EMBEDDING_SIMPLE`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-embedding-simple`
+
+Allow admins to embed Metabase via Embedded Analytics JS?
 
 ### `MB_ENABLE_EMBEDDING_STATIC`
 
@@ -676,7 +842,7 @@ Whether to log health check requests from session middleware.
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
-- Default: `:metabase`
+- Default: `metabase`
 - [Configuration file name](./config-file.md): `help-link`
 
 Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and `:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, or be hidden if it is not set.
@@ -691,14 +857,45 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 
 Custom URL for the help link.
 
+### `MB_HTTP_CHANNEL_HOST_STRATEGY`
+
+- Type: keyword
+- Default: `external-only`
+
+Controls which types of hosts are allowed as HTTP channel destinations.
+Options:
+- external-only (default - only external hosts)
+- allow-private (external + private networks but NOT localhost)
+- allow-all (no restrictions including localhost).
+.
+
 ### `MB_HUMANIZATION_STRATEGY`
 
 - Type: keyword
-- Default: `:simple`
+- Default: `simple`
 - [Exported as](../installation-and-operation/serialization.md): `humanization-strategy`.
 - [Configuration file name](./config-file.md): `humanization-strategy`
 
 To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’.
+
+### `MB_INDEX_UPDATE_THREAD_COUNT`
+
+- Type: integer
+- Default: `2`
+
+Number of threads to use for batched index updates, including embedding requests.
+
+Number of threads to use for batched index updates, including embedding requests
+
+### `MB_INSTALL_ANALYTICS_DATABASE`
+
+- Type: boolean
+- Default: `true`
+
+Whether or not we should install the Metabase analytics database on startup. Defaults to true, but can be disabled
+  via environmment variable.
+
+Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.
 
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
@@ -950,7 +1147,7 @@ Server port, usually 389 or 636 if SSL is used.
 ### `MB_LDAP_SECURITY`
 
 - Type: keyword
-- Default: `:none`
+- Default: `none`
 - [Configuration file name](./config-file.md): `ldap-security`
 
 Use SSL, TLS or plain text.
@@ -1004,12 +1201,22 @@ don't have one.
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
 
+### `MB_LOAD_ANALYTICS_CONTENT`
+
+- Type: boolean
+- Default: `true`
+
+Whether or not we should load Metabase analytics content on startup. Defaults to match `install-analytics-database`,
+  which defaults to true, but can be disabled via environment variable.
+
+Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
+
 ### `MB_LOADING_MESSAGE`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
-- Default: `:doing-science`
+- Default: `doing-science`
 - [Exported as](../installation-and-operation/serialization.md): `loading-message`.
 - [Configuration file name](./config-file.md): `loading-message`
 
@@ -1048,7 +1255,7 @@ The map tile server URL template used in map visualizations, for example from Op
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
 - Type: keyword
-- Default: `:substring`
+- Default: `substring`
 - [Exported as](../installation-and-operation/serialization.md): `native-query-autocomplete-match-style`.
 - [Configuration file name](./config-file.md): `native-query-autocomplete-match-style`
 
@@ -1151,6 +1358,15 @@ The size of the thread pool used to send notifications.
 If Metabase stops sending notifications like alerts, it may be because long-running
   queries are clogging the notification queue. You may be able to unclog the queue by
   increasing the size of the thread pool dedicated to notifications.
+
+### `MB_OPENAI_MAX_TOKENS_PER_BATCH`
+
+- Type: integer
+- Default: `4000`
+
+The maximum number of tokens sent in a single embedding API call.
+
+The maximum number of tokens sent in a single embedding API call.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
@@ -1447,13 +1663,6 @@ Is SCIM currently enabled?
 
 Used for encrypting and checking whether SDK requests are signed.
 
-### `MB_SEARCH_ENGINE`
-
-- Type: keyword
-- Default: `:appdb`
-
-Which engine to use when performing search. Supported values are :in-place and :appdb.
-
 ### `MB_SEARCH_LANGUAGE`
 
 - Type: string
@@ -1471,6 +1680,43 @@ When using the appdb engine against postgresql, override the language used for s
 
 Enable typeahead search in the Metabase navbar?
 
+### `MB_SEMANTIC_SEARCH_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.
+
+### `MB_SEMANTIC_SEARCH_MIN_RESULTS_THRESHOLD`
+
+- Type: integer
+- Default: `100`
+
+Minimum number of semantic search results required before falling back to other engines.
+
+Minimum number of semantic search results required before falling back to other engines.
+
+### `MB_SEMANTIC_SEARCH_RESULTS_LIMIT`
+
+- Type: integer
+- Default: `1000`
+
+Maximum number of results to return from a single semantic search query.
+
+Maximum number of results to return from a single semantic search query.
+
+### `MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE`
+
+- Type: boolean
+- Default: `true`
+
+Should we send users a notification email the first time they log in from a new device? (Default: true). This is
+  currently only configurable via environment variable so users who gain access to an admin's credentials cannot
+  disable this Setting and access their account without them knowing.
+
+This variable also controls the geocoding service that Metabase uses to know the location of your logged in users.
+        Setting this variable to false also disables this reverse geocoding functionality.
+
 ### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
 
 - Type: boolean
@@ -1482,7 +1728,7 @@ Should new email notifications be sent to admins, for all new SSO users?
 ### `MB_SESSION_COOKIE_SAMESITE`
 
 - Type: keyword
-- Default: `:lax`
+- Default: `lax`
 - [Configuration file name](./config-file.md): `session-cookie-samesite`
 
 Value for the session cookie's `SameSite` directive.
@@ -1538,6 +1784,16 @@ Indicates if at the end of the setup a valid license was active.
 - [Configuration file name](./config-file.md): `show-database-syncing-modal`
 
 Whether an introductory modal should be shown after the next database connection is added. Defaults to false if any non-default database has already finished syncing for this instance.
+
+### `MB_SHOW_GOOGLE_SHEETS_INTEGRATION`
+
+- Type: boolean
+- Default: `null`
+- [Configuration file name](./config-file.md): `show-google-sheets-integration`
+
+Whether or not to show the user a button that sets up Google Sheets integration.
+
+When enabled, we show users a button to authenticate with Google to import data from Google Sheets.
 
 ### `MB_SHOW_HOMEPAGE_DATA`
 
@@ -1643,6 +1899,16 @@ The name of the channel where bug reports should be posted.
 
 The name of the channel to which Metabase files should be initially uploaded.
 
+### `MB_SMTP_OVERRIDE_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `smtp-override-enabled`
+
+Whether to use the custom SMTP server rather than the standard settings.
+
 ### `MB_SOURCE_ADDRESS_HEADER`
 
 - Type: string
@@ -1671,7 +1937,7 @@ Controls how often the heartbeats are sent when an SSH tunnel is established (in
 ### `MB_START_OF_WEEK`
 
 - Type: keyword
-- Default: `:sunday`
+- Default: `sunday`
 - [Exported as](../installation-and-operation/serialization.md): `start-of-week`.
 - [Configuration file name](./config-file.md): `start-of-week`
 
@@ -1695,6 +1961,14 @@ Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To s
 
 Enable or disable surveys.
 
+### `MB_SYNC_LEAF_FIELDS_LIMIT`
+
+- Type: integer
+- Default: `1000`
+- [Exported as](../installation-and-operation/serialization.md): `sync-leaf-fields-limit`.
+
+Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo. Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields from root to leaf are synced as well.
+
 ### `MB_SYNCHRONOUS_BATCH_UPDATES`
 
 - Type: boolean
@@ -1714,15 +1988,6 @@ Process batches updates synchronously. If true, all `submit!` calls will be proc
 Maximum number of rows to return specifically on :rows type queries via the API.
 
 Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT. See also MB_AGGREGATED_QUERY_ROW_LIMIT.
-
-### `MB_UPDATE_CHANNEL`
-
-- Type: string
-- Default: `latest`
-- [Exported as](../installation-and-operation/serialization.md): `update-channel`.
-- [Configuration file name](./config-file.md): `update-channel`
-
-We'll notify you here when there's a new version of this type of release.
 
 ### `MB_UPLOADS_DATABASE_ID [DEPRECATED]`
 
@@ -1783,7 +2048,7 @@ Turn on the Tenants feature, allowing users to be assigned to a particular Tenan
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
-- Default: `:all`
+- Default: `all`
 - [Configuration file name](./config-file.md): `user-visibility`
 
 Note: Sandboxed users will never see suggestions.

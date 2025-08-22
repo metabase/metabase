@@ -1,10 +1,5 @@
 /* eslint-disable no-restricted-imports */
-import {
-  type AnyAction,
-  type Reducer,
-  type Store,
-  combineReducers,
-} from "@reduxjs/toolkit";
+import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { useContext } from "react";
 
 import {
@@ -20,7 +15,7 @@ import { getStore } from "metabase/store";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
 import { sdk } from "./reducer";
-import type { SdkStoreState } from "./types";
+import type { SdkStore } from "./types";
 
 export const sdkReducers = {
   ...commonReducers,
@@ -42,7 +37,7 @@ export const getSdkStore = () =>
     app: {
       isDndAvailable: false,
     },
-  }) as unknown as Store<SdkStoreState, AnyAction>;
+  }) as unknown as SdkStore;
 
 export const useSdkDispatch = () => {
   useCheckSdkReduxContext();
@@ -53,7 +48,7 @@ export const useSdkDispatch = () => {
 export const useSdkStore = () => {
   useCheckSdkReduxContext();
 
-  return useStore();
+  return useStore() as SdkStore;
 };
 
 const useCheckSdkReduxContext = () => {

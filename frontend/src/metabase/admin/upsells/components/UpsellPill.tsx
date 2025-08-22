@@ -1,22 +1,26 @@
 import { useMount } from "react-use";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
+import { UnstyledButton } from "metabase/ui";
 
 import { UpsellGem } from "./UpsellGem";
+import S from "./UpsellPill.module.css";
 import { UpsellWrapper } from "./UpsellWrapper";
-import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
+
 export function _UpsellPill({
   children,
   link,
   campaign,
   source: location,
+  onClick,
 }: {
   children: React.ReactNode;
   link: string;
   campaign: string;
   source: string;
+  onClick?: () => void;
 }) {
   const url = useUpsellLink({
     url: link,
@@ -27,6 +31,21 @@ export function _UpsellPill({
   useMount(() => {
     trackUpsellViewed({ location, campaign });
   });
+
+  if (onClick) {
+    return (
+      <UnstyledButton
+        onClick={() => {
+          trackUpsellClicked({ location, campaign });
+          onClick();
+        }}
+        className={S.UpsellPillComponent}
+      >
+        <UpsellGem />
+        {children}
+      </UnstyledButton>
+    );
+  }
 
   return (
     <ExternalLink

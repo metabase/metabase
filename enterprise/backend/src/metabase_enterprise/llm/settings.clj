@@ -11,6 +11,14 @@
   :export? false
   :doc "This feature is experimental.")
 
+(defsetting ee-openai-api-base-url
+  (deferred-tru "The OpenAI embeddings base URL used in Metabase Enterprise.")
+  :encryption :no
+  :visibility :settings-manager
+  :default "https://api.openai.com"
+  :export? false
+  :doc "This feature is experimental.")
+
 (defsetting ee-openai-api-key
   (deferred-tru "The OpenAI API Key used in Metabase Enterprise.")
   :encryption :no
