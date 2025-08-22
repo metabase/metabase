@@ -158,7 +158,7 @@
 (defn- warning?
   "Warnings don't block you saving a setting, but the value won't be used until the warning is resolved."
   [reason]
-  (isa? (:key reason) :setting/disabled-warning))
+  (= (:type reason) :warning))
 
 (defn disabled-for-db-reasons
   "Return the reasons, if any, for the given setting being disabled."
@@ -166,6 +166,7 @@
   (when-let [f (:enabled-for-db? setting-def)]
     (try (when-not (f database)
            [{:key     :disabled-for-db
+             :type    :error
              :message (tru "This database does not support this setting")}])
          (catch ExceptionInfo e
            (or (:setting/disabled-reasons (ex-data e))
