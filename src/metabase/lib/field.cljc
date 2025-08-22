@@ -361,8 +361,7 @@
                         (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
                         (and (isa? effective-type :type/Number)
                              (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
-      ;; TODO: Include the time and date binning strategies too;
-      ;; see [[metabase.warehouse-schema.api.table/assoc-field-dimension-options]].
+      ;; TODO: Include the time and date binning strategies too
       (for [strat strategies]
         (cond-> strat
           (or (:lib/original-binning field-metadata) existing) (dissoc :default)
