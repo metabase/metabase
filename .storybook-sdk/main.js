@@ -11,7 +11,10 @@ const { isEmbeddingSdkPackageInstalled, embeddingSdkPackageVersion } =
   resolveEmbeddingSdkPackage();
 
 module.exports = {
-  stories: ["../enterprise/frontend/src/embedding-sdk-bundle/**/*.stories.tsx"],
+  stories: [
+    "../enterprise/frontend/src/embedding-sdk-package/**/*.stories.tsx",
+    "../enterprise/frontend/src/embedding-sdk-bundle/**/*.stories.tsx",
+  ],
   staticDirs: ["../resources/frontend_client", "./msw-public"],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
