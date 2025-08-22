@@ -54,8 +54,7 @@ export const MetabotPurchaseSettingUpModal = ({
               ta="center"
               style={{
                 borderRadius: "100%",
-                // eslint-disable-next-line no-color-literals
-                boxShadow: `0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 6px 0 rgba(0, 0, 0, 0.10)`,
+                boxShadow: `0 1px 6px 0 var(--mb-color-shadow)`,
               }}
             >
               <Loader size="xs" ml={1} mt={1} />
