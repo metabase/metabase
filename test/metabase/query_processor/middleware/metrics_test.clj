@@ -1132,3 +1132,77 @@
                  (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
                        :aggregation :metric :offset)
                  (set (map :operator tested-aggregations)))))))
+
+(deftest ^:parallel metric-division-bug-30574-test
+  "Test for bug #30574: Should handle metrics with custom expressions referencing other metrics"
+  (testing "Metrics with custom expressions that divide two other metrics"
+    (let [mp meta/metadata-provider
+          
+          ;; 1. Create first metric: "basic count" with category = Widget filter
+          basic-count-query (-> (lib/query mp (meta/table-metadata :products))
+                                (lib/filter (lib/= (meta/field-metadata :products :category) "Widget"))
+                                (lib/aggregate (lib/count)))
+          [basic-count-metric mp] (mock-metric mp basic-count-query {:name "basic count"})
+          
+          ;; 2. Create second metric: "business count" with category = Gadget filter  
+          business-count-query (-> (lib/query mp (meta/table-metadata :products))
+                                   (lib/filter (lib/= (meta/field-metadata :products :category) "Gadget"))
+                                   (lib/aggregate (lib/count)))
+          [business-count-metric mp] (mock-metric mp business-count-query {:name "business count"})
+          
+          ;; 3. Create ratio metric using custom expression [business count] / [basic count]
+          ratio-query (-> (lib/query mp (meta/table-metadata :products))
+                          (lib/aggregate (lib// (lib.metadata/metric mp (:id business-count-metric))
+                                                (lib.metadata/metric mp (:id basic-count-metric)))))
+          [ratio-metric mp] (mock-metric mp ratio-query {:name "ratio business to basic"})
+          
+          ;; 4. Create a question that uses the ratio metric - this should not fail
+          question-query (-> (lib/query mp (meta/table-metadata :products))
+                             (lib/aggregate (lib.metadata/metric mp (:id ratio-metric))))]
+      
+      (testing "Should successfully process question with ratio metric without throwing error"
+        (is (map? (adjust question-query)) "Query should be successfully processed")
+        
+        ;; Verify the query structure is correct
+        (let [adjusted (adjust question-query)]
+          (testing "Adjusted query should have aggregations"
+            (is (seq (:aggregation (first (:stages adjusted))))
+                "Query should have aggregation after adjustment"))
+          
+          (testing "Aggregation should be a division expression"
+            (let [agg (first (:aggregation (first (:stages adjusted))))]
+              (is (= :/ (first agg)) "Aggregation should be a division"))))))))
+
+(deftest ^:parallel metric-addition-with-multiple-metrics-test
+  "Test that addition of metrics also works correctly"
+  (testing "Metrics with custom expressions that add two other metrics"
+    (let [mp meta/metadata-provider
+          
+          ;; Create two base metrics
+          metric1-query (-> (lib/query mp (meta/table-metadata :products))
+                            (lib/filter (lib/= (meta/field-metadata :products :category) "Widget"))
+                            (lib/aggregate (lib/count)))
+          [metric1 mp] (mock-metric mp metric1-query {:name "metric1"})
+          
+          metric2-query (-> (lib/query mp (meta/table-metadata :products))
+                            (lib/filter (lib/= (meta/field-metadata :products :category) "Gadget"))
+                            (lib/aggregate (lib/count)))
+          [metric2 mp] (mock-metric mp metric2-query {:name "metric2"})
+          
+          ;; Create sum metric using custom expression [metric1] + [metric2]
+          sum-query (-> (lib/query mp (meta/table-metadata :products))
+                        (lib/aggregate (lib/+ (lib.metadata/metric mp (:id metric1))
+                                              (lib.metadata/metric mp (:id metric2)))))
+          [sum-metric mp] (mock-metric mp sum-query {:name "sum metric"})
+          
+          ;; Create a question that uses the sum metric
+          question-query (-> (lib/query mp (meta/table-metadata :products))
+                             (lib/aggregate (lib.metadata/metric mp (:id sum-metric))))]
+      
+      (testing "Should successfully process question with sum metric"
+        (is (map? (adjust question-query)) "Query should be successfully processed")
+        
+        (let [adjusted (adjust question-query)]
+          (testing "Aggregation should be an addition expression"
+            (let [agg (first (:aggregation (first (:stages adjusted))))]
+              (is (= :+ (first agg)) "Aggregation should be an addition"))))))))

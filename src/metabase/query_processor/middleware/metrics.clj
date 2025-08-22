@@ -177,6 +177,11 @@
                                             (lib/query query)
                                             ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
                                             (lib/query query)
+                                            ;; Recursively adjust metric references within this metric's query
+                                            ;; This handles metrics defined with custom expressions that reference other metrics
+                                            (#(if (find-first-metric-id (:stages %))
+                                                (adjust %)
+                                                %))
                                             metric-query-filters->aggregation)
                           metric-name (:name card-metadata)]
                       (if-let [aggregation (first (lib/aggregations metric-query))]
