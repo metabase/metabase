@@ -25,6 +25,7 @@
                               :embedding
                               :embedding-sdk
                               :embedding-simple
+                              :embedding-hub
                               :hosting
                               :llm-autodescription
                               :metabot-v3
@@ -69,6 +70,7 @@
             :embedding                      true
             :embedding_sdk                  true
             :embedding_simple               true
+            :embedding_hub                  true
             :hosting                        true
             :llm_autodescription            true
             :metabot_v3                     true
