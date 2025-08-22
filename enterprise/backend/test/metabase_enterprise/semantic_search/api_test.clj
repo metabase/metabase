@@ -74,7 +74,7 @@
       (semantic.tu/with-index!
         (let [original-index      semantic.tu/mock-index
               original-table-name (:table-name original-index)
-              new-index           (with-redefs [semantic.index/timestamp-table-suffix (constantly 345)]
+              new-index           (with-redefs [semantic.index/model-table-suffix (constantly 345)]
                                     (#'semantic.pgvector-api/fresh-index semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model :force-reset? true))
               new-table-name      (:table-name new-index)]
 
@@ -86,7 +86,7 @@
             (is (:active best-index)))
 
           (testing "re-init creates the new index"
-            (with-redefs [semantic.index/timestamp-table-suffix (constantly 345)]
+            (with-redefs [semantic.index/model-table-suffix (constantly 345)]
               (let [response (mt/user-http-request :crowberto :post 200 "search/re-init")]
                 (is (contains? response :message))))
 

@@ -229,7 +229,7 @@
       (log/warnf "Using hashed name for index table %s as original table name %s exceeded the maximum table name length" hashed-name identifier)
       hashed-name)))
 
-(defn timestamp-table-suffix
+(defn model-table-suffix
   "Returns a new suffix for a table name, based on current timestamp"
   []
   (mod (.toEpochSecond (t/offset-date-time)) 10000000))
