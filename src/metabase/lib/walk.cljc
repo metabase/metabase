@@ -9,7 +9,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]))
 
 (declare walk-stages*)
 
@@ -250,49 +251,94 @@
                  [:lib/type [:= :mbql/join]]]]
   (into (vec join-path) [:stages (dec (count (:stages join)))]))
 
-(defn- walk-clauses* [clauses query path-type stage-or-join-path f]
-  (letfn [(walk-clause-recursively [clause]
-            (or (when (lib.util/clause? clause)
-                  (let [[tag opts & subclauses] clause
-                        subclauses'             (walk-clauses* subclauses query path-type stage-or-join-path f)]
-                    (when-not (identical? subclauses' subclauses)
-                      (into [tag opts] subclauses'))))
-                clause))]
-    ;; we're doing this the hard way instead of using `mapv` to avoid allocating new objects/creating a new query map if
-    ;; we don't actually change anything
+(declare walk-clauses*)
+
+;;; [[clojure.core.walk]] functions generally have the form `(walk f x)` but reversing the args is more natural and
+;;; lets you use these functions in `->` or with things like [[update]]. I went back and forth on this but decided
+;;; this is better -- your BFF Cam
+
+(mu/defn walk-clause
+  "Impl for [[walk-clauses]]. You can call this directly if you are a psycho who needs to walk some clauses but don't
+  have `query` for some
+  reason (e.g. [[metabase.query-processor.middleware.wrap-value-literals/wrap-value-literals-in-mbql]]).
+
+  Walks `clause` in a depth-first manner and calls
+
+    (f clause)
+
+  on every MBQL clause. (Also includes non-clause arguments like the `1` and `2` in `[:= {} [:field {} 1] 2]`.)"
+  [clause :- :any
+   f      :- [:=> [:cat :any] :any]]
+  (or (when (lib.util/clause? clause)
+        (let [[tag opts & subclauses] clause
+              subclauses'             (walk-clauses* subclauses f)]
+          (when-not (= subclauses' subclauses)
+            (into [tag opts] subclauses'))))
+      clause))
+
+(mu/defn walk-clauses*
+  "Impl for [[walk-clauses]].
+
+  Calls
+
+    (f clause)
+
+  on every clause in the normal places clauses live in a query."
+  [clauses :- [:maybe [:sequential :any]]
+   f       :- [:=> [:cat :any] :any]]
+  ;; we're doing this the hard way instead of using `mapv` to avoid allocating new objects/creating a new query map
+  ;; if we don't actually change anything
+  (when clauses
     (reduce
      (fn [clauses i]
-       (let [clause  (nth clauses i)
-             clause' (walk-clause-recursively clause)
-             clause' (or (f query path-type stage-or-join-path clause')
-                         clause')]
-         (if (= clause' clause)
+       (let [clause   (nth clauses i)
+             clause'  (walk-clause clause f)
+             clause'' (or (f clause')
+                          clause')]
+         (if (= clause'' clause)
            clauses
-           (assoc (vec clauses) i clause'))))
+           (assoc (vec clauses) i clause''))))
      clauses
      (range (count clauses)))))
 
-(defn walk-clauses
-  "F is of the form
+(mu/defn walk-clauses :- ::lib.schema/query
+  "Walk all the MBQL clauses in a query in a depth-first manner.
 
-    (f query path-type stage-or-join-path clause)"
-  [query f]
+  `f` is of the form
+
+    (f query path-type stage-or-join-path clause) => replacement-clause-or-nil
+
+  `clause` in this case includes any MBQL clause in the normal places they live in a query as well as other args
+  inside MBQL clauses, e.g.
+
+    [:> {} [:field {} 1] 2]
+
+  will call `f` with `1` and `2` as well as the `:field` and `:>` clauses.
+
+  If `f` returns `nil` the clause will be left as-is. Use this to your advantage.
+
+  Avoids creating new objects except for when `f` actually returns something different."
+  [query :- ::lib.schema/query
+   f     :- [:=>
+             [:cat :map ::path-type ::path ::lib.schema.mbql-clause/clause]
+             [:maybe ::lib.schema.mbql-clause/clause]]]
   (walk
    query
    (fn [query path-type path stage-or-join]
-     (case path-type
-       :lib.walk/join
-       (-> stage-or-join
-           (m/update-existing :conditions walk-clauses* query path-type path f)
-           (m/update-existing :fields (fn [fields]
-                                        (cond-> fields
-                                          (sequential? fields)
-                                          (walk-clauses* query path-type path f)))))
+     (let [f (partial f query path-type path)]
+       (case path-type
+         :lib.walk/join
+         (-> stage-or-join
+             (m/update-existing :conditions walk-clauses* f)
+             (m/update-existing :fields (fn [fields]
+                                          (cond-> fields
+                                            (sequential? fields)
+                                            (walk-clauses* f)))))
 
-       :lib.walk/stage
-       (when (= (:lib/type stage-or-join) :mbql.stage/mbql)
-         (reduce
-          (fn [stage k]
-            (m/update-existing stage k walk-clauses* query path-type path f))
-          stage-or-join
-          [:aggregation :breakout :expressions :fields :filters :order-by]))))))
+         :lib.walk/stage
+         (when (= (:lib/type stage-or-join) :mbql.stage/mbql)
+           (reduce
+            (fn [stage k]
+              (m/update-existing stage k walk-clauses* f))
+            stage-or-join
+            [:aggregation :breakout :expressions :fields :filters :order-by])))))))

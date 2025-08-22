@@ -37,10 +37,9 @@
   (is (= (lib.tu.macros/mbql-query venues
            {:filter [:>
                      $id
-                     [:value 50 {:base_type      :type/BigInteger
-                                 :effective_type :type/BigInteger
-                                 :semantic_type  :type/PK
-                                 :database_type  "BIGINT"}]]})
+                     [:value 50 {:base_type     :type/BigInteger
+                                 :semantic_type :type/PK
+                                 :database_type "BIGINT"}]]})
          (wrap-value-literals
           (lib.tu.macros/mbql-query venues
             {:filter [:> $id 50]})))))
@@ -48,14 +47,12 @@
 (deftest ^:parallel wrap-integers-test-2
   (is (= (lib.tu.macros/mbql-query venues
            {:filter [:and
-                     [:> $id [:value 50 {:base_type      :type/BigInteger
-                                         :effective_type :type/BigInteger
-                                         :semantic_type  :type/PK
-                                         :database_type  "BIGINT"}]]
-                     [:< $price [:value 5 {:base_type      :type/Integer
-                                           :effective_type :type/Integer
-                                           :semantic_type  :type/Category
-                                           :database_type  "INTEGER"}]]]})
+                     [:> $id [:value 50 {:base_type     :type/BigInteger
+                                         :semantic_type :type/PK
+                                         :database_type "BIGINT"}]]
+                     [:< $price [:value 5 {:base_type     :type/Integer
+                                           :semantic_type :type/Category
+                                           :database_type "INTEGER"}]]]})
          (wrap-value-literals
           (lib.tu.macros/mbql-query venues
             {:filter [:and
@@ -188,10 +185,9 @@
     (is (= (lib.tu.macros/mbql-query checkins
              {:filter [:starts-with
                        !month.date
-                       [:value "2018-10-01" {:base_type      :type/Date
-                                             :effective_type :type/Date
-                                             :database_type  "DATE"
-                                             :unit           :month}]]})
+                       [:value "2018-10-01" {:base_type     :type/Date
+                                             :database_type "DATE"
+                                             :unit          :month}]]})
            (wrap-value-literals
             (lib.tu.macros/mbql-query checkins
               {:filter [:starts-with !month.date "2018-10-01"]}))))))
@@ -231,16 +227,12 @@
 
 (deftest ^:parallel base-type-test
   (testing "Make sure base-type from `:field` w/ name is picked up correctly"
-    (is (= {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]]
-            :filter       [:not [:starts-with
-                                 [:field "A" {:base-type :type/Text}]
-                                 [:value "f" {:base_type :type/Text, :effective_type :type/Text}]]]
-            :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
+    (is (= [:not [:starts-with
+                  [:field "A" {:base-type :type/Text}]
+                  [:value "f" {:base_type :type/Text}]]]
            #_{:clj-kondo/ignore [:deprecated-var]}
            (qp.wrap-value-literals/wrap-value-literals-in-mbql
-            {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]]
-             :filter       [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]]
-             :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}})))))
+            [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]])))))
 
 (deftest ^:parallel parse-temporal-string-literals-based-on-column-effective-type-test
   (testing "Temporal string literals should be parsed to different things based on the effective type of the target column (#39769)"
@@ -261,13 +253,13 @@
                                                        :base-type         :type/Text
                                                        :coercion-strategy :Coercion/UNIXSeconds->DateTime
                                                        :effective-type    column-type}]})
-            (is (= {:filter [:=
-                             [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
-                             expected]}
+            (is (= [:=
+                    [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
+                    expected]
                    (qp.wrap-value-literals/wrap-value-literals-in-mbql
-                    {:filter [:=
-                              [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
-                              "2024-03-20T15:24:00-07:00[US/Pacific]"]})))))))))
+                    [:=
+                     [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
+                     "2024-03-20T15:24:00-07:00[US/Pacific]"])))))))))
 
 (deftest ^:parallel expression-test
   (testing "Value literals compared to :expression refs should get wrapped. Should give date literal strings :day bucketing (#17807)"

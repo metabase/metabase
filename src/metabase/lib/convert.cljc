@@ -459,13 +459,6 @@
   "Map of option keys in pMBQL to their legacy names. Keys are renamed before [[disqualify]] drops all namespaced keys."
   {:metabase.lib.field/original-temporal-unit :original-temporal-unit})
 
-;;; TODO (Cam 8/22/25) HACK! This is only to power the
-;;; deprecated [[metabase.query-processor.middleware.wrap-value-literals/wrap-value-literals-in-mbql]]... once we
-;;; remove that we can remove this.
-(def ^:dynamic *remove-effective-type-in-conversion-to-legacy*
-  "Whether to remove `:effective-type` in options maps when converting to legacy."
-  true)
-
 (mu/defn- options->legacy-MBQL :- [:maybe [:map {:min 1}]]
   "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
   `:effective-type`, which is not used in options maps in legacy MBQL."
@@ -479,11 +472,13 @@
          ;; Removing the namespaces from a few
          true (perf/update-keys #(get options-preserved-in-legacy % %)))
        (into {} (comp (disqualify)
-                      (remove (fn [[k _v]]
-                                ((if *remove-effective-type-in-conversion-to-legacy*
-                                   #{:effective-type :ident}
-                                   #{:ident})
-                                 k)))))
+                      ;; remove `:effective-type` if `:base-type` is not present OR if it's the same as `:base-type`.
+                      (remove (let [keys-to-remove (if (or (nil? (:base-type m))
+                                                           (= (:effective-type m) (:base-type m)))
+                                                     #{:effective-type :ident}
+                                                     #{:ident})]
+                                (fn [[k _v]]
+                                  (keys-to-remove k))))))
        not-empty))
 
 (defmulti ^:private aggregation->legacy-MBQL
@@ -530,7 +525,7 @@
                                                                             [(cond-> k
                                                                                (simple-keyword? k) u/->snake_case_en)
                                                                              v]))
-                                                                     options))
+                                                                     (options->legacy-MBQL options)))
           ::mbql.s/options-style.last-unless-empty      (let [options (options->legacy-MBQL options)]
                                                           (cond-> (into [tag] args)
                                                             (seq options)

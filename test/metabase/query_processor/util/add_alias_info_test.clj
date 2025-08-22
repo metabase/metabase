@@ -184,9 +184,8 @@
              :filter      [:!=
                            [:field %date {::add/source-table $$checkins
                                           ::add/source-alias "DATE"}]
-                           [:value nil {:base_type         :type/Date
-                                        :database_type     "DATE"
-                                        :name              "DATE"}]]})
+                           [:value nil {:base_type     :type/Date
+                                        :database_type "DATE"}]]})
           (add-alias-info
            (lib.tu.macros/mbql-query checkins
              {:aggregation [[:count]]
@@ -296,7 +295,6 @@
                                                                   ::add/source-alias "P2__CATEGORY"}]
                                       [:value 1 {:base_type     :type/Text
                                                  :database_type "CHARACTER VARYING"
-                                                 :name          "CATEGORY"
                                                  :semantic_type :type/Category}]]}]
              :fields [[:field %products.category {:join-alias         "Q2"
                                                   ::add/source-table  "Q2"
@@ -427,9 +425,9 @@
                                                    ::add/source-table $$orders}]
                                                  [:field
                                                   %products.id
-                                                  {::add/source-alias  "ID"
-                                                   ::add/source-table  "Products_Renamed"
-                                                   :join-alias         "Products Renamed"}]]
+                                                  {::add/source-alias "ID"
+                                                   ::add/source-table "Products_Renamed"
+                                                   :join-alias        "Products Renamed"}]]
                                                 :strategy     :left-join}]
                                 :expressions  {"CC" [:+ 1 1]}
                                 :fields
@@ -445,14 +443,13 @@
                                  [:field
                                   %products.category
                                   {::add/source-alias "CATEGORY"
-                                   ::add/source-table  "Products_Renamed"
+                                   ::add/source-table "Products_Renamed"
                                    :join-alias        "Products Renamed"}]
                                  [:value
                                   "Doohickey"
-                                  {:base_type         :type/Text
-                                   :database_type     "CHARACTER VARYING"
-                                   :name              "CATEGORY"
-                                   :semantic_type     :type/Category}]]}
+                                  {:base_type     :type/Text
+                                   :database_type "CHARACTER VARYING"
+                                   :semantic_type :type/Category}]]}
                  :fields       [[:field
                                  %products.id
                                  {::add/desired-alias "Products_Renamed__ID"

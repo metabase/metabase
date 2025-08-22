@@ -2,9 +2,10 @@
   "Middleware that parses filter clause values that come in as strings (e.g. from the API) to the appropriate type. E.g.
   a String value in a filter clause against a `:type/Integer` Field should get parsed into an integer.
 
-  Note that logic for automatically parsing temporal values lives in the `wrap-values-literals` middleware for
-  historic reasons. When time permits it should be moved into this middleware since it's really a separate
-  transformation from wrapping the value literals themselves."
+  Note that logic for automatically parsing temporal values lives in
+  the [[metabase.query-processor.middleware.wrap-value-literals]] middleware for historic reasons. When time permits
+  it should be moved into this middleware since it's really a separate transformation from wrapping the value literals
+  themselves."
   (:require
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]

@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -33,31 +32,19 @@
      (when-let [unit (lib/raw-temporal-bucket col)]
        {:unit unit}))))
 
-(defn- type-info* [query path clause]
-  (let [expr-type (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause)]
-    (merge
-     (when (lib.util/clause-of-type? clause :field)
-       (type-info-from-col (lib.walk/apply-f-for-stage-at-path lib/metadata query path clause)))
+(defn- ^:dynamic *type-info*
+  "This is the type info for the LHS in something like
+
+    [:= {} <lhs> <rhs>]
+
+  usually a `:field` clause; we use this info to wrap `rhs` if it's a raw value e.g. `1`."
+  [query path clause]
+  (merge
+   (when (lib.util/clause-of-type? clause :field)
+     (type-info-from-col (lib.walk/apply-f-for-stage-at-path lib/metadata query path clause)))
+   (let [expr-type (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause)]
      {:base-type      expr-type
       :effective-type expr-type})))
-
-(defn- type-info-no-query
-  "This is like [[type-info*]] but specifically for supporting the legacy [[wrap-value-literals-in-mbql]] function."
-  [clause]
-  (let [expr-type (lib.schema.expression/type-of clause)]
-    (merge
-     (when (and (lib.util/clause-of-type? clause :field)
-                (qp.store/initialized?))
-       (let [[_tag _opts id-or-name] clause]
-         (when (pos-int? id-or-name)
-           (type-info-from-col (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
-     {:base-type      expr-type
-      :effective-type expr-type})))
-
-(defn- type-info [query path clause]
-  (if query
-    (type-info* query path clause)
-    (type-info-no-query clause)))
 
 ;; TODO -- parsing the temporal string literals should be moved into `auto-parse-filter-values`, it's really a
 ;; separate transformation from just wrapping the value
@@ -236,11 +223,11 @@
 
 (def ^:private raw-value? (complement lib.util/clause?))
 
-(defn- wrap-value-literals*
-  [query path mbql]
-  (lib.util.match/replace mbql
+(defn- wrap-value-literals-in-clause
+  [query path clause]
+  (lib.util.match/match-lite clause
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts field (x :guard raw-value?)]
-    [tag opts field (add-type-info x (type-info query path field))]
+    [tag opts field (add-type-info x (*type-info* query path field))]
 
     [:datetime-diff opts (x :guard string?) (y :guard string?) unit]
     [:datetime-diff opts (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
@@ -252,11 +239,11 @@
     [:between
      opts
      field
-     (add-type-info min-val (type-info query path field))
-     (add-type-info max-val (type-info query path field))]
+     (add-type-info min-val (*type-info* query path field))
+     (add-type-info max-val (*type-info* query path field))]
 
     [(tag :guard #{:starts-with :ends-with :contains}) opts field (s :guard string?) & more]
-    (let [s (add-type-info s (type-info query path field), :parse-datetime-strings? false)]
+    (let [s (add-type-info s (*type-info* query path field), :parse-datetime-strings? false)]
       (into [tag opts field s] more))))
 
 (mu/defn wrap-value-literals :- ::lib.schema/query
@@ -266,10 +253,10 @@
   can dispatch directly off of these clauses."
   [query :- ::lib.schema/query]
   (lib.walk/walk-clauses query (fn [query _path-type path clause]
-                                 (wrap-value-literals* query path clause))))
+                                 (wrap-value-literals-in-clause query path clause))))
 
 ;;;
-;;; Unrelated nonsense
+;;; Tangentially-related nonsense not used by the middleware
 ;;;
 
 ;;; TODO (Cam 8/22/25) FIXME: This is used in exactly one place: the SQL QP... so why does it live in a QP middleware
@@ -281,7 +268,21 @@
     [:value x & _] x
     _              &match))
 
-(defn wrap-value-literals-in-mbql
+(defn- type-info-no-query
+  "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]] function."
+  {:deprecated "0.57.0"}
+  [clause]
+  (let [expr-type (lib.schema.expression/type-of clause)]
+    (merge
+     (when (and (lib.util/clause-of-type? clause :field)
+                (qp.store/initialized?))
+       (let [[_tag _opts id-or-name] clause]
+         (when (pos-int? id-or-name)
+           (type-info-from-col (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
+     {:base-type      expr-type
+      :effective-type expr-type})))
+
+(mu/defn wrap-value-literals-in-mbql :- [:cat :keyword [:* :any]]
   "Given a normalized legacy MBQL query (important to desugar forms like `[:does-not-contain ...]` -> `[:not [:contains
   ...]]`), walks over the clause and annotates literals with type information.
 
@@ -297,9 +298,15 @@
 
   DEPRECATED: This is for legacy compatibility and should not be used in new code."
   {:deprecated "0.57.0"}
-  [mbql]
+  [mbql :- [:cat :keyword [:* :any]]]
   (-> mbql
       lib/->pMBQL
-      (->> (wrap-value-literals* nil nil))
-      (as-> $mbql (binding [lib.convert/*remove-effective-type-in-conversion-to-legacy* false]
-                    (lib/->legacy-MBQL $mbql)))))
+      (as-> $mbql (binding [*type-info* (fn [_query _path clause]
+                                          #_{:clj-kondo/ignore [:deprecated-var]}
+                                          (type-info-no-query clause))]
+                    (-> (lib.walk/walk-clauses*
+                         [$mbql]
+                         (fn [clause]
+                           (wrap-value-literals-in-clause nil nil clause)))
+                        first)))
+      lib/->legacy-MBQL))
