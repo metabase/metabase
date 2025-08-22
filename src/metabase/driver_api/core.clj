@@ -1,7 +1,9 @@
 (ns metabase.driver-api.core
   {:clj-kondo/config '{:linters
-                       ;; this is actually ok here since this is a drivers
-                       {:discouraged-namespace [metabase.query-processor.store {:level :off}]}}}
+                       ;; this is actually ok here since this is a drivers namespace
+                       {:discouraged-namespace {metabase.query-processor.store {:level :off}}
+                        ;; this is also ok here since this is a drivers namespace
+                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
   (:refer-clojure :exclude [replace compile require])
   (:require
    [metabase.actions.core :as actions]
@@ -63,7 +65,7 @@
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
+#_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
 (p/import-vars
  actions/cached-database
  actions/cached-database-via-table-id

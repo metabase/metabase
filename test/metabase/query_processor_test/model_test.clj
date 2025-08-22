@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -14,7 +13,7 @@
 ;;; see also [[metabase.lib.field-test/model-self-join-test-display-name-test]]
 (deftest ^:parallel model-self-join-test
   (testing "Field references from model joined a second time can be resolved (#48639)"
-    (let [mp       (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp       (mt/metadata-provider)
           mp       (lib.tu/mock-metadata-provider
                     mp
                     {:cards [{:id            1

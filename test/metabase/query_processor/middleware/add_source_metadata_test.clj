@@ -338,7 +338,8 @@
                           :limit        10})]
         (testing "Make sure metadata is correct for the 'EAN' column with"
           (doseq [level (range 1 4)
-                  :let  [query (mt/nest-query base-query level)]]
+                  ;; existing usage, do not use this going forward
+                  :let  [query #_{:clj-kondo/ignore [:deprecated-var]} (mt/nest-query base-query level)]]
             (testing (format "%d level(s) of nesting" level)
               (is (= (lib.tu.macros/$ids products
                        {:name         "EAN"

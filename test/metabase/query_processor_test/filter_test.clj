@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -935,7 +934,7 @@
     (mt/test-drivers (mt/normal-drivers)
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
-                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                 (mt/metadata-provider)
                                  {:database {:timezone "US/Pacific"}})
               checkins          (lib.metadata/table metadata-provider (mt/id :checkins))
               checkins-id       (lib.metadata/field metadata-provider (mt/id :checkins :id))
@@ -956,7 +955,7 @@
                 (is (=? {:query {:filter [:=
                                           [:field (mt/id :checkins :date) {:base-type #(isa? % :type/Date), :temporal-unit :default}]
                                           [:absolute-datetime #t "2014-05-08" :default]]}}
-                        preprocessed)))
+                        (lib/->legacy-MBQL preprocessed))))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
                 (mt/with-native-query-testing-context query
                   (testing "Results: should return correct rows"
@@ -974,7 +973,7 @@
     (mt/test-drivers (mt/normal-drivers)
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
-                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                 (mt/metadata-provider)
                                  {:database {:timezone "US/Pacific"}})
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
@@ -999,7 +998,7 @@
                                           [:<
                                            [:field (:id orders-created-at) {:temporal-unit :default}]
                                            [:absolute-datetime #t "2019-02-12T00:00-08:00" :default]]]}}
-                        preprocessed)))
+                        (lib/->legacy-MBQL preprocessed))))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
                 (mt/with-native-query-testing-context query
                   (testing "Results: should return correct rows"

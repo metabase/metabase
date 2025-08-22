@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
@@ -238,7 +237,7 @@
 (deftest ^:parallel breakout-on-nested-join-test
   (testing "Should handle breakout on nested join column (#59918)"
     (let [mp        (lib.tu/mock-metadata-provider
-                     (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                     (mt/metadata-provider)
                      {:cards [{:id            1
                                :dataset-query (mt/mbql-query orders
                                                 {:joins [{:source-table $$products
@@ -349,7 +348,7 @@
 
 (deftest ^:parallel stale-unsed-field-referenced-test
   (testing "Should handle missing unused field (#60498)"
-    (let [mp        (as-> (lib.metadata.jvm/application-database-metadata-provider (mt/id)) $mp
+    (let [mp        (as-> (mt/metadata-provider) $mp
                       (lib.tu/mock-metadata-provider
                        $mp
                        {:cards [(let [query (mt/mbql-query orders)]

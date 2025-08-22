@@ -32,6 +32,7 @@
   (driver/with-driver (or driver/*driver* :h2)
     (-> query
         qp.preprocess/preprocess
+        lib/->legacy-MBQL
         :query
         nest-query/nest-expressions
         remove-source-metadata)))
@@ -298,30 +299,33 @@
 
 (deftest ^:parallel nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"
-    (mt/dataset test-data
-      (mt/with-temp [:model/Card base {:dataset_query
-                                       (mt/mbql-query
+    (let [mp (lib.tu/mock-metadata-provider
+              (mt/metadata-provider)
+              {:cards [{:id            1
+                        :dataset-query (mt/mbql-query
                                          reviews
-                                         {:breakout [$product_id]
+                                         {:breakout    [$product_id]
                                           :aggregation [[:count]]
-                                          ;; filter on an implicit join
-                                          :filter [:= $product_id->products.category "Doohickey"]})}]
-        ;; the result returned is not important, just important that the query is valid and completes
-        (is (vector?
-             (mt/rows
-              (qp/process-query
-               (mt/mbql-query
-                 orders
-                 {:joins [{:source-table (str "card__" (:id base))
-                           :alias (str "Question " (:id base))
-                           :condition [:=
-                                       $product_id
-                                       [:field
-                                        %reviews.product_id
-                                        {:join-alias (str "Question " (:id base))}]]
-                           :fields :all}]
-                  :expressions {"CC" [:+ 1 1]}
-                  :limit 2})))))))))
+                                         ;; filter on an implicit join
+                                          :filter      [:= $product_id->products.category "Doohickey"]})}]})]
+      ;; the result returned is not important, just important that the query is valid and completes
+      (is (vector?
+           (mt/rows
+            (qp/process-query
+             (lib/query
+              mp
+              (mt/mbql-query
+                orders
+                {:joins       [{:source-table "card__1"
+                                :alias        "Question 1"
+                                :condition    [:=
+                                               $product_id
+                                               [:field
+                                                %reviews.product_id
+                                                {:join-alias "Question 1"}]]
+                                :fields       :all}]
+                 :expressions {"CC" [:+ 1 1]}
+                 :limit       2})))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel nest-expressions-with-joins-test
@@ -641,6 +645,7 @@
                      :limit       1})
                   qp.preprocess/preprocess
                   add/add-alias-info
+                  lib/->legacy-MBQL
                   :query
                   nest-query/nest-expressions))))))
 
@@ -682,6 +687,7 @@
                                                [:field "DISCOUNT" {:base-type :type/Float}]]})
                       qp.preprocess/preprocess
                       add/add-alias-info
+                      lib/->legacy-MBQL
                       :query
                       nest-query/nest-expressions
                       (->> (assoc {:database (meta/id)

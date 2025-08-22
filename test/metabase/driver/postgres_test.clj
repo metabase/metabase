@@ -25,7 +25,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -1039,7 +1038,7 @@
                (mt/with-temp
                  [:model/Card {id :id} (mt/card-with-metadata {:dataset_query query
                                                                :type          card-type})]
-                 (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                 (let [mp (mt/metadata-provider)
                        query (as-> (lib/query mp (lib.metadata/card mp id)) $
                                (lib/filter $ (lib/= (m/find-first (comp #{"status"} :name)
                                                                   (lib/filterable-columns $))
