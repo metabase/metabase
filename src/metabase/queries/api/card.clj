@@ -535,6 +535,8 @@
   (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
+    ;; check that we have permissions to run the query that we're trying to copy
+    (query-perms/check-run-permissions-for-query (:dataset_query new-card))
     (-> (card/create-card! new-card @api/*current-user*)
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
