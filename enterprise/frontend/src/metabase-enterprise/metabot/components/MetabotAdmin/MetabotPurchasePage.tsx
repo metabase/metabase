@@ -7,14 +7,17 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { usePurchaseMetabotCloudAddOnMutation } from "metabase/api/metabot";
 import ExternalLink from "metabase/common/components/ExternalLink";
+import { useSetting } from "metabase/common/hooks";
 import {
   Form,
   FormCheckbox,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { useSelector } from "metabase/lib/redux";
 import { Divider, Flex, Group, List, Stack, Text } from "metabase/ui";
 import { MetabotPurchaseSettingUpModal } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchaseSettingUpModal";
 
@@ -68,6 +71,13 @@ interface MetabotPurchaseFormFields {
 }
 
 export const MetabotPurchasePage = () => {
+  const tokenStatus = useSetting("token-status");
+  const currentUser = useSelector(getCurrentUser);
+  const isStoreUser =
+    tokenStatus?.["store-users"]
+      ?.map(({ email }) => email)
+      ?.includes(currentUser?.email) ?? false;
+
   const [showSettingUpModal, setSettingUpModal] = useState(false);
   const [purchaseMetabotAddOn] = usePurchaseMetabotCloudAddOnMutation();
   const onSubmit = useCallback(
@@ -116,45 +126,51 @@ export const MetabotPurchasePage = () => {
           <Text>{t`Metabot is a new feature in active development. We're constantly rolling out improvements and appreciate your feedback.`}</Text>
         </Stack>
         <Divider />
-        <FormProvider
-          initialValues={{ terms_of_service: false }}
-          onSubmit={onSubmit}
-          validationSchema={validationSchema}
-        >
-          {({ values }) => (
-            <Form>
-              <Stack>
-                <FormCheckbox
-                  name="terms_of_service"
-                  label={
-                    <Text>
-                      {t`I agree with the Metabot AI add-on`}{" "}
-                      <ExternalLink href="https://www.metabase.com/license/metabot-addendum">{t`Terms of Service`}</ExternalLink>
-                    </Text>
-                  }
-                />
-                <Flex justify="start">
-                  <Group align="center" gap="sm">
-                    <FormSubmitButton
-                      disabled={!values.terms_of_service}
-                      label={t`Add Metabot AI`}
-                      variant="filled"
-                      mt="xs"
-                    />
-                  </Group>
-                </Flex>
-                <Text>
-                  {t`Your first month is on us.`}{" "}
-                  <Text
-                    component="span"
-                    fw="bold"
-                  >{t`You won't be charged automatically.`}</Text>{" "}
-                  {t`After the trial, you can decide if you'd like to subscribe.`}
-                </Text>
-              </Stack>
-            </Form>
-          )}
-        </FormProvider>
+
+        {isStoreUser ? (
+          <FormProvider
+            initialValues={{ terms_of_service: false }}
+            onSubmit={onSubmit}
+            validationSchema={validationSchema}
+          >
+            {({ values }) => (
+              <Form>
+                <Stack>
+                  <FormCheckbox
+                    name="terms_of_service"
+                    label={
+                      <Text>
+                        {t`I agree with the Metabot AI add-on`}{" "}
+                        <ExternalLink href="https://www.metabase.com/license/metabot-addendum">{t`Terms of Service`}</ExternalLink>
+                      </Text>
+                    }
+                  />
+                  <Flex justify="start">
+                    <Group align="center" gap="sm">
+                      <FormSubmitButton
+                        disabled={!values.terms_of_service}
+                        label={t`Add Metabot AI`}
+                        variant="filled"
+                        mt="xs"
+                      />
+                    </Group>
+                  </Flex>
+                  <Text>
+                    {t`Your first month is on us.`}{" "}
+                    <Text
+                      component="span"
+                      fw="bold"
+                    >{t`You won't be charged automatically.`}</Text>{" "}
+                    {t`After the trial, you can decide if you'd like to subscribe.`}
+                  </Text>
+                </Stack>
+              </Form>
+            )}
+          </FormProvider>
+        ) : (
+          /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+          <Text>{t`Please ask a Metabase Store user of your organization to enable this for you.`}</Text>
+        )}
       </SettingsSection>
       <MetabotPurchaseSettingUpModal
         opened={showSettingUpModal}

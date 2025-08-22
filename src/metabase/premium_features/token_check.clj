@@ -129,7 +129,9 @@
    [:trial         {:optional true} :boolean]
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
-   [:company       {:optional true} [:string {:min 1}]]])
+   [:company       {:optional true} [:string {:min 1}]]
+   [:store-users   {:optional true} [:maybe [:sequential [:map
+                                                          [:email :string]]]]]])
 
 (def ^:private ^:const token-status-cache-ttl
   "Amount of time in ms to cache the status of a valid enterprise token before forcing a re-check."

@@ -25,6 +25,10 @@
     (not (premium-features/offer-metabase-ai?))
     {:status 400 :body "Can only purchase add-ons for eligible subscriptions."}
 
+    (not (contains? (set (map :email (:store-users (premium-features/token-status))))
+                    (:email @api/*current-user*)))
+    {:status 403 :body "Only Metabase Store users can purchase add-ons."}
+
     :else
     (try
       (hm.client/call :change-add-ons, :upsert-add-ons [{:product-type product-type}])
