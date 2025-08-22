@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
-import { c, t } from "ttag";
+import { c, jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -20,7 +20,16 @@ import { useToast } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Loader,
+  Stack,
+  Switch,
+  Text,
+} from "metabase/ui";
 import {
   useDeleteMetabotEntitiesMutation,
   useListMetabotsEntitiesQuery,
@@ -32,6 +41,7 @@ import type {
   CollectionEssentials,
   MetabotEntity,
   MetabotId,
+  MetabotInfo,
 } from "metabase-types/api";
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
@@ -75,7 +85,7 @@ export function MetabotAdminPage() {
               title={c("{0} is the name of an AI assistant")
                 .t`Configure ${metabot.name}`}
               description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
-                .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
+                .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`}
             />
             {isEmbedMetabot && (
               <Text c="text-medium" maw="40rem">
@@ -83,18 +93,16 @@ export function MetabotAdminPage() {
               </Text>
             )}
           </Box>
+          <MetabotVerifiedContentConfigurationPane metabot={metabot} />
+
           {isEmbedMetabot && (
             <MetabotCollectionConfigurationPane
               metabotId={metabotId}
               metabotName={metabot.name}
             />
           )}
-          {hasEntities && (
-            <MetabotPromptSuggestionPane
-              key={metabotId}
-              metabotId={metabotId}
-            />
-          )}
+
+          {hasEntities && <MetabotPromptSuggestionPane metabotId={metabotId} />}
         </SettingsSection>
       </ErrorBoundary>
     </AdminSettingsLayout>
@@ -133,6 +141,33 @@ function MetabotNavPane() {
         ))}
       </AdminNavWrapper>
     </Flex>
+  );
+}
+
+function MetabotVerifiedContentConfigurationPane({
+  metabot,
+}: {
+  metabot: MetabotInfo;
+}) {
+  const handleVerifiedContentToggle = (_checked: boolean) => {
+    // TODO: impl
+  };
+
+  return (
+    <Stack gap="sm">
+      <SettingHeader
+        id="verified-content"
+        title={t`Verified content`}
+        description={jt`When enabled, Metabot will only use models and metrics marked as Verified.`}
+      />
+      <Switch
+        label={t`Only use Verified content`}
+        checked={!!metabot.use_verified_content}
+        onChange={(e) => handleVerifiedContentToggle(e.target.checked)}
+        w="auto"
+        size="sm"
+      />
+    </Stack>
   );
 }
 
@@ -190,12 +225,7 @@ function MetabotCollectionConfigurationPane({
     await handleDelete();
     const result = await updateEntities({
       id: metabotId,
-      entities: [
-        {
-          id: newEntity.id === "root" ? null : newEntity.id,
-          model: newEntity.model,
-        },
-      ],
+      entities: [_.pick(newEntity, "model", "id")],
     });
 
     if (result.error) {

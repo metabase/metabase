@@ -221,6 +221,7 @@ export type MetabotInfo = {
   entity_id: string;
   name: MetabotName;
   description: string;
+  use_verified_content: boolean;
   created_at: string;
   updated_at: string;
 };
