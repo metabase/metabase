@@ -131,7 +131,7 @@ const generateDtsRollup = () => {
   const dtsRollupEntryPointPath = path.resolve(
     path.join(
       __dirname,
-      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-bundle/index.d.ts",
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/index.d.ts",
     ),
   );
   const dtsRollupEntryPointPathExist = fs.existsSync(dtsRollupEntryPointPath);

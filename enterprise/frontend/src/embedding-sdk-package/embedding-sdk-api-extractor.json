@@ -1,6 +1,6 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
-  "mainEntryPointFilePath": "<projectFolder>/resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-bundle/index.d.ts",
+  "mainEntryPointFilePath": "<projectFolder>/resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/index.d.ts",
   "bundledPackages": [],
   "apiReport": {
     "enabled": false

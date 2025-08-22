@@ -64,10 +64,11 @@ module.exports = {
     },
     {
       files: [
-        "embedding-sdk-bundle/sdk-package/**/*.{ts,tsx,js,jsx}",
+        "embedding-sdk-package/**/*.{ts,tsx,js,jsx}",
         "embedding-sdk-shared/**/*.{ts,tsx,js,jsx}",
       ],
       excludedFiles: [
+        "**/jest/**",
         "**/test/**",
         "**/*.spec.{ts,tsx,js,jsx}",
         "**/*.stories.{ts,tsx,js,jsx}",
