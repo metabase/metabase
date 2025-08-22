@@ -207,11 +207,9 @@ export function showVirtualDashCardInfoText(
   dashcard: DashboardCard,
   isMobile: boolean,
 ) {
-  if (isVirtualDashCard(dashcard)) {
-    return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
-  } else {
-    return true;
-  }
+  const dashcardAreaSize = dashcard.size_y * dashcard.size_x;
+
+  return isMobile || (dashcardAreaSize >= 12 && dashcard.size_x > 3);
 }
 
 export function getAllDashboardCards(dashboard: Dashboard) {
