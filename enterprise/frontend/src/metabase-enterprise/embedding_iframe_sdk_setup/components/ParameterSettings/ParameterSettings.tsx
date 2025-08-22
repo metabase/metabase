@@ -94,10 +94,10 @@ export const ParameterSettings = () => {
               parameter={parameter}
               parameters={uiParameters}
               setValue={(value: string) =>
-                updateInitialParameterValue(parameter.slug, value)
+                updateInitialParameterValue(parameter.id, value)
               }
               setParameterValueToDefault={() => {
-                updateInitialParameterValue(parameter.slug, parameter.default);
+                updateInitialParameterValue(parameter.id, parameter.default);
               }}
               enableParameterRequiredBehavior
             />
