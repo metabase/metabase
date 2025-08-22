@@ -73,9 +73,14 @@
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/metric
   [query stage-number metric-metadata]
-  (merge
-   ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
-   (select-keys metric-metadata [:description :aggregation-position :display-name])))
+  (let [default-info ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
+        metric-display-name (:display-name metric-metadata)]
+    (merge
+     default-info
+     (select-keys metric-metadata [:description :aggregation-position :display-name])
+     ;; When the metric has a custom display-name, ensure long-display-name matches it
+     (when metric-display-name
+       {:long-display-name metric-display-name}))))
 
 (defmethod lib.metadata.calculation/display-info-method :metric
   [query stage-number [_tag opts metric-id-or-name]]
