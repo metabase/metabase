@@ -278,7 +278,7 @@
                 ;; to the correct types for the host database (e.g., datetime for MySQL)
                 (log/info "Starting Sync of Audit DB fields to update metadata for host engine")
                 (let [sync-future (future
-                                    (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :fields}))
+                                    (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
                                     (log/info "Audit DB field sync complete."))]
                   (when config/is-test?
                     ;; Tests need the sync to complete before they run
