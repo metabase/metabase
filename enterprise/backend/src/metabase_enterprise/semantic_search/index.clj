@@ -794,9 +794,10 @@
                                   (mapv search/collapse-id))
             filter-time-ms (u/since-ms filter-timer)
 
+            appdb-scorers (scoring/appdb-scorers search-context)
             appdb-scores-timer (u/start-timer)
             final-results (->> filtered-results
-                               (scoring/with-appdb-scores search-context))
+                               (scoring/with-appdb-scores search-context appdb-scorers weights))
             appdb-scores-time-ms (u/since-ms appdb-scores-timer)
             total-time-ms (u/since-ms timer)]
 

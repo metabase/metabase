@@ -82,7 +82,6 @@
   "Scoring stats for each `index-row`."
   [weights scorers index-row]
   (mapv (fn [k]
-          ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
           (let [score  (or (get index-row k) 0)
                 weight (or (weights k) 0)]
             {:score        score
