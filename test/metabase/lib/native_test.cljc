@@ -274,7 +274,7 @@
            (lib/with-native-extras {:collection "mycollection"}))))
   (testing "should not throw when creating a native query without required extras (metabase#62556)"
     (is (=? {:stages [{:native "myquery"}]}
-            (-> (lib/native-query (metadata-provider-requiring-collection) "myquery"))))))
+            (lib/native-query (metadata-provider-requiring-collection) "myquery")))))
 
 (deftest ^:parallel has-write-permission-test
   (testing ":native-permissions in database"
