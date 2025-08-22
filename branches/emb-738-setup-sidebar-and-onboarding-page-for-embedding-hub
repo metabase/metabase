@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "c3b7b724372c1fbe10871d261b9de50d6ddff627"
+    "hash": "b11e39d2d9f14fd2663c548c4b587e4396c76482"
   },
   "upstream": {
     "branch": "emb-738-setup-sidebar-and-onboarding-page-for-embedding-hub"
