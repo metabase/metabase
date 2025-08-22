@@ -28,7 +28,8 @@
   log-enabled?
   max-users-allowed
   plan-alias
-  TokenStatus]
+  TokenStatus
+  clear-cache]
 
  (metabase.premium-features.settings
   active-users-count

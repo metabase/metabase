@@ -203,6 +203,11 @@
     (catch dev.failsafe.FailsafeException e
       (throw (.getCause e)))))
 
+(defn clear-cache
+  "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
+  []
+  (memoize/memo-clear! fetch-token-and-parse-body*))
+
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
 (declare decode-airgap-token)

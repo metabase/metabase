@@ -32,6 +32,8 @@
     :else
     (try
       (hm.client/call :change-add-ons, :upsert-add-ons [{:product-type product-type}])
+      (premium-features/clear-cache)
+      {:status 200 :body {}}
       (catch Exception e
         (case (-> e ex-data :status)
           404 {:status 404 :body "Could not establish a connection to Metabase Cloud."}

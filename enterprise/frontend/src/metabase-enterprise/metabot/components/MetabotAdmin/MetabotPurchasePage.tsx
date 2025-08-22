@@ -174,7 +174,10 @@ export const MetabotPurchasePage = () => {
       </SettingsSection>
       <MetabotPurchaseSettingUpModal
         opened={showSettingUpModal}
-        onClose={() => setSettingUpModal(false)}
+        onClose={() => {
+          setSettingUpModal(false);
+          window.location.reload();
+        }}
       />
     </SettingsPageWrapper>
   );
