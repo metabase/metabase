@@ -146,14 +146,19 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod normalize-name :sql
-  [_driver name-str]
-  (if (and (= (first name-str) \")
-           (= (last name-str) \"))
-    (-> name-str
-        (subs 1 (dec (count name-str)))
-        (str/replace #"\"\"" "\""))
-    (u/lower-case-en name-str)))
+(defn normalize-name [driver name-str]
+  "Normalizes the (primarily table/column) name passed in.
+  Should return a value that matches the name listed in the appdb."
+  (let [quote-style (sql.qp/quote-style driver)
+        quote-char (if (= quote-style :mysql) \` \")]
+    (if (and (= (first name-str) quote-char)
+             (= (last name-str) quote-char))
+      (let [quote-quote (str quote-char quote-char)
+            quote (str quote-char)]
+        (-> name-str
+            (subs 1 (dec (count name-str)))
+            (str/replace (re-pattern quote-quote) quote)))
+      (u/lower-case-en name-str))))
 
 (defmulti default-schema
   "Returns the default schema for a given database driver.

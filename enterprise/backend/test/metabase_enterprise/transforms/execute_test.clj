@@ -54,14 +54,14 @@
                 t1-query (make-query table-name "category" lib/starts-with "G")]
             (mt/with-temp [:model/Transform t1 {:name   "transform1"
                                                 :source {:type  :query
-                                                         :query (lib.convert/->legacy-MBQL t1-query)}
+                                                         :query t1-query}
                                                 :target target1}]
               (transforms.execute/run-mbql-transform! t1 {:run-method :manual})
               (let [table1   (wait-for-table table1-name 10000)
                     t2-query (make-query table1 "category" lib/= "Gizmo")]
                 (mt/with-temp [:model/Transform t2 {:name   "transform2"
                                                     :source {:type  :query
-                                                             :query (lib.convert/->legacy-MBQL t2-query)}
+                                                             :query t2-query}
                                                     :target target2}]
                   (transforms.execute/run-mbql-transform! t2 {:run-method :cron})
                   (let [table2      (wait-for-table table2-name 10000)
@@ -103,7 +103,7 @@
                                      (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0) :desc)))]
             (mt/with-temp [:model/Transform transform {:name   "transform"
                                                        :source {:type  :query
-                                                                :query (lib.convert/->legacy-MBQL aggregated-query)}
+                                                                :query aggregated-query}
                                                        :target target-table}]
               (transforms.execute/run-mbql-transform! transform {:run-method :manual})
               (let [table-result      (wait-for-table (:name target-table) 10000)

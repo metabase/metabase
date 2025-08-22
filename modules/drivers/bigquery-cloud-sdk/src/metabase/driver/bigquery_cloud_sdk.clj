@@ -902,17 +902,6 @@
   [_]
   nil)
 
-;; TODO(rileythomp, 2025-08-21): This is duplicated across mysql and clickhouse
-;; Maybe we should have this dispatch on quote style
-(defmethod driver.sql/normalize-name :bigquery-cloud-sdk
-  [_driver name-str]
-  (if (and (= (first name-str) \`)
-           (= (last name-str) \`))
-    (-> name-str
-        (subs 1 (dec (count name-str)))
-        (str/replace #"\"\"" "\""))
-    (u/lower-case-en name-str)))
-
 (defmethod driver/native-query-deps :bigquery-cloud-sdk
   [driver query]
   (->> query
