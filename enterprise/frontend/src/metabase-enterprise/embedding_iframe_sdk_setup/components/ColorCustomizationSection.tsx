@@ -57,7 +57,7 @@ export const ColorCustomizationSection = ({
         )}
       </Group>
 
-      <Group align="start" gap="xl" mb="lg">
+      <Group align="start" gap="xl">
         {getConfigurableThemeColors().map(({ key, name, originalColorKey }) => {
           // Use the default from appearance settings. If not set, use the default Metabase color.
           const originalColor =

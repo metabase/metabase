@@ -842,6 +842,7 @@
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (t/deftest ^:parallel query->max-rows-limit-test
   (doseq [[group query->expected]
           {"should return `:limit` if set"

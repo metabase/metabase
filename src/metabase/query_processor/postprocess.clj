@@ -53,7 +53,7 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   [(ensure-legacy #'format-rows/format-rows)
    (ensure-legacy #'results-metadata/record-and-return-metadata!)
-   (ensure-legacy #'limit/limit-result-rows)
+   (ensure-pmbql #'limit/limit-result-rows)
    (ensure-legacy #'qp.middleware.enterprise/limit-download-result-rows)
    (ensure-legacy #'qp.add-rows-truncated/add-rows-truncated)
    (ensure-legacy #'qp.add-timezone-info/add-timezone-info)
