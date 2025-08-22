@@ -945,8 +945,8 @@
   (let [table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
     ;; SQL Server doesn't support CREATE TABLE AS SELECT
     ;; Instead it uses SELECT ... INTO syntax
-    ;; The regex finds the last FROM and inserts INTO before it
-    [(str/replace query #"\bFROM\b(?!.*\bFROM\b)" (str " INTO " table-name " FROM "))]))
+    ;; The regex finds the first FROM and inserts INTO before it
+    [(str/replace-first query #"\bFROM\b" (str " INTO " table-name " FROM "))]))
 
 (defmethod driver/table-exists? :sqlserver
   [driver database {:keys [schema name] :as _table}]
