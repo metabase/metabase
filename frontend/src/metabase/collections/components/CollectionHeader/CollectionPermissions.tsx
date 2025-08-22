@@ -23,7 +23,6 @@ export const CollectionPermissions = ({
         icon="lock"
         aria-label={t`Edit permissions`}
         tooltipLabel={t`Edit permissions`}
-        tooltipPosition="bottom"
         onClick={() => {
           // ToolbarButton has "e.preventDefault", so we have to navigate manually
           dispatch(push(url));
