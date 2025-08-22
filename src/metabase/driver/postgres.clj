@@ -1211,3 +1211,9 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :postgres
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
+
+(defmethod driver/create-schema-if-needed! :postgres
+  [driver details schema]
+  (let [schema (driver.sql/normalize-name driver schema)
+        sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" schema)]]]
+    (driver/execute-raw-queries! driver details sql)))

@@ -1178,6 +1178,13 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti create-schema-if-needed!
+  "Creates a schema if it does not already exist.
+   Used to create new schemas for transforms."
+  {:added "0.57.0" :arglists '([driver details schema])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti connection-details
   "Get connection details for a given driver and db object"
   {:added "0.57.0", :arglists '([driver db])}
