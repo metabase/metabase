@@ -12,9 +12,10 @@ import {
   getRowName,
   getTableQuery,
 } from "metabase/detail-view/utils";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 import { extractRemappedColumns } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -67,6 +68,7 @@ export function ModelDetailPage({ params }: Props) {
   const rowName = getRowName(columns, row) || rowId;
 
   const dispatch = useDispatch();
+  const isNavBarOpen = useSelector(getIsNavbarOpen);
 
   useEffect(() => {
     dispatch(closeNavbar());
@@ -91,6 +93,12 @@ export function ModelDetailPage({ params }: Props) {
   }
 
   return (
-    <DetailViewPage columns={columns} row={row} rowId={rowId} table={table} />
+    <DetailViewPage
+      columns={columns}
+      isNavBarOpen={isNavBarOpen}
+      row={row}
+      rowId={rowId}
+      table={table}
+    />
   );
 }
