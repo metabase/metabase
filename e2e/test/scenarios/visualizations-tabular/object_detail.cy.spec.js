@@ -574,10 +574,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   describe("detail page links - questions", () => {
-    beforeEach(() => {
-      H.grantClipboardPermissions();
-    });
-
     it("no primary keys", () => {
       H.visitQuestionAdhoc({
         display: "table",
@@ -604,6 +600,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
 
     it("1 primary key", () => {
+      H.grantClipboardPermissions();
       H.visitQuestionAdhoc({
         display: "table",
         dataset_query: {
@@ -677,7 +674,110 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  describe("detail page links - models", () => {});
+  describe("detail page links - models", () => {
+    it("no primary keys", () => {
+      H.createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ADDRESS],
+              ["field", PEOPLE.EMAIL],
+              ["field", PEOPLE.NAME],
+            ],
+            limit: 5,
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      H.openObjectDetail(0);
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByLabelText("Copy link to this record").should("not.exist");
+        cy.findByLabelText("Open in full page").should("not.exist");
+      });
+    });
+
+    it("1 primary key", () => {
+      H.grantClipboardPermissions();
+      H.createQuestion(
+        {
+          type: "model",
+          name: "model",
+          query: {
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ID],
+              ["field", PEOPLE.ADDRESS],
+              ["field", PEOPLE.EMAIL],
+              ["field", PEOPLE.NAME],
+            ],
+            limit: 5,
+          },
+        },
+        // { visitQuestion: true },
+      ).then(({ body: card }) => {
+        const slug = [card.id, card.name].join("-");
+
+        H.visitModel(card.id);
+        H.openObjectDetail(0);
+
+        cy.findByTestId("object-detail").within(() => {
+          const expectedUrl = `http://localhost:4000/model/${slug}/detail/1`;
+
+          cy.findByLabelText("Copy link to this record").click();
+          cy.window()
+            .then((window) => window.navigator.clipboard.readText())
+            .should("equal", expectedUrl);
+
+          cy.findByLabelText("Open in full page").click();
+          cy.location("href").should("eq", expectedUrl);
+          cy.findByRole("heading", { name: "Hudson Borer" }).should(
+            "be.visible",
+          );
+        });
+      });
+    });
+
+    it("2 primary keys", () => {
+      H.createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ID],
+              ["field", PEOPLE.ADDRESS],
+              ["field", PEOPLE.EMAIL],
+              ["field", PEOPLE.NAME],
+            ], //["field", ORDERS.ID],
+            joins: [
+              {
+                "source-table": ORDERS_ID,
+                fields: [["field", ORDERS.ID]],
+                strategy: "left-join",
+                alias: "Orders",
+                condition: [
+                  "=",
+                  ["field", PEOPLE.ID],
+                  ["field", ORDERS.USER_ID],
+                ],
+              },
+            ],
+            limit: 5,
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      H.openObjectDetail(0);
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByLabelText("Copy link to this record").should("not.exist");
+        cy.findByLabelText("Open in full page").should("not.exist");
+      });
+    });
+  });
 });
 
 function getObjectDetailShortcut(rowIndex) {
