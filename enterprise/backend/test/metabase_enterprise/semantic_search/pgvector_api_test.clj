@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
@@ -38,6 +39,8 @@
           (is (= @index-ref (:index active-state)))
           (is (= model1 (:embedding-model (:index active-state))))
           (is (= (:model-name model1) (:model_name (:metadata-row active-state))))
+          (testing "dlq is created"
+            (is (semantic.tu/table-exists-in-db? (semantic.dlq/dlq-table-name-kw index-metadata (:id (:metadata-row active-state))))))
           (testing "idempotent"
             (let [new-index @(sut pgvector index-metadata model1)]
               (is (= @index-ref new-index))
@@ -46,7 +49,9 @@
         (let [new-index    @(sut pgvector index-metadata model2)
               active-state (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
           (is (= model2 (:embedding-model new-index)))
-          (is (= new-index (:index active-state))))
+          (is (= new-index (:index active-state)))
+          (testing "new dlq is created"
+            (is (semantic.tu/table-exists-in-db? (semantic.dlq/dlq-table-name-kw index-metadata (:id (:metadata-row active-state)))))))
         (testing "model1 index still exists"
           (is (=? {:index              {:embedding-model model1}
                    :active             false
