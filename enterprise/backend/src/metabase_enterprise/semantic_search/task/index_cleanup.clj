@@ -50,11 +50,26 @@
     (->> (jdbc/execute! pgvector stale-index-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
          (map :table_name))))
 
+(defn- cleanup-old-gate-tombstones!
+  [pgvector {:keys [gate-table-name]}]
+  (try
+    (let [retention-cutoff (t/minus (t/offset-date-time)
+                                    (t/hours (semantic.settings/tombstone-retention-hours)))
+          tombstone-cleanup-sql (-> {:delete-from [(keyword gate-table-name)]
+                                     :where [:and
+                                             [:= :document nil]
+                                             [:= :document_hash nil]
+                                             [:< :gated_at retention-cutoff]]}
+                                    (sql/format :quoted true))
+          deleted-count (::jdbc/update-count (jdbc/execute-one! pgvector tombstone-cleanup-sql))]
+      (when (pos? deleted-count)
+        (log/infof "Cleaned up %d old tombstone records from gate table" deleted-count)))
+    (catch Exception e
+      (log/error e "Failed to clean up tombstone records from gate table"))))
+
 (defn- cleanup-stale-indexes!
-  []
-  (let [pgvector             (semantic.env/get-pgvector-datasource!)
-        index-metadata       (semantic.env/get-index-metadata)
-        stale-table-names    (map keyword (stale-index-tables pgvector index-metadata))
+  [pgvector index-metadata]
+  (let [stale-table-names    (map keyword (stale-index-tables pgvector index-metadata))
         orphaned-table-names (map keyword (orphan-index-tables pgvector index-metadata))
         tables-to-drop       (concat stale-table-names orphaned-table-names)
         drop-table-sql       (sql/format
@@ -65,13 +80,20 @@
         (log/info "Dropping stale/orphaned semantic search index:" table-name))
       (jdbc/execute! pgvector drop-table-sql))))
 
+(defn- cleanup-stale-indexes-and-gate-tombstones!
+  []
+  (let [pgvector             (semantic.env/get-pgvector-datasource!)
+        index-metadata       (semantic.env/get-index-metadata)]
+    (cleanup-stale-indexes! pgvector index-metadata)
+    (cleanup-old-gate-tombstones! pgvector index-metadata)))
+
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.semantic-index-cleanup.trigger"))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Clean up inactive semantic search index tables"}
   SemanticIndexCleanup [_ctx]
-  (cleanup-stale-indexes!))
+  (cleanup-stale-indexes-and-gate-tombstones!))
 
 (defmethod task/init! ::SemanticIndexCleanup [_]
   (let [job (jobs/build

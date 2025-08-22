@@ -10,7 +10,13 @@
    [metabase-enterprise.semantic-search.task.index-cleanup :as sut]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
-   [next.jdbc :as jdbc]))
+   [metabase.util.json :as json]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs])
+  (:import
+   (org.postgresql.util PGobject)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -98,7 +104,7 @@
               (with-redefs [semantic.env/get-pgvector-datasource! (constantly pgvector)
                             semantic.env/get-index-metadata (constantly index-metadata)]
                 (mt/with-temporary-setting-values [semantic.settings/stale-index-retention-hours retention-hours]
-                  (cleanup-stale-indexes!)))
+                  (cleanup-stale-indexes! pgvector index-metadata)))
               (is (not (semantic.tu/table-exists-in-db? stale-table)))
               (is (not (semantic.tu/table-exists-in-db? orphaned-table)))
               (is (semantic.tu/table-exists-in-db? recent-table))
@@ -123,5 +129,62 @@
             (with-redefs [semantic.settings/stale-index-retention-hours (constantly retention-hours)
                           semantic.env/get-pgvector-datasource! (constantly pgvector)
                           semantic.env/get-index-metadata (constantly index-metadata)]
-              (cleanup-stale-indexes!)
+              (cleanup-stale-indexes! pgvector index-metadata)
               (is (not (semantic.tu/table-exists-in-db? nonexistent-table))))))))))
+
+(deftest tombstone-cleanup-test
+  (mt/with-premium-features #{:semantic-search}
+    (let [pgvector semantic.tu/db
+          index-metadata (semantic.tu/unique-index-metadata)
+          retention-hours (semantic.settings/tombstone-retention-hours)
+          old-time (t/minus (t/offset-date-time) (t/hours (inc retention-hours)))
+          recent-time (t/minus (t/offset-date-time) (t/hours (dec retention-hours)))
+          cleanup-old-tombstones! #'sut/cleanup-old-gate-tombstones!]
+      (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)]
+        (testing "cleans up old tombstone records and preserves recent ones and non-tombstones"
+          (let [gate-table-name (:gate-table-name index-metadata)]
+            (jdbc/execute! pgvector
+                           (-> (sql.helpers/insert-into (keyword gate-table-name))
+                               (sql.helpers/values
+                                [{:id "old-tombstone-1"
+                                  :model "card"
+                                  :model_id "123"
+                                  :updated_at old-time
+                                  :gated_at old-time
+                                  :document nil
+                                  :document_hash nil}
+                                 {:id "old-tombstone-2"
+                                  :model "dashboard"
+                                  :model_id "456"
+                                  :updated_at old-time
+                                  :gated_at old-time
+                                  :document nil
+                                  :document_hash nil}
+                                 {:id "recent-tombstone"
+                                  :model "card"
+                                  :model_id "789"
+                                  :updated_at recent-time
+                                  :gated_at recent-time
+                                  :document nil
+                                  :document_hash nil}
+                                 {:id "non-tombstone"
+                                  :model "card"
+                                  :model_id "101"
+                                  :updated_at old-time
+                                  :gated_at old-time
+                                  :document (doto (PGobject.)
+                                              (.setType "jsonb")
+                                              (.setValue (json/encode {:content "some content"})))
+                                  :document_hash "hash123"}])
+                               (sql/format :quoted true)))
+            (cleanup-old-tombstones! pgvector index-metadata)
+
+            ;; Verify only old tombstones were deleted after cleanup task runs
+            (let [remaining-records (jdbc/execute! pgvector
+                                                   (-> (sql.helpers/select [:*])
+                                                       (sql.helpers/from (keyword gate-table-name))
+                                                       (sql.helpers/order-by :id)
+                                                       (sql/format :quoted true))
+                                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                  remaining-ids (map :id remaining-records)]
+              (is (= #{"recent-tombstone" "non-tombstone"} (set remaining-ids))))))))))
