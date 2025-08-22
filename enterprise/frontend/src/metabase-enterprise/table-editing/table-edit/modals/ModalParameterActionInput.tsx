@@ -5,6 +5,8 @@ import {
   type ParameterActionInputProps,
 } from "../../inputs/ParameterActionInput";
 
+import S from "./ModalParameterActionInput.module.css";
+
 export function ModalParameterActionInput(props: ParameterActionInputProps) {
   const { parameter, ...rest } = props;
 
@@ -28,6 +30,12 @@ export function ModalParameterActionInput(props: ParameterActionInputProps) {
       {...rest}
       inputProps={inputProps}
       parameter={parameter}
+      classNames={{
+        textInputElement: S.textInputElement,
+        numberInputElement: S.numberInputElement,
+        selectTextInputElement: S.selectTextInputElement,
+        dateTextInputElement: S.dateTextInputElement,
+      }}
     />
   );
 }

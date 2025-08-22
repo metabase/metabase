@@ -14,6 +14,10 @@ import {
   type TableActionInputDateTimeProps,
 } from "./TableActionInputDateTime";
 import {
+  TableActionInputNumber,
+  type TableActionInputNumberProps,
+} from "./TableActionInputNumber";
+import {
   TableActionInputSearchableSelect,
   type TableActionInputSearchableSelectProps,
 } from "./TableActionInputSearchableSelect";
@@ -32,7 +36,8 @@ type TableActionInputProps =
   | TableActionInputTextProps
   | TableActionInputTextareaProps
   | TableActionInputSearchableSelectProps
-  | TableActionInputBooleanProps;
+  | TableActionInputBooleanProps
+  | TableActionInputNumberProps;
 
 export type ParameterActionInputProps = TableActionInputProps & {
   parameter: TableActionFormParameter;
@@ -52,6 +57,12 @@ export function ParameterActionInput(props: ParameterActionInputProps) {
       return (
         <TableActionInputBoolean {...rest} isNullable={parameter.optional} />
       );
+
+    case TableActionFormInputType.Integer:
+      return <TableActionInputNumber {...rest} allowDecimal={false} />;
+
+    case TableActionFormInputType.Float:
+      return <TableActionInputNumber {...rest} allowDecimal={true} />;
 
     case TableActionFormInputType.Textarea:
       return <TableActionInputTextarea {...rest} />;
