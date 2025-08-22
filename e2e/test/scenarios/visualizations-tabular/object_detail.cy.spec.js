@@ -534,6 +534,44 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       H.tooltip().should("be.visible").and("contain.text", "View details");
     });
   });
+
+  it("should respect viz settings column order and visibility", () => {
+    H.visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": PEOPLE_ID },
+      },
+    });
+
+    H.openVizSettingsSidebar();
+    cy.findByTestId("sidebar-left").within(() => {
+      cy.findByTestId("Address-hide-button").click();
+
+      cy.findAllByRole("listitem")
+        .eq("7")
+        .as("stateItem")
+        .should("have.text", "State");
+      H.moveDnDKitElement(cy.get("@stateItem"), { vertical: -300 });
+    });
+
+    H.openObjectDetail(0);
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.log("hidden columns are not shown");
+      cy.findByText("Address").should("not.exist");
+
+      cy.log("viz settings columns order is respected");
+      cy.findAllByText(/State|Email/).then(($elements) => {
+        const texts = $elements
+          .map((_index, element) => element.textContent)
+          .get();
+
+        expect(texts.indexOf("State")).to.be.lessThan(texts.indexOf("Email"));
+      });
+    });
+  });
 });
 
 function getObjectDetailShortcut(rowIndex) {
