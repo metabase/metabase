@@ -8,6 +8,7 @@ import {
   PRODUCTS_AVERAGE_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
 } from "e2e/support/test-visualizer-data";
+import type { Document } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -152,6 +153,22 @@ H.describeWithSnowplowEE("documents", () => {
           collection_id: null,
           alias: "documentId",
         });
+      });
+
+      it("renders a 'not found' message if the copied card has been permanently deleted", () => {
+        cy.intercept({
+          method: "GET",
+          path: "/api/ee/document/*",
+        }).as("documentGet");
+        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        cy.wait("@documentGet").then(({ response }) => {
+          const body: Document | undefined = response?.body;
+          const content = body?.document.content;
+          const cardEmbed = content?.find((n) => n.type === "cardEmbed");
+          const copiedCardId = cardEmbed?.attrs?.id;
+          cy.request("DELETE", `/api/card/${copiedCardId}`);
+        });
+        H.getDocumentCard("Couldn't find this chart.").should("exist");
       });
 
       it("read only access", () => {
