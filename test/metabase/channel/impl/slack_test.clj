@@ -135,7 +135,7 @@
                    :details {:value "#test-channel"}}]
     (with-redefs [slack/upload-file! (fn [_ _] {:id "uploaded-file-id"})]
       (mt/with-temporary-setting-values [site-url "http://example.com"]
-        (let [processed (channel/render-notification :channel/slack notification nil [recipient])
+        (let [processed (channel/render-notification :channel/slack notification {:recipients [recipient]})
               card-section (-> processed first :blocks (nth 3))]
           (is (= "section" (:type card-section)))
           (is (= "<http://example.com/dashboard/42?state=CA&state=NY&state=NJ#scrollTo=456|Test Card>"

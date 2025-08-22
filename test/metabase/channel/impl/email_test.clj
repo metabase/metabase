@@ -85,7 +85,7 @@
                        :user {:email "test@example.com"}}]]
       (mt/with-temporary-setting-values [site-url "http://example.com"]
         (binding [urls/*dashcard-parameters* dashboard-params]
-          (let [result (channel/render-notification :channel/email notification nil recipients)
+          (let [result (channel/render-notification :channel/email notification {:recipients recipients})
                 rendered-content (-> result first :message first :content)]
 
             (testing "Dashboard parameters are bound during rendering"
