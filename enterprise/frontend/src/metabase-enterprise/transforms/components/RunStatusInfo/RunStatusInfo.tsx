@@ -18,7 +18,6 @@ export function RunStatusInfo({
   message,
   endTime,
 }: RunStatusInfoProps) {
-  // const status = "started";
   const isError = status === "failed" || status === "timeout";
 
   return (
