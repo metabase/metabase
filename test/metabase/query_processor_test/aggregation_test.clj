@@ -301,22 +301,21 @@
                    (qp/process-query)
                    (->> (mt/formatted-rows [int])))))))))
 
-(deftest ^:parallel aggregation-removal-and-fields-test
+(deftest ^:parallel aggregation-and-join-fields-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing "adding and removing an aggregation keeps original fields"
-      (let [mp (mt/metadata-provider)
-            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                      (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :venues :id)))
-                                        (lib/ref (lib.metadata/field mp (mt/id :venues :price)))])
-                      (lib/aggregate (lib/count)))]
-        (is (= [[1 3]
-                [2 2]
-                [3 2]]
-               (-> query
-                   (lib/remove-clause (first (lib/aggregations query)))
-                   (lib/limit 3)
+    (testing "adding an aggregation to a query with fields from joins works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [[18760]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :orders :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :orders :total)))])
+                   (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                  [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                          (-> (lib.metadata/field mp (mt/id :products :id))
+                                                              (lib/with-join-alias "Products")))])))
+                   (lib/aggregate (lib/count))
                    (qp/process-query)
-                   (->> (mt/formatted-rows [int int])))))))))
+                   (->> (mt/formatted-rows [int])))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !
