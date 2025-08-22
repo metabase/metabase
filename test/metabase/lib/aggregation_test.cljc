@@ -670,7 +670,7 @@
              :effective-type :type/Float}
             (lib/display-info query ag-ref)))))
 
-(deftest ^:parallel aggregate-should-drop-invalid-parts
+(deftest ^:parallel aggregate-preserves-fields-for-drill-through
   (let [query (-> (lib.tu/venues-query)
                   (lib/with-fields [(meta/field-metadata :venues :price)])
                   (lib/order-by (meta/field-metadata :venues :price))
@@ -685,7 +685,7 @@
         first-stage (lib.util/query-stage query 0)
         first-join (first (lib/joins query 0))]
     (is (= 1 (count (:stages query))))
-    (is (not (contains? first-stage :fields)))
+    (is (contains? first-stage :fields) "Fields should be preserved for drill-through functionality")
     (is (not (contains? first-stage :order-by)))
     (is (= 1 (count (lib/joins query 0))))
     (is (not (contains? first-join :fields))))
