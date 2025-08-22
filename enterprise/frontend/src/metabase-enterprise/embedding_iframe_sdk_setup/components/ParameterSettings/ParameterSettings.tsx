@@ -67,10 +67,7 @@ export const ParameterSettings = () => {
         parameters: availableParameters,
         values: parameterValues,
         defaultRequired: true,
-      }).map((param) => ({
-        ...param,
-        value: parameterValues?.[param.slug] ?? param.value,
-      })),
+      }),
     [availableParameters, parameterValues],
   );
 
@@ -100,10 +97,7 @@ export const ParameterSettings = () => {
                 updateInitialParameterValue(parameter.slug, value)
               }
               setParameterValueToDefault={() => {
-                updateInitialParameterValue(
-                  parameter.slug,
-                  parameter.default as any,
-                );
+                updateInitialParameterValue(parameter.slug, parameter.default);
               }}
               enableParameterRequiredBehavior
             />
