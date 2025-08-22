@@ -20,7 +20,7 @@ import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal"
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { connect, useDispatch, useSelector } from "metabase/lib/redux";
+import { connect, useDispatch } from "metabase/lib/redux";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import {
   setDatasetEditorTab,
@@ -63,12 +63,12 @@ import type {
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
+import { DatasetEditorNewSidebar } from "./DatasetEditorNewSidebar/DatasetEditorNewSidebar";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
 import { TabHintToast } from "./TabHintToast";
 import { EDITOR_TAB_INDEXES } from "./constants";
-import { DatasetEditorNewSidebar } from "./DatasetEditorNewSidebar/DatasetEditorNewSidebar";
 
 type MetadataDiff = Record<string, Partial<Field>>;
 
@@ -145,7 +145,7 @@ function getSidebar(
     onFieldMetadataChange,
     onMappedDatabaseColumnChange,
     updateVisualizationSettings,
-    visualizationSettings,
+    _visualizationSettings,
   }: {
     datasetEditorTab: DatasetEditorTab;
     isQueryError?: unknown;
@@ -155,7 +155,7 @@ function getSidebar(
     onFieldMetadataChange: (values: Partial<DatasetColumn>) => void;
     onMappedDatabaseColumnChange: (value: number) => void;
     updateVisualizationSettings: (settings: VisualizationSettings) => void;
-    visualizationSettings?: VisualizationSettings | null;
+    _visualizationSettings?: VisualizationSettings | null;
   },
 ): ReactNode {
   const {
@@ -419,7 +419,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
        * display the list, without providing an option to configure columns.
        */
 
-      if (editedVisualizationSettings?.viewSettings.defaultView === "list") {
+      if (editedVisualizationSettings?.viewSettings?.defaultView === "list") {
         if (tab === "columns") {
           const updatedQuestion = question.setDisplay("table");
           updateQuestion(updatedQuestion, {
@@ -435,7 +435,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       }
     },
     [
-      editedVisualizationSettings?.viewSettings.defaultView,
+      editedVisualizationSettings?.viewSettings?.defaultView,
       initialEditorHeight,
       question,
       setDatasetEditorTab,
