@@ -508,7 +508,7 @@
         ;; In general, if an aggregation has :fields set, those are "if we ever remove this aggregation, we should use
         ;; these fields again", not "these fields should be added to the aggregation query".  As a result, if fields
         ;; are set here, we shouldn't see them.
-        (let [results (qp.pivot/run-pivot-query (lib/expression query "test-expr" [:ltrim "wheeee"]))]
+        (let [results (qp.pivot/run-pivot-query (lib/expression query "test-expr" (lib/ltrim "wheeee")))]
           (is (= ["User → Source"
                   "Product → Category"
                   "pivot-grouping"
