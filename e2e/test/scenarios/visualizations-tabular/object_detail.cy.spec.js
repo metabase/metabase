@@ -493,6 +493,42 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .findByRole("heading", { name: "Hudson Borer" })
       .should("be.visible");
   });
+
+  it("should support toggling the sidebar", () => {
+    H.visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": PEOPLE_ID },
+      },
+    });
+
+    getObjectDetailShortcut(0).icon("sidebar_open").should("be.visible");
+    H.openObjectDetail(0);
+
+    getRow(0).then(($row) => {
+      const rect = $row[0].getBoundingClientRect();
+      const detailShortcutWidth = 24;
+      const detailShortcutOffset = 10;
+      const x = detailShortcutOffset + detailShortcutWidth / 2;
+      const y = rect.height / 2;
+
+      getRow(0).realMouseMove(x, y, { scrollBehavior: false });
+      getRow(0)
+        .findByTestId("detail-shortcut")
+        .icon("sidebar_closed")
+        .should("be.visible");
+      H.tooltip().should("be.visible").and("contain.text", "Hide details");
+
+      getRow(0).realClick({ x, y, scrollBehavior: false });
+      getRow(0)
+        .findByTestId("detail-shortcut")
+        .icon("sidebar_open")
+        .should("be.visible");
+      H.tooltip().should("be.visible").and("contain.text", "View details");
+    });
+  });
 });
 
 function getObjectDetailShortcut(rowIndex) {
