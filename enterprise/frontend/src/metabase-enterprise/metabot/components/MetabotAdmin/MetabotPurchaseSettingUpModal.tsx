@@ -36,7 +36,7 @@ export const MetabotPurchaseSettingUpModal = ({
         <Box h={96} pos="relative" w={96}>
           <img
             src="app/assets/img/metabot-cloud-96x96.svg"
-            alt="Metabot Cloud"
+            alt={t`Metabot Cloud`}
           />
 
           {isSettingUp && (
