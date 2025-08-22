@@ -57,7 +57,7 @@
   "Impl of [[metabase.legacy-mbql.schema.macros/defclause]] macro. Creates a Malli schema."
   [tag & arg-schemas]
   [:and
-   {:doc/title [:span [:code (pr-str tag)] " clause"]}
+   {:description (str "schema for a valid legacy MBQL " :tag " clause")}
    [:fn
     {:error/message (str "must be a `" tag "` clause")}
     (partial is-clause? tag)]

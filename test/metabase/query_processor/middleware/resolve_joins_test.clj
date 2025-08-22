@@ -355,7 +355,7 @@
                [:field "People__LONGITUDE" {:base-type :type/Float}]
                [:field "People__BIRTH_DATE" {:base-type :type/Date}]
                [:field "Products__PRICE" {:base-type :type/Float}]]
-              (-> (qp.preprocess/preprocess query) :query :fields))))))
+              (-> query qp.preprocess/preprocess lib/->legacy-MBQL :query :fields))))))
 
 ;;; adapted from [[metabase.query-processor-test.explicit-joins-test/join-against-saved-question-with-sort-test]]
 (deftest ^:parallel join-against-same-table-returned-columns-test
@@ -421,4 +421,6 @@
                                 [:field (meta/id :venues :longitude) nil]
                                 [:field (meta/id :venues :price) nil]
                                 [:field "ID" {:base-type :type/Integer, :join-alias "native_card"}]]}}
-              (qp.preprocess/preprocess query))))))
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL))))))

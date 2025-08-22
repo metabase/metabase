@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.test-metadata :as meta]
@@ -13,6 +12,7 @@
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.middleware.fetch-source-query]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -35,21 +35,20 @@
             {:fk-field-id (meta/id :orders :product-id)}]))))
 
 (deftest ^:parallel resolve-implicit-joins-test
-  (let [query (lib/query
-               meta/metadata-provider
-               (mt/nest-query
-                (lib.tu.macros/mbql-query orders
-                  {:source-table $$orders
-                   :fields       [$id
-                                  &Products.products.title
-                                  $product-id->products.title]
-                   :joins        [{:fields       :all
-                                   :source-table $$products
-                                   :condition    [:= $product-id &Products.products.id]
-                                   :alias        "Products"}]
-                   :order-by     [[:asc $id]]
-                   :limit        2})
-                1))]
+  (let [query (-> (lib/query
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query orders
+                     {:source-table $$orders
+                      :fields       [$id
+                                     &Products.products.title
+                                     $product-id->products.title]
+                      :joins        [{:fields       :all
+                                      :source-table $$products
+                                      :condition    [:= $product-id &Products.products.id]
+                                      :alias        "Products"}]
+                      :order-by     [[:asc $id]]
+                      :limit        2}))
+                  lib/append-stage)]
     (is (=? (-> (lib.tu.macros/mbql-query orders
                   {:source-query {:source-table $$orders
                                   :fields       [$id
@@ -73,8 +72,8 @@
                 lib/->legacy-MBQL
                 :query)))))
 
-(mu/defn- add-implicit-joins
-  [query]
+(mu/defn- add-implicit-joins :- ::qp.schema/any-query
+  [query :- ::qp.schema/any-query]
   (letfn [(add-implicit-joins-legacy [query]
             (-> (lib/query (qp.store/metadata-provider) query)
                 qp.add-implicit-joins/add-implicit-joins
@@ -388,21 +387,23 @@
 
 (deftest ^:parallel reuse-existing-joins-e2e-test
   (testing "Should work at arbitrary levels of nesting"
-    (qp.store/with-metadata-provider (mt/id)
+    (let [mp         (mt/application-database-metadata-provider (mt/id))
+          base-query (lib/query
+                      mp
+                      (mt/mbql-query orders
+                        {:source-table $$orders
+                         :fields       [$id
+                                        &Products.products.title
+                                        $product_id->products.title]
+                         :joins        [{:fields       :all
+                                         :source-table $$products
+                                         :condition    [:= $product_id [:field %products.id {:join-alias "Products"}]]
+                                         :alias        "Products"}]
+                         :order-by     [[:asc $id]]
+                         :limit        2}))]
       (doseq [level (range 4)]
         (testing (format "(%d levels of nesting)" level)
-          (let [query (-> (mt/mbql-query orders
-                            {:source-table $$orders
-                             :fields       [$id
-                                            &Products.products.title
-                                            $product_id->products.title]
-                             :joins        [{:fields       :all
-                                             :source-table $$products
-                                             :condition    [:= $product_id [:field %products.id {:join-alias "Products"}]]
-                                             :alias        "Products"}]
-                             :order-by     [[:asc $id]]
-                             :limit        2})
-                          (mt/nest-query level))]
+          (let [query (nth (iterate lib/append-stage base-query) level)]
             (testing (format "\nquery =\n%s" (u/pprint-to-str query))
               (testing "sanity check: we should actually be able to run this query"
                 (is (=? {:status :completed}
@@ -431,31 +432,35 @@
                                                             :field_ref    $product_id->products.title}]))]
                       (is (=? {:status :completed}
                               (qp/process-query query-with-metadata)))))))
-              (is (=? (-> (mt/mbql-query orders
-                            {:source-table $$orders
-                             :fields       [$id
-                                            &Products.products.title
-                                            [:field %products.title {:join-alias   "PRODUCTS__via__PRODUCT_ID"
-                                                                     :source-field %product_id}]]
-                             :joins        [{:source-table $$products
-                                             :alias        "Products"
-                                             :fields       :all
-                                             :condition    [:=
-                                                            $product_id
-                                                            &Products.products.id]}
-                                            {:source-table $$products
-                                             :alias        "PRODUCTS__via__PRODUCT_ID"
-                                             :strategy     :left-join
-                                             :fields       :none
-                                             :fk-field-id  %product_id
-                                             :condition    [:=
-                                                            $product_id
-                                                            &PRODUCTS__via__PRODUCT_ID.products.id]}]
-                             :order-by     [[:asc $id]]
-                             :limit        2})
-                          (mt/nest-query level))
-                      (-> (add-implicit-joins query)
-                          (m/dissoc-in [:query :source-metadata])))))))))))
+              (let [base-expected (lib/query
+                                   mp
+                                   (mt/mbql-query orders
+                                     {:source-table $$orders
+                                      :fields       [$id
+                                                     &Products.products.title
+                                                     [:field %products.title {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                                                              :source-field %product_id}]]
+                                      :joins        [{:source-table $$products
+                                                      :alias        "Products"
+                                                      :fields       :all
+                                                      :condition    [:=
+                                                                     $product_id
+                                                                     &Products.products.id]}
+                                                     {:source-table $$products
+                                                      :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                      :strategy     :left-join
+                                                      :fields       :none
+                                                      :fk-field-id  %product_id
+                                                      :condition    [:=
+                                                                     $product_id
+                                                                     &PRODUCTS__via__PRODUCT_ID.products.id]}]
+                                      :order-by     [[:asc $id]]
+                                      :limit        2}))]
+                (is (=? (-> (nth (iterate lib/append-stage base-expected) level)
+                            lib/->legacy-MBQL)
+                        (-> (add-implicit-joins query)
+                            lib/->legacy-MBQL
+                            (m/dissoc-in [:query :source-metadata]))))))))))))
 
 (deftest ^:parallel reuse-existing-joins-test-3
   (testing "We DEFINITELY need to reuse joins if adding them again would break the query."

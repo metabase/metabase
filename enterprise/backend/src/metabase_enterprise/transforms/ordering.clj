@@ -6,9 +6,11 @@
    [flatland.ordered.set :refer [ordered-set]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -16,7 +18,10 @@
 (defn- transform-deps [transform]
   (let [query (-> (get-in transform [:source :query])
                   transforms.util/massage-sql-query
-                  qp.preprocess/preprocess)]
+                  qp.preprocess/preprocess
+                  ;; legacy usage -- don't do things like this going forward
+                  #_{:clj-kondo/ignore [:discouraged-var]}
+                  lib/->legacy-MBQL)]
     (case (:type query)
       :native (driver/native-query-deps (-> (qp.store/metadata-provider)
                                             lib.metadata/database

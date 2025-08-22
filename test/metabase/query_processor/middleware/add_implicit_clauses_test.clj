@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -314,41 +316,45 @@
 (deftest ^:parallel model-breakout-sort-querying-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Query with sort, breakout and _model as a source_ works correctly (#44653)."
-      (let [mp (lib.tu/mock-metadata-provider
-                (mt/application-database-metadata-provider (mt/id))
-                {:cards [{:id            1
-                          :type          :model
-                          :dataset-query (mt/mbql-query orders)}]})
+      (let [mp                       (lib.tu/mock-metadata-provider
+                                      (mt/metadata-provider)
+                                      {:cards [{:id            1
+                                                :type          :model
+                                                :dataset_query (mt/mbql-query orders)}]})
             field-id                 (mt/id :products :created_at)
             {:keys [base-type name]} (lib.metadata/field mp field-id)]
-        (qp.store/with-metadata-provider mp
-          (is (= [1 19 37 64 79]
-                 (->> (mt/run-mbql-query nil
-                        {:source-table "card__1"
-                         :aggregation  [[:count]]
-                         :breakout     [[:field  name {:base-type base-type :temporal-unit :month}]]
-                         :order-by     [[:asc [:field field-id {:base-type base-type :temporal-unit :month}]]]
-                         :limit        5})
-                      mt/rows
-                      (mapv (comp int second))))))))))
+        (is (= [1 19 37 64 79]
+               (->> (lib/query
+                     mp
+                     (mt/mbql-query nil
+                       {:source-table "card__1"
+                        :aggregation  [[:count]]
+                        :breakout     [[:field  name {:base-type base-type :temporal-unit :month}]]
+                        :order-by     [[:asc [:field field-id {:base-type base-type :temporal-unit :month}]]]
+                        :limit        5}))
+                    qp/process-query
+                    mt/rows
+                    (mapv (comp int second)))))))))
 
-(deftest ^:parallel changed-coercion-of-models-unerlying-data-test
-  (let [mp    (mt/application-database-metadata-provider (mt/id))
+(deftest ^:parallel changed-coercion-of-models-underlying-data-test
+  (let [mp    (mt/metadata-provider)
         query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
         mp    (lib.tu/mock-metadata-provider
                mp
-               {:cards [{:id 1
-                         :type :model
-                         :dataset-query query}]})
-        mp    (lib.tu/merged-mock-metadata-provider
+               {:cards [{:id            1
+                         :type          :model
+                         :dataset-query (lib.convert/->legacy-MBQL query)}]})
+        query (lib/query mp (lib.metadata/card mp 1))
+        ;; It is irrelevant which provider is used to get card and create query. Important is that one used in qp
+        ;; contains the coercion.
+        mp'   (lib.tu/merged-mock-metadata-provider
                mp
-               {:fields [{:id (mt/id :venues :price)
+               {:fields [{:id                (mt/id :venues :price)
                           :coercion-strategy :Coercion/UNIXSeconds->DateTime
-                          :effective-type :type/Instant}]})]
-    ;; It is irrelevant which provider is used to get card and create query. Important is that one used in qp,
-    ;; by means of `with-metdata-provider`, contains the coercion.
+                          :effective-type    :type/Instant}]})]
+
     (is (=? {:status :completed}
-            (qp/process-query (lib/query mp (lib.metadata/card mp 1)))))))
+            (qp/process-query (assoc query :lib/metadata mp'))))))
 
 (deftest ^:parallel add-implicit-clauses-inside-joins-e2e-test
   (testing "Add :fields to a join with a source query with :expressions correctly"
@@ -372,14 +378,15 @@
                                    [:desc [:field "count" {:base-type :type/Integer}]]
                                    [:asc &Q1.products.category]]
                     :limit        1}))]
-      (is (=? {:source-query {:source-table (meta/id :products)}
-               :expressions  {"CC" [:+ 1 1]}
-               :fields       [[:field (meta/id :products :category) nil]
-                              [:field "count" {:base-type :type/Integer}]
-                              [:expression "CC"]]}
+      (is (=? [{:source-table (meta/id :products)}
+               {:expressions  [[:+ {:lib/expression-name "CC"} 1 1]]
+                :fields       [[:field {} (meta/id :products :category)]
+                               [:field {:base-type :type/Integer} "count"]
+                               [:expression {} "CC"]]}]
               (-> query
                   qp.preprocess/preprocess
-                  :query
+                  :stages
+                  last
                   :joins
                   first
-                  :source-query))))))
+                  :stages))))))

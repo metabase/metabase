@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.remove-inactive-field-refs-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -33,12 +32,12 @@
       (is (=? {:stages [{}
                         {:fields [[:field {} (meta/id :products :category)]
                                   [:field {} "count"]]}]}
-              (lib/query meta/metadata-provider (qp.preprocess/preprocess query)))))))
+              (qp.preprocess/preprocess query))))))
 
 (def ^:private metadata-provider
   (delay
     (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-     (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+     (mt/metadata-provider)
      [(mt/mbql-query orders
         {:joins [{:source-table $$products
                   :alias        "Product"
@@ -183,7 +182,9 @@
 
 (deftest ^:parallel basic-deleted-columns-test-3
   (testing "should remove field in joins"
-    (let [preprocessed (qp.preprocess/preprocess (lib/query @deleted-columns-metadata-provider (join-query)))]
+    (let [preprocessed (-> (lib/query @deleted-columns-metadata-provider (join-query))
+                           qp.preprocess/preprocess
+                           lib/->legacy-MBQL)]
       (testing ":query => :joins => first => :source-query => :fields"
         (is (=? [[:field (mt/id :orders :id) nil]
                  [:field (mt/id :orders :subtotal) nil]

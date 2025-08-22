@@ -47,7 +47,9 @@
 ;;; |                                       Functions for manipulating queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- combine-compound-filters-of-type [compound-type subclauses]
+(defn- combine-compound-filters-of-type
+  {:deprecated "0.57.0"}
+  [compound-type subclauses]
   (mapcat #(lib.util.match/match-lite %
              [(t :guard (= t compound-type)) & args]
              args
@@ -58,7 +60,9 @@
 (declare simplify-compound-filter)
 
 (defn- simplify-and-or-filter
+  {:deprecated "0.57.0"}
   [op args]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [args (distinct (filter some? args))]
     (case (count args)
       ;; an empty filter, toss it
@@ -79,8 +83,13 @@
 (defn simplify-compound-filter
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
-  and duplicate subclauses from the clauses."
+  and duplicate subclauses from the clauses.
+
+  DEPRECATED: This will be removed in the near future.
+  Use [[metabase.lib.filter.simplify-compound/simplify-compound-filter]] going forward."
+  {:deprecated "0.57.0"}
   [x]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (cond
     ;; look for filters in the values
     (map? x) (update-vals x simplify-compound-filter)
@@ -107,13 +116,18 @@
 
 (mu/defn combine-filter-clauses :- mbql.s/Filter
   "Combine two filter clauses into a single clause in a way that minimizes slapping a bunch of `:and`s together if
-  possible."
+  possible.
+
+  DEPRECATED: This will be removed in the near future. Use lib utils going forward."
+  {:deprecated "0.57.0"}
   [filter-clause & more-filter-clauses]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
 ;;; TODO (Cam 7/16/25) -- why does the LEGACY MBQL UTILS have STAGE STUFF IN IT!
-(defn ^:deprecated legacy-last-stage-number
+(defn legacy-last-stage-number
   "Returns the canonical stage number of the last stage of the legacy `inner-query`."
+  {:deprecated "0.57.0"}
   [inner-query]
   (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
     (if (or (nil? source-query)
@@ -146,6 +160,7 @@
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
+  {:deprecated "0.57.0"}
   [m]
   (lib.util.match/replace m
     [:inside lat-field lon-field lat-max lon-min lat-min lon-max]
@@ -155,6 +170,7 @@
 
 (defn desugar-is-null-and-not-null
   "Rewrite `:is-null` and `:not-null` filter clauses as simpler `:=` and `:!=`, respectively."
+  {:deprecated "0.57.0"}
   [m]
   (lib.util.match/replace m
     [:is-null field]  [:=  field nil]
@@ -163,6 +179,7 @@
 (declare field-options)
 
 (defn- emptyable?
+  {:deprecated "0.57.0"}
   [clause]
   (if (is-clause? #{:field :expression :aggregation} clause)
     (-> clause
@@ -171,12 +188,14 @@
         (isa? :metabase.lib.schema.expression/emptyable))
     (mbql.preds/Emptyable? clause)))
 
-(defn desugar-is-empty-and-not-empty
+(defn- desugar-is-empty-and-not-empty
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
 
    If `:not-empty` is called on `:metabase.lib.schema.expression/emptyable` type, expand check for empty string. For
    non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:is-empty clause]
     (if (emptyable? clause)
@@ -190,7 +209,9 @@
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"
+  {:deprecated "0.57.0"}
   [m unit]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:field id-or-name opts]
     [:field id-or-name (assoc opts :temporal-unit unit)]
@@ -199,9 +220,11 @@
     (let [[_expression expression-name opts] &match]
       [:expression expression-name (assoc opts :temporal-unit unit)])))
 
-(defn desugar-time-interval
+(defn- desugar-time-interval
   "Rewrite `:time-interval` filter clauses as simpler ones like `:=` or `:between`."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:time-interval field-or-expression n unit] (recur [:time-interval field-or-expression n unit nil])
 
@@ -251,7 +274,9 @@
 
 (defn desugar-relative-time-interval
   "Transform `:relative-time-interval` to `:and` expression."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace
     m
     [:relative-time-interval col value bucket offset-value offset-bucket]
@@ -272,7 +297,9 @@
 
 (defn desugar-during
   "Transform a `:during` expression to an `:and` expression."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace
     m
     [:during col value unit]
@@ -287,7 +314,9 @@
 
 (defn desugar-if
   "Transform a `:if` expression to an `:case` expression."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace
     m
     [:if & args]
@@ -295,7 +324,9 @@
 
 (defn desugar-in
   "Transform `:in` and `:not-in` expressions to `:=` and `:!=` expressions."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:in & args]
     (into [:=] args)
@@ -303,18 +334,20 @@
     [:not-in & args]
     (into [:!=] args)))
 
-(defn desugar-does-not-contain
+(defn- desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
   Note that [[desugar-multi-argument-comparisons]] will have already desugared any 3+ argument `:does-not-contain` to
   several `[:and [:does-not-contain ...] [:does-not-contain ...] ...]` clauses, which then get rewritten here into
   `[:and [:not [:contains ...]] [:not [:contains ...]]]`."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
 
-(defn desugar-multi-argument-comparisons
+(defn- desugar-multi-argument-comparisons
   "`:=`, `!=`, `:contains`, `:does-not-contain`, `:starts-with` and `:ends-with` clauses with more than 2 args
   automatically get rewritten as compound filters.
 
@@ -326,7 +359,9 @@
   `:ends-with` depending on the number of arguments. 2-argument forms use the legacy style `[:contains field x opts]`.
   Multi-argument forms use pMBQL style with the options at index 1, **even if there are no options**:
   `[:contains {} field x y z]`."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [:= field x y & more]
     (apply vector :or (for [x (concat [x y] more)]
@@ -348,7 +383,9 @@
 (defn desugar-current-relative-datetime
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
   `<unit>` is inferred from the `:field` the clause is being compared to (if any), otherwise falls back to `default.`"
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
     (let [temporal-unit (or (lib.util.match/match-lite-recursive field
@@ -358,7 +395,7 @@
                              [:relative-datetime :current]
                              [:relative-datetime 0 temporal-unit])))))
 
-(def temporal-extract-ops->unit
+(def ^{:deprecated "0.57.0"} temporal-extract-ops->unit
   "Mapping from the sugar syntax to extract datetime to the unit."
   {[:get-year        nil]       :year-of-era
    [:get-quarter     nil]       :quarter-of-year
@@ -375,25 +412,31 @@
    [:get-minute      nil]       :minute-of-hour
    [:get-second      nil]       :second-of-minute})
 
-(def ^:private temporal-extract-ops
+(def ^:private ^{:deprecated "0.57.0"} temporal-extract-ops
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (->> (keys temporal-extract-ops->unit)
        (map first)
        set))
 
-(defn desugar-temporal-extract
+(defn- desugar-temporal-extract
   "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
+  {:deprecated "0.57.0"}
   [m]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace m
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
-(defn- desugar-divide-with-extra-args [expression]
+(defn- desugar-divide-with-extra-args
+  {:deprecated "0.57.0"}
+  [expression]
   (lib.util.match/replace expression
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
 (defn- temporal-case-expression
   "Creates a `:case` expression with a condition for each value of the given unit."
+  {:deprecated "0.57.0"}
   [column unit n]
   (let [user-locale #?(:clj  (i18n/user-locale)
                        :cljs nil)]
@@ -408,7 +451,9 @@
 
   Uses the user's locale rather than the site locale, so the results will depend on the runner of the query, not just
   the query itself. Filtering should be done based on the number, rather than the name."
+  {:deprecated "0.57.0"}
   [expression]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace expression
     [:month-name column]
     (recur (temporal-case-expression column :month-of-year 12))
@@ -420,7 +465,9 @@
 (mu/defn desugar-expression :- ::mbql.s/FieldOrExpressionDef
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
+  {:deprecated "0.57.0"}
   [expression :- ::mbql.s/FieldOrExpressionDef]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   ;; The `mbql.jvm-u/desugar-host-and-domain` is implemented only for jvm because regexes are not compatible with
   ;; Safari.
   (let [desugar-host-and-domain* #?(:clj  mbql.jvm-u/desugar-host-and-domain
@@ -432,7 +479,10 @@
         desugar-host-and-domain*
         desugar-temporal-names)))
 
-(defn- maybe-desugar-expression [clause]
+(defn- maybe-desugar-expression
+  {:deprecated "0.57.0"}
+  [clause]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (cond-> clause
     (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
@@ -440,8 +490,13 @@
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
-  implementation [[negate-filter-clause]] below.)"
+  implementation [[negate-filter-clause]] below.)
+
+  DEPRECATED: This will be removed in a future release. Use [[metabase.lib.core/desugar-filter-clause]] instead going
+  forward."
+  {:deprecated "0.57.0"}
   [filter-clause :- mbql.s/Filter]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause
       desugar-current-relative-datetime
       desugar-in
@@ -485,6 +540,7 @@
   filter clause types). Useful for generating highly optimized filter clauses and for drivers that do not support
   top-level `:not` filter clauses."
   [filter-clause :- mbql.s/Filter]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
 (mu/defn query->source-table-id :- [:maybe pos-int?]
@@ -773,7 +829,10 @@
      *  `:max-results-bare-rows` is returned if set and Query does not have any aggregations
      *  `:max-results` is returned otherwise
   *  If none of the above are set, returns `nil`. In this case, you should use something like the Metabase QP's
-     `max-rows-limit`"
+     `max-rows-limit`
+
+  DEPRECATED: this will be removed in the near future. Prefer [[metabase.lib.limit/max-rows-limit]] for new code."
+  {:deprecated "0.57.0"}
   [{{:keys [max-results max-results-bare-rows]}                      :constraints
     {limit :limit, aggregations :aggregation, {:keys [items]} :page} :query
     query-type                                                       :type}]
