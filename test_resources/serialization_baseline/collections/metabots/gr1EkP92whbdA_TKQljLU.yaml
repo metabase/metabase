@@ -21,12 +21,8 @@ entities:
     serdes/meta:
     - id: gr1EkP92whbdA_TKQljLU
       model: Metabot
-    - id: lOPH7ciO8ndcpNCzkOCbH
-      model: MetabotEntity
     - id: U4V5PzzpaMasl1Kt9BvNy
       model: MetabotPrompt
   serdes/meta:
   - id: gr1EkP92whbdA_TKQljLU
     model: Metabot
-  - id: lOPH7ciO8ndcpNCzkOCbH
-    model: MetabotEntity

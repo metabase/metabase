@@ -8,8 +8,6 @@ entities:
   serdes/meta:
   - id: zXxMBaxni6nRGRhD7vmPc
     model: Metabot
-  - id: _Jc9eftJesJVUU9gFKAXV
-    model: MetabotEntity
   prompts: []
 entity_id: zXxMBaxni6nRGRhD7vmPc
 name: Test Metabot
