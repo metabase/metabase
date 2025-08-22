@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import MetabotCloudIcon from "assets/img/metabot-cloud-96x96.svg";
 import { useTokenRefreshUntil } from "metabase/api/utils";
 import {
   Box,
@@ -34,10 +35,7 @@ export const MetabotPurchaseSettingUpModal = ({
     >
       <Stack align="center" gap="lg" my="4.5rem">
         <Box h={96} pos="relative" w={96}>
-          <img
-            src="app/assets/img/metabot-cloud-96x96.svg"
-            alt={t`Metabot Cloud`}
-          />
+          <img src={MetabotCloudIcon} alt={t`Metabot Cloud`} />
 
           {isSettingUp && (
             <Flex
