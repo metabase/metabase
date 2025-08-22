@@ -87,7 +87,7 @@ describe("documents", () => {
 
     H.openNavigationSidebar();
 
-    // Force the cliock since this is hidden behind a toast notification
+    // Force the click since this is hidden behind a toast notification
     H.navigationSidebar().findByText("Trash").click({ force: true });
     H.getUnpinnedSection().findByText("Test Document").should("exist");
   });

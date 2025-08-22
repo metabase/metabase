@@ -164,16 +164,14 @@ export const DocumentPage = ({
   ]);
 
   // Reset state when we navigate back to /new
-  const resetDocument = () => {
-    if (isNewDocument && previousLocationKey !== location.key) {
-      setDocumentTitle("");
-      setDocumentContent(null);
-      setHasUnsavedEditorChanges(false);
-      editorInstance?.commands.clearContent();
-      editorInstance?.commands.focus();
-      dispatch(resetDocuments());
-    }
-  };
+  const resetDocument = useCallback(() => {
+    setDocumentTitle("");
+    setDocumentContent(null);
+    setHasUnsavedEditorChanges(false);
+    editorInstance?.commands.clearContent();
+    editorInstance?.commands.focus();
+    dispatch(resetDocuments());
+  }, [dispatch, editorInstance, setDocumentContent, setDocumentTitle]);
 
   // Reset dirty state when document content loads from API
   useEffect(() => {
