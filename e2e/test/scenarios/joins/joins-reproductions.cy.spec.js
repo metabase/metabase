@@ -1207,7 +1207,7 @@ describe("issue 27521", () => {
       .findByText("Q1 → ID")
       .should("be.visible")
       .click();
-    H.popover().findByText("ID").should("be.visible").click();
+    H.popover().findByText("Q1 → ID").should("be.visible").click();
 
     H.visualize();
 
