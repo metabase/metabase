@@ -106,7 +106,7 @@
                 "monthly"
                 [(i18n/deferred-trs "Monthly job")
                  (i18n/deferred-trs "Executes transforms tagged with ''monthly'' once per month")]}
-        [name description] (mapv str (get values (:built_in_type job)))]
+        [name description] (get values (:built_in_type job))]
     {:name name :description description}))
 
 (t2/define-after-select :model/TransformJob [job]
@@ -117,6 +117,8 @@
 (t2/define-before-update :model/TransformJob [job]
   (if (nil? (:built_in_type job))
     job
-    (merge (translated-name-and-description job) ;; default translations
-           {:built_in_type nil}                  ;; never translate again
-           (t2/changes job))))                   ;; user edits
+    (-> (merge (translated-name-and-description job) ;; default translations
+               {:built_in_type nil}                  ;; never translate again
+               (t2/changes job))                     ;; user edits
+        (update :name        str) ;; convert deferred to strings
+        (update :description str))))

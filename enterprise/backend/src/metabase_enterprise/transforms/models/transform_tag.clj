@@ -26,7 +26,7 @@
                 "daily"   (i18n/deferred-trs "daily")
                 "weekly"  (i18n/deferred-trs "weekly")
                 "monthly" (i18n/deferred-trs "monthly")}
-        name (str (get values (:built_in_type tag)))]
+        name (get values (:built_in_type tag))]
     {:name name}))
 
 (t2/define-after-select :model/TransformTag [tag]
@@ -37,6 +37,7 @@
 (t2/define-before-update :model/TransformTag [tag]
   (if (nil? (:built_in_type tag))
     tag
-    (merge (translate-name tag) ;; translated default names
-           {:built_in_type nil} ;; never translate this again
-           (t2/changes tag))))  ;; include user edits
+    (-> (merge (translate-name tag) ;; translated default names
+               {:built_in_type nil} ;; never translate this again
+               (t2/changes tag))    ;; include user edits
+        (update :name str)))) ;; convert deferred to string
