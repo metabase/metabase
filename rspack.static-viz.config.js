@@ -14,8 +14,6 @@ const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
 const SDK_BUNDLE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
-const SDK_SHARED_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-shared";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 
@@ -122,7 +120,6 @@ module.exports = (env) => {
         "metabase-types": TYPES_SRC_PATH,
         embedding: EMBEDDING_SRC_PATH,
         "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
-        "embedding-sdk-shared": SDK_BUNDLE_SRC_PATH,
         "process/browser": require.resolve("process/browser"),
         "ee-overrides":
           process.env.MB_EDITION === "ee"

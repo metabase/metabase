@@ -28,6 +28,8 @@ const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
+const SDK_PACKAGE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-package";
 const SDK_BUNDLE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 const SDK_SHARED_SRC_PATH =
@@ -227,6 +229,7 @@ const config = {
       "ee-plugins": resolveEnterprisePathOrNoop("/plugins"),
       "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
       embedding: EMBEDDING_SRC_PATH,
+      "embedding-sdk-package": SDK_PACKAGE_SRC_PATH,
       "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
       "embedding-sdk-shared": SDK_SHARED_SRC_PATH,
       "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(

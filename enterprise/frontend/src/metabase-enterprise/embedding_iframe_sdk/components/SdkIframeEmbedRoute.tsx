@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
+import type { MetabaseAuthConfig } from "embedding-sdk-bundle";
 import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
@@ -9,7 +10,6 @@ import {
   InteractiveDashboard,
   StaticDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
-import { defineMetabaseAuthConfig } from "embedding-sdk-bundle/sdk-package/lib/public/define-metabase-auth-config";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
@@ -62,10 +62,10 @@ export const SdkIframeEmbedRoute = () => {
 
   const { theme, locale } = embedSettings;
 
-  const authConfig = defineMetabaseAuthConfig({
+  const authConfig: MetabaseAuthConfig = {
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
-  });
+  };
 
   return (
     <ComponentProvider authConfig={authConfig} theme={theme} locale={locale}>
