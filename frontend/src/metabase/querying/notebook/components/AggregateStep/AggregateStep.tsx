@@ -49,6 +49,27 @@ export function AggregateStep({
   const renderAggregationName = (aggregation: Lib.AggregationClause) =>
     Lib.displayInfo(query, stageIndex, aggregation).longDisplayName;
 
+  const canRenderPopover = (
+    query: Lib.Query,
+    stageIndex: number,
+    clause: Lib.AggregationClause,
+    clauseIndex,
+  ) => {
+    const isUpdate = clause != null && clauseIndex != null;
+    const baseOperators = Lib.availableAggregationOperators(query, stageIndex);
+    const operators = isUpdate
+      ? Lib.selectedAggregationOperators(baseOperators, clause)
+      : baseOperators;
+    const isCustomExpression = isExpressionEditorInitiallyOpen(
+      query,
+      stageIndex,
+      clause,
+      operators,
+    );
+
+    return !readOnly || isCustomExpression;
+  };
+
   return (
     <ClauseStep
       items={aggregations}
@@ -59,17 +80,19 @@ export function AggregateStep({
       hasAddButton={hasAddButton}
       hasRemoveButton={hasRemoveButton}
       renderName={renderAggregationName}
-      renderPopover={({ item: aggregation, index, onClose }) => (
-        <AggregationPopover
-          query={query}
-          stageIndex={stageIndex}
-          clause={aggregation}
-          clauseIndex={index}
-          onQueryChange={updateQuery}
-          onClose={onClose}
-          readOnly={readOnly}
-        />
-      )}
+      renderPopover={({ item: aggregation, index, onClose }) =>
+        canRenderPopover(query, stageIndex, aggregation, index) && (
+          <AggregationPopover
+            query={query}
+            stageIndex={stageIndex}
+            clause={aggregation}
+            clauseIndex={index}
+            onQueryChange={updateQuery}
+            onClose={onClose}
+            readOnly={readOnly}
+          />
+        )
+      }
       onReorder={handleReorderAggregation}
       onRemove={handleRemoveAggregation}
       data-testid="aggregate-step"
@@ -105,17 +128,6 @@ function AggregationPopover({
       ? Lib.selectedAggregationOperators(baseOperators, clause)
       : baseOperators;
   }, [query, clause, stageIndex, isUpdate]);
-
-  const isCustomExpression = isExpressionEditorInitiallyOpen(
-    query,
-    stageIndex,
-    clause,
-    operators,
-  );
-
-  if (readOnly && !isCustomExpression) {
-    return null;
-  }
 
   return (
     <AggregationPicker

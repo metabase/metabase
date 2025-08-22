@@ -526,7 +526,14 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
                     query: {
                       "source-table": tableId,
                       filter: [">", ["field", ANIMAL_SCORE, {}], 10],
-                      aggregation: [["count"]],
+                      aggregation: [
+                        ["count"],
+                        [
+                          "aggregation-options",
+                          ["+", ["count"], 1],
+                          { name: "Foobar", "display-name": "Foobar" },
+                        ],
+                      ],
                       expressions: {
                         ScorePlusOne: ["+", ["field", ANIMAL_SCORE, {}], 1],
                       },
@@ -617,6 +624,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       cy.log("Summarize step should be read-only");
       H.getNotebookStep("summarize").findByText("Count").click();
       assertNoModals();
+
+      H.getNotebookStep("summarize").findByText("Foobar").click();
+      H.CustomExpressionEditor.value().should("equal", "Count() + 1");
+      H.CustomExpressionEditor.nameInput()
+        .should("have.value", "Foobar")
+        .should("have.attr", "readonly");
+      H.popover().button("Done").click();
 
       H.getNotebookStep("summarize").findByText("Score: 10 bins").click();
       assertNoModals();

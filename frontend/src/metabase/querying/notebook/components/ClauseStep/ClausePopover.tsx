@@ -40,6 +40,8 @@ export function ClausePopover({
     }
   }, [active]);
 
+  const content = renderPopover(handleClose);
+
   return (
     <PreventPopoverExitProvider>
       <Popover
@@ -49,12 +51,12 @@ export function ClausePopover({
         trapFocus
         onChange={handleChange}
         classNames={{ dropdown: S.dropdown }}
-        disabled={disabled}
+        disabled={disabled || content === false}
       >
         <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
         <Popover.Dropdown data-testid="clause-popover">
           <Box className={S.dropdownContent} data-testid="popover-content">
-            {renderPopover(handleClose)}
+            {content}
           </Box>
         </Popover.Dropdown>
       </Popover>
