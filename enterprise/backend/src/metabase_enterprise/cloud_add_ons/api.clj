@@ -5,7 +5,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.premium-features.core :as premium-features]))
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
@@ -30,17 +31,20 @@
     {:status 403 :body "Only Metabase Store users can purchase add-ons."}
 
     :else
-    (try
-      (hm.client/call :change-add-ons, :upsert-add-ons [{:product-type product-type}])
-      (premium-features/clear-cache)
-      {:status 200 :body {}}
-      (catch Exception e
-        (case (-> e ex-data :status)
-          404 {:status 404 :body "Could not establish a connection to Metabase Cloud."}
-          403 {:status 403 :body "Could not establish a connection to Metabase Cloud."}
-          401 {:status 401 :body "Could not establish a connection to Metabase Cloud."}
-          400 {:status 400 :body "Could not purchase this add-on."}
-          {:status 500 :body "Unexpected error"})))))
+    (let [error-no-connection   (deferred-tru "Could not establish a connection to Metabase Cloud.")
+          error-cannot-purchase (deferred-tru "Could not purchase this add-on.")
+          error-unexpected      (deferred-tru "Unexpected error")]
+      (try
+        (hm.client/call :change-add-ons, :upsert-add-ons [{:product-type product-type}])
+        (premium-features/clear-cache)
+        {:status 200 :body {}}
+        (catch Exception e
+          (case (-> e ex-data :status)
+            404 {:status 404 :body error-no-connection}
+            403 {:status 403 :body error-no-connection}
+            401 {:status 401 :body error-no-connection}
+            400 {:status 400 :body error-cannot-purchase}
+            {:status 500 :body error-unexpected}))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/cloud-add-ons` routes."
