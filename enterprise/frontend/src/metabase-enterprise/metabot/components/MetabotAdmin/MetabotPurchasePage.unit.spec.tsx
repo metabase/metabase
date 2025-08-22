@@ -45,11 +45,11 @@ const setup = async ({
 };
 
 describe("MetabotPurchasePage", () => {
-  it("shows alternate text when user is not a store user", () => {
+  it("shows empty state alternate text when current user is not a store user", () => {
     setup({ current_user_matches_store_user: false });
     expect(screen.getByText(/Get a free month of Metabot/)).toBeInTheDocument();
     expect(
-      screen.getByText(/Please ask a Metabase Store user/),
+      screen.getByText(/Please ask a Metabase Store Admin/),
     ).toBeInTheDocument();
   });
 
@@ -58,7 +58,7 @@ describe("MetabotPurchasePage", () => {
       current_user_matches_store_user: true,
     });
     expect(
-      screen.queryByText(/Please ask a Metabase Store user/),
+      screen.queryByText(/Please ask a Metabase Store Admin/),
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
