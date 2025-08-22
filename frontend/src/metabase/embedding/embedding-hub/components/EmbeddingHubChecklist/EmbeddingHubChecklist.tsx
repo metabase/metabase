@@ -1,7 +1,9 @@
+import { useMemo } from "react";
+
 import AccordionS from "metabase/home/components/Onboarding/OnboardingAccordion.module.css";
 import { Accordion, Icon, Stack, Text } from "metabase/ui";
 
-import { useScrollAccordionItemIntoView } from "../../hooks/use-scroll-accordion-item";
+import { useScrollListItemIntoView } from "../../hooks/use-scroll-list-item-into-view";
 import type { EmbeddingHubStep, EmbeddingHubStepId } from "../../types";
 
 import S from "./EmbeddingHubChecklist.module.css";
@@ -20,8 +22,10 @@ export const EmbeddingHubChecklist = ({
   defaultOpenStep,
   completedSteps = {},
 }: EmbeddingHubChecklistProps) => {
-  const { accordionItemRefs, scrollAccordionItemIntoView } =
-    useScrollAccordionItemIntoView(steps.map((step) => step.id));
+  const stepIds = useMemo(() => steps.map((step) => step.id), [steps]);
+
+  const { listItemRefs, scrollListItemIntoView } =
+    useScrollListItemIntoView(stepIds);
 
   const renderStepIcon = (step: EmbeddingHubStep) => {
     const isCompleted = completedSteps[step.id];
@@ -37,7 +41,7 @@ export const EmbeddingHubChecklist = ({
     <Accordion
       defaultValue={defaultOpenStep ?? steps[0]?.id}
       classNames={accordionClassNames}
-      onChange={scrollAccordionItemIntoView}
+      onChange={scrollListItemIntoView}
     >
       {steps.map((step) => {
         const isCompleted = completedSteps[step.id] ?? false;
@@ -47,7 +51,7 @@ export const EmbeddingHubChecklist = ({
             key={step.id}
             value={step.id}
             data-testid={`${step.id}-item`}
-            ref={accordionItemRefs[step.id]}
+            ref={listItemRefs[step.id]}
           >
             <Accordion.Control
               icon={renderStepIcon(step)}
