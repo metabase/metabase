@@ -46,6 +46,7 @@ export interface AggregationPickerProps {
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
   onBack?: () => void;
+  readOnly?: boolean;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -81,6 +82,7 @@ export function AggregationPicker({
   onClose,
   onQueryChange,
   onBack,
+  readOnly,
 }: AggregationPickerProps) {
   const metadata = useSelector(getMetadata);
   const displayInfo = clause
@@ -309,10 +311,15 @@ export function AggregationPicker({
         withName
         expressionMode="aggregation"
         expressionIndex={clauseIndex}
-        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+        header={
+          <ExpressionWidgetHeader
+            onBack={readOnly ? undefined : closeExpressionEditor}
+          />
+        }
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
         initialExpressionClause={initialExpressionClause}
+        readOnly={readOnly}
       />
     );
   }
