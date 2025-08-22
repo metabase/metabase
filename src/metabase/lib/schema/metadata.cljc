@@ -588,7 +588,10 @@
   (cond-> card
     (and (not (:name card))
          (:id card))
-    (assoc :name (str "Card " (:id card)))))
+    (assoc :name (str "Card " (:id card)))
+
+    (not (:collection-id card))
+    (assoc :collection-id nil)))
 
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
@@ -614,6 +617,9 @@
    ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a
    ;; particular Table (unless they are against MongoDB)... for MBQL queries it should be populated however.
    [:table-id        {:optional true} [:maybe ::lib.schema.id/table]]
+   ;; ID of the collection this Card is saved in. `nil` means it is saved in the "Root Collection". Important for
+   ;; perms-checking purposes.
+   [:collection-id   {:optional true} [:maybe ::lib.schema.id/collection]]
    ;;
    ;; PERSISTED INFO: This comes from the [[metabase.model-persistence.models.persisted-info]] model.
    ;;
@@ -653,6 +659,8 @@
   [:map
    [:lib/type [:= :metadata/native-query-snippet]]
    [:id       ::lib.schema.id/native-query-snippet]])
+;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
+
 ;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
 
 (mr/def ::table

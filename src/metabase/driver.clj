@@ -127,9 +127,9 @@
 
 (declare initialize!)
 
-(defn the-initialized-driver
+(mu/defn the-initialized-driver
   "Like [[the-driver]], but also initializes the driver if not already initialized."
-  [driver]
+  [driver :- [:or :keyword :string]]
   (let [driver (keyword driver)]
     ;; Fastpath: an initialized driver `driver` is always already registered. Checking for `initialized?` is faster
     ;; than doing the `registered?` check inside `load-driver-namespace-if-needed!`.
@@ -755,7 +755,10 @@
     :database-routing
 
     ;; Does this driver support replication?
-    :database-replication})
+    :database-replication
+
+    ;; whether this driver supports checking table writeable permissions
+    :metadata/table-writable-check})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -798,8 +801,9 @@
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
                               :test/dynamic-dataset-loading           true
-                              :test/uuids-in-create-table-statements true
-                              :metadata/table-existence-check false}]
+                              :test/uuids-in-create-table-statements  true
+                              :metadata/table-existence-check         false
+                              :metadata/table-writable-check          false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -993,7 +997,7 @@
 (defmulti substitute-native-parameters
   "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
 
-    {:query \"SELECT count(*) FROM table WHERE id = {{param}}\"
+    {:query         \"SELECT count(*) FROM table WHERE id = {{param}}\"
      :template-tags {:param {:name \"param\", :display-name \"Param\", :type :number}}
      :parameters    [{:type   :number
                       :target [:variable [:template-tag \"param\"]]
@@ -1005,7 +1009,7 @@
   `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
   this method.`Driver-agnostic end-to-end native parameter tests live in
   [[metabase.query-processor-test.parameters-test]] and other namespaces."
-  {:added "0.34.0" :arglists '([driver inner-query])}
+  {:added "0.34.0" :arglists '([driver inner-native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

@@ -302,9 +302,14 @@
           dimension-id (get-in (lib.metadata/field mp (meta/id :orders :product-id))
                                [:lib/external-remap :id])]
       (doseq [nesting-level [0 1]
-              :let          [query (lib/query mp (mt/nest-query query nesting-level))]]
+              :let          [query (reduce
+                                    (fn [query _]
+                                      (lib/append-stage query))
+                                    (lib/query mp query)
+                                    (range nesting-level))]]
         (testing (format "nesting level = %d" nesting-level)
-          (is (= (-> (lib/->legacy-MBQL query)
+          (is (= (-> query
+                     lib/->legacy-MBQL
                      (assoc-in
                       (concat [:query] (repeat nesting-level :source-query) [:fields])
                       (lib.tu.macros/$ids orders
@@ -605,7 +610,9 @@
                              :alias        "j"
                              :condition    [:= $id &j.orders.product-id]
                              :fields       :all}]}))
-          preprocessed (qp.preprocess/preprocess query)]
+          preprocessed (-> query
+                           qp.preprocess/preprocess
+                           lib/->legacy-MBQL)]
       (testing ":query => :joins"
         (let [joins (get-in preprocessed [:query :joins])]
           (testing "=> 0"
@@ -717,7 +724,9 @@
                                  :fields       #(= (count %) 10)}
                                 {:alias "PEOPLE__via__USER_ID"}]
                        :fields #(= (count %) 20)}}
-              (qp.preprocess/preprocess query))))))
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL))))))
 
 (deftest ^:parallel multiple-fk-remaps-test-in-joins-e2e-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B in a join"
@@ -773,4 +782,6 @@
                                 [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__ID"}]
                                 ;; TODO DUPLICATE!!!
                                 [:field (meta/id :categories :name) {:join-alias "J"}]]}}
-              (qp.preprocess/preprocess query))))))
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL))))))

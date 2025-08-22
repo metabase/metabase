@@ -8,6 +8,7 @@ export const LINK_SEARCH_MODELS: SearchModel[] = [
   "database",
   "table",
   "collection",
+  "document",
 ];
 
 export const EMBED_SEARCH_MODELS: SearchModel[] = ["card", "dataset"];

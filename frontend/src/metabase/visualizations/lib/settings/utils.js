@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import {
   columnsAreValid,
   getDefaultDimensionAndMetric,
@@ -73,4 +75,8 @@ export function fieldSetting(
       ...def,
     },
   };
+}
+
+export function getDeduplicatedTableColumnSettings(tableColumnsSettings) {
+  return _.uniq(tableColumnsSettings, false, (item) => item.name);
 }

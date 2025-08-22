@@ -1,6 +1,7 @@
 (ns metabase.legacy-mbql.util-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
-   #?@(:clj  (^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
+   #?@(:clj  ([metabase.test.util.i18n])
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :as t]
@@ -181,58 +182,6 @@
              [:= [:field 3 nil] 300]
              [:= [:field 4 nil] 300]]))
         "Should be able to combine multiple compound clauses"))
-
-(t/deftest ^:parallel add-filter-clause-test-1-single-stage
-  (t/is (= {:database 1
-            :type     :query
-            :query    {:source-table 1
-                       :filter       [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]}}
-           (mbql.u/add-filter-clause
-            {:database 1
-             :type     :query
-             :query    {:source-table 1
-                        :filter       [:= [:field 1 nil] 100]}}
-            0
-            [:= [:field 2 nil] 200]))
-        "Should be able to add a filter clause to a query"))
-
-(t/deftest ^:parallel add-filter-clause-test-2-earlier-stage
-  (doseq [stage-number [0 -2]]
-    (t/is (= {:database 1
-              :type     :query
-              :query    {:source-query {:source-table 1
-                                        :filter       [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
-                                        :aggregation  [[:count]]}
-                         :expressions  {"negated" [:* [:field 1 nil] -1]}}}
-             (mbql.u/add-filter-clause
-              {:database 1
-               :type     :query
-               :query    {:source-query {:source-table 1
-                                         :filter       [:= [:field 1 nil] 100]
-                                         :aggregation  [[:count]]}
-                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
-              stage-number
-              [:= [:field 2 nil] 200]))
-          "Should be able to add a filter clause to an earlier stage of a query")))
-
-(t/deftest ^:parallel add-filter-clause-test-3-later-stage
-  (doseq [stage-number [-1 1]]
-    (t/is (= {:database 1
-              :type     :query
-              :query    {:source-query {:source-table 1
-                                        :filter       [:= [:field 1 nil] 100]
-                                        :aggregation  [[:count]]}
-                         :expressions  {"negated" [:* [:field 1 nil] -1]}
-                         :filter       [:= [:field 2 nil] 200]}}
-             (mbql.u/add-filter-clause
-              {:database 1
-               :type     :query
-               :query    {:source-query {:source-table 1
-                                         :filter       [:= [:field 1 nil] 100]
-                                         :aggregation  [[:count]]}
-                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
-              stage-number
-              [:= [:field 2 nil] 200])))))
 
 (t/deftest ^:parallel map-stages-test
   (let [test-fn (fn [inner-query stage-number]
@@ -586,12 +535,12 @@
 
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
-    (doseq [[[op mode] unit] mbql.u/temporal-extract-ops->unit]
+    (doseq [[[op mode] unit] @#'mbql.u/temporal-extract-ops->unit]
       (t/is (= [:temporal-extract [:field 1 nil] unit]
-               (mbql.u/desugar-temporal-extract [op [:field 1 nil] mode])))
+               (#'mbql.u/desugar-temporal-extract [op [:field 1 nil] mode])))
 
       (t/is (= [:+ [:temporal-extract [:field 1 nil] unit] 1]
-               (mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil] mode] 1]))))))
+               (#'mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil] mode] 1]))))))
 
 (t/deftest ^:parallel desugar-divide-with-extra-args-test
   (t/testing `mbql.u/desugar-expression
@@ -894,6 +843,7 @@
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (t/deftest ^:parallel query->max-rows-limit-test
   (doseq [[group query->expected]
           {"should return `:limit` if set"
@@ -1039,7 +989,7 @@
   (t/is (= [:=
             [:expression "Date" {:temporal-unit :quarter}]
             [:relative-datetime 0 :quarter]]
-           (mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
+           (#'mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
 
 (t/deftest ^:parallel desugar-month-quarter-day-name-test
   (t/is (= [:case [[[:= [:field 1 nil] 1]  "Jan"]
@@ -1077,7 +1027,7 @@
 
 #?(:clj
    (t/deftest ^:synchronized desugar-month-quarter-day-name-i18n-test
-     (mt/with-user-locale "es"
+     (metabase.test.util.i18n/with-user-locale "es"
        ;; JVM versions 17 and older for some languages (including Spanish) use eg. "oct.", while in JVMs 18+ they
        ;; use "oct". I wish I were joking, but I'm not. These tests were passing on 21 and failing on 17 and 11
        ;; before I made them flexible about the dot.

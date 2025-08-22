@@ -423,10 +423,10 @@
                                  (lib/returned-columns query))]
     (-> (or (:column_settings viz-settings)
             (::mb.viz/column-settings viz-settings))
-        (update-keys (fn [k]
-                       (if (string? k)
-                         (-> k json/decode last index-in-breakouts)
-                         (->> k ::mb.viz/column-name index-in-breakouts))))
+        (perf/update-keys (fn [k]
+                            (if (string? k)
+                              (-> k json/decode last index-in-breakouts)
+                              (->> k ::mb.viz/column-name index-in-breakouts))))
         (update-vals (comp keyword :pivot_table.column_sort_order)))))
 
 (mu/defn- field-ref-pivot-options :- ::pivot-opts
@@ -623,7 +623,7 @@
   ([query]
    (run-pivot-query query nil))
 
-  ([query :- ::qp.schema/query
+  ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]

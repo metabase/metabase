@@ -10,11 +10,11 @@ type ExternalDependenciesGlobalName =
   (typeof EXTERNAL_DEPENDENCIES)[keyof typeof EXTERNAL_DEPENDENCIES];
 
 const CONFIG: Record<ExternalDependenciesGlobalName, any> = {
-  React,
-  ReactJSXRuntime,
-  ReactDOM,
-  ReactDOMClient,
-  ReactDOMServer,
+  METABASE_REACT: React,
+  METABASE_REACT_JSX_RUNTIME: ReactJSXRuntime,
+  METABASE_REACT_DOM: ReactDOM,
+  METABASE_REACT_DOM_CLIENT: ReactDOMClient,
+  METABASE_REACT_DOM_SERVER: ReactDOMServer,
 };
 
 // Put External Dependencies to the global object, so it can be used by the SDK bundle

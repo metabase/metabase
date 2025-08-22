@@ -154,6 +154,7 @@ export function DetailsTable({
     if (!columnSettings) {
       return { cols: columns, row: zoomedRow };
     }
+
     const columnIndexes = findColumnIndexesForColumnSettings(
       columns,
       columnSettings.filter(({ enabled }) => enabled),

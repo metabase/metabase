@@ -1,7 +1,8 @@
+import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import cx from "classnames";
 import dayjs from "dayjs";
+import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
@@ -17,27 +18,18 @@ import {
   useListBookmarksQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import DateTime, {
-  getFormattedTime,
-} from "metabase/common/components/DateTime";
-import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import {
+  LeaveConfirmModal,
+  LeaveRouteConfirmModal,
+} from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { SetTitle } from "metabase/hoc/Title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Menu,
-  Text,
-  TextInput,
-  Tooltip,
-} from "metabase/ui";
+import { Box } from "metabase/ui";
 import {
   useCreateDocumentMutation,
   useGetDocumentQuery,
@@ -64,6 +56,7 @@ import {
 } from "../selectors";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
+import { DocumentHeader } from "./DocumentHeader";
 import styles from "./DocumentPage.module.css";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
@@ -71,11 +64,14 @@ import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 export const DocumentPage = ({
   params: { entityId },
   route,
+  location,
 }: {
   params: { entityId?: string };
-  location?: { query?: { version?: string } };
+  location: Location;
   route: Route;
 }) => {
+  const previousLocationKey = usePrevious(location.key);
+  const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
@@ -167,6 +163,16 @@ export const DocumentPage = ({
     dispatch,
   ]);
 
+  // Reset state when we navigate back to /new
+  const resetDocument = useCallback(() => {
+    setDocumentTitle("");
+    setDocumentContent(null);
+    setHasUnsavedEditorChanges(false);
+    editorInstance?.commands.clearContent();
+    editorInstance?.commands.focus();
+    dispatch(resetDocuments());
+  }, [dispatch, editorInstance, setDocumentContent, setDocumentTitle]);
+
   // Reset dirty state when document content loads from API
   useEffect(() => {
     if (documentContent && !isNewDocument) {
@@ -215,7 +221,8 @@ export const DocumentPage = ({
     (content: JSONContent) => {
       // For new documents, any content means changes
       if (isNewDocument) {
-        setHasUnsavedEditorChanges(!editorInstance?.isEmpty);
+        // when navigating to `/new`, handleChange is fired but the editor instance hasn't been set yet
+        setHasUnsavedEditorChanges(!!editorInstance && !editorInstance.isEmpty);
         return;
       }
 
@@ -375,129 +382,28 @@ export const DocumentPage = ({
     [dispatch, selectedEmbedIndex],
   );
 
-  const handlePrintDocument = useCallback(() => {
-    window.print();
-  }, []);
-
   return (
     <Box className={styles.documentPage}>
+      <SetTitle title={documentData?.name || t`New document`} />
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
           <Box className={styles.documentContainer}>
-            <Box className={styles.header} mt="xl" pt="xl">
-              <Flex direction="column" w="100%">
-                <TextInput
-                  aria-label={t`Document Title`}
-                  autoFocus={isNewDocument}
-                  value={documentTitle}
-                  onChange={(event) =>
-                    setDocumentTitle(event.currentTarget.value)
-                  }
-                  flex={1}
-                  placeholder={t`New document`}
-                  readOnly={!canWrite}
-                  styles={{
-                    input: {
-                      border: "none",
-                      padding: 0,
-                      fontSize: "2rem",
-                      fontWeight: "bold",
-                    },
-                  }}
-                />
-                {documentData && (
-                  <Flex gap="md">
-                    <Text className={styles.metadataItem}>
-                      <Icon name="person" />
-                      {documentData.creator.common_name}{" "}
-                    </Text>
-                    <Tooltip
-                      label={getFormattedTime(
-                        documentData.updated_at,
-                        "default",
-                        { local: true },
-                      )}
-                    >
-                      <Text className={styles.metadataItem}>
-                        <Icon name="clock" />
-                        <DateTime value={documentData.updated_at} unit="day" />
-                      </Text>
-                    </Tooltip>
-                  </Flex>
-                )}
-              </Flex>
-              <Flex gap="md" align="center">
-                <Box
-                  className={cx(styles.hidable, {
-                    [styles.visible]: showSaveButton,
-                  })}
-                >
-                  <Button
-                    onClick={() => {
-                      isNewDocument
-                        ? setCollectionPickerMode("save")
-                        : handleSave();
-                    }}
-                    variant="filled"
-                    data-hide-on-print
-                  >
-                    {t`Save`}
-                  </Button>
-                </Box>
-                <Menu position="bottom-end">
-                  <Menu.Target>
-                    <ActionIcon
-                      variant="subtle"
-                      size="md"
-                      aria-label={t`More options`}
-                      data-hide-on-print
-                    >
-                      <Icon name="ellipsis" />
-                    </ActionIcon>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item
-                      leftSection={<Icon name="document" />}
-                      onClick={handlePrintDocument}
-                    >
-                      {t`Print Document`}
-                    </Menu.Item>
-                    {!isNewDocument && (
-                      <>
-                        {canWrite && (
-                          <Menu.Item
-                            leftSection={<Icon name="move" />}
-                            onClick={() => setCollectionPickerMode("move")}
-                          >
-                            {t`Move`}
-                          </Menu.Item>
-                        )}
-                        <Menu.Item
-                          leftSection={<Icon name={"bookmark"} />}
-                          onClick={handleToggleBookmark}
-                        >
-                          {isBookmarked
-                            ? t`Remove from Bookmarks`
-                            : t`Bookmark`}
-                        </Menu.Item>
-                        {canWrite && (
-                          <>
-                            <Menu.Divider />
-                            <Menu.Item
-                              leftSection={<Icon name="trash" />}
-                              onClick={() => handleUpdate({ archived: true })}
-                            >
-                              {t`Move to trash`}
-                            </Menu.Item>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </Menu.Dropdown>
-                </Menu>
-              </Flex>
-            </Box>
+            <DocumentHeader
+              document={documentData}
+              documentTitle={documentTitle}
+              isNewDocument={isNewDocument}
+              canWrite={canWrite ?? false}
+              showSaveButton={showSaveButton ?? false}
+              isBookmarked={isBookmarked}
+              onTitleChange={setDocumentTitle}
+              onSave={() => {
+                isNewDocument ? setCollectionPickerMode("save") : handleSave();
+              }}
+              onMove={() => setCollectionPickerMode("move")}
+              onToggleBookmark={handleToggleBookmark}
+              onArchive={() => handleUpdate({ archived: true })}
+            />
             <Editor
               onEditorReady={setEditorInstance}
               onCardEmbedsChange={updateCardEmbeds}
@@ -545,9 +451,20 @@ export const DocumentPage = ({
         <LeaveRouteConfirmModal
           // `key` remounts this modal when navigating between different documents or to a new document.
           // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
-          key={documentId}
+          key={location.key}
           isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
           route={route}
+        />
+
+        <LeaveConfirmModal
+          // only applies when going from /new -> /new
+          opened={
+            hasUnsavedChanges() &&
+            isNewDocument &&
+            location.key !== previousLocationKey
+          }
+          onConfirm={resetDocument}
+          onClose={() => forceUpdate()}
         />
       </Box>
     </Box>
