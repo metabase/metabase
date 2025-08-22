@@ -9,11 +9,11 @@
         extra [{:id 3 :name "extra1"} {:id 4 :name "extra2"}]
         all-tables (concat used extra)]
     (with-redefs [table-utils/used-tables (fn [_] used)
-                  table-utils/database-tables (fn [_ opts]
-                                                (take (:all-tables-limit opts 100) all-tables))]
+                  table-utils/database-tables (fn [_ _]
+                                                (take 100 all-tables))]
       (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}, :all-tables-limit 3})]
         (is (= used result) "Should only return used tables, in order")
-        (is (= (count result) (count used)) "Should return all used tables")
+        (is (= (count used) (count result)) "Should return all used tables")
         (is (not-any? #(= 3 (:id %)) result) "Should not include extra tables")
         (is (not-any? #(= 4 (:id %)) result) "Should not include extra tables")
         (is (= (count (distinct (map :id result))) (count result))) ; no duplicates
@@ -24,11 +24,11 @@
         extra (mapv #(hash-map :id % :name (str "extra" %)) (range 6 10))
         all-tables (concat used extra)]
     (with-redefs [table-utils/used-tables (fn [_] used)
-                  table-utils/database-tables (fn [_ opts]
-                                                (take (:all-tables-limit opts 100) all-tables))]
+                  table-utils/database-tables (fn [_ _]
+                                                (take 100 all-tables))]
       (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}, :all-tables-limit 3})]
         (is (= used result) "Should return all used tables")
-        (is (= (count result) (count used)) "Should return all used tables")
+        (is (= (count used) (count result)) "Should return all used tables")
         (is (= (count (distinct (map :id result))) (count result))) ; no duplicates
         ))))
 
@@ -45,11 +45,11 @@
         extra (mapv #(hash-map :id % :name (str "extra" %)) (range 4 7))
         all-tables (concat used extra)]
     (with-redefs [table-utils/used-tables (fn [_] used)
-                  table-utils/database-tables (fn [_ opts]
-                                                (take (:all-tables-limit opts 100) all-tables))]
+                  table-utils/database-tables (fn [_ _]
+                                                (take 100 all-tables))]
       (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}, :all-tables-limit 3})]
         (is (= used result) "Should be exactly the used tables, in order")
-        (is (= (count result) (count used)))
+        (is (= (count used) (count result)))
         (is (= (count (distinct (map :id result))) (count result))) ; no duplicates
         ))))
 

@@ -59,6 +59,45 @@
                                  :limit    all-tables-limit})
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
+         fill-tables (t2/hydrate fill-tables :fields)
+         priority-tables (t2/hydrate priority-tables :fields)
+         all-tables (concat priority-tables fill-tables)
+         all-tables (take all-tables-limit all-tables)]
+     (mapv (fn [{:keys [fields] :as table}]
+             (merge (select-keys table [:id :name :schema :description])
+                    {:columns (mapv (fn [{:keys [database_type] :as field}]
+                                      (merge (select-keys field [:id :name :description])
+                                             {:data_type database_type}))
+                                    fields)}))
+           all-tables))))
+
+(defn enhanced-database-tables
+  "Get database tables formatted with the new metabot tools schema format.
+  
+  Returns tables with :type, :display_name, :database_id, :database_schema, :fields (with field-id), :metrics.
+  This format is used by metabot context and other modern tools."
+  ([database-id]
+   (enhanced-database-tables database-id nil))
+  ([database-id {:keys [all-tables-limit priority-tables exclude-table-ids]
+                 :or {all-tables-limit max-database-tables
+                      priority-tables []
+                      exclude-table-ids #{}}}]
+   (let [priority-table-ids (set (map :id priority-tables))
+         ;; Fetch most viewed tables, excluding priority tables and excluded tables
+         fill-tables (t2/select [:model/Table :id :db_id :name :schema :description]
+                                :db_id database-id
+                                :active true
+                                :visibility_type nil
+                                {:where    (mi/visible-filter-clause :model/Table
+                                                                     :id
+                                                                     {:user-id       api/*current-user-id*
+                                                                      :is-superuser? api/*is-superuser?*}
+                                                                     {:perms/view-data      :unrestricted
+                                                                      :perms/create-queries :query-builder-and-native})
+                                 :order-by [[:view_count :desc]]
+                                 :limit    all-tables-limit})
+         fill-tables (remove #(or (priority-table-ids (:id %))
+                                  (exclude-table-ids (:id %))) fill-tables)
          all-tables (concat priority-tables fill-tables)
          all-tables (take all-tables-limit all-tables)]
      (lib.metadata.jvm/with-metadata-provider-cache

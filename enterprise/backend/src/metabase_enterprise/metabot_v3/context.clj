@@ -48,9 +48,9 @@
   (try
     (if query
       (let [used-tables (table-utils/used-tables query)
-            tables (table-utils/database-tables (:database query)
-                                                {:priority-tables used-tables
-                                                 :all-tables-limit (count used-tables)})]
+            tables (table-utils/enhanced-database-tables (:database query)
+                                                         {:priority-tables used-tables
+                                                          :all-tables-limit (count used-tables)})]
         ;; Ensure no duplicate tables (by id) are returned, preserve first occurrence order
         (reduce (fn [acc t]
                   (if (some #(= (:id %) (:id t)) acc)

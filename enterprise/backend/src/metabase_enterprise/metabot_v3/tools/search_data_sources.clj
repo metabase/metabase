@@ -64,7 +64,7 @@
 (defn search-data-sources
   "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase.
   Abstracted from the API endpoint logic."
-  [{:keys [keywords description database-id entity-types limit] :as arguments}]
+  [{:keys [keywords description database-id entity-types limit]}]
   (let [;; Default to all entity types if none specified
         entity-types (if (seq entity-types)
                        entity-types
