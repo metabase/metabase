@@ -25,7 +25,6 @@ import {
 } from "./analytics";
 import {
   getAvailableLocales,
-  getInvite,
   getIsEmbeddingUseCase,
   getLocale,
   getNextStep,
@@ -104,14 +103,12 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
   "metabase/setup/SUBMIT_USER_INFO",
   async (user: UserInfo, { dispatch, getState, rejectWithValue }) => {
     const token = getSetupToken(getState());
-    const invite = getInvite(getState());
     const locale = getLocale(getState());
 
     try {
       await SetupApi.create({
         token,
         user,
-        invite,
         prefs: {
           site_name: user.site_name,
           site_locale: locale?.code,
