@@ -91,7 +91,7 @@ function resolveEmbeddingSdkPackage() {
   } catch (err) {
     const sdkPackageTemplateJson = fs.readFileSync(
       path.resolve(
-        "./enterprise/frontend/src/embedding-sdk-bundle/package.template.json",
+        "./enterprise/frontend/src/embedding-sdk-package/package.template.json",
       ),
       "utf-8",
     );

@@ -5,7 +5,7 @@ function update_readme() {
 }
 
 function update_package_json_template() {
-  sed -i -E 's/("version": ").*"/\1'"$1"'"/' enterprise/frontend/src/embedding-sdk-bundle/package.template.json
+  sed -i -E 's/("version": ").*"/\1'"$1"'"/' enterprise/frontend/src/embedding-sdk-package/package.template.json
 }
 
 $1 $2
