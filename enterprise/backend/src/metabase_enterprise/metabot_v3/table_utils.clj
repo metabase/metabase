@@ -3,9 +3,14 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.metabot-v3.query-analyzer :as query-analyzer]
+   [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.humanization :as u.humanization]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
@@ -54,17 +59,26 @@
                                  :limit    all-tables-limit})
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
-         fill-tables (t2/hydrate fill-tables :fields)
-         priority-tables (t2/hydrate priority-tables :fields)
          all-tables (concat priority-tables fill-tables)
          all-tables (take all-tables-limit all-tables)]
-     (mapv (fn [{:keys [fields] :as table}]
-             (merge (select-keys table [:id :name :schema :description])
-                    {:columns (mapv (fn [{:keys [database_type] :as field}]
-                                      (merge (select-keys field [:id :name :description])
-                                             {:data_type database_type}))
-                                    fields)}))
-           all-tables))))
+     (lib.metadata.jvm/with-metadata-provider-cache
+       (let [mp (lib.metadata.jvm/application-database-metadata-provider database-id)
+             table-ids (map :id all-tables)
+             _ (lib.metadata/bulk-metadata mp :metadata/table table-ids)]
+         (mapv (fn [{:keys [id name schema description]}]
+                 (let [table-query (lib/query mp (lib.metadata/table mp id))
+                       cols (lib/visible-columns table-query)
+                       field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
+                   {:id id
+                    :type :table
+                    :name name
+                    :display_name (u.humanization/name->human-readable-name :simple name)
+                    :database_id database-id
+                    :database_schema schema
+                    :description description
+                    :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix) cols))
+                    :metrics []}))
+               all-tables))))))
 
 (defn similar?
   "Check if two strings are similar using Levenshtein distance with a max distance of 4."

@@ -103,9 +103,14 @@
           (let [tables (table-utils/database-tables db-id)]
             (is (vector? tables))
             (is (every? #(contains? % :name) tables))
-            (is (every? #(contains? % :schema) tables))
-            (is (every? #(contains? % :columns) tables))
-            (is (every? #(every? (fn [col] (contains? col :name)) (:columns %)) tables)))))
+            (is (every? #(contains? % :database_schema) tables))
+            (is (every? #(contains? % :fields) tables))
+            (is (every? #(contains? % :type) tables))
+            (is (every? #(contains? % :display_name) tables))
+            (is (every? #(= :table (:type %)) tables))
+            (is (every? #(every? (fn [field] (contains? field :field-id)) (:fields %)) tables))
+            (is (every? #(every? (fn [field] (contains? field :name)) (:fields %)) tables))
+            (is (every? #(every? (fn [field] (contains? field :type)) (:fields %)) tables)))))
 
       (testing "respects all-tables-limit option"
         (mt/with-current-user (mt/user->id :crowberto)
@@ -231,7 +236,7 @@
 
   (testing "database-tables with invalid database ID"
     (mt/with-current-user (mt/user->id :crowberto)
-      (is (empty? (table-utils/database-tables -1)))))
+      (is (thrown? clojure.lang.ExceptionInfo (table-utils/database-tables -1)))))
 
   (testing "find-matching-tables with empty database"
     (mt/with-temp [:model/Database {db-id :id} {}]
