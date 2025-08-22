@@ -60,9 +60,15 @@ For example, if you have a dashboard called "Monthly Sales", it's not sufficient
 
 Exact translations also apply to strings that use punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you must include that exact string (with "?") into the translation dictionary. Metabase would treat "How many Widgets did we sell this week" as a different string. Essentially, the strings are keys in a table Metabase looks up, so they must match exactly.
 
-## Translation limitations
+## Include markdown formatting in translation dictionaries
 
-Currently, strings using markdown formatting will not get translated. You can include markdown formatting into the translation dictionary - for example `**Vendor**` to handle translate bolded string `Vendor`.
+If the strings you want to translate include markdown formatting, you'll need to include the formatting in the dictionary. For example:
+
+| Language | String         | Translation    |
+| -------- | -------------- | -------------- |
+| pt-BR    | `**Examples**` | `**Exemplos**` |
+| pt-BR    | `_Examples_`   | `_Exemplos_`   |
+| pt-BR    | `## Examples`  | `## Exemplos`  |
 
 ## Further reading
 
