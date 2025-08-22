@@ -11,7 +11,7 @@
     ],
     "paths": {
       "e2e/*": ["./*"],
-      "@metabase/embedding-sdk-react": ["../enterprise/frontend/src/embedding-sdk/index.ts"],
+      "@metabase/embedding-sdk-react": ["../enterprise/frontend/src/embedding-sdk-bundle/index.ts"],
       "*": ["../frontend/src/*"]
     }
   },

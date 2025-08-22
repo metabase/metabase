@@ -4,7 +4,7 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { useEffect, useMemo } from "react";
 
-import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
