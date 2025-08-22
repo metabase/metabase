@@ -5,12 +5,13 @@ import type * as Lib from "metabase-lib";
 
 export const zoomInGeographicDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   drill,
+  drillInfo,
   applyDrill,
 }) => {
   return [
     {
       name: "zoom-in.geographic",
-      title: t`Zoom in`,
+      title: drillInfo.displayName || t`Zoom in`,
       section: "zoom",
       icon: "zoom_in",
       buttonType: "horizontal",

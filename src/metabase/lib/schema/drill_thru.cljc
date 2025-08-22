@@ -239,33 +239,35 @@
   [:merge
    ::drill-thru.common
    [:map
-    [:type      [:= :drill-thru/zoom-in.geographic]]
-    [:subtype   [:= :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon]]
-    [:column    ::drill-thru.zoom-in.geographic.column.county-state-city]
-    [:value     some?]
-    [:latitude  [:map
-                 [:column    [:ref ::drill-thru.zoom-in.geographic.column.latitude]]
-                 [:bin-width [:ref ::lib.schema.binning/bin-width]]]]
-    [:longitude [:map
-                 [:column    [:ref ::drill-thru.zoom-in.geographic.column.longitude]]
-                 [:bin-width [:ref ::lib.schema.binning/bin-width]]]]]])
+    [:type         [:= :drill-thru/zoom-in.geographic]]
+    [:subtype      [:= :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon]]
+    [:display-name {:optional true} ::lib.schema.common/non-blank-string]
+    [:column       ::drill-thru.zoom-in.geographic.column.county-state-city]
+    [:value        some?]
+    [:latitude     [:map
+                    [:column    [:ref ::drill-thru.zoom-in.geographic.column.latitude]]
+                    [:bin-width [:ref ::lib.schema.binning/bin-width]]]]
+    [:longitude    [:map
+                    [:column    [:ref ::drill-thru.zoom-in.geographic.column.longitude]]
+                    [:bin-width [:ref ::lib.schema.binning/bin-width]]]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic.binned-lat-lon->binned-lat-lon
   [:merge
    ::drill-thru.common
    [:map
-    [:type      [:= :drill-thru/zoom-in.geographic]]
-    [:subtype   [:= :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon]]
-    [:latitude  [:map
-                 [:column    [:ref ::drill-thru.zoom-in.geographic.column.latitude]]
-                 [:bin-width [:ref ::lib.schema.binning/bin-width]]
-                 [:min       number?]
-                 [:max       number?]]]
-    [:longitude [:map
-                 [:column    [:ref ::drill-thru.zoom-in.geographic.column.longitude]]
-                 [:bin-width [:ref ::lib.schema.binning/bin-width]]
-                 [:min       number?]
-                 [:max       number?]]]]])
+    [:type         [:= :drill-thru/zoom-in.geographic]]
+    [:subtype      [:= :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon]]
+    [:display-name {:optional true} ::lib.schema.common/non-blank-string]
+    [:latitude     [:map
+                    [:column    [:ref ::drill-thru.zoom-in.geographic.column.latitude]]
+                    [:bin-width [:ref ::lib.schema.binning/bin-width]]
+                    [:min       number?]
+                    [:max       number?]]]
+    [:longitude    [:map
+                    [:column    [:ref ::drill-thru.zoom-in.geographic.column.longitude]]
+                    [:bin-width [:ref ::lib.schema.binning/bin-width]]
+                    [:min       number?]
+                    [:max       number?]]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic
   [:and
@@ -286,10 +288,11 @@
   [:merge
    ::drill-thru.common.with-column
    [:map
-    [:type        [:= :drill-thru/zoom-in.binning]]
-    [:min-value   number?]
-    [:max-value   number?]
-    [:new-binning ::lib.schema.binning/binning]]])
+    [:type         [:= :drill-thru/zoom-in.binning]]
+    [:display-name {:optional true} ::lib.schema.common/non-blank-string]
+    [:min-value    number?]
+    [:max-value    number?]
+    [:new-binning  ::lib.schema.binning/binning]]])
 
 (mr/def ::drill-thru
   [:and

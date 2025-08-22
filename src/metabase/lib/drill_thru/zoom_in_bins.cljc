@@ -74,17 +74,27 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.underlying :as lib.underlying]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 ;;;
 ;;; available-drill-thrus
 ;;;
+
+(mu/defn- binning-drill-display-name :- ::lib.schema.common/non-blank-string
+  "Generate a display name for a binning drill based on the column."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   column       :- ::lib.schema.metadata/column]
+  (let [column-name (lib.metadata.calculation/display-name query stage-number column)]
+    (i18n/tru "Zoom in on {0}" column-name)))
 
 (mu/defn zoom-in-binning-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.binning]
   "Return a drill thru that 'zooms in' on a breakout that uses `:binning` if applicable.
@@ -105,22 +115,25 @@
                         ;; One of the "superflous" options is ::lib.field/binning, which we want to preserve here.
                         (lib.underlying/top-level-column query column :rename-superflous-options? false)
                         value))]
-          (case (:strategy binning)
-            (:num-bins :default)
-            {:lib/type    :metabase.lib.drill-thru/drill-thru
-             :type        :drill-thru/zoom-in.binning
-             :column      column
-             :min-value   value
-             :max-value   (+ value bin-width)
-             :new-binning {:strategy :default}}
+          (let [display-name (binning-drill-display-name query (lib.underlying/top-level-stage-number query) column)]
+            (case (:strategy binning)
+              (:num-bins :default)
+              {:lib/type     :metabase.lib.drill-thru/drill-thru
+               :type         :drill-thru/zoom-in.binning
+               :display-name display-name
+               :column       column
+               :min-value    value
+               :max-value    (+ value bin-width)
+               :new-binning  {:strategy :default}}
 
-            :bin-width
-            {:lib/type    :metabase.lib.drill-thru/drill-thru
-             :type        :drill-thru/zoom-in.binning
-             :column      column
-             :min-value   min-value
-             :max-value   max-value
-             :new-binning (update binning :bin-width #(double (/ % 10.0)))}))))))
+              :bin-width
+              {:lib/type     :metabase.lib.drill-thru/drill-thru
+               :type         :drill-thru/zoom-in.binning
+               :display-name display-name
+               :column       column
+               :min-value    min-value
+               :max-value    max-value
+               :new-binning  (update binning :bin-width #(double (/ % 10.0)))})))))))
 
 ;;;
 ;;; application
