@@ -13,6 +13,7 @@ import {
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { canonicalCollectionId } from "metabase/collections/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
@@ -31,16 +32,13 @@ import {
   Text,
 } from "metabase/ui";
 import {
-  useDeleteMetabotEntitiesMutation,
-  useListMetabotsEntitiesQuery,
   useListMetabotsQuery,
-  useUpdateMetabotEntitiesMutation,
+  useUpdateMetabotMutation,
 } from "metabase-enterprise/api";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase-enterprise/metabot/constants";
 import type {
+  Collection,
   CollectionEssentials,
-  MetabotEntity,
-  MetabotId,
   MetabotInfo,
 } from "metabase-types/api";
 
@@ -51,10 +49,6 @@ export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
   const { data, isLoading, error } = useListMetabotsQuery();
 
-  const { data: entityList } = useListMetabotsEntitiesQuery(
-    metabotId ? { id: metabotId } : skipToken,
-  );
-  const hasEntities = (entityList?.items?.length ?? 0) > 0;
   const metabot = data?.items?.find((bot) => bot.id === metabotId);
 
   if (isLoading || !data || !metabotId || !metabot) {
@@ -93,16 +87,14 @@ export function MetabotAdminPage() {
               </Text>
             )}
           </Box>
+
           <MetabotVerifiedContentConfigurationPane metabot={metabot} />
 
           {isEmbedMetabot && (
-            <MetabotCollectionConfigurationPane
-              metabotId={metabotId}
-              metabotName={metabot.name}
-            />
+            <MetabotCollectionConfigurationPane metabot={metabot} />
           )}
 
-          {hasEntities && <MetabotPromptSuggestionPane metabotId={metabotId} />}
+          <MetabotPromptSuggestionPane metabotId={metabotId} />
         </SettingsSection>
       </ErrorBoundary>
     </AdminSettingsLayout>
@@ -149,8 +141,21 @@ function MetabotVerifiedContentConfigurationPane({
 }: {
   metabot: MetabotInfo;
 }) {
-  const handleVerifiedContentToggle = (_checked: boolean) => {
-    // TODO: impl
+  const [updateMetabot] = useUpdateMetabotMutation();
+  const [sendToast] = useToast();
+
+  const handleVerifiedContentToggle = async (checked: boolean) => {
+    const result = await updateMetabot({
+      id: metabot.id,
+      use_verified_content: checked,
+    });
+
+    if (result.error) {
+      sendToast({
+        message: t`Error updating Metabot`,
+        icon: "warning",
+      });
+    }
   };
 
   return (
@@ -172,26 +177,26 @@ function MetabotVerifiedContentConfigurationPane({
 }
 
 function MetabotCollectionConfigurationPane({
-  metabotId,
-  metabotName,
+  metabot,
 }: {
-  metabotId: MetabotId;
-  metabotName: string;
+  metabot: MetabotInfo;
 }) {
+  const metabotId = metabot.id;
+  const metabotName = metabot.name;
+
   const {
-    data: entityList,
+    data: collection,
     isLoading,
     error,
-  } = useListMetabotsEntitiesQuery({ id: metabotId });
-  const [updateEntities, { isLoading: isUpdating }] =
-    useUpdateMetabotEntitiesMutation();
-  const [deleteEntity, { isLoading: isDeleting }] =
-    useDeleteMetabotEntitiesMutation();
-  const isMutating = isUpdating || isDeleting;
+  } = useGetCollectionQuery({
+    id: metabot.collection_id ?? "root",
+  });
+
+  const [updateMetabot, { isLoading: isUpdating }] = useUpdateMetabotMutation();
   const [isOpen, { open, close }] = useDisclosure(false);
   const [sendToast] = useToast();
 
-  if (isLoading || !entityList || error) {
+  if (isLoading || !collection || error) {
     return (
       <LoadingAndErrorWrapper
         loading={isLoading}
@@ -200,37 +205,18 @@ function MetabotCollectionConfigurationPane({
     );
   }
 
-  const collection: MetabotEntity | undefined = entityList?.items?.[0];
-  const handleDelete = async () => {
-    if (collection) {
-      const result = await deleteEntity({
-        metabotId,
-        entityModel: "collection",
-        entityId: collection.id,
-      });
-
-      if (result.error) {
-        sendToast({
-          message: t`Error removing folder`,
-          icon: "warning",
-        });
-      }
-    }
-  };
-
-  const handleAddEntity = async (
-    newEntity: Pick<MetabotEntity, "model" | "id" | "name">,
+  const handleUpdateCollectionId = async (
+    newEntity: Pick<MetabotInfo, "id" | "name">,
   ) => {
     close();
-    await handleDelete();
-    const result = await updateEntities({
+    const result = await updateMetabot({
       id: metabotId,
-      entities: [_.pick(newEntity, "model", "id")],
+      collection_id: canonicalCollectionId(newEntity.id),
     });
 
     if (result.error) {
       sendToast({
-        message: t`Error adding ${newEntity.name}`,
+        message: t`Error setting ${newEntity.name}`,
         icon: "warning",
       });
     }
@@ -245,17 +231,12 @@ function MetabotCollectionConfigurationPane({
       />
       <CollectionInfo collection={collection} />
       <Flex gap="md" mt="md">
-        <Button onClick={open} leftSection={isMutating && <Loader size="xs" />}>
-          {match({ isMutating, collection })
+        <Button onClick={open} leftSection={isUpdating && <Loader size="xs" />}>
+          {match({ isMutating: isUpdating, collection })
             .with({ isMutating: true }, () => t`Updating collection...`)
             .with({ collection: undefined }, () => t`Pick a collection`)
             .otherwise(() => t`Pick a different collection`)}
         </Button>
-        {collection && (
-          <Button onClick={handleDelete}>
-            <Icon name="trash" />
-          </Button>
-        )}
       </Flex>
       {isOpen && (
         <CollectionPickerModal
@@ -265,8 +246,8 @@ function MetabotCollectionConfigurationPane({
             model: "collection",
           }}
           onChange={(item) =>
-            handleAddEntity(
-              item as unknown as Pick<MetabotEntity, "model" | "id" | "name">,
+            handleUpdateCollectionId(
+              item as unknown as Pick<MetabotInfo, "id" | "name">,
             )
           }
           onClose={close}
@@ -280,7 +261,7 @@ function MetabotCollectionConfigurationPane({
   );
 }
 
-function CollectionInfo({ collection }: { collection: MetabotEntity | null }) {
+function CollectionInfo({ collection }: { collection: Collection }) {
   const { data: collectionInfo } = useGetCollectionQuery(
     collection?.id ? { id: collection.id } : skipToken,
   );

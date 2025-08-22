@@ -8,23 +8,19 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import {
-  setupMetabotAddEntitiesEndpoint,
-  setupMetabotDeleteEntitiesEndpoint,
-  setupMetabotEntitiesEndpoint,
   setupMetabotPromptSuggestionsEndpoint,
-  setupMetabotsEndpoint,
+  setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
 } from "metabase-enterprise/metabot/constants";
-import type {
-  MetabotApiEntity,
-  MetabotEntity,
-  MetabotId,
-  RecentItem,
-} from "metabase-types/api";
+import type { MetabotId, RecentItem } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockMetabotInfo,
+} from "metabase-types/api/mocks";
 
 import { MetabotAdminPage } from "./MetabotAdminPage";
 import * as hooks from "./utils";
@@ -33,80 +29,63 @@ const mockPathParam = (id: MetabotId) => {
   jest.spyOn(hooks, "useMetabotIdPath").mockReturnValue(id);
 };
 
-const metabots = [
-  {
+const defaultMetabots = [
+  createMockMetabotInfo({
     id: FIXED_METABOT_IDS.DEFAULT,
-    name: "Metabot",
     entity_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
-    description: "",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
+  }),
+  createMockMetabotInfo({
     id: FIXED_METABOT_IDS.EMBEDDED,
     name: "Embedded Metabot",
     entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
-    description: "",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
+    collection_id: 21,
+  }),
 ];
 
-const entities = {
-  1: [],
-  2: [
-    {
-      model_id: 21,
-      name: "Collection Two",
-      model: "collection",
-      collection_id: 22,
-      collection_name: "Collection Two Prime",
+const defaultSeedCollections = [
+  createMockCollection({ id: "root", name: "Our Analytics" }),
+  {
+    id: 21,
+    name: "Collection Two",
+    model: "collection",
+    collection_name: "Collection Two Prime",
+    parent_collection: {
+      id: 3,
+      name: "Collection Two Prime",
     },
-  ] as MetabotApiEntity[],
-  recents: [
-    {
-      id: 31,
-      name: "Collection Three",
-      model: "collection",
-      parent_collection: {
-        id: 3,
-        name: "Collection Three Prime",
-      },
+  },
+  {
+    id: 31,
+    name: "Collection Three",
+    model: "collection",
+    parent_collection: {
+      id: 3,
+      name: "Collection Three Prime",
     },
-    {
-      id: 32,
-      name: "Collection Four",
-      model: "collection",
-      parent_collection: {
-        id: 3,
-        name: "Collection Four Prime",
-      },
+  },
+  {
+    id: 32,
+    name: "Collection Four",
+    model: "collection",
+    parent_collection: {
+      id: 3,
+      name: "Collection Four Prime",
     },
-  ],
-};
-
+  },
+];
 const setup = async (
   initialPathParam: MetabotId = 1,
-  seedData = entities,
+  metabots = defaultMetabots,
+  seedCollections = defaultSeedCollections,
   error = false,
 ) => {
   mockPathParam(initialPathParam);
-  setupMetabotsEndpoint(metabots, error ? 500 : undefined);
-  const collections = [...seedData[1], ...seedData[2], ...seedData.recents];
+  setupMetabotsEndpoints(metabots, error ? 500 : undefined);
   setupCollectionByIdEndpoint({
-    collections: collections.map((c: any) => ({ id: c.model_id, ...c })),
+    collections: seedCollections.map((c: any) => ({ id: c.model_id, ...c })),
   });
 
-  metabots.forEach((metabot) => {
-    setupMetabotEntitiesEndpoint(
-      metabot.id,
-      seedData[metabot.id as 1 | 2] as MetabotApiEntity[],
-    );
-    setupMetabotAddEntitiesEndpoint(metabot.id);
-  });
-  setupMetabotDeleteEntitiesEndpoint();
-
-  setupRecentViewsAndSelectionsEndpoints(seedData.recents as RecentItem[]);
+  setupRecentViewsAndSelectionsEndpoints(seedCollections as RecentItem[]);
 
   metabots.forEach((mb) =>
     setupMetabotPromptSuggestionsEndpoint({
@@ -158,6 +137,18 @@ describe("MetabotAdminPage", () => {
     expect(await screen.findByText("Collection Two")).toBeInTheDocument();
   });
 
+  it("should render a root collection if collection_id is null for metabot", async () => {
+    await setup(FIXED_METABOT_IDS.EMBEDDED, [
+      createMockMetabotInfo({
+        id: FIXED_METABOT_IDS.EMBEDDED,
+        name: "Embedded Metabot",
+        entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
+        collection_id: null,
+      }),
+    ]);
+    expect(await screen.findByText("Our Analytics")).toBeInTheDocument();
+  });
+
   it("should be able to switch between metabots", async () => {
     await setup(FIXED_METABOT_IDS.DEFAULT);
     expect(await screen.findByText("Configure Metabot")).toBeInTheDocument();
@@ -184,69 +175,21 @@ describe("MetabotAdminPage", () => {
     await userEvent.click(screen.getByText("Select"));
 
     await waitFor(async () => {
-      const deletes = await findRequests("DELETE");
-      expect(deletes.length).toBe(1);
-    });
-
-    await waitFor(async () => {
       const puts = await findRequests("PUT");
       expect(puts.length).toBe(1);
     });
 
-    const [{ url, body }] = await findRequests("PUT");
-    expect(url).toMatch(
-      new RegExp(
-        `/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.EMBEDDED}/entities`,
-      ),
+    const puts = await findRequests("PUT");
+    expect(puts[0].url).toMatch(
+      new RegExp(`/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.EMBEDDED}`),
     );
-    expect(body.items).toHaveLength(1); // 1 new
-
-    expect(
-      body.items.find((item: MetabotEntity) => item.id === 31),
-    ).toBeTruthy();
+    expect(puts[0].body).toEqual({ collection_id: 31 });
 
     expect(
       fetchMock.callHistory.calls(
         `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.EMBEDDED}/prompt-suggestions?limit=10&offset=0`,
       ).length,
-    ).toEqual(3); // +1 refetch for DELETE, +1 for PUT
-  });
-
-  it("should delete the selected collection", async () => {
-    await setup(FIXED_METABOT_IDS.EMBEDDED);
-
-    expect(await screen.findByText("Collection Two")).toBeInTheDocument();
-    expect(await screen.findByText("Prompt suggestions")).toBeInTheDocument();
-    const [deleteButton] = await screen.findAllByLabelText("trash icon");
-
-    // simulte the response after a delete
-    fetchMock.modifyRoute(
-      `metabot-${FIXED_METABOT_IDS.EMBEDDED}-entities-get`,
-      {
-        response: { items: [] },
-      },
-    );
-    await userEvent.click(deleteButton);
-
-    const [{ url: deleteUrl }, ...rest] = await findRequests("DELETE");
-    expect(deleteUrl).toContain(
-      `metabot/${FIXED_METABOT_IDS.EMBEDDED}/entities/collection/21`,
-    );
-    expect(rest).toHaveLength(0); // only 1 delete
-    await waitFor(() => {
-      expect(screen.queryByText("Prompt suggestions")).not.toBeInTheDocument();
-    });
-  });
-
-  it("should show an empty state when no entities", async () => {
-    await setup(FIXED_METABOT_IDS.EMBEDDED, {
-      1: [],
-      2: [],
-      recents: [],
-    });
-    expect(await screen.findByText("Pick a collection")).toBeInTheDocument();
-
-    expect(screen.queryByLabelText("trash icon")).not.toBeInTheDocument();
+    ).toEqual(2); // +1 refetch for DELETE, +1 for PUT
   });
 
   it("should show special copy for embedded metabot", async () => {
@@ -258,7 +201,7 @@ describe("MetabotAdminPage", () => {
   });
 
   it("should show an error message when a request fails", async () => {
-    await setup(404, entities, true);
+    await setup(404, defaultMetabots, defaultSeedCollections, true);
 
     expect(
       await screen.findByText("Error fetching Metabots"),
