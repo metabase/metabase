@@ -98,7 +98,7 @@ export const ListViewConfiguration = ({
       style={{ "--grid-columns": Math.max(rightValues.length, 1) }}
     >
       <Stack justify="center" flex={1} maw="var(--max-width)" w="100%">
-        <Text size="md" fw="bold">{t`Customize List columns`}</Text>
+        <Text fw="bold">{t`Customize List columns`}</Text>
         <Box className={S.listViewConfigurationInputs}>
           {/* Icon placeholder */}
           <Box
@@ -153,7 +153,7 @@ export const ListViewConfiguration = ({
         justify="center"
         className={S.listContainer}
       >
-        <Text size="md" fw="bold">{t`Preview`}</Text>
+        <Text fw="bold">{t`Preview`}</Text>
         {firstRow ? (
           <ListViewItem
             row={firstRow}

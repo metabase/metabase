@@ -3,6 +3,8 @@
   flex-wrap: wrap;
   gap: var(--mantine-spacing-xs);
   border: 1px dashed var(--mb-color-border);
+  background-color: var(--mb-color-bg-light);
+  border-radius: var(--mantine-radius-xl);
 }
 
 .container {
@@ -19,7 +21,7 @@
 
 .pill {
   font-weight: 400;
-  background: var(--mb-color-white);
+  background: var(--mb-color-bg-white);
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-xl);
   flex-shrink: 0;
