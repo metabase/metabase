@@ -25,7 +25,7 @@ const REPLACES_MAP = {
 
 const API_EXTRACTOR_CONFIG_PATH = path.join(
   __dirname,
-  "../../enterprise/frontend/src/embedding-sdk-bundle/embedding-sdk-api-extractor.json",
+  "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-api-extractor.json",
 );
 
 const getLogger = (prefix) => {
