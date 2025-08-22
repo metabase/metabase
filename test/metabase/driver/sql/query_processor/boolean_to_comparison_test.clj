@@ -16,6 +16,7 @@
      :filter      expression}))
 
 (defn- nested-filter-query [expression]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (mt/nest-query (basic-filter-query expression) 4))
 
 (deftest ^:parallel boolean->comparison-test

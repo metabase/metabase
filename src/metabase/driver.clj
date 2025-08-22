@@ -127,9 +127,9 @@
 
 (declare initialize!)
 
-(defn the-initialized-driver
+(mu/defn the-initialized-driver
   "Like [[the-driver]], but also initializes the driver if not already initialized."
-  [driver]
+  [driver :- [:or :keyword :string]]
   (let [driver (keyword driver)]
     ;; Fastpath: an initialized driver `driver` is always already registered. Checking for `initialized?` is faster
     ;; than doing the `registered?` check inside `load-driver-namespace-if-needed!`.
@@ -755,7 +755,10 @@
     :database-routing
 
     ;; Does this driver support replication?
-    :database-replication})
+    :database-replication
+
+    ;; whether this driver supports checking table writeable permissions
+    :metadata/table-writable-check})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -798,8 +801,9 @@
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
                               :test/dynamic-dataset-loading           true
-                              :test/uuids-in-create-table-statements true
-                              :metadata/table-existence-check false}]
+                              :test/uuids-in-create-table-statements  true
+                              :metadata/table-existence-check         false
+                              :metadata/table-writable-check          false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND

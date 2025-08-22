@@ -22,6 +22,7 @@ describe("documents", () => {
     cy.visit("/");
 
     H.newButton("Document").click();
+    cy.title().should("eq", "New document · Metabase");
 
     cy.findByRole("textbox", { name: "Document Title" })
       .should("be.focused")
@@ -39,6 +40,7 @@ describe("documents", () => {
     );
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+    cy.title().should("eq", "Test Document · Metabase");
 
     H.appBar()
       .findByRole("link", { name: /First collection/ })
@@ -85,8 +87,34 @@ describe("documents", () => {
 
     H.openNavigationSidebar();
 
-    H.navigationSidebar().findByText("Trash").click();
+    // Force the click since this is hidden behind a toast notification
+    H.navigationSidebar().findByText("Trash").click({ force: true });
     H.getUnpinnedSection().findByText("Test Document").should("exist");
+  });
+
+  it("should handle navigating from /new to /new gracefully", () => {
+    cy.visit("/");
+    H.newButton("Document").click();
+    cy.title().should("eq", "New document · Metabase");
+    H.documentContent().click();
+
+    H.documentSaveButton().should("not.exist");
+
+    H.addToDocument("This is some content");
+
+    H.documentSaveButton().should("exist");
+
+    H.newButton("Document").click();
+    H.leaveConfirmationModal().findByRole("button", { name: "Cancel" }).click();
+
+    H.documentContent().should("have.text", "This is some content");
+
+    H.newButton("Document").click();
+    H.leaveConfirmationModal()
+      .findByRole("button", { name: "Discard changes" })
+      .click();
+    H.documentContent().should("have.text", "");
+    H.documentSaveButton().should("not.exist");
   });
 
   describe("document editing", () => {

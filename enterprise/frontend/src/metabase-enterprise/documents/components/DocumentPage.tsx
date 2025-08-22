@@ -1,6 +1,8 @@
+import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import dayjs from "dayjs";
+import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
@@ -16,10 +18,14 @@ import {
   useListBookmarksQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import {
+  LeaveConfirmModal,
+  LeaveRouteConfirmModal,
+} from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { SetTitle } from "metabase/hoc/Title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -58,11 +64,14 @@ import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 export const DocumentPage = ({
   params: { entityId },
   route,
+  location,
 }: {
   params: { entityId?: string };
-  location?: { query?: { version?: string } };
+  location: Location;
   route: Route;
 }) => {
+  const previousLocationKey = usePrevious(location.key);
+  const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
@@ -154,6 +163,16 @@ export const DocumentPage = ({
     dispatch,
   ]);
 
+  // Reset state when we navigate back to /new
+  const resetDocument = useCallback(() => {
+    setDocumentTitle("");
+    setDocumentContent(null);
+    setHasUnsavedEditorChanges(false);
+    editorInstance?.commands.clearContent();
+    editorInstance?.commands.focus();
+    dispatch(resetDocuments());
+  }, [dispatch, editorInstance, setDocumentContent, setDocumentTitle]);
+
   // Reset dirty state when document content loads from API
   useEffect(() => {
     if (documentContent && !isNewDocument) {
@@ -202,7 +221,8 @@ export const DocumentPage = ({
     (content: JSONContent) => {
       // For new documents, any content means changes
       if (isNewDocument) {
-        setHasUnsavedEditorChanges(!editorInstance?.isEmpty);
+        // when navigating to `/new`, handleChange is fired but the editor instance hasn't been set yet
+        setHasUnsavedEditorChanges(!!editorInstance && !editorInstance.isEmpty);
         return;
       }
 
@@ -364,6 +384,7 @@ export const DocumentPage = ({
 
   return (
     <Box className={styles.documentPage}>
+      <SetTitle title={documentData?.name || t`New document`} />
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
@@ -430,9 +451,20 @@ export const DocumentPage = ({
         <LeaveRouteConfirmModal
           // `key` remounts this modal when navigating between different documents or to a new document.
           // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
-          key={documentId}
+          key={location.key}
           isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
           route={route}
+        />
+
+        <LeaveConfirmModal
+          // only applies when going from /new -> /new
+          opened={
+            hasUnsavedChanges() &&
+            isNewDocument &&
+            location.key !== previousLocationKey
+          }
+          onConfirm={resetDocument}
+          onClose={() => forceUpdate()}
         />
       </Box>
     </Box>

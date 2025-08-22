@@ -22,6 +22,13 @@ export const globalShortcuts = {
     shortcut: ["c d"],
     shortcutGroup: "global" as const,
   },
+  "create-new-document": {
+    get name() {
+      return t`Create a document`;
+    },
+    shortcut: ["c t"],
+    shortcutGroup: "global" as const,
+  },
   "create-new-collection": {
     get name() {
       return t`Create a collection`;

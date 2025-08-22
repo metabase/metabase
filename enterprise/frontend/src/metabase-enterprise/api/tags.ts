@@ -53,7 +53,10 @@ export function invalidateTags(
 export function provideTransformTags(
   transform: Transform,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform", transform.id)];
+  return [
+    idTag("transform", transform.id),
+    ...(transform.tag_ids?.flatMap((tag) => idTag("transform-tag", tag)) ?? []),
+  ];
 }
 
 export function provideTransformListTags(

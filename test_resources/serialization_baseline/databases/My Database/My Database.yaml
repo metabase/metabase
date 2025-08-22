@@ -26,3 +26,4 @@ router_database_id: null
 uploads_enabled: false
 uploads_schema_name: null
 uploads_table_prefix: null
+provider_name: null

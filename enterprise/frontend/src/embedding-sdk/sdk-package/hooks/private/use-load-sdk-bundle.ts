@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 // eslint-disable-next-line no-external-references-for-sdk-package-code
 import { SDK_BUNDLE_FULL_PATH } from "build-configs/embedding-sdk/constants/sdk-bundle";
-import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-package/config";
+import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-package/constants/sdk-bundle-script-data-attribute-name";
 import { getSdkBundleScriptElement } from "embedding-sdk/sdk-package/lib/private/get-sdk-bundle-script-element";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import {

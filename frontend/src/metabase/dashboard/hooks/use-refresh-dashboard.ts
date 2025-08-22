@@ -8,39 +8,47 @@ import {
 import { useDispatch } from "metabase/lib/redux";
 import type { DashboardId } from "metabase-types/api";
 
+interface UseRefreshDashboardProps {
+  dashboardId: DashboardId | null;
+  parameterQueryParams: Query;
+}
+
 export const useRefreshDashboard = ({
   dashboardId,
   parameterQueryParams,
-  refetchData = true,
-}: {
-  dashboardId: DashboardId | null;
-  parameterQueryParams: Record<string, unknown>;
-  refetchData?: boolean;
-}): {
+}: UseRefreshDashboardProps): {
   refreshDashboard: () => Promise<void>;
+  refreshDashboardCardData: () => Promise<void>;
 } => {
   const dispatch = useDispatch();
 
   const refreshDashboard = useCallback(async () => {
-    if (dashboardId) {
-      await dispatch(
-        fetchDashboard({
-          dashId: dashboardId,
-          queryParams: parameterQueryParams as Query,
-          options: { preserveParameters: true },
-        }),
-      );
-      if (refetchData) {
-        dispatch(
-          fetchDashboardCardData({
-            isRefreshing: true,
-            reload: true,
-            clearCache: false,
-          }),
-        );
-      }
+    if (!dashboardId) {
+      return;
     }
-  }, [dashboardId, dispatch, parameterQueryParams, refetchData]);
 
-  return { refreshDashboard };
+    await dispatch(
+      fetchDashboard({
+        dashId: dashboardId,
+        queryParams: parameterQueryParams,
+        options: { preserveParameters: true },
+      }),
+    );
+  }, [dashboardId, dispatch, parameterQueryParams]);
+
+  const refreshDashboardCardData = useCallback(async () => {
+    if (!dashboardId) {
+      return;
+    }
+
+    await dispatch(
+      fetchDashboardCardData({
+        isRefreshing: true,
+        reload: true,
+        clearCache: false,
+      }),
+    );
+  }, [dashboardId, dispatch]);
+
+  return { refreshDashboard, refreshDashboardCardData };
 };

@@ -37,7 +37,7 @@
   `(if (search/supports-index?)
      (mt/with-dynamic-fn-redefs [search.impl/default-engine (constantly :search.engine/appdb)]
        (with-temp-index-table
-         (search/reindex!)
+         (search/reindex! {:async? false :in-place? true})
          ~@body))
      ~@body))
 
