@@ -12,8 +12,7 @@ const { isEmbeddingSdkPackageInstalled, embeddingSdkPackageVersion } =
 
 module.exports = {
   stories: [
-    "../enterprise/frontend/src/embedding-sdk-package/**/*.stories.tsx",
-    "../enterprise/frontend/src/embedding-sdk-bundle/**/*.stories.tsx",
+    "../enterprise/frontend/src/embedding-sdk-{package,bundle,shared}/**/*.stories.tsx",
   ],
   staticDirs: ["../resources/frontend_client", "./msw-public"],
   addons: [

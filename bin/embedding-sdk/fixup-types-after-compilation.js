@@ -19,7 +19,9 @@ const REPLACES_MAP = {
   "metabase-lib": "frontend/src/metabase-lib",
   "metabase-types": "frontend/src/metabase-types",
   metabase: "frontend/src/metabase",
+  "embedding-sdk-package": "enterprise/frontend/src/embedding-sdk-package",
   "embedding-sdk-bundle": "enterprise/frontend/src/embedding-sdk-bundle",
+  "embedding-sdk-shared": "enterprise/frontend/src/embedding-sdk-shared",
   cljs: "target/cljs_release",
 };
 

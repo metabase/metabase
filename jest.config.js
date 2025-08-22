@@ -127,9 +127,7 @@ const config = {
       displayName: "sdk",
 
       testMatch: [
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{js,jsx,ts,tsx}",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/**/*.unit.spec.{js,jsx,ts,tsx}",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-{package,bundle,shared}/**/*.unit.spec.{js,jsx,ts,tsx}",
       ],
 
       setupFiles: [
