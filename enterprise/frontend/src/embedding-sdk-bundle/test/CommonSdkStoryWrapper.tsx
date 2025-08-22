@@ -2,7 +2,10 @@ import type { StoryFn } from "@storybook/react";
 import { SignJWT } from "jose";
 import { useMemo } from "react";
 
-import { type MetabaseAuthConfig, MetabaseProvider } from "embedding-sdk-bundle";
+import {
+  type MetabaseAuthConfig,
+  MetabaseProvider,
+} from "embedding-sdk-bundle";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
 

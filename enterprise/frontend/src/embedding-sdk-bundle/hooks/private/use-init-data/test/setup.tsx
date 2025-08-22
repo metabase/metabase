@@ -7,7 +7,10 @@ import {
   useSdkSelector,
 } from "embedding-sdk-bundle/store";
 import { refreshTokenAsync } from "embedding-sdk-bundle/store/auth";
-import { getIsLoggedIn, getLoginStatus } from "embedding-sdk-bundle/store/selectors";
+import {
+  getIsLoggedIn,
+  getLoginStatus,
+} from "embedding-sdk-bundle/store/selectors";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import {
   MOCK_INSTANCE_URL,
@@ -18,7 +21,10 @@ import {
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import type { LoginStatusError, MetabaseAuthConfig } from "embedding-sdk-bundle/types";
+import type {
+  LoginStatusError,
+  MetabaseAuthConfig,
+} from "embedding-sdk-bundle/types";
 
 import { useInitData } from "../use-init-data";
 

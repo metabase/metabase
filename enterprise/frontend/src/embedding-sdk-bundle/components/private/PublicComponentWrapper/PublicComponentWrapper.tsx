@@ -5,7 +5,10 @@ import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/pr
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { SdkLoader } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
-import { getLoginStatus, getUsageProblem } from "embedding-sdk-bundle/store/selectors";
+import {
+  getLoginStatus,
+  getUsageProblem,
+} from "embedding-sdk-bundle/store/selectors";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 
 import { RenderOnlyInSdkProvider } from "../SdkContext";

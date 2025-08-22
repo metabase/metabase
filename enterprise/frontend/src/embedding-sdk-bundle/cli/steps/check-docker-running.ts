@@ -3,7 +3,10 @@ import { exec as execCallback } from "child_process";
 import ora from "ora";
 import { promisify } from "util";
 
-import type { CliError, CliStepMethod } from "embedding-sdk-bundle/cli/types/cli";
+import type {
+  CliError,
+  CliStepMethod,
+} from "embedding-sdk-bundle/cli/types/cli";
 
 const exec = promisify(execCallback);
 /**
