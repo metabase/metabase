@@ -157,11 +157,11 @@
                              (collection/visible-collection-filter-clause :collection_id)]}]
     (if (and use-verified-content? (premium-features/has-feature? :content-verification))
       (-> base-query
-          (assoc-in [:left-join] [[:moderation_review :mr] [:and
-                                                            [:= :mr.moderated_item_id :report_card.id]
-                                                            [:= :mr.moderated_item_type [:inline "card"]]
-                                                            [:= :mr.most_recent true]]])
-          (update-in [:where] conj [:= :mr.status [:inline "verified"]]))
+          (assoc :left-join [[:moderation_review :mr] [:and
+                                                       [:= :mr.moderated_item_id :report_card.id]
+                                                       [:= :mr.moderated_item_type [:inline "card"]]
+                                                       [:= :mr.most_recent true]]])
+          (update :where conj [:= :mr.status [:inline "verified"]]))
       base-query)))
 
 (comment
