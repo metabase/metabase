@@ -5,6 +5,7 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -153,7 +154,7 @@ export function ReorderableTagsInput({
   return (
     <Combobox
       store={combobox}
-      withinPortal={true}
+      withinPortal={false}
       onOptionSubmit={(val) => {
         addValue(val);
         if (maxValues && value.length === maxValues - 1) {
@@ -162,90 +163,94 @@ export function ReorderableTagsInput({
       }}
     >
       <Combobox.DropdownTarget>
-        <PillsInput
-          radius="xl"
-          size={size}
-          classNames={{
-            input: cx(S.pillsRow, {
-              [S.max]: maxValues && value.length >= maxValues,
-            }),
-            root: cx(S.container, {
-              [S.dragOver]: isDragOver,
-            }),
-          }}
-          onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-            const target = e.target as HTMLElement;
-            // Do not open when interacting with a pill (likely starting a drag or clicking remove)
-            if (
-              target?.closest('[data-reorderable-pill="true"]') ||
-              (maxValues && value.length >= maxValues)
-            ) {
-              // e.nativeEvent.stopImmediatePropagation doesn't work for some reason
-              // @ts-expect-error Incorrect typings for MouseEvent
-              e.stopImmediatePropagation();
-              return;
-            }
-            combobox.openDropdown();
-          }}
-          onDragOver={(e) => {
-            // Allow dropping external items
-            e.preventDefault();
-          }}
-          onDragEnter={(e) => {
-            const related = e.relatedTarget as Node | null;
-            // Only set drag-over when entering from outside the top-level container
-            if (related && e.currentTarget.contains(related)) {
-              return;
-            }
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={() => {
+            // mark dragging to avoid opening dropdown due to click/mousedown bubbling
             draggingRef.current = true;
-            // Highlight the input when an external draggable is over it
-            setIsDragOver(true);
-            console.log("drag enter", e.dataTransfer.getData("text/plain"));
+            console.log("dragging", dataTestId);
           }}
-          onDragLeave={(e) => {
-            const related = e.relatedTarget as Node | null;
-            // Only clear drag-over when leaving to outside the top-level container
-            if (related && e.currentTarget.contains(related)) {
-              return;
-            }
-            setIsDragOver(false);
+          onDragEnd={(event) => {
+            onDragEnd(event);
+            // reset dragging flag on next tick to avoid immediate click opening
+            setTimeout(() => {
+              draggingRef.current = false;
+            }, 0);
+            console.log("dragend", dataTestId);
           }}
-          onDrop={(e) => {
-            debugger;
-            e.preventDefault();
-            const val = e.dataTransfer.getData("text/plain");
-            if (!val) {
-              return;
-            }
-            if (maxValues && value.length >= maxValues) {
-              return;
-            }
-            if (selectedSet.has(val)) {
-              return;
-            }
-            addValue(val);
-            setIsDragOver(false);
+          onDragOver={() => {
+            console.log("dragover", dataTestId);
           }}
         >
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={() => {
-              // mark dragging to avoid opening dropdown due to click/mousedown bubbling
-              draggingRef.current = true;
-            }}
-            onDragEnd={(event) => {
-              onDragEnd(event);
-              // reset dragging flag on next tick to avoid immediate click opening
-              setTimeout(() => {
-                draggingRef.current = false;
-              }, 0);
-            }}
-            onDragOver={() => {}}
+          <SortableContext
+            items={value}
+            strategy={horizontalListSortingStrategy}
           >
-            <SortableContext
-              items={value}
-              strategy={horizontalListSortingStrategy}
+            <PillsInput
+              radius="xl"
+              size={size}
+              classNames={{
+                input: cx(S.pillsRow, {
+                  [S.max]: maxValues && value.length >= maxValues,
+                  [S.dragOver]: isDragOver,
+                }),
+                root: cx(S.container, {}),
+              }}
+              onMouseDownCapture={(e: React.MouseEvent<HTMLDivElement>) => {
+                const target = e.target as HTMLElement;
+                // Do not open when interacting with a pill (likely starting a drag or clicking remove)
+                if (
+                  target?.closest('[data-reorderable-pill="true"]') ||
+                  (maxValues && value.length >= maxValues)
+                ) {
+                  e.nativeEvent.stopImmediatePropagation();
+                  return;
+                }
+                combobox.openDropdown();
+              }}
+              onDragOver={(e) => {
+                // Allow dropping external items
+                e.preventDefault();
+                console.log("dragover-input", dataTestId);
+              }}
+              onDragEnter={(e) => {
+                const related = e.relatedTarget as Node | null;
+                // Only set drag-over when entering from outside the top-level container
+                if (related && e.currentTarget.contains(related)) {
+                  return;
+                }
+                draggingRef.current = true;
+                // Highlight the input when an external draggable is over it
+                setIsDragOver(true);
+                console.log("dragenter-input", dataTestId);
+              }}
+              onDragLeave={(e) => {
+                const related = e.relatedTarget as Node | null;
+                // Only clear drag-over when leaving to outside the top-level container
+                if (related && e.currentTarget.contains(related)) {
+                  return;
+                }
+                setIsDragOver(false);
+                console.log("dragleave-input", dataTestId);
+              }}
+              onDrop={(e) => {
+                debugger;
+                e.preventDefault();
+                const val = e.dataTransfer.getData("text/plain");
+                if (!val) {
+                  return;
+                }
+                if (maxValues && value.length >= maxValues) {
+                  return;
+                }
+                if (selectedSet.has(val)) {
+                  return;
+                }
+                addValue(val);
+                setIsDragOver(false);
+                console.log("drop-input", dataTestId);
+              }}
             >
               {value.map((v, idx) => (
                 <SortablePill
@@ -255,40 +260,40 @@ export function ReorderableTagsInput({
                   onRemove={() => removeAt(idx)}
                 />
               ))}
-            </SortableContext>
-          </DndContext>
-          {!maxValues || value.length < maxValues ? (
-            <Combobox.EventsTarget>
-              <PillsInput.Field
-                // disabled={draggingRef.current}
-                className={S.inputField}
-                placeholder={value.length ? undefined : placeholder}
-                value={search}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                  setSearch(e.currentTarget.value);
-                  if (!maxValues || value.length < maxValues) {
-                    combobox.openDropdown();
-                  }
-                }}
-                onFocus={() => {
-                  if (!maxValues || value.length < maxValues) {
-                    combobox.openDropdown();
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Backspace" &&
-                    search.length === 0 &&
-                    value.length > 0
-                  ) {
-                    event.preventDefault();
-                    removeAt(value.length - 1);
-                  }
-                }}
-              />
-            </Combobox.EventsTarget>
-          ) : null}
-        </PillsInput>
+              {!maxValues || value.length < maxValues ? (
+                <Combobox.EventsTarget>
+                  <PillsInput.Field
+                    // disabled={draggingRef.current}
+                    className={S.inputField}
+                    placeholder={value.length ? undefined : placeholder}
+                    value={search}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                      setSearch(e.currentTarget.value);
+                      if (!maxValues || value.length < maxValues) {
+                        combobox.openDropdown();
+                      }
+                    }}
+                    onFocus={() => {
+                      if (!maxValues || value.length < maxValues) {
+                        combobox.openDropdown();
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Backspace" &&
+                        search.length === 0 &&
+                        value.length > 0
+                      ) {
+                        event.preventDefault();
+                        removeAt(value.length - 1);
+                      }
+                    }}
+                  />
+                </Combobox.EventsTarget>
+              ) : null}
+            </PillsInput>
+          </SortableContext>
+        </DndContext>
       </Combobox.DropdownTarget>
 
       <Combobox.Dropdown>

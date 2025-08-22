@@ -5,10 +5,10 @@
   border: 1px dashed var(--mb-color-border);
   background-color: var(--mb-color-bg-light);
   border-radius: var(--mantine-radius-xl);
+  transition: box-shadow 250ms ease;
 }
 
 .container {
-  transition: box-shadow 250ms ease;
 }
 
 .max {
@@ -17,6 +17,7 @@
 
 .dragOver {
   box-shadow: 0 0 2px 1px var(--mb-color-border);
+  cursor: none !important;
 }
 
 .pill {

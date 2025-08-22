@@ -9,6 +9,8 @@ import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import { getEntityIcon, useListColumns } from "./ListView";
 import S from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
+import { DndContext } from "@dnd-kit/core";
+import { SortableContext } from "@dnd-kit/sortable";
 
 export const ListViewConfiguration = ({
   data,
@@ -89,6 +91,10 @@ export const ListViewConfiguration = ({
     onChange({ left, right });
   };
 
+  const handleDragEnd = () => {
+    console.log("dragend");
+  };
+
   return (
     <Stack
       h="100%"
@@ -132,6 +138,7 @@ export const ListViewConfiguration = ({
             onChange={(value) => onConfigurationChange({ left: value })}
             maxValues={2}
             placeholder={leftValues.length > 0 ? "" : "Title + Subtitle"}
+            data-testid="list-view-left-columns"
           />
 
           {/* Right columns */}
@@ -142,6 +149,7 @@ export const ListViewConfiguration = ({
             onChange={(value) => onConfigurationChange({ right: value })}
             maxValues={5}
             placeholder={rightValues.length === 5 ? "" : "Right columns"}
+            data-testid="list-view-right-columns"
           />
         </Box>
       </Stack>
