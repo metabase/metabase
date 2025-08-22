@@ -2184,6 +2184,33 @@ describe("scenarios > admin > datamodel", () => {
           H.modal().findByText("2.07").should("not.exist");
         });
 
+        it("should let you change field visibility to 'Do not include' even if Preview is opened (metabase#61806)", () => {
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: ORDERS_ID,
+            fieldId: ORDERS.TAX,
+          });
+
+          TableSection.clickField("Tax");
+          FieldSection.getPreviewButton().click();
+          PreviewSection.get().within(() => {
+            cy.findByText("Filtering").click();
+
+            cy.findByTestId("number-filter-picker").should("be.visible");
+          });
+
+          FieldSection.getVisibilityInput()
+            .should("have.value", "Everywhere")
+            .click();
+          H.popover().findByText("Do not include").click();
+          cy.wait("@updateField");
+
+          PreviewSection.get()
+            .findByText("This field is hidden")
+            .should("be.visible");
+        });
+
         it("should let you change field visibility to 'Only in detail views'", () => {
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
