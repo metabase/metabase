@@ -12,7 +12,8 @@ const { resolve } = require("path");
 const fs = require("fs");
 const path = require("path");
 
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
@@ -27,7 +28,7 @@ const sdkPackageTemplateJson = fs.readFileSync(
   path.resolve(
     path.join(
       __dirname,
-      "enterprise/frontend/src/embedding-sdk/package.template.json",
+      "enterprise/frontend/src/embedding-sdk-bundle/package.template.json",
     ),
   ),
   "utf-8",

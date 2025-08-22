@@ -16,7 +16,8 @@ const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
 const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
@@ -224,7 +225,7 @@ const config = {
           ? ENTERPRISE_SRC_PATH + "/overrides"
           : SRC_PATH + "/lib/noop",
       embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk": SDK_SRC_PATH,
+      "embedding-sdk-bundle": SDK_SRC_PATH,
       "sdk-iframe-embedding-ee-plugins":
         process.env.MB_EDITION === "ee"
           ? ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins"

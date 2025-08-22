@@ -12,7 +12,7 @@ const {
 } = resolveEmbeddingSdkPackage();
 
 module.exports = {
-  stories: ["../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx"],
+  stories: ["../enterprise/frontend/src/embedding-sdk-bundle/**/*.stories.tsx"],
   staticDirs: ["../resources/frontend_client", "./msw-public"],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
@@ -90,7 +90,7 @@ function resolveEmbeddingSdkPackage() {
   } catch (err) {
     const sdkPackageTemplateJson = fs.readFileSync(
       path.resolve(
-        "./enterprise/frontend/src/embedding-sdk/package.template.json",
+        "./enterprise/frontend/src/embedding-sdk-bundle/package.template.json",
       ),
       "utf-8",
     );
