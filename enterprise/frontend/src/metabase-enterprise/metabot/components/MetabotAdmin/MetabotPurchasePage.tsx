@@ -84,11 +84,11 @@ export const MetabotPurchasePage = () => {
   const [purchaseMetabotAddOn] = usePurchaseMetabotCloudAddOnMutation();
   const onSubmit = useCallback(
     async ({ terms_of_service }: MetabotPurchaseFormFields) => {
+      settingUpModalHandlers.open();
       await purchaseMetabotAddOn({
         terms_of_service,
       })
         .unwrap()
-        .then(() => settingUpModalHandlers.open())
         .catch((error: unknown) => {
           isFetchBaseQueryError(error) && handleFieldError(error.data);
         });
