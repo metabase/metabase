@@ -259,6 +259,10 @@
   "Should Metabase do AI analysis on entities?"
   :ai-entity-analysis)
 
+(define-premium-feature ^{:added "0.55.0"} offer-metabase-ai?
+  "Offer Metabase AI add-on"
+  :offer-metabase-ai)
+
 (define-premium-feature ^{:added "0.56.0"} cloud-custom-smtp?
   "Can Metabase have a custom smtp details separate from the default Cloud details."
   :cloud-custom-smtp)
@@ -274,10 +278,6 @@
 (define-premium-feature ^{:added "0.56.0"} enable-semantic-search?
   "Should we enable the semantic search backend?"
   :semantic-search)
-
-(define-premium-feature ^{:added "0.56.0"} offer-metabase-ai?
-  "Offer Metabase AI add-on"
-  :offer-metabase-ai)
 
 (define-premium-feature ^{:added "0.57.0"} table-data-editing?
   "Should we allow users to edit the data within tables?"
