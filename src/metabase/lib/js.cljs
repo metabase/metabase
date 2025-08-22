@@ -203,6 +203,17 @@
   [a-query]
   (lib.core/drop-empty-stages a-query))
 
+(defn ^:export optimize-stages
+  "Optimize query stages by merging empty stages with subsequent stages that have clauses.
+  This addresses issue #45041 where removing clauses can leave redundant nested stages.
+
+  An empty stage is one that contains only source information (e.g., `:source-table` or `:source-card`)
+  but no other clauses like aggregations, breakouts, filters, etc.
+
+  > **Code health:** Healthy"
+  [a-query]
+  (lib.core/optimize-stages a-query))
+
 (defn ^:export as-returned
   "When a query has aggregations in stage `N`, there's an important difference between adding an expression to stage `N`
   (with access to the colums before aggregation) or adding it to stage `N+1` (with access to the aggregations and

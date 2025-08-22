@@ -383,7 +383,8 @@
   drop-stage
   drop-empty-stages
   ensure-filter-stage
-  has-clauses?]
+  has-clauses?
+  optimize-stages]
  [lib.swap
   swap-clauses]
  [lib.temporal-bucket

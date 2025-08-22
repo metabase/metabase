@@ -377,6 +377,57 @@
                                                   stage)))
                                 stages))))
 
+(mu/defn- can-merge-stages? :- :boolean
+  "Check if two consecutive stages can be merged. The first stage should be 'empty' 
+   (containing only source information) and the second stage should have clauses."
+  [query :- ::lib.schema/query
+   stage-index :- :int]
+  (let [stage-count (count (:stages query))]
+    (and (< stage-index (dec stage-count))  ; not the last stage
+         (not (has-clauses? query stage-index))  ; current stage is empty
+         (has-clauses? query (inc stage-index)))))  ; next stage has clauses
+
+(mu/defn- merge-consecutive-stages :- ::lib.schema/query
+  "Merge stage at stage-index with the next stage, combining their clauses.
+   The stage at stage-index should be empty (only source info) and will be
+   merged into the next stage."
+  [query :- ::lib.schema/query
+   stage-index :- :int]
+  (let [empty-stage (lib.util/query-stage query stage-index)
+        next-stage (lib.util/query-stage query (inc stage-index))
+        ;; Merge source information from empty stage into next stage
+        ;; Preserve all fields from next-stage, but override source information from empty stage
+        source-info (select-keys empty-stage [:source-table :source-card :lib/stage-metadata :lib/options])
+        merged-stage (merge next-stage source-info)]
+    (-> query
+        (update :stages (fn [stages]
+                         (-> stages
+                             (assoc stage-index merged-stage)
+                             ;; Remove the next stage by taking elements before and after
+                             (#(concat (take (inc stage-index) %) 
+                                      (drop (+ stage-index 2) %)))
+                             vec))))))
+
+(mu/defn optimize-stages :- ::lib.schema/query
+  "Optimize query stages by merging empty stages with subsequent stages that have clauses.
+   This addresses issue #45041 where removing clauses can leave redundant nested stages."
+  [query :- ::lib.schema/query]
+  (loop [query query
+         stage-index 0]
+    (let [stage-count (count (:stages query))]
+      (cond
+        ;; If we've processed all stages, return the query
+        (>= stage-index (dec stage-count))
+        query
+        
+        ;; If current stage can be merged with next, merge and continue from same index
+        (can-merge-stages? query stage-index)
+        (recur (merge-consecutive-stages query stage-index) stage-index)
+        
+        ;; Otherwise, move to next stage
+        :else
+        (recur query (inc stage-index))))))
+
 (mu/defn ensure-extra-stage :- [:tuple ::lib.schema/query :int]
   "Given a query and current stage, returns a tuple of `[query next-stage-number]`.
 

@@ -95,6 +95,33 @@
                         {:joins (symbol "nil #_\"key is not present.\"")}]}
               (lib/remove-clause query 0 (first (lib/breakouts query 0))))))))
 
+(deftest ^:parallel remove-clause-stage-optimization-test
+  (testing "Issue #45041: removeClause should optimize stages to prevent redundant nesting"
+    (let [base-query (lib.tu/orders-query)
+          ;; Create a query with two stages
+          query-with-stages (-> base-query
+                               (lib/aggregate (lib/count))
+                               (lib/breakout (meta/field-metadata :orders :created-at))
+                               lib/append-stage
+                               (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+          ;; Remove the aggregation from the first stage, leaving it "empty" 
+          aggregations-stage-0 (lib/aggregations query-with-stages 0)
+          query-after-remove (lib/remove-clause query-with-stages 0 (first aggregations-stage-0))
+          legacy-result (lib/toLegacyQuery query-after-remove)]
+      
+      (testing "Query should have been optimized to merge stages"
+        ;; After optimization, should have only one stage instead of nested source-query
+        (is (= 1 (lib/stage-count query-after-remove)) 
+            "Query should be optimized to a single stage")
+        
+        ;; The legacy query should not have a nested source-query structure
+        (is (not (contains? (:query legacy-result) :source-query))
+            "Legacy query should not have nested source-query")
+        
+        ;; Should still have the aggregation from the second stage
+        (is (seq (get-in legacy-result [:query :aggregation]))
+            "Should preserve aggregation from merged stage")))))
+
 (deftest ^:parallel remove-clause-breakout-test
   (let [query (-> (lib.tu/venues-query)
                   (lib/aggregate (lib/count))
