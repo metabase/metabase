@@ -72,12 +72,7 @@ export const Value = ({ children, column, field, value }: Props) => {
   }
 
   return (
-    <Text
-      c="text-primary"
-      className={cx(S.value, S.maxHeight)}
-      flex="1"
-      fw="bold"
-    >
+    <Text c="text-primary" className={cx(S.value, S.maxHeight)} fw="bold">
       {children}
     </Text>
   );

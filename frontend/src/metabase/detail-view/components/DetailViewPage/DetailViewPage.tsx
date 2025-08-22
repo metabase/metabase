@@ -1,3 +1,4 @@
+import { useViewportSize } from "@mantine/hooks";
 import { useMemo } from "react";
 
 import {
@@ -29,6 +30,9 @@ interface Props {
   tableForeignKeys?: ForeignKey[];
 }
 
+const BREAKPOINT_MEDIUM = 1024;
+const BREAKPOINT_SMALL = 640;
+
 export function DetailViewPage({
   columns,
   row,
@@ -39,6 +43,10 @@ export function DetailViewPage({
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = getRowName(columns, row) || rowId;
   const icon = getEntityIcon(table.entity_type);
+  const { width } = useViewportSize();
+  const isMediumBreakpoint = width <= BREAKPOINT_MEDIUM;
+  const isSmallBreakpoint = width <= BREAKPOINT_SMALL;
+  const paddingLeft = isSmallBreakpoint ? 32 : DETAIL_VIEW_PADDING_LEFT;
 
   return (
     <Stack
@@ -51,7 +59,7 @@ export function DetailViewPage({
         <Box
           bg="bg-white"
           className={S.header}
-          pl={rem(DETAIL_VIEW_PADDING_LEFT)}
+          pl={rem(paddingLeft)}
           pr="xl"
           py={rem(64)}
         >
@@ -64,23 +72,42 @@ export function DetailViewPage({
         </Box>
       )}
 
-      <Group align="stretch" flex="1" gap={0} key={rowId} mih={0} wrap="nowrap">
+      <Group
+        align="stretch"
+        flex="1"
+        gap={0}
+        key={rowId}
+        mih={0}
+        wrap={isMediumBreakpoint ? "wrap" : "nowrap"}
+      >
         <Group
           align="flex-start"
           bg="bg-white"
           flex="1"
           p="xl"
-          pl={rem(DETAIL_VIEW_PADDING_LEFT)}
+          pl={rem(paddingLeft)}
+          w={isMediumBreakpoint ? "100%" : undefined}
         >
           <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
             {columns.length - headerColumns.length > 0 && (
-              <DetailsGroup columns={columns} row={row} table={table} />
+              <DetailsGroup
+                columns={columns}
+                responsive={isSmallBreakpoint}
+                row={row}
+                table={table}
+              />
             )}
           </Stack>
         </Group>
 
         {tableForeignKeys && tableForeignKeys.length > 0 && (
-          <Box flex="0 0 auto" px={rem(40)} py="xl" w={rem(440)}>
+          <Box
+            flex={isMediumBreakpoint ? undefined : "0 0 auto"}
+            pl={rem(isMediumBreakpoint ? paddingLeft : 40)}
+            pr={rem(40)}
+            py="xl"
+            w={isMediumBreakpoint ? "100%" : rem(440)}
+          >
             <Relationships
               columns={columns}
               row={row}

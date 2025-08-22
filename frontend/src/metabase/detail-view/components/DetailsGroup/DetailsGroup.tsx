@@ -8,7 +8,7 @@ import {
 } from "metabase/detail-view/utils";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { OptionsType } from "metabase/lib/formatting/types";
-import { Group, Stack, Text, rem } from "metabase/ui";
+import { Box, Group, Stack, Text, rem } from "metabase/ui";
 import type { DatasetColumn, RowValues, Table } from "metabase-types/api";
 
 import S from "./DetailsGroup.module.css";
@@ -17,6 +17,7 @@ import { Value } from "./Value";
 interface Props {
   columns: DatasetColumn[];
   columnsSettings?: (OptionsType | undefined)[];
+  responsive?: boolean;
   row: RowValues;
   table: Table | undefined;
 }
@@ -24,6 +25,7 @@ interface Props {
 export const DetailsGroup = ({
   columns,
   columnsSettings,
+  responsive,
   row,
   table,
 }: Props) => {
@@ -47,15 +49,17 @@ export const DetailsGroup = ({
             <Text
               c="text-secondary"
               className={S.name}
-              flex="0 0 auto"
-              w={rem(224)}
+              flex={responsive ? "0 1 50%" : "0 0 auto"}
+              w={responsive ? undefined : rem(224)}
             >
               {getColumnTitle(column, columnSettings)}
             </Text>
 
-            <Value column={column} field={field} value={value}>
-              {renderValue(tc, value, column, columnSettings)}
-            </Value>
+            <Box flex={responsive ? "0 1 50%" : "1"}>
+              <Value column={column} field={field} value={value}>
+                {renderValue(tc, value, column, columnSettings)}
+              </Value>
+            </Box>
           </Group>
         );
       })}
