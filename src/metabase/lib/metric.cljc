@@ -89,7 +89,7 @@
        {:effective-type    :type/*
         :display-name      (fallback-display-name)
         :long-display-name (fallback-display-name)})
-     (select-keys opts [:name :display-name :long-display-name]))))
+     (select-keys opts [:display-name :long-display-name]))))
 
 (defmethod lib.metadata.calculation/column-name-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]
@@ -147,8 +147,8 @@
       (-> inner-meta
           (assoc :display-name (:name metric-meta) ; Metric card's name
                  :name         (:name inner-meta)) ; Name of the inner aggregation column
-          ;; If the :metric ref has a :name option, that overrides the metric card's name.
-          (cond-> (:name opts) (assoc :name (:name opts)))))
+          ;; If the :metric ref has a :display-name option, that overrides the display name but leaves :name stable.
+          (cond-> (:display-name opts) (assoc :display-name (:display-name opts)))))
     {:lib/type :metadata/metric
      :id metric-id
      :display-name (fallback-display-name)}))
