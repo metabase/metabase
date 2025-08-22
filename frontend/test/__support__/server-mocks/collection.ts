@@ -192,7 +192,7 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+|root$/, (call) => {
+  fetchMock.get(/api\/collection\/(\d+|root)$/, (call) => {
     const urlString = call.url;
     const parts = urlString.split("/");
     const collectionIdParam = parts[parts.length - 1];
