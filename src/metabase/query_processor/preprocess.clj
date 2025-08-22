@@ -97,28 +97,6 @@
              to
              from))
 
-;;; TODO -- this is broken and disables enforcement inside the middleware itself -- see QUE-1346
-(defn- ensure-mbql5-for-unclean-query
-  [middleware-fn]
-  (-> (fn [query]
-        (as-> query query
-          ;; convert to MBQL 5 as needed
-          (letfn [(convert [query]
-                    (lib/without-cleaning
-                     (^:once fn* []
-                       (mu/disable-enforcement
-                         (lib/query (qp.store/metadata-provider) query)))))]
-            (-> (cond->> query
-                  (not (:lib/type query)) convert)
-                (copy-unconverted-properties query)))
-          ;; apply the middleware WITH MALLI ENFORCEMENT ENABLED!
-          (middleware-fn query)
-          ;; now convert back to legacy without cleaning
-          (mu/disable-enforcement
-            (lib/without-cleaning
-             (^:once fn* [] (->legacy query))))))
-      (with-meta (meta middleware-fn))))
-
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 
@@ -164,14 +142,14 @@
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
    (ensure-legacy #'qp.pre-alias-aggregations/pre-alias-aggregations)
-   (ensure-legacy #'qp.wrap-value-literals/wrap-value-literals)
-   (ensure-mbql5-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
+   (ensure-mbql5 #'qp.wrap-value-literals/wrap-value-literals)
+   (ensure-mbql5 #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-mbql5 #'limit/add-default-limit)
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)
-   ;; return pMBQL at the end
+   ;; return MBQL 5 at the end
    (ensure-mbql5 identity)])
 
 (defn- middleware-fn-name [middleware-fn]

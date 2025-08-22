@@ -185,12 +185,18 @@
 (defn- assoc-field-dimension-options [{:keys [base_type semantic_type fingerprint] :as field} db]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
+                                       ;; legacy usage -- do not use going forward
+                                       #_{:clj-kondo/ignore [:deprecated-var]}
                                        (types/field-is-type? :type/Time field)
                                        [time-default-index time-dimension-indexes]
 
+                                       ;; legacy usage -- do not use going forward
+                                       #_{:clj-kondo/ignore [:deprecated-var]}
                                        (types/field-is-type? :type/Date field)
                                        [date-default-index date-dimension-indexes]
 
+                                       ;; legacy usage -- do not use going forward
+                                       #_{:clj-kondo/ignore [:deprecated-var]}
                                        (types/temporal-field? field)
                                        [datetime-default-index datetime-dimension-indexes]
 

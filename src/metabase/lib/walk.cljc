@@ -1,10 +1,12 @@
 (ns metabase.lib.walk
   "Tools for walking and transforming a query."
   (:require
+   [medley.core :as m]
    [metabase.lib.join :as lib.join]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -247,3 +249,50 @@
    join      :- [:map
                  [:lib/type [:= :mbql/join]]]]
   (into (vec join-path) [:stages (dec (count (:stages join)))]))
+
+(defn- walk-clauses* [clauses query path-type stage-or-join-path f]
+  (letfn [(walk-clause-recursively [clause]
+            (or (when (lib.util/clause? clause)
+                  (let [[tag opts & subclauses] clause
+                        subclauses'             (walk-clauses* subclauses query path-type stage-or-join-path f)]
+                    (when-not (identical? subclauses' subclauses)
+                      (into [tag opts] subclauses'))))
+                clause))]
+    ;; we're doing this the hard way instead of using `mapv` to avoid allocating new objects/creating a new query map if
+    ;; we don't actually change anything
+    (reduce
+     (fn [clauses i]
+       (let [clause  (nth clauses i)
+             clause' (walk-clause-recursively clause)
+             clause' (or (f query path-type stage-or-join-path clause')
+                         clause')]
+         (if (= clause' clause)
+           clauses
+           (assoc (vec clauses) i clause'))))
+     clauses
+     (range (count clauses)))))
+
+(defn walk-clauses
+  "F is of the form
+
+    (f query path-type stage-or-join-path clause)"
+  [query f]
+  (walk
+   query
+   (fn [query path-type path stage-or-join]
+     (case path-type
+       :lib.walk/join
+       (-> stage-or-join
+           (m/update-existing :conditions walk-clauses* query path-type path f)
+           (m/update-existing :fields (fn [fields]
+                                        (cond-> fields
+                                          (sequential? fields)
+                                          (walk-clauses* query path-type path f)))))
+
+       :lib.walk/stage
+       (when (= (:lib/type stage-or-join) :mbql.stage/mbql)
+         (reduce
+          (fn [stage k]
+            (m/update-existing stage k walk-clauses* query path-type path f))
+          stage-or-join
+          [:aggregation :breakout :expressions :fields :filters :order-by]))))))

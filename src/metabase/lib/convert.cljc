@@ -459,6 +459,13 @@
   "Map of option keys in pMBQL to their legacy names. Keys are renamed before [[disqualify]] drops all namespaced keys."
   {:metabase.lib.field/original-temporal-unit :original-temporal-unit})
 
+;;; TODO (Cam 8/22/25) HACK! This is only to power the
+;;; deprecated [[metabase.query-processor.middleware.wrap-value-literals/wrap-value-literals-in-mbql]]... once we
+;;; remove that we can remove this.
+(def ^:dynamic *remove-effective-type-in-conversion-to-legacy*
+  "Whether to remove `:effective-type` in options maps when converting to legacy."
+  true)
+
 (mu/defn- options->legacy-MBQL :- [:maybe [:map {:min 1}]]
   "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
   `:effective-type`, which is not used in options maps in legacy MBQL."
@@ -473,7 +480,10 @@
          true (perf/update-keys #(get options-preserved-in-legacy % %)))
        (into {} (comp (disqualify)
                       (remove (fn [[k _v]]
-                                (#{:effective-type :ident} k)))))
+                                ((if *remove-effective-type-in-conversion-to-legacy*
+                                   #{:effective-type :ident}
+                                   #{:ident})
+                                 k)))))
        not-empty))
 
 (defmulti ^:private aggregation->legacy-MBQL
@@ -633,13 +643,6 @@
                     [opts id]
                     [id opts])]
     (clause-with-options->legacy-MBQL [:field opts id])))
-
-(defmethod ->legacy-MBQL :value
-  [[_tag opts value]]
-  (let [opts (-> opts
-                 ;; remove effective type since it's not used/allowed in legacy MBQL
-                 (dissoc :effective-type))]
-    (clause-with-options->legacy-MBQL [:value opts value])))
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]
