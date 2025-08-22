@@ -13,9 +13,11 @@ import type {
   TableActionFormParameter,
 } from "../../api/types";
 
+import { LeaveConfirmationModal } from "./LeaveConfirmationModal";
 import { ModalParameterActionInput } from "./ModalParameterActionInput";
 import S from "./TableActionFormModal.module.css";
 import { TableActionFormModalParameter } from "./TableActionFormModalParameter";
+import { useActionFormUnsavedLeaveConfirmation } from "./use-action-form-unsaved-leave-confirmation";
 
 interface UpdateRowActionFormModalProps {
   opened: boolean;
@@ -70,13 +72,14 @@ export function UpdateRowActionFormModal({
 
   const {
     isValid,
+    values,
     resetForm,
     setFieldValue,
     handleSubmit,
     validateForm: revalidateForm,
   } = useFormik({
     // We want to track only changed values, not all values
-    initialValues: {},
+    initialValues: {} as Record<string, RowValue>,
     onSubmit: handleFormikSubmit,
     validate: validateForm,
     validateOnMount: true,
@@ -90,8 +93,32 @@ export function UpdateRowActionFormModal({
     }
   }, [opened, resetForm, revalidateForm]);
 
+  const shouldShowLeaveConfirmation = useCallback(() => {
+    return Object.keys(values).length > 0;
+  }, [values]);
+
+  const {
+    showLeaveConfirmation,
+    handleClose,
+    handleContinue,
+    handleLeaveConfirmation,
+  } = useActionFormUnsavedLeaveConfirmation({
+    shouldShowLeaveConfirmation,
+    onClose,
+  });
+
+  if (showLeaveConfirmation) {
+    return (
+      <LeaveConfirmationModal
+        opened={showLeaveConfirmation}
+        onContinue={handleContinue}
+        onLeave={handleLeaveConfirmation}
+      />
+    );
+  }
+
   return (
-    <Modal.Root opened={opened} onClose={onClose}>
+    <Modal.Root opened={opened} onClose={handleClose}>
       <Modal.Overlay />
       <Modal.Content
         transitionProps={{ transition: "slide-left" }}
@@ -116,7 +143,9 @@ export function UpdateRowActionFormModal({
                     parameter={parameter}
                   >
                     <ModalFormInput
-                      initialValue={initialValues?.[parameter.id]}
+                      initialValue={
+                        values[parameter.id] ?? initialValues?.[parameter.id]
+                      }
                       parameter={parameter}
                       onChange={setFieldValue}
                     />
@@ -126,7 +155,7 @@ export function UpdateRowActionFormModal({
             )}
           </Modal.Body>
           <Flex px="xl" className={S.modalFooter} gap="lg" justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={handleClose}>
               {t`Cancel`}
             </Button>
             <Button
