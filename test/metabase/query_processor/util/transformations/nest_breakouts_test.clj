@@ -152,8 +152,8 @@
                                                   ::add/source-alias  "test_data_products__v_d795ff70"
                                                   ::add/desired-alias "test_data_products__v_d795ff70"}
                                           "test_data_products__via__product_id__category"]]
-                           :aggregation [[:count {:name "count"}]
-                                         [:cum-count {:name "count_2"}]]}]}
+                           :aggregation [[:count {::add/desired-alias "count"}]
+                                         [:cum-count {::add/desired-alias "count_2"}]]}]}
                 actual))))))
 
 (deftest ^:parallel cumulative-count-offset-day-of-year-test

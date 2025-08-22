@@ -960,8 +960,7 @@
 (deftest ^:parallel duplicate-aggregations-test
   (testing "Make sure multiple aggregations of the same type get unique aliases"
     (qp.store/with-metadata-provider meta/metadata-provider
-      ;; ([[metabase.query-processor.middleware.pre-alias-aggregations]] should actually take care of this, but this test
-      ;; is here to be extra safe anyway.)
+      ;; (`add-alias-info` should actually take care of this, but this test is here to be extra safe anyway.)
       (is (= '{:select [SUM (VENUES.ID)    AS sum
                         SUM (VENUES.PRICE) AS sum_2]
                :from   [VENUES]

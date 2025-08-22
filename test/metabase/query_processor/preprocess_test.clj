@@ -573,7 +573,7 @@
                        (lib/returned-columns query))))))
       (testing `qp.preprocess/query->expected-cols
         (is (=? {:stages [{:breakout    [[:field {:join-alias "Products"} pos-int?]]
-                           :aggregation [[:count {:name "count"}]]
+                           :aggregation [[:count {}]]
                            :joins       [{:alias  "Products"
                                           :stages [{:fields #(= (count %) 8)}]}
                                          {:alias  "People - User"

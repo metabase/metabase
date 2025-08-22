@@ -40,36 +40,38 @@
 (deftest ^:parallel nest-expressions-test
   (driver/with-driver :h2
     (qp.store/with-metadata-provider meta/metadata-provider
-      (is (partial= (lib.tu.macros/$ids venues
-                      {:source-query {:source-table $$venues
-                                      :expressions  {"double_price" [:* [:field %price {::add/source-table  $$venues
-                                                                                        ::add/source-alias  "PRICE"
-                                                                                        ::add/desired-alias "PRICE"}]
-                                                                     2]}
-                                      :fields       [[:field %price       {::add/source-table  $$venues
-                                                                           ::add/source-alias  "PRICE"
-                                                                           ::add/desired-alias "PRICE"}]
-                                                     [:expression "double_price" {::add/desired-alias "double_price"}]]}
-                       :breakout     [[:field %price {::add/source-table  ::add/source
+      (is (=? (lib.tu.macros/$ids venues
+                {:source-query {:source-table $$venues
+                                :expressions  {"double_price" [:* [:field %price {::add/source-table  $$venues
+                                                                                  ::add/source-alias  "PRICE"
+                                                                                  ::add/desired-alias "PRICE"}]
+                                                               2]}
+                                :fields       [[:field %price       {::add/source-table  $$venues
+                                                                     ::add/source-alias  "PRICE"
+                                                                     ::add/desired-alias "PRICE"}]
+                                               [:expression "double_price" {::add/desired-alias "double_price"}]]}
+                 :breakout     [[:field %price {::add/source-table  ::add/source
+                                                ::add/source-alias  "PRICE"
+                                                ::add/desired-alias "PRICE"}]
+                                [:field "double_price" {:base-type          :type/Integer
+                                                        ::add/source-table  ::add/source
+                                                        ::add/source-alias  "double_price"
+                                                        ::add/desired-alias "double_price"}]]
+                 :aggregation  [[:aggregation-options [:count] {::add/desired-alias "count"}]]
+                 :order-by     [[:asc [:field %price {::add/source-table  ::add/source
                                                       ::add/source-alias  "PRICE"
-                                                      ::add/desired-alias "PRICE"}]
-                                      [:field "double_price" {:base-type          :type/Integer
-                                                              ::add/source-table  ::add/source
+                                                      ::add/desired-alias "PRICE"}]]
+                                [:asc [:field "double_price" {::add/source-table  ::add/source
                                                               ::add/source-alias  "double_price"
-                                                              ::add/desired-alias "double_price"}]]
-                       :aggregation  [[:aggregation-options [:count] {:name               "count"
-                                                                      ::add/desired-alias "count"}]]
-                       :order-by     [[:asc [:field %price {::add/source-table  ::add/source
-                                                            ::add/source-alias  "PRICE"
-                                                            ::add/desired-alias "PRICE"}]]]})
-                    (-> (lib.tu.macros/mbql-query venues
-                          {:expressions {"double_price" [:* $price 2]}
-                           :breakout    [$price
-                                         [:expression "double_price"]]
-                           :aggregation [[:count]]})
-                        qp.preprocess/preprocess
-                        add/add-alias-info
-                        nest-expressions))))))
+                                                              ::add/desired-alias "double_price"}]]]})
+              (-> (lib.tu.macros/mbql-query venues
+                    {:expressions {"double_price" [:* $price 2]}
+                     :breakout    [$price
+                                   [:expression "double_price"]]
+                     :aggregation [[:count]]})
+                  qp.preprocess/preprocess
+                  add/add-alias-info
+                  nest-expressions))))))
 
 (deftest ^:parallel nest-order-by-expressions-test
   (testing "Expressions in an order-by clause result in nesting"
@@ -630,8 +632,7 @@
                                                       ::add/source-table  ::add/source
                                                       ::add/source-alias  "CATEGORY_2"
                                                       ::add/desired-alias "CATEGORY_2"}]]
-                 :aggregation  [[:aggregation-options [:count] {:name               "count"
-                                                                ::add/desired-alias "count"}]]
+                 :aggregation  [[:aggregation-options [:count] {::add/desired-alias "count"}]]
                  :order-by     [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
                                                             ::add/source-table  ::add/source
                                                             ::add/source-alias  "CATEGORY_2"
