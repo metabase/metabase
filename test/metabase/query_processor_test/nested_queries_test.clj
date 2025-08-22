@@ -1672,7 +1672,7 @@
                     (mt/normal-drivers-with-feature :left-join))
     (mt/dataset
       crazy-names
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [mp (mt/metadata-provider)
             query (as-> (lib/query mp (lib.metadata/table mp (mt/id "space table"))) $q
                     (lib/join $q (-> (lib/join-clause (lib.metadata/table mp (mt/id "space table")))
                                      (lib/with-join-alias "Space Table Alias")
@@ -1694,7 +1694,7 @@
   (mt/test-drivers (set/intersection
                     (mt/normal-drivers-with-feature :identifiers-with-spaces)
                     (mt/normal-drivers-with-feature :left-join))
-    (let [mp              (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp              (mt/metadata-provider)
           card-query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                               (lib/order-by (lib.metadata/field mp (mt/id :orders :created_at)))
                               (lib/limit 1)
@@ -1733,7 +1733,7 @@
 
 (deftest ^:parallel multiple-bucketings-of-a-column-test
   (testing "Multiple bucketings of a column in a nested query should be returned (#46644)"
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           created-at-field (lib.metadata/field mp (mt/id :orders :created_at))
           base-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))

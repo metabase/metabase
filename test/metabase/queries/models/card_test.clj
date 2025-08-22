@@ -823,7 +823,7 @@
 
 (deftest save-mlv2-card-test
   (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
       (mt/with-temp [:model/Card card {:dataset_query query}]
@@ -845,7 +845,7 @@
           (is (=? {:dataset_query {:lib/type     :mbql/query
                                    :database     (mt/id)
                                    :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :venues)}]
-                                   :lib/metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id))}
+                                   :lib/metadata (mt/metadata-provider)}
                    :query_type    :query
                    :table_id      (mt/id :venues)
                    :database_id   (mt/id)}
@@ -858,14 +858,14 @@
             (is (=? {:dataset_query {:lib/type     :mbql/query
                                      :database     (mt/id)
                                      :stages       [{:lib/type :mbql.stage/mbql, :source-table (mt/id :orders)}]
-                                     :lib/metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id))}
+                                     :lib/metadata (mt/metadata-provider)}
                      :query_type    :query
                      :table_id      (mt/id :orders)
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
 
 (deftest can-run-adhoc-query-test
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [metadata-provider (mt/metadata-provider)
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
     (mt/with-current-user (mt/user->id :crowberto)
@@ -1029,7 +1029,7 @@
 
 (deftest ^:parallel query-description-in-metric-cards-test
   (testing "Metric cards contain query_description key (#51303)"
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (let [mp (mt/metadata-provider)]
       (mt/with-temp
         [:model/Card
          {id :id}

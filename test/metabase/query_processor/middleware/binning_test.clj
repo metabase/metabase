@@ -141,7 +141,7 @@
 
 (deftest ^:parallel binning-nested-questions-test
   (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                                    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                    (mt/metadata-provider)
                                     [(mt/mbql-query venues)])
     (is (= [[1 22]
             [2 59]
@@ -176,7 +176,7 @@
   (testing "Make sure we can auto-bin a Table that only has a single row (#13914)"
     (mt/dataset single-row
       (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                        (mt/metadata-provider)
                                         {:fields [{:id          (mt/id :t :lat)
                                                    :fingerprint (single-row-fingerprints :lat)}
                                                   {:id          (mt/id :t :lon)

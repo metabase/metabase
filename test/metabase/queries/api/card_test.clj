@@ -607,7 +607,7 @@
 
 (deftest series-are-compatible-test
   (mt/dataset test-data
-    (let [database-id->metadata-provider {(mt/id) (lib.metadata.jvm/application-database-metadata-provider (mt/id))}]
+    (let [database-id->metadata-provider {(mt/id) (mt/metadata-provider)}]
       (testing "area-line-bar charts"
         (mt/with-temp
           [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
@@ -3469,7 +3469,7 @@
   (testing "POST /api/card"
     (testing "Should be able to save a Card with an MLv2 query (#39024)"
       (mt/with-model-cleanup [:model/Card]
-        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [metadata-provider (mt/metadata-provider)
               venues            (lib.metadata/table metadata-provider (mt/id :venues))
               query             (lib/query metadata-provider venues)
               response          (mt/user-http-request :crowberto :post 200 "card"
@@ -3487,7 +3487,7 @@
 (deftest ^:parallel run-mlv2-card-query-test
   (testing "POST /api/card/:id/query"
     (testing "Should be able to run a query for a Card with an MLv2 query (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
@@ -3558,7 +3558,7 @@
     (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))))
 
 (deftest ^:parallel can-run-adhoc-query-test
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [metadata-provider (mt/metadata-provider)
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
     (mt/with-temp [:model/Card card {:dataset_query query}

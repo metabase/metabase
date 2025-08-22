@@ -18,7 +18,7 @@
 
 (defn- test-card
   []
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
         query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                   (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))

@@ -348,7 +348,7 @@
       (mt/with-report-timezone-id! nil
         (mt/dataset test-data
           (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                            (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                            (mt/metadata-provider)
                                             {:fields [{:id                (mt/id :reviews :rating)
                                                        :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
                                                        :effective-type    :type/Instant}]})
@@ -1022,7 +1022,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
       (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                        (mt/metadata-provider)
                                         {:tables [{:id (mt/id :venues), :name "Organização"}]})
         (let [query (mt/mbql-query checkins
                       {:fields [$id $venue-id->venues.name]
@@ -1218,7 +1218,7 @@
 
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
   (mt/test-driver :bigquery-cloud-sdk
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
           orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))

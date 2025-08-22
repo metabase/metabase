@@ -20,7 +20,7 @@
     (m/find-first pred dimensions)))
 
 (deftest ^:parallel query-metric-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
         metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                          (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
@@ -313,7 +313,7 @@
                            {:data-source {:table-id (mt/id :orders)}
                             :filters []}))))
   (mt/with-current-user (mt/user->id :crowberto)
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           table-id (mt/id :orders)
           table-details (#'metabot-v3.dummy-tools/table-details table-id {:metadata-provider mp})
           ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field-id)
@@ -360,7 +360,7 @@
                              {:data-source {:table-id Integer/MAX_VALUE}}))))))
 
 (deftest ^:parallel filter-records-model-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
         legacy-query (lib.convert/->legacy-MBQL query)]
     (mt/with-temp [:model/Card {model-id :id} {:dataset_query legacy-query
@@ -406,7 +406,7 @@
                                  {:data-source {:table-id (str "card__" Integer/MAX_VALUE)}}))))))))
 
 (deftest ^:parallel filter-records-report-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         table-id (mt/id :orders)
         query (lib/query mp (lib.metadata/table mp table-id))
         legacy-query (lib.convert/->legacy-MBQL query)]
@@ -457,7 +457,7 @@
 
 (deftest ^:parallel filter-records-query-test
   (let [query-id (u/generate-nano-id)
-        mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        mp (mt/metadata-provider)
         table-id (mt/id :orders)
         query (lib/query mp (lib.metadata/table mp table-id))
         legacy-query (lib.convert/->legacy-MBQL query)

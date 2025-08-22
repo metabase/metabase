@@ -553,7 +553,7 @@
 (deftest ^:parallel repro-49433-test
   (mt/test-driver
     :oracle
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                   (lib/aggregate $ (lib/count))
                   (lib/breakout $ (m/find-first (comp #{"Category"} :display-name)
@@ -595,7 +595,7 @@
 (deftest inline-local-date-time-test
   (mt/test-driver
     :oracle
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
                     (lib/aggregate (lib/count)))
           date-field (m/find-first (comp #{"Date"} :display-name) (lib/filterable-columns query))]
@@ -648,7 +648,7 @@
 (deftest nest-window-functions-test
   (mt/test-driver
     :oracle
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           orders            (lib.metadata/table mp (mt/id :orders))
           orders-created-at (lib.metadata/field mp (mt/id :orders :created_at))
           orders-id         (lib.metadata/field mp (mt/id :orders :id))

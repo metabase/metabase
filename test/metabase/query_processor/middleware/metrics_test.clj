@@ -497,7 +497,7 @@
               (adjust query))))))
 
 (deftest ^:parallel e2e-source-metric-results-test
-  (let [mp           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                          (lib/filter (lib/< (lib.metadata/field mp (mt/id :products :price)) 3))
                          (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating)))))
@@ -513,7 +513,7 @@
            (mt/rows (qp/process-query query))))))
 
 (deftest ^:parallel e2e-source-table-results-test
-  (let [mp           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                          (lib/filter (lib/< (lib.metadata/field mp (mt/id :products :price)) 30))
                          (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating)))))
@@ -532,7 +532,7 @@
            (mt/rows (qp/process-query query))))))
 
 (deftest ^:parallel e2e-source-card-test
-  (let [mp           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                          (lib/aggregate (lib/count)))
         mp           (lib.tu/mock-metadata-provider
@@ -552,7 +552,7 @@
              (qp/process-query query))))))
 
 (deftest ^:parallel execute-single-stage-metric
-  (let [mp           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                          (lib/aggregate (lib/count)))
         mp           (as-> mp $mp
@@ -578,7 +578,7 @@
             (mt/rows (qp/process-query query))))))
 
 (deftest ^:parallel available-metrics-test
-  (let [mp           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                          (lib/aggregate (lib/count)))
         mp           (lib.tu/mock-metadata-provider
@@ -604,7 +604,7 @@
             (lib/available-metrics query)))))
 
 (deftest ^:parallel custom-aggregation-test
-  (let [mp           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                          (lib/expression "total2" (lib// (lib.metadata/field mp (mt/id :orders :total)) 2))
                          (as-> $q (lib/aggregate $q (lib/sum (m/find-first (comp #{"total2"} :name) (lib/visible-columns $q))))))
@@ -779,7 +779,7 @@
               (adjust query))))))
 
 (deftest ^:parallel model-based-metric-with-implicit-join-test
-  (let [mp           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         model-query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
         mp           (as-> mp $mp
                        (lib.tu/mock-metadata-provider
@@ -810,7 +810,7 @@
             (mt/rows (qp/process-query metric-query))))))
 
 (deftest ^:parallel metric-with-explicit-join-test
-  (let [mp           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :people))
                                                     [(lib/=
@@ -830,7 +830,7 @@
             (mt/rows (qp/process-query query))))))
 
 (deftest ^:parallel filtered-metric-test
-  (let [mp            (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp            (mt/metadata-provider)
         metric-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
         mp            (lib.tu/mock-metadata-provider
@@ -855,7 +855,7 @@
              (mt/rows (qp/process-query query)))))))
 
 (deftest ^:parallel metric-in-offset-test
-  (let [mp            (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp            (mt/metadata-provider)
         metric-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                           (lib/aggregate (lib/count)))
         mp            (lib.tu/mock-metadata-provider
@@ -884,7 +884,7 @@
 
 (deftest ^:parallel expressions-from-metrics-are-spliced-to-correct-stage-test
   (testing "Integration test: Expression is spliced into correct stage during metric expansion (#48722)"
-    (let [mp    (as-> (lib.metadata.jvm/application-database-metadata-provider (mt/id)) $mp
+    (let [mp    (as-> (mt/metadata-provider) $mp
                   (lib.tu/mock-metadata-provider
                    $mp
                    {:cards [{:id            1
@@ -913,7 +913,7 @@
 
 (deftest ^:parallel fetch-referenced-metrics-test
   (testing "Metric's aggregation `:name` is used in expanded aggregation (#48625)"
-    (let [mp           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp           (mt/metadata-provider)
           metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
           mp           (lib.tu/mock-metadata-provider
@@ -1020,7 +1020,7 @@
                        (mt/normal-drivers-with-feature feature)
                        (mt/normal-drivers))
       (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
-        (let [mp                   (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [mp                   (mt/metadata-provider)
               base-query           (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                                      (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
                                                                               (lib/filterable-columns $))
@@ -1064,7 +1064,7 @@
                        (mt/normal-drivers-with-feature feature)
                        (mt/normal-drivers))
       (testing (format "Next stage reference works for %s" operator)
-        (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [mp    (mt/metadata-provider)
               mp    (lib.tu/mock-metadata-provider
                      mp
                      {:cards [{:id            1
@@ -1091,7 +1091,7 @@
                   (qp/process-query query))))))))
 
 (deftest ^:parallel metrics-with-conflicting-filters-produce-meaningful-result-test
-  (let [mp       (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp       (mt/metadata-provider)
         filter   #(lib/filter %1 (%2 (m/find-first (comp #{"Created At"} :display-name)
                                                    (lib/filterable-columns %1))
                                      "2018-04-01"))

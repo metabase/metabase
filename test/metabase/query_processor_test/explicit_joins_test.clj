@@ -1143,7 +1143,7 @@
 (deftest ^:parallel test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
-                             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                             (mt/metadata-provider)
                              mt/id)]
       (qp.store/with-metadata-provider metadata-provider
         (let [legacy-query (lib.convert/->legacy-MBQL
@@ -1162,7 +1162,7 @@
 (deftest ^:parallel test-13000
   (testing "Should join MBQL Saved Questions (#13000, #13649, #13744)"
     (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                             (mt/metadata-provider)
                              [(mt/mbql-query orders
                                 {:breakout    [$product_id]
                                  :aggregation [[:sum $total]]

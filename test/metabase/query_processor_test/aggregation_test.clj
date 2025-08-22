@@ -160,7 +160,7 @@
 (deftest ^:parallel field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:fields [{:id       (mt/id :venues :price)
                                                  :settings {:is_priceless false}}]})
       (let [results (mt/run-mbql-query venues
@@ -173,7 +173,7 @@
 (deftest ^:parallel semantic-type-for-aggregate-fields-test
   (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:fields [{:id            (mt/id :venues :price)
                                                  :semantic-type :type/Currency}]})
       (let [price [:field (mt/id :venues :price) nil]]

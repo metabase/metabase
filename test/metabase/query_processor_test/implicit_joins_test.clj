@@ -202,7 +202,7 @@
                                          $created_at
                                          $quantity
                                          $orders.product_id->products.category]})}]})
-           (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
+           (mt/metadata-provider))
           (is (= [["Doohickey" 3976]]
                  (mt/formatted-rows
                   [str int]

@@ -18,7 +18,7 @@
 (deftest ^:parallel resolve-card-resources-test
   (testing "resolve stores source table from referenced card"
     (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                             (mt/metadata-provider)
                              [(mt/mbql-query venues
                                 {:filter [:< $price 3]})])
           query             (lib/query

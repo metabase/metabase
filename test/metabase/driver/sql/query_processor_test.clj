@@ -643,7 +643,7 @@
 (deftest ^:parallel expressions-and-coercions-test
   (testing "Don't cast in both inner select and outer select when expression (#12430)"
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:fields [{:id                (mt/id :venues :price)
                                                  :coercion-strategy :Coercion/UNIXSeconds->DateTime
                                                  :effective-type    :type/DateTime}]})

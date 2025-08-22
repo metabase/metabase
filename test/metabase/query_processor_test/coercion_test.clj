@@ -58,7 +58,7 @@
       (doseq [[human-col col res] [["floats that round up"   :float_up_col   (biginteger 15)]
                                    ["floats that round down" :float_down_col (biginteger 10)]]]
         (let [mp (lib.tu/merged-mock-metadata-provider
-                  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                  (mt/metadata-provider)
                   {:fields [{:id                (mt/id :nums col)
                              :coercion-strategy :Coercion/Float->Integer
                              :effective-type    :type/Integer}]})
@@ -96,7 +96,7 @@
                                    ["users last_login (timestamp)"    :users  :last_login]]]
       (testing (format "DateTime->Date coercion works with %s" human-col)
         (let [mp (lib.tu/merged-mock-metadata-provider
-                  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                  (mt/metadata-provider)
                   {:fields [{:id                (mt/id table col)
                              :coercion-strategy :Coercion/DateTime->Date
                              :effective-type    :type/Date}]})

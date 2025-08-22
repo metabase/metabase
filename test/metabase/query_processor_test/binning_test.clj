@@ -13,7 +13,7 @@
   (doseq [[table-key field-key binning-name expected-display-name]
           [[:orders :tax "50 bins" "Tax: 50 bins"]
            [:venues :longitude "Bin every 1 degree" "Longitude: 1°"]]]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           query (as-> (lib/query mp (lib.metadata/table mp (mt/id table-key))) $
                   (lib/aggregate $ (lib/count))
                   (lib/breakout $ (lib/with-binning (lib.metadata/field mp (mt/id table-key field-key))
@@ -30,7 +30,8 @@
                   {:cards [{:id            1
                             :dataset-query query}]})]
           (is (= expected-display-name
-                 (-> (qp/process-query (lib/query mp (lib.metadata/card mp 1)))
+                 (-> (lib/query mp (lib.metadata/card mp 1))
+                     qp/process-query
                      mt/cols
                      first
                      :display_name))))))))

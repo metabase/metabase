@@ -185,7 +185,7 @@
                 {:source-table "card__2", :limit 25})))))))
 
 (defn- nested-nested-app-db-provider []
-  (let [base     (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [base     (-> (mt/metadata-provider)
                      (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                       [(mt/mbql-query venues {:limit 100})
                        {:database lib.schema.id/saved-questions-virtual-database-id

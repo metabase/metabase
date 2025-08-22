@@ -32,7 +32,7 @@
     (f metadata) -> rf"
   [[::legacy #'format-rows/format-rows]
    [::legacy #'results-metadata/record-and-return-metadata!]
-   [::mbql-5 #'limit/limit-result-rows]
+   [::mbql5  #'limit/limit-result-rows]
    [::legacy #'qp.middleware.enterprise/limit-download-result-rows]
    [::legacy #'qp.add-rows-truncated/add-rows-truncated]
    [::legacy #'qp.add-timezone-info/add-timezone-info]
@@ -42,7 +42,7 @@
    [::legacy #'large-int/convert-large-int-to-string]
    [::legacy #'viz-settings/update-viz-settings]
    [::legacy #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns]
-   [::mbql-5 #'annotate/add-column-info]
+   [::mbql5  #'annotate/add-column-info]
    [::legacy #'fetch-source-query/add-dataset-info]])
 ;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
@@ -57,7 +57,7 @@
          (fn [rff [middleware-expected-mbql-version middleware-fn]]
            (u/prog1 (middleware-fn
                      (case middleware-expected-mbql-version
-                       ::mbql-5 preprocessed-query
+                       ::mbql5 preprocessed-query
                        ::legacy legacy-query)
                      rff)
              (assert (fn? <>) (format "%s did not return a valid function" (pr-str middleware)))))

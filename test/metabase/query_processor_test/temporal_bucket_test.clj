@@ -9,7 +9,7 @@
    [metabase.test :as mt]))
 
 (deftest ^:parallel temporal-unit-in-display-name-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         single-stage-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                                (lib/aggregate (lib/count))
                                (lib/breakout (lib/with-temporal-bucket

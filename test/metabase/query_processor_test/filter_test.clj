@@ -935,7 +935,7 @@
     (mt/test-drivers (mt/normal-drivers)
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
-                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                 (mt/metadata-provider)
                                  {:database {:timezone "US/Pacific"}})
               checkins          (lib.metadata/table metadata-provider (mt/id :checkins))
               checkins-id       (lib.metadata/field metadata-provider (mt/id :checkins :id))
@@ -974,7 +974,7 @@
     (mt/test-drivers (mt/normal-drivers)
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
-                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                 (mt/metadata-provider)
                                  {:database {:timezone "US/Pacific"}})
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))

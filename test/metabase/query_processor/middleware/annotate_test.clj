@@ -145,11 +145,7 @@
                                     (select-keys [:id :name])
                                     (assoc :field_ref legacy-ref))))]]
           (testing (format "%d level(s) of nesting" level)
-            (let [nested-query (reduce
-                                (fn [query _]
-                                  (lib/append-stage query))
-                                base-query
-                                (range level))]
+            (let [nested-query (nth (iterate lib/append-stage base-query) level)]
               (is (=? (lib.tu.macros/$ids venues
                         [(field :id          $id)
                          (field :name        $name)
@@ -221,11 +217,7 @@
                                 :limit 10})))]
             (doseq [level (range 4)]
               (testing (format "%d level(s) of nesting" level)
-                (let [nested-query (reduce
-                                    (fn [base-query _]
-                                      (lib/append-stage base-query))
-                                    base-query
-                                    (range level))]
+                (let [nested-query (nth (iterate lib/append-stage base-query) level)]
                   (testing (format "\nQuery = %s" (u/pprint-to-str nested-query))
                     (is (= (lib.tu.macros/$ids products
                              {:name          "EAN"

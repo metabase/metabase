@@ -663,7 +663,7 @@
   (testing "exceptions with stacktraces should have the stacktrace removed"
     (mt/test-driver :databricks
       (let [res (mt/user-http-request :rasta :post 202 "dataset"
-                                      (lib/native-query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (lib/native-query (mt/metadata-provider)
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"
                 :status "failed"
@@ -957,7 +957,7 @@
 (deftest ^:parallel adhoc-mlv2-query-test
   (testing "POST /api/dataset"
     (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
@@ -969,7 +969,7 @@
 (deftest ^:parallel mlv2-query-convert-to-native-test
   (testing "POST /api/dataset/native"
     (testing "Should be able to convert an MLv2 query to native (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))

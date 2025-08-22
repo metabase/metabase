@@ -9,7 +9,7 @@
    [metabase.util :as u]))
 
 (defn- metadata-provider []
-  (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
+  (mt/metadata-provider))
 
 ;;; this stuff is mostly so we can get a sense of what using MLv2 in tests will ultimately look like
 

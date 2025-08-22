@@ -100,7 +100,7 @@
           (is (= expected
                  (driver/database-supports? :mongo :expressions db))))))
     (is (= #{:collection}
-           (lib/required-native-extras (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))))
+           (lib/required-native-extras (mt/metadata-provider))))))
 
 (def ^:private native-query
   "[{\"$project\": {\"_id\": \"$_id\"}},

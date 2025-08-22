@@ -21,7 +21,7 @@
 
 (defn- resolve-and-return-cached-metadata
   ([query]
-   (resolve-and-return-cached-metadata (lib.metadata.jvm/application-database-metadata-provider (mt/id)) query))
+   (resolve-and-return-cached-metadata (mt/metadata-provider) query))
 
   ([metadata-provider query]
    (let [query (lib/query metadata-provider query)]

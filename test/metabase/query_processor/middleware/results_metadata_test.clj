@@ -103,7 +103,7 @@
                       (qp/userland-query
                        query
                        {:card-id        (u/the-id card)
-                        :query-hash     (qp.util/query-hash {:database (mt/id), :type :native, :native {:query "X"}})}))]
+                        :query-hash     (qp.util/query-hash {})}))]
           (when-not (= :completed (:status result))
             (throw (ex-info "Query failed." result))))
         (is (=? (round-to-2-decimals (default-card-results-native))
@@ -183,7 +183,7 @@
                           (qp/userland-query
                            (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})
                            {:card-id    (u/the-id card)
-                            :query-hash (qp.util/query-hash {:database (mt/id), :type :native, :native {:query "X"}})}))
+                            :query-hash (qp.util/query-hash {})}))
                          :data
                          :results_metadata
                          :columns)]
@@ -200,7 +200,7 @@
                             (qp/userland-query
                              (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})
                              {:card-id    (u/the-id card)
-                              :query-hash (qp.util/query-hash {:database (mt/id), :type :native, :native {:query "X"}})}))]
+                              :query-hash (qp.util/query-hash {})}))]
                 (is (= (#'middleware.results-metadata/comparable-metadata cols-1)
                        (#'middleware.results-metadata/comparable-metadata
                         (-> result :data :results_metadata :columns))))
@@ -271,7 +271,7 @@
                  {:aggregation  [[:count]]
                   :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]})
                {:info {:card-id    (u/the-id card)
-                       :query-hash (qp.util/query-hash {:database (mt/id), :type :native, :native {:query "X"}})}})))
+                       :query-hash (qp.util/query-hash {})}})))
       (is (=? [{:base_type    :type/Date
                 :effective_type    :type/Date
                 :visibility_type :normal
@@ -360,7 +360,7 @@
         (do-test 9)
         (testing "With an FK column remapping"
           (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                            (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                            (mt/metadata-provider)
                                             (mt/id :orders :product_id)
                                             (mt/id :products :title))
             ;; Add column remapping from Orders Product ID -> Products.Title

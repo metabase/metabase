@@ -28,7 +28,7 @@
        ((every-pred :name :base_type :display_name) maybe-col)))
 
 (gt/defgentest basic-query-execution-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+  (let [mp (mt/metadata-provider)]
     (gt/iterate
      #_{:gentest.default-limit/seconds 5}
      {:gentest.default-limit/iterations 1}
@@ -49,7 +49,7 @@
              (is (every? valid-col? (mt/cols result))))))))))
 
 (gt/defgentest execution-with-cards-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+  (let [mp (mt/metadata-provider)]
     ;; TODO: What is the reasonable amount of cards to use in context? Hardcoding 8 for now as 8 tables are avail in
     ;;       mp's test-data.
     (tu.gen.jvm/with-random-cards mp 8

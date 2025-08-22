@@ -238,7 +238,7 @@
 (deftest ^:parallel breakout-on-nested-join-test
   (testing "Should handle breakout on nested join column (#59918)"
     (let [mp        (lib.tu/mock-metadata-provider
-                     (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                     (mt/metadata-provider)
                      {:cards [{:id            1
                                :dataset-query (mt/mbql-query orders
                                                 {:joins [{:source-table $$products
@@ -349,7 +349,7 @@
 
 (deftest ^:parallel stale-unsed-field-referenced-test
   (testing "Should handle missing unused field (#60498)"
-    (let [mp        (as-> (lib.metadata.jvm/application-database-metadata-provider (mt/id)) $mp
+    (let [mp        (as-> (mt/metadata-provider) $mp
                       (lib.tu/mock-metadata-provider
                        $mp
                        {:cards [(let [query (mt/mbql-query orders)]

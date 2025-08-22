@@ -71,7 +71,7 @@
   "A dashboard card query with a pivot table."
   []
   (let [dataset-query     (pivot-query false)
-        metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        metadata-provider (mt/metadata-provider)
         query             (lib/query metadata-provider dataset-query)
         breakouts         (into []
                                 (comp (filter :lib/breakout?) (map :name))

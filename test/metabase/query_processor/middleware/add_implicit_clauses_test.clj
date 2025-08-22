@@ -306,7 +306,7 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "Query with sort, breakout and _model as a source_ works correctly (#44653)."
       (let [mp                       (lib.tu/mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:cards [{:id            1
                                                 :type          :model
                                                 :dataset_query (mt/mbql-query orders)}]})
@@ -326,7 +326,7 @@
                     (mapv (comp int second)))))))))
 
 (deftest ^:parallel changed-coercion-of-models-underlying-data-test
-  (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp    (mt/metadata-provider)
         query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
         mp    (lib.tu/mock-metadata-provider
                mp

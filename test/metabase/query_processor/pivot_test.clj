@@ -143,7 +143,7 @@
 
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           query             (lib/query
                              metadata-provider
                              {:database   (mt/id)
@@ -660,7 +660,7 @@
   (testing "Should be able to run a pivot query for an MLv2 query (#39024)"
     ;; this is literally the same query as [[pivot-with-order-by-aggregation-test]], just in MLv2, so it should return
     ;; the same exact results.
-    (let [metadata-provider  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider  (mt/metadata-provider)
           reviews            (lib.metadata/table metadata-provider (mt/id :reviews))
           reviews-rating     (lib.metadata/field metadata-provider (mt/id :reviews :rating))
           reviews-created-at (lib.metadata/field metadata-provider (mt/id :reviews :created_at))

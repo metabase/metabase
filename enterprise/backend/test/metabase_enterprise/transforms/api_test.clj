@@ -231,7 +231,7 @@
      category - The category filter used (e.g., \"Gadget\" or \"Doohickey\")"
   [table-name ids category]
   ;; Use the metadata provider to find the table
-  (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp    (mt/metadata-provider)
         ;; Find the table by name
         table (m/find-first (comp #{table-name} :name)
                             (lib.metadata/tables mp))]
@@ -261,7 +261,7 @@
   "Wait for a table to appear in metadata, with timeout.
    Copied from execute_test.clj - will consolidate later."
   [table-name timeout-ms]
-  (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp    (mt/metadata-provider)
         limit (+ (System/currentTimeMillis) timeout-ms)]
     (loop []
       (Thread/sleep 200)

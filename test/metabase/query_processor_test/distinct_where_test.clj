@@ -71,7 +71,7 @@
 (deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:segments [{:id         1
                                                    :name       "Segment 1"
                                                    :table-id   (mt/id :venues)
@@ -87,7 +87,7 @@
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :distinct-where)
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:cards [{:id            1
                                                 :database-id   (mt/id)
                                                 :name          "Metric 1"

@@ -38,7 +38,7 @@
 (def ^:private metadata-provider
   (delay
     (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-     (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+     (mt/metadata-provider)
      [(mt/mbql-query orders
         {:joins [{:source-table $$products
                   :alias        "Product"
