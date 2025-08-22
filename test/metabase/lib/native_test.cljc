@@ -271,7 +271,10 @@
        #?(:clj Throwable :cljs :default)
        #"Must be a native query"
        (-> (lib/query (metadata-provider-requiring-collection) (meta/table-metadata :venues))
-           (lib/with-native-extras {:collection "mycollection"})))))
+           (lib/with-native-extras {:collection "mycollection"}))))
+  (testing "should not throw when creating a native query without required extras (metabase#62556)"
+    (is (=? {:stages [{:native "myquery"}]}
+            (-> (lib/native-query (metadata-provider-requiring-collection) "myquery"))))))
 
 (deftest ^:parallel has-write-permission-test
   (testing ":native-permissions in database"
