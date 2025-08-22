@@ -258,39 +258,53 @@ export function ReorderableTagsInput({
             </SortableContext>
           </DndContext>
           {!maxValues || value.length < maxValues ? (
-            <PillsInput.Field
-              // disabled={draggingRef.current}
-              className={S.inputField}
-              placeholder={value.length ? undefined : placeholder}
-              value={search}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                setSearch(e.currentTarget.value);
-                if (!maxValues || value.length < maxValues) {
-                  combobox.openDropdown();
-                }
-              }}
-              onFocus={() => {
-                if (!maxValues || value.length < maxValues) {
-                  combobox.openDropdown();
-                }
-              }}
-            />
+            <Combobox.EventsTarget>
+              <PillsInput.Field
+                // disabled={draggingRef.current}
+                className={S.inputField}
+                placeholder={value.length ? undefined : placeholder}
+                value={search}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  setSearch(e.currentTarget.value);
+                  if (!maxValues || value.length < maxValues) {
+                    combobox.openDropdown();
+                  }
+                }}
+                onFocus={() => {
+                  if (!maxValues || value.length < maxValues) {
+                    combobox.openDropdown();
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Backspace" &&
+                    search.length === 0 &&
+                    value.length > 0
+                  ) {
+                    event.preventDefault();
+                    removeAt(value.length - 1);
+                  }
+                }}
+              />
+            </Combobox.EventsTarget>
           ) : null}
         </PillsInput>
       </Combobox.DropdownTarget>
 
       <Combobox.Dropdown>
-        <ScrollArea.Autosize mah={256} type="auto">
-          {available.length === 0 ? (
-            <Combobox.Empty>{t`Nothing found`}</Combobox.Empty>
-          ) : (
-            available.map((opt) => (
-              <Combobox.Option value={opt.value} key={opt.value}>
-                {opt.label}
-              </Combobox.Option>
-            ))
-          )}
-        </ScrollArea.Autosize>
+        <Combobox.Options>
+          <ScrollArea.Autosize mah={256} type="auto">
+            {available.length === 0 ? (
+              <Combobox.Empty>{t`Nothing found`}</Combobox.Empty>
+            ) : (
+              available.map((opt) => (
+                <Combobox.Option value={opt.value} key={opt.value}>
+                  {opt.label}
+                </Combobox.Option>
+              ))
+            )}
+          </ScrollArea.Autosize>
+        </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>
   );
