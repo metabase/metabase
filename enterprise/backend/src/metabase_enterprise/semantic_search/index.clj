@@ -105,7 +105,7 @@
 
 (defn- to-boolean
   "MySQL booleans are represented as 0/1, so we must ensure we're casting them to
-   real booleans when inserting them int our postgres db"
+   real booleans when inserting them into our postgres db"
   [b]
   {:pre [(some? b)]}
   (cond
