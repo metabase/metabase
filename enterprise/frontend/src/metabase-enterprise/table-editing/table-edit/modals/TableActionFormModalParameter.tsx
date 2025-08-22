@@ -1,7 +1,6 @@
 import type { PropsWithChildren } from "react";
 
-import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
-import { Group, Icon, type IconName, Text } from "metabase/ui";
+import { Group, Stack, Text } from "metabase/ui";
 
 import {
   TableActionFormInputType,
@@ -14,39 +13,38 @@ type ActionFormModalParameterProps = PropsWithChildren<{
   parameter: TableActionFormParameter;
 }>;
 
-const DEFAULT_PARAMETER_ICON = "string";
-const PARAMETER_ICON_MAP: Record<TableActionFormInputType, IconName> = {
-  [TableActionFormInputType.Text]: "string",
-  [TableActionFormInputType.Textarea]: "string",
-  [TableActionFormInputType.Date]: "calendar",
-  [TableActionFormInputType.DateTime]: "calendar",
-  [TableActionFormInputType.Dropdown]: "string",
-  [TableActionFormInputType.Boolean]: "string",
-};
+const INPUT_TYPE_TO_DISPLAY_TYPE_MAP: Record<TableActionFormInputType, string> =
+  {
+    [TableActionFormInputType.Text]: "text",
+    [TableActionFormInputType.Textarea]: "description",
+    [TableActionFormInputType.Date]: "date",
+    [TableActionFormInputType.DateTime]: "date",
+    [TableActionFormInputType.Dropdown]: "category",
+    [TableActionFormInputType.Boolean]: "boolean",
+    [TableActionFormInputType.Integer]: "integer",
+    [TableActionFormInputType.Float]: "float",
+  };
 
 export function TableActionFormModalParameter({
   parameter,
   children,
 }: ActionFormModalParameterProps) {
-  const iconName = parameter.semantic_type
-    ? FIELD_SEMANTIC_TYPES_MAP[parameter.semantic_type].icon
-    : PARAMETER_ICON_MAP[parameter.input_type];
-
   return (
     <>
       <Group h="2.5rem" align="center">
-        <Icon
-          className={S.modalBodyColumn}
-          name={iconName ?? DEFAULT_PARAMETER_ICON}
-        />
-        <Text className={S.modalBodyColumn}>
-          {parameter.display_name}
-          {!parameter.optional && (
-            <Text component="span" c="error">
-              *
-            </Text>
-          )}
-        </Text>
+        <Stack gap="0" className={S.modalBodyColumn} maw="100%">
+          <Text truncate maw="100%">
+            {parameter.display_name}
+            {!parameter.optional && (
+              <Text component="span" c="error">
+                *
+              </Text>
+            )}
+          </Text>
+          <Text fz="sm" c="text-secondary" lh={1.1}>
+            {INPUT_TYPE_TO_DISPLAY_TYPE_MAP[parameter.input_type] ?? "text"}
+          </Text>
+        </Stack>
       </Group>
       {children}
     </>

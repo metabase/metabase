@@ -29,6 +29,7 @@ export function getEditingCellTemplate({
         }}
         classNames={{
           textInputElement: S.inlineEditingTextInput,
+          numberInputElement: S.inlineEditingTextInput,
           selectTextInputElement: S.inlineEditingTextInput,
           dateTextInputElement: S.inlineEditingTextInput,
           selectLabel: S.selectLabel,

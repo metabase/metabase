@@ -55,6 +55,8 @@ export enum TableActionFormInputType {
   DateTime = "datetime",
   Dropdown = "dropdown",
   Boolean = "boolean",
+  Integer = "integer",
+  Float = "float",
 }
 
 export type TableActionFormParameter = {
