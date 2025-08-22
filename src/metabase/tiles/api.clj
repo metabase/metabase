@@ -221,13 +221,9 @@
          :api
          {:parameters parameters
           :context    :map-tiles
-          :make-run   (constantly
-                       (fn [query info]
-                         (-> query
-                             (update :info merge info)
-                             (tiles-query zoom x y lat-field-ref lon-field-ref)
-                             qp/userland-query
-                             qp/process-query)))})
+          :qp         (fn [query rff]
+                        (let [tiles-query (tiles-query query zoom x y lat-field-ref lon-field-ref)]
+                          (qp/process-query (qp/userland-query tiles-query) rff)))})
         points (result->points result lat-field-ref lon-field-ref)]
     (tiles-response result zoom points)))
 
@@ -244,13 +240,9 @@
          :export-format :api
          :parameters    parameters
          :context       :map-tiles
-         :make-run      (constantly
-                         (fn [query info]
-                           (-> query
-                               (update :info merge info)
-                               (tiles-query zoom x y lat-field-ref lon-field-ref)
-                               qp/userland-query
-                               qp/process-query))))
+         :qp            (fn [query rff]
+                          (let [tiles-query (tiles-query query zoom x y lat-field-ref lon-field-ref)]
+                            (qp/process-query (qp/userland-query tiles-query) rff))))
         points (result->points result lat-field-ref lon-field-ref)]
     (tiles-response result zoom points)))
 
