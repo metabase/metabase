@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Flex,
+  Image,
   Loader,
   Modal,
   type ModalProps,
@@ -35,7 +36,7 @@ export const MetabotPurchaseSettingUpModal = ({
     >
       <Stack align="center" gap="lg" my="4.5rem">
         <Box h={96} pos="relative" w={96}>
-          <img src={MetabotCloudIcon} alt={t`Metabot Cloud`} />
+          <Image src={MetabotCloudIcon} h={96} w={96} alt={t`Metabot Cloud`} />
 
           {isSettingUp && (
             <Flex
