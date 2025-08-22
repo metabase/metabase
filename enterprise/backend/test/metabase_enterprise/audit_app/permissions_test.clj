@@ -34,7 +34,8 @@
       (mt/with-premium-features #{:audit-app}
         (mt/with-test-user :crowberto
           (testing "A query using a saved audit model as the source table runs succesfully"
-            (let [audit-card (t2/select-one :model/Card :database_id audit/audit-db-id :type :model)]
+            (let [audit-card (->> (t2/select-one :model/Card :database_id audit/audit-db-id :type :model)
+                                  (tu/poll-until 5000))]
               (is (partial=
                    {:status :completed}
                    (qp/process-query
@@ -84,9 +85,8 @@
             (mt/with-full-data-perms-for-all-users!
               (mt/with-test-user :rasta
                 (binding [api/*current-user-permissions-set* (delay #{})]
-                  (let [audit-view (tu/poll-until 5000
-                                     ;; Needs to happen after the audit-db sync finishes, so we poll until we find it
-                                                  (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]}))]
+                  (let [audit-view (->> (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})
+                                        (tu/poll-until 5000))]
                     (is (thrown-with-msg?
                          clojure.lang.ExceptionInfo
                          #"You do not have access to the audit database"
