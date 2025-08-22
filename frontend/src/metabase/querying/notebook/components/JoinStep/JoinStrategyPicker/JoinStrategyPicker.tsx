@@ -38,7 +38,12 @@ export function JoinStrategyPicker({
   };
 
   return (
-    <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
+    <Popover
+      opened={isOpened}
+      position="bottom-start"
+      onChange={setIsOpened}
+      disabled={isReadOnly}
+    >
       <Popover.Target>
         <Tooltip disabled={isReadOnly} label={t`Change join type`}>
           <IconButtonWrapper

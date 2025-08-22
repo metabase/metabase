@@ -577,6 +577,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         .eq(1)
         .should("have.css", "pointer-events", "none");
 
+      cy.findByLabelText("Change join type").should("be.disabled");
+
       H.getNotebookStep("join")
         .findAllByText("Score")
         .should("have.length", 2)
