@@ -44,7 +44,8 @@
                      :query    {:source-table (str "card__" (u/the-id audit-card))}})))))
 
           (testing "A non-native query can be run on views in the audit DB"
-            (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id :name [:like "v_%"])]
+            (let [audit-view (->> (t2/select-one :model/Table :db_id audit/audit-db-id :name [:like "v_%"])
+                                  (tu/poll-until 5000))]
               (is (partial=
                    {:status :completed}
                    (qp/process-query
