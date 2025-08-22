@@ -589,16 +589,14 @@ describe("scenarios > dashboard", () => {
         });
       });
 
-      const longTitle =
-        "a really really really really really really really really really really really really really really really really long title";
-
-      it("should prevent entering a title longer than 100 chars", () => {
+      it("should prevent entering a title longer than 254 chars", () => {
+        const longTitle = "A".repeat(256);
         cy.findByTestId("dashboard-name-heading")
           .as("dashboardInput")
           .clear()
           .type(longTitle, { delay: 0 })
           .blur();
-        cy.get("@dashboardInput").invoke("text").should("have.length", 100);
+        cy.get("@dashboardInput").invoke("text").should("have.length", 254);
       });
     });
 
