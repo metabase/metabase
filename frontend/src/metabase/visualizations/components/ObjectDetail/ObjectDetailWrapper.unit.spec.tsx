@@ -123,6 +123,6 @@ describe("Object Detail Wrapper", () => {
     // second tab should *keep* focus inside the modal, not go
     // to the body
     await userEvent.tab();
-    expect(screen.getByLabelText("Copy link to a row")).toHaveFocus();
+    expect(screen.getByLabelText("Copy link to this record")).toHaveFocus();
   });
 });

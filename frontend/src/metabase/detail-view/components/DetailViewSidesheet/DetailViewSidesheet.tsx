@@ -290,10 +290,12 @@ export function DetailViewSidesheet({
             {url && (
               <>
                 <Tooltip
-                  label={linkCopied ? t`Copied!` : t`Copy link to a row`}
+                  label={linkCopied ? t`Copied!` : t`Copy link to this record`}
                 >
                   <Button
-                    aria-label={linkCopied ? t`Copied!` : t`Copy link to a row`}
+                    aria-label={
+                      linkCopied ? t`Copied!` : t`Copy link to this record`
+                    }
                     c="text-dark"
                     h={20}
                     leftSection={<Icon name="link" />}
@@ -304,10 +306,10 @@ export function DetailViewSidesheet({
                   />
                 </Tooltip>
 
-                <Tooltip label={t`Open row page`}>
+                <Tooltip label={t`Open in full page`}>
                   <Box>
                     <Button
-                      aria-label={t`Open row page`}
+                      aria-label={t`Open in full page`}
                       c="text-dark"
                       component={Link}
                       h={20}
