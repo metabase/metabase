@@ -443,7 +443,7 @@ function getInitialOperator(
   return operator ?? null;
 }
 
-function isExpressionEditorInitiallyOpen(
+export function isExpressionEditorInitiallyOpen(
   query: Lib.Query,
   stageIndex: number,
   clause: Lib.AggregationClause | undefined,
