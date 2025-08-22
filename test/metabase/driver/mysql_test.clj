@@ -622,7 +622,7 @@
   (testing "violate fk constraints"
     (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint
              :message "Unable to create a new record."
-             :errors {"group-id" "This Group-id does not exist."}}
+             :errors {"group-id" "This value does not exist in table \"group\"."}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :mysql actions.error/violate-foreign-key-constraint nil :model.row/create
              "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
@@ -630,17 +630,17 @@
 (deftest ^:parallel actions-maybe-parse-sql-error-test-5
   (testing "violate fk constraints"
     (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint,
-             :message "Unable to update the record.",
-             :errors {"group" "This Group does not exist."}}
+             :message "Other rows refer to this row so it cannot be changed."
+             :errors {"group" "Referenced in table \"user\"."}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :mysql actions.error/violate-foreign-key-constraint nil :model.row/update
              "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-6
   (testing "violate fk constraints"
-    (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint
-             :message "Other tables rely on this row so it cannot be deleted."
-             :errors {}}
+    (is (=? {:type    :metabase.actions.error/violate-foreign-key-constraint
+             :message "Other rows refer to this row so it cannot be deleted."
+             :errors  {"group" "Referenced in table \"user\"."}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :mysql actions.error/violate-foreign-key-constraint nil :model.row/delete
              "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")))))
@@ -856,46 +856,96 @@
                              driver/*driver* conn schema table-name))))))))))))
 
 ;; table privileges for mysql currently has bug unfortunately
-#_(deftest sync-writable-test
-    (mt/test-driver :mysql
-      (when-not (mysql/mariadb? (mt/db))
-        (testing "`sync-tables-and-database!` should set is_writable correctly based on table privileges"
-          (tx/drop-if-exists-and-create-db! driver/*driver* "sync_writable_test")
-          (let [details (tx/dbdef->connection-details :mysql :db {:database-name "sync_writable_test"})
-                spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
-            (try
-              (doseq [stmt ["CREATE TABLE `readonly_table` (id INTEGER);"
-                            "CREATE TABLE `readwrite_table` (id INTEGER);"
-                            "CREATE TABLE `fullaccess_table` (id INTEGER);"
-                            "CREATE USER 'sync_writable_test_user' IDENTIFIED BY 'password';"]]
-                (jdbc/execute! spec stmt))
+(deftest sync-writable-test
+  (mt/test-driver :mysql
+    (when-not (mysql/mariadb? (mt/db))
+      (testing "`sync-tables-and-database!` should set is_writable correctly based on table privileges"
+        (tx/drop-if-exists-and-create-db! driver/*driver* "sync_writable_test")
+        (let [details (tx/dbdef->connection-details :mysql :db {:database-name "sync_writable_test"})
+              spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+          (try
+            (doseq [stmt ["CREATE TABLE `readonly_table` (id INTEGER);"
+                          "CREATE TABLE `readwrite_table` (id INTEGER);"
+                          "CREATE TABLE `fullaccess_table` (id INTEGER);"
+                          "CREATE USER 'sync_writable_test_user' IDENTIFIED BY 'password';"]]
+              (jdbc/execute! spec stmt))
 
-              (doseq [stmt ["GRANT SELECT ON sync_writable_test.`readonly_table` TO 'sync_writable_test_user'"
-                            "GRANT SELECT, INSERT ON sync_writable_test.`readwrite_table` TO 'sync_writable_test_user'"
-                            "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_writable_test.`fullaccess_table` TO 'sync_writable_test_user'"]]
-                (jdbc/execute! spec stmt))
+            (doseq [stmt ["GRANT SELECT ON sync_writable_test.`readonly_table` TO 'sync_writable_test_user'"
+                          "GRANT SELECT, INSERT ON sync_writable_test.`readwrite_table` TO 'sync_writable_test_user'"
+                          "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_writable_test.`fullaccess_table` TO 'sync_writable_test_user'"]]
+              (jdbc/execute! spec stmt))
 
-              (let [user-connection-details (assoc details
-                                                   :user "sync_writable_test_user"
-                                                   :password "password"
-                                                   :ssl true
-                                                   :additional-options "trustServerCertificate=true")]
-                (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details}]
+            (let [user-connection-details (assoc details
+                                                 :user "sync_writable_test_user"
+                                                 :password "password"
+                                                 :ssl true
+                                                 :additional-options "trustServerCertificate=true")]
+              (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details}]
+                (sync/sync-database! database)
+                (testing "only fullaccess table has writeable permissions"
+                  (is (= {"readonly_table"   false
+                          "readwrite_table"  false
+                          "fullaccess_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
+                (testing "After granting full access to all tables and re-syncing"
+                  (doseq [table-name ["readonly_table" "readwrite_table"]]
+                    (jdbc/execute! spec (format "GRANT INSERT, UPDATE, DELETE ON sync_writable_test.`%s` TO 'sync_writable_test_user'" table-name)))
+
                   (sync/sync-database! database)
-                  (testing "only fullaccess table has writeable permissions"
-                    (is (= {"readonly_table"   false
-                            "readwrite_table"  false
-                            "fullaccess_table" true}
-                           (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
-                  (testing "After granting full access to all tables and re-syncing"
-                    (doseq [table-name ["readonly_table" "readwrite_table"]]
-                      (jdbc/execute! spec (format "GRANT INSERT, UPDATE, DELETE ON sync_writable_test.`%s` TO 'sync_writable_test_user'" table-name)))
+                  (is (= {"readonly_table"   true
+                          "readwrite_table"  true
+                          "fullaccess_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))))
+            (finally
+              (jdbc/execute! spec "DROP USER IF EXISTS 'sync_writable_test_user';"))))))))
 
-                    (sync/sync-database! database)
-                    (is (= {"readonly_table"   false
-                            "readwrite_table"  false
-                            "fullaccess_table" true}
-                           (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))))
+(deftest partial-revokes-writable-test
+  (mt/test-driver :mysql
+    (when-not (mysql/mariadb? (mt/db))
+      (testing "`database-supports :metadata/table-writable-check` returns true normally but false with partial revokes"
+        (tx/drop-if-exists-and-create-db! driver/*driver* "partial_revokes_test")
+        (let [details (tx/dbdef->connection-details :mysql :db {:database-name "partial_revokes_test"})
+              spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+          (try
+            ;; Create test tables and user
+            (doseq [stmt ["CREATE TABLE `test_table` (id INTEGER);"
+                          "CREATE USER 'partial_revokes_test_user' IDENTIFIED BY 'password';"
+                          "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_test.test_table TO 'partial_revokes_test_user'"]]
+              (jdbc/execute! spec stmt))
 
-              (finally
-                (jdbc/execute! spec "DROP USER IF EXISTS 'sync_writable_test_user';"))))))))
+            (let [user-connection-details (assoc details
+                                                 :user "partial_revokes_test_user"
+                                                 :password "password"
+                                                 :ssl true
+                                                 :additional-options "trustServerCertificate=true")]
+              (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details}]
+                (testing "With partial_revokes OFF (default), metadata/table-writable-check is supported"
+                  (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
+                  (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
+                      "Should support metadata/table-writable-check when partial_revokes is OFF"))
+
+                (testing "With partial_revokes ON, metadata/table-writable-check is not supported"
+                  (jdbc/execute! spec "SET GLOBAL partial_revokes = ON;")
+                  (is (false? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
+                      "Should not support metadata/table-writable-check when partial_revokes is ON")
+
+                  (sync/sync-database! database)
+                  (is (= {"test_table" nil}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
+                      "is_writable should sync to nil when partial_revokes is ON"))
+
+                (testing "Revoke some permissions with partial_revokes ON"
+                  (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_test.test_table FROM 'partial_revokes_test_user';")
+                  (is (false? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
+                      "Should still not support metadata/table-writable-check after partial revoke")
+
+                  ;; Sync database again and verify is_writable is still nil
+                  (sync/sync-database! database)
+                  (is (= {"test_table" nil}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
+                      "is_writable should still be nil after partial revoke"))))
+
+            (finally
+              ;; Clean up: Reset partial_revokes to OFF before exiting
+              (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
+              (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_test_user';"))))))))

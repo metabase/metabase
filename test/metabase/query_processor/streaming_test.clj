@@ -327,6 +327,8 @@
       (mt/with-temporary-setting-values [enable-public-sharing true
                                          enable-embedding-static true]
         (embed-test/with-new-secret-key!
+          ;; allowing `with-temp` here since it's needed to create Dashboards
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Card          card      (if viz-settings
                                                           (assoc card-defaults :visualization_settings viz-settings)
                                                           card-defaults)

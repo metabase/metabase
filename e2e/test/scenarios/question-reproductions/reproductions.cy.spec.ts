@@ -953,7 +953,7 @@ describe("issue 55631", () => {
   });
 });
 
-describe("issue 39033", { tags: "@skip" }, () => {
+describe("issue 39033", () => {
   const question1Name = "Q1";
   const question1Details: NativeQuestionDetails = {
     name: question1Name,

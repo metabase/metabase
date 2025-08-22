@@ -2,12 +2,7 @@
   "Predicate functions for checking whether something is a valid instance of a given MBQL clause."
   (:require
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
-
-(def ^{:arglists '([unit])} DateTimeUnit?
-  "Is `unit` a valid datetime bucketing unit?"
-  (mr/validator ::lib.schema.temporal-bucketing/unit))
 
 (def ^{:arglists '([field-clause])} Field?
   "Is this a valid Field clause?"

@@ -4,7 +4,6 @@
    [clj-time.core :as time]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
@@ -202,7 +201,7 @@
                                          $created_at
                                          $quantity
                                          $orders.product_id->products.category]})}]})
-           (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
+           (mt/metadata-provider))
           (is (= [["Doohickey" 3976]]
                  (mt/formatted-rows
                   [str int]
