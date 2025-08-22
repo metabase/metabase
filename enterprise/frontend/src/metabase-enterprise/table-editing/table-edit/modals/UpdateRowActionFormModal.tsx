@@ -3,6 +3,7 @@ import { useFormik } from "formik";
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import Animation from "metabase/css/core/animation.module.css";
 import { Button, Center, Flex, Loader, Modal } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
@@ -13,7 +14,6 @@ import type {
   TableActionFormParameter,
 } from "../../api/types";
 
-import { LeaveConfirmationModal } from "./LeaveConfirmationModal";
 import { ModalParameterActionInput } from "./ModalParameterActionInput";
 import S from "./TableActionFormModal.module.css";
 import { TableActionFormModalParameter } from "./TableActionFormModalParameter";
@@ -109,10 +109,10 @@ export function UpdateRowActionFormModal({
 
   return (
     <>
-      <LeaveConfirmationModal
+      <LeaveConfirmModal
         opened={showLeaveConfirmation}
-        onContinue={handleContinue}
-        onLeave={handleLeaveConfirmation}
+        onConfirm={handleLeaveConfirmation}
+        onClose={handleContinue}
       />
       <Modal.Root opened={opened} onClose={handleClose}>
         <Modal.Overlay />
