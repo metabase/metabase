@@ -298,12 +298,11 @@
   (str/starts-with? (.getMessage e) "Code: 60."))
 
 (defmethod driver/compile-transform :clickhouse
-  [driver {:keys [query output-table primary-key]}]
-  (let [primary-key (if (vector? primary-key)
-                      (mapv keyword primary-key)
-                      (keyword primary-key))
-        pieces [(sql.qp/format-honeysql driver {:create-table output-table})
-                (sql.qp/format-honeysql driver {:order-by primary-key})
+  [driver {:keys [query output-table]}]
+  (let [pieces [(sql.qp/format-honeysql driver {:create-table output-table})
+                ;; TODO(rileythomp, 2025-08-22): Is there a better way to do this?
+                ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?
+                (sql.qp/format-honeysql driver {:raw "ORDER BY ()"})
                 ["AS"]
                 (sql.qp/format-honeysql driver {:raw query})]
         query (str/join " " (map first pieces))
