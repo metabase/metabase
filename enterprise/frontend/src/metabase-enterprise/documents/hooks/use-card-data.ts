@@ -10,6 +10,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 import type { Card, Dataset, RawSeries } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { getCardWithDraft } from "../selectors";
 
@@ -23,7 +24,7 @@ interface UseCardDataResult {
   isLoading: boolean;
   series: RawSeries | null;
   question?: Question;
-  error?: string | null;
+  error?: "not found" | "unknown" | null;
   draftCard?: Card;
   regularDataset?: Dataset;
 }
@@ -168,9 +169,15 @@ export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
 
   const hasTriedToLoad =
     cardToUse !== undefined || isLoadingCard || isLoadingDataset;
-  const hasFailedToLoadCard =
-    !!cardError || (hasTriedToLoad && !isLoading && id && !cardToUse);
-  const error = hasFailedToLoadCard ? "Failed to load question" : null;
+  const hasFailedToLoadCard = hasTriedToLoad && !isLoading && id && !cardToUse;
+  const error = useMemo(() => {
+    if (isObject(cardError) && cardError.status === 404) {
+      return "not found";
+    }
+    if (hasFailedToLoadCard) {
+      return "unknown";
+    }
+  }, [cardError, hasFailedToLoadCard]);
 
   return {
     card: cardToUse,

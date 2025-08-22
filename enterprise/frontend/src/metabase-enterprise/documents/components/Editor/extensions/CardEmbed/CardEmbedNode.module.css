@@ -47,11 +47,6 @@
   justify-content: center;
 }
 
-.errorContainer {
-  padding: 1rem;
-  color: var(--mb-color-error);
-}
-
 .titleContainer {
   display: flex;
   align-items: center;

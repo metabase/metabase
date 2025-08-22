@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-export const Root = styled.div<{ isDashboard: boolean }>`
+export const Root = styled.div<{ isDashboard?: boolean }>`
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;

@@ -15,6 +15,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
@@ -305,9 +306,15 @@ export const CardEmbedComponent = memo(
               [styles.selected]: selected,
             })}
           >
-            <Box className={styles.errorContainer}>
-              <Text c="error">{t`Failed to load question`}</Text>
-            </Box>
+            <Flex className={styles.questionResults}>
+              <ErrorView
+                error={
+                  error === "not found"
+                    ? t`Couldn't find this chart.`
+                    : t`Failed to load question.`
+                }
+              />
+            </Flex>
           </Box>
         </NodeViewWrapper>
       );
