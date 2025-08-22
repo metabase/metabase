@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.sandbox.api.table :as table]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
