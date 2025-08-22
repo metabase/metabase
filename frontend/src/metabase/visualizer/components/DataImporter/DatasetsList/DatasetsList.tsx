@@ -138,12 +138,6 @@ export function DatasetsList({
         models: ["card", "dataset", "metric"],
         include_dashboard_questions: true,
         include_metadata: true,
-        ...(visualizationType &&
-          isCartesianChart(visualizationType) &&
-          search.length === 0 && {
-            has_temporal_dim: timeDimensions.length > 0,
-            non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
-          }),
       },
       {
         skip: muted,
