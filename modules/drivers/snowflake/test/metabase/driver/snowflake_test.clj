@@ -21,7 +21,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events.core :as events]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -987,7 +986,7 @@
   (testing "#37065"
     (mt/test-driver :snowflake
       (mt/dataset dst-change
-        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [metadata-provider (mt/metadata-provider)
               ds-tz-test (lib.metadata/table metadata-provider (mt/id :dst_tz_test))
               dtz        (lib.metadata/field metadata-provider (mt/id :dst_tz_test :dtz))
               query      (-> (lib/query metadata-provider ds-tz-test)
@@ -1044,7 +1043,7 @@
     (mt/test-driver :snowflake
       (let [variant-base-type (sql-jdbc.sync/database-type->base-type :snowflake :VARIANT)
             metadata-provider (lib.tu/merged-mock-metadata-provider
-                               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                               (mt/metadata-provider)
                                {:fields [{:id             (mt/id :venues :name)
                                           :base-type      variant-base-type
                                           :effective-type variant-base-type

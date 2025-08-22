@@ -1,8 +1,6 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
 /* eslint-disable import/order */
-const fs = require("fs");
-const path = require("path");
 const rspack = require("@rspack/core");
 
 const mainConfig = require("./rspack.main.config");
@@ -22,19 +20,12 @@ const {
 const {
   getBuildInfoValues,
 } = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
+const {
+  getSdkVersionFromPackageJson,
+} = require("./frontend/build/embedding-sdk/lib/get-sdk-version-from-package-json");
 
-const sdkPackageTemplateJson = fs.readFileSync(
-  path.resolve(
-    path.join(
-      __dirname,
-      "enterprise/frontend/src/embedding-sdk/package.template.json",
-    ),
-  ),
-  "utf-8",
-);
-const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
-
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 
 const EMBEDDING_SDK_BUNDLE_HOST = process.env.EMBEDDING_SDK_BUNDLE_HOST || "";
@@ -83,7 +74,7 @@ const config = {
     new rspack.EnvironmentPlugin({
       IS_EMBEDDING_SDK: "true",
       EMBEDDING_SDK_BUNDLE_HOST,
-      ...getBuildInfoValues({ version: sdkPackageTemplateJsonContent.version }),
+      ...getBuildInfoValues({ version: getSdkVersionFromPackageJson() }),
     }),
     new rspack.optimize.LimitChunkCountPlugin({
       maxChunks: 1,

@@ -39,7 +39,8 @@ const {
   getBuildInfoValues,
 } = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
 
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const TMP_BUILD_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");

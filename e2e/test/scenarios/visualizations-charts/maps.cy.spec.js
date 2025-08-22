@@ -83,6 +83,42 @@ describe("scenarios > visualizations > maps", () => {
     });
   });
 
+  it("should wrap markers around the international date line correctly (metabase#5369)", () => {
+    H.createNativeQuestion(
+      {
+        name: "friends across time",
+        native: {
+          query: `
+            SELECT 'Kleavor' as name, 68 as lat, -159 as lng
+            UNION ALL
+            SELECT 'Spectrier' as name, 68 as lat, 159 as lng
+          `,
+          "template-tags": {},
+        },
+        display: "map",
+        visualization_settings: {
+          "map.region": "world",
+          "map.type": "pin",
+          "map.latitude_column": "LAT",
+          "map.longitude_column": "LNG",
+          "map.center_latitude": 67,
+          "map.center_longitude": -175,
+          "map.zoom": 4,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.get(".leaflet-marker-icon").then((markers) => {
+      // should draw 4 markers
+      expect(markers).to.have.length(4);
+      cy.get(markers[0]).should("be.visible");
+      cy.get(markers[1]).should("not.be.visible"); // outside the viewport
+      cy.get(markers[2]).should("not.be.visible"); // outside the viewport
+      cy.get(markers[3]).should("be.visible");
+    });
+  });
+
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
     cy.intercept("/app/assets/geojson/**").as("geojson");
     H.visitQuestionAdhoc({

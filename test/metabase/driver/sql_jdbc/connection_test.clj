@@ -1,4 +1,8 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.connection-test
+  {:clj-kondo/config '{:linters
+                       ;; allowing this for now since we sorta need to put real DBs in the app DB to test the DB ID
+                       ;; -> connection pool stuff
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]

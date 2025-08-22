@@ -1,4 +1,4 @@
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
 
 class TypedStorage<T> {
   constructor(private key: string) {}

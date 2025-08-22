@@ -126,6 +126,12 @@ config:
     ee-openai-api-base-url: https://api.openai.com
     ee-openai-api-key: null
     ee-openai-model: gpt-4-turbo-preview
+    ee-search-gate-max-batch-size: 512
+    ee-search-gate-write-timeout: 5
+    ee-search-indexer-exit-early-cold-duration: 30
+    ee-search-indexer-lag-tolerance-multiplier: 2
+    ee-search-indexer-max-run-duration: 60
+    ee-search-indexer-poll-limit: 1000
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
     email-from-name: null
@@ -276,9 +282,11 @@ config:
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
     ssh-heartbeat-interval-sec: 180
+    stale-index-retention-hours: 24
     start-of-week: sunday
     subscription-allowed-domains: null
     surveys-enabled: true
+    sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
     unaggregated-query-row-limit: null
     uploads-settings: null

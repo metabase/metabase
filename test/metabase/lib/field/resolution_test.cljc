@@ -250,13 +250,13 @@
                        :database     (meta/id)
                        :stages       [{:lib/type                     :mbql.stage/native
                                        :lib/stage-metadata           {:lib/type :metadata/results
-                                                                      :columns  (lib.card/card-metadata-columns mp (lib.metadata/card mp 1))}
+                                                                      :columns  (lib.card/card-returned-columns mp (lib.metadata/card mp 1))}
                                        :native                       "SELECT * FROM some_table;"
                                        ;; `:qp` and `:source-query` keys get added by QP middleware during preprocessing.
                                        :qp/stage-is-from-source-card 1}
                                       {:lib/type                     :mbql.stage/mbql
                                        :lib/stage-metadata           {:lib/type :metadata/results
-                                                                      :columns  (lib.card/card-metadata-columns mp (lib.metadata/card mp 2))}
+                                                                      :columns  (lib.card/card-returned-columns mp (lib.metadata/card mp 2))}
                                        :fields                       [[:field {:base-type :type/DateTime, :lib/uuid "48052020-59e3-47e7-bfdc-38ab12c27292"}
                                                                        "EXAMPLE_TIMESTAMP"]
                                                                       [:field {:base-type :type/DateTime, :temporal-unit :week, :lib/uuid "dd9bdda4-688c-4a14-8ff6-88d4e2de6628"}
@@ -765,6 +765,27 @@
                :name            "Unknown Field"
                :display-name    "Unknown Field"}
               (lib.field.resolution/resolve-field-ref query -1 field-ref))))))
+
+(deftest ^:parallel fallback-metadata-for-unreturned-field-id-ref-test
+  (testing "Fallback metadata for a Field ID ref that is not returned by this query should at least include the actual correct :name"
+    (let [query     (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          field-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :orders :id)]]
+      (is (=? {:base-type                                :type/BigInteger
+               :display-name                             "ID"
+               :effective-type                           :type/BigInteger
+               :id                                       (meta/id :orders :id)
+               :name                                     "ID"
+               :semantic-type                            :type/PK
+               :table-id                                 (meta/id :orders)
+               :visibility-type                          :normal
+               :lib/original-display-name                "ID"
+               :lib/original-name                        "ID"
+               :lib/source                               :source/table-defaults
+               :lib/source-column-alias                  "ID"
+               :lib/source-uuid                          "00000000-0000-0000-0000-000000000000"
+               :lib/type                                 :metadata/column
+               ::lib.field.resolution/fallback-metadata? true}
+              (into (sorted-map) (lib.field.resolution/resolve-field-ref query -1 field-ref)))))))
 
 (deftest ^:parallel do-not-propagate-lib-expression-names-from-cards-test
   (testing "Columns coming from a source card should not propagate :lib/expression-name"
@@ -1309,3 +1330,56 @@
                query
                -1
                [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} "ID"]))))))
+
+;;; See also [[metabase.query-processor-test.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]]
+(deftest ^:parallel resolve-unreturned-column-from-reified-implicit-join-in-previous-stage-test
+  (let [query     (lib/query
+                   meta/metadata-provider
+                   {:lib/type :mbql/query
+                    :database (meta/id)
+                    :stages   [{:lib/type     :mbql.stage/mbql
+                                :source-table (meta/id :orders)
+                                :fields       [[:field {} (meta/id :orders :user-id)]
+                                               [:field {:join-alias "PEOPLE__via__USER_ID"} (meta/id :people :email)]]
+                                :joins        [{:lib/type            :mbql/join
+                                                :qp/is-implicit-join true
+                                                :stages              [{:lib/type     :mbql.stage/mbql
+                                                                       :source-table (meta/id :people)}]
+                                                :alias               "PEOPLE__via__USER_ID"
+                                                :conditions          [[:= {}
+                                                                       [:field
+                                                                        {}
+                                                                        (meta/id :orders :user-id)]
+                                                                       [:field
+                                                                        {:join-alias "PEOPLE__via__USER_ID"}
+                                                                        (meta/id :people :id)]]]
+                                                :fk-field-id         (meta/id :orders :user-id)}]}
+                               {:lib/type :mbql.stage/mbql}
+                               {:lib/type :mbql.stage/mbql}]})
+        field-ref [:field
+                   {:base-type         :type/Text
+                    :join-alias        "PEOPLE__via__USER_ID"
+                    :source-field-name "USER_ID"
+                    :source-field      (meta/id :orders :user-id)
+                    :lib/uuid          "978082dd-2728-4053-b9cc-01bbd64f3507"
+                    :effective-type    :type/Text}
+                   (meta/id :people :state)]]
+    (is (=? {:display-name                             "User → State"
+             :effective-type                           :type/Text
+             :fingerprint                              some?
+             :fk-field-name                            "USER_ID"
+             :id                                       (meta/id :people :state)
+             :name                                     "STATE"
+             :semantic-type                            :type/State
+             :table-id                                 (meta/id :people)
+             :lib/breakout?                            false
+             :lib/original-display-name                "State"
+             :lib/original-fk-field-id                 (meta/id :orders :user-id)
+             :lib/original-join-name                   "PEOPLE__via__USER_ID"
+             :lib/original-name                        "STATE"
+             :lib/source                               :source/previous-stage
+             :lib/source-column-alias                  "PEOPLE__via__USER_ID__STATE"
+             :lib/source-uuid                          "978082dd-2728-4053-b9cc-01bbd64f3507"
+             :lib/type                                 :metadata/column
+             ::lib.field.resolution/fallback-metadata? true}
+            (into (sorted-map) (lib.field.resolution/resolve-field-ref query -1 field-ref))))))

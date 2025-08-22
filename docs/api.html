@@ -2307,20 +2307,6 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.during"
         } ]
       },
-      "metabase.legacy-mbql.schema.Constraints" : {
-        "description" : "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful\n  because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will\n  override these values.",
-        "type" : "object",
-        "properties" : {
-          "max-results" : {
-            "description" : "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this\n  applies to all queries",
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
-          },
-          "max-results-bare-rows" : {
-            "description" : "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than\n  `:max-results`.",
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
-          }
-        }
-      },
       "metabase.legacy-mbql.schema.DatabaseID" : {
         "description" : "Schema for a valid `:database` ID, in the top-level 'outer' query. Either a positive integer (referring to an\n  actual Database), or the saved questions virtual ID, which is a placeholder used for queries using the\n  `:source-table \"card__id\"` shorthand for a source query resolved by middleware (since clients might not know the\n  actual DB for that source query.)",
         "anyOf" : [ {
@@ -2658,47 +2644,13 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.OrderBys"
           },
           "page" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Page"
+            "$ref" : "#/components/schemas/metabase.lib.schema.page"
           },
           "expressions" : {
             "type" : "object",
             "additionalProperties" : {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionDef"
             }
-          }
-        }
-      },
-      "metabase.legacy-mbql.schema.MiddlewareOptions" : {
-        "description" : "Additional options that can be used to toggle middleware on or off.",
-        "type" : "object",
-        "properties" : {
-          "add-default-userland-constraints?" : {
-            "type" : "boolean",
-            "description" : "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,\n  although the functions that ultimately power most API endpoints tend to set this to `true`. See\n  `add-constraints` middleware for more details."
-          },
-          "disable-max-results?" : {
-            "description" : "Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware. If true,\n  this will override the `:max-results` and `:max-results-bare-rows` values in `Constraints`.",
-            "type" : "boolean"
-          },
-          "disable-mbql->native?" : {
-            "description" : "Disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where\n  you should set this yourself. This is only used by the `metabase.query-processor.preprocess/preprocess` function to\n  get the fully pre-processed query without attempting to convert it to native.",
-            "type" : "boolean"
-          },
-          "format-rows?" : {
-            "description" : "Should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing\n     results? Used by `metabase.query-processor.middleware.format-rows`default `false`.",
-            "type" : "boolean"
-          },
-          "process-viz-settings?" : {
-            "type" : "boolean",
-            "description" : "Whether to process a question's visualization settings and include them in the result metadata so that they can\n  incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default\n  `false`."
-          },
-          "skip-results-metadata?" : {
-            "description" : "Should we skip adding `results_metadata` to query results after running the query? Used by\n     `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this\n     column in the near future, to `result_metadata`, to fix inconsistencies in how we name things.)",
-            "type" : "boolean"
-          },
-          "userland-query?" : {
-            "type" : "boolean",
-            "description" : "Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in\n  certain userland-only middleware for such queries -- results are returned in a slightly different format, and\n  QueryExecution entries are normally saved, unless you pass `:no-save` as the option."
           }
         }
       },
@@ -2835,21 +2787,6 @@ redirect_from:
           } ]
         } ]
       },
-      "metabase.legacy-mbql.schema.Page" : {
-        "description" : "`page` = page num, starting with 1. `items` = number of items per page.\n  e.g.\n\n    {:page 1, :items 10} = items 1-10\n    {:page 2, :items 10} = items 11-20",
-        "type" : "object",
-        "properties" : {
-          "items" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "page" : {
-            "type" : "integer",
-            "minimum" : 1
-          }
-        },
-        "required" : [ "page", "items" ]
-      },
       "metabase.legacy-mbql.schema.Parameter" : {
         "description" : "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as\n  part of the `:parameters` list in a query.",
         "type" : "object",
@@ -2923,10 +2860,10 @@ redirect_from:
               "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
             },
             "settings" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Settings"
+              "$ref" : "#/components/schemas/metabase.lib.schema.settings.settings"
             },
             "constraints" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Constraints"
+              "$ref" : "#/components/schemas/metabase.lib.schema.constraints.constraints"
             },
             "query" : {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MBQLQuery"
@@ -2953,7 +2890,7 @@ redirect_from:
               "description" : "Used when recording info about this run in the QueryExecution log; things like context query was\n  ran in and User who ran it."
             },
             "middleware" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.MiddlewareOptions"
+              "$ref" : "#/components/schemas/metabase.lib.schema.middleware-options.middleware-options"
             },
             "database" : {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatabaseID"
@@ -2991,16 +2928,6 @@ redirect_from:
       "metabase.legacy-mbql.schema.RelativeDatetimeUnit" : {
         "type" : "string",
         "enum" : [ "default", "minute", "hour", "day", "week", "month", "quarter", "year" ]
-      },
-      "metabase.legacy-mbql.schema.Settings" : {
-        "description" : "Options that tweak the behavior of the query processor.",
-        "type" : "object",
-        "properties" : {
-          "report-timezone" : {
-            "description" : "The timezone the query should be ran in, overriding the default report timezone for the instance.",
-            "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal.timezone-id"
-          }
-        }
       },
       "metabase.legacy-mbql.schema.SourceQuery" : {
         "oneOf" : [ {
@@ -3828,6 +3755,20 @@ redirect_from:
         "minLength" : 36,
         "maxLength" : 36
       },
+      "metabase.lib.schema.constraints.constraints" : {
+        "description" : "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful\n  because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will\n  override these values.",
+        "type" : "object",
+        "properties" : {
+          "max-results" : {
+            "description" : "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this\n  applies to all queries",
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+          },
+          "max-results-bare-rows" : {
+            "description" : "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than\n  `:max-results`.",
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+          }
+        }
+      },
       "metabase.lib.schema.expression.temporal.timezone-id" : {
         "allOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -4534,6 +4475,55 @@ redirect_from:
       "metabase.lib.schema.metadata.source-column-alias" : {
         "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
       },
+      "metabase.lib.schema.middleware-options.middleware-options" : {
+        "description" : "Additional options that can be used to toggle middleware on or off.",
+        "type" : "object",
+        "properties" : {
+          "add-default-userland-constraints?" : {
+            "type" : "boolean",
+            "description" : "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,\n  although the functions that ultimately power most API endpoints tend to set this to `true`. See\n  `add-constraints` middleware for more details."
+          },
+          "disable-max-results?" : {
+            "description" : "Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware. If true,\n  this will override the `:max-results` and `:max-results-bare-rows` values in `Constraints`.",
+            "type" : "boolean"
+          },
+          "disable-mbql->native?" : {
+            "description" : "Disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where\n  you should set this yourself. This is only used by the `metabase.query-processor.preprocess/preprocess` function to\n  get the fully pre-processed query without attempting to convert it to native.",
+            "type" : "boolean"
+          },
+          "format-rows?" : {
+            "description" : "Should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing\n     results? Used by `metabase.query-processor.middleware.format-rows`default `false`.",
+            "type" : "boolean"
+          },
+          "process-viz-settings?" : {
+            "type" : "boolean",
+            "description" : "Whether to process a question's visualization settings and include them in the result metadata so that they can\n  incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default\n  `false`."
+          },
+          "skip-results-metadata?" : {
+            "description" : "Should we skip adding `results_metadata` to query results after running the query? Used by\n     `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this\n     column in the near future, to `result_metadata`, to fix inconsistencies in how we name things.)",
+            "type" : "boolean"
+          },
+          "userland-query?" : {
+            "type" : "boolean",
+            "description" : "Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in\n  certain userland-only middleware for such queries -- results are returned in a slightly different format, and\n  QueryExecution entries are normally saved, unless you pass `:no-save` as the option."
+          }
+        }
+      },
+      "metabase.lib.schema.page" : {
+        "description" : "`page` = page num, starting with 1. `items` = number of items per page.\n  e.g.\n\n    {:page 1, :items 10} = items 1-10\n    {:page 2, :items 10} = items 11-20",
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "page" : {
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "page", "items" ]
+      },
       "metabase.lib.schema.parameter..dimension.options" : {
         "type" : "object",
         "properties" : {
@@ -4632,6 +4622,16 @@ redirect_from:
       "metabase.lib.schema.parameter.widget-type" : {
         "type" : "string",
         "enum" : [ "none", "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
+      },
+      "metabase.lib.schema.settings.settings" : {
+        "description" : "Options that tweak the behavior of the query processor.",
+        "type" : "object",
+        "properties" : {
+          "report-timezone" : {
+            "description" : "The timezone the query should be ran in, overriding the default report timezone for the instance.",
+            "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal.timezone-id"
+          }
+        }
       },
       "metabase.lib.schema.template-tag..raw-value.type" : {
         "type" : "string",
@@ -5413,6 +5413,50 @@ redirect_from:
           }
         },
         "required" : [ "schedule_type" ]
+      },
+      "metabase.warehouse-schema.api.table.data-authority-write" : {
+        "description" : "Schema for writing a valid table data authority.",
+        "type" : "string",
+        "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ]
+      },
+      "metabase.warehouses.api.available-settings" : {
+        "type" : "object",
+        "additionalProperties" : {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "enabled" : {
+                "const" : true
+              }
+            },
+            "required" : [ "enabled" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "enabled" : {
+                "const" : false
+              },
+              "reasons" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "key" : {
+                      "type" : "string"
+                    },
+                    "message" : {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, { } ]
+                    }
+                  },
+                  "required" : [ "key", "message" ]
+                }
+              }
+            },
+            "required" : [ "enabled", "reasons" ]
+          } ]
+        }
       },
       "metabot.reaction.redirect" : {
         "type" : "object",
@@ -10615,6 +10659,9 @@ redirect_from:
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "provider_name" : {
+                    "type" : "string"
+                  },
                   "name" : {
                     "type" : "string",
                     "minLength" : 1
@@ -10807,6 +10854,9 @@ redirect_from:
                 "type" : "object",
                 "properties" : {
                   "points_of_interest" : {
+                    "type" : "string"
+                  },
+                  "provider_name" : {
                     "type" : "string"
                   },
                   "settings" : {
@@ -11318,6 +11368,47 @@ redirect_from:
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/database" ]
+      }
+    },
+    "/api/database/{id}/settings-available" : {
+      "get" : {
+        "summary" : "GET /api/database/{id}/settings-available",
+        "description" : "Get all database-local settings and their availability for the given database.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:settings -> <map from <keyword> to <one of <true = map where {:enabled -> <must equal true>} | false = map where {:enabled -> <must equal false>, :reasons -> <sequence of map where {:key -> <keyword>, :message -> <string, or function>}>}> dispatched by :enabled>>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "settings" : {
+                      "$ref" : "#/components/schemas/metabase.warehouses.api.available-settings"
+                    }
+                  },
+                  "required" : [ "settings" ]
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -22607,18 +22698,18 @@ redirect_from:
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "caveats" : {
+                  "points_of_interest" : {
                     "type" : "string"
                   },
-                  "description" : {
-                    "type" : "string"
-                  },
-                  "display_name" : {
+                  "visibility_type" : {
                     "type" : "string",
-                    "minLength" : 1
+                    "enum" : [ "technical", "hidden", "cruft" ]
                   },
-                  "entity_type" : {
-                    "description" : "value must be a valid entity type (keyword or string)."
+                  "data_authority" : {
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema.api.table.data-authority-write"
+                  },
+                  "show_in_getting_started" : {
+                    "type" : "boolean"
                   },
                   "ids" : {
                     "type" : "array",
@@ -22628,15 +22719,18 @@ redirect_from:
                       "minimum" : 1
                     }
                   },
-                  "points_of_interest" : {
+                  "display_name" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "caveats" : {
                     "type" : "string"
                   },
-                  "show_in_getting_started" : {
-                    "type" : "boolean"
+                  "entity_type" : {
+                    "description" : "value must be a valid entity type (keyword or string)."
                   },
-                  "visibility_type" : {
-                    "type" : "string",
-                    "enum" : [ "technical", "hidden", "cruft" ]
+                  "description" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "ids" ]
@@ -22767,15 +22861,25 @@ redirect_from:
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "caveats" : {
+                  "points_of_interest" : {
                     "type" : "string"
                   },
-                  "description" : {
-                    "type" : "string"
+                  "visibility_type" : {
+                    "type" : "string",
+                    "enum" : [ "technical", "hidden", "cruft" ]
+                  },
+                  "data_authority" : {
+                    "$ref" : "#/components/schemas/metabase.warehouse-schema.api.table.data-authority-write"
+                  },
+                  "show_in_getting_started" : {
+                    "type" : "boolean"
                   },
                   "display_name" : {
                     "type" : "string",
                     "minLength" : 1
+                  },
+                  "caveats" : {
+                    "type" : "string"
                   },
                   "entity_type" : {
                     "description" : "value must be a valid entity type (keyword or string)."
@@ -22784,15 +22888,8 @@ redirect_from:
                     "type" : "string",
                     "enum" : [ "alphabetical", "custom", "database", "smart" ]
                   },
-                  "points_of_interest" : {
+                  "description" : {
                     "type" : "string"
-                  },
-                  "show_in_getting_started" : {
-                    "type" : "boolean"
-                  },
-                  "visibility_type" : {
-                    "type" : "string",
-                    "enum" : [ "technical", "hidden", "cruft" ]
                   }
                 }
               }

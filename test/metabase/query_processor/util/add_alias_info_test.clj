@@ -34,19 +34,19 @@
    x))
 
 (defn- add-alias-info [query]
-  (driver/with-driver (or driver/*driver* :h2)
-    (-> (if (:lib/type query)
-          (->> query
-               qp.preprocess/preprocess
-               (lib/query (:lib/metadata query))
-               add/add-alias-info)
-          (qp.store/with-metadata-provider (if (qp.store/initialized?)
-                                             (qp.store/metadata-provider)
-                                             meta/metadata-provider)
-            (-> query
-                qp.preprocess/preprocess
-                add/add-alias-info)))
-        remove-source-metadata)))
+  (if-not (:lib/type query)
+    (-> (lib/query
+         (if (qp.store/initialized?)
+           (qp.store/metadata-provider)
+           meta/metadata-provider)
+         query)
+        add-alias-info
+        lib/->legacy-MBQL)
+    (driver/with-driver (or driver/*driver* :h2)
+      (->> query
+           qp.preprocess/preprocess
+           add/add-alias-info
+           remove-source-metadata))))
 
 (deftest ^:parallel join-in-source-query-test
   (is (=? (lib.tu.macros/mbql-query venues
@@ -702,7 +702,10 @@
                                             {:temporal-unit      :day
                                              ::add/source-alias  "CREATED_AT"
                                              ::add/desired-alias "CREATED_AT_2"}]]]}}
-                  (add/add-alias-info (qp.preprocess/preprocess query)))))))))
+                  (-> query
+                      qp.preprocess/preprocess
+                      add/add-alias-info
+                      lib/->legacy-MBQL))))))))
 
 ;;; see also [[metabase.lib.join.util-test/desired-alias-should-respect-ref-name-test]]
 (deftest ^:parallel preserve-field-options-name-test
@@ -750,6 +753,7 @@
                                 $total]})
                     qp.preprocess/preprocess
                     add/add-alias-info
+                    lib/->legacy-MBQL
                     :query)))))))
 
 (deftest ^:parallel nested-query-field-literals-test
@@ -786,6 +790,7 @@
                                      [:field "CREATED_AT_2" {:base-type :type/Date, :temporal-unit :default}]]})
                     qp.preprocess/preprocess
                     add/add-alias-info
+                    lib/->legacy-MBQL
                     :query)))))))
 
 (deftest ^:parallel globally-unique-join-aliases-test
@@ -820,6 +825,7 @@
                   (-> query
                       qp.preprocess/preprocess
                       (add/add-alias-info {:globally-unique-join-aliases? true})
+                      lib/->legacy-MBQL
                       :query))))))))
 
 ;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
@@ -887,7 +893,9 @@
       (qp.store/with-metadata-provider mp
         (driver/with-driver :h2
           (let [preprocessed (-> query qp.preprocess/preprocess)
-                expected     (add/add-alias-info preprocessed)]
+                expected     (-> preprocessed
+                                 add/add-alias-info
+                                 lib/->legacy-MBQL)]
             (testing ":source-query -> :source-query -> :joins"
               (is (=? [{:alias     "Reviews"
                         :condition [:=
@@ -971,6 +979,7 @@
                   (-> query
                       qp.preprocess/preprocess
                       add/add-alias-info
+                      lib/->legacy-MBQL
                       :query))))))))
 
 (deftest ^:parallel nested-literal-boolean-expression-with-name-collisions-test
@@ -1101,8 +1110,8 @@
                                    :alias        "PRODUCTS__via__PRODUCT_ID"
                                    :fk-field-id  %product-id
                                    :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]}))]
-      (is (=? [[:expression "pivot-grouping" {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"}]
-               [:expression "pivot-grouping" {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"}]]
+      (is (=? [[:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]
+               [:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]]
               (lib.util.match/match (-> query
                                         add/add-alias-info
                                         qp.preprocess/preprocess)

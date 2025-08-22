@@ -17,7 +17,8 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -110,36 +111,44 @@
 
      Add the table to the table-ids set. If there's no parent-source-card-id, also add it
      to the table-query-ids set, then continue the match."
-  ([query :- :map]
+  ([query]
    (query->source-ids query nil false))
-  ([query :- :map
-    parent-source-card-id :- [:maybe :any]
-    in-sandbox? :- :boolean]
-   (apply merge-with merge-source-ids
-          (lib.util.match/match query
-            (m :guard (every-pred map? :qp/stage-is-from-source-card))
-            (merge-with merge-source-ids
-                        (when-not parent-source-card-id
-                          {:card-ids #{(:qp/stage-is-from-source-card m)}})
-                        (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
 
-            (m :guard (every-pred map? :query-permissions/gtapped-table))
-            (merge-with merge-source-ids
-                        {:table-ids #{(:query-permissions/gtapped-table m)}}
-                        (when-not (or parent-source-card-id in-sandbox?)
-                          {:table-query-ids #{(:query-permissions/gtapped-table m)}})
-                        (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id true))
+  ([query                 :- :map ; this works on either legacy or MBQL 5 but also on inner queries or other nested maps (it calls itself recursively)
+    parent-source-card-id :- [:maybe ::lib.schema.id/card]
+    in-sandbox?           :- :any]
+   (if (:lib/type query)
+     ;; convert MBQL 5 to legacy
+     ;;
+     ;; legacy usage -- don't do things like this going forward
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
+     ;; already legacy MBQL
+     (apply merge-with merge-source-ids
+            (lib.util.match/match query
+              (m :guard (every-pred map? :qp/stage-is-from-source-card))
+              (merge-with merge-source-ids
+                          (when-not parent-source-card-id
+                            {:card-ids #{(:qp/stage-is-from-source-card m)}})
+                          (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
 
-            (m :guard (every-pred map? :native))
-            (when-not parent-source-card-id
-              {:native? true})
+              (m :guard (every-pred map? :query-permissions/gtapped-table))
+              (merge-with merge-source-ids
+                          {:table-ids #{(:query-permissions/gtapped-table m)}}
+                          (when-not (or parent-source-card-id in-sandbox?)
+                            {:table-query-ids #{(:query-permissions/gtapped-table m)}})
+                          (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id true))
 
-            (m :guard (every-pred map? #(pos-int? (:source-table %))))
-            (merge-with merge-source-ids
-                        {:table-ids #{(:source-table m)}}
-                        (when-not (or parent-source-card-id in-sandbox?)
-                          {:table-query-ids #{(:source-table m)}})
-                        (query->source-ids (dissoc m :source-table) parent-source-card-id in-sandbox?))))))
+              (m :guard (every-pred map? :native))
+              (when-not parent-source-card-id
+                {:native? true})
+
+              (m :guard (every-pred map? #(pos-int? (:source-table %))))
+              (merge-with merge-source-ids
+                          {:table-ids #{(:source-table m)}}
+                          (when-not (or parent-source-card-id in-sandbox?)
+                            {:table-query-ids #{(:source-table m)}})
+                          (query->source-ids (dissoc m :source-table) parent-source-card-id in-sandbox?)))))))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
@@ -234,16 +243,16 @@
         (if throw-exceptions? (throw e) (log/error e)))
       {:perms/create-queries {0 :query-builder}}))) ; table 0 will never exist
 
-(defn- pmbql-required-perms
-  "For pMBQL queries: for now, just convert it to legacy by running it thru the QP preprocessor, then hand off to the
+(defn- mbql5-required-perms
+  "For MBQL 5 queries: for now, just convert it to legacy then hand off to the
   legacy implementation(s) of [[required-perms]]."
   [query perms-opts]
-  (let [query        (lib/normalize query)
-        ;; convert it to legacy by running it thru the QP preprocessor.
-        legacy-query (preprocess-query query)]
-    (assert (#{:query :native} (:type legacy-query))
-            (format "Expected QP preprocessing to return legacy MBQL query, got: %s" (pr-str legacy-query)))
-    (legacy-mbql-required-perms legacy-query perms-opts)))
+  (-> query
+      lib/normalize
+      ;; allowing for now until we convert this namespace to be MBQL-5-only
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      lib/->legacy-MBQL
+      (legacy-mbql-required-perms perms-opts)))
 
 (defn required-perms-for-query
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys
@@ -255,7 +264,7 @@
       (case query-type
         :native     (native-query-perms query)
         :query      (legacy-mbql-required-perms query perms-opts)
-        :mbql/query (pmbql-required-perms query perms-opts)
+        :mbql/query (mbql5-required-perms query perms-opts)
         (throw (ex-info (tru "Invalid query type: {0}" query-type)
                         {:query query}))))))
 

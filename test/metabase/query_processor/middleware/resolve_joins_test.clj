@@ -384,7 +384,7 @@
                  ;; the `:default` temporal unit gets removed somewhere
                  &People.people.birth-date
                  &Products.products.price])
-              (-> (qp.preprocess/preprocess query) :query :fields))))))
+              (-> query qp.preprocess/preprocess lib/->legacy-MBQL :query :fields))))))
 
 ;;; adapted from [[metabase.query-processor-test.explicit-joins-test/join-against-saved-question-with-sort-test]]
 (deftest ^:parallel join-against-same-table-returned-columns-test
@@ -450,4 +450,6 @@
                                 [:field (meta/id :venues :longitude) nil]
                                 [:field (meta/id :venues :price) nil]
                                 [:field "ID" {:base-type :type/Integer, :join-alias "native_card"}]]}}
-              (qp.preprocess/preprocess query))))))
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL))))))

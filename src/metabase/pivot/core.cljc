@@ -27,6 +27,23 @@
                 (decimal? x) (double x) ;; Handles BigDecimal
                 :else x)))
 
+(defn- ensure-is-int
+  "Convert a clojure value that may not be a type bitwise operations can use into one it can. Or throw an
+  error if it is not losslessly convertible into an integer. "
+  [x]
+  #?(:cljs x
+     :clj (cond
+            (int? x) x
+            (integer? x) (long x)
+            (decimal? x) (try (.longValueExact ^BigDecimal x)
+                              ;; catch this error since java.lang.ArithmeticException doesn't make sense
+                              (catch java.lang.ArithmeticException e
+                                (throw (ex-info "Non-Integer cannot be used as pivot-grouping column"
+                                                {:data x}
+                                                e))))
+            :else (throw (ex-info "Non-Integer cannot be used as pivot-grouping column"
+                                  {:data x})))))
+
 (defn- pivot-group-column?
   "Is the given column the pivot-grouping column?"
   [col]
@@ -44,7 +61,7 @@
   (memoize
    (fn [pivot-group num-breakouts]
      (let [breakout-indexes (range num-breakouts)]
-       (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) pivot-group)) breakout-indexes))))))
+       (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) (ensure-is-int pivot-group))) breakout-indexes))))))
 
 (defn- remove-item-by-index
   "Remove an item with the given `index` from collection `v`."

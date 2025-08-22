@@ -278,10 +278,13 @@
           rf
           init
           (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
-            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+            (let [have-privilege-fn (sql-jdbc.describe-database/have-privilege-fn driver conn)]
               (eduction
-               (comp (filter have-select-privilege?)
-                     (map #(dissoc % :type)))
+               (comp (filter #(have-privilege-fn % :select))
+                     (map (fn [table]
+                            (-> table
+                                (dissoc :type)
+                                (assoc :is_writable (have-privilege-fn table :write))))))
                (get-tables database syncable-schemas nil))))))))))
 
 (defmethod driver/describe-database* :postgres

@@ -478,6 +478,48 @@ The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo').
 
 This feature is experimental.
 
+### `MB_EE_SEARCH_GATE_MAX_BATCH_SIZE`
+
+- Type: integer
+- Default: `512`
+
+The maximum number of documents that can be sent to `gate-documents!` without causing an error.
+
+### `MB_EE_SEARCH_GATE_WRITE_TIMEOUT`
+
+- Type: integer
+- Default: `5`
+
+Timeout of gate write statements in seconds. Used to determine lag tolerance of the indexer (see the metabase-enterprise.semantic-search.gate/poll) in conjunction with `ee-search-indexer-lag-tolerance-multiplier`.
+
+### `MB_EE_SEARCH_INDEXER_EXIT_EARLY_COLD_DURATION`
+
+- Type: integer
+- Default: `30`
+
+Number of seconds indexer should wait to see new data before yielding back to quartz.
+
+### `MB_EE_SEARCH_INDEXER_LAG_TOLERANCE_MULTIPLIER`
+
+- Type: integer
+- Default: `2`
+
+Multiplier for computation of metabase-enterprise.semantic-search.indexer/lag-tolerance. The formula is `ee-search-gate-write-timeout * ee-search-indexer-lag-tolerance-multiplier`.
+
+### `MB_EE_SEARCH_INDEXER_MAX_RUN_DURATION`
+
+- Type: integer
+- Default: `60`
+
+Number of minutes we expect to run the indexer loop for before yielding to quartz.
+
+### `MB_EE_SEARCH_INDEXER_POLL_LIMIT`
+
+- Type: integer
+- Default: `1000`
+
+Indexer poll limit.
+
 ### `MB_EMAIL_FROM_ADDRESS`
 
 - Type: string
@@ -1892,6 +1934,15 @@ Fetch size for result sets. We want to ensure that the jdbc ResultSet objects ar
 
 Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).
 
+### `MB_STALE_INDEX_RETENTION_HOURS`
+
+- Type: integer
+- Default: `24`
+
+Number of hours to retain stale semantic search indexes before cleanup.
+
+Number of hours to retain stale semantic search indexes before cleanup.
+
 ### `MB_START_OF_WEEK`
 
 - Type: keyword
@@ -1918,6 +1969,14 @@ Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To s
 - Default: `true`
 
 Enable or disable surveys.
+
+### `MB_SYNC_LEAF_FIELDS_LIMIT`
+
+- Type: integer
+- Default: `1000`
+- [Exported as](../installation-and-operation/serialization.md): `sync-leaf-fields-limit`.
+
+Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo. Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields from root to leaf are synced as well.
 
 ### `MB_SYNCHRONOUS_BATCH_UPDATES`
 
