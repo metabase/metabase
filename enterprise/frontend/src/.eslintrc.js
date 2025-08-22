@@ -42,7 +42,12 @@ module.exports = {
           {
             name: "react-redux",
             importNames: ["useSelector", "useDispatch", "connect"],
-            message: "Please import from `metabase/lib/redux` instead.",
+            message: 'Please use "useSdkSelector", "useSdkDispatch"',
+          },
+          {
+            name: "metabase/lib/redux",
+            importNames: ["useStore", "useDispatch"],
+            message: 'Please use "useSdkStore", "useSdkDispatch"',
           },
         ],
       },
