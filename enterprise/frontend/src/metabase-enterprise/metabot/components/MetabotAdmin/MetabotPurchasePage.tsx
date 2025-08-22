@@ -1,5 +1,6 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -78,7 +79,7 @@ export const MetabotPurchasePage = () => {
       ?.map(({ email }) => email)
       ?.includes(currentUser?.email) ?? false;
 
-  const [showSettingUpModal, setSettingUpModal] = useState(false);
+  const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const [purchaseMetabotAddOn] = usePurchaseMetabotCloudAddOnMutation();
   const onSubmit = useCallback(
     async ({ terms_of_service }: MetabotPurchaseFormFields) => {
@@ -86,12 +87,12 @@ export const MetabotPurchasePage = () => {
         terms_of_service,
       })
         .unwrap()
-        .then(() => setSettingUpModal(true))
+        .then(() => settingUpModalHandlers.open())
         .catch((error: unknown) => {
           isFetchBaseQueryError(error) && handleFieldError(error.data);
         });
     },
-    [purchaseMetabotAddOn],
+    [purchaseMetabotAddOn, settingUpModalHandlers],
   );
 
   return (
@@ -173,9 +174,9 @@ export const MetabotPurchasePage = () => {
         )}
       </SettingsSection>
       <MetabotPurchaseSettingUpModal
-        opened={showSettingUpModal}
+        opened={settingUpModalOpened}
         onClose={() => {
-          setSettingUpModal(false);
+          settingUpModalHandlers.close();
           window.location.reload();
         }}
       />
