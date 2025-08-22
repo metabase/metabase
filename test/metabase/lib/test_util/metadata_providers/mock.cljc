@@ -98,6 +98,15 @@
 (defn- mock-setting [metadata setting-key]
   (get-in metadata [:settings (keyword setting-key)]))
 
+(defn- mock-setting-with-sentinel [metadata setting-key not-found]
+  "Returns setting value, or not-found sentinel if the setting doesn't exist.
+   This allows distinguishing between nil (explicit value) and not-found."
+  (let [settings (:settings metadata)
+        setting-keyword (keyword setting-key)]
+    (if (contains? settings setting-keyword)
+      (get settings setting-keyword)
+      not-found)))
+
 (deftype MockMetadataProvider [metadata]
   metadata.protocols/MetadataProvider
   (database [_this]
@@ -112,6 +121,25 @@
     (mock-metadatas-for-card metadata metadata-type card-id))
   (setting [_this setting-key]
     (mock-setting metadata setting-key))
+
+  metadata.protocols/CachedMetadataProvider
+  (cached-metadatas [_this metadata-type metadata-ids]
+    ;; For mock provider, just return the same as metadatas
+    (mock-metadatas metadata metadata-type metadata-ids))
+  (store-metadata! [_this _metadata]
+    ;; Mock provider doesn't support storing metadata
+    nil)
+  (cached-value [_this k not-found]
+    ;; Support cached values, especially for settings
+    (if (and (vector? k) (= (first k) :setting) (= (count k) 2))
+      (mock-setting-with-sentinel metadata (second k) not-found)
+      not-found))
+  (cache-value! [_this _k _v]
+    ;; Mock provider doesn't support caching new values
+    nil)
+  (has-cache? [_this]
+    ;; Mock provider acts as if it has a cache for sentinel value support
+    true)
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
