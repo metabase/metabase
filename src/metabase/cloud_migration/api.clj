@@ -32,7 +32,7 @@
         (condp = (-> e ex-data :status)
           404 {:status 404 :body "Could not establish a connection to Metabase Cloud."}
           400 {:status 400 :body "Cannot migrate this Metabase version."}
-          {:status 500})))))
+          {:status 500 :body ""})))))
 
 (api.macros/defendpoint :get "/"
   "Get the latest cloud migration, if any."

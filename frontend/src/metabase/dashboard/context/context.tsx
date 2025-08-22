@@ -173,13 +173,13 @@ const DashboardContextProviderInner = forwardRef(
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
 
-    const { refreshDashboard } = useRefreshDashboard({
+    const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
       parameterQueryParams,
     });
 
     const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
-      useDashboardRefreshPeriod({ onRefresh: refreshDashboard });
+      useDashboardRefreshPeriod({ onRefresh: refreshDashboardCardData });
 
     const {
       isFullscreen,

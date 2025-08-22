@@ -174,7 +174,10 @@ function TagSection({ transform }: TagSectionProps) {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
-  const handleTagListChange = async (tagIds: TransformTagId[]) => {
+  const handleTagListChange = async (
+    tagIds: TransformTagId[],
+    undoable: boolean = false,
+  ) => {
     const { error } = await updateTransform({
       id: transform.id,
       tag_ids: tagIds,
@@ -183,13 +186,15 @@ function TagSection({ transform }: TagSectionProps) {
     if (error) {
       sendErrorToast(t`Failed to update transform tags`);
     } else {
-      sendSuccessToast(t`Transform tags updated`, async () => {
+      const undo = async () => {
         const { error } = await updateTransform({
           id: transform.id,
           tag_ids: transform.tag_ids,
         });
         sendUndoToast(error);
-      });
+      };
+
+      sendSuccessToast(t`Transform tags updated`, undoable ? undo : undefined);
     }
   };
 

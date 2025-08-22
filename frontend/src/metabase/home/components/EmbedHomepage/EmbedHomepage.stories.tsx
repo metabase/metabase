@@ -31,9 +31,8 @@ export const Default: Story = {
   },
   args: {
     hasExampleDashboard: true,
-    licenseActiveAtSetup: true,
-    interactiveEmbeddingQuickstartUrl:
-      "https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide.html",
+    variant: "ee",
+    hasEmbeddingFeature: false,
     embeddingDocsUrl:
       "https://www.metabase.com/docs/latest/embedding/start.html",
     analyticsDocsUrl:

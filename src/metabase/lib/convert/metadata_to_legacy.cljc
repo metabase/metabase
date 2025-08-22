@@ -25,6 +25,9 @@
 
   * Remove `:lib/type`"
   [col :- :map]
+  ;; Intentionally using vanilla update-keys here because m.u.perf's implementation would try to assoc snake keys onto
+  ;; SnakeHatingMap which results in an exception.
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (-> col
       (update-keys lib-metadata-column-key->legacy-metadata-column-key)
       (m/update-existing :binning_info update-keys lib-metadata-column-key->legacy-metadata-column-key)
