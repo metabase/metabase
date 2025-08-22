@@ -46,17 +46,19 @@
    {:keys [column column-ref value], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and column
              (some? value)
-             (not= value :null)         ; If the FK is null, don't show this option.
              (lib.drill-thru.common/mbql-stage? query stage-number)
              (not (lib.types.isa/primary-key? column))
              (lib.types.isa/foreign-key? column))
     (let [source (or (some->> query lib.util/source-table-id (lib.metadata/table query))
-                     (some->> query lib.util/source-card-id (lib.metadata/card query)))]
+                     (some->> query lib.util/source-card-id (lib.metadata/card query)))
+          filter (if (= value :null)
+                   (lib.options/ensure-uuid [:is-null {} column-ref])
+                   (lib.options/ensure-uuid [:= {} column-ref value]))]
       {:lib/type :metabase.lib.drill-thru/drill-thru
        :type     :drill-thru/fk-filter
-       :filter   (lib.options/ensure-uuid [:= {} column-ref value])
+       :filter   filter
        :column-name (lib.metadata.calculation/display-name query stage-number column :long)
-       :table-name (lib.metadata.calculation/display-name query 0 source)})))
+       :table-name (lib.metadata.calculation/display-name query 0 source)}))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/fk-filter
   [_query _stage-number drill-thru]
