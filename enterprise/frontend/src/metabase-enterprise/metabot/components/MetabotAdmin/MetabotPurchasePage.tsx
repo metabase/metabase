@@ -72,12 +72,13 @@ interface MetabotPurchaseFormFields {
 }
 
 export const MetabotPurchasePage = () => {
-  const tokenStatus = useSetting("token-status");
   const currentUser = useSelector(getCurrentUser);
-  const isStoreUser =
-    tokenStatus?.["store-users"]
-      ?.map(({ email }) => email)
-      ?.includes(currentUser?.email) ?? false;
+  const tokenStatus = useSetting("token-status");
+  const storeUserEmails =
+    tokenStatus?.["store-users"]?.map(({ email }) => email) ?? [];
+  const isStoreUser = storeUserEmails.includes(currentUser?.email);
+  const anyStoreUserEmailAddress =
+    storeUserEmails.length > 0 ? storeUserEmails[0] : undefined;
 
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const [purchaseMetabotAddOn] = usePurchaseMetabotCloudAddOnMutation();
@@ -183,7 +184,7 @@ export const MetabotPurchasePage = () => {
           <Text fw="bold">
             {
               /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
-              t`Please ask a Metabase Store Admin of your organization to enable this for you.`
+              t`Please ask a Metabase Store Admin${anyStoreUserEmailAddress && ` (${anyStoreUserEmailAddress})`} of your organization to enable this for you.`
             }
           </Text>
         )}
