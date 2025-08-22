@@ -69,6 +69,7 @@ export function DateFilterPicker({
           ) : null
         }
         onChange={handleChange}
+        readOnly={readOnly}
       />
     </div>
   );
