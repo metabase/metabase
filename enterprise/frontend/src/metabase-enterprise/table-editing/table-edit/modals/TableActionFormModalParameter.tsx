@@ -32,8 +32,8 @@ export function TableActionFormModalParameter({
   return (
     <>
       <Group h="2.5rem" align="center">
-        <Stack gap="0" className={S.modalBodyColumn}>
-          <Text>
+        <Stack gap="0" className={S.modalBodyColumn} maw="100%">
+          <Text truncate maw="100%">
             {parameter.display_name}
             {!parameter.optional && (
               <Text component="span" c="error">

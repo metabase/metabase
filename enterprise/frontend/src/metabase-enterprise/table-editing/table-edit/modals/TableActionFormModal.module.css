@@ -21,6 +21,7 @@
   grid-template-columns: 35% auto;
   grid-template-rows: repeat(auto-fill, rem(40));
   row-gap: rem(24);
+  column-gap: rem(16);
   height: calc(100dvh - rem(80) - rem(72) /* header + footer */);
   overflow-y: scroll;
 }
