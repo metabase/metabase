@@ -4,7 +4,6 @@
    [java-time.api :as t]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

@@ -70,7 +70,7 @@
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
-(mu/defn- ->mbql-5 :- ::lib.schema/query
+(mu/defn- ->mbql5 :- ::lib.schema/query
   [query :- [:map
              [:database ::lib.schema.id/database]
              ;; sanity check: info should only get added in Clojure-land and shouldn't get transformed back and forth
@@ -81,7 +81,7 @@
 
 (defn- ensure-mbql5 [middleware-fn]
   (-> (fn [query]
-        (let [query (->mbql-5 query)]
+        (let [query (->mbql5 query)]
           (vary-meta (middleware-fn query)
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))

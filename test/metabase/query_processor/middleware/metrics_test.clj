@@ -6,7 +6,6 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.hierarchy :as lib.hierarchy]

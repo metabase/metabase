@@ -1,6 +1,5 @@
 (ns metabase.query-processor.pivot.test-util
   (:require
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]))
 

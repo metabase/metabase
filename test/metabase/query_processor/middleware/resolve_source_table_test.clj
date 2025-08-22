@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.resolve-source-table-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]

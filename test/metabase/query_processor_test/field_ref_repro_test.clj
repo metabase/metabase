@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]

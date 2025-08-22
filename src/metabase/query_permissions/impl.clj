@@ -249,6 +249,8 @@
   [query perms-opts]
   (-> query
       lib/normalize
+      ;; allowing for now until we convert this namespace to be MBQL-5-only
+      #_{:clj-kondo/ignore [:discouraged-var]}
       lib/->legacy-MBQL
       (legacy-mbql-required-perms perms-opts)))
 

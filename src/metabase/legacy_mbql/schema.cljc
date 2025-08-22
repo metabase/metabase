@@ -59,7 +59,7 @@
    ;;
    ;; same style as MBQL 5; options map is always the first arg after the tag and we should use `{}` instead of `nil`
    ;; for empty options. `:lib/uuid` should be preserved here I think.
-   ::options-style.mbql-5
+   ::options-style.mbql5
    ;;
    ;; like a `:field` ref, options are ALWAYS the last arg, but should be `nil` if the options map is empty.
    ::options-style.last-always
@@ -451,7 +451,7 @@
   expr [:or [:ref ::FieldOrExpressionDef] [:ref ::Aggregation]]
   n    ::lib.schema.expression.window/offset.n)
 
-(defmethod options-style-method :offset [_tag] ::options-style.mbql-5)
+(defmethod options-style-method :offset [_tag] ::options-style.mbql5)
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
 
