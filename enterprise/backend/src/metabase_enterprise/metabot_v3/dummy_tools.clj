@@ -10,7 +10,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -312,41 +311,6 @@
       (catch Exception e
         {:output (str "error fetching document: " (.getMessage e))}))
     {:output "invalid document_id"}))
-
-(defn- base-type->type [field]
-  (case field
-    :type/Integer   "number"
-    :type/Float     "number"
-    :type/Text      "string"
-    :type/Date      "date"
-    :type/DateTime  "datetime"
-    :type/Time      "time"
-    :type/Boolean   "boolean"
-    :type/Null      "null"
-    "string"))
-
-(defn get-tables
-  "Get information about the tables in a database."
-  [{:keys [database-id] :or {database-id 1}}]
-  (if (int? database-id)
-    (let [db (t2/select-one [:model/Database :id :name :description :engine] database-id)
-          tables (t2/select [:model/Table :id :name :description]
-                            {:where [:and
-                                     [:= :db_id database-id]
-                                     [:= :active true]
-                                     (mi/visible-filter-clause :model/Table
-                                                               :id
-                                                               {:user-id       api/*current-user-id*
-                                                                :is-superuser? api/*is-superuser?*}
-                                                               {:perms/view-data      :unrestricted
-                                                                :perms/create-queries :query-builder-and-native})]})
-          columns (group-by :table_id (map #(-> %
-                                                (assoc :type (base-type->type (:base_type %)))
-                                                (dissoc :base_type))
-                                           (t2/select [:model/Field :id :table_id :name :description :base_type])))]
-      {:structured-output {:database db
-                           :tables   (map #(assoc % :columns (get columns (:id %) [])) tables)}})
-    {:output "invalid database_id"}))
 
 (defn- execute-query
   [query-id legacy-query]
