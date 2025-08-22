@@ -5,10 +5,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
-   [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting]
@@ -17,7 +15,6 @@
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
