@@ -26,5 +26,9 @@ export const getUpdateApiErrorMessage = (
     return maybeError.errors[0].message ?? maybeError.errors[0].error;
   }
 
+  if (typeof maybeError.data?.message === "string") {
+    return maybeError.data.message;
+  }
+
   return t`Unknown error`;
 };
