@@ -40,7 +40,7 @@
           403 {:status 403 :body "Could not establish a connection to Metabase Cloud."}
           401 {:status 401 :body "Could not establish a connection to Metabase Cloud."}
           400 {:status 400 :body "Could not purchase this add-on."}
-          {:status 500 :body ""})))))
+          {:status 500 :body "Unexpected error"})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/cloud-add-ons` routes."
