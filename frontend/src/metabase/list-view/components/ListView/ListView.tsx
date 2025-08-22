@@ -62,7 +62,9 @@ export function ListView({
   });
 
   // Get the appropriate icon based on entity type
-  const entityIcon = getEntityIcon(entityType);
+  const entityIcon =
+    getEntityIcon(settings.viewSettings?.listSettings?.entityIcon) ||
+    getEntityIcon(entityType);
 
   return (
     <Stack

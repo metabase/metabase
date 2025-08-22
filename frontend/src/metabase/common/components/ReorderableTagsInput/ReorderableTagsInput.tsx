@@ -178,7 +178,6 @@ export function ReorderableTagsInput({
             [S.max]: maxValues && value.length >= maxValues,
             [S.dragOver]: isDragOver,
           }),
-          root: cx(S.container, {}),
         }}
         onMouseDownCapture={(e: React.MouseEvent<HTMLDivElement>) => {
           const target = e.target as HTMLElement;

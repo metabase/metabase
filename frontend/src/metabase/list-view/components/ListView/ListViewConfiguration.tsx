@@ -11,13 +11,31 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { ReorderableTagsInput } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
-import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Divider,
+  Icon,
+  Stack,
+  Text,
+  Menu,
+  Button,
+  ActionIcon,
+} from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
-import { getEntityIcon, useListColumns } from "./ListView";
+import { ENTITY_ICONS, getEntityIcon, useListColumns } from "./ListView";
 import S from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
+
+// Helper function to transform entity icon keys to readable format
+const formatEntityIconName = (key: string): string => {
+  return key
+    .replace("entity/", "")
+    .replace("Table", "")
+    .replace(/([A-Z])/g, " $1")
+    .trim();
+};
 
 export const ListViewConfiguration = ({
   data,
@@ -27,7 +45,11 @@ export const ListViewConfiguration = ({
 }: {
   data: DatasetData;
   entityType?: string;
-  onChange: (settings: { left: string[]; right: string[] }) => void;
+  onChange: (settings: {
+    left: string[];
+    right: string[];
+    entityIcon?: string;
+  }) => void;
   settings?: ComputedVisualizationSettings;
 }) => {
   const { cols } = data;
@@ -43,6 +65,11 @@ export const ListViewConfiguration = ({
     ...(titleColumn ? [titleColumn.name] : []),
     ...(subtitleColumn ? [subtitleColumn.name] : []),
   ]);
+
+  // Selected icon state
+  const [selectedEntityType, setSelectedEntityType] = useState<
+    keyof typeof ENTITY_ICONS
+  >(() => settings?.viewSettings?.listSettings?.entityIcon || entityType);
   useEffect(() => {
     setLeftValues([
       ...(titleColumn ? [titleColumn.name] : []),
@@ -85,19 +112,20 @@ export const ListViewConfiguration = ({
     .filter(Boolean) as DatasetColumn[];
 
   const firstRow = data.rows?.[0];
-  const entityIcon = getEntityIcon(entityType);
   const emptySettings = {} as ComputedVisualizationSettings;
 
   const onConfigurationChange = ({
     left = leftValues,
     right = rightValues,
+    entityIcon,
   }: {
     left: string[];
     right: string[];
+    entityIcon?: string;
   }) => {
     setLeftValues(left);
     setRightValues(right);
-    onChange({ left, right });
+    onChange({ left, right, entityIcon });
   };
 
   const sensors = useSensors(
@@ -155,9 +183,17 @@ export const ListViewConfiguration = ({
       }
       const next = arrayMove(fromList, fromIndex, overIndexInTo);
       if (from === "left") {
-        onConfigurationChange({ left: next, right: rightValues });
+        onConfigurationChange({
+          left: next,
+          right: rightValues,
+          entityIcon: selectedEntityType,
+        });
       } else {
-        onConfigurationChange({ left: leftValues, right: next });
+        onConfigurationChange({
+          left: leftValues,
+          right: next,
+          entityIcon: selectedEntityType,
+        });
       }
       return;
     }
@@ -181,11 +217,13 @@ export const ListViewConfiguration = ({
       onConfigurationChange({
         left: nextTo,
         right: nextFrom,
+        entityIcon: selectedEntityType,
       });
     } else {
       onConfigurationChange({
         left: nextFrom,
         right: nextTo,
+        entityIcon: selectedEntityType,
       });
     }
   };
@@ -206,27 +244,53 @@ export const ListViewConfiguration = ({
         <Stack justify="center" flex={1} maw="var(--max-width)" w="100%">
           <Text fw="bold">{t`Customize List columns`}</Text>
           <Box className={S.listViewConfigurationInputs}>
-            {/* Icon placeholder */}
-            <Box
-              w={32}
-              h={32}
-              style={{
-                border: "1px dashed var(--mb-color-border)",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                backgroundColor: "var(--mb-color-background-light)",
-              }}
-            >
-              <Icon
-                tooltip="Not implemented yet, but we can add icon selection here"
-                name={getEntityIcon(entityType)}
-                size={16}
-                c="text-light"
-              />
-            </Box>
+            {/* Icon selector */}
+            <Menu shadow="md" width={200}>
+              <Menu.Target>
+                <ActionIcon
+                  variant="subtle"
+                  p={0}
+                  w={32}
+                  h={32}
+                  style={{
+                    border: "1px dashed var(--mb-color-border)",
+                    marginTop: "0.25rem",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    backgroundColor: "var(--mb-color-background-light)",
+                  }}
+                >
+                  <Icon
+                    tooltip="Entity icon"
+                    name={ENTITY_ICONS[selectedEntityType]}
+                    size={16}
+                    c="text-light"
+                  />
+                </ActionIcon>
+              </Menu.Target>
+
+              <Menu.Dropdown>
+                {Object.entries(ENTITY_ICONS).map(([key, iconName]) => (
+                  <Menu.Item
+                    key={key}
+                    leftSection={<Icon name={iconName} size={16} />}
+                    onClick={() => {
+                      setSelectedEntityType(key as keyof typeof ENTITY_ICONS);
+                      onConfigurationChange({
+                        left: leftValues,
+                        right: rightValues,
+                        entityIcon: key,
+                      });
+                    }}
+                  >
+                    {formatEntityIconName(key)}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
 
             {/* Title + Subtitle */}
             <ReorderableTagsInput
@@ -275,7 +339,7 @@ export const ListViewConfiguration = ({
               row={firstRow}
               cols={cols}
               settings={emptySettings}
-              entityIcon={entityIcon}
+              entityIcon={getEntityIcon(selectedEntityType)}
               imageColumn={undefined}
               titleColumn={selectedTitleColumn}
               subtitleColumn={selectedSubtitleColumn}

@@ -409,6 +409,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
 
+  const [tempQuestion, setTempQuestion] = useState(question);
   const onChangeEditorTab = useCallback(
     (tab: DatasetEditorTab) => {
       setDatasetEditorTab(tab);
@@ -420,26 +421,25 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
        */
 
       if (editedVisualizationSettings?.viewSettings?.defaultView === "list") {
-        if (tab === "columns") {
-          const updatedQuestion = question.setDisplay("table");
-          updateQuestion(updatedQuestion, {
-            rerunQuery: false,
-          });
+        if (tab !== "metadata") {
+          setTempQuestion(tempQuestion.setDisplay("table"));
+          // updateQuestion(updatedQuestion, {
+          //   rerunQuery: false,
+          // });
         }
         if (tab === "metadata") {
-          const updatedQuestion = question.setDisplay("list");
-          updateQuestion(updatedQuestion, {
-            rerunQuery: false,
-          });
+          setTempQuestion(tempQuestion.setDisplay("list"));
+          // updateQuestion(updatedQuestion, {
+          //   rerunQuery: false,
+          // });
         }
       }
     },
     [
       editedVisualizationSettings?.viewSettings?.defaultView,
       initialEditorHeight,
-      question,
+      tempQuestion,
       setDatasetEditorTab,
-      updateQuestion,
     ],
   );
 
@@ -720,6 +720,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
               <QueryVisualization
                 {...props}
+                question={tempQuestion}
                 className={CS.spread}
                 noHeader
                 queryBuilderMode="dataset"

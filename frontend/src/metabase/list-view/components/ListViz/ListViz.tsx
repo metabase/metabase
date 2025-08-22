@@ -256,9 +256,11 @@ export const ListViz = withRouter(
     const updateListSettings = ({
       left,
       right,
+      entityIcon,
     }: {
       left: string[];
       right: string[];
+      entityIcon?: string;
     }) => {
       const newSettings = {
         viewSettings: {
@@ -266,6 +268,7 @@ export const ListViz = withRouter(
           listSettings: {
             leftColumns: left,
             rightColumns: right,
+            entityIcon,
           },
         },
       };
