@@ -511,6 +511,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     getObjectDetailShortcut(0).icon("sidebar_open").should("be.visible");
     H.openObjectDetail(0);
 
+    // realHover does not work behind the modal overlay, so we're working around it with realMouseMove
     getRow(0).then(($row) => {
       const rect = $row[0].getBoundingClientRect();
       const detailShortcutWidth = 24;
