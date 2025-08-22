@@ -154,6 +154,8 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
 
     H.modal().findByRole("link", { name: "77 Orders" }).click();
+    cy.log("should close the modal when browsing relationships");
+    cy.findByTestId("object-detail").should("not.exist");
 
     cy.findByTestId("qb-filters-panel")
       .findByText("Product ID is 3")
@@ -274,6 +276,8 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.findByRole("link", { name: "8 Reviews" }).should("be.visible");
       cy.findByRole("link", { name: "92 Orders" }).should("be.visible").click();
     });
+    cy.log("should close the modal when browsing relationships");
+    cy.findByTestId("object-detail").should("not.exist");
 
     cy.wait("@dataset");
 
