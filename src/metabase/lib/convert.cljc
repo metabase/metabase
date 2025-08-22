@@ -6,6 +6,7 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -500,12 +501,33 @@
   [clause]
   (->legacy-MBQL clause))
 
-(defn- clause-with-options->legacy-MBQL [[k options & args]]
-  (if (map? options)
-    (into [k] (concat (map ->legacy-MBQL args)
-                      (when-let [options (not-empty (options->legacy-MBQL options))]
-                        [options])))
-    (into [k] (map ->legacy-MBQL (cons options args)))))
+(defn- clause-with-options->legacy-MBQL
+  [[tag & args :as clause]]
+  (if-not ((some-fn nil? map?) (first args))
+    ;; probably something like `:dimension` which is not a 'real' MBQL clause
+    clause
+    (let [[options & args] args
+          args             (map ->legacy-MBQL args)]
+      (loop [style (mbql.s/options-style tag), options options]
+        (case style
+          ::mbql.s/options-style.none                   (into [tag] args)
+          ::mbql.s/options-style.mbql5                 (into [tag (or options {})] args)
+          ::mbql.s/options-style.last-always            (-> (into [tag] args)
+                                                            (conj (not-empty (options->legacy-MBQL options))))
+          ::mbql.s/options-style.last-always.snake_case (recur ::mbql.s/options-style.last-always
+                                                               (into (empty options)
+                                                                     (map (fn [[k v]]
+                                                                            [(cond-> k
+                                                                               (simple-keyword? k) u/->snake_case_en)
+                                                                             v]))
+                                                                     options))
+          ::mbql.s/options-style.last-unless-empty      (let [options (options->legacy-MBQL options)]
+                                                          (cond-> (into [tag] args)
+                                                            (seq options)
+                                                            (conj options)))
+          ::mbql.s/options-style.𝕨𝕚𝕝𝕕                   (if (> (count args) 2)
+                                                              (recur ::mbql.s/options-style.mbql5 (options->legacy-MBQL options))
+                                                              (recur ::mbql.s/options-style.last-unless-empty options)))))))
 
 (defmethod ->legacy-MBQL :default
   [x]
@@ -607,42 +629,17 @@
 (defmethod ->legacy-MBQL :field [[_ opts id]]
   ;; Fields are not like the normal clauses - they need that options field even if it's null.
   ;; TODO: Sometimes the given field is in the legacy order - that seems wrong.
-  (let [[opts id] (if (or (nil? opts) (map? opts))
+  (let [[opts id] (if ((some-fn nil? map?) opts)
                     [opts id]
                     [id opts])]
-    [:field
-     (->legacy-MBQL id)
-     (options->legacy-MBQL opts)]))
+    (clause-with-options->legacy-MBQL [:field opts id])))
 
 (defmethod ->legacy-MBQL :value
   [[_tag opts value]]
   (let [opts (-> opts
                  ;; remove effective type since it's not used/allowed in legacy MBQL
-                 (dissoc :effective-type)
-                 ;; as mentioned above, `:value` in legacy MBQL expects `snake_case` keys for type info keys.
-                 (set/rename-keys  {:base-type      :base_type
-                                    :semantic-type  :semantic_type
-                                    :database-type  :database_type
-                                    :effective-type :effective_type})
-                 options->legacy-MBQL)]
-    ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
-    ;; empty.
-    [:value value opts]))
-
-;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
-(defmethod ->legacy-MBQL :offset
-  [[tag opts expr n, :as clause]]
-  {:pre [(= (count clause) 4)]}
-  [tag opts (->legacy-MBQL expr) n])
-
-(defmethod ->legacy-MBQL ::string-comparison
-  [[tag opts & args]]
-  (if (> (count args) 2)
-    (into [tag (disqualify opts)] (map ->legacy-MBQL args)) ; Multi-arg, pMBQL style: [tag {opts...} x y z ...]
-    ;; Two-arg, legacy style: [tag x y] or [tag x y opts].
-    (let [opts (disqualify opts)]
-      (cond-> (into [tag] (map ->legacy-MBQL args))
-        (seq opts) (conj opts)))))
+                 (dissoc :effective-type))]
+    (clause-with-options->legacy-MBQL [:value opts value])))
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]

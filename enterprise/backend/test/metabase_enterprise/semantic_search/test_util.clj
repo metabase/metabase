@@ -13,7 +13,7 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
-   [metabase.search.core :as search.core]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -169,11 +169,14 @@
      :gate-table-name       (format fmt "gate")
      :index-table-qualifier fmt}))
 
+(defn mock-table-suffix [] 123)
+
 (def mock-index
   "A mock index for testing low level indexing functions.
   Coincides with what the index-metadata system would create for the mock-embedding-model."
-  (-> (semantic.index/default-index mock-embedding-model)
-      (semantic.index-metadata/qualify-index mock-index-metadata)))
+  (with-redefs [semantic.index/model-table-suffix mock-table-suffix]
+    (-> (semantic.index/default-index mock-embedding-model)
+        (semantic.index-metadata/qualify-index mock-index-metadata))))
 
 (defmethod semantic.embedding/get-embedding        "mock" [_ text] (get-mock-embedding text))
 (defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts] (get-mock-embeddings-batch texts))
@@ -182,8 +185,8 @@
 (defn query-index [search-context]
   (:results (semantic.index/query-index db mock-index search-context)))
 
-(defn upsert-index! [documents & opts]
-  (apply semantic.index/upsert-index! db mock-index documents opts))
+(defn upsert-index! [documents & {:keys [index] :or {index mock-index} :as opts}]
+  (semantic.index/upsert-index! db index documents opts))
 
 (defn delete-from-index! [model ids]
   (semantic.index/delete-from-index! db mock-index model ids))
@@ -229,13 +232,13 @@
     Closeable
     (close [_] (close-fn o))))
 
-(defn open-temp-index! ^Closeable []
+(defn open-temp-index! ^Closeable [& {:keys [index] :or {index mock-index}}]
   (closeable
-   (do (semantic.index/create-index-table-if-not-exists! db mock-index {:force-reset? true})
-       mock-index)
-   (fn cleanup-temp-index-table! [{:keys [table-name]}]
+   (do (semantic.index/create-index-table-if-not-exists! db index {:force-reset? true})
+       index)
+   (fn cleanup-temp-index-table! [{:keys [table-name] :as index}]
      (try
-       (semantic.index/drop-index-table! db mock-index)
+       (semantic.index/drop-index-table! db index)
        (catch Exception e
          (log/error e "Warning: failed to clean up test table" table-name))))))
 
@@ -321,11 +324,12 @@
   [& body]
   `(with-indexable-documents!
      (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
-                   semantic.index-metadata/default-index-metadata mock-index-metadata]
+                   semantic.index-metadata/default-index-metadata mock-index-metadata
+                   semantic.index/model-table-suffix mock-table-suffix]
        (with-open [_# (open-temp-index-and-metadata!)]
          (binding [search.ingestion/*force-sync* true]
            (blocking-index!
-            (search.core/reindex! :search.engine/semantic {:force-reset true}))
+            (search.engine/reindex! :search.engine/semantic {:force-reset true}))
            ~@body)))))
 
 (defn table-exists-in-db?
@@ -412,6 +416,17 @@
   (-> row
       (unwrap-column :text_search_vector)
       (unwrap-column :text_search_with_native_query_vector)))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn index-count
+  "Count the number of documents in the index."
+  [index]
+  (let [result (jdbc/execute-one! db
+                                  (-> (sql.helpers/select [:%count.* :count])
+                                      (sql.helpers/from (keyword (:table-name index)))
+                                      semantic.index/sql-format-quoted)
+                                  {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (or (:count result) 0)))
 
 #_:clj-kondo/ignore
 (defn full-index
