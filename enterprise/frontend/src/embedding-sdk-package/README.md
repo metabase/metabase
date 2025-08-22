@@ -56,4 +56,7 @@ For the current limitations of the SDK, see the [SDK limitations section](https:
 
 ## Development docs
 
-For developing the SDK, see the [dev docs](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-bundle/dev.md).
+For developing the SDK, see the
+
+- [Embedding SDK Package Dev Docs](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-package/dev.md).
+- [Embedding SDK Bundle Dev Docs](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-bundle/dev.md).
