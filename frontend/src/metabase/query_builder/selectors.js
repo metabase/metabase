@@ -342,7 +342,7 @@ export const getTableForeignKeys = createSelector(
 export const getPKColumnIndex = createSelector(
   [getFirstQueryResult, getTableId],
   (result, tableId) => {
-    if (!result) {
+    if (!result || !result.data) {
       return;
     }
     const { cols } = result.data;
@@ -360,7 +360,7 @@ export const getPKColumnIndex = createSelector(
 export const getPKRowIndexMap = createSelector(
   [getFirstQueryResult, getPKColumnIndex],
   (result, PKColumnIndex) => {
-    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+    if (!result || !result.data || !Number.isSafeInteger(PKColumnIndex)) {
       return {};
     }
     const { rows } = result.data;
