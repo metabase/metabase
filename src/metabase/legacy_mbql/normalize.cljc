@@ -685,10 +685,13 @@
   [_]
   nil)
 
-;; TODO -- if options is empty, should we just unwrap the clause?
 (defmethod canonicalize-mbql-clause :aggregation-options
   [[_ wrapped-aggregation-clause options]]
-  [:aggregation-options (canonicalize-mbql-clause wrapped-aggregation-clause) options])
+  (let [canonicalized-clause (canonicalize-mbql-clause wrapped-aggregation-clause)]
+    (if (or (nil? options)
+            (and (map? options) (empty? options)))
+      canonicalized-clause
+      [:aggregation-options canonicalized-clause options])))
 
 ;; for legacy `:named` aggregations convert them to a new-style `:aggregation-options` clause.
 ;;
