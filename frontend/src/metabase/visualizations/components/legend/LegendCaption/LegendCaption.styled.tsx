@@ -13,7 +13,7 @@ export const LegendCaptionRoot = styled.div`
   min-width: 0;
 `;
 
-export const LEGEND_LABEL_FONT_SIZE = "1.02rem";
+export const LEGEND_LABEL_FONT_SIZE = "0.875rem";
 export const LEGEND_LABEL_FONT_WEIGHT = 700;
 
 export const LegendLabel = styled(BaseLegendLabel)`
