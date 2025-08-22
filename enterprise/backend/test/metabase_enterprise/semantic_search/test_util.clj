@@ -175,7 +175,7 @@
 (def mock-index
   "A mock index for testing low level indexing functions.
   Coincides with what the index-metadata system would create for the mock-embedding-model."
-  (with-redefs [semantic.index/timestamp-table-suffix mock-table-suffix]
+  (with-redefs [semantic.index/model-table-suffix mock-table-suffix]
     (-> (semantic.index/default-index mock-embedding-model)
         (semantic.index-metadata/qualify-index mock-index-metadata))))
 
@@ -326,7 +326,7 @@
   `(with-indexable-documents!
      (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
                    semantic.index-metadata/default-index-metadata mock-index-metadata
-                   semantic.index/timestamp-table-suffix          mock-table-suffix]
+                   semantic.index/model-table-suffix              mock-table-suffix]
        (with-open [_# (open-temp-index-and-metadata!)]
          (binding [search.ingestion/*force-sync* true]
            (blocking-index!

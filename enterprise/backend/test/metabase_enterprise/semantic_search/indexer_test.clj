@@ -457,8 +457,8 @@
     (with-redefs [semantic.dlq/dlq-retry-loop! (fn [& args] (apply @dlq-loop-impl args))
                   semantic.indexer/clock       clock
                   semantic.dlq/clock           clock]
-      (with-open [_            (open-metadata! pgvector index-metadata)
-                  _            (open-index! pgvector index)
+      (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
+                  _            (semantic.tu/open-index! pgvector index)
                   index-id-ref (semantic.tu/closeable
                                 (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
                                 (constantly nil))
@@ -525,8 +525,8 @@
                                  (vswap! state assoc :next-dlq-run (.instant clock)) ; ensure DLQ is scheduled
                                  state))]
 
-    (with-open [_            (open-metadata! pgvector index-metadata)
-                _            (open-index! pgvector index)
+    (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
+                _            (semantic.tu/open-index! pgvector index)
                 index-id-ref (semantic.tu/closeable
                               (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
                               (constantly nil))
@@ -616,8 +616,8 @@
                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
         upsert-index!    semantic.index/upsert-index!]
 
-    (with-open [_            (open-metadata! pgvector index-metadata)
-                _            (open-index! pgvector index)
+    (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
+                _            (semantic.tu/open-index! pgvector index)
                 index-id-ref (semantic.tu/closeable
                               (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
                               (constantly nil))

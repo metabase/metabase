@@ -20,16 +20,6 @@
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
-(defn- open-metadata! ^Closeable [pgvector index-metadata]
-  (semantic.tu/closeable
-   (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
-   (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))))
-
-(defn- open-index! ^Closeable [pgvector index]
-  (semantic.tu/closeable
-   (semantic.index/create-index-table-if-not-exists! pgvector index)
-   (fn [_] (semantic.index/drop-index-table! pgvector index))))
-
 (defn- open-dlq! ^Closeable [pgvector index-metadata index-id]
   (semantic.tu/closeable
    (semantic.dlq/create-dlq-table-if-not-exists! pgvector index-metadata index-id)
@@ -59,7 +49,7 @@
     (let [pgvector       semantic.tu/db
           index-metadata (semantic.tu/unique-index-metadata)
           index-id       42]
-      (with-open [_ (open-metadata! pgvector index-metadata)]
+      (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)]
         (is (false? (semantic.dlq/dlq-table-exists? pgvector index-metadata index-id)))
         (semantic.dlq/create-dlq-table-if-not-exists! pgvector index-metadata index-id)
         (is (true? (semantic.dlq/dlq-table-exists? pgvector index-metadata index-id)))
@@ -71,7 +61,7 @@
     (let [pgvector       semantic.tu/db
           index-metadata (semantic.tu/unique-index-metadata)
           index-id       42]
-      (with-open [_ (open-metadata! pgvector index-metadata)
+      (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
                   _ (open-dlq! pgvector index-metadata index-id)]
         (let [t1      (ts "2025-01-01T10:00:00Z")
               t2      (ts "2025-01-01T11:00:00Z")
@@ -110,7 +100,7 @@
     (let [pgvector       semantic.tu/db
           index-metadata (semantic.tu/unique-index-metadata)
           index-id       42]
-      (with-open [_ (open-metadata! pgvector index-metadata)
+      (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
                   _ (open-dlq! pgvector index-metadata index-id)]
         (let [t1            (ts "2025-01-01T10:00:00Z")
               t2            (ts "2025-01-01T11:00:00Z")
@@ -151,8 +141,8 @@
         version        semantic.gate/search-doc->gate-doc
         delete         (fn [doc t] (semantic.gate/deleted-search-doc->gate-doc (:model doc) (:id doc) t))]
 
-    (with-open [_            (open-metadata! pgvector index-metadata)
-                _            (open-index! pgvector index)
+    (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
+                _            (semantic.tu/open-index! pgvector index)
                 index-id-ref (semantic.tu/closeable
                               (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
                               (constantly nil))
@@ -220,8 +210,8 @@
                                 (map #(semantic.dlq/initial-dlq-entry % (.instant clock)))
                                 (semantic.dlq/add-entries! pgvector index-metadata index-id)))]
 
-    (with-open [_            (open-metadata! pgvector index-metadata)
-                _            (open-index! pgvector index)
+    (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
+                _            (semantic.tu/open-index! pgvector index)
                 index-id-ref (semantic.tu/closeable
                               (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
                               (constantly nil))
@@ -328,8 +318,8 @@
                          :gated_at       (ts "2025-01-04T09:00:00Z")
                          :error_gated_at (ts "2025-01-04T09:00:00Z")}]]
 
-    (with-open [_ (open-metadata! pgvector index-metadata)
-                _ (open-index! pgvector index)]
+    (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)
+                _ (semantic.tu/open-index! pgvector index)]
 
       (testing "batch processing singles out orphans (dlq entry with no associated gate record)"
         (let [outcome (semantic.dlq/try-batch! pgvector index gate-docs)]

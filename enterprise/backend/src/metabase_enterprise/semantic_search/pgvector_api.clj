@@ -33,7 +33,7 @@
 (defn- fresh-index [index-metadata embedding-model & {:keys [force-reset?]}]
   (let [default-table-name   (semantic.index/model-table-name embedding-model)
         generated-table-name (if force-reset?
-                               (str default-table-name "_" (semantic.index/timestamp-table-suffix))
+                               (str default-table-name "_" (semantic.index/model-table-suffix))
                                default-table-name)
         table-name           (semantic.index/hash-identifier-if-exceeds-pg-limit generated-table-name)]
     (-> (semantic.index/default-index embedding-model :table-name table-name)
