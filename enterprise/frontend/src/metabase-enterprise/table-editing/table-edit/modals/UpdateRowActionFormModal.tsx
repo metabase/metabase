@@ -107,69 +107,66 @@ export function UpdateRowActionFormModal({
     onClose,
   });
 
-  if (showLeaveConfirmation) {
-    return (
+  return (
+    <>
       <LeaveConfirmationModal
         opened={showLeaveConfirmation}
         onContinue={handleContinue}
         onLeave={handleLeaveConfirmation}
       />
-    );
-  }
-
-  return (
-    <Modal.Root opened={opened} onClose={handleClose}>
-      <Modal.Overlay />
-      <Modal.Content
-        transitionProps={{ transition: "slide-left" }}
-        classNames={{
-          content: cx(S.modalContent, Animation.slideLeft),
-        }}
-      >
-        <form onSubmit={handleSubmit}>
-          <Modal.Header px="xl" pb="0" className={S.modalHeader}>
-            <Modal.Title>{t`Edit record`}</Modal.Title>
-          </Modal.Header>
-          <Modal.Body px="xl" py="lg" className={cx(S.modalBody)}>
-            {!description ? (
-              <Center className={S.modalBodyLoader}>
-                <Loader />
-              </Center>
-            ) : (
-              description.parameters.map((parameter) => {
-                return (
-                  <TableActionFormModalParameter
-                    key={parameter.id}
-                    parameter={parameter}
-                  >
-                    <ModalFormInput
-                      initialValue={
-                        values[parameter.id] ?? initialValues?.[parameter.id]
-                      }
+      <Modal.Root opened={opened} onClose={handleClose}>
+        <Modal.Overlay />
+        <Modal.Content
+          transitionProps={{ transition: "slide-left" }}
+          classNames={{
+            content: cx(S.modalContent, Animation.slideLeft),
+          }}
+        >
+          <form onSubmit={handleSubmit}>
+            <Modal.Header px="xl" pb="0" className={S.modalHeader}>
+              <Modal.Title>{t`Edit record`}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body px="xl" py="lg" className={cx(S.modalBody)}>
+              {!description ? (
+                <Center className={S.modalBodyLoader}>
+                  <Loader />
+                </Center>
+              ) : (
+                description.parameters.map((parameter) => {
+                  return (
+                    <TableActionFormModalParameter
+                      key={parameter.id}
                       parameter={parameter}
-                      onChange={setFieldValue}
-                    />
-                  </TableActionFormModalParameter>
-                );
-              })
-            )}
-          </Modal.Body>
-          <Flex px="xl" className={S.modalFooter} gap="lg" justify="flex-end">
-            <Button variant="subtle" onClick={handleClose}>
-              {t`Cancel`}
-            </Button>
-            <Button
-              disabled={isLoading || !isValid}
-              variant="filled"
-              type="submit"
-              data-testid="update-row-save-button"
-            >
-              {t`Save changes`}
-            </Button>
-          </Flex>
-        </form>
-      </Modal.Content>
-    </Modal.Root>
+                    >
+                      <ModalFormInput
+                        initialValue={
+                          values[parameter.id] ?? initialValues?.[parameter.id]
+                        }
+                        parameter={parameter}
+                        onChange={setFieldValue}
+                      />
+                    </TableActionFormModalParameter>
+                  );
+                })
+              )}
+            </Modal.Body>
+            <Flex px="xl" className={S.modalFooter} gap="lg" justify="flex-end">
+              <Button variant="subtle" onClick={handleClose}>
+                {t`Cancel`}
+              </Button>
+              <Button
+                disabled={isLoading || !isValid}
+                variant="filled"
+                type="submit"
+                data-testid="update-row-save-button"
+              >
+                {t`Save changes`}
+              </Button>
+            </Flex>
+          </form>
+        </Modal.Content>
+      </Modal.Root>
+    </>
   );
 }
 
