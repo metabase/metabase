@@ -68,6 +68,7 @@
            transform-details {:transform-type (keyword (:type target))
                               :connection-details (driver/connection-details driver database)
                               :query (transforms.util/compile-source source)
+                              :target target
                               :output-table (transforms.util/qualified-table-name driver target)}
            opts {:overwrite? true}]
        (when-not (driver.u/supports? driver feature database)

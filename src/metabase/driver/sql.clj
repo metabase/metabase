@@ -118,9 +118,9 @@
 ;; TODO Although these methods are implemented here, in fact they only work for sql-jdbc drivers, because
 ;; execute-raw-queries! is not in implemented for plain sql drivers.
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [connection-details query output-table]} {:keys [overwrite?]}]
-  (let [driver (keyword driver)
-        queries (cond->> [(driver/compile-transform driver
+  [driver {:keys [connection-details query output-table target]} {:keys [overwrite?]}]
+  (driver/create-schema-if-needed! driver connection-details (:schema target))
+  (let [queries (cond->> [(driver/compile-transform driver
                                                     {:query query
                                                      :output-table output-table})]
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
