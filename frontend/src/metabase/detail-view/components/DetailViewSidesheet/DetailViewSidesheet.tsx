@@ -28,7 +28,16 @@ import type { OptionsType } from "metabase/lib/formatting/types";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi } from "metabase/services";
-import { Box, Button, Group, Icon, Stack, Tooltip, rem } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Group,
+  Icon,
+  Stack,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import type {
@@ -40,7 +49,6 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 
-import S from "./DetailViewSidesheet.module.css";
 import { Sidesheet } from "./Sidesheet";
 import { extractData, getActionItems, getModelId } from "./utils";
 
@@ -262,7 +270,7 @@ export function DetailViewSidesheet({
                   />
                 </Tooltip>
 
-                <Separator />
+                <Divider orientation="vertical" />
               </>
             )}
 
@@ -399,5 +407,3 @@ export function DetailViewSidesheet({
     </>
   );
 }
-
-const Separator = () => <Box className={S.separator} h={20} />;
