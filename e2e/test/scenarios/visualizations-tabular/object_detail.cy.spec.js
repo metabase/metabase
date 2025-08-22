@@ -450,7 +450,61 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         .and("eq", "https://metabase.test?rating=4");
     });
   });
+
+  it("should support keyboard navigation and opened row highlighting", () => {
+    H.visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": PEOPLE_ID },
+      },
+    });
+
+    getObjectDetailShortcut(0).icon("sidebar_open").should("be.visible");
+
+    getRow(0).should("have.css", "background-color", "rgba(0, 0, 0, 0)");
+    H.openObjectDetail(0);
+    getRow(0).should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.findByTestId("object-detail")
+      .findByRole("heading", { name: "Hudson Borer" })
+      .should("be.visible");
+
+    cy.log("navigates down");
+    getRow(1).should("have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.realPress("ArrowDown");
+    getRow(1).should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.findByTestId("object-detail")
+      .findByRole("heading", { name: "Domenica Williamson" })
+      .should("be.visible");
+
+    cy.log("navigates up");
+    getRow(0).should("have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.realPress("ArrowUp");
+    getRow(0).should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.findByTestId("object-detail")
+      .findByRole("heading", { name: "Hudson Borer" })
+      .should("be.visible");
+
+    cy.log("does not navigate outside of bounds");
+    cy.realPress("ArrowUp");
+    getRow(0).should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.findByTestId("object-detail")
+      .findByRole("heading", { name: "Hudson Borer" })
+      .should("be.visible");
+  });
 });
+
+function getObjectDetailShortcut(rowIndex) {
+  return getRow(rowIndex)
+    .realHover({ scrollBehavior: false })
+    .findByTestId("detail-shortcut")
+    .should("be.visible");
+}
+
+function getRow(rowIndex) {
+  return cy.get(`[data-index=${rowIndex}]`);
+}
 
 function drillPK({ id }) {
   cy.get(".test-Table-ID").contains(id).first().click();
