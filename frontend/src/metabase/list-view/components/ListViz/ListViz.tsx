@@ -204,6 +204,7 @@ export const ListViz = withRouter(
     onVisualizationClick,
     card,
     metadata,
+    queryBuilderMode,
     ...props
   }: VisualizationProps) => {
     const dispatch = useDispatch();
@@ -294,6 +295,7 @@ export const ListViz = withRouter(
             card={card}
             metadata={metadata}
             rowIndex={props.location.state?.rowIndex}
+            isInteractive={queryBuilderMode !== "dataset"}
           />
         )}
       </Box>

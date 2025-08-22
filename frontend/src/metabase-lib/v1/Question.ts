@@ -671,6 +671,7 @@ class Question {
     } else {
       // If it's saved, then it's dirty when the current card doesn't match the last saved version.
       // Omit `entity_id` and `dataset_query` as they have randomized idents
+      debugger;
       const origCardSerialized =
         originalQuestion &&
         originalQuestion._serializeForUrl({

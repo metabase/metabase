@@ -28,6 +28,7 @@ import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import QuestionActionsS from "./QuestionActions.module.css";
+import { QuerySection } from "metabase/css/query_builder.module.css";
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
@@ -82,7 +83,8 @@ export const QuestionMoreActionsMenu = ({
 
   const handleEditMetadata = () =>
     onSetQueryBuilderMode("dataset", {
-      datasetEditorTab: "columns",
+      datasetEditorTab:
+        isModel && question.display() === "list" ? "metadata" : "columns",
     });
 
   const [ackedModelModal] = useUserAcknowledgement("turn_into_model_modal");

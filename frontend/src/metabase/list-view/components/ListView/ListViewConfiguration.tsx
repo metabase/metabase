@@ -112,7 +112,10 @@ export const ListViewConfiguration = ({
     }
 
     const activeId = String(active.id);
-    const from = active.data?.current?.containerId as "left" | "right" | undefined;
+    const from = active.data?.current?.containerId as
+      | "left"
+      | "right"
+      | undefined;
 
     if (!from) {
       return;
@@ -127,7 +130,7 @@ export const ListViewConfiguration = ({
       to = over.data.current.containerId as "left" | "right";
       const toList = to === "left" ? leftValues : rightValues;
       overIndexInTo = toList.indexOf(String(over.id));
-    } 
+    }
     // Check if we're dropping on a container itself (droppable area)
     else if (over.id === "left" || over.id === "right") {
       to = over.id as "left" | "right";
@@ -278,6 +281,7 @@ export const ListViewConfiguration = ({
               subtitleColumn={selectedSubtitleColumn}
               rightColumns={selectedRightColumns}
               onClick={() => {}}
+              style={{ cursor: "default" }}
             />
           ) : (
             <Text c="text-medium">{t`No data to preview`}</Text>

@@ -42,7 +42,6 @@
 .listItem {
   width: 100%;
   max-width: 75rem;
-  cursor: pointer;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   background: var(--mb-color-bg-white);

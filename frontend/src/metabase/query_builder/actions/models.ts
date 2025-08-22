@@ -17,12 +17,11 @@ import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab =
   (datasetEditorTab: DatasetEditorTab) => (dispatch: Dispatch) => {
-    console.log("setDatasetEditorTab", datasetEditorTab);
     dispatch(
       setQueryBuilderMode("dataset", {
         datasetEditorTab,
-        // replaceState: false,
-        // shouldUpdateUrl: true,
+        replaceState: false,
+        shouldUpdateUrl: true,
       }),
     );
     dispatch(runDirtyQuestionQuery());

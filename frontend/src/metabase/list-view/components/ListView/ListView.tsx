@@ -23,6 +23,7 @@ export interface ListViewProps {
   card: Card;
   metadata?: Metadata;
   rowIndex?: number;
+  isInteractive?: boolean;
 }
 
 export function ListView({
@@ -35,6 +36,7 @@ export function ListView({
   card,
   metadata,
   rowIndex,
+  isInteractive,
 }: ListViewProps) {
   const { cols, rows } = data;
 
@@ -128,10 +130,11 @@ export function ListView({
                     titleColumn={titleColumn}
                     subtitleColumn={subtitleColumn}
                     rightColumns={rightColumns}
-                    onClick={() => openObjectDetail(index)}
+                    onClick={() => isInteractive && openObjectDetail(index)}
                     className={styles.listItemVirtualized}
                     style={{
                       transform: `translateY(${start}px)`,
+                      cursor: isInteractive ? "pointer" : "default",
                     }}
                   />
                 );
@@ -249,20 +252,18 @@ export function useListColumns(
   };
 }
 
+export const ENTITY_ICONS = {
+  "entity/UserTable": "person",
+  "entity/CompanyTable": "company",
+  "entity/TransactionTable": "receipt",
+  "entity/SubscriptionTable": "sync",
+  "entity/ProductTable": "document",
+  "entity/EventTable": "document",
+  "entity/GenericTable": "document",
+} as const;
+
 export const getEntityIcon = (entityType?: string) => {
-  switch (entityType) {
-    case "entity/UserTable":
-      return "person";
-    case "entity/CompanyTable":
-      return "company";
-    case "entity/TransactionTable":
-      return "receipt";
-    case "entity/SubscriptionTable":
-      return "sync";
-    case "entity/ProductTable":
-    case "entity/EventTable":
-    case "entity/GenericTable":
-    default:
-      return "document";
-  }
+  return entityType
+    ? ENTITY_ICONS[entityType as keyof typeof ENTITY_ICONS] || "document"
+    : "document";
 };
