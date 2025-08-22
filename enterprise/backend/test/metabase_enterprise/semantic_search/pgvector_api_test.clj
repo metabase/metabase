@@ -160,55 +160,56 @@
 
 (deftest query-test
   (semantic.tu/with-indexable-documents!
-    (let [pgvector       semantic.tu/db
-          index-metadata (semantic.tu/unique-index-metadata)
-          model1         semantic.tu/mock-embedding-model
-          model2         (assoc semantic.tu/mock-embedding-model :model-name "judge-embedd")
-          remove-scores  (fn [rows] (mapv #(dissoc % :score :all-scores) rows)) ; scores have time-sensitives components
-          sut*           semantic.pgvector-api/query
-          sut            #(remove-scores (:results (mt/as-admin (apply sut* %&)))) ; see notes below about perms
-          search-string  "insect patterns"              ; specifics of search will be handled under index tests
-          _              (assert (semantic.tu/mock-embeddings search-string)
-                                 "search string should have test embedding")
-          search         {:search-string search-string}]
-      (test-not-initialized sut pgvector index-metadata search)
-      (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]
-        (semantic.pgvector-api/index-documents! pgvector index-metadata (vec (search.ingestion/searchable-documents)))
-        (testing "search results are the same as direct index query"
-          (let [index-results (remove-scores (:results (mt/as-admin (semantic.index/query-index pgvector @index-ref search))))
-                api-results   (sut pgvector index-metadata search)]
-            (testing "sanity check the test is setup correctly" (is (seq api-results)))
-            (is (= api-results index-results))))
-        ;; it would be better to test permissions at a higher level than we currently do, but for now to save time...
-        (testing "assumption: permissions are applied at the index query level, check the expected fn is called"
-          (let [query-index semantic.index/query-index
-                called      (atom false)]
-            (with-redefs [semantic.index/query-index (fn [& args] (reset! called true) (apply query-index args))]
-              (sut pgvector index-metadata search)
-              (is @called))))
-        (testing "same results after reinit"
-          (let [current-results (sut pgvector index-metadata search)]
-            (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model1)
-            (is (= current-results (sut pgvector index-metadata search)))))
-        (testing "switching to an empty index"
-          (let [current-results (sut pgvector index-metadata search)]
-            (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model2)
-            ;; sanity
-            (is (not= @index-ref (:index (semantic.index-metadata/get-active-index-state pgvector index-metadata))))
-            (testing "empty to start but works"
-              (is (= [] (sut pgvector index-metadata search))))
-            (testing "after indexing returns again"
-              (semantic.pgvector-api/index-documents! pgvector index-metadata (vec (search.ingestion/searchable-documents)))
-              ;; todo test the results with different mock embeddings to show the embeddings
-              ;; can actually change
-              (is (seq (sut pgvector index-metadata search))))
-            (testing "querying previous index directly still works"
-              (is (= current-results (remove-scores (:results (mt/as-admin (semantic.index/query-index pgvector @index-ref search)))))))))
-        (testing "throws exception when no active index exists"
-          ;; corrupt the control table
-          (jdbc/execute! pgvector (sql/format {:delete-from (keyword (:control-table-name index-metadata))}
-                                              :quoted true))
-          (is (thrown-with-msg? Exception #"No active semantic search index" (sut pgvector index-metadata search))))))))
+    (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix semantic.tu/mock-table-suffix]
+      (let [pgvector       semantic.tu/db
+            index-metadata (semantic.tu/unique-index-metadata)
+            model1         semantic.tu/mock-embedding-model
+            model2         (assoc semantic.tu/mock-embedding-model :model-name "judge-embedd")
+            remove-scores  (fn [rows] (mapv #(dissoc % :score :all-scores) rows)) ; scores have time-sensitives components
+            sut*           semantic.pgvector-api/query
+            sut            #(remove-scores (:results (mt/as-admin (apply sut* %&)))) ; see notes below about perms
+            search-string  "insect patterns" ; specifics of search will be handled under index tests
+            _              (assert (semantic.tu/mock-embeddings search-string)
+                                   "search string should have test embedding")
+            search         {:search-string search-string}]
+        (test-not-initialized sut pgvector index-metadata search)
+        (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]
+          (semantic.pgvector-api/index-documents! pgvector index-metadata (vec (search.ingestion/searchable-documents)))
+          (testing "search results are the same as direct index query"
+            (let [index-results (remove-scores (:results (mt/as-admin (semantic.index/query-index pgvector @index-ref search))))
+                  api-results   (sut pgvector index-metadata search)]
+              (testing "sanity check the test is setup correctly" (is (seq api-results)))
+              (is (= api-results index-results))))
+          ;; it would be better to test permissions at a higher level than we currently do, but for now to save time...
+          (testing "assumption: permissions are applied at the index query level, check the expected fn is called"
+            (let [query-index semantic.index/query-index
+                  called      (atom false)]
+              (with-redefs [semantic.index/query-index (fn [& args] (reset! called true) (apply query-index args))]
+                (sut pgvector index-metadata search)
+                (is @called))))
+          (testing "same results after reinit"
+            (let [current-results (sut pgvector index-metadata search)]
+              (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model1)
+              (is (= current-results (sut pgvector index-metadata search)))))
+          (testing "switching to an empty index"
+            (let [current-results (sut pgvector index-metadata search)]
+              (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model2)
+              ;; sanity
+              (is (not= @index-ref (:index (semantic.index-metadata/get-active-index-state pgvector index-metadata))))
+              (testing "empty to start but works"
+                (is (= [] (sut pgvector index-metadata search))))
+              (testing "after indexing returns again"
+                (semantic.pgvector-api/index-documents! pgvector index-metadata (vec (search.ingestion/searchable-documents)))
+                ;; todo test the results with different mock embeddings to show the embeddings
+                ;; can actually change
+                (is (seq (sut pgvector index-metadata search))))
+              (testing "querying previous index directly still works"
+                (is (= current-results (remove-scores (:results (mt/as-admin (semantic.index/query-index pgvector @index-ref search)))))))))
+          (testing "throws exception when no active index exists"
+            ;; corrupt the control table
+            (jdbc/execute! pgvector (sql/format {:delete-from (keyword (:control-table-name index-metadata))}
+                                                :quoted true))
+            (is (thrown-with-msg? Exception #"No active semantic search index" (sut pgvector index-metadata search)))))))))
 
 (deftest e2e-index-a-sample-db-with-gate-test
   (let [docs            (mt/dataset test-data (vec (search.ingestion/searchable-documents)))
