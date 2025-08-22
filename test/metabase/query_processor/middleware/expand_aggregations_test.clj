@@ -97,7 +97,7 @@
           mp           (lib.tu/mock-metadata-provider
                         mp
                         {:cards [{:id            1
-                                  :dataset-query (lib.convert/->legacy-MBQL metric-query)
+                                  :dataset-query (lib/->legacy-MBQL metric-query)
                                   :database-id   (mt/id)
                                   :name          "Order Total"
                                   :type          :metric}]})
