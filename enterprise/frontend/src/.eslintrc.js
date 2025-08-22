@@ -78,7 +78,7 @@ module.exports = {
           "error",
           {
             allowedPaths: [
-              path.join(__dirname, "embedding-sdk-bundle/sdk-package"),
+              path.join(__dirname, "embedding-sdk-package"),
               path.join(__dirname, "embedding-sdk-shared"),
             ],
           },
