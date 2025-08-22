@@ -1,6 +1,6 @@
 import ora from "ora";
 
-import type { CliStepMethod } from "embedding-sdk-bundle/cli/types/cli";
+import type { CliStepMethod } from "embedding-sdk-package/cli/types/cli";
 
 export const createApiKey: CliStepMethod = async (state) => {
   if (!state.instanceUrl || !state.cookie) {

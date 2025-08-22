@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-import { getProjectDependenciesFromPackageJson } from "../utils/get-package-version";
+import { getProjectDependenciesFromPackageJson } from "./get-package-version";
 
 /**
  * Checks if the current project is a TypeScript project.

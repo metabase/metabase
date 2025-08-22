@@ -1,6 +1,6 @@
 import ora from "ora";
 
-import type { CliStepMethod } from "embedding-sdk-bundle/cli/types/cli";
+import type { CliStepMethod } from "embedding-sdk-package/cli/types/cli";
 
 const delay = (duration: number) =>
   new Promise((resolve) => setTimeout(resolve, duration));

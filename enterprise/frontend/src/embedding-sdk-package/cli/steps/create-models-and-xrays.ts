@@ -1,6 +1,6 @@
 import ora from "ora";
 
-import { createCollection } from "embedding-sdk-bundle/cli/utils/create-collection";
+import { createCollection } from "embedding-sdk-package/cli/utils/create-collection";
 
 import type { CliStepMethod } from "../types/cli";
 import type { DashboardInfo } from "../types/dashboard";

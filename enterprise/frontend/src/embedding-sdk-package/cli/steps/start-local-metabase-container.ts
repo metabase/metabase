@@ -8,12 +8,12 @@ import {
   CONTAINER_NAME,
   DEFAULT_PORT,
   IMAGE_NAME,
-} from "embedding-sdk-bundle/cli/constants/config";
-import { METABASE_INSTANCE_DEFAULT_ENVS } from "embedding-sdk-bundle/cli/constants/env";
-import type { CliStepMethod } from "embedding-sdk-bundle/cli/types/cli";
-import { getLocalMetabaseContainer } from "embedding-sdk-bundle/cli/utils/get-local-metabase-container";
-import { checkIsPortTaken } from "embedding-sdk-bundle/cli/utils/is-port-taken";
-import { printInfo, printSuccess } from "embedding-sdk-bundle/cli/utils/print";
+} from "embedding-sdk-package/cli/constants/config";
+import { METABASE_INSTANCE_DEFAULT_ENVS } from "embedding-sdk-package/cli/constants/env";
+import type { CliStepMethod } from "embedding-sdk-package/cli/types/cli";
+import { getLocalMetabaseContainer } from "embedding-sdk-package/cli/utils/get-local-metabase-container";
+import { checkIsPortTaken } from "embedding-sdk-package/cli/utils/is-port-taken";
+import { printInfo, printSuccess } from "embedding-sdk-package/cli/utils/print";
 
 const messageContainerRunning = (port: number) => `
   Your local Metabase instance is already running on port ${port}.

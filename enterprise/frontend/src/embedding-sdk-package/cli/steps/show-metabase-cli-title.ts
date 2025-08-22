@@ -1,4 +1,4 @@
-import { SDK_DOCS_LINK } from "embedding-sdk-bundle/cli/constants/config";
+import { SDK_DOCS_LINK } from "embedding-sdk-package/cli/constants/config";
 
 import { SHOW_ON_STARTUP_MESSAGE } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";

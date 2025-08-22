@@ -5,13 +5,13 @@ import toggle from "inquirer-toggle";
 import ora from "ora";
 import { promisify } from "util";
 
-import { SDK_PACKAGE_NAME } from "embedding-sdk-bundle/cli/constants/config";
-import type { CliStepMethod } from "embedding-sdk-bundle/cli/types/cli";
+import { SDK_PACKAGE_NAME } from "embedding-sdk-package/cli/constants/config";
+import type { CliStepMethod } from "embedding-sdk-package/cli/types/cli";
 import {
   printEmptyLines,
   printInfo,
   printSuccess,
-} from "embedding-sdk-bundle/cli/utils/print";
+} from "embedding-sdk-package/cli/utils/print";
 
 const getInstallCommand = async (packageName: string) => {
   const manager = await detect();

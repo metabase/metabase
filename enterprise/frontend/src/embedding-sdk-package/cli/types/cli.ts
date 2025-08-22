@@ -1,7 +1,7 @@
-import type { CLI_STEPS } from "embedding-sdk-bundle/cli/run";
+import type { CLI_STEPS } from "embedding-sdk-package/cli/run";
 import type { Settings, Table } from "metabase-types/api";
 
-import type { DashboardInfo } from "../types/dashboard";
+import type { DashboardInfo } from "./dashboard";
 
 export type CliState = Partial<{
   port: number;

@@ -1,9 +1,10 @@
 import ora from "ora";
 
 import { SDK_PACKAGE_NAME } from "../constants/config";
-import { installSdk } from "../steps/install-sdk";
 import type { CliStepMethod } from "../types/cli";
 import { getPackageVersions } from "../utils/get-package-version";
+
+import { installSdk } from "./install-sdk";
 
 export const checkSdkAvailable: CliStepMethod = async (state) => {
   const spinner = ora("Checking if SDK is installed…").start();

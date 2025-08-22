@@ -1,7 +1,7 @@
 import toggle from "inquirer-toggle";
 
-import type { CliStepMethod } from "embedding-sdk-bundle/cli/types/cli";
-import { printHelperText } from "embedding-sdk-bundle/cli/utils/print";
+import type { CliStepMethod } from "embedding-sdk-package/cli/types/cli";
+import { printHelperText } from "embedding-sdk-package/cli/utils/print";
 
 /**
  * Asks the user first if they have a database to connect to.

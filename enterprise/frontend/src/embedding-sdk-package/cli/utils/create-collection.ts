@@ -1,4 +1,4 @@
-import { propagateErrorResponse } from "embedding-sdk-bundle/cli/utils/propagate-error-response";
+import { propagateErrorResponse } from "embedding-sdk-package/cli/utils/propagate-error-response";
 
 interface Options {
   name: string;

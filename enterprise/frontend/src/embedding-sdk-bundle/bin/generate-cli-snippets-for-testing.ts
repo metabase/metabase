@@ -2,13 +2,13 @@
 import fs from "fs";
 import path from "path";
 
-import { MOCK_SERVER_PACKAGE_JSON } from "../cli/constants/mock-server-package-json";
-import { getExpressServerSnippet } from "../cli/snippets/express-server-snippet";
-import { getComponentSnippets } from "../cli/snippets/get-component-snippets";
+import { MOCK_SERVER_PACKAGE_JSON } from "embedding-sdk-package/cli/constants/mock-server-package-json";
+import { getExpressServerSnippet } from "embedding-sdk-package/cli/snippets/express-server-snippet";
+import { getComponentSnippets } from "embedding-sdk-package/cli/snippets/get-component-snippets";
 import {
   getNextJsAnalyticsPageSnippet,
   getNextJsPagesWrapperOrAppWrapperSnippet,
-} from "../cli/snippets/nextjs-snippets";
+} from "embedding-sdk-package/cli/snippets/nextjs-snippets";
 
 function setupOutDir(outDir: string) {
   fs.mkdirSync(outDir, { recursive: true });

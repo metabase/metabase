@@ -4,7 +4,7 @@ import toggle from "inquirer-toggle";
 import open from "open";
 import ora from "ora";
 
-import type { CliStepMethod } from "embedding-sdk-bundle/cli/types/cli";
+import type { CliStepMethod } from "embedding-sdk-package/cli/types/cli";
 
 import {
   SETUP_PRO_LICENSE_MESSAGE,

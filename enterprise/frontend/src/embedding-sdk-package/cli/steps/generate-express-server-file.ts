@@ -2,7 +2,7 @@ import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
 
-import { installMockServerDeps } from "embedding-sdk-bundle/cli/utils/install-mock-server-deps";
+import { installMockServerDeps } from "embedding-sdk-package/cli/utils/install-mock-server-deps";
 
 import { MOCK_SERVER_PACKAGE_JSON } from "../constants/mock-server-package-json";
 import { getExpressServerSnippet } from "../snippets";

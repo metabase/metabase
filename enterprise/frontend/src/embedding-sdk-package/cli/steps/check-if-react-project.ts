@@ -5,7 +5,7 @@ import {
   MISSING_REACT_DEPENDENCY,
   PACKAGE_JSON_NOT_FOUND_MESSAGE,
   UNSUPPORTED_REACT_VERSION,
-} from "embedding-sdk-bundle/cli/constants/messages";
+} from "embedding-sdk-package/cli/constants/messages";
 
 import type { CliStepMethod } from "../types/cli";
 import {

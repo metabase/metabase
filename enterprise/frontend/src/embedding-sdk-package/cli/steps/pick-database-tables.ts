@@ -1,7 +1,7 @@
 import { checkbox } from "@inquirer/prompts";
 import ora from "ora";
 
-import type { CliStepMethod } from "embedding-sdk-bundle/cli/types/cli";
+import type { CliStepMethod } from "embedding-sdk-package/cli/types/cli";
 import type { Table, TableId } from "metabase-types/api";
 
 import { SAMPLE_DATABASE_SELECTED_TABLES } from "../constants/config";

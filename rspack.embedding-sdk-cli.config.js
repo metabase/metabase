@@ -9,7 +9,7 @@ const SDK_BUNDLE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 const SDK_CLI_PATH = path.join(
   __dirname,
-  "/enterprise/frontend/src/embedding-sdk-bundle/cli",
+  "/enterprise/frontend/src/embedding-sdk-package/cli",
 );
 
 const METABASE_SRC_PATH = path.join(__dirname, "/frontend/src/metabase");

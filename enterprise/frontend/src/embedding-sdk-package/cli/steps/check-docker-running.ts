@@ -6,7 +6,7 @@ import { promisify } from "util";
 import type {
   CliError,
   CliStepMethod,
-} from "embedding-sdk-bundle/cli/types/cli";
+} from "embedding-sdk-package/cli/types/cli";
 
 const exec = promisify(execCallback);
 /**
