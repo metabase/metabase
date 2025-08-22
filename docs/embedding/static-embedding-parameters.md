@@ -216,7 +216,7 @@ If you have multiple parameters, separate them with an ampersand (`&`):
 category=Gadget&state=Vermont#theme=night&locale=ko
 ```
 
-The `locale` param will change the language for Metabase UI elements, like the label of "Export to PDF" button. To change the _content_'s language (like names of questions and dashboards), you'll need to [upload a translation dictionary](./translations.md).
+The `locale` parameter changes the language for Metabase UI elements, like the label of "Export to PDF" button. To change the _content_'s language in a static embed (like names of questions and dashboards), you'll need to [upload a translation dictionary](./translations.md).
 
 ## Transparent backgrounds for embeds
 

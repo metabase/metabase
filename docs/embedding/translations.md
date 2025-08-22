@@ -27,13 +27,13 @@ To remove a translation dictionary, upload a blank dictionary.
 
 ## Translate content in static embeds
 
-To translate content in a static embed using the uploaded dictionary, add the [locale parameter](./static-embedding-parameters.md#setting-the-language-for-a-static-embed) to the embed URL:
+To translate content in a static embed using the uploaded dictionary, add the [`locale` parameter](./static-embedding-parameters.md#setting-the-language-for-a-static-embed) to the embed URL:
 
 ```
 https://metabase.example.com/public/dashboard/7b6e347b-6928-4aff-a56f-6cfa5b718c6b?category=&city=&state=#locale=ko
 ```
 
-Note that Metabase UI elements (like button labels) will be translated automatically - you don't need to add them to the dictionary.
+Metabase UI elements (like button labels) will be translated automatically - you don't need to add translations for them to your dictionary.
 
 ## Example translation dictionary
 
@@ -48,7 +48,7 @@ Metabase uses these dictionaries to translate user-generated content, like dashb
 | pt-BR    | Vendor      | Vendedor     |
 | IT       | Examples    | Esempi       |
 
-Note that you can use either underscores or hyphens in locales like `pt-BR` in your translation dictionary. If you download the dictionary after uploading it, Metabase will transform `pt-BR` to `pt_BR`. However, the `locale` parameter in static embedding only accepts locales with hyphens `pt-BR`, so we recommend using that format for consistency.
+Prefer hyphens in your `pt-BR` in your translation dictionary. Underscores are also acceptable (if you download the dictionary _after_ uploading it, Metabase will transform `pt-BR` to `pt_BR`), but since the `locale` parameter in static embedding only accepts locales with hyphens (like `pt-BR`), we recommend using hyphens for consistency.
 
 [See a list of supported locales](../configuring-metabase/localization.md#supported-languages).
 
@@ -58,7 +58,7 @@ Currently, Metabase doesn't tokenize strings for translations, so you should inc
 
 For example, if you have a dashboard called "Monthly Sales", it's not sufficient to have translations of "Monthly" and "Sales" - you also need to include "Monthly Sales" as a full string.
 
-This also applies to strings using punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you need to include that exact string (with "?") into the translation dictionary.
+Exact translations also apply to strings that use punctuation and special characters. For example, if you have a question title "How many Widgets did we sell this week?", you must include that exact string (with "?") into the translation dictionary. Metabase would treat "How many Widgets did we sell this week" as a different string. Essentially, the strings are keys in a table Metabase looks up, so they must match exactly.
 
 ## Translation limitations
 
