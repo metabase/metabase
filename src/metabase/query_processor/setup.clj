@@ -20,8 +20,6 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
-(set! *warn-on-reflection* true)
-
 (mu/defn- query-type :- [:enum :query :native :internal :mbql/query]
   [query :- ::qp.schema/query]
   (or (some-> ((some-fn :lib/type :type) query) keyword)
@@ -109,9 +107,6 @@
   (when-not (= (query-type query) :internal)
     (let [database-id (:database query)]
       (cond
-        (string? database-id)
-        (Integer/parseInt database-id)
-
         (pos-int? database-id)
         database-id
 
