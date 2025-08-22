@@ -3,9 +3,9 @@ import {
   type DragEndEvent,
   PointerSensor,
   closestCenter,
+  useDroppable,
   useSensor,
   useSensors,
-  useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -40,10 +40,9 @@ interface Props {
   size?: string;
   miw?: string | number;
   maw?: string | number;
-  // When using a shared DnD context from a parent, set containerId and useExternalDnd
+  "data-testid"?: string;
   containerId?: string;
   useExternalDnd?: boolean;
-  "data-testid"?: string;
 }
 
 function SortablePill({
@@ -80,9 +79,6 @@ function SortablePill({
       className={cx(S.pill, { [S.dragging]: isDragging })}
       withRemoveButton
       onRemove={onRemove}
-      removeButtonProps={{
-        "data-remove-button": true,
-      }}
       data-reorderable-pill="true"
       {...attributes}
       {...listeners}
@@ -105,9 +101,9 @@ export function ReorderableTagsInput({
   maxValues,
   placeholder,
   size = "xs",
+  "data-testid": _dataTestId,
   containerId,
   useExternalDnd = false,
-  "data-testid": _dataTestId,
 }: Props) {
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
@@ -118,17 +114,15 @@ export function ReorderableTagsInput({
   );
 
   const draggingRef = useRef(false);
-  // Stable droppable id to allow dropping when list is empty
-  const droppableIdRef = useRef(
-    containerId ?? `reorderable-tags-${Math.random().toString(36).slice(2)}`,
-  );
-  const { setNodeRef } = useDroppable({
-    id: droppableIdRef.current,
-    data: { containerId: containerId ?? droppableIdRef.current },
-  });
   const [isDragOver, setIsDragOver] = useState(false);
 
   const [search, setSearch] = useState("");
+
+  // Make the container droppable when using external DnD
+  const { setNodeRef: setDroppableRef } = useDroppable({
+    id: containerId || "default",
+    disabled: !useExternalDnd,
+  });
 
   const selectedSet = useMemo(() => new Set(value), [value]);
   const available = useMemo(
@@ -156,7 +150,6 @@ export function ReorderableTagsInput({
 
   const removeAt = (idx: number) => {
     const next = value.slice();
-    console.log("removeAt", idx, next);
     next.splice(idx, 1);
     onChange(next);
   };
@@ -174,10 +167,117 @@ export function ReorderableTagsInput({
     onChange(arrayMove(value, oldIndex, newIndex));
   };
 
+  const renderPillsInput = () => (
+    <Combobox.DropdownTarget>
+      <PillsInput
+        ref={useExternalDnd ? setDroppableRef : undefined}
+        radius="xl"
+        size={size}
+        classNames={{
+          input: cx(S.pillsRow, {
+            [S.max]: maxValues && value.length >= maxValues,
+            [S.dragOver]: isDragOver,
+          }),
+          root: cx(S.container, {}),
+        }}
+        onMouseDownCapture={(e: React.MouseEvent<HTMLDivElement>) => {
+          const target = e.target as HTMLElement;
+          // Do not open when interacting with a pill (likely starting a drag or clicking remove)
+          if (
+            target?.closest('[data-reorderable-pill="true"]') ||
+            (maxValues && value.length >= maxValues)
+          ) {
+            e.nativeEvent.stopImmediatePropagation();
+            return;
+          }
+          combobox.openDropdown();
+        }}
+        onDragOver={(e) => {
+          // Allow dropping external items
+          e.preventDefault();
+        }}
+        onDragEnter={(e) => {
+          const related = e.relatedTarget as Node | null;
+          // Only set drag-over when entering from outside the top-level container
+          if (related && e.currentTarget.contains(related)) {
+            return;
+          }
+          draggingRef.current = true;
+          // Highlight the input when an external draggable is over it
+          setIsDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          const related = e.relatedTarget as Node | null;
+          // Only clear drag-over when leaving to outside the top-level container
+          if (related && e.currentTarget.contains(related)) {
+            return;
+          }
+          setIsDragOver(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const val = e.dataTransfer.getData("text/plain");
+          if (!val) {
+            return;
+          }
+          if (maxValues && value.length >= maxValues) {
+            return;
+          }
+          if (selectedSet.has(val)) {
+            return;
+          }
+          addValue(val);
+          setIsDragOver(false);
+        }}
+      >
+        {value.map((v, idx) => (
+          <SortablePill
+            key={v}
+            id={v}
+            label={data.find((o) => o.value === v)?.label ?? v}
+            onRemove={() => removeAt(idx)}
+            containerId={containerId}
+          />
+        ))}
+        {!maxValues || value.length < maxValues ? (
+          <Combobox.EventsTarget>
+            <PillsInput.Field
+              // disabled={draggingRef.current}
+              className={S.inputField}
+              placeholder={value.length ? undefined : placeholder}
+              value={search}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setSearch(e.currentTarget.value);
+                if (!maxValues || value.length < maxValues) {
+                  combobox.openDropdown();
+                }
+              }}
+              onFocus={() => {
+                if (!maxValues || value.length < maxValues) {
+                  combobox.openDropdown();
+                }
+              }}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Backspace" &&
+                  search.length === 0 &&
+                  value.length > 0
+                ) {
+                  event.preventDefault();
+                  removeAt(value.length - 1);
+                }
+              }}
+            />
+          </Combobox.EventsTarget>
+        ) : null}
+      </PillsInput>
+    </Combobox.DropdownTarget>
+  );
+
   return (
     <Combobox
       store={combobox}
-      withinPortal={false}
+      withinPortal={true}
       onOptionSubmit={(val) => {
         addValue(val);
         if (maxValues && value.length === maxValues - 1) {
@@ -187,119 +287,19 @@ export function ReorderableTagsInput({
     >
       {useExternalDnd ? (
         <SortableContext items={value} strategy={horizontalListSortingStrategy}>
-          <Combobox.DropdownTarget>
-            <PillsInput
-              ref={setNodeRef}
-              radius="xl"
-              size={size}
-              classNames={{
-                input: cx(S.pillsRow, {
-                  [S.max]: maxValues && value.length >= maxValues,
-                  [S.dragOver]: isDragOver,
-                }),
-                root: cx(S.container, {}),
-              }}
-              onMouseDownCapture={(e: React.MouseEvent<HTMLDivElement>) => {
-                const target = e.target as HTMLElement;
-                console.log(
-                  "target",
-                  target.matches('[data-remove-button="true"]'),
-                );
-                if (
-                  !target?.matches('[data-remove-button="true"]') &&
-                  (target?.closest('[data-reorderable-pill="true"]') ||
-                    (maxValues && value.length >= maxValues))
-                ) {
-                  e.nativeEvent.stopImmediatePropagation();
-                  return;
-                }
-                // combobox.openDropdown();
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-              }}
-              onDragEnter={(e) => {
-                const related = e.relatedTarget as Node | null;
-                if (related && e.currentTarget.contains(related)) {
-                  return;
-                }
-                draggingRef.current = true;
-                setIsDragOver(true);
-              }}
-              onDragLeave={(e) => {
-                const related = e.relatedTarget as Node | null;
-                if (related && e.currentTarget.contains(related)) {
-                  return;
-                }
-                setIsDragOver(false);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                const val = e.dataTransfer.getData("text/plain");
-                if (!val) {
-                  return;
-                }
-                if (maxValues && value.length >= maxValues) {
-                  return;
-                }
-                if (selectedSet.has(val)) {
-                  return;
-                }
-                addValue(val);
-                setIsDragOver(false);
-              }}
-            >
-              {value.map((v, idx) => (
-                <SortablePill
-                  key={v}
-                  id={v}
-                  label={data.find((o) => o.value === v)?.label ?? v}
-                  onRemove={() => console.log("remove", idx) || removeAt(idx)}
-                  containerId={containerId}
-                />
-              ))}
-              {!maxValues || value.length < maxValues ? (
-                <Combobox.EventsTarget>
-                  <PillsInput.Field
-                    className={S.inputField}
-                    placeholder={value.length ? undefined : placeholder}
-                    value={search}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                      setSearch(e.currentTarget.value);
-                      if (!maxValues || value.length < maxValues) {
-                        combobox.openDropdown();
-                      }
-                    }}
-                    onFocus={() => {
-                      if (!maxValues || value.length < maxValues) {
-                        combobox.openDropdown();
-                      }
-                    }}
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === "Backspace" &&
-                        search.length === 0 &&
-                        value.length > 0
-                      ) {
-                        event.preventDefault();
-                        removeAt(value.length - 1);
-                      }
-                    }}
-                  />
-                </Combobox.EventsTarget>
-              ) : null}
-            </PillsInput>
-          </Combobox.DropdownTarget>
+          {renderPillsInput()}
         </SortableContext>
       ) : (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={() => {
+            // mark dragging to avoid opening dropdown due to click/mousedown bubbling
             draggingRef.current = true;
           }}
           onDragEnd={(event) => {
             onDragEnd(event);
+            // reset dragging flag on next tick to avoid immediate click opening
             setTimeout(() => {
               draggingRef.current = false;
             }, 0);
@@ -309,113 +309,7 @@ export function ReorderableTagsInput({
             items={value}
             strategy={horizontalListSortingStrategy}
           >
-            <Combobox.DropdownTarget>
-              <div ref={setNodeRef}>
-                <PillsInput
-                  radius="xl"
-                  size={size}
-                  classNames={{
-                    input: cx(S.pillsRow, {
-                      [S.max]: maxValues && value.length >= maxValues,
-                      [S.dragOver]: isDragOver,
-                    }),
-                    root: cx(S.container, {}),
-                  }}
-                  onMouseDownCapture={(e: React.MouseEvent<HTMLDivElement>) => {
-                    const target = e.target as HTMLElement;
-
-                    console.log(
-                      "target",
-                      target.matches('[data-remove-button="true"]'),
-                    );
-                    if (
-                      !target?.matches('[data-remove-button="true"]') &&
-                      (target?.closest('[data-reorderable-pill="true"]') ||
-                        (maxValues && value.length >= maxValues))
-                    ) {
-                      e.nativeEvent.stopImmediatePropagation();
-                      return;
-                    }
-                    combobox.openDropdown();
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                  }}
-                  onDragEnter={(e) => {
-                    const related = e.relatedTarget as Node | null;
-                    if (related && e.currentTarget.contains(related)) {
-                      return;
-                    }
-                    draggingRef.current = true;
-                    setIsDragOver(true);
-                  }}
-                  onDragLeave={(e) => {
-                    const related = e.relatedTarget as Node | null;
-                    if (related && e.currentTarget.contains(related)) {
-                      return;
-                    }
-                    setIsDragOver(false);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const val = e.dataTransfer.getData("text/plain");
-                    if (!val) {
-                      return;
-                    }
-                    if (maxValues && value.length >= maxValues) {
-                      return;
-                    }
-                    if (selectedSet.has(val)) {
-                      return;
-                    }
-                    addValue(val);
-                    setIsDragOver(false);
-                  }}
-                >
-                  {value.map((v, idx) => (
-                    <SortablePill
-                      key={v}
-                      id={v}
-                      label={data.find((o) => o.value === v)?.label ?? v}
-                      onRemove={() =>
-                        console.log("remove", idx) || removeAt(idx)
-                      }
-                      containerId={containerId}
-                    />
-                  ))}
-                  {!maxValues || value.length < maxValues ? (
-                    <Combobox.EventsTarget>
-                      <PillsInput.Field
-                        className={S.inputField}
-                        placeholder={value.length ? undefined : placeholder}
-                        value={search}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                          setSearch(e.currentTarget.value);
-                          if (!maxValues || value.length < maxValues) {
-                            combobox.openDropdown();
-                          }
-                        }}
-                        onFocus={() => {
-                          if (!maxValues || value.length < maxValues) {
-                            combobox.openDropdown();
-                          }
-                        }}
-                        onKeyDown={(event) => {
-                          if (
-                            event.key === "Backspace" &&
-                            search.length === 0 &&
-                            value.length > 0
-                          ) {
-                            event.preventDefault();
-                            removeAt(value.length - 1);
-                          }
-                        }}
-                      />
-                    </Combobox.EventsTarget>
-                  ) : null}
-                </PillsInput>
-              </div>
-            </Combobox.DropdownTarget>
+            {renderPillsInput()}
           </SortableContext>
         </DndContext>
       )}
