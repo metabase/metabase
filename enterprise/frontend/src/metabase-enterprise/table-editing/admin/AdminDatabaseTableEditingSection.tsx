@@ -22,6 +22,19 @@ import {
   isDatabaseTableEditingEnabled,
 } from "../settings";
 
+enum DisabledReasonKey {
+  MissingDriverFeature = "driver-feature-missing",
+  NoWriteableTable = "permissions/no-writable-table",
+  SyncInProgress = "database-metadata/sync-in-progress",
+  DatabaseEmtpy = "database-metadata/not-populated",
+}
+
+const VISIBLE_REASONS: string[] = [
+  DisabledReasonKey.NoWriteableTable,
+  DisabledReasonKey.SyncInProgress,
+  DisabledReasonKey.DatabaseEmtpy,
+];
+
 export function AdminDatabaseTableEditingSection({
   database,
   settingsAvailable,
@@ -59,7 +72,10 @@ export function AdminDatabaseTableEditingSection({
       ? dataEditingSetting?.reasons?.[0]
       : undefined;
 
-  if (!dataEditingSetting) {
+  const shouldShowSection =
+    !firstDisabledReason || VISIBLE_REASONS.includes(firstDisabledReason.key);
+
+  if (!dataEditingSetting || !shouldShowSection) {
     return null;
   }
 

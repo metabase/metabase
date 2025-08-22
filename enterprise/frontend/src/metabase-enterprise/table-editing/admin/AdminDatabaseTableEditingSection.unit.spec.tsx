@@ -32,12 +32,12 @@ describe("AdminDatabaseTableEditingSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render disabled toggle for disabled reasons", () => {
+  it("should render disabled toggle for specific disabled reasons", () => {
     setup({
       enabled: false,
       reasons: [
         {
-          key: "permissions/no-writeable-tables",
+          key: "permissions/no-writable-table",
           message: "Database connection is read-only",
         },
       ],
@@ -51,5 +51,21 @@ describe("AdminDatabaseTableEditingSection", () => {
     expect(
       screen.getByText("Database connection is read-only"),
     ).toBeInTheDocument();
+  });
+
+  it("should hide section for other disabled reasons", () => {
+    setup({
+      enabled: false,
+      reasons: [
+        {
+          key: "driver-feature-missing",
+          message: "The driver does not support table editing",
+        },
+      ],
+    });
+
+    expect(
+      screen.queryByTestId("database-table-editing-section"),
+    ).not.toBeInTheDocument();
   });
 });
