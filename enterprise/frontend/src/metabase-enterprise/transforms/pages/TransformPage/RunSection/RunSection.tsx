@@ -129,6 +129,18 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
           {errorInfo ?? runsInfo}
         </Group>
       );
+    case "canceled":
+      return (
+        <Group gap="sm">
+          <Icon c="text-secondary" name="close" />
+          <Box>
+            {endTimeText
+              ? t`Last run was canceled ${endTimeText}.`
+              : t`Last run was canceled.`}
+          </Box>
+          {runsInfo}
+        </Group>
+      );
     default:
       return null;
   }

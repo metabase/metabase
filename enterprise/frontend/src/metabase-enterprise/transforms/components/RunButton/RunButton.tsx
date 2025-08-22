@@ -116,6 +116,15 @@ function getRunButtonInfo({
     };
   }
 
+  if (run.status === "canceled") {
+    return {
+      label: t`Run canceled`,
+      color: "text-secondary",
+      leftSection: <Icon name="close" aria-hidden />,
+      isDisabled,
+    };
+  }
+
   return {
     label: t`Run failed`,
     color: "error",
