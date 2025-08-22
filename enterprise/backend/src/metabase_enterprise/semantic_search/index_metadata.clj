@@ -157,8 +157,9 @@
     (jdbc/execute!
      pgvector
      (sql/format
-      {:create-index [(keyword (str (:gate-table-name index-metadata) "_tombstone_cleanup")) :if-not-exists]
-       :on [(keyword (:gate-table-name index-metadata)) :gated_at]
+      {:create-index
+       [[(keyword (str (:gate-table-name index-metadata) "_tombstone_cleanup")) :if-not-exists]
+        [(keyword (:gate-table-name index-metadata)) :gated_at]]
        :where [:and [:= :document nil] [:= :document_hash nil]]}
       :quoted true))
     nil))
