@@ -7,10 +7,10 @@ export type ComponentDefinition = {
 export function getPublicComponents() {
   const project = new Project();
   const sdkPublicIndexSourceFile = project.addSourceFileAtPath(
-    "enterprise/frontend/src/embedding-sdk-bundle/index.ts",
+    "enterprise/frontend/src/embedding-sdk-package/index.ts",
   );
   project.addSourceFilesAtPaths(
-    "enterprise/frontend/src/embedding-sdk-bundle/sdk-package/components/public/**/*{.ts,.tsx}",
+    "enterprise/frontend/src/embedding-sdk-package/components/public/**/*{.ts,.tsx}",
   );
 
   const componentForNextJsCompatList: ComponentDefinition[] = [];

@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-import { getPublicComponents } from "embedding-sdk-bundle/bin/get-public-components";
+import { getPublicComponents } from "embedding-sdk-package/bin/get-public-components";
 
 const destinationDir = path.resolve(
   __dirname,
