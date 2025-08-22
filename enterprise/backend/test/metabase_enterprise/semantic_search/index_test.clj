@@ -508,6 +508,56 @@
             (let [non-existent-docs [{:id "99999:123" :model "indexed-entity" :content "Non-existent"}]]
               (is (= [] (#'semantic.index/filter-can-read-indexed-entity non-existent-docs))))))))))
 
+(deftest to-boolean-test
+  (testing "to-boolean function correctly converts various input types to booleans"
+    (testing "boolean inputs are returned unchanged"
+      (is (true? (#'semantic.index/to-boolean true)))
+      (is (false? (#'semantic.index/to-boolean false))))
+
+    (testing "MySQL-style integer booleans are converted correctly"
+      (is (false? (#'semantic.index/to-boolean 0)))
+      (is (true? (#'semantic.index/to-boolean 1))))))
+
+(deftest doc->db-record-boolean-conversion-test
+  (testing "doc->db-record properly converts boolean fields using to-boolean"
+    (let [embedding-vec [0.1 0.2 0.3]
+          base-doc {:model "card"
+                    :id "123"
+                    :searchable_text "test content"
+                    :creator_id 1}]
+
+      (testing "MySQL-style integer booleans are converted to real booleans"
+        (let [doc-with-mysql-booleans (assoc base-doc
+                                             :archived 0
+                                             :official_collection 1
+                                             :pinned 0
+                                             :verified 1)
+              result (#'semantic.index/doc->db-record embedding-vec doc-with-mysql-booleans)]
+          (is (false? (:archived result)))
+          (is (true? (:official_collection result)))
+          (is (false? (:pinned result)))
+          (is (true? (:verified result)))))
+
+      (testing "real boolean values are preserved"
+        (let [doc-with-real-booleans (assoc base-doc
+                                            :archived true
+                                            :official_collection false
+                                            :pinned true
+                                            :verified false)
+              result (#'semantic.index/doc->db-record embedding-vec doc-with-real-booleans)]
+          (is (true? (:archived result)))
+          (is (false? (:official_collection result)))
+          (is (true? (:pinned result)))
+          (is (false? (:verified result)))))
+
+      (testing "nil boolean fields are handled correctly"
+        (let [doc-with-nil-booleans base-doc
+              result (#'semantic.index/doc->db-record embedding-vec doc-with-nil-booleans)]
+          (is (nil? (:archived result)))
+          (is (nil? (:official_collection result)))
+          (is (nil? (:pinned result)))
+          (is (nil? (:verified result))))))))
+
 (deftest indexed-entity-collapse-id-test
   (mt/with-premium-features #{:semantic-search}
     (mt/with-temp [:model/Collection {coll-id :id} {}
