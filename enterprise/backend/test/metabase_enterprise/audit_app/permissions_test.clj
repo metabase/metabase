@@ -84,7 +84,7 @@
             (mt/with-full-data-perms-for-all-users!
               (mt/with-test-user :rasta
                 (binding [api/*current-user-permissions-set* (delay #{})]
-                  (let [audit-view (tu/poll-until 5000
+                  (let [audit-view (tu/poll-until 10000
                                      ;; Needs to happen after the audit-db sync finishes, so we poll until we find it
                                                   (t2/select-one :model/Table :db_id audit/audit-db-id :name [:like "v_%"]))]
                     (is (thrown-with-msg?
