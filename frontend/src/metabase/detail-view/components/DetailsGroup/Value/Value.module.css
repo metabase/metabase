@@ -2,10 +2,13 @@
   overflow-wrap: break-word;
   word-break: break-word;
 
-  a,
-  a:hover {
+  a {
     color: var(--mb-color-text-primary);
     text-decoration: underline solid #92999e 1px;
+
+    &:hover {
+      color: var(--mb-color-brand);
+    }
   }
 }
 
@@ -13,6 +16,10 @@
   background-color: #fafafb;
   border-radius: 12px;
   border: 1px solid #d8dadd;
+
+  &:hover {
+    color: var(--mb-color-brand) !important;
+  }
 }
 
 .imageFrame {
