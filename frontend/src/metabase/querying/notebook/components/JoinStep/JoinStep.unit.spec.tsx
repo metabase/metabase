@@ -839,6 +839,48 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   describe("multiple conditions", () => {
+    function getJoinedQueryWithMultipleTablesInConditions() {
+      // Follow the bug report reproduction steps:
+      // 1. Start new question, choose Orders as data source
+      // 2. Join with People, keep auto added condition (Orders - User ID = People - ID)
+      // 3. Add another join, with products, keep auto added condition (Orders - Product ID = Products - ID)
+      // 4. Add a second condition, use any column from People
+      const query = createQuery({ metadata });
+      const {
+        defaultStrategy,
+        defaultOperator,
+        findLHSColumn,
+      } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
+      
+      // Step 2: Join Orders with People first
+      const peopleTable = metadata.table("PEOPLE");
+      if (!peopleTable) throw new Error("People table not found");
+      
+      const ordersUserId = findLHSColumn("ORDERS", "USER_ID");
+      const peopleId = metadata.field("PEOPLE", "ID");
+      const peopleCondition = Lib.joinConditionClause(defaultOperator, ordersUserId, peopleId);
+      const peopleJoin = Lib.joinClause(peopleTable, [peopleCondition], defaultStrategy);
+      const queryWithPeople = Lib.join(query, -1, peopleJoin);
+      
+      // Step 3: Add join with Products
+      const productsTable = metadata.table("PRODUCTS");
+      if (!productsTable) throw new Error("Products table not found");
+      
+      const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
+      const productsIdField = metadata.field("PRODUCTS", "ID");
+      
+      // Auto-added condition: Orders - Product ID = Products - ID
+      const condition1 = Lib.joinConditionClause(defaultOperator, ordersProductId, productsIdField);
+      
+      // Step 4: Add second condition using column from People table
+      const peopleBirthDate = metadata.field("PEOPLE", "BIRTH_DATE");
+      const productsCreatedAt = metadata.field("PRODUCTS", "CREATED_AT");
+      const condition2 = Lib.joinConditionClause(defaultOperator, peopleBirthDate, productsCreatedAt);
+      
+      const productsJoin = Lib.joinClause(productsTable, [condition1, condition2], defaultStrategy);
+      
+      return Lib.join(queryWithPeople, -1, productsJoin);
+    }
     it("should display a join correctly", () => {
       setup({
         step: createMockNotebookStep({
@@ -873,6 +915,30 @@ describe("Notebook Editor > Join Step", () => {
       expect(
         within(secondCondition).getByLabelText("Change operator"),
       ).toHaveTextContent("=");
+    });
+
+    it("should display 'Previous results' when join conditions reference multiple tables", () => {
+      setup({
+        step: createMockNotebookStep({
+          query: getJoinedQueryWithMultipleTablesInConditions(),
+        }),
+      });
+
+      // Should show "Previous results" because conditions reference multiple different LHS tables
+      expect(screen.getByLabelText("Left table")).toHaveTextContent("Previous results");
+      expect(screen.getByLabelText("Right table")).toHaveTextContent("Products");
+    });
+
+    it("should display specific table name when conditions reference only one table", () => {
+      setup({
+        step: createMockNotebookStep({
+          query: getJoinedQueryWithMultipleConditions(),
+        }),
+      });
+
+      // Should show "Orders" because both conditions only reference Orders table
+      expect(screen.getByLabelText("Left table")).toHaveTextContent("Orders");
+      expect(screen.getByLabelText("Right table")).toHaveTextContent("Products");
     });
 
     it("shouldn't allow to add a new condition until the previous one is completed", async () => {
