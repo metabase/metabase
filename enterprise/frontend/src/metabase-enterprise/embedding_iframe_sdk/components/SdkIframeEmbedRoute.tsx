@@ -6,10 +6,10 @@ import {
   MetabaseProvider,
   StaticDashboard,
   defineMetabaseAuthConfig,
-} from "embedding-sdk";
-import { SdkBreadcrumbsProvider } from "embedding-sdk/components/private/SdkBreadcrumbs";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
-import { StaticQuestion } from "embedding-sdk/components/public/StaticQuestion";
+} from "embedding-sdk-bundle";
+import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
+import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
+import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
