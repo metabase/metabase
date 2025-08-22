@@ -36,7 +36,6 @@
    (get-ai-service-token api/*current-user-id* metabot-v3.config/internal-metabot-id))
 
   ([user-id metabot-id]
-   (print "TSP get-ai-service-token " user-id metabot-id)
    (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))
          claims {:user       user-id
                  :exp        (t/plus (t/instant) (t/seconds (metabot-v3.settings/metabot-ai-service-token-ttl)))
