@@ -188,11 +188,9 @@ export const getRoutes = (store) => {
             component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
           />
 
-          <Route
-            path="embedding-hub"
-            title={t`Embedding hub`}
-            component={EmbeddingHub}
-          />
+          <Route path="embedding-hub" component={IsAdmin}>
+            <IndexRoute component={EmbeddingHub} title={t`Embedding hub`} />
+          </Route>
 
           <Route
             path="collection/entity/:entity_id(**)"
