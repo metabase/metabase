@@ -1315,7 +1315,6 @@
               (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
                                     {:dataset_query (mbql-count-query (mt/id) (mt/id :checkins))}))))))
 
-;; ERIC
 (deftest card-referencing-card-without-permission-should-fail
   (testing "POST /api/card"
     (testing "Make sure if we don't have access to table, creatings a query on query on the table should fail"
@@ -1323,8 +1322,6 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp-copy-of-db
             (mt/with-no-data-perms-for-all-users!
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
-              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (mt/with-temp [:model/Card card {:database_id   (mt/id)
                                                :dataset_query {:query    {:source-table (mt/id :venues)}
                                                                :type     :query
