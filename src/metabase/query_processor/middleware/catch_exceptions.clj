@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.analytics.core :as analytics]
+   [metabase.app-db.query-cancelation :as query-cancelation]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -138,10 +139,13 @@
           (catch Throwable e
             (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "failure"})
             ;; format the Exception and return it
-            (let [formatted-exception (format-exception* query e @extra-info)]
-              (log/errorf "Error processing query: %s\n%s"
-                          (or (:error formatted-exception) "Error running query")
-                          (u/pprint-to-str formatted-exception))
+            (let [formatted-exception (format-exception* query e @extra-info)
+                  is-query-canceled?  (query-cancelation/query-canceled-exception? driver/*driver* e)]
+              ;; Don't log errors for query cancellations, as they are expected behavior
+              (when-not is-query-canceled?
+                (log/errorf "Error processing query: %s\n%s"
+                            (or (:error formatted-exception) "Error running query")
+                            (u/pprint-to-str formatted-exception)))
               ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
               (let [result (update formatted-exception
                                    :error (fnil identity (trs "Error running query")))]
