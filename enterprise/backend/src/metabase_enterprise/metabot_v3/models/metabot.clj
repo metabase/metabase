@@ -24,11 +24,16 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
+(defmethod serdes/dependencies "Metabot"
+  [{:keys [prompts]}]
+  (set (mapcat serdes/dependencies prompts)))
+
 (defmethod serdes/generate-path "Metabot" [_ metabot]
   [(serdes/infer-self-path "Metabot" metabot)])
 
-(defmethod serdes/make-spec "Metabot" [_model-name _opts]
+(defmethod serdes/make-spec "Metabot" [_model-name opts]
   {:copy      [:name :description :entity_id :use_verified_content]
    :transform {:created_at    (serdes/date)
                :updated_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)}})
+               :collection_id (serdes/fk :model/Collection)
+               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id opts)}})
