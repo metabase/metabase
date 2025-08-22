@@ -124,6 +124,13 @@ export const MetabotPurchasePage = () => {
               <Text component="span">{t`or existing charts`}</Text>
             </List.Item>
           </List>
+          <video controls aria-label={t`Demonstration of Metabot AI features`}>
+            <source
+              src="https://www.metabase.com/images/features/metabot.mp4"
+              type="video/mp4"
+            />
+            {t`Your browser does not support the video tag.`}
+          </video>
           <Text>{t`Metabot is a new feature in active development. We're constantly rolling out improvements and appreciate your feedback.`}</Text>
         </Stack>
         <Divider />
