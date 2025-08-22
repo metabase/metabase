@@ -219,7 +219,7 @@
    (schema-sample query nil))
   ([{:keys [database] :as query} {:keys [all-tables-limit] :or {all-tables-limit max-schema-sample-tables}}]
    (let [tables (t2/select [:model/Table :id :name :schema]
-                           :db_id (Integer/parseInt database)
+                           :db_id (cond-> database (string? database) Integer/parseInt)
                            :active true
                            :visibility_type nil
                            {:limit (inc all-tables-limit)})
