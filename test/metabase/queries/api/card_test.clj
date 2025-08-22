@@ -1319,22 +1319,24 @@
 (deftest card-referencing-card-without-permission-should-fail
   (testing "POST /api/card"
     (testing "Make sure if we don't have access to table, creatings a query on query on the table should fail"
-      (data-perms/disable-perms-cache
-       (mt/with-temp [:model/Card card {:database_id   (mt/id)
-                                        :dataset_query {:query    {:source-table (mt/id :venues)}
-                                                        :type     :query
-                                                        :database (mt/id)}}]
-         (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :blocked
-                                                        :create-queries :no
-                                                        :data-model {:schemas {"PUBLIC" {(mt/id :venues) :none}}}}}
-           (mt/user-http-request :rasta :post 401 (format "card/%d/query" (u/the-id card)))
-           (mt/user-http-request :rasta :post 401 "card" {:name "DUPLICATE"
-                                                          :display "table"
-                                                          :visualization_settings {}
-                                                          :database_id (mt/id)
-                                                          :dataset_query {:query    {:source-table (format "card__%s" (u/the-id card))}
-                                                                          :type     :query
-                                                                          :database (mt/id)}})))))))
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp-copy-of-db
+            (mt/with-no-data-perms-for-all-users!
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+              (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                               :dataset_query {:query    {:source-table (mt/id :venues)}
+                                                               :type     :query
+                                                               :database (mt/id)}}]
+                (mt/user-http-request :rasta :post 403 (format "card/%d/query" (u/the-id card)))
+                (mt/user-http-request :rasta :post 403 "card" {:name "DUPLICATE"
+                                                               :display "table"
+                                                               :visualization_settings {}
+                                                               :database_id (mt/id)
+                                                               :dataset_query {:query    {:source-table (format "card__%s" (u/the-id card))}
+                                                                               :type     :query
+                                                                               :database (mt/id)}})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
