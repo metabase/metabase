@@ -116,7 +116,6 @@
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation
       :model/Metabot
-      :model/MetabotEntity
       :model/MetabotPrompt
       :model/Document
       :model/DocumentBookmark])))

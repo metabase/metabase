@@ -35,7 +35,10 @@ import {
   useListMetabotsQuery,
   useUpdateMetabotMutation,
 } from "metabase-enterprise/api";
-import { FIXED_METABOT_ENTITY_IDS } from "metabase-enterprise/metabot/constants";
+import {
+  FIXED_METABOT_ENTITY_IDS,
+  FIXED_METABOT_IDS,
+} from "metabase-enterprise/metabot/constants";
 import type {
   Collection,
   CollectionEssentials,
@@ -46,15 +49,15 @@ import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
 
 export function MetabotAdminPage() {
-  const metabotId = useMetabotIdPath();
+  const metabotId = useMetabotIdPath() ?? FIXED_METABOT_IDS.DEFAULT;
   const { data, isLoading, error } = useListMetabotsQuery();
 
   const metabot = data?.items?.find((bot) => bot.id === metabotId);
 
-  if (isLoading || !data || !metabotId || !metabot) {
+  if (isLoading || !metabot) {
     return (
       <LoadingAndErrorWrapper
-        loading={isLoading}
+        loading={isLoading || !data}
         error={match({ isLoading, error, metabot })
           .with(
             { isLoading: false, error: P.not(null) },
