@@ -387,7 +387,7 @@ databaseChangeLog:
                   remarks: Whether this metabot should only use verified content
                   constraints:
                     nullable: true
-                  defaultValue: false
+                  defaultValueBoolean: false
               - column:
                   name: collection_id
                   type: int
