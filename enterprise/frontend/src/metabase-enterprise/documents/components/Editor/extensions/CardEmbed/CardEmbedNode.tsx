@@ -6,7 +6,6 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
@@ -27,7 +26,6 @@ import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
 import {
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
-  setShowNavigateBackToDocumentButton,
 } from "../../../../documents.slice";
 import { useCardData } from "../../../../hooks/use-card-data";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
@@ -202,7 +200,6 @@ export const CardEmbedComponent = memo(
     const handleTitleClick = () => {
       if (card && metadata) {
         try {
-          // dispatch(setShowNavigateBackToDocumentButton(true));
           const isDraftCard = card.id < 0;
           const question = new Question(
             isDraftCard ? { ...card, id: null } : card,
@@ -250,25 +247,28 @@ export const CardEmbedComponent = memo(
         }
 
         try {
-          dispatch(setShowNavigateBackToDocumentButton(true));
           // For drill-through, we need to ensure the card is treated as adhoc
           // Remove the ID so getUrl creates an adhoc question URL instead of navigating to saved question
           const adhocCard = { ...nextCard, id: null };
           const question = new Question(adhocCard, metadata);
           const url = getUrl(question, { includeDisplayIsLocked: true });
-          dispatch(push(url));
+          dispatch(navigateToCardFromDocument(url, document));
         } catch (error) {
           console.error("Failed to create question URL:", error);
           // Fallback: navigate to a new question with the dataset_query
           if (nextCard.dataset_query) {
-            dispatch(setShowNavigateBackToDocumentButton(true));
             const params = new URLSearchParams();
             params.set("dataset_query", JSON.stringify(nextCard.dataset_query));
-            dispatch(push(`/question?${params.toString()}`));
+            dispatch(
+              navigateToCardFromDocument(
+                `/question?${params.toString()}`,
+                document,
+              ),
+            );
           }
         }
       },
-      [dispatch, metadata],
+      [dispatch, metadata, document],
     );
 
     if (isLoading && !card) {

@@ -178,7 +178,9 @@ H.describeWithSnowplowEE("documents", () => {
       });
 
       it("not found", () => {
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id + 1}`));
+        cy.get("@documentId").then((id) =>
+          cy.visit(`/document/${(id as unknown as number) + 1}`),
+        );
         H.main().within(() => {
           cy.findByText("We're a little lost...").should("exist");
           cy.findByText("The page you asked for couldn't be found.");
@@ -583,6 +585,20 @@ H.describeWithSnowplowEE("documents", () => {
         );
 
         // Navigating to a question from a document should result in a back button
+        cy.findByLabelText("Back to Foo Document").click();
+
+        cy.get("@documentId").then((id) =>
+          cy.location("pathname").should("equal", `/document/${id}`),
+        );
+
+        H.getDocumentCard("Orders, Count, Grouped by Created At (year)").within(
+          () => {
+            H.cartesianChartCircle().eq(1).click();
+          },
+        );
+
+        H.popover().findByText("See these Orders").click();
+
         cy.findByLabelText("Back to Foo Document").click();
 
         cy.get("@documentId").then((id) =>
