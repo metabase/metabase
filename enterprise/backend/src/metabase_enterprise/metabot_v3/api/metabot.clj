@@ -9,7 +9,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.request.core :as request]
    [toucan2.core :as t2]))
