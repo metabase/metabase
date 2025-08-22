@@ -98,8 +98,10 @@ export const MetabotPurchasePage = () => {
   return (
     <SettingsPageWrapper title={t`Metabot AI`}>
       <SettingsSection
-        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-        title={t`Get a free month of Metabot, the new AI assistant for Metabase.`}
+        title={
+          /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+          t`Get a free month of Metabot, the new AI assistant for Metabase.`
+        }
       >
         <Stack>
           <Text>{t`Metabot helps you move faster and understand your data better. You can ask it to:`}</Text>
@@ -109,8 +111,10 @@ export const MetabotPurchasePage = () => {
                 component="span"
                 fw="bold"
               >{t`Act as a SQL generation copilot`}</Text>{" "}
-              {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
-              <Text component="span">{t`in the Metabase SQL editor`}</Text>
+              <Text component="span">{
+                /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+                t`in the Metabase SQL editor`
+              }</Text>
             </List.Item>
             <List.Item>
               <Text
