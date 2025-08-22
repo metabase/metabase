@@ -51,7 +51,7 @@ export function ClausePopover({
         trapFocus
         onChange={handleChange}
         classNames={{ dropdown: S.dropdown }}
-        disabled={disabled || content === false}
+        disabled={disabled || content === null}
       >
         <Popover.Target>{renderItem(handleOpen)}</Popover.Target>
         <Popover.Dropdown data-testid="clause-popover">

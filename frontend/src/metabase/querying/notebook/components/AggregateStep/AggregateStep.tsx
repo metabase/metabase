@@ -52,8 +52,8 @@ export function AggregateStep({
   const canRenderPopover = (
     query: Lib.Query,
     stageIndex: number,
-    clause: Lib.AggregationClause,
-    clauseIndex,
+    clause?: Lib.AggregationClause,
+    clauseIndex?: number,
   ) => {
     const isUpdate = clause != null && clauseIndex != null;
     const baseOperators = Lib.availableAggregationOperators(query, stageIndex);
@@ -81,7 +81,7 @@ export function AggregateStep({
       hasRemoveButton={hasRemoveButton}
       renderName={renderAggregationName}
       renderPopover={({ item: aggregation, index, onClose }) =>
-        canRenderPopover(query, stageIndex, aggregation, index) && (
+        canRenderPopover(query, stageIndex, aggregation, index) ? (
           <AggregationPopover
             query={query}
             stageIndex={stageIndex}
@@ -91,7 +91,7 @@ export function AggregateStep({
             onClose={onClose}
             readOnly={readOnly}
           />
-        )
+        ) : null
       }
       onReorder={handleReorderAggregation}
       onRemove={handleRemoveAggregation}

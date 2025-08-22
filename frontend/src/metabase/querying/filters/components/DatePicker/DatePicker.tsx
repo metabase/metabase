@@ -90,7 +90,6 @@ export function DatePicker({
           renderBackButton={renderBackButton}
           onChange={onChange}
           onSelectType={setType}
-          readOnly={readOnly}
         />
       );
   }
