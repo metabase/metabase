@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import * as Urls from "metabase/lib/urls";
 import { Box, Group, type GroupProps, Icon, Text, rem } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 import { Breadcrumb } from "./Breadcrumb";
-import { getExploreTableUrl } from "./utils";
 
 interface Props extends GroupProps {
   rowName: ReactNode;
@@ -46,7 +46,7 @@ export const Nav = ({ rowName, table, ...props }: Props) => {
 
       <Separator />
 
-      <Breadcrumb href={getExploreTableUrl(table)}>
+      <Breadcrumb href={Urls.tableRowsQuery(table.db_id, table.id)}>
         {table.display_name}
       </Breadcrumb>
 
