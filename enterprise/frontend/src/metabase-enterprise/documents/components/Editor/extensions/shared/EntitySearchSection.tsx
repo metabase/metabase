@@ -21,6 +21,7 @@ interface EntitySearchSectionProps {
   modal: "question-picker" | null;
   onModalSelect: (item: QuestionPickerValueItem) => void;
   onModalClose: () => void;
+  onItemHover: (index: number) => void;
 }
 
 export function EntitySearchSection({
@@ -33,6 +34,7 @@ export function EntitySearchSection({
   modal,
   onModalSelect,
   onModalClose,
+  onItemHover,
 }: EntitySearchSectionProps) {
   return (
     <>
@@ -42,6 +44,7 @@ export function EntitySearchSection({
           item={item}
           isSelected={selectedIndex === index}
           onClick={() => onItemSelect(index)}
+          onMouseEnter={() => onItemHover(index)}
         />
       ))}
       {query.length > 0 && searchResults.length === 0 ? (

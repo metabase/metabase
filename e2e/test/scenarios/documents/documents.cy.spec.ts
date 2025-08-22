@@ -329,6 +329,39 @@ describe("documents", () => {
         });
       });
 
+      it("should support keyboard and mouse selection in suggestions without double highlight", () => {
+        H.documentContent().click();
+        H.addToDocument("/", false);
+
+        assertOnlyOneOptionActive(/Ask Metabot/);
+
+        cy.realPress("{downarrow}");
+        cy.realPress("{downarrow}");
+
+        //Link should be active
+        assertOnlyOneOptionActive("Link");
+
+        // Hover over Quote
+        H.commandSuggestionDialog()
+          .findByRole("option", { name: /Quote/ })
+          .realHover();
+
+        assertOnlyOneOptionActive(/Quote/);
+
+        H.addToDocument("pro", false);
+
+        assertOnlyOneOptionActive(/Products by Category/);
+
+        cy.realPress("{downarrow}");
+        assertOnlyOneOptionActive(/Products average/);
+
+        H.commandSuggestionDialog()
+          .findByRole("option", { name: /Products by Category/ })
+          .realHover();
+
+        assertOnlyOneOptionActive(/Products by Category/);
+      });
+
       it("should support adding cards and updating viz settings", () => {
         H.documentContent().click();
         H.addToDocument("/", false);
@@ -509,3 +542,14 @@ describe("documents", () => {
     });
   });
 });
+
+const assertOnlyOneOptionActive = (name: string | RegExp) => {
+  H.commandSuggestionDialog()
+    .findByRole("option", { name })
+    .should("have.attr", "aria-selected", "true");
+
+  H.commandSuggestionDialog()
+    .findAllByRole("option")
+    .filter("[aria-selected=true]")
+    .should("have.length", 1);
+};

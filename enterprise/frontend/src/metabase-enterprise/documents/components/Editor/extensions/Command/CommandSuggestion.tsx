@@ -1,5 +1,6 @@
 import type { Editor, Range } from "@tiptap/core";
 import {
+  type DOMAttributes,
   forwardRef,
   useCallback,
   useEffect,
@@ -79,8 +80,8 @@ const CommandMenuItem = forwardRef<
     option: CommandOption;
     isSelected?: boolean;
     onClick?: () => void;
-  }
->(function CommandMenuItem({ option, isSelected, onClick }, ref) {
+  } & DOMAttributes<HTMLButtonElement>
+>(function CommandMenuItem({ option, isSelected, onClick, ...rest }, ref) {
   return (
     <UnstyledButton
       ref={ref}
@@ -89,6 +90,7 @@ const CommandMenuItem = forwardRef<
       role="option"
       aria-selected={isSelected}
       aria-label={option.label}
+      {...rest}
     >
       <Group gap="sm" wrap="nowrap" align="center">
         {option.icon ? (
@@ -389,6 +391,7 @@ export const CommandSuggestion = forwardRef<
           menuItems={searchMenuItems}
           selectedIndex={entitySelectedIndex}
           onItemSelect={entityHandlers.selectItem}
+          onItemHover={entityHandlers.hoverHandler}
           onFooterClick={entityHandlers.openModal}
           query={query}
           searchResults={searchResults}
@@ -409,7 +412,8 @@ export const CommandSuggestion = forwardRef<
                       key={`search-${index}`}
                       item={item}
                       isSelected={selectedIndex === index}
-                      onClick={() => selectItem(index)}
+                      onClick={() => setSelectedIndex(index)}
+                      onMouseEnter={() => setSelectedIndex(index)}
                     />
                   ))}
                   {searchMenuItems.length > 0 && commandOptions.length > 0 && (
@@ -424,6 +428,7 @@ export const CommandSuggestion = forwardRef<
                         option={option}
                         isSelected={selectedIndex === index}
                         onClick={() => selectItem(index)}
+                        onMouseEnter={() => setSelectedIndex(index)}
                       />
                     );
                   })}
@@ -463,6 +468,7 @@ export const CommandSuggestion = forwardRef<
                             option={option}
                             isSelected={selectedIndex === index}
                             onClick={() => selectItem(index)}
+                            onMouseEnter={() => setSelectedIndex(index)}
                           />
                         );
                       })}

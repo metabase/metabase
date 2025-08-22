@@ -1,3 +1,4 @@
+import type { DOMAttributes } from "react";
 import { t } from "ttag";
 
 import {
@@ -31,16 +32,18 @@ export const MenuItemComponent = ({
   item,
   isSelected,
   onClick,
+  ...rest
 }: {
   item: MenuItem;
   isSelected?: boolean;
   onClick?: () => void;
-}) => (
+} & DOMAttributes<HTMLButtonElement>) => (
   <UnstyledButton
     className={S.menuItem}
     onClick={onClick || item.action}
     role="option"
     aria-selected={isSelected}
+    {...rest}
   >
     <Group gap="sm" wrap="nowrap" align="center">
       <Icon name={item.icon} size={16} color={item.iconColor || "inherit"} />
