@@ -600,7 +600,13 @@
                                         :fk-field-id  %product-id
                                         :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
                       add/add-alias-info
-                      nest-expressions))))))))
+                      nest-expressions
+                      ;; I'm tired of dealing with the nondeterministic order mentioned above, so just sort them by ID
+                      ;; and call it a day for now.
+                      (update-in [:source-query :fields] (fn [fields]
+                                                           (concat
+                                                            (take 3 fields)
+                                                            (sort-by second (drop 3 fields)))))))))))))
 
 (deftest ^:parallel uniquify-aliases-test
   (driver/with-driver :h2
@@ -812,17 +818,23 @@
                      :join-alias "p"
                      ::add/desired-alias "p__CREATED_AT"
                      ::add/source-table "p"}]]}}
-                (->> (lib.tu.macros/mbql-query orders
-                       {:expressions {"double_total" [:* $total 2]}
-                        ;; this is a broken field ref! It should use the join alias `p`. Luckily
-                        ;; the [[metabase.query-processor.middleware.resolve-joined-fields]] middleware should fix it
-                        ;; for us.
-                        :breakout    [!hour-of-day.people.created-at
-                                      [:expression "double_total"]]
-                        :aggregation [[:count]]
-                        :joins [{:source-table $$people
-                                 :alias        "p"
-                                 :condition    [:= $user-id &p.people.id]}]})
-                     qp.preprocess/preprocess
-                     add/add-alias-info
-                     nest-expressions)))))))
+                (-> (lib.tu.macros/mbql-query orders
+                      {:expressions {"double_total" [:* $total 2]}
+                       ;; this is a broken field ref! It should use the join alias `p`. Luckily
+                       ;; the [[metabase.query-processor.middleware.resolve-joined-fields]] middleware should fix it
+                       ;; for us.
+                       :breakout    [!hour-of-day.people.created-at
+                                     [:expression "double_total"]]
+                       :aggregation [[:count]]
+                       :joins [{:source-table $$people
+                                :alias        "p"
+                                :condition    [:= $user-id &p.people.id]}]})
+                    qp.preprocess/preprocess
+                    add/add-alias-info
+                    nest-expressions
+                    ;; I'm tired of dealing with the nondeterministic order mentioned above, so just sort them by ID and
+                    ;; call it a day for now.
+                    (update-in [:source-query :fields] (fn [fields]
+                                                         (concat
+                                                          (take 3 fields)
+                                                          (sort-by second (drop 3 fields))))))))))))

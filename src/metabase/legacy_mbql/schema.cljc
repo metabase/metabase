@@ -26,6 +26,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 ;; A NOTE ABOUT METADATA:
@@ -44,6 +45,48 @@
 ;; *  Clauses marked `^{:requires-features #{feature+}}` require a certain set of features to be used. At some date in
 ;;    the future we will likely add middleware that uses this metadata to automatically validate that a driver has the
 ;;    features needed to run the query in question.
+
+(mr/def ::options-style
+  "For convenience of converting back and forth between MBQL 5, from now on we can record info about the options style
+  of a given clause you can do:
+
+    (defmethod options-style-method :field [_tag] ::options-style.last-always)"
+  [:enum
+   {:default ::options-style.none}
+   ;;
+   ;; this is the default style (options is unsupported)
+   ::options-style.none
+   ;;
+   ;; same style as MBQL 5; options map is always the first arg after the tag and we should use `{}` instead of `nil`
+   ;; for empty options. `:lib/uuid` should be preserved here I think.
+   ::options-style.mbql-5
+   ;;
+   ;; like a `:field` ref, options are ALWAYS the last arg, but should be `nil` if the options map is empty.
+   ::options-style.last-always
+   ;;
+   ;; The same as but keys should be `snake_case` (`:value` uses this)
+   ::options-style.last-always.snake_case
+   ;;
+   ;; like a `:expression` ref, options is optional but should only be present if non-nil.
+   ::options-style.last-unless-empty
+   ;;
+   ;; for `:contains` and other string filters: style is `::options-style.last-unless-empty` if the clause has two
+   ;; args, otherwise it's basically the same as `::options-style.mbql-5` if it has > 3 args, altho `:lib/uuid`
+   ;; should not be kept on conversion to legacy
+   ::options-style.𝕨𝕚𝕝𝕕])
+
+(defmulti ^:private options-style-method
+  {:arglists '([tag])}
+  keyword)
+
+(defmethod options-style-method :default
+  [_tag]
+  ::options-style.none)
+
+(mu/defn options-style :- ::options-style
+  "The style of options a legacy MBQL clause supports."
+  [tag :- simple-keyword?]
+  (options-style-method tag))
 
 ;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
@@ -213,6 +256,8 @@
   value    :any
   type-info [:maybe ::ValueTypeInfo])
 
+(defmethod options-style-method :value [_tag] ::options-style.last-always.snake_case)
+
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
 ;; Expression *references* refer to a something in the `:expressions` clause, e.g. something like
@@ -223,6 +268,8 @@
 (defclause ^{:requires-features #{:expressions}} expression
   expression-name ::lib.schema.common/non-blank-string
   options         (optional :map))
+
+(defmethod options-style-method :expression [_tag] ::options-style.last-unless-empty)
 
 (defn valid-temporal-unit-for-base-type?
   "Whether `temporal-unit` (e.g. `:day`) is valid for the given `base-type` (e.g. `:type/Date`). If either is `nil` this
@@ -329,6 +376,8 @@
        base-type
        true))])
 
+(defmethod options-style-method :field [_tag] ::options-style.last-always)
+
 (mr/def ::field
   [:and
    {:doc/title [:span [:code ":field"] " clause"]}
@@ -384,6 +433,8 @@
   aggregation-clause-index :int
   options                  (optional :map))
 
+(defmethod options-style-method :aggregation [_tag] ::options-style.last-unless-empty)
+
 (mr/def ::Reference
   [:schema
    ;; this is provided for the convenience of Lib which uses this schema for `:field-ref` in results metadata
@@ -399,6 +450,8 @@
   opts [:ref ::lib.schema.common/options]
   expr [:or [:ref ::FieldOrExpressionDef] [:ref ::Aggregation]]
   n    ::lib.schema.expression.window/offset.n)
+
+(defmethod options-style-method :offset [_tag] ::options-style.mbql-5)
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
 
@@ -738,6 +791,8 @@
   value  :any ;; normally a string, number, or bytes
   options (optional [:map [:mode {:optional true} LiteralDatetimeModeString]]))
 
+(defmethod options-style-method :datetime [_tag] ::options-style.last-unless-empty)
+
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date datetime today))
 
@@ -861,6 +916,7 @@
    [:case-sensitive {:optional true} :boolean]])
 
 (doseq [clause-keyword [::starts-with ::ends-with ::contains ::does-not-contain]]
+  (defmethod options-style-method (keyword (name clause-keyword)) [_tag] ::options-style.𝕨𝕚𝕝𝕕)
   (mr/def clause-keyword
     [:or
      ;; Binary form
@@ -879,9 +935,11 @@
 (def starts-with
   "Schema for a valid :starts-with clause."
   (with-meta [:ref ::starts-with] {:clause-name :starts-with}))
+
 (def ends-with
   "Schema for a valid :ends-with clause."
   (with-meta [:ref ::ends-with] {:clause-name :ends-with}))
+
 (def contains
   "Schema for a valid :contains clause."
   (with-meta [:ref ::contains] {:clause-name :contains}))
@@ -917,6 +975,8 @@
            [:enum :current :last :next]]
   unit    [:ref ::RelativeDatetimeUnit]
   options (optional TimeIntervalOptions))
+
+(defmethod options-style-method :time-interval [_tag] ::options-style.last-unless-empty)
 
 (defclause ^:sugar during
   field   Field
@@ -982,8 +1042,12 @@
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
+(defmethod options-style-method :case [_tag] ::options-style.last-unless-empty)
+
 (defclause ^:sugar ^{:requires-features #{:basic-aggregations}} [case:if if]
   clauses CaseClauses, options (optional CaseOptions))
+
+(defmethod options-style-method :if [_tag] ::options-style.last-unless-empty)
 
 (mr/def ::NumericExpression
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
@@ -1104,6 +1168,8 @@
 (defclause aggregation-options
   aggregation UnnamedAggregation
   options     AggregationOptions)
+
+(defmethod options-style-method :aggregation-options [_tag] ::options-style.last-always)
 
 (mr/def ::Aggregation
   [:multi
