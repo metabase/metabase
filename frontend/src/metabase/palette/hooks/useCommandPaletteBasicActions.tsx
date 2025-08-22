@@ -11,6 +11,7 @@ import {
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
@@ -117,6 +118,17 @@ export const useCommandPaletteBasicActions = ({
         openNewModal("dashboard");
       },
     });
+    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
+      actions.push({
+        id: "create-new-document",
+        name: t`New document`,
+        section: "basic",
+        icon: "document",
+        perform: () => {
+          dispatch(push(Urls.newDocument()));
+        },
+      });
+    }
     actions.push({
       id: "create-new-collection",
       name: t`New collection`,
