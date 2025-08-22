@@ -1314,7 +1314,7 @@
 
                              true
                              (into (setting/disabled-for-db-reasons setting-def database)))
-                   enabled? (empty? (remove (comp #{:warning} :type) reasons))]
+                   enabled? (every? (comp #{:warning} :type) reasons)]
                (if (empty? reasons)
                  {:enabled enabled?}
                  {:enabled enabled?, :reasons reasons}))]))))

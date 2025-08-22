@@ -959,8 +959,8 @@
                        :database-id (:id database)})))
     ;; Warnings are only for display and shouldn't block writing the setting.
     ;; They imply that the setting won't work until the issue is resolved, but often it is a transient problem.
-    (let [reasons (disabled-for-db-reasons setting database)]
-      (when (seq (remove warning? (disabled-for-db-reasons setting database)))
+    (when-let [reasons (disabled-for-db-reasons setting database)]
+      (when (not-every? warning? (disabled-for-db-reasons setting database))
         (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
                         {:setting     s-name
                          :database-id (:id database)
