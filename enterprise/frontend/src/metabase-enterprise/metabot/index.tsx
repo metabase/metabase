@@ -24,6 +24,13 @@ if (hasPremiumFeature("metabot_v3")) {
 
   PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
 
+  PLUGIN_METABOT.getAdminPaths = () => [
+    {
+      name: t`AI`,
+      path: "/admin/metabot",
+      key: "metabot",
+    },
+  ];
   PLUGIN_METABOT.getAdminRoutes = () => (
     <Route
       key="metabot"
