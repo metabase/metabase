@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.sandbox.api.table :as table]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
@@ -57,17 +58,20 @@
     :provider_name               nil
     :is_audit                    false}))
 
-(defn- table-defaults []
-  (merge
-   (update (mt/object-defaults :model/Table) :data_authority name)
-   {:db          (db-details)
-    :db_id       (mt/id)
-    :entity_type "entity/GenericTable"
-    :field_order "database"
-    :view_count  0
-    :metrics     []
-    :segments    []
-    :is_writable nil}))
+(defn- table-defaults
+  ([]
+   (table-defaults (or driver/*driver* :h2)))
+  ([driver]
+   (merge
+    (update (mt/object-defaults :model/Table) :data_authority name)
+    {:db          (db-details)
+     :db_id       (mt/id)
+     :entity_type "entity/GenericTable"
+     :field_order "database"
+     :view_count  0
+     :metrics     []
+     :segments    []
+     :is_writable (or (= driver :h2) nil)})))
 
 (defn- field-defaults []
   (merge
@@ -161,7 +165,7 @@
 (deftest ^:parallel get-table-test
   (testing "GET /api/table/:id"
     (is (= (merge
-            (dissoc (table-defaults) :segments :field_values :metrics)
+            (dissoc (table-defaults :h2) :segments :field_values :metrics)
             (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                         :view_count]
                                        :id (mt/id :venues))
@@ -190,7 +194,8 @@
                 {:schema       ""
                  :name         "schemaless_table"
                  :display_name "Schemaless"
-                 :db_id        database-id})
+                 :db_id        database-id
+                 :is_writable  nil})
                (dissoc (mt/user-http-request :rasta :get 200 (str "table/" table-id))
                        :db)))))))
 
@@ -443,7 +448,8 @@
                :entity_type     nil
                :schema          ""
                :visibility_type "hidden"
-               :display_name    "Userz"})
+               :display_name    "Userz"
+               :is_writable     nil})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
                      :updated_at))))))
 
@@ -639,7 +645,7 @@
                                             ;; Index sync is turned off across the application as it is not used ATM.
                                             #_#_:database_indexed true
                                             :table            (merge
-                                                               (dissoc (table-defaults) :db :segments :field_values :metrics)
+                                                               (dissoc (table-defaults :h2) :db :segments :field_values :metrics)
                                                                (t2/select-one [:model/Table
                                                                                :id :created_at :updated_at
                                                                                :initial_sync_status :view_count]
