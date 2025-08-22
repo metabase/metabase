@@ -77,7 +77,7 @@
                                 (mt/cols query-result))))))))))))))
 
 (deftest execute-test-aggregation-query
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :left-join]})
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
             schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
