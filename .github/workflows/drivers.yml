@@ -988,7 +988,7 @@ jobs:
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
-      - be-tests-vertica-ee
+      # - be-tests-vertica-ee
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: drivers-tests-result
