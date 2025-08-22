@@ -79,6 +79,7 @@ const MentionSuggestionComponent = forwardRef<
         modal={modal}
         onModalSelect={handlers.handleModalSelect}
         onModalClose={handlers.handleModalClose}
+        onItemHover={handlers.hoverHandler}
       />
     </SuggestionPaper>
   );
