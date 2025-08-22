@@ -144,7 +144,7 @@ function MetabotVerifiedContentConfigurationPane({
 }: {
   metabot: MetabotInfo;
 }) {
-  const [updateMetabot] = useUpdateMetabotMutation();
+  const [updateMetabot, { isLoading: isUpdating }] = useUpdateMetabotMutation();
   const [sendToast] = useToast();
 
   const handleVerifiedContentToggle = async (checked: boolean) => {
@@ -172,6 +172,7 @@ function MetabotVerifiedContentConfigurationPane({
         label={t`Only use Verified content`}
         checked={!!metabot.use_verified_content}
         onChange={(e) => handleVerifiedContentToggle(e.target.checked)}
+        disabled={isUpdating}
         w="auto"
         size="sm"
       />

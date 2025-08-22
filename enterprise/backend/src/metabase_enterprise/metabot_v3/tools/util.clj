@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -136,21 +137,32 @@
   "Return the metric and model cards in metabot scope visible to the current user.
 
   Takes a metabot-id and returns all metric and model cards in that metabot's collection
-  and its subcollections."
+  and its subcollections. If the metabot has use_verified_content enabled, only verified
+  content is returned."
   [metabot-id]
   (let [metabot (t2/select-one :model/Metabot :id metabot-id)
         metabot-collection-id (:collection_id metabot)
+        use-verified-content? (:use_verified_content metabot)
         collection-filter (if metabot-collection-id
                             (let [collection (t2/select-one :model/Collection :id metabot-collection-id)
                                   collection-ids (conj (collection/descendant-ids collection) metabot-collection-id)]
                               [:in :collection_id collection-ids])
-                            [:and true])]
-    {:select [:*]
-     :from   [[:report_card]]
-     :where  [:and
-              collection-filter
-              [:in :type [:inline ["metric" "model"]]]
-              [:= :archived false]]}))
+                            [:and true])
+        base-query {:select [:report_card.*]
+                    :from   [[:report_card]]
+                    :where  [:and
+                             collection-filter
+                             [:in :type [:inline ["metric" "model"]]]
+                             [:= :archived false]
+                             (collection/visible-collection-filter-clause :collection_id)]}]
+    (if (and use-verified-content? (premium-features/has-feature? :content-verification))
+      (-> base-query
+          (assoc-in [:left-join] [[:moderation_review :mr] [:and
+                                                            [:= :mr.moderated_item_id :report_card.id]
+                                                            [:= :mr.moderated_item_type [:inline "card"]]
+                                                            [:= :mr.most_recent true]]])
+          (update-in [:where] conj [:= :mr.status [:inline "verified"]]))
+      base-query)))
 
 (comment
   (binding [api/*current-user-id* 2

@@ -37,8 +37,18 @@
                        [:collection_id {:optional true} [:maybe pos-int?]]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
-  (t2/update! :model/Metabot id metabot-updates)
-  (t2/select-one :model/Metabot :id id))
+  (let [old-metabot (t2/select-one :model/Metabot :id id)
+        verified-content-changed? (and (contains? metabot-updates :use_verified_content)
+                                       (not= (:use_verified_content old-metabot)
+                                             (:use_verified_content metabot-updates)))
+        collection-changed? (and (contains? metabot-updates :collection_id)
+                                 (not= (:collection_id old-metabot)
+                                       (:collection_id metabot-updates)))]
+    (t2/update! :model/Metabot id metabot-updates)
+    (when (or verified-content-changed? collection-changed?)
+      (delete-all-metabot-prompts id)
+      (generate-sample-prompts id))
+    (t2/select-one :model/Metabot :id id)))
 
 (defn- column-input
   [answer-source-column]
