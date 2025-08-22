@@ -57,8 +57,8 @@ module.exports = {
       alias: {
         ...appConfig.resolve.alias,
         ...(isEmbeddingSdkPackageInstalled && {
-          // $ means that only exact "embedding-sdk" imports will be rerouted, all nested embedding-sdk/* will still be resolved locally
-          "embedding-sdk-bundle$": require.resolve(
+          // $ means that only exact "embedding-sdk-package" imports will be rerouted, all nested embedding-sdk-package/* will still be resolved locally
+          "embedding-sdk-package$": require.resolve(
             "@metabase/embedding-sdk-react",
           ),
         }),
