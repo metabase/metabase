@@ -23,7 +23,11 @@
          "      AND NOT EXISTS (SELECT 1 "
          "                      FROM transform_run_cancelation "
          "                      WHERE run_id = ?)")
-    run-id run-id run-id]))
+    run-id run-id run-id])
+  (t2/update! :model/TransformRun
+              :id run-id
+              {:status "canceling"})
+  nil)
 
 (defn reducible-canceled-local-runs
   "Return a reducible sequence of local canceled runs."
