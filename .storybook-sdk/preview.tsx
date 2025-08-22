@@ -5,7 +5,7 @@ import { initialize, mswLoader } from "msw-storybook-addon";
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
 
-import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
+import { storybookThemeOptions } from "embedding-sdk-bundle/test/storybook-themes";
 import { availableLocales } from "./constants";
 
 const parameters = {
