@@ -59,10 +59,11 @@ const setup = async (
     },
   ]);
 
-  // Mock the search status API
-  fetchMock.get("path:/api/ee/semantic-search/status", searchStatusData, {
-    name: "search-sync-status",
-  });
+  // Mock the search status API -- only set if it hasn't been set already
+  fetchMock.get(
+    { url: "path:/api/ee/semantic-search/status", overwriteRoutes: false },
+    searchStatusData,
+  );
 
   renderWithProviders(
     <SearchSettingsWidget statusPollingInterval={statusPollingInterval} />,
@@ -121,12 +122,13 @@ describe("SearchSettingsWidget", () => {
     ).toBeInTheDocument();
     expect(await progressBar()).toHaveAttribute("aria-valuenow", "50");
 
-    fetchMock.modifyRoute("search-sync-status", {
-      response: () => ({
+    fetchMock.get(
+      { url: "path:/api/ee/semantic-search/status", overwriteRoutes: true },
+      {
         indexed_count: 100,
         total_est: 100,
-      }),
-    });
+      },
+    );
     expect(
       await screen.findByText(/Initialized search index/),
     ).toBeInTheDocument();
