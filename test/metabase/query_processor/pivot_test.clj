@@ -498,30 +498,24 @@
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-2
   (mt/dataset test-data
-    (let [query (assoc (mt/mbql-query orders
-                         {:aggregation [[:count]]
-                          :breakout    [$user_id->people.source $product_id->products.category]})
-                       :pivot-rows [0]
-                       :pivot-cols [1])]
-      (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
-        ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle
-        ;; correctly, like #14604. The difference here is that #14064 was including expressions that weren't in
-        ;; `:fields` at all, which was a clear bug -- while returning expressions that are referenced in `:fields` is
-        ;; how the QP normally works in non-pivot-mode.
-        ;;
-        ;; I do not think there are any situations where the frontend actually explicitly specifies `:fields` in a
-        ;; pivot query, so we can revisit this behavior at a later date if needed.
-        (let [results (qp.pivot/run-pivot-query (-> query
-                                                    (assoc-in [:query :fields] [[:expression "test-expr"]])
-                                                    (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))]
+    (let [query (->> (assoc (mt/mbql-query orders
+                              {:aggregation [[:count]]
+                               :breakout    [$user_id->people.source $product_id->products.category]})
+                            :pivot-rows [0]
+                            :pivot-cols [1])
+                     (lib/query (mt/metadata-provider)))]
+      (testing "If the expression is *explicitly* included in `:fields`, we still shouldn't see it"
+        ;; In general, if an aggregation has :fields set, those are "if we ever remove this aggregation, we should use
+        ;; these fields again", not "these fields should be added to the aggregation query".  As a result, if fields
+        ;; are set here, we shouldn't see them.
+        (let [results (qp.pivot/run-pivot-query (lib/expression query "test-expr" [:ltrim "wheeee"]))]
           (is (= ["User → Source"
                   "Product → Category"
                   "pivot-grouping"
-                  "Count"
-                  "test-expr"]
+                  "Count"]
                  (map :display_name (mt/cols results))))
           (testing "expression value should get returned"
-            (is (= ["Affiliate" "Doohickey" 0 783 "wheeee"]
+            (is (= ["Affiliate" "Doohickey" 0 783]
                    (mt/first-row results)))))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-3

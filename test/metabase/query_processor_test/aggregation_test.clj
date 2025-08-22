@@ -289,6 +289,35 @@
           (is (= [[39]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
+(deftest ^:parallel aggregation-and-fields-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "adding an aggregation to a query with fields works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [[100]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :venues :name)))])
+                   (lib/aggregate (lib/count))
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [int])))))))))
+
+(deftest ^:parallel aggregation-removal-and-fields-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "adding and removing an aggregation keeps original fields"
+      (let [mp (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                        (lib/ref (lib.metadata/field mp (mt/id :venues :price)))])
+                      (lib/aggregate (lib/count)))]
+        (is (= [[1 3]
+                [2 2]
+                [3 2]]
+               (-> query
+                   (lib/remove-clause (first (lib/aggregations query)))
+                   (lib/limit 3)
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [int int])))))))))
+
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !
 ;; !                    tests for named aggregations can be found in `expression-aggregations-test`                    !
