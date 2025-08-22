@@ -48,8 +48,12 @@ export const Header = ({ columns, icon, row }: Props) => {
     [columns, avatarColumn, row],
   );
 
+  if (!title && !subtitle && !avatar && !icon) {
+    return null;
+  }
+
   return (
-    <Group gap="xl" wrap="nowrap">
+    <Group data-testid="detail-view-header" gap="xl" wrap="nowrap">
       {(avatar || icon) && (
         <Box className={S.avatarFrame} flex="0 0 auto">
           {avatar && (
