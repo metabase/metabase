@@ -47,13 +47,10 @@ export function NumberInputWidget({
 }: NumberInputWidgetProps) {
   const arrayValue = deserializeNumberParameterValue(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
-    useState<(NumberValue | undefined)[]>(arrayValue);
+    useState<(NumberValue | null)[]>(arrayValue);
 
-  const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
-  const allValuesSet = unsavedArrayValue.every(isNotNull);
-  const isValid =
-    (arity === "n" || unsavedArrayValue.length <= arity) &&
-    (allValuesUnset || allValuesSet);
+  const isValid = getIsValid(unsavedArrayValue, arity);
+  const allValuesUnset = !unsavedArrayValue.some(isNotNull);
   const isEmpty = unsavedArrayValue.length === 0 || allValuesUnset;
   const isRequired = parameter?.required;
 
@@ -131,7 +128,7 @@ export function NumberInputWidget({
               onChange={(_newValue, newValueText) => {
                 setUnsavedArrayValue((unsavedArrayValue) => {
                   const newUnsavedValue = [...unsavedArrayValue];
-                  newUnsavedValue[i] = parseNumber(newValueText) ?? undefined;
+                  newUnsavedValue[i] = parseNumber(newValueText);
                   return newUnsavedValue;
                 });
               }}
@@ -179,4 +176,16 @@ function getValue(option: string | number | ParameterValue) {
     return option[0];
   }
   return String(option);
+}
+
+function getIsValid(value: (NumberValue | null)[], arity: number | "n") {
+  if (arity === 1) {
+    return value.length === 1 && value.every(isNotNull);
+  }
+  if (arity === 2) {
+    return value.length > 0 && value.some(isNotNull);
+  }
+  if (arity === "n") {
+    return value.length > 0 && value.every(isNotNull);
+  }
 }

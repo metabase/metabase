@@ -32,28 +32,34 @@ export function normalizeStringParameterValue(
 }
 
 export function serializeNumberParameterValue(
-  value: NumberValue[],
+  value: (NumberValue | null)[],
 ): ParameterValueOrArray {
   return value.map((item) => {
-    return typeof item === "number" ? item : String(item);
+    return typeof item === "bigint" ? String(item) : item;
   });
 }
 
 export function deserializeNumberParameterValue(
   value: ParameterValueOrArray | null | undefined,
-): NumberValue[] {
-  return normalizeArray(value).reduce((values: NumberValue[], item) => {
-    if (typeof item === "number" && Number.isFinite(item)) {
-      values.push(item);
-    }
-    if (typeof item === "string") {
-      const number = parseNumber(item);
-      if (number != null) {
-        values.push(number);
+): (NumberValue | null)[] {
+  return normalizeArray(value).reduce(
+    (values: (NumberValue | null)[], item) => {
+      if (item === null) {
+        values.push(null);
       }
-    }
-    return values;
-  }, []);
+      if (typeof item === "number" && Number.isFinite(item)) {
+        values.push(item);
+      }
+      if (typeof item === "string") {
+        const number = parseNumber(item);
+        if (number != null) {
+          values.push(number);
+        }
+      }
+      return values;
+    },
+    [],
+  );
 }
 
 export function normalizeNumberParameterValue(

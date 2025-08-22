@@ -104,7 +104,7 @@ export type ParameterValueOrArray =
   | string
   | number
   | boolean
-  | Array<string | number | boolean>;
+  | Array<string | number | boolean | null>;
 
 export type HumanReadableParameterValue = string;
 export type NotRemappedParameterValue = [RowValue];

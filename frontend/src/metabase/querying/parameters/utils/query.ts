@@ -162,10 +162,20 @@ function getNumberParameterFilterClause(
   const operator = NUMBER_OPERATORS[type] ?? "=";
   return match({ operator, values })
     .with(
-      { operator: P.union("=", "!=") },
-      { operator: P.union(">=", "<="), values: [P._] },
-      { operator: "between", values: [P._, P._] },
-      () => Lib.numberFilterClause({ operator, column, values }),
+      { operator: P.union("=", "!="), values: [] },
+      { operator: P.union(">=", "<="), values: [P.nonNullable] },
+      { operator: "between", values: [P.nonNullable, P.nonNullable] },
+      ({ values }) => Lib.numberFilterClause({ operator, column, values }),
+    )
+    .with(
+      { operator: "between", values: [P.nonNullable, P.nullish] },
+      ({ values: [minValue] }) =>
+        Lib.numberFilterClause({ operator: ">=", column, values: [minValue] }),
+    )
+    .with(
+      { operator: "between", values: [P.nullish, P.nonNullable] },
+      ({ values: [_minValue, maxValue] }) =>
+        Lib.numberFilterClause({ operator: "<=", column, values: [maxValue] }),
     )
     .otherwise(() => undefined);
 }
