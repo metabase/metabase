@@ -63,7 +63,12 @@ export function DateFilterPicker({
         }}
         renderBackButton={() =>
           onBack ? (
-            <PopoverBackButton p="sm" onClick={onBack} readOnly={readOnly}>
+            <PopoverBackButton
+              p="sm"
+              onClick={onBack}
+              disabled={readOnly}
+              withArrow={!readOnly}
+            >
               {columnInfo.longDisplayName}
             </PopoverBackButton>
           ) : null

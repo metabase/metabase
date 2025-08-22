@@ -119,7 +119,11 @@ export function ExcludeOptionPicker({
 
   return (
     <Box miw={MIN_WIDTH}>
-      {!readOnly && <BackButton onClick={onBack}>{t`Exclude…`}</BackButton>}
+      <BackButton
+        onClick={onBack}
+        disabled={readOnly}
+        withArrow={!readOnly}
+      >{t`Exclude…`}</BackButton>
       <Divider />
       <Box p="sm">
         {unitOptions.map((option, index) => (
