@@ -10,7 +10,7 @@ import { FormErrorMessage } from "metabase/forms/components/FormErrorMessage";
 import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Text } from "metabase/ui";
-import type { DatabaseData, Engine } from "metabase-types/api";
+import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 
 import { getEngines } from "../../selectors";
 import { getDefaultEngineKey } from "../../utils/engine";
@@ -116,7 +116,8 @@ export const DatabaseForm = ({
     >
       <DatabaseFormBody
         engine={engine}
-        engineKey={engineKey}
+        // casting won't be needed after migrating all usages of engineKey
+        engineKey={engineKey as EngineKey}
         engines={engines}
         engineFieldState={engineFieldState}
         autofocusFieldName={autofocusFieldName}
@@ -135,7 +136,7 @@ export const DatabaseForm = ({
 
 interface DatabaseFormBodyProps {
   engine: Engine | undefined;
-  engineKey: string | undefined;
+  engineKey: EngineKey | undefined;
   engines: Record<string, Engine>;
   engineFieldState?: "default" | "hidden" | "disabled";
   autofocusFieldName?: string;
@@ -211,6 +212,7 @@ const DatabaseFormBody = ({
           field={field}
           autoFocus={autofocusFieldName === field.name}
           data-kek={field.name}
+          engineKey={engineKey}
         />
       ))}
       <DatabaseFormFooter

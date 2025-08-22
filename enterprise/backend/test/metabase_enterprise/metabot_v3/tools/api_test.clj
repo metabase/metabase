@@ -14,7 +14,6 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -237,7 +236,7 @@
   (mt/with-premium-features #{:metabot-v3}
     (let [conversation-id (str (random-uuid))
           ai-token (ai-session-token)
-          mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          mp (mt/metadata-provider)
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
                            (lib/breakout (lib/with-temporal-bucket
@@ -378,7 +377,7 @@
 
 (deftest answer-sources-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           model-source-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
           metric-source-query (-> model-source-query
                                   (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
@@ -530,7 +529,7 @@
 
 (deftest get-metric-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
                            (lib/breakout (lib/with-temporal-bucket
@@ -637,7 +636,7 @@
 
 (deftest ^:parallel get-query-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
                            (lib/breakout (lib/with-temporal-bucket
@@ -662,7 +661,7 @@
 
 (deftest get-report-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
                            (lib/breakout (lib.metadata/field mp (mt/id :products :vendor)))
@@ -718,7 +717,7 @@
 
 (deftest get-model-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           source-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           model-data {:name "Model model"
                       :description "Model desc"
