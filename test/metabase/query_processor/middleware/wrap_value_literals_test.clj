@@ -256,6 +256,7 @@
             (is (= [:=
                     [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
                     expected]
+                   #_{:clj-kondo/ignore [:deprecated-var]}
                    (qp.wrap-value-literals/wrap-value-literals-in-mbql
                     [:=
                      [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]

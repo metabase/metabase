@@ -6,11 +6,11 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]))
+   [metabase.util.malli.registry :as mr]))
 
 (declare walk-stages*)
 

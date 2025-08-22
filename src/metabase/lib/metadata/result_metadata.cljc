@@ -20,6 +20,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -268,21 +269,23 @@
    col   :- ::kebab-cased-map]
   (when (= (:lib/type col) :metadata/column)
     (let [remove-join-alias? (remove-join-alias-from-broken-field-ref? query col)]
-      (->> (if-let [original-ref (:lib/original-ref col)]
-             (cond-> original-ref
-               remove-join-alias? (lib.join/with-join-alias nil))
-             (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
-               (let [col (cond-> col
-                           remove-join-alias? (lib.join/with-join-alias nil)
-                           remove-join-alias? (assoc ::remove-join-alias? true))]
-                 (->> (merge
-                       col
-                       (when-not remove-join-alias?
-                         (when-let [previous-join-alias (:lib/original-join-alias col)]
-                           {:metabase.lib.join/join-alias previous-join-alias})))
-                      lib.ref/ref))))
-           lib.convert/->legacy-MBQL
-           (fe-friendly-expression-ref col)))))
+      (-> (if-let [original-ref (:lib/original-ref-for-result-metadata-purposes-only col)]
+            (cond-> original-ref
+              remove-join-alias? (lib.join/with-join-alias nil))
+            (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
+              (let [col (cond-> col
+                          remove-join-alias? (lib.join/with-join-alias nil)
+                          remove-join-alias? (assoc ::remove-join-alias? true))]
+                (->> (merge
+                      col
+                      (when-not remove-join-alias?
+                        (when-let [previous-join-alias (:lib/original-join-alias col)]
+                          {:metabase.lib.join/join-alias previous-join-alias})))
+                     lib.ref/ref))))
+          ;; legacy field refs should never have `:effective-type`
+          (lib.options/update-options dissoc :effective-type)
+          lib.convert/->legacy-MBQL
+          (->> (fe-friendly-expression-ref col))))))
 
 ;; For unambiguous columns we should use broken legacy refs to maintain backward compatibility with legacy viz
 ;; settings, which use them as keys. Since ambiguous refs have never worked correctly it is ok to return
@@ -387,7 +390,7 @@
 ;;; keep it around but I don't have time to update a million tests. Why do columns have `:lib/uuid` anyway? They
 ;;; should maybe have `:lib/source-uuid` but I don't think they should have `:lib/uuid`.
 (defn- remove-lib-uuids [col]
-  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref))
+  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref-for-result-metadata-purposes-only))
 
 (mu/defn- col->legacy-metadata :- ::kebab-cased-map
   "Convert MLv2-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love

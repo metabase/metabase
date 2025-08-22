@@ -912,8 +912,8 @@
                   :display-name                               "Created At: Year"
                   :effective-type                             :type/Integer
                   ;; additional keys in field ref are WRONG
-                  :field-ref                                  (partial = [:field "CREATED_AT" {:base-type     :type/DateTimeWithLocalTZ
-                                                                                               :temporal-unit :year}])
+                  :field-ref                                  (partial = [:field "CREATED_AT" {:base-type      :type/DateTimeWithLocalTZ
+                                                                                               :temporal-unit  :year}])
                   :id                                         (meta/id :orders :created-at)
                   :inherited-temporal-unit                    :year
                   :name                                       "CREATED_AT"

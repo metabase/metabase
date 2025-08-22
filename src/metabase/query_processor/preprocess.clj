@@ -86,17 +86,6 @@
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
-(def ^:private unconverted-property?
-  (some-fn #{:info} qualified-keyword?))
-
-(defn- copy-unconverted-properties
-  [to from]
-  (reduce-kv (fn [m k v]
-               (cond-> m
-                 (unconverted-property? k) (assoc k v)))
-             to
-             from))
-
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 

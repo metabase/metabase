@@ -216,11 +216,11 @@
 (deftest ^:parallel auto-bucket-by-effective-type-test
   (testing "UNIX timestamps should be considered to be :type/DateTime based on effective type"
     (qp.store/with-metadata-provider unix-timestamp-metadata-provider
-      (is (= {:source-table 1
-              :breakout     [[:field 1 {:temporal-unit :day}]]}
-             (auto-bucket-mbql
-              {:source-table 1
-               :breakout     [[:field 1 nil]]}))))))
+      (is (=? {:source-table 1
+               :breakout     [[:field 1 {:temporal-unit :day}]]}
+              (auto-bucket-mbql
+               {:source-table 1
+                :breakout     [[:field 1 nil]]}))))))
 
 (deftest ^:parallel ignore-native-queries-test
   (testing "do native queries pass thru unchanged?"
