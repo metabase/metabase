@@ -155,6 +155,20 @@ export const DashboardTableWithRowId = {
   },
 };
 
+export const PreserveWhitespaceWrapped = {
+  render: DefaultTemplate,
+  args: {
+    series: data.preserveWhitespaceWrapped,
+  },
+};
+
+export const PreserveWhitespaceUnwrapped = {
+  render: DefaultTemplate,
+  args: {
+    series: data.preserveWhitespaceUnwrapped,
+  },
+};
+
 export const Watermark = {
   parameters: {
     loki: { skip: true },
