@@ -62,14 +62,14 @@
       (update :fields #(map column-input %))))
 
 (defn- generate-sample-prompts
-  [metabot-entity-ids]
+  [metabot-id]
   (lib.metadata.jvm/with-metadata-provider-cache
-    (let [scope (metabot-v3.tools.u/metabot-scope metabot-entity-ids)
+    (let [cards (metabot-v3.tools.u/get-metrics-and-models metabot-id)
           {metrics :metric, models :model}
-          (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) (keys scope))
+          (->> (for [[[card-type database-id] group-cards] (group-by (juxt :type :database_id) cards)
                      detail (map (fn [detail card] (assoc detail ::origin card))
-                                 (metabot-v3.dummy-tools/cards-details card-type database-id cards nil)
-                                 cards)]
+                                 (metabot-v3.dummy-tools/cards-details card-type database-id group-cards nil)
+                                 group-cards)]
                  detail)
                (group-by :type))
           metric-inputs (map metric-input metrics)
@@ -77,9 +77,9 @@
           {:keys [table_questions metric_questions]}
           (metabot-v3.client/generate-example-questions {:metrics metric-inputs, :tables model-inputs})
           ->prompt (fn [{:keys [questions]} {::keys [origin]}]
-                     (let [base {:metabot_entity_id (scope origin)
-                                 :model             (:type origin)
-                                 :card_id           (:id origin)}]
+                     (let [base {:metabot_id metabot-id
+                                 :model      (:type origin)
+                                 :card_id    (:id origin)}]
                        (map #(assoc base :prompt %) questions)))
           metric-prompts (mapcat ->prompt metric_questions metrics)
           model-prompts (mapcat ->prompt table_questions models)]
@@ -90,11 +90,7 @@
 
 (defn- delete-all-metabot-prompts
   [metabot-id]
-  (t2/delete! :model/MetabotPrompt {:where [:exists {:select [:*]
-                                                     :from   [[:metabot_entity :mbe]]
-                                                     :where  [:and
-                                                              [:= :mbe.id :metabot_prompt.metabot_entity_id]
-                                                              [:= :mbe.metabot_id metabot-id]]}]}))
+  (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id metabot-id]}))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones."
@@ -102,9 +98,8 @@
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (api/check-404 (t2/exists? :model/Metabot :id id))
-    (when-let [entity-ids (not-empty (t2/select-pks-vec :model/MetabotEntity :metabot_id id))]
-      (delete-all-metabot-prompts id)
-      (generate-sample-prompts entity-ids)))
+    (delete-all-metabot-prompts id)
+    (generate-sample-prompts id))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/:id/prompt-suggestions"
@@ -118,15 +113,14 @@
         rand-fn (case (mdb/db-type)
                   :postgres :random
                   :rand)
-        base-query (cond-> {:join  [[{:select [:id :name :type :metabot_entity_id]
-                                      :from   [[(metabot-v3.tools.u/metabot-scope-query
-                                                 [:= :mbe.metabot_id id])
+        base-query (cond-> {:join  [[{:select [:id :name :type]
+                                      :from   [[(metabot-v3.tools.u/metabot-scope-query id)
                                                 :scope]]}
                                      :card]
                                     [:and
-                                     [:= :card.id                :metabot_prompt.card_id]
-                                     [:= :card.metabot_entity_id :metabot_prompt.metabot_entity_id]]]
-                            :where [:and]}
+                                     [:= :card.id :metabot_prompt.card_id]]]
+                            :where [:and
+                                    [:= :metabot_prompt.metabot_id id]]}
                      model    (update :where conj [:= :card.type model])
                      model_id (update :where conj [:= :card.id model_id]))
         total (t2/count :model/MetabotPrompt base-query)
@@ -166,11 +160,7 @@
   (api/check-superuser)
   (t2/delete! :model/MetabotPrompt {:where [:and
                                             [:= :id prompt-id]
-                                            [:exists {:select [:*]
-                                                      :from   [[:metabot_entity :mbe]]
-                                                      :where  [:and
-                                                               [:= :mbe.id :metabot_prompt.metabot_entity_id]
-                                                               [:= :mbe.metabot_id id]]}]]})
+                                            [:= :metabot_id id]]})
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
