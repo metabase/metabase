@@ -22,8 +22,6 @@
   [:multi
    {:dispatch (some-fn keyword? string?)}
    [true  [:enum {:decode/normalize common/normalize-keyword} :all :none]]
-   ;; TODO -- `:fields` is supposed to be distinct (ignoring UUID), e.g. you can't have `[:field {} 1]` in there
-   ;; twice. (#32489)
    [false
     [:and
      [:sequential {:min 1} [:ref :mbql.clause/field]]

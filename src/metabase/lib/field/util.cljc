@@ -9,12 +9,11 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
-;;; TODO (Cam 6/24/25) -- this is fundamentally broken -- see QUE-1375
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
   [column :- [:map
               [:lib/source {:optional true} ::lib.schema.metadata/column.source]]]
-  (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
+  (boolean (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
 (mu/defn inherited-column-name :- [:maybe :string]
   "If the field ref for this `column` should be name-based, returns the name used in the field ref.
