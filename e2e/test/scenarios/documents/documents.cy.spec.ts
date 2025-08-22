@@ -20,6 +20,12 @@ H.describeWithSnowplowEE("documents", () => {
   });
 
   it("should allow you to create a new document from the new button and save", () => {
+    cy.intercept("GET", "/api/ee/document/1", (req) => {
+      req.continue((res) => {
+        res.delay = 2000;
+      });
+    });
+
     cy.visit("/");
 
     H.newButton("Document").click();
@@ -41,6 +47,11 @@ H.describeWithSnowplowEE("documents", () => {
     );
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+
+    // We should not show a loading state in between creating a document and viewing the created document.
+    cy.location("pathname").should("eq", "/document/1");
+    cy.findByTestId("editor-loader", { timeout: 300 }).should("not.exist");
+
     cy.title().should("eq", "Test Document · Metabase");
 
     H.expectUnstructuredSnowplowEvent({ event: "document_created" });
