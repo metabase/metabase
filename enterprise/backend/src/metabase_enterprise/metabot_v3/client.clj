@@ -126,14 +126,12 @@
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
     (let [url      (agent-v2-endpoint-url)
-          body     (-> {:messages        messages
-                        :context         context
-                        :conversation_id conversation-id
-                        :profile_id      profile-id
-                        :user_id         api/*current-user-id*}
-                       (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en)
-                       ;; BOT-327 Do not apply key transformation to state
-                       (assoc :state state))
+          body     {:messages        messages
+                    :context         context
+                    :conversation_id conversation-id
+                    :profile_id      profile-id
+                    :state           state
+                    :user_id         api/*current-user-id*}
           _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Service:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "application/json"
