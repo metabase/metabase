@@ -3,6 +3,7 @@ import { useFormik } from "formik";
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import Animation from "metabase/css/core/animation.module.css";
 import { Button, Center, Flex, Loader, Modal } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
@@ -16,6 +17,7 @@ import type {
 import { ModalParameterActionInput } from "./ModalParameterActionInput";
 import S from "./TableActionFormModal.module.css";
 import { TableActionFormModalParameter } from "./TableActionFormModalParameter";
+import { useActionFormUnsavedLeaveConfirmation } from "./use-action-form-unsaved-leave-confirmation";
 
 interface CreateRowActionFormModalProps {
   opened: boolean;
@@ -65,9 +67,10 @@ export function CreateRowActionFormModal({
     resetForm,
     setFieldValue,
     handleSubmit,
+    values,
     validateForm: revalidateForm,
   } = useFormik({
-    initialValues: initialValues ?? {},
+    initialValues: initialValues ?? ({} as Record<string, RowValue>),
     onSubmit: handleFormikSubmit,
     validate: validateForm,
     validateOnMount: true,
@@ -81,57 +84,80 @@ export function CreateRowActionFormModal({
     }
   }, [opened, resetForm, revalidateForm, initialValues]);
 
+  const shouldShowLeaveConfirmation = useCallback(() => {
+    return Object.keys(values).length > 0;
+  }, [values]);
+
+  const {
+    showLeaveConfirmation,
+    handleClose,
+    handleContinue,
+    handleLeaveConfirmation,
+  } = useActionFormUnsavedLeaveConfirmation({
+    shouldShowLeaveConfirmation,
+    onClose,
+  });
+
   return (
-    <Modal.Root opened={opened} onClose={onClose}>
-      <Modal.Overlay />
-      <Modal.Content
-        transitionProps={{ transition: "slide-left" }}
-        classNames={{
-          content: cx(S.modalContent, Animation.slideLeft),
-        }}
-      >
-        <form onSubmit={handleSubmit}>
-          <Modal.Header px="xl" pb="0" className={S.modalHeader}>
-            <Modal.Title>{t`Create a new record`}</Modal.Title>
-          </Modal.Header>
-          <Modal.Body px="xl" py="lg" className={cx(S.modalBody)}>
-            {!description ? (
-              <Center className={S.modalBodyLoader}>
-                <Loader />
-              </Center>
-            ) : (
-              description.parameters.map((parameter) => {
-                return (
-                  <TableActionFormModalParameter
-                    key={parameter.id}
-                    parameter={parameter}
-                  >
-                    <ModalFormInput
-                      initialValue={initialValues?.[parameter.id]}
+    <>
+      <LeaveConfirmModal
+        opened={showLeaveConfirmation}
+        onConfirm={handleLeaveConfirmation}
+        onClose={handleContinue}
+      />
+      <Modal.Root opened={opened} onClose={handleClose}>
+        <Modal.Overlay />
+        <Modal.Content
+          transitionProps={{ transition: "slide-left" }}
+          classNames={{
+            content: cx(S.modalContent, Animation.slideLeft),
+          }}
+        >
+          <form onSubmit={handleSubmit}>
+            <Modal.Header px="xl" pb="0" className={S.modalHeader}>
+              <Modal.Title>{t`Create a new record`}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body px="xl" py="lg" className={cx(S.modalBody)}>
+              {!description ? (
+                <Center className={S.modalBodyLoader}>
+                  <Loader />
+                </Center>
+              ) : (
+                description.parameters.map((parameter) => {
+                  return (
+                    <TableActionFormModalParameter
+                      key={parameter.id}
                       parameter={parameter}
-                      onChange={setFieldValue}
-                    />
-                  </TableActionFormModalParameter>
-                );
-              })
-            )}
-          </Modal.Body>
-          <Flex px="xl" className={S.modalFooter} gap="lg" justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
-              {t`Cancel`}
-            </Button>
-            <Button
-              disabled={isLoading || !isValid}
-              variant="filled"
-              type="submit"
-              data-testid="create-row-form-submit-button"
-            >
-              {t`Create`}
-            </Button>
-          </Flex>
-        </form>
-      </Modal.Content>
-    </Modal.Root>
+                    >
+                      <ModalFormInput
+                        initialValue={
+                          values[parameter.id] ?? initialValues?.[parameter.id]
+                        }
+                        parameter={parameter}
+                        onChange={setFieldValue}
+                      />
+                    </TableActionFormModalParameter>
+                  );
+                })
+              )}
+            </Modal.Body>
+            <Flex px="xl" className={S.modalFooter} gap="lg" justify="flex-end">
+              <Button variant="subtle" onClick={handleClose}>
+                {t`Cancel`}
+              </Button>
+              <Button
+                disabled={isLoading || !isValid}
+                variant="filled"
+                type="submit"
+                data-testid="create-row-form-submit-button"
+              >
+                {t`Create`}
+              </Button>
+            </Flex>
+          </form>
+        </Modal.Content>
+      </Modal.Root>
+    </>
   );
 }
 
