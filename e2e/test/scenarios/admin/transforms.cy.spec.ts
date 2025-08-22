@@ -321,8 +321,8 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.popover().findByText("New tag").should("be.visible");
 
       cy.log("Navigate to transform B");
-      cy.findByTestId("admin-layout-sidebar").findByText("Transforms").click();
-      H.main().findByText("Transform B").click();
+      getNavSidebar().findByText("Transforms").click();
+      getTransformListPage().findByText("Transform B").click();
 
       cy.log("Remove the new tag from transform B");
       getTagsInput().click();
@@ -337,7 +337,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       cy.log("Navigate to transform A");
       cy.findByTestId("admin-layout-sidebar").findByText("Transforms").click();
-      H.main().findByText("Transform A").click();
+      getTransformListPage().findByText("Transform A").click();
 
       cy.log("The tag should be gone");
       getTagsInput()
