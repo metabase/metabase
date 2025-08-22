@@ -56,7 +56,7 @@
   - dashcard on dashboard
   - alert/pulse"
   [qp :- ::qp.schema/qp]
-  (mu/fn [query :- ::qp.schema/query
+  (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
     (let [now  (t/offset-date-time)
           rff* (fn [metadata]

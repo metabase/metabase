@@ -2126,7 +2126,7 @@
   Typically this is straightforward: queries generally specify the database ID they are querying.
 
   However, in some cases where the source is a saved question, a magic value is used,
-  [[metabase.legacy-mbql.schema/saved-questions-virtual-database-id]]:
+  [[metabase.lib.schema.id/saved-questions-virtual-database-id]]:
 
       {:database -1337}
 

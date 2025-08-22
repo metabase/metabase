@@ -10,7 +10,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -756,6 +755,8 @@
           (mt/with-no-data-perms-for-all-users!
             (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
             (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+            ;; allowing `with-temp` here since we need it to make Collections
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection collection {}
                            :model/Card       card-1 {:collection_id (u/the-id collection)
                                                      :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
@@ -800,6 +801,8 @@
   using Rasta. Use this to test how the API endpoint behaves based on certain permissions grants for the `All Users`
   group."
   [expected-status-code db-or-id source-collection-or-id-or-nil dest-collection-or-id-or-nil]
+  ;; allowing `with-temp` here since we hit the REST API
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (mt/with-temp [:model/Card card {:collection_id (some-> source-collection-or-id-or-nil u/the-id)
                                    :dataset_query {:database (u/the-id db-or-id)
                                                    :type     :native
@@ -817,6 +820,8 @@
     (mt/with-temp-copy-of-db
       (testing (str "To save a Card that uses another Card as its source, you only need read permissions for the Collection "
                     "the Source Card is in, and write permissions for the Collection you're trying to save the new Card in")
+        ;; allowing `with-temp` here since we need it to make Collections
+        #_{:clj-kondo/ignore [:discouraged-var]}
         (mt/with-temp [:model/Collection source-card-collection {}
                        :model/Collection dest-card-collection   {}]
           (perms/grant-collection-read-permissions!      (perms/all-users-group) source-card-collection)
@@ -826,12 +831,16 @@
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
+          ;; allowing `with-temp` here since we need it to make Collections
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Collection dest-card-collection]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
+          ;; allowing `with-temp` here since we need it to make Collections
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Collection source-card-collection {}
                          :model/Collection dest-card-collection   {}]
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
@@ -840,12 +849,16 @@
 
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
+            ;; allowing `with-temp` here since we need it to make Collections
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection source-card-collection]
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
+            ;; allowing `with-temp` here since we need it to make Collections
+            #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Collection source-card-collection {}
                            :model/Collection dest-card-collection   {}]
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
@@ -1154,7 +1167,8 @@
                               :limit        10})]
             (doseq [level (range 4)]
               (testing (format "%d level(s) of nesting" level)
-                (let [query (mt/nest-query base-query level)]
+                ;; existing usage, do not use this going forward
+                (let [query #_{:clj-kondo/ignore [:deprecated-var]} (mt/nest-query base-query level)]
                   (testing (format "\nQuery = %s" (u/pprint-to-str query))
                     (is (= (mt/$ids products
                              {:name         "EAN"
@@ -1183,6 +1197,8 @@
                                                        :alias        "Products"}]
                                        :order-by     [[:asc $id]]
                                        :limit        2})
+                                    ;; existing usage, do not use this going forward
+                                    #_{:clj-kondo/ignore [:deprecated-var]}
                                     (mt/nest-query level))]
                       (qp/process-query query)))]
             (testing "with no FK remappings"
@@ -1655,7 +1671,7 @@
                     (mt/normal-drivers-with-feature :left-join))
     (mt/dataset
       crazy-names
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [mp (mt/metadata-provider)
             query (as-> (lib/query mp (lib.metadata/table mp (mt/id "space table"))) $q
                     (lib/join $q (-> (lib/join-clause (lib.metadata/table mp (mt/id "space table")))
                                      (lib/with-join-alias "Space Table Alias")
@@ -1677,7 +1693,7 @@
   (mt/test-drivers (set/intersection
                     (mt/normal-drivers-with-feature :identifiers-with-spaces)
                     (mt/normal-drivers-with-feature :left-join))
-    (let [mp              (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp              (mt/metadata-provider)
           card-query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                               (lib/order-by (lib.metadata/field mp (mt/id :orders :created_at)))
                               (lib/limit 1)
@@ -1716,7 +1732,7 @@
 
 (deftest ^:parallel multiple-bucketings-of-a-column-test
   (testing "Multiple bucketings of a column in a nested query should be returned (#46644)"
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           created-at-field (lib.metadata/field mp (mt/id :orders :created_at))
           base-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))

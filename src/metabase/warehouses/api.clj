@@ -33,7 +33,7 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -1326,7 +1326,7 @@
             [:reasons
              [:sequential [:map
                            [:key :keyword]
-                           [:message :string]]]]]]]])
+                           [:message [:or :string [:fn i18n/localized-string?]]]]]]]]]])
 
 (api.macros/defendpoint :get "/:id/settings-available" :- [:map [:settings ::available-settings]]
   "Get all database-local settings and their availability for the given database."

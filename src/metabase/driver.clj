@@ -127,9 +127,9 @@
 
 (declare initialize!)
 
-(defn the-initialized-driver
+(mu/defn the-initialized-driver
   "Like [[the-driver]], but also initializes the driver if not already initialized."
-  [driver]
+  [driver :- [:or :keyword :string]]
   (let [driver (keyword driver)]
     ;; Fastpath: an initialized driver `driver` is always already registered. Checking for `initialized?` is faster
     ;; than doing the `registered?` check inside `load-driver-namespace-if-needed!`.

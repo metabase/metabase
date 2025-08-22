@@ -1,4 +1,7 @@
-(ns ^:mb/driver-tests metabase.query-processor.persistence-test
+(ns ^:mb/driver-tests metabase.query-processor-test.persistence-test
+  {:clj-kondo/config '{:linters
+                       ;; allowing with-temp in this namespace since model persistence needs to hit the app DB
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
