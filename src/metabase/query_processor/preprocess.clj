@@ -54,7 +54,7 @@
 (set! *warn-on-reflection* true)
 
 ;;; the following helper functions are temporary, to aid in the transition from a legacy MBQL QP to a pMBQL QP. Each
-;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-pmbql]], and will then see the
+;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-mbql-5]], and will then see the
 ;;; flavor of MBQL it is written for.
 
 (mu/defn- ->legacy :- mbql.s/Query
@@ -79,7 +79,7 @@
   (cond->> query
     (not (:lib/type query)) (lib/query (qp.store/metadata-provider))))
 
-(defn- ensure-pmbql [middleware-fn]
+(defn- ensure-mbql-5 [middleware-fn]
   (-> (fn [query]
         (let [query (->mbql-5 query)]
           (vary-meta (middleware-fn query)
@@ -98,7 +98,7 @@
              from))
 
 ;;; TODO -- this is broken and disables enforcement inside the middleware itself -- see QUE-1346
-(defn- ensure-pmbql-for-unclean-query
+(defn- ensure-mbql-5-for-unclean-query
   [middleware-fn]
   (-> (fn [query]
         (as-> query query
@@ -126,24 +126,24 @@
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   #_{:clj-kondo/ignore [:deprecated-var]}
   [#'normalize/normalize-preprocessing-middleware
-   (ensure-pmbql #'qp.perms/remove-permissions-key)
-   (ensure-pmbql #'qp.perms/remove-source-card-keys)
-   (ensure-pmbql #'qp.perms/remove-gtapped-table-keys)
-   (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
-   (ensure-pmbql #'validate/validate-query)
-   (ensure-pmbql #'fetch-source-query/resolve-source-cards)
-   (ensure-pmbql #'expand-aggregations/expand-aggregations)
-   (ensure-pmbql #'metrics/adjust)
-   (ensure-pmbql #'expand-macros/expand-macros)
-   (ensure-pmbql #'qp.resolve-referenced/resolve-referenced-card-resources)
-   (ensure-pmbql #'parameters/substitute-parameters)
-   (ensure-pmbql #'qp.resolve-source-table/resolve-source-tables)
-   (ensure-pmbql #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
-   (ensure-pmbql #'ensure-joins-use-source-query/ensure-joins-use-source-query)
+   (ensure-mbql-5 #'qp.perms/remove-permissions-key)
+   (ensure-mbql-5 #'qp.perms/remove-source-card-keys)
+   (ensure-mbql-5 #'qp.perms/remove-gtapped-table-keys)
+   (ensure-mbql-5 #'qp.constraints/maybe-add-default-userland-constraints)
+   (ensure-mbql-5 #'validate/validate-query)
+   (ensure-mbql-5 #'fetch-source-query/resolve-source-cards)
+   (ensure-mbql-5 #'expand-aggregations/expand-aggregations)
+   (ensure-mbql-5 #'metrics/adjust)
+   (ensure-mbql-5 #'expand-macros/expand-macros)
+   (ensure-mbql-5 #'qp.resolve-referenced/resolve-referenced-card-resources)
+   (ensure-mbql-5 #'parameters/substitute-parameters)
+   (ensure-mbql-5 #'qp.resolve-source-table/resolve-source-tables)
+   (ensure-mbql-5 #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
+   (ensure-mbql-5 #'ensure-joins-use-source-query/ensure-joins-use-source-query)
    (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
-   (ensure-pmbql #'qp.middleware.enterprise/apply-impersonation)
-   (ensure-pmbql #'qp.middleware.enterprise/attach-destination-db-middleware)
+   (ensure-mbql-5 #'qp.middleware.enterprise/apply-impersonation)
+   (ensure-mbql-5 #'qp.middleware.enterprise/attach-destination-db-middleware)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses) ; #61398
@@ -151,24 +151,24 @@
    ;; after adding any implicit joins. Implicit joins do not need to get remaps since we only use them for fetching
    ;; specific columns.
    (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
-   (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
+   (ensure-mbql-5 #'qp.add-remaps/add-remapped-columns)
    #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
-   (ensure-pmbql #'binning/update-binning-strategy)
-   (ensure-legacy #'desugar/desugar) ; #62319
+   (ensure-mbql-5 #'binning/update-binning-strategy)
+   (ensure-mbql-5 #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
-   (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
+   (ensure-mbql-5 #'qp.add-implicit-joins/add-implicit-joins)
    (ensure-legacy #'resolve-joins/resolve-joins) ; #61398
-   (ensure-pmbql #'resolve-joined-fields/resolve-joined-fields)
-   (ensure-pmbql #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
+   (ensure-mbql-5 #'resolve-joined-fields/resolve-joined-fields)
+   (ensure-mbql-5 #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
    (ensure-legacy #'qp.pre-alias-aggregations/pre-alias-aggregations)
    (ensure-legacy #'qp.wrap-value-literals/wrap-value-literals)
-   (ensure-pmbql-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
+   (ensure-mbql-5-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
-   (ensure-pmbql #'limit/add-default-limit)
+   (ensure-mbql-5 #'limit/add-default-limit)
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)
    ;; return pMBQL at the end
