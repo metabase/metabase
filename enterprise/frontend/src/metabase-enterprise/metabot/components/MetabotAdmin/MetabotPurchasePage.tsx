@@ -176,8 +176,12 @@ export const MetabotPurchasePage = () => {
             )}
           </FormProvider>
         ) : (
-          /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
-          <Text>{t`Please ask a Metabase Store user of your organization to enable this for you.`}</Text>
+          <Text fw="bold">
+            {
+              /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
+              t`Please ask a Metabase Store Admin of your organization to enable this for you.`
+            }
+          </Text>
         )}
       </SettingsSection>
       <MetabotPurchaseSettingUpModal
