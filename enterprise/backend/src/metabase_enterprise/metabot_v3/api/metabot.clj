@@ -14,42 +14,6 @@
    [metabase.request.core :as request]
    [toucan2.core :as t2]))
 
-;; TODO: Eventually this should be paged but since we are just going to hardcode two models for now
-;; lets not
-(api.macros/defendpoint :get "/"
-  "List configured metabot instances"
-  []
-  (api/check-superuser)
-  {:items (t2/select :model/Metabot {:order-by [[:name :asc]]})})
-
-(api.macros/defendpoint :get "/:id"
-  "Retrieve one metabot instance"
-  [{:keys [id]} :- [:map [:id pos-int?]]]
-  (api/check-superuser)
-  (api/check-404 (t2/select-one :model/Metabot :id id)))
-
-(api.macros/defendpoint :put "/:id"
-  "Update a metabot instance"
-  [{:keys [id]} :- [:map [:id pos-int?]]
-   _query-params
-   metabot-updates :- [:map
-                       [:use_verified_content {:optional true} :boolean]
-                       [:collection_id {:optional true} [:maybe pos-int?]]]]
-  (api/check-superuser)
-  (api/check-404 (t2/exists? :model/Metabot :id id))
-  (let [old-metabot (t2/select-one :model/Metabot :id id)
-        verified-content-changed? (and (contains? metabot-updates :use_verified_content)
-                                       (not= (:use_verified_content old-metabot)
-                                             (:use_verified_content metabot-updates)))
-        collection-changed? (and (contains? metabot-updates :collection_id)
-                                 (not= (:collection_id old-metabot)
-                                       (:collection_id metabot-updates)))]
-    (t2/update! :model/Metabot id metabot-updates)
-    (when (or verified-content-changed? collection-changed?)
-      (delete-all-metabot-prompts id)
-      (generate-sample-prompts id))
-    (t2/select-one :model/Metabot :id id)))
-
 (defn- column-input
   [answer-source-column]
   (some-> answer-source-column (select-keys [:name :type :description :table-reference])))
@@ -101,6 +65,42 @@
 (defn- delete-all-metabot-prompts
   [metabot-id]
   (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id metabot-id]}))
+
+;; TODO: Eventually this should be paged but since we are just going to hardcode two models for now
+;; lets not
+(api.macros/defendpoint :get "/"
+  "List configured metabot instances"
+  []
+  (api/check-superuser)
+  {:items (t2/select :model/Metabot {:order-by [[:name :asc]]})})
+
+(api.macros/defendpoint :get "/:id"
+  "Retrieve one metabot instance"
+  [{:keys [id]} :- [:map [:id pos-int?]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/Metabot :id id)))
+
+(api.macros/defendpoint :put "/:id"
+  "Update a metabot instance"
+  [{:keys [id]} :- [:map [:id pos-int?]]
+   _query-params
+   metabot-updates :- [:map
+                       [:use_verified_content {:optional true} :boolean]
+                       [:collection_id {:optional true} [:maybe pos-int?]]]]
+  (api/check-superuser)
+  (api/check-404 (t2/exists? :model/Metabot :id id))
+  (let [old-metabot (t2/select-one :model/Metabot :id id)
+        verified-content-changed? (and (contains? metabot-updates :use_verified_content)
+                                       (not= (:use_verified_content old-metabot)
+                                             (:use_verified_content metabot-updates)))
+        collection-changed? (and (contains? metabot-updates :collection_id)
+                                 (not= (:collection_id old-metabot)
+                                       (:collection_id metabot-updates)))]
+    (t2/update! :model/Metabot id metabot-updates)
+    (when (or verified-content-changed? collection-changed?)
+      (delete-all-metabot-prompts id)
+      (generate-sample-prompts id))
+    (t2/select-one :model/Metabot :id id)))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones."
