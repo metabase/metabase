@@ -76,7 +76,7 @@ module.exports = {
       },
     },
     {
-      files: ["embedding-sdk-{shared,shared}/**/*.{ts,tsx,js,jsx}"],
+      files: ["embedding-sdk-{package,shared}/**/*.{ts,tsx,js,jsx}"],
       excludedFiles: [
         "embedding-sdk-package/{bin,cli}/*.{ts,tsx,js,jsx}",
         "**/jest/**",
