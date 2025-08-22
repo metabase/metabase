@@ -275,6 +275,10 @@
   "Should we enable the semantic search backend?"
   :semantic-search)
 
+(define-premium-feature ^{:added "0.56.0"} offer-metabase-ai?
+  "Offer Metabase AI add-on"
+  :offer-metabase-ai)
+
 (define-premium-feature ^{:added "0.57.0"} table-data-editing?
   "Should we allow users to edit the data within tables?"
   :table-data-editing)
@@ -286,10 +290,6 @@
 (define-premium-feature ^{:added "0.57.0"} enable-transforms?
   "Should we allow users to use transforms?"
   :transforms)
-
-(define-premium-feature ^{:added "0.57.0"} offer-metabase-ai?
-  "Offer Metabase AI add-on"
-  :offer-metabase-ai)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
