@@ -8,7 +8,7 @@ import {
 } from "metabase/detail-view/utils";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { OptionsType } from "metabase/lib/formatting/types";
-import { Box, Group, Stack, Text, rem } from "metabase/ui";
+import { Flex, Group, Stack, Text, rem } from "metabase/ui";
 import type { DatasetColumn, RowValues, Table } from "metabase-types/api";
 
 import S from "./DetailsGroup.module.css";
@@ -55,11 +55,11 @@ export const DetailsGroup = ({
               {getColumnTitle(column, columnSettings)}
             </Text>
 
-            <Box flex={responsive ? "0 1 50%" : "1"}>
+            <Flex flex={responsive ? "0 1 50%" : "1"}>
               <Value column={column} field={field} value={value}>
                 {renderValue(tc, value, column, columnSettings)}
               </Value>
-            </Box>
+            </Flex>
           </Group>
         );
       })}
