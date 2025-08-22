@@ -152,6 +152,15 @@
        [(keyword (str (:gate-table-name index-metadata) "_gated_at")) :if-not-exists]
        [(keyword (:gate-table-name index-metadata)) :gated_at :id])
       :quoted true))
+    (log/info "Creating gate table tombstone cleanup index if not exists")
+    ;; Partial index on nil documents in the gate table to optimize identification of old tombstones
+    (jdbc/execute!
+     pgvector
+     (sql/format
+      {:create-index [(keyword (str (:gate-table-name index-metadata) "_tombstone_cleanup")) :if-not-exists]
+       :on [(keyword (:gate-table-name index-metadata)) :gated_at]
+       :where [:and [:= :document nil] [:= :document_hash nil]]}
+      :quoted true))
     nil))
 
 (defn drop-tables-if-exists!
