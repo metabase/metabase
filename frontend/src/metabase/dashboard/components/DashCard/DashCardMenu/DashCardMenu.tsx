@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
+import { transformSdkQuestion } from "embedding-sdk-bundle/lib/transform-question";
 import {
   canDownloadResults,
   canEditQuestion,

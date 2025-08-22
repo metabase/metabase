@@ -135,7 +135,9 @@
            :display_name            (or (:display_name table)
                                         (humanization/name->human-readable-name (:name table)))
            :name                    (:name table)
-           :is_writable             (:is_writable table)})))
+           :is_writable             (:is_writable table)}
+          (when (:is_sample database)
+            {:data_authority :ingested}))))
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
@@ -154,7 +156,10 @@
                                              (dissoc :visibility_type)
 
                                              true
-                                             (assoc :active true))))
+                                             (assoc :active true)
+
+                                             (:is_sample database)
+                                             (assoc :data_authority :ingested))))
     ;; otherwise create a new Table
     (create-table! database table)))
 

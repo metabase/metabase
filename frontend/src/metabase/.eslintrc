@@ -11,6 +11,7 @@
           "metabase-enterprise/*",
           "cljs/metabase.lib*",
           "/embedding-sdk",
+          "/embedding-sdk-bundle",
         ],
         "paths": [
           {

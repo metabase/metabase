@@ -1984,3 +1984,36 @@ describe("Issue 56913", () => {
       .should("be.visible");
   });
 });
+
+describe.skip("issue 45919", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow to query a model with a hidden column", () => {
+    cy.log("create a new model with result_metadata");
+    cy.visit("/model/new");
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+    H.entityPickerModal().findByText("People").click();
+    H.runButtonOverlay().click();
+    H.tableInteractive().should("be.visible");
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.tableInteractiveHeader().findByText("Password").should("be.visible");
+
+    cy.log("hide the Password field");
+    cy.request("PUT", `/api/field/${PEOPLE.PASSWORD}`, {
+      visibility_type: "sensitive",
+    });
+
+    cy.log("the query should succeed, and the Password field should be hidden");
+    H.queryBuilderHeader().button("Refresh").click();
+    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().findByText("Password").should("not.exist");
+    H.tableInteractiveHeader().findByText("Email").should("be.visible");
+  });
+});

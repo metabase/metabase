@@ -434,10 +434,10 @@
     "dev-ee": "yarn && yarn clean-dev:cljs && concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red' 'clojure -M:run:ee:dev:dev-start --hot' 'MB_EDITION=ee yarn build-hot:js-wait' 'MB_EDITION=ee yarn build:cljs' 'yarn build-static-viz:watch-wait'",
     "dev-ee-hot-be": "yarn && yarn clean-dev:cljs && concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red' 'clojure -M:run:ee:dev:dev-start --hot' 'MB_EDITION=ee ENABLE_CLJS_HOT_RELOAD=true yarn build-hot:js-wait' 'MB_EDITION=ee yarn build-hot:cljs' 'yarn build-static-viz:watch-wait'",
     "embedding-sdk:generate-package": "node ./bin/embedding-sdk/generate-sdk-package-files.js",
-    "embedding-sdk:generate-changelog": "yarn conventional-changelog --config enterprise/frontend/src/embedding-sdk/conventional-changelog-config.js",
+    "embedding-sdk:generate-changelog": "yarn conventional-changelog --config enterprise/frontend/src/embedding-sdk-bundle/conventional-changelog-config.js",
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
-    "embedding-sdk:generate-nextjs-compat": "tsx enterprise/frontend/src/embedding-sdk/bin/generate-nextjs-compat.ts",
-    "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk/",
+    "embedding-sdk:generate-nextjs-compat": "tsx enterprise/frontend/src/embedding-sdk-bundle/bin/generate-nextjs-compat.ts",
+    "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk-bundle/",
     "embedding-sdk:dts:generate": "yarn embedding-sdk:clean:tsbuildinfo && yarn tsc --project tsconfig.sdk.json || true && yarn embedding-sdk:dts:fixup",
     "embedding-sdk:dts:fixup": "node ./bin/embedding-sdk/fixup-types-after-compilation.js",
     "embedding-sdk:docs:generate:pure": "typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options ./.typedoc/typedoc.markdown.config.js",
@@ -514,7 +514,7 @@
     "e2e/test/scenarios/*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}": [
       "node e2e/validate-e2e-test-files.js"
     ],
-    "enterprise/frontend/src/embedding-sdk/README.md": [
+    "enterprise/frontend/src/embedding-sdk-bundle/README.md": [
       "prettier --write"
     ],
     "+(.storybook|.storybook-sdk)/**/*.{js,jsx,ts,tsx,css}": [
