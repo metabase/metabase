@@ -84,7 +84,7 @@
         (with-transform-cleanup! [target-table {:type   target-type
                                                 :schema schema
                                                 :name   "widgets_daily"}]
-          (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          (let [mp (mt/metadata-provider)
                 transforms-products (lib.metadata/table mp (mt/id :transforms_products))
                 transforms-orders (lib.metadata/table mp (mt/id :transforms_orders))
                 products-id (lib.metadata/field mp (mt/id :transforms_products :id))
