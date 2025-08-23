@@ -606,8 +606,8 @@
       str/trim))
 
 (mu/defn add-summary-clause :- ::lib.schema/query
-  "If the given stage has no summary, it will drop :fields, :order-by, and :join :fields from it,
-   as well as dropping any subsequent stages."
+  "If the given stage has no summary, it will drop :order-by and :join :fields from it,
+   as well as dropping any subsequent stages. :fields are preserved to enable drill-through."
   [query :- ::lib.schema/query
    stage-number :- :int
    location :- [:enum :breakout :aggregation]
@@ -629,7 +629,7 @@
            stage-number
            (fn [stage]
              (-> stage
-                 (dissoc :order-by :fields)
+                 (dissoc :order-by)
                  (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
