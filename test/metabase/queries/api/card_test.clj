@@ -1336,6 +1336,40 @@
                 (is (= (:display newcard) (:display card)))
                 (is (not= (:id newcard) (:id card)))))))))))
 
+(deftest copy-card-permissions-test
+  (testing "POST /api/card/:id/copy should check query permissions"
+    (testing "Should not be able to copy a card with a blocked database"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Table {table-id :id} {:db_id db-id}
+                       :model/Collection collection {}]
+          ;; Grant collection permissions but block database access
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :blocked)
+          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :no)
+          
+          (mt/with-temp [:model/Card {base-card-id :id} {:name "Base Card"
+                                                         :collection_id (u/the-id collection)
+                                                         :dataset_query {:database db-id
+                                                                         :type :query
+                                                                         :query {:source-table table-id}}
+                                                         :database_id db-id
+                                                         :table_id table-id}
+                         :model/Card {nested-card-id :id} {:name "Nested Card"
+                                                           :collection_id (u/the-id collection)
+                                                           :dataset_query {:database db-id
+                                                                           :type :query
+                                                                           :query {:source-table (str "card__" base-card-id)}}
+                                                           :database_id db-id}]
+            
+            (testing "Direct table access should be blocked"
+              (is (= "You cannot save this Question because you do not have permissions to run its query."
+                     (mt/user-http-request :rasta :post 403 (format "card/%d/copy" base-card-id)))))
+            
+            (testing "Nested query (card based on blocked table) should also be blocked"
+              (is (= "You cannot save this Question because you do not have permissions to run its query."
+                     (mt/user-http-request :rasta :post 403 (format "card/%d/copy" nested-card-id)))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FETCHING A SPECIFIC CARD                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
