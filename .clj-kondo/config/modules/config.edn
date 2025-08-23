@@ -1185,6 +1185,13 @@
    :api  #{metabase.startup.core}
    :uses #{util}}
 
+  store-api
+  {:team "Cloud"
+   :api  #{metabase.store-api.settings}
+   :uses #{config
+           settings
+           util}}
+
   sync
   {:team "Querying"
    :api  #{metabase.sync.api
