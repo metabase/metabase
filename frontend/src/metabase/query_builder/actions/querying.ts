@@ -158,7 +158,11 @@ export const runQuestionQuery = ({
       isDirty: isQueryDirty,
     })
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
-      .catch((error) => dispatch(queryErrored(startTime, error)));
+      .catch((error) =>
+        error.status < 500
+          ? dispatch(queryCompleted(question, [error.data]))
+          : dispatch(queryErrored(startTime, error)),
+      );
 
     dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
   };
