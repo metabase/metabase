@@ -377,7 +377,7 @@
                    (->> (mt/formatted-rows [int])))))))))
 
 (deftest ^:parallel breakout-and-join-fields-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "adding a breakout to a query with fields from joins works"
       (let [mp (mt/metadata-provider)]
         (is (= [["Doohickey"] ["Gadget"] ["Gizmo"]]

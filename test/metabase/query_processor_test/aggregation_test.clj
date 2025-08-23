@@ -302,7 +302,7 @@
                    (->> (mt/formatted-rows [int])))))))))
 
 (deftest ^:parallel aggregation-and-join-fields-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "adding an aggregation to a query with fields from joins works"
       (let [mp (mt/metadata-provider)]
         (is (= [[18760]]
