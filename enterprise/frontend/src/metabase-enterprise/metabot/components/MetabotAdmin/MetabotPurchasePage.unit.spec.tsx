@@ -1,31 +1,51 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  findRequests,
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/hoc/Title";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotPurchasePage } from "./MetabotPurchasePage";
+
+const setupRefreshableProperties = ({
+  current_user_matches_store_user,
+  has_metabot_v3 = false,
+}: {
+  current_user_matches_store_user: boolean;
+  has_metabot_v3?: boolean;
+}) => {
+  const settings = createMockSettings({
+    "token-status": {
+      status: "",
+      valid: true,
+      features: has_metabot_v3 ? ["metabot-v3"] : [],
+      "store-users": current_user_matches_store_user
+        ? [{ email: "user@example.com" }]
+        : [],
+    },
+    "token-features": createMockTokenFeatures({ metabot_v3: has_metabot_v3 }),
+  });
+  setupPropertiesEndpoints(settings);
+  return settings;
+};
 
 const setup = async ({
   current_user_matches_store_user,
 }: {
   current_user_matches_store_user: boolean;
 }) => {
-  const settings = createMockSettings({
-    "token-status": {
-      status: "",
-      valid: true,
-      "store-users": current_user_matches_store_user
-        ? [{ email: "user@example.com" }]
-        : [],
-    },
+  const settings = setupRefreshableProperties({
+    current_user_matches_store_user,
   });
-  setupPropertiesEndpoints(settings);
 
   const user = createMockUser({ email: "user@example.com" });
   setupCurrentUserEndpoint(user);
@@ -75,9 +95,43 @@ describe("MetabotPurchasePage", () => {
     expect(
       screen.getByRole("button", { name: /Add Metabot AI/ }),
     ).toBeEnabled();
+  });
+
+  it("submits a HTTP request", async () => {
+    await setup({
+      current_user_matches_store_user: true,
+    });
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /Terms of Service/ }),
+    );
+
     await userEvent.click(
       screen.getByRole("button", { name: /Add Metabot AI/ }),
     );
     expect(screen.getByRole("button", { name: /Success/ })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Setting up Metabot AI, please wait/),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: /Done/ })).toBeDisabled();
+
+    const postRequests = await findRequests("POST");
+    const cloudAddOnsRequest = postRequests.find(({ url }) =>
+      /\/api\/ee\/cloud-add-ons\/metabase-ai$/.test(url),
+    );
+    expect(cloudAddOnsRequest).toBeTruthy();
+    expect("terms_of_service" in cloudAddOnsRequest?.body).toBeTruthy();
+    expect(cloudAddOnsRequest?.body?.terms_of_service).toEqual(true);
+
+    setupRefreshableProperties({
+      current_user_matches_store_user: true,
+      has_metabot_v3: true,
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/Metabot AI is ready/)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: /Done/ })).toBeEnabled();
   });
 });
