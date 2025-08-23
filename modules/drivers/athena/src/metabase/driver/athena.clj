@@ -64,11 +64,13 @@
     :else ".amazonaws.com"))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
-  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as details}]
+  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog hostname], :as details}]
   (-> (merge
        {:classname      "com.amazon.athena.jdbc.AthenaDriver"
         :subprotocol    "athena"
-        :subname        (str "//athena." region (endpoint-for-region region) ":443")
+        :subname       (if (not (str/blank? hostname))
+                         (str "//" hostname ":443")
+                         (str "//athena." region (endpoint-for-region region) ":443"))
         :User           access_key
         :Password       secret_key
         :OutputLocation s3_staging_dir
@@ -85,7 +87,7 @@
                :db :catalog :metabase.driver.athena/schema
                ;; Remove 2.x jdbc driver version options from details. Those are mapped to appropriate 3.x keys few
                ;; on preceding lines
-               :region :access_key :secret_key :s3_staging_dir :workgroup))
+               :region :access_key :secret_key :s3_staging_dir :workgroup :hostname))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
 (defmethod sql-jdbc.conn/data-source-name :athena
