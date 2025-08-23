@@ -20,7 +20,7 @@ export const MetabotPurchaseSettingUpModal = ({
   onClose,
   opened,
 }: Pick<ModalProps, "opened" | "onClose">) => {
-  useTokenRefreshUntil("metabot-v3");
+  useTokenRefreshUntil("metabot-v3", { intervalMs: 1000 });
   const isSettingUp = !hasPremiumFeature("metabot_v3");
 
   return (

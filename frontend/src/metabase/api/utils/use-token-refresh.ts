@@ -37,7 +37,10 @@ export function useTokenRefresh() {
  * a payload with the expected token feature.  This is logically the opposite of
  * `useTokenRefresh`.
  */
-export function useTokenRefreshUntil(tokenFeature: TokenStatusFeature) {
+export function useTokenRefreshUntil(
+  tokenFeature: TokenStatusFeature,
+  { intervalMs = REFRESH_INTERVAL },
+) {
   /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the patten in many components */
   const res = useGetSettingsQuery();
   const dispatch = useDispatch();
@@ -49,8 +52,8 @@ export function useTokenRefreshUntil(tokenFeature: TokenStatusFeature) {
     if (isTokenFeatureMissing) {
       const timeout = setTimeout(() => {
         dispatch(Api.util.invalidateTags(["session-properties"]));
-      }, REFRESH_INTERVAL);
+      }, intervalMs);
       return () => clearTimeout(timeout);
     }
-  }, [res, dispatch, tokenFeature]);
+  }, [res, dispatch, tokenFeature, intervalMs]);
 }
