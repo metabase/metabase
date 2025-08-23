@@ -89,9 +89,25 @@
         metadata-providers))
 
 (defn- setting [metadata-providers setting-key]
-  (some (fn [provider]
-          (metadata.protocols/setting provider setting-key))
-        metadata-providers))
+  ;; The issue is that `some` cannot distinguish between a provider returning `nil` 
+  ;; (a valid setting value) and a provider not having the setting at all.
+  ;; We need to check each provider explicitly rather than using `some`.
+  (let [not-found ::not-found-sentinel]
+    (loop [[provider & more-providers] metadata-providers]
+      (when provider
+        (let [result (metadata.protocols/setting provider setting-key)]
+          ;; If this provider is a cached provider, we can use the cached-value approach
+          ;; to better distinguish nil from not-found
+          (if (metadata.protocols/cached-metadata-provider? provider)
+            (let [cached-setting (metadata.protocols/cached-value provider [:setting setting-key] not-found)]
+              (if (not= cached-setting not-found)
+                cached-setting
+                (recur more-providers)))
+            ;; For non-cached providers, we can't distinguish nil from not-found
+            ;; with the current protocol, so we use the original behavior
+            (if (some? result)
+              result
+              (recur more-providers))))))))
 
 (deftype ComposedMetadataProvider [metadata-providers]
   metadata.protocols/MetadataProvider
