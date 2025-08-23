@@ -104,7 +104,7 @@
            (try (sql-jdbc.conn/connection-details->spec :oracle {:host "localhost"
                                                                  :port 1521})
                 (catch Throwable e
-                  (driver/humanize-connection-error-message :oracle (.getMessage e))))))))
+                  (driver/humanize-connection-error-message :oracle (u/all-ex-messages e))))))))
 
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"

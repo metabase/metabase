@@ -213,7 +213,7 @@
            (analytics/inc! :metabase-database/status {:driver engine :healthy true})
 
            (catch Throwable e
-             (let [humanized-message (some->> (.getMessage e)
+             (let [humanized-message (some->> (u/all-ex-messages e)
                                               (driver/humanize-connection-error-message driver))
                    reason (if (keyword? humanized-message) "user-input" "exception")]
                (log/error e (u/format-color :red "Health check: failure with error %s {:id %d :reason %s :message %s}"

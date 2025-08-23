@@ -307,18 +307,19 @@
     (dateadd unit amount hsql-form)))
 
 (defmethod driver/humanize-connection-error-message :h2
-  [_ message]
-  (condp re-matches message
-    #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
-    :implicitly-relative-db-file-path
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
+      :implicitly-relative-db-file-path
 
-    #"^Database .* not found, .*$"
-    :db-file-not-found
+      #"^Database .* not found, .*$"
+      :db-file-not-found
 
-    #"^Wrong user name or password .*$"
-    :username-or-password-incorrect
+      #"^Wrong user name or password .*$"
+      :username-or-password-incorrect
 
-    message))
+      message)))
 
 (defmethod driver/db-default-timezone :h2
   [_driver _database]
