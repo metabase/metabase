@@ -18,9 +18,9 @@ driver:
       placeholder: "primary"
     - name: s3_staging_dir
       display-name: S3 staging directory
-      helper-text: This S3 staging directory must be in the same region you specify above.
+      helper-text: This S3 staging directory must be in the same region you specify above. Leave it empty if you use managed query results.
       placeholder: s3://your_bucket
-      required: true
+      required: false
     - merge:
       - dbname
       - name: catalog
