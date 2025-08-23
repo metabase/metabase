@@ -8,11 +8,11 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(def error-no-connection
+(def ^:private error-no-connection
   (deferred-tru "Could not establish a connection to Metabase Cloud."))
-(def error-cannot-purchase
+(def ^:private error-cannot-purchase
   (deferred-tru "Could not purchase this add-on."))
-(def error-unexpected
+(def ^:private error-unexpected
   (deferred-tru "Unexpected error"))
 
 (api.macros/defendpoint :post "/:product-type"
