@@ -77,7 +77,7 @@
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database.
   `metadata-fields` can be nil."
-  [card-id database metadata metadata-fields]
+  [card-id metadata metadata-fields]
   (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
                                          (-> (t2/select :model/Field :id [:in ids])
@@ -95,8 +95,7 @@
                       ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make
                       ;; decisions about what kind of dimension options should be added. PK/FK values will be removed
                       ;; after we've added the dimension options
-                      :semantic_type (keyword (:semantic_type col)))
-                     (assoc-field-dimension-options database)))]
+                      :semantic_type (keyword (:semantic_type col)))))]
     fields))
 
 (defn root-collection-schema-name
@@ -133,7 +132,6 @@
 
       include-fields?
       (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
-                                                           database
                                                            (:result_metadata card)
                                                            (when card-id->metadata-fields
                                                              (card-id->metadata-fields (u/the-id card))))))))
