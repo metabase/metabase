@@ -640,3 +640,41 @@
       (is (= expected
              (#'interesting/optimal-temporal-resolution {:fingerprint fingerprint
                                                          :base_type   base-type}))))))
+
+(deftest custom-expression-metric-title-test
+  (testing "Custom expression metrics with display names should use proper string representation for metric-title"
+    (let [;; Simulate a custom expression metric with a map name (name + display-name structure)
+          custom-metric {:name {:name "Distinct([User ID])" :display-name "Distinct Values"}
+                         :full-name nil
+                         :definition {:aggregation [[:distinct [:field 1 nil]]]}
+                         :table_id 1}
+          context {:root {:entity (mi/instance :xrays/Metric custom-metric)}}
+          dimension-specs []
+          metric-specs []
+          filter-specs []
+          result (interesting/identify context {:dimension-specs dimension-specs
+                                               :metric-specs metric-specs
+                                               :filter-specs filter-specs})]
+      ;; Verify that the metric-title is a string, not a map
+      (is (string? (-> result :metrics first :metric-title)))
+      ;; Verify that the metric-title uses the display-name when available
+      (is (= "Distinct Values" (-> result :metrics first :metric-title))))))
+
+(deftest custom-expression-metric-title-fallback-test
+  (testing "Custom expression metrics with string names should work as before"
+    (let [;; Simulate a custom expression metric with a simple string name
+          simple-metric {:name "Simple Count"
+                         :full-name nil
+                         :definition {:aggregation [[:count]]}
+                         :table_id 1}
+          context {:root {:entity (mi/instance :xrays/Metric simple-metric)}}
+          dimension-specs []
+          metric-specs []
+          filter-specs []
+          result (interesting/identify context {:dimension-specs dimension-specs
+                                               :metric-specs metric-specs
+                                               :filter-specs filter-specs})]
+      ;; Verify that the metric-title is a string
+      (is (string? (-> result :metrics first :metric-title)))
+      ;; Verify that the metric-title uses the simple string name
+      (is (= "Simple Count" (-> result :metrics first :metric-title))))))
