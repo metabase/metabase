@@ -2,6 +2,10 @@
 
 These docs are for building the sdk locally, if you just want to use the sdk, please refer to the [sdk documentation](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
 
+### Important
+
+Code in this directory should carefully reference external code, including code of the main app and 3rd party dependencies. The reason is that we want keep the Embedding SDK Package bundle as small as possible. To control it, a special eslint rule `no-external-references-for-sdk-package-code` is defined in `enterprise/frontend/src/.eslintrc.js`
+
 ## Build
 
 You can build the SDK NPM package with `yarn build-embedding-sdk-package`.
