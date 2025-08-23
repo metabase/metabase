@@ -4,9 +4,11 @@ import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behav
 import { renderLinkTextForClick } from "./link";
 import type { OptionsType } from "./types";
 
-// https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
+// Updated regex to support Unicode characters in email addresses
+// Based on RFC 6531 (Internationalized Email) and modern email standards
+// Using \p{L} for Unicode letters, \p{N} for Unicode numbers, and the 'u' flag
 const EMAIL_ALLOW_LIST_REGEX =
-  /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
+  /^(?=.{1,254}$)(?=.{1,64}@)[\p{L}\p{N}!#$%&'*+/=?^_`{|}~.-]+(?:\.[\p{L}\p{N}!#$%&'*+/=?^_`{|}~.-]+)*@[\p{L}\p{N}.-]+(?:\.[\p{L}\p{N}.-]+)*$/u;
 
 export function formatEmail(
   value: string,
