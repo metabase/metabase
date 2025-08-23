@@ -37,7 +37,7 @@ import type {
 import type { SelectedTabId } from "metabase-types/store";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
-  if (after.parameters && before.embedding_params) {
+  if (after.parameters && before.embedding_params && before.enable_embedding) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
       const slugParam = _.find(before.parameters, (param) => {
         return param.slug === embedSlug;
