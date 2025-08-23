@@ -128,7 +128,7 @@
           (lib.util/update-query-stage -1 update-in [:aggregation 0]
                                        #(-> %
                                             (case-wrap-metric-aggregation (filters->condition filters))
-                                            (lib.options/update-options merge aggregation-names)))
+                                            (lib.options/update-options merge (dissoc aggregation-names :display-name))))
           (lib.util/update-query-stage -1 dissoc :filters)))
     metric-query))
 
@@ -146,14 +146,12 @@
                                         (if-let [col (lib/find-matching-column &match columns)]
                                           (lib/ref col)
                                           ;; This is probably due to a field-id where it shouldn't be
-                                          &match))]
-                      (update (lib.util/fresh-uuids replacement)
-                              1
-                              #(merge
-                                %
-                                {:name metric-name}
-                                (select-keys % [:name :display-name])
-                                (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
+                                          &match))
+                          merge-metric-options (fn [opts]
+                                                 (-> opts
+                                                     (update :display-name #(or % metric-name))
+                                                     (merge (select-keys (get &match 1) [:lib/uuid :name :display-name]))))]
+                      (update (lib.util/fresh-uuids replacement) 1 merge-metric-options))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
 
@@ -395,7 +393,7 @@
                                     (get metric-id)
                                     u/ignore-exceptions)]
                 (throw (ex-info "Failed to replace metric"
-                                {:metric-id   metric-id
+                                {:metric-id metric-id
                                  :metric-data metric-data}))))))
         (catch Throwable e
           (analytics/inc! :metabase-query-processor/metrics-adjust-errors)

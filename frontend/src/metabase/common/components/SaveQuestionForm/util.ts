@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { isNullOrUndefined } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
 
@@ -92,6 +93,21 @@ const getName = (question: Question, originalQuestion: Question | null) => {
   }
 
   // Ad-hoc query
+  // For metrics, we need to generate a name without breakouts
+  // since metrics are reusable aggregations that can be used with any grouping
+  if (question.type() === "metric") {
+    let query = question.query();
+
+    // Remove all breakouts to get a clean metric name
+    const breakouts = Lib.breakouts(query, -1);
+    breakouts.forEach((breakoutClause: any) => {
+      query = Lib.removeClause(query, -1, breakoutClause);
+    });
+
+    return Lib.suggestedName(query) || "";
+  }
+
+  // For regular questions, use the full query description
   return question.displayName() || question.generateQueryDescription() || "";
 };
 
