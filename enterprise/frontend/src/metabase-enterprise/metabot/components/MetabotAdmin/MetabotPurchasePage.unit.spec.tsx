@@ -75,5 +75,9 @@ describe("MetabotPurchasePage", () => {
     expect(
       screen.getByRole("button", { name: /Add Metabot AI/ }),
     ).toBeEnabled();
+    await userEvent.click(
+      screen.getByRole("button", { name: /Add Metabot AI/ }),
+    );
+    expect(screen.getByRole("button", { name: /Success/ })).toBeInTheDocument();
   });
 });
