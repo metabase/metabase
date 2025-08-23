@@ -362,3 +362,33 @@
                       [-100.0 11345]
                       [-80.0  2275]]
                      (mt/formatted-rows [1.0 int] (qp/process-query query)))))))))))
+
+(deftest ^:parallel breakout-and-fields-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "adding a breakout to a query with fields works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [[2] [3] [4]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :venues :name)))])
+                   (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))
+                   (lib/limit 3)
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [int])))))))))
+
+(deftest ^:parallel breakout-and-join-fields-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "adding a breakout to a query with fields from joins works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [["Doohickey"] ["Gadget"] ["Gizmo"]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :orders :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :orders :total)))])
+                   (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                  [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                          (-> (lib.metadata/field mp (mt/id :products :id))
+                                                              (lib/with-join-alias "Products")))])))
+                   (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
+                   (lib/limit 3)
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [str])))))))))

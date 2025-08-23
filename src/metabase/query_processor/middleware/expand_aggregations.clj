@@ -47,5 +47,4 @@
   "Recursively replace aggregation references in the aggregation clause with their definitions."
   [query]
   (lib.walk/walk-stages query (fn [_query _path stage]
-                                (cond-> (m/update-existing stage :aggregation unroll-aggregations)
-                                  (:aggregation stage) (dissoc :fields)))))
+                                (m/update-existing stage :aggregation unroll-aggregations))))
