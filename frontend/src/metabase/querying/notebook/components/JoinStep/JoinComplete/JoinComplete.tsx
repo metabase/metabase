@@ -17,6 +17,35 @@ import { JoinTablePicker } from "../JoinTablePicker";
 
 import S from "./JoinComplete.module.css";
 
+function shouldUsePreviousResults(
+  query: Lib.Query,
+  stageIndex: number,
+  conditions: Lib.JoinCondition[],
+): boolean {
+  if (conditions.length <= 1) {
+    return false;
+  }
+
+  const uniqueTableIds = new Set<string>();
+
+  for (const condition of conditions) {
+    const { lhsExpression } = Lib.joinConditionParts(condition);
+    
+    // Check if LHS expression is a field reference
+    if (Lib.isJoinConditionLHSorRHSColumn(lhsExpression)) {
+      const displayInfo = Lib.displayInfo(query, stageIndex, lhsExpression);
+      const tableId = displayInfo.table?.id;
+      if (tableId !== undefined) {
+        uniqueTableIds.add(String(tableId));
+      }
+    }
+  }
+
+  // If we have conditions referencing more than 1 table on the LHS side,
+  // we should show "Previous results"
+  return uniqueTableIds.size > 1;
+}
+
 interface JoinCompleteProps {
   query: Lib.Query;
   stageIndex: number;
@@ -45,10 +74,12 @@ export function JoinComplete({
   const conditions = useMemo(() => Lib.joinConditions(join), [join]);
   const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
 
-  const lhsTableName = useMemo(
-    () => Lib.joinLHSDisplayName(query, stageIndex, join),
-    [query, stageIndex, join],
-  );
+  const lhsTableName = useMemo(() => {
+    if (shouldUsePreviousResults(query, stageIndex, conditions)) {
+      return t`Previous results`;
+    }
+    return Lib.joinLHSDisplayName(query, stageIndex, join);
+  }, [query, stageIndex, join, conditions]);
 
   const rhsTableName = useMemo(
     () => Lib.displayInfo(query, stageIndex, rhsTable).displayName,
