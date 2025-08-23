@@ -90,7 +90,7 @@
       #"java.security.InvalidKeyException: invalid key format"
       :invalid-key-format
 
-      messages)))
+      message)))
 
 ;;; ### Syncing
 
