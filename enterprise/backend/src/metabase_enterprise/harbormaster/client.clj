@@ -7,7 +7,7 @@
    [martian.core :as martian]
    [medley.core :as m]
    [metabase.api.settings :as api.auth]
-   [metabase.cloud-migration.core :as cloud-migration]
+   [metabase.store-api.settings :as store-api.settings]
    [metabase.util :as m.util]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -44,7 +44,7 @@
   `->config` either gets the store-api-url and api-key from settings or throws an exception when either are unset or
   blank."
   []
-  (let [store-api-url (cloud-migration/store-api-url)
+  (let [store-api-url (store-api.settings/store-api-url)
         _ (when (str/blank? store-api-url)
             (log/error "Missing store-api-url. Cannot create hm client config.")
             (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
@@ -138,7 +138,7 @@
   (memoize create-client))
 
 (defn- client []
-  (let [store-api-url (cloud-migration/store-api-url)
+  (let [store-api-url (store-api.settings/store-api-url)
         api-key       (api.auth/api-key)]
     (when (str/blank? store-api-url)
       (log/error "Missing store-api-url. Cannot create hm client config.")
@@ -213,6 +213,5 @@
   ;;     :as :text}
 
   ;; Call the :list-connections operation.
-  (call :list-connections)
+  (call :list-connections))
   ;; => ()
-  )

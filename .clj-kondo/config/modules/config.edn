@@ -303,6 +303,7 @@
            models
            premium-features
            settings
+           store-api
            task
            util}}
 
@@ -1705,7 +1706,7 @@
   {:team "Cloud"
    :api  #{metabase-enterprise.harbormaster.client}
    :uses #{api
-           cloud-migration
+           store-api
            util}}
 
   enterprise/impersonation
