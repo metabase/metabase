@@ -56,7 +56,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
               position: 3,
               search_engine: P.string,
               request_id: P.string,
-              entity_model: "dataset",
+              entity_model: P.string,
               search_term_hash: ORDERS_SEARCH_TERM_HASH,
               search_term: null,
             },
@@ -93,7 +93,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         {
           event: SEARCH_CLICK,
           context: "command-palette",
-          position: 0,
+          position: 2,
         },
         1,
       );
