@@ -123,12 +123,12 @@ Here's an example `docker-compose.yml` file for running Metabase with a PostgreS
 services:
   metabase:
     image: metabase/metabase:latest
-    container_name: metabase
-    hostname: metabase
     volumes:
       - /dev/urandom:/dev/random:ro
     ports:
       - 3000:3000
+    depends_on:
+      - postgres
     environment:
       MB_DB_TYPE: postgres
       MB_DB_DBNAME: metabaseappdb
@@ -136,26 +136,17 @@ services:
       MB_DB_USER: metabase
       MB_DB_PASS: mysecretpassword
       MB_DB_HOST: postgres
-    networks:
-      - metanet1
     healthcheck:
       test: curl --fail -I http://localhost:3000/api/health || exit 1
       interval: 15s
       timeout: 5s
       retries: 5
   postgres:
-    image: postgres:latest
-    container_name: postgres
-    hostname: postgres
+    image: postgres:17.5
     environment:
       POSTGRES_USER: metabase
       POSTGRES_DB: metabaseappdb
       POSTGRES_PASSWORD: mysecretpassword
-    networks:
-      - metanet1
-networks:
-  metanet1:
-    driver: bridge
 ```
 
 ## Additional Docker maintenance and configuration
@@ -285,8 +276,6 @@ Notice the "\_FILE" on the environment variables that have a secret:
 services:
   metabase:
     image: metabase/metabase:latest
-    container_name: metabase
-    hostname: metabase
     volumes:
       - /dev/urandom:/dev/random:ro
     ports:
@@ -298,8 +287,8 @@ services:
       MB_DB_USER_FILE: /run/secrets/db_user
       MB_DB_PASS_FILE: /run/secrets/db_password
       MB_DB_HOST: postgres
-    networks:
-      - metanet1
+    depends_on:
+      - postgres
     secrets:
       - db_password
       - db_user
@@ -309,21 +298,14 @@ services:
       timeout: 5s
       retries: 5
   postgres:
-    image: postgres:latest
-    container_name: postgres
-    hostname: postgres
+    image: postgres:17.5
     environment:
       POSTGRES_USER_FILE: /run/secrets/db_user
       POSTGRES_DB: metabase
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-    networks:
-      - metanet1
     secrets:
       - db_password
       - db_user
-networks:
-  metanet1:
-    driver: bridge
 secrets:
   db_password:
     file: db_password.txt
