@@ -1187,7 +1187,8 @@
 
   store-api
   {:team "Cloud"
-   :api  #{metabase.store-api.core}
+   :api  #{metabase.store-api.core
+           metabase.store-api.init}
    :uses #{config
            settings
            util}}
