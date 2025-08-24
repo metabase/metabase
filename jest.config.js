@@ -8,6 +8,7 @@ const esmPackages = [
   "d3",
   "devlop",
   "echarts",
+  "fetch-mock",
   "hast.*",
   "html-void-elements",
   "is-absolute-url",

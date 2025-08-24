@@ -462,7 +462,7 @@ describe("metabot-streaming", () => {
         setup({ promptSuggestions: [] });
         await waitFor(async () => {
           expect(
-            fetchMock.calls(
+            fetchMock.callHistory.calls(
               `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
             ),
           ).toHaveLength(1);
@@ -472,7 +472,7 @@ describe("metabot-streaming", () => {
 
         await waitFor(async () => {
           expect(
-            fetchMock.calls(
+            fetchMock.callHistory.calls(
               `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
             ),
           ).toHaveLength(2);
