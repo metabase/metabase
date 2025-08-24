@@ -152,9 +152,9 @@ function shouldAutoSplitYAxis(
   const minExtent = Math.min(...yExtents.map((extent) => extent[0]));
   const chartRange = maxExtent - minExtent;
 
-  // Note (EmmadUsmani): When the series with the smallest range is less than 5%
+  // Note (EmmadUsmani): When the series with the smallest range is less than 1%
   // of the chart's total range, we split the y-axis so it doesn't look too small.
-  return minRange / chartRange <= 0.05;
+  return minRange / chartRange <= 0.01;
 }
 
 type AxisSplit = [DataKey[], DataKey[]];
