@@ -106,6 +106,8 @@ interface TableProps extends VisualizationProps {
   renderTableHeader: HeaderCellWithColumnInfoProps["renderTableHeader"];
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onZoomRow?: (objectId: number | string) => void;
+  // Add freezeFirstColumn prop
+  freezeFirstColumn?: boolean;
 }
 
 const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
@@ -165,6 +167,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    // Destructure freezeFirstColumn
+    freezeFirstColumn = false,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -516,13 +520,26 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             "test-TableInteractive-cellWrapper--lastColumn":
               columnIndex === cols.length - 1,
             "test-TableInteractive-emptyCell": value == null,
+            // Add sticky class if freezeFirstColumn is enabled
+            [S.freezeFirstColumn]: freezeFirstColumn && columnIndex === 0,
           }),
+        // Add data-testid for sticky first column cell
+        ...(freezeFirstColumn && columnIndex === 0
+          ? { "data-testid": "sticky-first-column" }
+          : {}),
+        // Remove the custom cell renderer entirely for non-minibar columns
         header: () => {
           return (
             <HeaderCellWithColumnInfo
               className={cx({
                 [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
+                // Add sticky class if freezeFirstColumn is enabled
+                [S.freezeFirstColumn]: freezeFirstColumn && columnIndex === 0,
               })}
+              // Add data-testid for sticky first column header
+              {...(freezeFirstColumn && columnIndex === 0
+                ? { "data-testid": "sticky-first-column" }
+                : {})}
               getInfoPopoversDisabled={getInfoPopoversDisabledRef.current}
               timezone={data.results_timezone}
               question={question}
@@ -590,6 +607,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isDashboard,
     tc,
     getInfoPopoversDisabledRef,
+    freezeFirstColumn,
   ]);
 
   const handleColumnResize = useCallback(
@@ -713,6 +731,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return isDashcardViewTable ? width : undefined;
   }, [isDashcardViewTable, width]);
 
+  // Determine the first column id for pinning
+  const firstColumnId = cols[0]?.name;
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
@@ -726,6 +746,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     pageSize,
     minGridWidth,
     enableSelection: true,
+    // Add column pinning for freezeFirstColumn
+    columnPinning:
+      freezeFirstColumn && firstColumnId
+        ? { left: [firstColumnId] }
+        : undefined,
   });
   const { virtualGrid } = tableProps;
 

@@ -13,6 +13,16 @@
   border-right: 1px solid var(--mb-color-border);
 }
 
+/* Sticky/frozen first column */
+.freezeFirstColumn {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--mb-color-bg, #fff);
+  /* Optional: add a right border for clarity */
+  border-right: 1px solid var(--mb-color-border);
+}
+
 .bodyCellWithImage img {
   vertical-align: middle;
 }

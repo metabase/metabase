@@ -236,6 +236,18 @@ class Table extends Component<TableProps, TableState> {
       },
       readDependencies: [DataGrid.COLUMN_FORMATTING_SETTING, "table.pivot"],
     },
+    // Add freeze first column toggle
+    "table.freeze_first_column": {
+      get section() {
+        return t`Columns`;
+      },
+      get title() {
+        return t`Freeze first column`;
+      },
+      widget: "toggle",
+      inline: true,
+      default: false,
+    },
   };
 
   static columnSettings = (column: DatasetColumn) => {
@@ -542,6 +554,7 @@ class Table extends Component<TableProps, TableState> {
         isPivoted={isPivoted}
         getColumnTitle={this.getColumnTitle}
         getColumnSortDirection={this.getColumnSortDirection}
+        freezeFirstColumn={settings["table.freeze_first_column"]}
       />
     );
   }
