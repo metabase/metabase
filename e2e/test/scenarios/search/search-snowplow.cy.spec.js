@@ -1,3 +1,5 @@
+import { P, isMatching } from "ts-pattern";
+
 const { H } = cy;
 
 import { commandPaletteInput } from "../../../support/helpers/e2e-command-palette-helpers";
@@ -5,6 +7,9 @@ import { commandPaletteInput } from "../../../support/helpers/e2e-command-palett
 H.describeWithSnowplow("scenarios > search > snowplow", () => {
   const NEW_SEARCH_QUERY_EVENT_NAME = "search_query";
   const SEARCH_CLICK = "search_click";
+  const ORDERS_SEARCH_TERM = "Orders";
+  const ORDERS_SEARCH_TERM_HASH =
+    "6f87db3f4884dbd2026b952f0ddf8a56f383b1cb36fe650164762ceed27acaf4";
 
   beforeEach(() => {
     H.restore();
@@ -21,46 +26,61 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
   describe("command palette", () => {
     it("should send snowplow events search queries on a click", () => {
       cy.visit("/");
-      H.commandPaletteSearch("Orders", false);
+      H.commandPaletteSearch(ORDERS_SEARCH_TERM, false);
 
       //Passing a function to ensure that runtime_milliseconds is populated as a number
-      H.expectUnstructuredSnowplowEvent((data) => {
-        if (!data) {
-          return false;
-        }
-        return (
-          data.event === NEW_SEARCH_QUERY_EVENT_NAME &&
-          data.context === "command-palette" &&
-          typeof data.runtime_milliseconds === "number"
-        );
-      });
+      H.expectUnstructuredSnowplowEvent((event) =>
+        isMatching(
+          {
+            event: NEW_SEARCH_QUERY_EVENT_NAME,
+            context: "command-palette",
+            runtime_milliseconds: P.number,
+            search_engine: P.string,
+            request_id: P.string,
+            offset: null,
+            search_term_hash: ORDERS_SEARCH_TERM_HASH,
+            search_term: null,
+          },
+          event,
+        ),
+      );
 
       H.commandPalette().findByRole("option", { name: "Orders Model" }).click();
       H.expectUnstructuredSnowplowEvent(
-        {
-          event: SEARCH_CLICK,
-          context: "command-palette",
-          position: 3,
-        },
+        (event) =>
+          isMatching(
+            {
+              event: SEARCH_CLICK,
+              target_type: "item",
+              context: "command-palette",
+              position: 3,
+              search_engine: P.string,
+              request_id: P.string,
+              entity_model: "dataset",
+              search_term_hash: ORDERS_SEARCH_TERM_HASH,
+              search_term: null,
+            },
+            event,
+          ),
         1,
       );
     });
 
     it("should send snowplow events search queries on keyboard navigation", () => {
       cy.visit("/");
-      H.commandPaletteSearch("Orders", false);
+      H.commandPaletteSearch(ORDERS_SEARCH_TERM, false);
 
       //Passing a function to ensure that runtime_milliseconds is populated as a number
-      H.expectUnstructuredSnowplowEvent((data) => {
-        if (!data) {
-          return false;
-        }
-        return (
-          data.event === NEW_SEARCH_QUERY_EVENT_NAME &&
-          data.context === "command-palette" &&
-          typeof data.runtime_milliseconds === "number"
-        );
-      });
+      H.expectUnstructuredSnowplowEvent((event) =>
+        isMatching(
+          {
+            event: NEW_SEARCH_QUERY_EVENT_NAME,
+            context: "command-palette",
+            runtime_milliseconds: P.number,
+          },
+          event,
+        ),
+      );
 
       // FIX ME: We need to slow cypress down before we start inputting keyboard events.
       // Not clear why though :/.
@@ -73,7 +93,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         {
           event: SEARCH_CLICK,
           context: "command-palette",
-          position: 2,
+          position: 0,
         },
         1,
       );
