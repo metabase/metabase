@@ -761,7 +761,7 @@ describe("issue 60719", () => {
 
 describe("issue 59356", () => {
   function typeRunShortcut() {
-    cy.get("body").type("{meta}{enter}");
+    cy.get("body").type("{ctrl+enter}{cmd+enter}");
   }
 
   function getLoader() {
