@@ -187,7 +187,7 @@ jobs:
       - name: Get current SDK version
         id: current-sdk-version
         run: |
-          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk/package.template.json)
+          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk-bundle/package.template.json)
           echo "sdk_current_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Get next SDK patch version
@@ -350,8 +350,8 @@ jobs:
 
       - name: Update changelog
         run: |
-          cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
-          mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+          cat changelog-diff enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md > new-changelog
+          mv new-changelog enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
