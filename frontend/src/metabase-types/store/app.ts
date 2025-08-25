@@ -33,6 +33,7 @@ export type TempStorageValue<Key extends TempStorageKey = TempStorageKey> =
 export interface DetailViewState {
   rowName: string;
   table: Table;
+  collectionId: CollectionId | null;
 }
 
 export interface AppState {

@@ -2,6 +2,7 @@ import cx from "classnames";
 import { inflect } from "inflection";
 import { useMemo } from "react";
 import { Link } from "react-router";
+import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { Loader, Stack, Text, rem } from "metabase/ui";
@@ -23,7 +24,11 @@ export const Relationship = ({ fk, href, rowId, table, onClick }: Props) => {
   const fkOriginId =
     fk.origin && typeof fk.origin.id == "number" ? fk.origin.id : undefined;
 
-  const { data: dataset, isFetching } = useGetAdhocQueryQuery(
+  const {
+    data: dataset,
+    error,
+    isFetching,
+  } = useGetAdhocQueryQuery(
     fk.origin != null && fkOriginId != null
       ? {
           type: "query",
@@ -75,7 +80,7 @@ export const Relationship = ({ fk, href, rowId, table, onClick }: Props) => {
           fz={rem(24)}
           lh={1}
         >
-          {String(count)}
+          {error ? t`Unknown` : String(count)}
         </Text>
       )}
 

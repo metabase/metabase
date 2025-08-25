@@ -1,68 +1,22 @@
 import type { ReactNode } from "react";
 
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
-import { Box, Group, type GroupProps, Icon, Text, rem } from "metabase/ui";
+import type { GroupProps } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
-import { Breadcrumb } from "./Breadcrumb";
+import { ModelNav } from "./ModelNav";
+import { TableNav } from "./TableNav";
 
 interface Props extends GroupProps {
   rowName: ReactNode;
   table: Table;
 }
 
-export const Nav = ({ rowName, table, ...props }: Props) => {
-  const { data: schemas, isLoading: isLoadingSchemas } =
-    useListDatabaseSchemasQuery(
-      table && table.db_id && table.schema ? { id: table.db_id } : skipToken,
-    );
+export const Nav = (props: Props) => {
+  const { table } = props;
 
-  if (!table || !table.db || isLoadingSchemas) {
-    return null;
+  if (table.type === "model") {
+    return <ModelNav {...props} />;
   }
 
-  return (
-    <Group align="center" gap="sm" miw={0} wrap="nowrap" {...props}>
-      <Breadcrumb href={`/browse/databases/${table.db_id}`}>
-        <Group align="center" gap={rem(10)} wrap="nowrap">
-          <Icon flex="0 0 auto" name="database" />
-
-          <Box>{table.db.name}</Box>
-        </Group>
-      </Breadcrumb>
-
-      {schemas && schemas.length > 1 && table.schema && (
-        <>
-          <Separator />
-
-          <Breadcrumb
-            href={`/browse/databases/${table.db_id}/schema/${table.schema}`}
-          >
-            {table.schema}
-          </Breadcrumb>
-        </>
-      )}
-
-      <Separator />
-
-      <Breadcrumb href={Urls.tableRowsQuery(table.db_id, table.id)}>
-        {table.display_name}
-      </Breadcrumb>
-
-      {rowName && (
-        <>
-          <Separator />
-
-          <Breadcrumb>{rowName}</Breadcrumb>
-        </>
-      )}
-    </Group>
-  );
+  return <TableNav {...props} />;
 };
-
-const Separator = () => (
-  <Text c="text-secondary" flex="0 0 auto" fw="bold">
-    /
-  </Text>
-);
