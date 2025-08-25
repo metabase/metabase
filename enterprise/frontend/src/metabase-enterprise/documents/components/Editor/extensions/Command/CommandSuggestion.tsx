@@ -10,6 +10,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   Box,
@@ -21,6 +22,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import type { SearchResult } from "metabase-types/api";
 
 import {
@@ -36,26 +38,28 @@ import { EntitySearchSection } from "../shared/EntitySearchSection";
 import { EMBED_SEARCH_MODELS, LINK_SEARCH_MODELS } from "../shared/constants";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
+import type { CommandProps } from "./CommandExtension";
 import CommandS from "./CommandSuggestion.module.css";
 
 export interface CommandSuggestionProps {
   items: SearchResult[];
-  command: (item: CommandItem) => void;
+  command: (item: CommandProps) => void;
   editor: Editor;
   range: Range;
   query: string;
 }
 
-interface CommandItem {
-  command?: string;
-  clearQuery?: boolean;
-  switchToLinkMode?: boolean;
-  switchToEmbedMode?: boolean;
-  selectItem?: boolean;
-  embedItem?: boolean;
-  entityId?: number | string;
-  model?: string;
-}
+// interface CommandItem {
+//   command?: string;
+//   clearQuery?: boolean;
+//   switchToLinkMode?: boolean;
+//   switchToEmbedMode?: boolean;
+//   selectItem?: boolean;
+//   embedItem?: boolean;
+//   entityId?: number | string;
+//   model?: string;
+//   document?: Document | null;
+// }
 
 interface SuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
@@ -114,6 +118,7 @@ export const CommandSuggestion = forwardRef<
   SuggestionRef,
   CommandSuggestionProps
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
+  const document = useSelector(getCurrentDocument);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showLinkSearch, setShowLinkSearch] = useState(false);
   const [showEmbedSearch, setShowEmbedSearch] = useState(false);
@@ -216,16 +221,18 @@ export const CommandSuggestion = forwardRef<
           selectItem: true,
           entityId: item.id,
           model: item.model,
+          document,
         });
       } else {
         command({
           embedItem: true,
           entityId: item.id,
           model: item.model,
+          document,
         });
       }
     },
-    [command, showLinkSearch],
+    [command, showLinkSearch, document],
   );
 
   const executeCommand = (commandName: string) => {
@@ -250,6 +257,7 @@ export const CommandSuggestion = forwardRef<
     if (commandName === "metabot") {
       command({
         command: "metabot",
+        document,
       });
       return;
     }

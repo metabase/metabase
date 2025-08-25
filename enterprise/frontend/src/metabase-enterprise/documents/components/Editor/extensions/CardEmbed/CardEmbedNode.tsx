@@ -17,6 +17,8 @@ import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
+import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
+import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
@@ -144,6 +146,7 @@ export const CardEmbedComponent = memo(
     const { card, dataset, isLoading, series, error } = useCardData({ id });
 
     const metadata = useSelector(getMetadata);
+    const document = useSelector(getCurrentDocument);
     const datasetError = dataset && getDatasetError(dataset);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
@@ -222,9 +225,13 @@ export const CardEmbedComponent = memo(
           id: item.id,
           name: null,
         });
+        if (document) {
+          trackDocumentReplaceCard(document);
+        }
+
         setIsReplaceModalOpen(false);
       },
-      [updateAttributes],
+      [updateAttributes, document],
     );
 
     // Handle drill-through navigation

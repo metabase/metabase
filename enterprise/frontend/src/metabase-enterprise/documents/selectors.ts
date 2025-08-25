@@ -31,7 +31,7 @@ export const getSelectedEmbedIndex = createSelector(
 
 export const getCurrentDocument = createSelector(
   getDocumentsState,
-  (documents) => documents?.currentDocument,
+  (documents) => documents?.currentDocument || null,
 );
 
 export const getShowNavigateBackToDocumentButton = createSelector(
