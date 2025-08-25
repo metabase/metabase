@@ -1,5 +1,5 @@
 import { useField, useFormikContext } from "formik";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { FormTextInput, type FormTextInputProps } from "metabase/forms";
 import type { DatabaseData, DatabaseProvider } from "metabase-types/api";
@@ -15,7 +15,9 @@ export function DatabaseHostnameWithProviderField(
   const [{ value }] = useField(props.name);
   const { setFieldValue } = useFormikContext<DatabaseData>();
 
-  const provider = detectDBProvider(value, props.providers);
+  const provider = useMemo(() => {
+    return detectDBProvider(value, props.providers);
+  }, [value, props.providers]);
 
   useEffect(() => {
     setFieldValue("provider_name", provider ?? "");
