@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   findRequests,
@@ -48,6 +49,8 @@ const setup = async ({
 
   const user = createMockUser({ email: "user@example.com" });
   setupCurrentUserEndpoint(user);
+
+  fetchMock.post("path:/api/ee/cloud-add-ons/metabase-ai", 200);
 
   renderWithProviders(<MetabotPurchasePage />, {
     // Calling `setupPropertiesEndpoints` above is not enough; we also need to set `storeInitialState`:
