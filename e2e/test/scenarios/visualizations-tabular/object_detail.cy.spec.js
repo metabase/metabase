@@ -701,23 +701,20 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     it("1 primary key", () => {
       H.grantClipboardPermissions();
-      H.createQuestion(
-        {
-          type: "model",
-          name: "model",
-          query: {
-            "source-table": PEOPLE_ID,
-            fields: [
-              ["field", PEOPLE.ID],
-              ["field", PEOPLE.ADDRESS],
-              ["field", PEOPLE.EMAIL],
-              ["field", PEOPLE.NAME],
-            ],
-            limit: 5,
-          },
+      H.createQuestion({
+        type: "model",
+        name: "model",
+        query: {
+          "source-table": PEOPLE_ID,
+          fields: [
+            ["field", PEOPLE.ID],
+            ["field", PEOPLE.ADDRESS],
+            ["field", PEOPLE.EMAIL],
+            ["field", PEOPLE.NAME],
+          ],
+          limit: 5,
         },
-        // { visitQuestion: true },
-      ).then(({ body: card }) => {
+      }).then(({ body: card }) => {
         const slug = [card.id, card.name].join("-");
 
         H.visitModel(card.id);
@@ -751,7 +748,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
               ["field", PEOPLE.ADDRESS],
               ["field", PEOPLE.EMAIL],
               ["field", PEOPLE.NAME],
-            ], //["field", ORDERS.ID],
+            ],
             joins: [
               {
                 "source-table": ORDERS_ID,
