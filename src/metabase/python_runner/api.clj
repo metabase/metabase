@@ -69,11 +69,11 @@
                          code-file output-file stdout-file stderr-file])
           result (apply shell/sh (conj script-args :dir (io/file ".")))]
       (if (zero? (:exit result))
-        {:output (slurp output-file)
+        {:output      (slurp output-file)
          :output-file output-file
-         :stdout (slurp stdout-file)
+         :stdout      (slurp stdout-file)
          :stdout-file stdout-file
-         :stderr (slurp stderr-file)
+         :stderr      (slurp stderr-file)
          :stderr-file stderr-file}
         {:status 500
          :body

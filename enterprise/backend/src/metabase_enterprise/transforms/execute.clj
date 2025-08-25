@@ -7,7 +7,6 @@
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
-   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
@@ -119,7 +118,7 @@
       (try
         ;; Dynamically load and call the python runner using requiring-resolve
         (let [{run-id :id} (transform-run/start-run! (:id transform) {:run_method run_method})
-              result (python-runner.api/execute-python-code body)]
+              result (python-runner.api/execute-python-code body "PLACEHOLDER")]
           (if (:error result)
             (do
               (transform-run/fail-started-run! run-id {})
