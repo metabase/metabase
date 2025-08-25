@@ -1,5 +1,7 @@
 import type { Engine } from "metabase-types/api";
 
+import { providerConfig } from "../../DatabaseHostnameWithProviderField/test/provider-config.mock";
+
 export const postgresFormConfig = {
   source: {
     type: "official",
@@ -40,5 +42,10 @@ export const postgresFormConfig = {
   ],
   "driver-name": "PostgreSQL",
   "superseded-by": null,
-  "extra-info": null,
+  "extra-info": {
+    "db-routing-info": {
+      text: "test",
+    },
+    providers: providerConfig,
+  },
 } satisfies Engine;

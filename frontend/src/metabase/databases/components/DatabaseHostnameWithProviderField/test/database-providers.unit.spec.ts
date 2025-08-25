@@ -1,20 +1,21 @@
-import {
-  type DatabaseProviderName,
-  detectDBProvider,
-} from "./database-providers";
+import type { DatabaseProviderName } from "metabase-types/api/settings";
+
+import { detectDBProvider } from "../database-providers";
+
+import { providerConfig } from "./provider-config.mock";
 
 const testCases: { host: string; provider: DatabaseProviderName }[] = [
   {
-    host: "production-flexible-server.postgres.database.azure.com",
-    provider: "Azure",
+    host: "my-db.aivencloud.com",
+    provider: "Aiven",
   },
   {
     host: "my-db.rds.amazonaws.com",
     provider: "Amazon RDS",
   },
   {
-    host: "my-db.aivencloud.com",
-    provider: "Aiven",
+    host: "production-flexible-server.postgres.database.azure.com",
+    provider: "Azure",
   },
   {
     host: "p.vbjrfujv5beutaoelw725gvi3i.db.postgresbridge.com",
@@ -66,30 +67,30 @@ describe("detectDBProvider", () => {
   describe("should detect providers correctly", () => {
     testCases.forEach(({ host, provider }) => {
       it(`should detect ${provider} from host: ${host}`, () => {
-        expect(detectDBProvider(host)).toBe(provider);
+        expect(detectDBProvider(host, providerConfig)).toBe(provider);
       });
     });
   });
 
   describe("edge cases", () => {
     it("should return null for empty host", () => {
-      expect(detectDBProvider("")).toBeNull();
+      expect(detectDBProvider("", providerConfig)).toBeNull();
     });
 
     it("should return null for unknown host", () => {
-      expect(detectDBProvider("unknown-host.com")).toBeNull();
+      expect(detectDBProvider("unknown-host.com", providerConfig)).toBeNull();
     });
 
     it("should return null for localhost", () => {
-      expect(detectDBProvider("localhost")).toBeNull();
+      expect(detectDBProvider("localhost", providerConfig)).toBeNull();
     });
 
     it("should return null for IP address", () => {
-      expect(detectDBProvider("192.168.1.1")).toBeNull();
+      expect(detectDBProvider("192.168.1.1", providerConfig)).toBeNull();
     });
 
     it("should not detect Amazon RDS from non-rds host", () => {
-      expect(detectDBProvider("ec2.amazonaws.com")).toBeNull();
+      expect(detectDBProvider("ec2.amazonaws.com", providerConfig)).toBeNull();
     });
   });
 });

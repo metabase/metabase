@@ -394,3 +394,8 @@
     (if (nil? json-unfolding)
       true
       json-unfolding)))
+
+;; Driver-specific extra-info methods
+
+(defmethod driver/extra-info :postgres [driver]
+  {:providers (warehouses/providers-for-engine driver)})
