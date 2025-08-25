@@ -39,7 +39,10 @@
 
     :else
     (try
-      (hm.client/call :change-add-ons, :upsert-add-ons [{:product-type product-type}])
+      (hm.client/call :change-add-ons
+                      :upsert-add-ons [{:product-type product-type}]
+                      :metabase-user (-> (select-keys @api/*current-user* [:email :id])
+                                         (update-vals str)))
       (premium-features/clear-cache)
       {:status 200 :body {}}
       (catch Exception e
