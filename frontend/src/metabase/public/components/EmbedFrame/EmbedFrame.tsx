@@ -235,7 +235,7 @@ export const EmbedFrame = ({
               </TitleAndDescriptionContainer>
             )}
             {dashboardTabs && (
-              <DashboardTabsContainer>
+              <DashboardTabsContainer narrow={!titled && pdfDownloadsEnabled}>
                 <FixedWidthContainer
                   data-testid="fixed-width-dashboard-tabs"
                   isFixedWidth={dashboard?.width === "fixed"}

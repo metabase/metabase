@@ -113,6 +113,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
         onChange={onChange as (value: unknown) => void}
         onScroll={(event) => setScrollPosition(event.currentTarget.scrollLeft)}
         ref={mergedRef}
+        className={showScrollLeft || showScrollRight ? "scrollable" : ""}
         {...props}
       >
         <DndContext

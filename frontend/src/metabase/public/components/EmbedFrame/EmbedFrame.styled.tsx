@@ -79,11 +79,21 @@ export const TitleAndDescriptionContainer = styled(FullWidthContainer, {
     `}
 `;
 
-export const DashboardTabsContainer = styled(FullWidthContainer)`
+export const DashboardTabsContainer = styled(FullWidthContainer)<{
+  narrow?: boolean;
+}>`
   ${breakpointMaxSmall} {
     padding-left: 0;
     padding-right: 0;
   }
+
+  ${({ narrow }) =>
+    narrow &&
+    `
+    [role="tablist"].scrollable {
+      width: calc(100% - 60px);
+    }
+  `}
 `;
 
 export const Separator = styled.div`
