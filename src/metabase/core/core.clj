@@ -11,7 +11,6 @@
    [metabase.cloud-migration.core :as cloud-migration]
    [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
-   [metabase.core.git-source-of-truth :as git-source-of-truth]
    [metabase.core.init]
    [metabase.core.initialization-status :as init-status]
    [metabase.driver.h2]
@@ -172,8 +171,6 @@
         (sample-data/update-sample-database-if-needed!)))
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
-  ;; initialize Metabase from Git repository if configured (Enterprise Edition™ only)
-  (git-source-of-truth/initialize-from-git-if-available!)
   (notification/seed-notification!)
 
   (init-status/set-progress! 0.9)
