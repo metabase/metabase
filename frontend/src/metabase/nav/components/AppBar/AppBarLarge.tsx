@@ -24,6 +24,7 @@ export interface AppBarLargeProps {
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
+  isDocumentSidebarOpen?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
@@ -40,6 +41,7 @@ const AppBarLarge = ({
   isNavBarOpen,
   isNavBarEnabled,
   isMetabotVisible,
+  isDocumentSidebarOpen,
   isLogoVisible,
   isSearchVisible,
   isEmbeddingIframe,
@@ -53,7 +55,11 @@ const AppBarLarge = ({
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
   return (
-    <AppBarRoot hasSidebarOpen={isNavBarVisible || isMetabotVisible}>
+    <AppBarRoot
+      hasSidebarOpen={
+        isNavBarVisible || isMetabotVisible || isDocumentSidebarOpen
+      }
+    >
       <AppBarLeftContainer>
         <AppBarToggle
           isNavBarEnabled={isNavBarEnabled}

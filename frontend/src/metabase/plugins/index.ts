@@ -812,6 +812,7 @@ export const PLUGIN_DOCUMENTS = {
   getRoutes: () => null as React.ReactElement | null,
   shouldShowDocumentInNewItemMenu: () => false,
   getCurrentDocument: (_state: any) => null as Document | null,
+  getSidebarOpen: (_state: any) => false,
 };
 
 export const PLUGIN_ENTITIES = {

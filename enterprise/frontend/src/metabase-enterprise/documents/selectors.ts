@@ -19,6 +19,9 @@ export const getSelectedQuestionId = createSelector(
   },
 );
 
+export const getSidebarOpen = (state: DocumentsStoreState) =>
+  state.plugins?.documents?.selectedEmbedIndex !== null;
+
 export const getCardEmbeds = createSelector(
   getDocumentsState,
   (documents) => documents?.cardEmbeds ?? [],
