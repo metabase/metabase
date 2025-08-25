@@ -1777,8 +1777,7 @@
 (deftest metabot-collection-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
-      [:model/Collection {model-id :id
-                          model-eid :entity_id} {:name "AI Model"}
+      [:model/Collection {model-id :id} {:name "AI Model"}
 
        :model/Card {card-id :id
                     card-eid :entity_id} {:name "AI Model"

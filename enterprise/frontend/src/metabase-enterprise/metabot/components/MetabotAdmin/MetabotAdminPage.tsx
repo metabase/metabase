@@ -39,6 +39,7 @@ import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
 } from "metabase-enterprise/metabot/constants";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Collection,
   CollectionEssentials,
@@ -160,6 +161,10 @@ function MetabotVerifiedContentConfigurationPane({
       });
     }
   };
+
+  if (!hasPremiumFeature("content_verification")) {
+    return null;
+  }
 
   return (
     <Stack gap="sm">
