@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__clojure-mcp__clojure_inspect_project",
+      "mcp__notion__search",
+      "mcp__clojure-mcp__scratch_pad",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:stackoverflow.com)",
+      "mcp__clojure-mcp__clojure_eval",
+      "mcp__clojure-mcp__think",
+      "mcp__clojure-mcp__glob_files",
+      "mcp__clojure-mcp__read_file",
+      "mcp__clojure-mcp__clojure_edit",
+      "mcp__clojure-mcp__bash",
+      "mcp__clojure-mcp__grep",
+      "mcp__clojure-mcp__clojure_edit_replace_sexp",
+      "Bash(mkdir:*)",
+      "mcp__clojure-mcp__LS",
+      "mcp__clojure-mcp__file_edit",
+      "Bash(snyk test:*)",
+      "Bash(chmod:*)",
+      "mcp__notion__fetch",
+      "mcp__clojure-mcp__file_write",
+      "Bash(clojure:*)",
+      "Bash(find:*)",
+      "Bash(git log:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(./bin/mage lint-migrations-file:*)",
+      "Bash(./bin/mage lint-migrations:*)",
+      "Bash(rg:*)",
+      "Bash(./bin/mage:*)",
+      "Bash(bb:*)"
+    ],
+    "deny": [],
+    "defaultMode": "acceptEdits"
+  }
+}
