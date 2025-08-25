@@ -73,9 +73,9 @@
     (let [used [{:id 1}]
           dup [{:id 1} {:id 1} {:id 2}]]
       (with-redefs [table-utils/used-tables (fn [_] used)
-                    table-utils/database-tables (fn [_ opts] dup)]
+                    table-utils/database-tables (fn [_] dup)]
         (let [result (#'context/database-tables-for-context {:query {:database 123 :native {:query "SELECT *"}}})]
-          (is (= (map :id result) [1 2]) "Should preserve order and remove duplicates"))))))
+          (is (= [1 2] (map :id result)) "Should preserve order and remove duplicates"))))))
 
 ;; --- enhance-context-with-schema tests ---
 
