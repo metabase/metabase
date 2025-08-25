@@ -62,11 +62,10 @@ export const RemappingPicker = ({
   const [hasChanged, setHasChanged] = useState(false);
   const [isCustomMappingOpen, setIsCustomMappingOpen] = useState(false);
   const [isFkTargetTouched, setIsFkTargetTouched] = useState(false);
+  const [isChoosingType, setIsChoosingType] = useState(false);
   const [isChoosingInitialFkTarget, setIsChoosingInitialFkTarget] =
     useState(false);
   const id = getRawTableFieldId(field);
-  const { data: fieldValues, error: fieldValuesError } =
-    useGetFieldValuesQuery(id);
   const { data: fkTargetField } = useGetFieldQuery(
     field.fk_target_field_id == null
       ? skipToken
@@ -91,6 +90,13 @@ export const RemappingPicker = ({
   const tables = useMemo(() => [fkTargetTable], [fkTargetTable]);
 
   const value = useMemo(() => getValue(field), [field]);
+  const {
+    data: fieldValues,
+    error: fieldValuesError,
+    isLoading: isLoadingFieldValues,
+  } = useGetFieldValuesQuery(id, {
+    skip: value !== "custom" && !isChoosingType,
+  });
   const options = useMemo(() => {
     return getOptions(field, fieldValues?.values, fkTargetTable);
   }, [field, fieldValues, fkTargetTable]);
@@ -241,8 +247,12 @@ export const RemappingPicker = ({
   return (
     <Stack gap={0}>
       <DisplayValuesPicker
-        options={options}
         value={isFkMapping ? "foreign" : value}
+        options={options}
+        isLoadingFieldValues={isLoadingFieldValues}
+        dropdownOpened={isChoosingType}
+        onDropdownOpen={() => setIsChoosingType(true)}
+        onDropdownClose={() => setIsChoosingType(false)}
         onChange={handleDisplayValueChange}
         {...props}
       />
