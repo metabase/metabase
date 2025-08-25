@@ -15,6 +15,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -54,7 +55,8 @@
                               :describe-fks                    false
                               :actions                         false
                               :metadata/key-constraints        (not driver-api/is-test?)
-                              :database-routing                false}]
+                              :database-routing                false
+                              :transforms/table                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
@@ -294,3 +296,15 @@
   [_ ^SQLException e]
   ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message
   (str/starts-with? (.getMessage e) "Code: 60."))
+
+(defmethod driver/compile-transform :clickhouse
+  [driver {:keys [query output-table]}]
+  (let [pieces [(sql.qp/format-honeysql driver {:create-table output-table})
+                ;; TODO(rileythomp, 2025-08-22): Is there a better way to do this?
+                ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?
+                (sql.qp/format-honeysql driver {:raw "ORDER BY ()"})
+                ["AS"]
+                (sql.qp/format-honeysql driver {:raw query})]
+        query (str/join " " (map first pieces))
+        params (reduce into [] (map rest pieces))]
+    (into [query] params)))

@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
+   [macaw.core :as macaw]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -10,6 +11,7 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -133,6 +135,12 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
+(defn- get-table*
+  [^BigQuery client project-id dataset-id table-id]
+  (if project-id
+    (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
+    (.getTable client dataset-id table-id empty-table-options)))
+
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database-details->client (:details database)) project-id dataset-id table-id))
@@ -141,9 +149,16 @@
            project-id       :- [:maybe driver-api/schema.common.non-blank-string]
            dataset-id       :- driver-api/schema.common.non-blank-string
            table-id         :- driver-api/schema.common.non-blank-string]
-   (if project-id
-     (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
-     (.getTable client dataset-id table-id empty-table-options))))
+   (get-table* client project-id dataset-id table-id)))
+
+(defmethod driver/table-exists? :bigquery-cloud-sdk
+  [_ {:keys [details] :as _database} {table-id :name, dataset-id :schema :as _table}]
+  ;; BigQuery's .getTable returns nil for non-existent tables
+  ;; get-table* call to avoid the non-nil schema enforcement on get-table
+  (let [client     (database-details->client details)
+        project-id (get-project-id details)]
+    (boolean
+     (get-table* client project-id dataset-id table-id))))
 
 (declare ^:dynamic *process-native*)
 
@@ -715,27 +730,29 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:convert-timezone         true
-                              :describe-fields          true
-                              :nested-fields            true
-                              :datetime-diff            true
-                              :expressions              true
-                              :now                      true
-                              :percentile-aggregations  true
-                              :metadata/key-constraints false
-                              :identifiers-with-spaces  true
-                              :expressions/integer      true
-                              :expressions/float        true
-                              :expressions/date         true
-                              :expressions/text         true
-                              :split-part               true
+(doseq [[feature supported?] {:convert-timezone                 true
+                              :describe-fields                  true
+                              :nested-fields                    true
+                              :datetime-diff                    true
+                              :expressions                      true
+                              :now                              true
+                              :percentile-aggregations          true
+                              :metadata/key-constraints         false
+                              :identifiers-with-spaces          true
+                              :expressions/integer              true
+                              :expressions/float                true
+                              :expressions/date                 true
+                              :expressions/text                 true
+                              :split-part                       true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
-                              :set-timezone             true
-                              :expression-literals      true
-                              :database-routing         true}]
+                              :set-timezone                     true
+                              :expression-literals              true
+                              :database-routing                 true
+                              :metadata/table-existence-check   true
+                              :transforms/table                 true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
@@ -800,3 +817,100 @@
 (defmethod driver/prettify-native-form :bigquery-cloud-sdk
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Transforms Support                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/compile-transform :bigquery-cloud-sdk
+  [_driver {:keys [query output-table]}]
+  ;; BigQuery uses CREATE OR REPLACE TABLE syntax
+  ;; output-table is a keyword like :schema/table or just :table
+  ;; BigQuery doesn't need backticks for identifiers - just use dataset.table format
+  (let [table-str (if (namespace output-table)
+                    ;; Schema-qualified table: :schema/table -> dataset.table
+                    (format "%s.%s" (namespace output-table) (name output-table))
+                    ;; Simple table: :table -> table
+                    (name output-table))]
+    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
+
+(defmethod driver/compile-drop-table :bigquery-cloud-sdk
+  [_driver table]
+  ;; Generate DROP TABLE IF EXISTS for BigQuery
+  ;; table is a keyword like :schema/table or just :table
+  ;; BigQuery doesn't need backticks for identifiers - just use dataset.table format
+  (let [table-str (if (namespace table)
+                    ;; Schema-qualified table: :schema/table -> dataset.table
+                    (format "%s.%s" (namespace table) (name table))
+                    ;; Simple table: :table -> table
+                    (name table))]
+    [(format "DROP TABLE IF EXISTS %s" table-str)]))
+
+(defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
+  [_driver connection-details queries]
+  ;; Execute DDL queries using BigQuery client
+  ;; connection-details is either database details directly (from transforms)
+  ;; or a database map with :details key (from other contexts)
+  (let [details (if (contains? connection-details :details)
+                  (:details connection-details)
+                  connection-details)
+        client (database-details->client details)]
+    (try
+      (vec
+       (doall
+        (for [query queries]
+          (let [sql (if (string? query) query (first query))
+                _ (log/debugf "Executing BigQuery DDL: %s" sql)
+                job-config (-> (QueryJobConfiguration/newBuilder sql)
+                               (.setUseLegacySql false)
+                               (.build))
+                table-result (.query client job-config (into-array BigQuery$JobOption []))]
+            ;; Wait for the job to complete and return affected rows
+            ;; For DDL statements, BigQuery typically returns nil for getTotalRows
+            ;; Return 0 as the number of affected rows for DDL operations
+            (if (and table-result (.getTotalRows table-result))
+              (.getTotalRows table-result)
+              0)))))
+      (catch Exception e
+        (log/error e "Error executing BigQuery DDL")
+        (throw e)))))
+
+(defmethod driver/run-transform! [:bigquery-cloud-sdk :table]
+  [driver {:keys [connection-details output-table] :as transform-details} {:keys [overwrite?]}]
+  ;; Main orchestrator for transform execution
+  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
+                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
+    {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
+
+(defmethod driver/drop-transform-target! [:bigquery-cloud-sdk :table]
+  [driver database {:keys [name schema] :as _target}]
+  ;; Drop a transform target table
+  ;; compile-drop-table expects a keyword, not a string
+  (let [qualified-name (if schema
+                         (keyword schema name) ; Create keyword :schema/name
+                         (keyword name)) ; Create keyword :name
+        drop-sql (first (driver/compile-drop-table driver qualified-name))]
+    (driver/execute-raw-queries! driver database [drop-sql])
+    nil))
+
+(defmethod driver/connection-details :bigquery-cloud-sdk
+  [_driver database]
+  ;; For BigQuery, return the database details directly since we don't use JDBC
+  (:details database))
+
+(defmethod driver.sql/default-schema :bigquery-cloud-sdk
+  [_]
+  nil)
+
+(defmethod driver/native-query-deps :bigquery-cloud-sdk
+  [driver query]
+  (->> query
+       macaw/parsed-query
+       macaw/query->components
+       :tables
+       (map :component)
+       (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
+       (map #(let [parts (str/split (:table %) #"\.")]
+               {:schema (first parts) :table (second parts)}))
+       (keep #(driver.sql/find-table driver %))
+       set))

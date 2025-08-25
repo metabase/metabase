@@ -79,7 +79,7 @@
            (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
 (deftest card-dependencies-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :left-join]})
     (mt/with-temp [:model/Card {card :id} {:dataset_query {:database (mt/id),
                                                            :type "query",
                                                            :query {:source-table (mt/id :orders),
@@ -123,7 +123,9 @@
              (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
 
 (deftest native-card-dependencies-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :native-parameter-card-reference)
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
+                                                         :native-parameter-card-reference
+                                                         :left-join]})
     (mt/with-temp [:model/Card {card :id} {:dataset_query {:database (mt/id),
                                                            :type "query",
                                                            :query {:source-table (mt/id :orders),
