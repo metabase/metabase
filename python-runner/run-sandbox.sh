@@ -21,12 +21,17 @@ STDERR_DIR="$(dirname "$STDERR_FILE")"
 mkdir -p "$STDOUT_DIR"
 mkdir -p "$STDERR_DIR"
 
-# Run Python code in Docker sandboxed environment
+# Get the directory containing this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Run Python code in Docker sandboxed environment with transform runner
 docker run --rm \
+  --entrypoint="" \
   --network none \
   --read-only \
   --tmpfs /tmp:uid=1000,gid=1000 \
   -v "$CODE_FILE":/sandbox/script.py:ro \
+  -v "$SCRIPT_DIR/transform_runner.py":/sandbox/transform_runner.py:ro \
   -v "$OUTPUT_DIR":/sandbox/output \
   -e OUTPUT_FILE="/sandbox/output/$(basename "$OUTPUT_FILE")" \
   -e TIMEOUT=30 \
@@ -34,4 +39,5 @@ docker run --rm \
   --memory=512m \
   --cpus=0.5 \
   python-sandbox \
+  python /sandbox/transform_runner.py \
   > "$STDOUT_FILE" 2> "$STDERR_FILE"
