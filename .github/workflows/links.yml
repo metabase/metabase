@@ -10,7 +10,7 @@ jobs:
   linkChecker:
     runs-on: ubuntu-latest
     permissions:
-      issues: write # required for peter-evans/create-issue-from-file
+      issues: write
     steps:
       - uses: actions/checkout@v4
 
@@ -19,14 +19,14 @@ jobs:
         uses: lycheeverse/lychee-action@v2
         with:
           fail: false
-          args: docs --include-fragments --config ./.lychee/config.toml --verbose --no-progress
+          args: docs --config ./.lychee/config.toml --offline
           format: markdown
 
-      - name: Create Issue From File
+      - name: Create Issue
         if: steps.lychee.outputs.exit_code != 0
-        uses: peter-evans/create-issue-from-file@v5
+        uses: peter-evans/create-issue@v5
         with:
           title: Link Checker Report
-          content-filepath: ./.lychee/out.md
+          body: ${{ steps.lychee.outputs.stdout }}
           labels: "Type:Documentation"
           assignees: jeff-bruemmer
