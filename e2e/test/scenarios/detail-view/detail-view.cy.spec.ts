@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -29,8 +30,16 @@ describe("detail view", () => {
       cy.icon("document").should("be.visible");
 
       H.appBar().within(() => {
-        cy.findByRole("link", { name: /Sample Database/ }).should("be.visible");
-        cy.findByRole("link", { name: "Products" }).should("be.visible");
+        cy.findByRole("link", { name: /Sample Database/ })
+          .should("be.visible")
+          .and("have.attr", "href", `/browse/databases/${SAMPLE_DB_ID}`);
+        cy.findByRole("link", { name: "Products" })
+          .should("be.visible")
+          .and(
+            "have.attr",
+            "href",
+            `/question#?db=${SAMPLE_DB_ID}&table=${PRODUCTS_ID}`,
+          );
         cy.findByText("Rustic Paper Wallet").should("be.visible");
       });
 
