@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupCardDataset } from "__support__/server-mocks";
@@ -123,6 +124,22 @@ describe("Relationship", () => {
     expect(screen.getByText("0")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     await userEvent.click(screen.getByText("0"));
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("should handle errors gracefully", async () => {
+    const { onClick } = setup();
+
+    fetchMock.modifyRoute("dataset-post", {
+      response: { status: 500 },
+    });
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByText("Unknown")).toBeInTheDocument();
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText("Unknown"));
     expect(onClick).not.toHaveBeenCalled();
   });
 
