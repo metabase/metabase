@@ -745,7 +745,7 @@
                     :description "Model desc"
                     :dataset_query (lib/->legacy-MBQL source-query)
                     :type :model
-                    :database_id 1}
+                    :database_id (mt/id)}
         metric-data {:name "Metric"
                      :description "Model based metric"
                      :type :metric}
