@@ -6,7 +6,6 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/hoc/Title";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -50,18 +49,13 @@ const setup = async ({
   const user = createMockUser({ email: "user@example.com" });
   setupCurrentUserEndpoint(user);
 
-  renderWithProviders(
-    <Route path="/admin/metabot*" component={MetabotPurchasePage} />,
-    {
-      withRouter: true,
-      initialRoute: `/admin/metabot`,
-      // Calling `setupPropertiesEndpoints` above is not enough; we also need to set `storeInitialState`:
-      storeInitialState: {
-        settings: createMockSettingsState(settings),
-        currentUser: user,
-      },
+  renderWithProviders(<MetabotPurchasePage />, {
+    // Calling `setupPropertiesEndpoints` above is not enough; we also need to set `storeInitialState`:
+    storeInitialState: {
+      settings: createMockSettingsState(settings),
+      currentUser: user,
     },
-  );
+  });
 
   await screen.findByText(/Get a free month of Metabot/);
 };
