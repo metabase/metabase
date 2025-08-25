@@ -50,6 +50,12 @@
                   {:status-code 400}
                   e)))
 
+(defn- throw-unknown-snippet!
+  [snippet-name]
+  (throw (ex-info (tru "Cannot save snippet referring to unknown snippet.")
+                  {:status-code 400
+                   :unknown-name snippet-name})))
+
 (defn- check-for-snippet-cycles
   [provider snippet changes]
   (when-let [content (:content changes)]
@@ -57,10 +63,9 @@
           new-snippet (assoc snippet
                              :content content
                              :template-tags template-tags)]
-      (try
-        (lib/check-snippet-cycles provider new-snippet)
-        (catch ExceptionInfo e
-          (throw-circular! e))))))
+      (lib/check-snippet-cycles provider new-snippet
+                                :on-unknown-snippet throw-unknown-snippet!
+                                :on-cycle-exception throw-circular!))))
 
 (api.macros/defendpoint :post "/"
   "Create a new `NativeQuerySnippet`."

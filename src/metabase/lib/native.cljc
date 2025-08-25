@@ -340,11 +340,11 @@
   "Add a dependency edge to the graph from from-id to to-id.
    Returns the updated graph if successful.
    Throws an internationalized exception if adding the edge would create a cycle."
-  [graph from-id to-id]
+  [graph from-id to-id on-exception]
   (try
     (dep/depend graph from-id to-id)
     (catch #?(:clj Exception :cljs js/Error) e
-      (throw (ex-info (i18n/tru "Circular dependency between snippets") {} e)))))
+      (on-exception e))))
 
 (defn- queue-item
   "Create a work queue item for processing.
@@ -366,12 +366,12 @@
    Returns a map with:
    - :graph - Updated dependency graph with new edges
    - :next-batch - Collection of new queue items for snippets to process next"
-  [graph name->snippet on-unknown-snippet current-batch]
+  [graph name->snippet on-unknown-snippet on-cycle-exception current-batch]
   (reduce
    (fn [{:keys [graph next-batch]} {:keys [to-name from-id]}]
      (if-let [to-snippet (name->snippet to-name)]
        (let [to-snippet-id (:id to-snippet)
-             graph'        (try-add-dependency! graph from-id to-snippet-id)
+             graph'        (try-add-dependency! graph from-id to-snippet-id on-cycle-exception)
              to-names      (extract-snippet-references (:content to-snippet))]
          {:graph      graph'
           :next-batch (into next-batch (map #(queue-item to-snippet-id %)) to-names)})
@@ -382,7 +382,7 @@
    current-batch))
 
 (defn- check-cycles*
-  [metadata-provider initial-queue on-unknown-snippet]
+  [metadata-provider initial-queue on-unknown-snippet on-cycle-exception]
   (loop [graph            (dep/graph)
          snippets-visited 0
          name->snippet    {}
@@ -403,7 +403,11 @@
                               :metadata/native-query-snippet
                               all-names)
             name->snippet' (into name->snippet (map (juxt :name identity)) new-snippets)
-            result         (process-snippet-batch graph name->snippet' on-unknown-snippet process-queue)]
+            result         (process-snippet-batch graph
+                                                  name->snippet'
+                                                  on-unknown-snippet
+                                                  on-cycle-exception
+                                                  process-queue)]
         (recur (:graph result)
                (+ snippets-visited (count new-snippets))
                name->snippet'
@@ -418,14 +422,16 @@
    - metadata-provider: Provider for fetching snippet metadata (can be snippets-only metadata provider)
    - snippet: The snippet object to start checking from (must have :id, :name, and :content)
    - on-unknown-snippet: (optional) Function called with snippet name when a referenced snippet doesn't exist
+   - on-cycle-detection: (optional) Function called with cyclic-dependency exception when it is thrown
 
    Returns nil if no cycles are detected.
    Throws if a cycle is found or if processing exceeds safety limits."
-  ([metadata-provider snippet]
-   (check-snippet-cycles metadata-provider snippet (constantly nil)))
-  ([metadata-provider snippet on-unknown-snippet]
-   (let [snippet-id    (:id snippet)
-         initial-queue (->> (extract-snippet-references (:content snippet))
-                            (into [] (map #(queue-item snippet-id %))))]
-     (when (seq initial-queue)
-       (check-cycles* metadata-provider initial-queue on-unknown-snippet)))))
+  [metadata-provider snippet
+   & {:keys [on-unknown-snippet on-cycle-exception]
+      :or {on-unknown-snippet (constantly true)
+           on-cycle-exception #(throw (ex-info (i18n/tru "Circular dependency between snippets") {} %))}}]
+  (let [snippet-id    (:id snippet)
+        initial-queue (->> (extract-snippet-references (:content snippet))
+                           (into [] (map #(queue-item snippet-id %))))]
+    (when (seq initial-queue)
+      (check-cycles* metadata-provider initial-queue on-unknown-snippet on-cycle-exception))))
