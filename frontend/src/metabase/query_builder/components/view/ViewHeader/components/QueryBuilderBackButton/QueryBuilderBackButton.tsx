@@ -5,48 +5,52 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
-import { getDashboard } from "metabase/query_builder/selectors";
+import { getParentEntity } from "metabase/query_builder/selectors";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
+import type { CollectionItemModel, DashboardId } from "metabase-types/api";
 
-import DashboardBackButtonS from "./DashboardBackButton.module.css";
+import S from "./QueryBuilderBackButton.module.css";
 
-export type DashboardBackButtonProps = {
+export type QueryBuilderBackButtonProps = {
   noLink?: boolean;
   onClick?: () => void;
-  dashboardOverride?: {
-    id: DashboardId;
+  parentOverride?: {
+    id: DashboardId | number;
+    model: CollectionItemModel;
     name: string;
   };
 } & ActionIconProps &
   HTMLAttributes<HTMLButtonElement>;
 
-export function DashboardBackButton({
+export function QueryBuilderBackButton({
   noLink,
   onClick,
-  dashboardOverride,
+  parentOverride,
   ...actionIconProps
-}: DashboardBackButtonProps) {
-  const dashboardState = useSelector(getDashboard);
-  const dashboard = dashboardOverride ?? dashboardState;
+}: QueryBuilderBackButtonProps) {
+  const stateParent = useSelector(getParentEntity);
+  const parent = parentOverride ?? stateParent;
   const dispatch = useDispatch();
 
   const handleClick = () => {
-    dispatch(navigateBackToDashboard(dashboard.id));
-
+    if (parent.model === "dashboard") {
+      dispatch(navigateBackToDashboard(parent.id));
+    }
     onClick?.();
   };
 
-  if (!dashboard) {
+  const url = Urls.modelToUrl(parent);
+
+  if (!parent.model || !url) {
     return null;
   }
 
-  const label = t`Back to ${dashboard.name}`;
+  const label = t`Back to ${parent.name}`;
 
   return (
     <Tooltip label={label}>
       <ActionIcon
-        className={DashboardBackButtonS.DashboardBackButton}
+        className={S.QueryBuilderBackButton}
         variant="outline"
         radius="xl"
         size="2.625rem"
@@ -54,7 +58,7 @@ export function DashboardBackButton({
         aria-label={label}
         onClick={handleClick}
         component={noLink ? undefined : Link}
-        to={Urls.dashboard(dashboard)}
+        to={url}
         {...actionIconProps}
       >
         <Icon c="brand" name="arrow_left" />
