@@ -75,7 +75,7 @@
     {:model [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:rrf       rrf-rank-exp
+    {:rrf        rrf-rank-exp
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy :pinned)
      :recency    (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at]
