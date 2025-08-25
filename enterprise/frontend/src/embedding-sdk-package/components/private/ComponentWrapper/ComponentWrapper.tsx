@@ -1,10 +1,20 @@
-import { type FunctionComponent, useEffect, useId, useRef } from "react";
+import {
+  type ComponentProps,
+  type JSXElementConstructor,
+  type PropsWithChildren,
+  useEffect,
+  useId,
+  useRef,
+} from "react";
 
+import type { InternalComponent } from "embedding-sdk-bundle/types/sdk-bundle";
 import { ClientSideOnlyWrapper } from "embedding-sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { Error } from "embedding-sdk-package/components/private/Error/Error";
 import { Loader } from "embedding-sdk-package/components/private/Loader/Loader";
 import {
+  SDK_COMPONENT_MISSING_REQUIRED_PROPERTY_MESSAGE,
   SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE,
+  SDK_COMPONENT_UNRECOGNIZED_PROPERTY_MESSAGE,
   SDK_LOADING_ERROR_MESSAGE,
   SDK_NOT_LOADED_YET_MESSAGE,
   SDK_NOT_STARTED_LOADING_MESSAGE,
@@ -18,9 +28,13 @@ import {
   SdkLoadingError,
   SdkLoadingState,
 } from "embedding-sdk-shared/types/sdk-loading";
+import type { FunctionParametersSchemaValidationErrorMetadata } from "embedding-sdk-shared/types/validation";
 
 type Props<TComponentProps> = {
-  getComponent: () => FunctionComponent<TComponentProps> | null | undefined;
+  getComponent: () =>
+    | InternalComponent<JSXElementConstructor<TComponentProps>>
+    | null
+    | undefined;
   componentProps: TComponentProps | undefined;
 };
 
@@ -53,6 +67,69 @@ const NotStartedLoadingTrigger = () => {
   }, []);
 
   return null;
+};
+
+const getValidationErrorMessage = (
+  errorMetadata: FunctionParametersSchemaValidationErrorMetadata | undefined,
+) => {
+  if (!errorMetadata) {
+    return null;
+  }
+
+  const { errorCode, data } = errorMetadata;
+
+  switch (errorCode) {
+    case "missing_required_property":
+      return `"${data}": ${SDK_COMPONENT_MISSING_REQUIRED_PROPERTY_MESSAGE}`;
+    case "unrecognized_keys":
+      return `"${data}": ${SDK_COMPONENT_UNRECOGNIZED_PROPERTY_MESSAGE}`;
+  }
+
+  return null;
+};
+
+const RenderComponentWithValidation = <
+  TComponent extends InternalComponent<JSXElementConstructor<any>>,
+>({
+  $component: Component,
+  ...props
+}: PropsWithChildren<
+  {
+    $component: TComponent;
+  } & ComponentProps<TComponent>
+>) => {
+  const validateFunctionSchema =
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.validateFunctionSchema;
+  const schema = Component.schema;
+
+  useEffect(() => {
+    if (!validateFunctionSchema || !schema) {
+      return;
+    }
+
+    const validateAsync = async () => {
+      try {
+        const { validateParameters } = validateFunctionSchema(schema);
+        const validationResult = validateParameters([props]);
+
+        if (!validationResult.success) {
+          const error = getValidationErrorMessage(
+            validationResult.errorMetadata,
+          );
+
+          if (error) {
+            console.error(error);
+          }
+        }
+      } catch (error) {
+        console.warn(`Error during component schema validation: ${error}`);
+      }
+    };
+
+    validateAsync();
+  }, [props, schema, validateFunctionSchema]);
+
+  return <Component {...props}>{props.children}</Component>;
 };
 
 const ComponentWrapperInner = <TComponentProps,>({
@@ -98,14 +175,16 @@ const ComponentWrapperInner = <TComponentProps,>({
   }
 
   return (
-    <ComponentProvider
+    <RenderComponentWithValidation
+      $component={ComponentProvider}
       {...metabaseProviderProps}
       reduxStore={metabaseProviderInternalProps.reduxStore}
     >
-      <Component
-        {...(componentProps as JSX.IntrinsicAttributes & TComponentProps)}
+      <RenderComponentWithValidation
+        $component={Component as InternalComponent<JSXElementConstructor<any>>}
+        {...componentProps}
       />
-    </ComponentProvider>
+    </RenderComponentWithValidation>
   );
 };
 
@@ -118,7 +197,10 @@ type ComponentWrapperFunction<P> = [P] extends [never]
 export const createComponent = <
   TComponentProps extends Record<any, any> | undefined | never = never,
 >(
-  getComponent: () => FunctionComponent<TComponentProps> | null | undefined,
+  getComponent: () =>
+    | InternalComponent<JSXElementConstructor<TComponentProps>>
+    | null
+    | undefined,
 ): ComponentWrapperFunction<TComponentProps> => {
   return function ComponentWrapper(props: TComponentProps) {
     const ensureSingleInstanceId = useId();

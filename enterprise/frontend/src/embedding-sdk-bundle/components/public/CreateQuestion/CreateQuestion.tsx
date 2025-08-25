@@ -3,6 +3,8 @@ import {
   type InteractiveQuestionProps,
 } from "../InteractiveQuestion";
 
+import { createQuestionSchema } from "./CreateQuestion.schema";
+
 /**
  * @interface
  * @expand
@@ -13,6 +15,10 @@ export type CreateQuestionProps = Omit<
   "questionId" | "children"
 >;
 
-export const CreateQuestion = (props: CreateQuestionProps = {}) => (
+const CreateQuestionInner = (props: CreateQuestionProps = {}) => (
   <InteractiveQuestion {...props} questionId="new" />
 );
+
+export const CreateQuestion = Object.assign(CreateQuestionInner, {
+  schema: createQuestionSchema,
+});
