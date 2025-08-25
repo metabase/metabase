@@ -1,4 +1,4 @@
-name: Links
+name: Check doc links
 
 on:
   repository_dispatch:
