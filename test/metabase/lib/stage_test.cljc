@@ -1019,3 +1019,32 @@
         {:lib/source               :source/previous-stage
          :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_00028d48"
          :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}))))
+
+(deftest ^:parallel optimize-stages-test
+  (testing "optimize-stages should merge empty stages with subsequent stages"
+    (let [base-query (lib.tu/orders-query)
+          ;; Create a query with empty first stage and second stage with content  
+          stage-0-only-source {:lib/type :mbql.stage/mbql
+                               :source-table (meta/id :orders)}
+          stage-1-with-agg {:lib/type :mbql.stage/mbql
+                           :aggregation [[:count {}]]}
+          query-with-separate-stages {:lib/type :mbql/query
+                                     :database (meta/id)
+                                     :lib/metadata meta/metadata-provider
+                                     :stages [stage-0-only-source stage-1-with-agg]}
+          optimized-query (lib/optimize-stages query-with-separate-stages)]
+      
+      (testing "Should reduce from 2 stages to 1"
+        (is (= 2 (count (:stages query-with-separate-stages))))
+        (is (= 1 (count (:stages optimized-query)))))
+      
+      (testing "Optimized stage should have both source-table and aggregation"
+        (let [optimized-stage (first (:stages optimized-query))]
+          (is (= (meta/id :orders) (:source-table optimized-stage)))
+          (is (seq (:aggregation optimized-stage)))))
+      
+      (testing "Should preserve query semantics"
+        (is (= (lib/toLegacyQuery optimized-query)
+               {:database (meta/id) 
+                :query {:source-table (meta/id :orders)
+                        :aggregation [[:count]]}})))))))
