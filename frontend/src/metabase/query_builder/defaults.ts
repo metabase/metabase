@@ -40,8 +40,10 @@ export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
   timeoutId: "",
 };
 
-export const DEFAULT_DASHBOARD_STATE = {
-  dashboardId: null,
+export const DEFAULT_PARENT_ENTITY_STATE = {
+  id: null,
+  model: null,
+  name: null,
   isEditing: false,
 };
 
