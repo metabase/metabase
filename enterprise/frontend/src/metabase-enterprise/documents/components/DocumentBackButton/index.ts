@@ -1,1 +1,0 @@
-export { DocumentBackButton } from "./DocumentBackButton";
