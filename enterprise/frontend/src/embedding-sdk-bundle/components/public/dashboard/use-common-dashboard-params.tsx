@@ -61,7 +61,14 @@ export const useCommonDashboardParams = ({
         });
 
         if (url) {
-          dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
+          dispatch({
+            type: NAVIGATE_TO_NEW_CARD,
+            payload: {
+              id: dashboard.id,
+              name: dashboard.name,
+              model: "dashboard",
+            },
+          });
           setAdhocQuestionUrl(url);
         }
       }
@@ -77,10 +84,22 @@ export const useCommonDashboardParams = ({
 
   const onEditQuestion = useCallback(
     (question: Question) => {
-      dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
-      setAdhocQuestionUrl(Urls.question(question.card()));
+      const state = store.getState();
+      const { dashboards } = state.dashboard;
+      const dashboard = dashboardId && dashboards[dashboardId];
+      if (dashboard) {
+        dispatch({
+          type: NAVIGATE_TO_NEW_CARD,
+          payload: {
+            id: dashboard.id,
+            name: dashboard.name,
+            model: "dashboard",
+          },
+        });
+        setAdhocQuestionUrl(Urls.question(question.card()));
+      }
     },
-    [dashboardId, dispatch],
+    [dashboardId, dispatch, store],
   );
 
   return {

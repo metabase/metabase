@@ -20,6 +20,10 @@ H.describeWithSnowplowEE("documents", () => {
   });
 
   it("should allow you to create a new document from the new button and save", () => {
+    const getDocumentStub = cy.stub();
+
+    cy.intercept("GET", "/api/ee/document/1", getDocumentStub);
+
     cy.visit("/");
 
     H.newButton("Document").click();
@@ -41,9 +45,13 @@ H.describeWithSnowplowEE("documents", () => {
     );
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+
+    // We should not show a loading state in between creating a document and viewing the created document.
+    cy.location("pathname").should("eq", "/document/1");
     cy.title().should("eq", "Test Document · Metabase");
 
     H.expectUnstructuredSnowplowEvent({ event: "document_created" });
+    cy.wrap(getDocumentStub).should("not.have.been.called");
 
     H.appBar()
       .findByRole("link", { name: /First collection/ })
@@ -178,7 +186,9 @@ H.describeWithSnowplowEE("documents", () => {
       });
 
       it("not found", () => {
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id + 1}`));
+        cy.get("@documentId").then((id) =>
+          cy.visit(`/document/${(id as unknown as number) + 1}`),
+        );
         H.main().within(() => {
           cy.findByText("We're a little lost...").should("exist");
           cy.findByText("The page you asked for couldn't be found.");
@@ -580,6 +590,27 @@ H.describeWithSnowplowEE("documents", () => {
         cy.location("pathname").should(
           "not.include",
           ORDERS_BY_YEAR_QUESTION_ID.toString(),
+        );
+
+        // Navigating to a question from a document should result in a back button
+        cy.findByLabelText("Back to Foo Document").click();
+
+        cy.get("@documentId").then((id) =>
+          cy.location("pathname").should("equal", `/document/${id}`),
+        );
+
+        H.getDocumentCard("Orders, Count, Grouped by Created At (year)").within(
+          () => {
+            H.cartesianChartCircle().eq(1).click();
+          },
+        );
+
+        H.popover().findByText("See these Orders").click();
+
+        cy.findByLabelText("Back to Foo Document").click();
+
+        cy.get("@documentId").then((id) =>
+          cy.location("pathname").should("equal", `/document/${id}`),
         );
       });
     });

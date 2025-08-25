@@ -34,11 +34,6 @@ export const getCurrentDocument = createSelector(
   (documents) => documents?.currentDocument || null,
 );
 
-export const getShowNavigateBackToDocumentButton = createSelector(
-  getDocumentsState,
-  (documents) => documents?.showNavigateBackToDocumentButton ?? false,
-);
-
 // Get all draft cards
 export const getDraftCards = createSelector(
   getDocumentsState,
