@@ -34,7 +34,8 @@ export const sessionApi = Api.injectEndpoints({
       providesTags: ["session-properties"],
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const response = await queryFulfilled;
-        if (response.data) {
+        // In some cases, the response is an HTML string because of a redirect (metabase#62501)
+        if (response.data && typeof response.data === "object") {
           dispatch(loadSettings(response.data));
           // compatibility layer for legacy settings on the window object
           MetabaseSettings.setAll(response.data);

@@ -385,4 +385,21 @@ describe("scenarios [EE] > public > dashboard", () => {
       "rgba(0, 0, 0, 0)",
     );
   });
+
+  it("should handle 302 redirects (metabase#62501)", () => {
+    cy.intercept("/api/session/properties", {
+      statusCode: 302,
+      headers: {
+        Location: "/?redirect_url=%2Fapi%2Fsession%2Fproperties",
+      },
+    });
+
+    cy.get("@dashboardId").then((id) => {
+      H.visitPublicDashboard(id, {
+        hash: { background: "false" },
+      });
+    });
+
+    cy.findByTestId("embed-frame").should("exist");
+  });
 });
