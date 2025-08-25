@@ -5,34 +5,37 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { getIsListViewConfigurationShown } from "metabase/query_builder/selectors";
 import { Button, Group, SegmentedControl, Stack, Text } from "metabase/ui";
-import type { RawSeries } from "metabase-types/api";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { CardDisplayType, RawSeries } from "metabase-types/api";
 
 import { ListViewColumnsCustomization } from "./ListViewColumnsCustomization";
 
+export type ModelSettings = {
+  display: CardDisplayType;
+};
 type DatasetEditorSettingsSidebarProps = {
-  onUpdateSettings: (settings: any) => void;
-  settings: any;
+  onUpdateModelSettings: (settings: ModelSettings) => void;
+  visualizationSettings: ComputedVisualizationSettings;
   rawSeries: RawSeries;
+  display: CardDisplayType;
 };
 export const DatasetEditorSettingsSidebar = ({
-  onUpdateSettings,
-  settings = {},
+  onUpdateModelSettings: onUpdateSettings,
+  visualizationSettings = {},
   rawSeries,
+  display,
 }: DatasetEditorSettingsSidebarProps) => {
   const dispatch = useDispatch();
   const isShowingListViewConfiguration = useSelector(
     getIsListViewConfigurationShown,
   );
-  const currentView = (settings?.viewSettings?.defaultView ?? "table") as
-    | "table"
-    | "list";
   const cols = useMemo(() => rawSeries[0]?.data?.cols, [rawSeries]);
 
-  if (currentView === "list" && isShowingListViewConfiguration) {
+  if (display === "list" && isShowingListViewConfiguration) {
     return (
       <ListViewColumnsCustomization
         cols={cols}
-        settings={settings}
+        settings={visualizationSettings}
         onDone={() =>
           dispatch(setUIControls({ isShowingListViewConfiguration: false }))
         }
@@ -54,15 +57,15 @@ export const DatasetEditorSettingsSidebar = ({
               { value: "table", label: t`Table` },
               { value: "list", label: t`List` },
             ]}
-            value={currentView}
+            value={display}
             onChange={(value) => {
-              onUpdateSettings({ viewSettings: { defaultView: value } });
+              onUpdateSettings({ display: value });
               dispatch(
                 setUIControls({ isShowingListViewConfiguration: false }),
               );
             }}
           />
-          {currentView === "list" && (
+          {display === "list" && (
             <Button
               variant="default"
               onClick={() =>

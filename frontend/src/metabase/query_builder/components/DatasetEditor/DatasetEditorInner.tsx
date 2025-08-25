@@ -63,7 +63,10 @@ import type {
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
-import { DatasetEditorSettingsSidebar } from "./DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar";
+import {
+  DatasetEditorSettingsSidebar,
+  ModelSettings,
+} from "./DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
@@ -144,7 +147,8 @@ function getSidebar(
     focusFirstField,
     onFieldMetadataChange,
     onMappedDatabaseColumnChange,
-    updateVisualizationSettings,
+    onUpdateModelSettings,
+    modelSettings,
   }: {
     datasetEditorTab: DatasetEditorTab;
     isQueryError?: unknown;
@@ -153,7 +157,8 @@ function getSidebar(
     focusFirstField: () => void;
     onFieldMetadataChange: (values: Partial<DatasetColumn>) => void;
     onMappedDatabaseColumnChange: (value: number) => void;
-    updateVisualizationSettings: (settings: VisualizationSettings) => void;
+    onUpdateModelSettings: (settings: ModelSettings) => void;
+    modelSettings: ModelSettings;
   },
 ): ReactNode {
   const {
@@ -191,10 +196,6 @@ function getSidebar(
     );
   }
 
-  const onUpdateModelSettings = (settings: any) => {
-    updateVisualizationSettings(settings);
-  };
-
   if (datasetEditorTab === "metadata") {
     if (isQueryError) {
       return null;
@@ -205,9 +206,10 @@ function getSidebar(
     }
     return (
       <DatasetEditorSettingsSidebar
-        settings={question.settings()}
+        display={modelSettings.display}
+        visualizationSettings={question.settings()}
         rawSeries={props.rawSeries}
-        onUpdateSettings={onUpdateModelSettings}
+        onUpdateModelSettings={onUpdateModelSettings}
       />
     );
   }
@@ -273,6 +275,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     handleResize,
     onOpenModal,
     isShowingListViewConfiguration,
+    rawSeries,
   } = props;
 
   const dispatch = useDispatch();
@@ -288,14 +291,22 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     [resultsMetadata, visualizationSettings],
   );
 
-  const [editedVisualizationSettings, setEditedVisualizationSettings] =
-    useState(visualizationSettings);
-  useEffect(() => {
-    if (visualizationSettings && !editedVisualizationSettings) {
-      setEditedVisualizationSettings(visualizationSettings);
-    }
-  }, [visualizationSettings, editedVisualizationSettings]);
-  // const isDirty = isModelQueryDirty || isMetadataDirty;
+  const [tempModelSettings, setTempModelSettings] = useState<ModelSettings>(
+    () => {
+      return {
+        display: question.display(),
+      };
+    },
+  );
+  const tempRawSeries = useMemo(() => {
+    return [
+      {
+        ...rawSeries[0],
+        card: { ...rawSeries[0].card, display: tempModelSettings.display },
+      },
+    ];
+  }, [tempModelSettings, rawSeries]);
+
   const [isDirty, setIsDirty] = useState(
     () => isModelQueryDirty || isMetadataDirty,
   );
@@ -407,38 +418,32 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
 
-  const [tempQuestion, setTempQuestion] = useState(question);
   const onChangeEditorTab = useCallback(
     (tab: DatasetEditorTab) => {
       setDatasetEditorTab(tab);
       setEditorHeight(tab === "query" ? initialEditorHeight : 0);
       /**
        * The only way to properly display interface for "Columns" tab is to
-       * set model's display type to "table". Otherwise, the interface will
-       * display the list, without providing an option to configure columns.
+       * set model's display type to "table".
+       * We use local `tempModelSettings` to store unsaved changes to avoid
+       * affecting the `question` object in store, which triggers unwanted
+       * `dirty` checks.
        */
-
-      if (editedVisualizationSettings?.viewSettings?.defaultView === "list") {
+      const display = question.display();
+      if (display === "list") {
         if (tab !== "metadata") {
-          setTempQuestion(tempQuestion.setDisplay("table"));
-          // updateQuestion(updatedQuestion, {
-          //   rerunQuery: false,
-          // });
-        }
-        if (tab === "metadata") {
-          setTempQuestion(tempQuestion.setDisplay("list"));
-          // updateQuestion(updatedQuestion, {
-          //   rerunQuery: false,
-          // });
+          setTempModelSettings({
+            display: "table",
+          });
         }
       }
+      if (tab === "metadata") {
+        setTempModelSettings({
+          display: question.display(),
+        });
+      }
     },
-    [
-      editedVisualizationSettings?.viewSettings?.defaultView,
-      initialEditorHeight,
-      tempQuestion,
-      setDatasetEditorTab,
-    ],
+    [initialEditorHeight, setDatasetEditorTab, question],
   );
 
   const handleCancelEdit = () => {
@@ -466,7 +471,14 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
-    const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
+    let questionWithUpdatedSettings = question;
+    if (tempModelSettings?.display !== question.display()) {
+      questionWithUpdatedSettings = question.setDisplay(
+        tempModelSettings.display,
+      );
+    }
+    const questionWithMetadata =
+      questionWithUpdatedSettings.setResultMetadataDiff(metadataDiff);
     if (isShowingListViewConfiguration) {
       dispatch(setUIControls({ isShowingListViewConfiguration: false }));
     }
@@ -475,11 +487,11 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       await updateQuestion(questionWithMetadata, {
         rerunQuery: false,
       });
-      setEditedVisualizationSettings(questionWithMetadata.settings());
+      // setTempModelSettings(questionWithMetadata.settings());
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
       await onSave(questionWithMetadata, { rerunQuery: true });
-      setEditedVisualizationSettings(questionWithMetadata.settings());
+      // setTempModelSettings(questionWithMetadata.settings());
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {
@@ -488,6 +500,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     }
   }, [
     question,
+    tempModelSettings.display,
     metadataDiff,
     isShowingListViewConfiguration,
     dispatch,
@@ -616,29 +629,15 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       focusFirstField,
       onFieldMetadataChange,
       onMappedDatabaseColumnChange,
-      updateVisualizationSettings: (settings) => {
-        setEditedVisualizationSettings(settings);
+      onUpdateModelSettings: (settings: ModelSettings) => {
         setIsDirty(true);
-
-        if (
-          settings.viewSettings?.defaultView &&
-          editedVisualizationSettings?.viewSettings?.defaultView !==
-            settings.viewSettings.defaultView
-        ) {
-          let nextQuestion = question.setDisplay(
-            settings.viewSettings.defaultView,
-          );
-
-          const newSettings = {
-            viewSettings: {
-              ...settings.viewSettings,
-              defaultView: settings.viewSettings.defaultView,
-            },
-          };
-          nextQuestion = nextQuestion?.updateSettings(newSettings);
-          updateQuestion(nextQuestion);
+        if (settings.display) {
+          setTempModelSettings({ display: settings.display });
+          // const nextQuestion = question.setDisplay(settings.display);
+          // updateQuestion(nextQuestion);
         }
       },
+      modelSettings: tempModelSettings,
     },
   );
 
@@ -717,7 +716,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
               <QueryVisualization
                 {...props}
-                // question={tempQuestion}
+                rawSeries={tempRawSeries}
                 className={CS.spread}
                 noHeader
                 queryBuilderMode="dataset"
