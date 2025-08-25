@@ -20,7 +20,14 @@
    {:name "Supabase" :pattern #"(pooler\.supabase\.com|\.supabase\.co)$"}
    {:name "Timescale" :pattern #"(\.tsdb\.cloud|\.timescale\.com)$"}])
 
-(defn detect-provider
+(defn- extract-host-from-details
+  "Extract host from database details map."
+  [details]
+  (when details
+    (or (:host details)
+        (get details "host"))))
+
+(defn- detect-provider
   "Detect database provider from host using regex patterns.
    Returns provider name string or nil if no match found."
   [host]
@@ -30,13 +37,6 @@
            (filter #(re-find (:pattern %) host))
            first
            :name))))
-
-(defn extract-host-from-details
-  "Extract host from database details map."
-  [details]
-  (when details
-    (or (:host details)
-        (get details "host"))))
 
 (defn detect-provider-from-database
   "Detect provider from a database entity by examining its details."
