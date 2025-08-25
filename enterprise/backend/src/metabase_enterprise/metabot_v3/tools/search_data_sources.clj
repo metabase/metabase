@@ -85,17 +85,16 @@
                                                                     {:search-string term
                                                                      :models search-models
                                                                      :table-db-id database-id
-                                              ;;TODO: Do we need those impersonated, sandboxed, superuser checks?
+                                                                     ;;TODO: Do we need those impersonated, sandboxed, superuser checks?
                                                                      :current-user-id api/*current-user-id*
                                                                      :is-impersonated-user? (perms/impersonated-user?)
                                                                      :is-sandboxed-user? (perms/sandboxed-user?)
                                                                      :is-superuser? api/*is-superuser?*
                                                                      :current-user-perms @api/*current-user-permissions-set*
-                                                                     :context :context
+                                                                     :context :metabot
                                                                      :archived false
                                                                      :limit (or limit 50)
                                                                      :offset 0}
-                                             ;; Only add verified filter if metabot is configured to use verified content
                                                                     (when use-verified-content?
                                                                       {:verified true})))
                              search-results (search/search search-context)]
