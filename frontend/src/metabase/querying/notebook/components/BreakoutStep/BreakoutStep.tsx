@@ -80,18 +80,20 @@ export function BreakoutStep({
       hasAddButton={hasAddButton}
       isAddButtonDisabled={isAddButtonDisabled}
       renderName={renderBreakoutName}
-      renderPopover={({ item: breakout, index, onClose }) => (
-        <BreakoutPopover
-          query={query}
-          stageIndex={stageIndex}
-          breakout={breakout}
-          breakoutIndex={index}
-          isMetric={isMetric}
-          onAddBreakout={handleAddBreakout}
-          onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
-          onClose={onClose}
-        />
-      )}
+      renderPopover={({ item: breakout, index, onClose }) =>
+        readOnly ? null : (
+          <BreakoutPopover
+            query={query}
+            stageIndex={stageIndex}
+            breakout={breakout}
+            breakoutIndex={index}
+            isMetric={isMetric}
+            onAddBreakout={handleAddBreakout}
+            onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
+            onClose={onClose}
+          />
+        )
+      }
       onReorder={handleReorderBreakout}
       onRemove={handleRemoveBreakout}
       data-testid="breakout-step"

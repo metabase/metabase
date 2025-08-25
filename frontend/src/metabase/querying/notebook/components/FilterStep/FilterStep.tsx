@@ -85,7 +85,6 @@ export function FilterStep({
         )}
         onReorder={handleReorderFilter}
         onRemove={handleRemoveFilter}
-        renderPopoverWhenReadOnly
       />
     </ErrorBoundary>
   );

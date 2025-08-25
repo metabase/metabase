@@ -64,7 +64,6 @@ export const ExpressionStep = ({
       isLastOpened={isLastOpened}
       onReorder={handleReorderExpression}
       onRemove={handleRemoveExpression}
-      renderPopoverWhenReadOnly
     />
   );
 };

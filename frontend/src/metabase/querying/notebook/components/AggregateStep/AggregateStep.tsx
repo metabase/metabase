@@ -96,7 +96,6 @@ export function AggregateStep({
       onReorder={handleReorderAggregation}
       onRemove={handleRemoveAggregation}
       data-testid="aggregate-step"
-      renderPopoverWhenReadOnly
     />
   );
 }

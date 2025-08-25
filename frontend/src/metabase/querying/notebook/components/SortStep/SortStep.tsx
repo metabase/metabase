@@ -73,17 +73,19 @@ export function SortStep({
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}
-      renderPopover={({ item: orderBy, index, onClose }) => (
-        <SortPopover
-          query={query}
-          stageIndex={stageIndex}
-          orderBy={orderBy}
-          orderByIndex={index}
-          onAddOrderBy={handleAddOrderBy}
-          onUpdateOrderByColumn={handleUpdateOrderByColumn}
-          onClose={onClose}
-        />
-      )}
+      renderPopover={({ item: orderBy, index, onClose }) =>
+        readOnly ? null : (
+          <SortPopover
+            query={query}
+            stageIndex={stageIndex}
+            orderBy={orderBy}
+            orderByIndex={index}
+            onAddOrderBy={handleAddOrderBy}
+            onUpdateOrderByColumn={handleUpdateOrderByColumn}
+            onClose={onClose}
+          />
+        )
+      }
       onReorder={handleReorderOrderBy}
       onRemove={handleRemoveOrderBy}
     />
