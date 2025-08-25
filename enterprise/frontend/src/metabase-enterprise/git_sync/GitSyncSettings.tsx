@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import Markdown from "metabase/common/components/Markdown";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 
@@ -21,19 +20,12 @@ export const GitSyncSettings = () => {
       }
     >
       <AdminSettingInput
-        name="github-api-key"
-        description={
-          <Markdown>
-            {t`Create a [Github personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with "repo" scope.`}
-          </Markdown>
-        }
+        name="git-sync-key"
         title={t`API key`}
         inputType="text"
       />
       <AdminSettingInput
-        name="github-repo-name"
-        /* eslint-disable-next-line */
-        description={t`The name of the repository where Metabase will store your library data.`}
+        name="git-sync-key"
         title={t`Repository name`}
         inputType="text"
       />
@@ -42,7 +34,7 @@ export const GitSyncSettings = () => {
 };
 
 const GitSyncStatus = () => {
-  const syncStatus = useSetting("github-sync-configured");
+  const syncStatus = useSetting("git-sync-configured");
 
   const color = syncStatus ? "success" : "error";
   const message = syncStatus
