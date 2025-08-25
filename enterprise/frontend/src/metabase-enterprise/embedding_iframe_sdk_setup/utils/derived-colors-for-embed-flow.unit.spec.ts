@@ -1,4 +1,4 @@
-import type { MetabaseTheme } from "embedding-sdk";
+import type { MetabaseTheme } from "embedding-sdk-bundle/types/ui";
 
 import { getDerivedDefaultColorsForEmbedFlow } from "./derived-colors-for-embed-flow";
 

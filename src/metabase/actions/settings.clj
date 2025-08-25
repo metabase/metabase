@@ -16,26 +16,27 @@
 ;; reasons for disabling table editing
 
 (def ^:private db-routing-reason
-  {:key :setting/database-routing
+  {:key     :setting/database-routing
+   :type    :error
    :message (i18n/deferred-tru "Table editing is not supported with database routing.")})
 
 (def ^:private no-writable-tables-reason
-  {:key :permissions/no-writable-table
+  {:key     :permissions/no-writable-table
+   :type    :error
    :message (i18n/deferred-tru "Table editing requires at least one table with INSERT, UPDATE, and DELETE support.")})
 
 (def ^:private busy-sync-reason
   {:key     :database-metadata/sync-in-progress
+   :type    :warning
    :message (i18n/deferred-tru "Unable to determine whether the database connection is readonly, as it is still syncing.")})
 
 (def ^:private missing-permissions-reason
   {:key     :database-metadata/not-populated
+   :type    :warning
    :message (i18n/deferred-tru "Unable to determine whether the database connection is readonly, as we are missing metadata from sync.")})
 
 ;; Marking reasons as warnings allow the user to proactively set the configuration, but it will only come into
 ;; effect once the warning is resolved.
-
-(derive :database-metadata/sync-in-progress :setting/disabled-warning)
-(derive :database-metadata/not-populated :setting/disabled-warning)
 
 (setting/defsetting database-enable-table-editing
   (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
