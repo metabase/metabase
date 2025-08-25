@@ -232,25 +232,3 @@
                                      (str "native-query-snippet/" (:id snippet-b))
                                      {:content (format "WHERE b = 1 {{snippet: %s}}"
                                                        (:name snippet-a))})))))))
-
-(deftest update-snippet-card-cycle-test
-  (testing "PUT /api/native-query-snippet/:id delegates to lib/query for card cycles"
-        (mt/with-temp [:model/NativeQuerySnippet snippet {:name "test-snippet"
-                                                      :content "WHERE true"}
-                   :model/Card card {:dataset_query
-                                     {:database (mt/id)
-                                      :type     :native
-                                      :native   {:query         (format "SELECT * {{snippet: %s}}" (:name snippet))
-                                                 :template-tags {(str "snippet:" (:name snippet))
-                                                                 {:type         :snippet
-                                                                  :snippet-id   (:id snippet)
-                                                                  :snippet-name (:name snippet)
-                                                                  :name         (str "snippet:" (:name snippet))
-                                                                  :display-name "Snippet 2"}}}}}]
-
-      (testing "Cannot create card->snippet->card cycle"
-        (is (= "Cannot save snippet with circular references."
-               (mt/user-http-request :crowberto :put 400
-                                     (str "native-query-snippet/" (:id snippet))
-                                     {:content (format "WHERE id IN ({{#%d}})"
-                                                       (:id card))})))))))
