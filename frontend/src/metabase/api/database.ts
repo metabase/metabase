@@ -10,6 +10,7 @@ import type {
   GetDatabaseHealthResponse,
   GetDatabaseMetadataRequest,
   GetDatabaseRequest,
+  GetDatabaseSettingsAvailableResponse,
   ListDatabaseIdFieldsRequest,
   ListDatabaseSchemaTablesRequest,
   ListDatabaseSchemasRequest,
@@ -71,6 +72,15 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (database) =>
         database ? provideDatabaseTags(database) : [],
+    }),
+    getDatabaseSettingsAvailable: builder.query<
+      GetDatabaseSettingsAvailableResponse,
+      DatabaseId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/database/${id}/settings-available`,
+      }),
     }),
     listDatabaseSchemas: builder.query<
       SchemaName[],
@@ -268,6 +278,7 @@ export const {
   useGetDatabaseQuery,
   useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
+  useGetDatabaseSettingsAvailableQuery,
   useListDatabaseSchemasQuery,
   useLazyListDatabaseSchemasQuery,
   usePrefetch: useDatabasePrefetch,

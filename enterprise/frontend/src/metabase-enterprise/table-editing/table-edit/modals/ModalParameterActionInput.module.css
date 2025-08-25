@@ -1,0 +1,17 @@
+.textInputElement {
+  width: 100%;
+}
+
+.numberInputElement {
+  width: 10rem;
+}
+
+.selectTextInputElement {
+  width: auto;
+  min-width: 10rem;
+}
+
+.dateTextInputElement {
+  width: auto;
+  min-width: 10rem;
+}

@@ -24,17 +24,23 @@ const getDefaultCellTemplate = <TRow, TValue>(
     wrap,
     getCellClassName,
     getCellStyle,
+    getIsEditing,
+    editingCell: EditingCellComponent,
   }: ColumnOptions<TRow, TValue>,
   isTruncated: boolean,
   onExpand: (columnName: string, content: React.ReactNode) => void,
 ) => {
-  return function Cell({
-    getValue,
-    row,
-    isSelected,
-  }: CellContext<TRow, TValue> & { isSelected?: boolean }) {
+  return function Cell(
+    props: CellContext<TRow, TValue> & { isSelected?: boolean },
+  ) {
+    const { getValue, row, isSelected } = props;
     const value = getValue();
     const backgroundColor = getBackgroundColor?.(value, row?.index);
+    const isEditing = getIsEditing?.(id, row.index);
+
+    if (isEditing && EditingCellComponent) {
+      return <EditingCellComponent {...props} />;
+    }
 
     return (
       <BodyCell
@@ -49,8 +55,8 @@ const getDefaultCellTemplate = <TRow, TValue>(
         onExpand={onExpand}
         variant={cellVariant}
         wrap={wrap}
-        className={getCellClassName?.(value, row.index)}
-        style={getCellStyle?.(value, row.index)}
+        className={getCellClassName?.(value, row.index, id)}
+        style={getCellStyle?.(value, row.index, id)}
       />
     );
   };

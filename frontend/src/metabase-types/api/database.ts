@@ -14,6 +14,7 @@ export type DatabaseSettings = {
 
 export type DatabaseFeature =
   | "actions"
+  | "actions/data-editing"
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"
@@ -117,6 +118,19 @@ export interface GetDatabaseRequest {
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
 }
+
+export interface GetDatabaseSettingsAvailableResponse {
+  settings: Record<string, DatabaseLocalSettingAvailability>;
+}
+
+export type DatabaseLocalSettingDisableReason = {
+  key: string;
+  message: string;
+};
+
+export type DatabaseLocalSettingAvailability =
+  | { enabled: true }
+  | { enabled: false; reasons: DatabaseLocalSettingDisableReason[] };
 
 export type GetDatabaseHealthResponse =
   | { status: "ok" }
