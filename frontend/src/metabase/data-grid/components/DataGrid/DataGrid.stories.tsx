@@ -246,6 +246,7 @@ export const CombinedFeatures: Story = () => {
   const rowId: RowIdColumnOptions = useMemo(
     () => ({
       variant: "indexExpand",
+      expandedIndex: undefined,
       getBackgroundColor: (rowIndex: number) =>
         rowIndex % 2 === 0 ? "#f0f0f0" : "transparent",
     }),

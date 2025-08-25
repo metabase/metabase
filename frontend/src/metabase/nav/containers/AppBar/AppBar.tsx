@@ -8,6 +8,7 @@ import { PLUGIN_METABOT } from "metabase/plugins";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";
 import {
+  getDetailViewState,
   getIsCollectionPathVisible,
   getIsLogoVisible,
   getIsNavBarEnabled,
@@ -36,6 +37,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isProfileLinkVisible: getIsProfileLinkVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
+  detailView: getDetailViewState(state),
 });
 
 const mapDispatchToProps = {

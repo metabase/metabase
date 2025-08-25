@@ -30,8 +30,8 @@ describe("scenarios > question > null", () => {
     cy.log("'No Results since at least v0.34.3");
     H.openObjectDetail(0);
     cy.findByRole("dialog").within(() => {
-      cy.findByText(/Discount/i);
-      cy.findByText("Empty");
+      cy.findByText(/Discount/i).should("be.visible");
+      cy.findByText("empty").should("be.visible");
     });
   });
 

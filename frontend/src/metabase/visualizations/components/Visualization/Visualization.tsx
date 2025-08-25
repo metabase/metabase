@@ -1,6 +1,6 @@
 /* eslint-disable complexity */
 import cx from "classnames";
-import {
+import React, {
   type CSSProperties,
   type ComponentType,
   type ErrorInfo,
@@ -9,7 +9,6 @@ import {
   type Ref,
   forwardRef,
 } from "react";
-import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -166,6 +165,7 @@ type VisualizationOwnProps = {
   tc?: ContentTranslationFunction;
   uuid?: string;
   token?: string;
+  zoomedRowIndex?: number;
   onOpenChartSettings?: (data: {
     initialChartSettings: { section: string };
     showSidebarTitle?: boolean;
@@ -632,6 +632,7 @@ class Visualization extends PureComponent<
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
       titleMenuItems,
+      zoomedRowIndex,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
@@ -815,7 +816,7 @@ class Visualization extends PureComponent<
               <div
                 data-card-key={getCardKey(series[0].card?.id)}
                 className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
-                style={{ position: "relative" }}
+                style={{ position: hasDevWatermark ? "relative" : undefined }}
               >
                 <VisualizationRenderedWrapper
                   onRendered={this.handleVisualizationRendered}
@@ -878,6 +879,7 @@ class Visualization extends PureComponent<
                     width={rawWidth}
                     uuid={uuid}
                     token={token}
+                    zoomedRowIndex={zoomedRowIndex}
                     onActionDismissal={this.hideActions}
                     onChangeCardAndRun={
                       this.props.onChangeCardAndRun

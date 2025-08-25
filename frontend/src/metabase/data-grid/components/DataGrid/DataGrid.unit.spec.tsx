@@ -116,11 +116,12 @@ const TestDataGrid = ({
     [sortableColumns, wrapableColumns],
   );
 
-  const rowId: RowIdColumnOptions | undefined = useMemo(
+  const rowId = useMemo<RowIdColumnOptions | undefined>(
     () =>
       enableRowId
         ? {
             variant: "indexExpand",
+            expandedIndex: undefined,
           }
         : undefined,
     [enableRowId],

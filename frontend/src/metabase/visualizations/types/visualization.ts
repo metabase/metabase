@@ -193,6 +193,7 @@ export type VisualizationPassThroughProps = {
   isObjectDetail?: boolean;
   isQueryBuilder?: boolean;
   queryBuilderMode?: QueryBuilderMode;
+  zoomedRowIndex?: number;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;

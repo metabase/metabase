@@ -101,6 +101,7 @@ interface TableProps extends VisualizationProps {
   scrollToLastColumn?: boolean;
   theme: MantineTheme;
   renderEmptyMessage?: boolean;
+  zoomedRowIndex?: number;
   getColumnTitle: (columnIndex: number) => string;
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   renderTableHeader: HeaderCellWithColumnInfoProps["renderTableHeader"];
@@ -165,6 +166,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    zoomedRowIndex,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -611,7 +613,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [cols, isDashcardViewTable, onUpdateVisualizationSettings, settings],
   );
 
-  const rowId: RowIdColumnOptions | undefined = useMemo(() => {
+  const rowId = useMemo<RowIdColumnOptions | undefined>(() => {
     const getBackgroundColor = memoize((rowIndex: number) =>
       settings["table._cell_background_getter"]?.(null, rowIndex),
     );
@@ -641,6 +643,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         ? {
             variant: "index",
             getBackgroundColor,
+            expandedIndex: undefined,
           }
         : undefined;
     }
@@ -648,6 +651,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return {
       variant: shouldShowRowIndex ? "indexExpand" : "expandButton",
       getBackgroundColor,
+      expandedIndex: zoomedRowIndex,
     };
   }, [
     cols,
@@ -657,6 +661,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     isDashboard,
     isDocument,
+    zoomedRowIndex,
   ]);
 
   const backgroundColor = useMemo(() => {
@@ -806,6 +811,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         showRowsCount={isDashboard}
         isColumnReorderingDisabled={isColumnReorderingDisabled}
         emptyState={emptyState}
+        zoomedRowIndex={zoomedRowIndex}
         onBodyCellClick={handleBodyCellClick}
         onAddColumnClick={handleAddColumnButtonClick}
         onHeaderCellClick={handleHeaderCellClick}
