@@ -1,6 +1,7 @@
 (ns metabase-enterprise.audit-app.permissions-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase-enterprise.audit-app.permissions :as audit-app.permissions]
@@ -47,6 +48,7 @@
 
           (testing "A non-native query can be run on views in the audit DB"
             (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})]
+              (is (str/starts-with? "v_" (u/lower-case-en (:name audit-view))))
               (is (partial=
                    {:status :completed}
                    (qp/process-query
