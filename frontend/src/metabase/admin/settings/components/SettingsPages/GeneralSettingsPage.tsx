@@ -7,7 +7,11 @@ import {
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { PLUGIN_LANDING_PAGE, PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+import {
+  PLUGIN_GIT_SYNC,
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_SEMANTIC_SEARCH,
+} from "metabase/plugins";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -42,6 +46,8 @@ export function GeneralSettingsPage() {
 
         <PLUGIN_LANDING_PAGE.LandingPageWidget />
       </SettingsSection>
+
+      <PLUGIN_GIT_SYNC.GitSyncSettings />
 
       <SettingsSection title={t`Email and tracking`}>
         <AdminSettingInput

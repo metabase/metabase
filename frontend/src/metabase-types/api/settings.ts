@@ -590,6 +590,9 @@ export type DatabaseReplicationConnections = Record<
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
+  "github-api-key"?: string | null;
+  "github-repo-name"?: string | null;
+  "github-sync-configured"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
