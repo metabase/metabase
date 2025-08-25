@@ -62,11 +62,13 @@ const setup = async ({
       },
     },
   );
+
+  await screen.findByText(/Get a free month of Metabot/);
 };
 
 describe("MetabotPurchasePage", () => {
-  it("shows empty state alternate text when current user is not a store user", () => {
-    setup({ current_user_matches_store_user: false });
+  it("shows empty state alternate text when current user is not a store user", async () => {
+    await setup({ current_user_matches_store_user: false });
     expect(screen.getByText(/Get a free month of Metabot/)).toBeInTheDocument();
     expect(
       screen.getByText(/Please ask a Metabase Store Admin/),
