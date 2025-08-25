@@ -5,6 +5,7 @@
    [clojure.java.shell :as shell]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -35,7 +36,7 @@
   [file]
   (try (slurp file) (catch Exception _ "")))
 
-(defn- execute-python-code
+(defn execute-python-code
   "Execute Python code in a sandboxed environment using the run-sandbox.sh script."
   [code]
   (with-temp-files [["python_code_" ".py"]

@@ -20,6 +20,34 @@
   [transform]
   (= :query (-> transform :source :type keyword)))
 
+(defn python-transform?
+  "Check if this is a Python transform."
+  [transform]
+  (= :python (-> transform :source :type keyword)))
+
+(defn execute-python-transform!
+  "Execute a Python transform by calling the python runner."
+  [transform]
+  (when (python-transform? transform)
+    (let [{:keys [source]} transform
+          {:keys [body]} source]
+      (try
+        ;; Dynamically load and call the python runner using requiring-resolve
+        (let [execute-fn (requiring-resolve 'metabase.python-runner.api/execute-python-code)
+              result (if execute-fn
+                       (execute-fn body)
+                       {:error "Python runner function not available"})]
+          (if (:error result)
+            (throw (ex-info "Python execution failed"
+                            {:error (:error result)
+                             :stdout (:stdout result)
+                             :stderr (:stderr result)}))
+            result))
+        (catch Exception e
+          (log/error e "Failed to execute transform")
+          (throw (ex-info "Failed to execute Python transform"
+                          {:error (.getMessage e)})))))))
+
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
   [{:keys [source target] :as transform}]

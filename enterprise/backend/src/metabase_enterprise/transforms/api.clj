@@ -214,19 +214,36 @@
                     [:id ms/PositiveInt]]]
   (log/info "run transform" id)
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        start-promise (promise)]
-    (u.jvm/in-virtual-thread*
-     (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
-                                                        :run-method :manual}))
-    (when (instance? Throwable @start-promise)
-      (throw @start-promise))
-    (let [result @start-promise
-          run-id (when (and (vector? result) (= (first result) :started))
-                   (second result))]
-      (-> (response/response {:message (deferred-tru "Transform run started")
-                              :run_id run-id})
-          (assoc :status 202)))))
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (if (transforms.util/python-transform? transform)
+      ;; Handle Python transform execution
+      (try
+        (let [{run-id :id} (transform-run/start-run! id {:run_method :manual})
+              result (transforms.util/execute-python-transform! transform)]
+          (transform-run/succeed-started-run! run-id)
+          (log/info "Python transform succeeded" result)
+          (-> (response/response {:message (deferred-tru "Python transform executed successfully")
+                                  :run_id run-id
+                                  :result result})
+              (assoc :status 200)))
+        (catch Exception e
+          (log/error e "Error executing Python transform")
+          (-> (response/response {:message (deferred-tru "Python transform execution failed")
+                                  :error (.getMessage e)})
+              (assoc :status 500))))
+      ;; Handle MBQL transform execution (existing logic)
+      (let [start-promise (promise)]
+        (u.jvm/in-virtual-thread*
+         (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
+                                                            :run-method :manual}))
+        (when (instance? Throwable @start-promise)
+          (throw @start-promise))
+        (let [result @start-promise
+              run-id (when (and (vector? result) (= (first result) :started))
+                       (second result))]
+          (-> (response/response {:message (deferred-tru "Transform run started")
+                                  :run_id run-id})
+              (assoc :status 202)))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."
