@@ -911,13 +911,17 @@
     (are [lhs-or-rhs] (true? (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
       (lib/ref lhs-order-tax)
       (lib/ref rhs-product-price)
-      (lib/ref lhs-custom-column))
+      (lib/ref lhs-custom-column)
+      ;; Simple cast expressions should be considered columns
+      (lib/datetime (lib/ref lhs-order-tax)))
     (are [lhs-or-rhs] (false? (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
       (lib.expression/value 1)
       (lib/+ lhs-order-tax 1)
       (lib/+ lhs-order-tax lhs-order-tax)
       (lib/+ 1 rhs-product-price)
-      (lib/+ rhs-product-price rhs-product-price))))
+      (lib/+ rhs-product-price rhs-product-price)
+      ;; Complex expressions with casts should not be considered columns
+      (lib/datetime (lib/+ lhs-order-tax 1)))))
 
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (m/filter-vals some? (meta/field-metadata :products :created-at))
