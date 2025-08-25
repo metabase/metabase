@@ -151,22 +151,17 @@ H.describeWithSnowplowEE("documents", () => {
             type: "doc",
           },
           collection_id: null,
-          alias: "documentId",
+          alias: "document",
+          idAlias: "documentId",
         });
       });
 
       it("renders a 'not found' message if the copied card has been permanently deleted", () => {
-        cy.intercept({
-          method: "GET",
-          path: "/api/ee/document/*",
-        }).as("documentGet");
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
-        cy.wait("@documentGet").then(({ response }) => {
-          const body: Document | undefined = response?.body;
-          const content = body?.document.content;
+        cy.get<Document>("@document").then(({ id, document: { content } }) => {
           const cardEmbed = content?.find((n) => n.type === "cardEmbed");
-          const copiedCardId = cardEmbed?.attrs?.id;
-          cy.request("DELETE", `/api/card/${copiedCardId}`);
+          const clonedCardId = cardEmbed?.attrs?.id;
+          cy.request("DELETE", `/api/card/${clonedCardId}`);
+          cy.visit(`/document/${id}`);
         });
         H.getDocumentCard("Couldn't find this chart.").should("exist");
       });
@@ -234,7 +229,8 @@ H.describeWithSnowplowEE("documents", () => {
           type: "doc",
         },
         collection_id: null,
-        alias: "documentId",
+        alias: "document",
+        idAlias: "documentId",
       });
 
       cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
