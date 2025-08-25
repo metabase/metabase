@@ -475,3 +475,53 @@
   (if-let [cache-atom *metadata-provider-cache*]
     (cache.wrapped/lookup-or-miss cache-atom database-id application-database-metadata-provider-factory)
     (application-database-metadata-provider-factory database-id)))
+
+(p/deftype+ UncachedSnippetsOnlyMetadataProvider []
+  lib.metadata.protocols/MetadataProvider
+
+  (database [_this]
+    ;; Snippets are not database-specific
+    nil)
+
+  (metadatas [_this metadata-type ids]
+    (case metadata-type
+      :metadata/native-query-snippet
+      (when (seq ids)
+        (vec (t2/select :metadata/native-query-snippet :id [:in ids])))
+      ;; Return empty for other metadata types
+      []))
+
+  (metadatas-by-name [_this metadata-type names]
+    (case metadata-type
+      :metadata/native-query-snippet
+      (when (seq names)
+        (vec (t2/select :metadata/native-query-snippet :name [:in names])))
+      ;; Return empty for other metadata types
+      []))
+
+  (tables [_this]
+    ;; No tables in snippets-only context
+    [])
+
+  (metadatas-for-table [_this _metadata-type _table-id]
+    ;; No table metadata in snippets-only context
+    [])
+
+  (metadatas-for-card [_this _metadata-type _card-id]
+    ;; No card metadata in snippets-only context
+    [])
+
+  (setting [_this _setting-key]
+    ;; No settings in snippets-only context
+    nil))
+
+(defn snippets-only-metadata-provider
+  "Creates a metadata provider that only handles native query snippets.
+   This provider includes caching to avoid repeated database queries.
+
+   Use this when you need to work with snippets outside of a specific
+   database context, such as during snippet validation."
+  []
+  (-> (->UncachedSnippetsOnlyMetadataProvider)
+      lib.metadata.cached-provider/cached-metadata-provider
+      lib.metadata.invocation-tracker/invocation-tracker-provider))

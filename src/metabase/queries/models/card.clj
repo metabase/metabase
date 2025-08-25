@@ -20,7 +20,6 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -39,8 +38,6 @@
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
    [metabase.query-permissions.core :as query-perms]
-   ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -374,30 +371,6 @@
           (when table-id
             {:table_id table-id})))))))
 
-(defn- check-for-circular-source-query-references
-  "Check that a `card`, if it is using another Card as its source, does not have circular references between source
-  Cards. (e.g. Card A cannot use itself as a source, or if A uses Card B as a source, Card B cannot use Card A, and so
-  forth.)"
-  [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
-  (loop [query query, ids-already-seen #{id}]
-    (let [source-card-id (qp.util/query->source-card-id query)]
-      (cond
-        (not source-card-id)
-        :ok
-
-        (ids-already-seen source-card-id)
-        (throw
-         (ex-info (tru "Cannot save Question: source query has circular references.")
-                  {:status-code 400}))
-
-        :else
-        (recur (or (if (qp.store/initialized?)
-                     (:dataset-query (lib.metadata/card (qp.store/metadata-provider) source-card-id))
-                     (t2/select-one-fn :dataset_query :model/Card :id source-card-id))
-                   (throw (ex-info (tru "Card {0} does not exist." source-card-id)
-                                   {:status-code 404})))
-               (conj ids-already-seen source-card-id))))))
-
 (defn- maybe-normalize-query [card]
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query #(mi/maybe-normalize-query :in %))))
@@ -545,8 +518,6 @@
         card     (maybe-check-dashboard-internal-card
                   (merge defaults card))]
     (u/prog1 card
-      ;; make sure this Card doesn't have circular source query references
-      (check-for-circular-source-query-references card)
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
@@ -648,9 +619,6 @@
                         "Newly Added:" newly-added-param-field-ids)
               ;; Now update the FieldValues for the Fields referenced by this Card.
               (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
-      ;; make sure this Card doesn't have circular source query references if we're updating the query
-      (when (:dataset_query changes)
-        (check-for-circular-source-query-references card))
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (= (:type old-card-info) :model)

@@ -206,3 +206,29 @@
           (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id}]
             (is (= {:errors {:collection_id "Collection does not exist."}}
                    (mt/user-http-request :rasta :put 404 (snippet-url snippet-id) {:collection_id Integer/MAX_VALUE})))))))))
+
+(deftest update-snippet-pure-cycle-test
+  (testing "PUT /api/native-query-snippet/:id detects pure snippet cycles"
+    (mt/with-temp [:model/NativeQuerySnippet snippet-a {:name    "snippet-a"
+                                                        :content "WHERE a = 1"}
+                   :model/NativeQuerySnippet snippet-b {:name    "snippet-b"
+                                                        :content "WHERE b = 2"}]
+
+      (testing "Can update snippet with valid reference"
+        (is (mt/user-http-request :crowberto :put 200
+                                  (str "native-query-snippet/" (:id snippet-a))
+                                  {:content (format "WHERE a = 1 {{snippet: %s}}"
+                                                    (:name snippet-b))})))
+
+      (testing "Cannot create self-reference"
+        (is (= "Cannot save snippet with circular references."
+               (mt/user-http-request :crowberto :put 400
+                                     (str "native-query-snippet/" (:id snippet-a))
+                                     {:content (format "WHERE a = 1 {{snippet: %s}}"
+                                                       (:name snippet-a))}))))
+      (testing "Cannot create indirect cycle"
+        (is (= "Cannot save snippet with circular references."
+               (mt/user-http-request :crowberto :put 400
+                                     (str "native-query-snippet/" (:id snippet-b))
+                                     {:content (format "WHERE b = 1 {{snippet: %s}}"
+                                                       (:name snippet-a))})))))))

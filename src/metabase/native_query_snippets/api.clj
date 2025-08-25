@@ -4,13 +4,17 @@
    [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import [clojure.lang ExceptionInfo]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,10 +39,33 @@
                     [:id ms/PositiveInt]]]
   (hydrated-native-query-snippet id))
 
-(defn- check-snippet-name-is-unique [snippet-name]
-  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name)
+(defn- check-snippet-name-is-unique [provider snippet-name]
+  (when (lib.metadata/native-query-snippet-by-name provider snippet-name)
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
+
+(defn- throw-circular!
+  [e]
+  (throw (ex-info (tru "Cannot save snippet with circular references.")
+                  {:status-code 400}
+                  e)))
+
+(defn- throw-unknown-snippet!
+  [snippet-name]
+  (throw (ex-info (tru "Cannot save snippet referring to unknown snippet.")
+                  {:status-code 400
+                   :unknown-name snippet-name})))
+
+(defn- check-for-snippet-cycles
+  [provider snippet changes]
+  (when-let [content (:content changes)]
+    (let [template-tags (lib/recognize-template-tags content)
+          new-snippet (assoc snippet
+                             :content content
+                             :template-tags template-tags)]
+      (lib/check-snippet-cycles provider new-snippet
+                                :on-unknown-snippet throw-unknown-snippet!
+                                :on-cycle-exception throw-circular!))))
 
 (api.macros/defendpoint :post "/"
   "Create a new `NativeQuerySnippet`."
@@ -49,12 +76,13 @@
                                                         [:description   {:optional true} [:maybe :string]]
                                                         [:name          native-query-snippet/NativeQuerySnippetName]
                                                         [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-snippet-name-is-unique name)
-  (let [snippet {:content       content
-                 :creator_id    api/*current-user-id*
-                 :description   description
-                 :name          name
-                 :collection_id collection_id}]
+  (let [provider (lib.metadata.jvm/snippets-only-metadata-provider)
+        _        (check-snippet-name-is-unique provider name)
+        snippet  {:content       content
+                  :creator_id    api/*current-user-id*
+                  :description   description
+                  :name          name
+                  :collection_id collection_id}]
     (api/create-check :model/NativeQuerySnippet snippet)
     (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
 
@@ -62,7 +90,8 @@
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [snippet     (t2/select-one :model/NativeQuerySnippet :id id)
+  (let [provider    (lib.metadata.jvm/snippets-only-metadata-provider)
+        snippet     (t2/select-one :model/NativeQuerySnippet :id id)
         body-fields (u/select-keys-when body
                                         :present #{:description :collection_id}
                                         :non-nil #{:archived :content :name})
@@ -70,7 +99,8 @@
     (when (seq changes)
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
-        (check-snippet-name-is-unique new-name))
+        (check-snippet-name-is-unique provider new-name))
+      (check-for-snippet-cycles provider snippet changes)
       (t2/update! :model/NativeQuerySnippet id changes))
     (hydrated-native-query-snippet id)))
 

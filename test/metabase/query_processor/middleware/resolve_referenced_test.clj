@@ -87,3 +87,125 @@
           (testing e
             (is (= (#'qp.resolve-referenced/circular-ref-error entrypoint-query 2 1)
                    (ex-message e)))))))))
+
+(deftest ^:parallel card-snippet-card-circular-reference-test
+  (testing "Detects card→snippet→card circular references"
+    (testing "Card 1 → Snippet A → Card 1 (direct cycle)"
+      (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                               meta/metadata-provider
+                               [{:database (meta/id)
+                                 :type :native
+                                 :native {:query "SELECT * FROM {{snippet: snippet-a}}"
+                                          :template-tags {"snippet: snippet-a"
+                                                          {:name "snippet: snippet-a"
+                                                           :display-name "Snippet A"
+                                                           :type :snippet
+                                                           :snippet-name "snippet-a"
+                                                           :snippet-id 100}}}}])
+            ;; Add snippet to metadata provider using the correct key
+            metadata-provider-with-snippet
+            (lib.tu/mock-metadata-provider
+             metadata-provider
+             {:native-query-snippets [{:id 100
+                                       :name "snippet-a"
+                                       :content "WHERE id IN (SELECT id FROM {{#1}})"
+                                       :template-tags {"#1" {:name "#1"
+                                                             :type :card
+                                                             :card-id 1}}}]})
+
+            ;; Create the query that starts the cycle
+            entrypoint-query (lib/query
+                              metadata-provider-with-snippet
+                              {:database (meta/id)
+                               :type :native
+                               :native {:query "SELECT * FROM {{#1}}"
+                                        :template-tags (card-template-tags [1])}})]
+
+        (testing "Should throw an exception for circular reference"
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"circular|cycle"
+               (#'qp.resolve-referenced/check-for-circular-references entrypoint-query))))))))
+
+(deftest ^:parallel complex-card-snippet-cycle-test
+  (testing "Detects complex card→snippet→snippet→card→snippet→card circular references"
+    (testing "Card A → Snippet 1 → Snippet 2 → Card B → Snippet 3 → Card A"
+      (let [;; Set up the metadata provider with both cards
+            metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                               meta/metadata-provider
+                               [;; Card A (id 1) references snippet-1
+                                {:database (meta/id)
+                                 :type :native
+                                 :native {:query "SELECT * FROM {{snippet: snippet-1}}"
+                                          :template-tags {"snippet: snippet-1"
+                                                          {:name "snippet: snippet-1"
+                                                           :display-name "Snippet 1"
+                                                           :type :snippet
+                                                           :snippet-name "snippet-1"
+                                                           :snippet-id 101}}}}
+                                ;; Card B (id 2) references snippet-3
+                                {:database (meta/id)
+                                 :type :native
+                                 :native {:query "SELECT * FROM {{snippet: snippet-3}}"
+                                          :template-tags {"snippet: snippet-3"
+                                                          {:name "snippet: snippet-3"
+                                                           :display-name "Snippet 3"
+                                                           :type :snippet
+                                                           :snippet-name "snippet-3"
+                                                           :snippet-id 103}}}}])
+            ;; Add all three snippets to the metadata provider
+            metadata-provider-with-snippets
+            (lib.tu/mock-metadata-provider
+             metadata-provider
+             {:native-query-snippets [;; Snippet 1 references snippet-2
+                                      {:id 101
+                                       :name "snippet-1"
+                                       :content "WHERE x IN ({{snippet: snippet-2}})"
+                                       :template-tags {"snippet: snippet-2"
+                                                       {:name "snippet: snippet-2"
+                                                        :type :snippet
+                                                        :snippet-name "snippet-2"
+                                                        :snippet-id 102}}}
+                                      ;; Snippet 2 references Card B (id 2)
+                                      {:id 102
+                                       :name "snippet-2"
+                                       :content "SELECT y FROM {{#2}}"
+                                       :template-tags {"#2"
+                                                       {:name "#2"
+                                                        :type :card
+                                                        :card-id 2}}}
+                                      ;; Snippet 3 references Card A (id 1), completing the cycle
+                                      {:id 103
+                                       :name "snippet-3"
+                                       :content "SELECT z FROM {{#1}}"
+                                       :template-tags {"#1"
+                                                       {:name "#1"
+                                                        :type :card
+                                                        :card-id 1}}}]})
+
+            ;; Create the query that starts with Card A
+            entrypoint-query (lib/query
+                              metadata-provider-with-snippets
+                              {:database (meta/id)
+                               :type :native
+                               :native {:query "SELECT * FROM {{#1}}"
+                                        :template-tags (card-template-tags [1])}})]
+
+        (testing "Should throw an exception for circular reference"
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"circular|cycle"
+               (#'qp.resolve-referenced/check-for-circular-references entrypoint-query))))
+
+        (testing "The cycle detection should work from any entry point"
+          ;; Starting from Card B should also detect the cycle
+          (let [card-b-query (lib/query
+                              metadata-provider-with-snippets
+                              {:database (meta/id)
+                               :type :native
+                               :native {:query "SELECT * FROM {{#2}}"
+                                        :template-tags (card-template-tags [2])}})]
+            (is (thrown-with-msg?
+                 ExceptionInfo
+                 #"circular|cycle"
+                 (#'qp.resolve-referenced/check-for-circular-references card-b-query)))))))))

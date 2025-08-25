@@ -34,7 +34,8 @@
    ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata
-  refresh-metadata]
+  refresh-metadata
+  normalize-dataset-query]
  [metabase.queries.models.parameter-card]
  [metabase.queries.models.query
   average-execution-time-ms
