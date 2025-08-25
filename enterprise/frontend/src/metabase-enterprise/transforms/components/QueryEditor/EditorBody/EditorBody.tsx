@@ -11,7 +11,13 @@ import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/ut
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Database as ApiDatabase, RecentItem } from "metabase-types/api";
+import type {
+  Database as ApiDatabase,
+  RecentItem,
+  TransformSource,
+} from "metabase-types/api";
+
+import { PythonEditor } from "../PythonEditor";
 
 import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
@@ -21,10 +27,13 @@ const EDITOR_HEIGHT = 400;
 type EditorBodyProps = {
   question: Question;
   isNative: boolean;
+  isPython?: boolean;
+  pythonSource?: TransformSource & { type: "python" };
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
   onChange: (newQuestion: Question) => void;
+  onPythonChange?: (script: string) => void;
   onRunQuery: () => Promise<void>;
   onCancelQuery: () => void;
   databases: ApiDatabase[];
@@ -33,10 +42,13 @@ type EditorBodyProps = {
 export function EditorBody({
   question,
   isNative,
+  isPython = false,
+  pythonSource,
   isRunnable,
   isRunning,
   isResultDirty,
   onChange,
+  onPythonChange,
   onRunQuery,
   onCancelQuery,
   databases,
@@ -69,6 +81,24 @@ export function EditorBody({
   };
 
   const dataPickerOptions = useDataPickerOptions({ databases });
+
+  const handlePythonChange = (script: string) => {
+    onPythonChange?.(script);
+  };
+
+  if (isPython) {
+    return (
+      <PythonEditor
+        script={pythonSource?.script || ""}
+        isRunnable={isRunnable}
+        isRunning={isRunning}
+        isResultDirty={isResultDirty}
+        onChange={handlePythonChange}
+        onRunScript={onRunQuery}
+        onCancelScript={onCancelQuery}
+      />
+    );
+  }
 
   return isNative ? (
     <NativeQueryEditor

@@ -9,13 +9,19 @@ import type {
 
 import { createMockStructuredDatasetQuery } from "./query";
 
-export function createMockTransformSource(
-  opts?: Partial<TransformSource>,
-): TransformSource {
+export function createMockTransformSource(): TransformSource {
   return {
     type: "query",
     query: createMockStructuredDatasetQuery(),
-    ...opts,
+  };
+}
+
+export function createMockPythonTransformSource(): TransformSource {
+  return {
+    type: "python",
+    script: "# Python script\nprint('Hello, world!')",
+    database: 1,
+    table: 1,
   };
 }
 
