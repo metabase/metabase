@@ -255,7 +255,7 @@
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     djblue/portal                {:mvn/version "0.60.2"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
-    io.github.metabase/hawk      {:sha "1fe839cfa48549e21b89c6418c747895eda7e7bc"} ; test runner
+    io.github.metabase/hawk      {:sha "a7016f8451c850abe88e9b0b2275eb3aebd3ee37"} ; test runner
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
@@ -409,7 +409,7 @@
     cider/piggieback                   {:mvn/version "0.6.0"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
-    io.github.metabase/hawk            {:mvn/version "1.0.7"}
+    io.github.metabase/hawk            {:mvn/version "1.0.11"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
     ;; keep it in sync with package.json
