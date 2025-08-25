@@ -1,5 +1,3 @@
-import type { CSSProperties, ReactNode } from "react";
-import { useState } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
@@ -18,8 +16,10 @@ interface JoinTablePickerProps {
   table: Lib.Joinable | undefined;
   color: string;
   isReadOnly: boolean;
-  columnPicker: ReactNode;
+  columnPicker: React.ReactNode;
   onChange: (table: Lib.Joinable) => void;
+  isOpened: boolean;
+  setIsOpened: (isOpened: boolean) => void;
 }
 
 export function JoinTablePicker({
@@ -30,6 +30,8 @@ export function JoinTablePicker({
   isReadOnly,
   columnPicker,
   onChange,
+  isOpened,
+  setIsOpened,
 }: JoinTablePickerProps) {
   const isDisabled = isReadOnly;
 
@@ -41,7 +43,11 @@ export function JoinTablePicker({
       color={color}
       right={
         table != null && !isReadOnly ? (
-          <JoinTableColumnPicker columnPicker={columnPicker} />
+          <JoinTableColumnPickerWrapper
+            columnPicker={columnPicker}
+            isOpened={isOpened}
+            setIsOpened={setIsOpened}
+          />
         ) : null
       }
       containerStyle={CONTAINER_STYLE}
@@ -64,14 +70,23 @@ export function JoinTablePicker({
 }
 
 interface JoinTableColumnPickerProps {
-  columnPicker: ReactNode;
+  columnPicker: React.ReactNode;
+  isOpened: boolean;
+  setIsOpened: (isOpened: boolean) => void;
 }
 
-function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
-  const [isOpened, setIsOpened] = useState(false);
-
+function JoinTableColumnPickerWrapper({
+  columnPicker,
+  isOpened,
+  setIsOpened,
+}: JoinTableColumnPickerProps) {
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover
+      opened={isOpened}
+      onChange={setIsOpened}
+      withOverlay={false}
+      closeOnClickOutside={false}
+    >
       <Popover.Target>
         <Tooltip label={t`Pick columns`}>
           <IconButtonWrapper
@@ -79,13 +94,13 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
             style={
               {
                 "--notebook-cell-container-padding": CONTAINER_PADDING,
-              } as CSSProperties
+              } as React.CSSProperties
             }
             onClick={() => setIsOpened(!isOpened)}
             aria-label={t`Pick columns`}
             data-testid="fields-picker"
           >
-            <Icon name="chevrondown" />
+            <Icon name="notebook" />
           </IconButtonWrapper>
         </Tooltip>
       </Popover.Target>

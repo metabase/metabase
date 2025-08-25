@@ -1,6 +1,7 @@
+import { ColumnPickerSidebar } from "metabase/query_builder/components/ColumnPickerSidebar/ColumnPickerSidebar";
 import type * as Lib from "metabase-lib";
 
-import { FieldPicker, type FieldPickerItem } from "../../FieldPicker";
+import type { FieldPickerItem } from "../../FieldPicker";
 
 interface JoinTableColumnPickerDraftProps {
   query: Lib.Query;
@@ -8,6 +9,7 @@ interface JoinTableColumnPickerDraftProps {
   columns: Lib.ColumnMetadata[];
   selectedColumns: Lib.ColumnMetadata[];
   onChange: (newSelectedColumns: Lib.ColumnMetadata[]) => void;
+  onClose: () => void;
 }
 
 export function JoinTableColumnDraftPicker({
@@ -16,6 +18,7 @@ export function JoinTableColumnDraftPicker({
   columns,
   selectedColumns,
   onChange,
+  onClose,
 }: JoinTableColumnPickerDraftProps) {
   const isColumnSelected = ({ column }: FieldPickerItem) => {
     return selectedColumns.includes(column);
@@ -41,7 +44,9 @@ export function JoinTableColumnDraftPicker({
   };
 
   return (
-    <FieldPicker
+    <ColumnPickerSidebar
+      isOpen
+      onClose={onClose}
       query={query}
       stageIndex={stageIndex}
       columns={columns}

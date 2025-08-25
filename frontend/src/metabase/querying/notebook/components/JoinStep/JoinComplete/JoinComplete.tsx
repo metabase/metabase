@@ -100,6 +100,8 @@ export function JoinComplete({
     onJoinChange(newJoin);
   };
 
+  const [isOpened, setIsOpened] = useState(false);
+
   return (
     <Flex direction={{ base: "column", md: "row" }} gap="sm">
       <NotebookCell className={S.JoinConditionCell} color={color}>
@@ -120,8 +122,11 @@ export function JoinComplete({
             table={rhsTable}
             color={color}
             isReadOnly={isReadOnly}
+            isOpened={isOpened}
+            setIsOpened={setIsOpened}
             columnPicker={
               <JoinTableColumnPicker
+                onClose={() => setIsOpened(false)}
                 query={query}
                 stageIndex={stageIndex}
                 join={join}
