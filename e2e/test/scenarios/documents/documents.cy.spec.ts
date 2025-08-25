@@ -11,14 +11,19 @@ import {
 
 const { H } = cy;
 
-describe("documents", () => {
+H.describeWithSnowplowEE("documents", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.resetSnowplow();
   });
 
   it("should allow you to create a new document from the new button and save", () => {
+    const getDocumentStub = cy.stub();
+
+    cy.intercept("GET", "/api/ee/document/1", getDocumentStub);
+
     cy.visit("/");
 
     H.newButton("Document").click();
@@ -40,7 +45,13 @@ describe("documents", () => {
     );
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+
+    // We should not show a loading state in between creating a document and viewing the created document.
+    cy.location("pathname").should("eq", "/document/1");
     cy.title().should("eq", "Test Document · Metabase");
+
+    H.expectUnstructuredSnowplowEvent({ event: "document_created" });
+    cy.wrap(getDocumentStub).should("not.have.been.called");
 
     H.appBar()
       .findByRole("link", { name: /First collection/ })
@@ -87,8 +98,34 @@ describe("documents", () => {
 
     H.openNavigationSidebar();
 
-    H.navigationSidebar().findByText("Trash").click();
+    // Force the click since this is hidden behind a toast notification
+    H.navigationSidebar().findByText("Trash").click({ force: true });
     H.getUnpinnedSection().findByText("Test Document").should("exist");
+  });
+
+  it("should handle navigating from /new to /new gracefully", () => {
+    cy.visit("/");
+    H.newButton("Document").click();
+    cy.title().should("eq", "New document · Metabase");
+    H.documentContent().click();
+
+    H.documentSaveButton().should("not.exist");
+
+    H.addToDocument("This is some content");
+
+    H.documentSaveButton().should("exist");
+
+    H.newButton("Document").click();
+    H.leaveConfirmationModal().findByRole("button", { name: "Cancel" }).click();
+
+    H.documentContent().should("have.text", "This is some content");
+
+    H.newButton("Document").click();
+    H.leaveConfirmationModal()
+      .findByRole("button", { name: "Discard changes" })
+      .click();
+    H.documentContent().should("have.text", "");
+    H.documentSaveButton().should("not.exist");
   });
 
   describe("document editing", () => {
@@ -149,10 +186,33 @@ describe("documents", () => {
       });
 
       it("not found", () => {
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id + 1}`));
+        cy.get("@documentId").then((id) =>
+          cy.visit(`/document/${(id as unknown as number) + 1}`),
+        );
         H.main().within(() => {
           cy.findByText("We're a little lost...").should("exist");
           cy.findByText("The page you asked for couldn't be found.");
+        });
+      });
+
+      it("should allow you to print", () => {
+        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        cy.findByRole("button", { name: "More options" }).click();
+
+        // This needs to be *after* the page load to work
+        cy.window().then((win: Window) => {
+          cy.stub(win, "print").as("printStub");
+        });
+
+        H.popover().findByText("Print Document").click();
+
+        cy.get("@printStub").should("have.been.calledOnce");
+
+        cy.get("@documentId").then((id) => {
+          H.expectUnstructuredSnowplowEvent({
+            event: "document_print",
+            target_id: id,
+          });
         });
       });
     });
@@ -171,6 +231,7 @@ describe("documents", () => {
       });
 
       cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.addPostgresDatabase();
     });
 
     it("should support typing with a markdown syntax", () => {
@@ -329,6 +390,66 @@ describe("documents", () => {
         });
       });
 
+      it("should support keyboard and mouse selection in suggestions without double highlight", () => {
+        H.documentContent().click();
+        H.addToDocument("/", false);
+
+        assertOnlyOneOptionActive(/Ask Metabot/);
+
+        cy.realPress("{downarrow}");
+        cy.realPress("{downarrow}");
+
+        //Link should be active
+        assertOnlyOneOptionActive("Link");
+
+        // Hover over Quote
+        H.commandSuggestionItem(/Quote/).realHover();
+
+        assertOnlyOneOptionActive(/Quote/);
+
+        H.addToDocument("pro", false);
+
+        assertOnlyOneOptionActive(/Products by Category/);
+
+        cy.realPress("{downarrow}");
+        assertOnlyOneOptionActive(/Products average/);
+
+        H.commandSuggestionItem(/Products by Category/).realHover();
+
+        assertOnlyOneOptionActive(/Products by Category/);
+
+        cy.realPress("Escape");
+
+        H.clearDocumentContent();
+
+        H.addToDocument("@ord", false);
+
+        cy.realPress("{downarrow}");
+        cy.realPress("{downarrow}");
+
+        assertOnlyOneOptionActive(/Orders, Count$/, "mention");
+
+        H.documentSuggestionDialog()
+          .findByRole("option", { name: /Browse all/ })
+          .realHover();
+
+        assertOnlyOneOptionActive(/Browse all/, "mention");
+
+        cy.realPress("Escape");
+        H.clearDocumentContent();
+        H.addToDocument("/", false);
+
+        H.commandSuggestionItem(/Ask Metabot/).click();
+        H.addToDocument("@", false);
+
+        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
+        cy.realPress("{downarrow}");
+        assertOnlyOneOptionActive(/Sample/, "metabot");
+
+        H.documentMetabotSuggestionItem(/QA Postgres/).realHover();
+        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
+      });
+
       it("should support adding cards and updating viz settings", () => {
         H.documentContent().click();
         H.addToDocument("/", false);
@@ -342,6 +463,13 @@ describe("documents", () => {
 
         cy.realPress("{downarrow}");
         H.addToDocument("\n", false);
+
+        cy.get("@documentId").then((id) => {
+          H.expectUnstructuredSnowplowEvent({
+            event: "document_add_card",
+            target_id: id,
+          });
+        });
 
         H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).should("exist");
 
@@ -432,6 +560,13 @@ describe("documents", () => {
           cy.findAllByTestId("result-item").findByText("Orders").click();
         });
 
+        cy.get("@documentId").then((id) => {
+          H.expectUnstructuredSnowplowEvent({
+            event: "document_replace_card",
+            target_id: id,
+          });
+        });
+
         H.getDocumentCard(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).should(
           "not.exist",
         );
@@ -468,6 +603,7 @@ describe("documents", () => {
         H.addToDocument("");
         H.addToDocument("Adding a static link: /", false);
         H.commandSuggestionItem("Link").click();
+
         H.addToDocument("Ord", false);
         H.commandSuggestionItem(/Orders, Count$/).click();
         H.addToDocument(" And continue typing", false);
@@ -489,6 +625,17 @@ describe("documents", () => {
 
         cy.wait("@documentGet");
 
+        cy.get("@documentId").then((id) => {
+          H.expectUnstructuredSnowplowEvent({
+            event: "document_saved",
+            target_id: id,
+          });
+          H.expectUnstructuredSnowplowEvent({
+            event: "document_add_smart_link",
+            target_id: id,
+          });
+        });
+
         cy.findByTestId("toast-undo")
           .findByText("Document saved")
           .should("be.visible");
@@ -505,7 +652,49 @@ describe("documents", () => {
           "not.include",
           ORDERS_BY_YEAR_QUESTION_ID.toString(),
         );
+
+        // Navigating to a question from a document should result in a back button
+        cy.findByLabelText("Back to Foo Document").click();
+
+        cy.get("@documentId").then((id) =>
+          cy.location("pathname").should("equal", `/document/${id}`),
+        );
+
+        H.getDocumentCard("Orders, Count, Grouped by Created At (year)").within(
+          () => {
+            H.cartesianChartCircle().eq(1).click();
+          },
+        );
+
+        H.popover().findByText("See these Orders").click();
+
+        cy.findByLabelText("Back to Foo Document").click();
+
+        cy.get("@documentId").then((id) =>
+          cy.location("pathname").should("equal", `/document/${id}`),
+        );
       });
     });
   });
 });
+
+const assertOnlyOneOptionActive = (
+  name: string | RegExp,
+  dialog: "command" | "mention" | "metabot" = "command",
+) => {
+  const dialogContainer =
+    dialog === "command"
+      ? H.commandSuggestionDialog
+      : dialog === "mention"
+        ? H.documentSuggestionDialog
+        : H.documentMetabotDialog;
+
+  dialogContainer()
+    .findByRole("option", { name })
+    .should("have.attr", "aria-selected", "true");
+
+  dialogContainer()
+    .findAllByRole("option")
+    .filter("[aria-selected=true]")
+    .should("have.length", 1);
+};

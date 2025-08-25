@@ -28,7 +28,7 @@ type TagModalType = "update" | "delete";
 
 type TagMultiSelectProps = {
   tagIds: TransformTagId[];
-  onChange: (tagIds: TransformTagId[]) => void;
+  onChange: (tagIds: TransformTagId[], undoable?: boolean) => void;
 };
 
 export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
@@ -49,7 +49,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
     if (!tag) {
       sendErrorToast(t`Failed to create a tag`);
     } else {
-      onChange([...tagIds, tag.id]);
+      onChange([...tagIds, tag.id], true);
     }
   };
 
@@ -57,7 +57,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
     if (value.includes(NEW_VALUE)) {
       handleCreate();
     } else {
-      onChange(value.map(getTagId));
+      onChange(value.map(getTagId), true);
     }
   };
 
@@ -82,7 +82,10 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
 
   const handleDelete = () => {
     handleModalClose();
-    onChange(tagIds.filter((tagId) => tagId !== selectedTagId));
+    onChange(
+      tagIds.filter((tagId) => tagId !== selectedTagId),
+      false,
+    );
   };
 
   return (

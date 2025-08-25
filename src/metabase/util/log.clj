@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.util.format :as u.format]
    [metabase.util.log.capture]
+   [metabase.util.performance :as perf]
    [net.cgrand.macrovich :as macros])
   (:import
    (clojure.lang ExceptionInfo)
@@ -70,7 +71,7 @@
 (defn with-thread-context-fn
   "Not for public consumption. See macro docstring for details."
   [context-map f]
-  (let [context-map (update-keys context-map #(str "mb-" (u.format/qualified-name %)))
+  (let [context-map (perf/update-keys context-map #(str "mb-" (u.format/qualified-name %)))
         context-keys (keys context-map)
         ;; Store original values before modifying
         original-context (into {}

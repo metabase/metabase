@@ -282,6 +282,7 @@ config:
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
     ssh-heartbeat-interval-sec: 180
+    stale-index-retention-hours: 24
     start-of-week: sunday
     subscription-allowed-domains: null
     surveys-enabled: true

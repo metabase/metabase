@@ -12,6 +12,7 @@ import {
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   CANCEL_QUESTION_CHANGES,
+  CLOSE_QB,
   INITIALIZE_QB,
   QUERY_COMPLETED,
   RELOAD_CARD,
@@ -27,6 +28,7 @@ export const card = createReducer<Card<DatasetQuery> | null>(
   (builder) => {
     builder
       .addCase(RESET_QB, () => null)
+      .addCase(CLOSE_QB, () => null)
       .addCase<
         string,
         {
