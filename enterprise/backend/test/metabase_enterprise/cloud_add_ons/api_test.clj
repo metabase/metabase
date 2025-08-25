@@ -6,7 +6,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
-(deftest post-product-type-test
+(deftest ^:sequential post-product-type-test
   (testing "POST /api/ee/cloud-add-ons/metabase-ai"
     (testing "requires superuser"
       (mt/with-premium-features #{}
