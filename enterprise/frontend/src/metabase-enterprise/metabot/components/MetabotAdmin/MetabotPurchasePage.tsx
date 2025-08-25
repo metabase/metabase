@@ -176,13 +176,15 @@ export const MetabotPurchasePage = () => {
           </Text>
         )}
       </SettingsSection>
-      <MetabotPurchaseSettingUpModal
-        opened={settingUpModalOpened}
-        onClose={() => {
-          settingUpModalHandlers.close();
-          window.location.reload();
-        }}
-      />
+      {settingUpModalOpened && (
+        <MetabotPurchaseSettingUpModal
+          opened={settingUpModalOpened}
+          onClose={() => {
+            settingUpModalHandlers.close();
+            window.location.reload();
+          }}
+        />
+      )}
     </SettingsPageWrapper>
   );
 };
