@@ -213,8 +213,8 @@
            (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
            (analytics/inc! :metabase-database/status {:driver engine :healthy true})
 
-           ;; Detect and update provider name if not already set (only for postgres databases)
-           (when (and (= (name engine) "postgres")
+           ;; Detect and update provider name if not already set (only for databases that support provider detection)
+           (when (and (get (driver/extra-info driver) :providers)
                       (nil? (:provider_name database)))
              (try
                (log/info (u/format-color :blue "Provider detection: checking database %s {:id %d, :provider_name %s, :details %s}"
