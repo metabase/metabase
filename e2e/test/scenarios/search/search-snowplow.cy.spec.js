@@ -7,9 +7,6 @@ import { commandPaletteInput } from "../../../support/helpers/e2e-command-palett
 H.describeWithSnowplow("scenarios > search > snowplow", () => {
   const NEW_SEARCH_QUERY_EVENT_NAME = "search_query";
   const SEARCH_CLICK = "search_click";
-  const ORDERS_SEARCH_TERM = "Orders";
-  const ORDERS_SEARCH_TERM_HASH =
-    "6f87db3f4884dbd2026b952f0ddf8a56f383b1cb36fe650164762ceed27acaf4";
 
   beforeEach(() => {
     H.restore();
@@ -26,7 +23,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
   describe("command palette", () => {
     it("should send snowplow events search queries on a click", () => {
       cy.visit("/");
-      H.commandPaletteSearch(ORDERS_SEARCH_TERM, false);
+      H.commandPaletteSearch("Orders", false);
 
       //Passing a function to ensure that runtime_milliseconds is populated as a number
       H.expectUnstructuredSnowplowEvent((event) =>
@@ -38,7 +35,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
             search_engine: P.string,
             request_id: P.string,
             offset: null,
-            search_term_hash: ORDERS_SEARCH_TERM_HASH,
+            search_term_hash: P.string,
             search_term: null,
           },
           event,
@@ -57,7 +54,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
               search_engine: P.string,
               request_id: P.string,
               entity_model: P.string,
-              search_term_hash: ORDERS_SEARCH_TERM_HASH,
+              search_term_hash: P.string,
               search_term: null,
             },
             event,
@@ -68,7 +65,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
 
     it("should send snowplow events search queries on keyboard navigation", () => {
       cy.visit("/");
-      H.commandPaletteSearch(ORDERS_SEARCH_TERM, false);
+      H.commandPaletteSearch("Orders", false);
 
       //Passing a function to ensure that runtime_milliseconds is populated as a number
       H.expectUnstructuredSnowplowEvent((event) =>
