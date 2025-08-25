@@ -1,13 +1,8 @@
 (ns metabase.python-runner.api-test
   (:require
-   [clojure.java.io]
-   [clojure.java.shell]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
-   [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
