@@ -160,7 +160,7 @@ jobs:
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
       - sdk-e2e-tests
-      # - e2e-component-tests-embedding-sdk-backward-compatibility
+      - e2e-component-tests-embedding-sdk-backward-compatibility
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5
