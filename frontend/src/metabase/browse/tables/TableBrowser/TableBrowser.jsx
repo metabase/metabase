@@ -7,6 +7,7 @@ import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
@@ -137,6 +138,14 @@ const TableBrowserItemButtons = ({
   xraysEnabled,
   canEditTables,
 }) => {
+  const handleEditTableClicked = () => {
+    trackSimpleEvent({
+      event: "edit_data_button_clicked",
+      target_id: tableId,
+      triggered_from: "table-browser",
+    });
+  };
+
   return (
     <Box className={cx(CS.hoverChild)}>
       <Group gap="md">
@@ -152,6 +161,7 @@ const TableBrowserItemButtons = ({
         {canEditTables && (
           <Link
             to={PLUGIN_TABLE_EDITING.getTableEditUrl(tableId, dbId)}
+            onClick={handleEditTableClicked}
             data-testid="edit-table-icon"
           >
             <Icon

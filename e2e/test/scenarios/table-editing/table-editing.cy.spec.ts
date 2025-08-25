@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { resetSnowplow } from "e2e/support/helpers/e2e-snowplow-helpers";
 
 const { H } = cy;
 
@@ -9,6 +10,8 @@ const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > table-editing", () => {
   beforeEach(() => {
+    resetSnowplow();
+
     H.restore();
     cy.signInAsAdmin();
 
@@ -34,6 +37,12 @@ describe("scenarios > table-editing", () => {
   it("should allow to open table data edit mode", () => {
     openTableBrowser();
     openTableEdit("People");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "edit_data_button_clicked",
+      triggered_from: "table-browser",
+      target_id: PEOPLE_ID,
+    });
 
     cy.wait("@getTable");
 
@@ -74,6 +83,8 @@ describe("scenarios > table-editing", () => {
 
   describe("table edit mode", () => {
     beforeEach(() => {
+      resetSnowplow();
+
       cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
         "getOrdersTable",
       );
@@ -183,6 +194,13 @@ describe("scenarios > table-editing", () => {
       H.modal().should("not.exist");
 
       H.undoToast().findByText("Successfully updated").should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "edit_data_record_modified",
+        event_detail: "update",
+        target_id: ORDERS_ID,
+        triggered_from: "modal",
+        result: "success",
+      });
     });
 
     describe("inline cell editing", () => {
@@ -247,6 +265,14 @@ describe("scenarios > table-editing", () => {
             } else {
               expect(response?.body.outputs[0].row[column]).to.equal(value);
             }
+          });
+
+          H.expectUnstructuredSnowplowEvent({
+            event: "edit_data_record_modified",
+            event_detail: "update",
+            target_id: tableId,
+            triggered_from: "inline",
+            result: "success",
           });
 
           H.undoToast().findByText("Successfully updated").should("be.visible");
@@ -366,6 +392,8 @@ describe("scenarios > table-editing", () => {
 
   describe("create / delete row", () => {
     beforeEach(() => {
+      resetSnowplow();
+
       cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
         "getOrdersTable",
       );
@@ -400,6 +428,14 @@ describe("scenarios > table-editing", () => {
       H.undoToast().within(() => {
         cy.findByText("Record successfully created").should("be.visible");
         cy.findByLabelText("close icon").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "edit_data_record_modified",
+        event_detail: "create",
+        target_id: ORDERS_ID,
+        triggered_from: "modal",
+        result: "success",
       });
     });
 

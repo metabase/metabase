@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import type { DatasetData } from "metabase-types/api";
 
 import {
@@ -85,8 +86,24 @@ export const useTableCRUD = ({
             response.data.outputs.map((output) => output.row),
           );
 
+          trackSimpleEvent({
+            event: "edit_data_record_modified",
+            event_detail: "update",
+            target_id: Number(scope["table-id"]),
+            triggered_from: shouldPerformOptimisticUpdate ? "inline" : "modal",
+            result: "success",
+          });
+
           toastController.showSuccessToast(t`Successfully updated`);
         } else {
+          trackSimpleEvent({
+            event: "edit_data_record_modified",
+            event_detail: "update",
+            target_id: Number(scope["table-id"]),
+            triggered_from: shouldPerformOptimisticUpdate ? "inline" : "modal",
+            result: "error",
+          });
+
           toastController.showErrorToast(response.error);
         }
 
@@ -123,8 +140,24 @@ export const useTableCRUD = ({
           response.data.outputs.map((output) => output.row),
         );
 
+        trackSimpleEvent({
+          event: "edit_data_record_modified",
+          event_detail: "create",
+          target_id: Number(scope["table-id"]),
+          triggered_from: "modal",
+          result: "success",
+        });
+
         toastController.showSuccessToast(t`Record successfully created`);
       } else {
+        trackSimpleEvent({
+          event: "edit_data_record_modified",
+          event_detail: "create",
+          target_id: Number(scope["table-id"]),
+          triggered_from: "modal",
+          result: "error",
+        });
+
         toastController.showErrorToast(response.error);
       }
 
@@ -157,10 +190,26 @@ export const useTableCRUD = ({
           response.data.outputs.map((output) => output.row),
         );
 
+        trackSimpleEvent({
+          event: "edit_data_record_modified",
+          event_detail: "delete",
+          target_id: Number(scope["table-id"]),
+          triggered_from: "modal",
+          result: "success",
+        });
+
         toastController.showSuccessToast(t`Successfully deleted`);
       }
 
       if (response.error) {
+        trackSimpleEvent({
+          event: "edit_data_record_modified",
+          event_detail: "delete",
+          target_id: Number(scope["table-id"]),
+          triggered_from: "modal",
+          result: "error",
+        });
+
         toastController.showErrorToast(response.error);
       }
 

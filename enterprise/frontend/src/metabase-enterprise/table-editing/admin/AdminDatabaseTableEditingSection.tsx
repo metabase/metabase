@@ -8,6 +8,7 @@ import {
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import Toggle from "metabase/common/components/Toggle";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Box, Flex } from "metabase/ui";
 import type {
@@ -51,6 +52,13 @@ export function AdminDatabaseTableEditingSection({
   const handleToggle = async (enabled: boolean) => {
     try {
       setError(null);
+
+      trackSimpleEvent({
+        event: "edit_data_settings_toggled",
+        event_detail: enabled ? "on" : "off",
+        target_id: database.id,
+        triggered_from: "admin-settings-databases",
+      });
 
       await updateDatabase({
         id: database.id,
