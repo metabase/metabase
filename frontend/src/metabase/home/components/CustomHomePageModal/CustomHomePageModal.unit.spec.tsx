@@ -13,6 +13,6 @@ const setup = ({ ...props } = {}) => {
 describe("custom hompage modal", () => {
   it("should only enable the save button if a dashboard has been selected", () => {
     setup();
-    expect(screen.getByRole("button", { name: /save/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
   });
 });
