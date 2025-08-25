@@ -14,11 +14,15 @@
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
+   (java.sql Timestamp)
+   (java.time Instant)
    (org.quartz DisallowConcurrentExecution)))
 
 (set! *warn-on-reflection* true)
 
 (defn- orphan-index-tables
+  "Returns a list of semantic search index tables which are not referenced in the metadata table.
+  Not expected to occur, but if it does, these tables can be dropped."
   [pgvector {:keys [metadata-table-name]}]
   (let [orphaned-tables-sql
         (-> {:select [:t.table_name]
@@ -33,6 +37,9 @@
          (map :table_name))))
 
 (defn- stale-index-tables
+  "Returns a list of semantic search index tables that are considered stale and can be dropped.
+   An index is considered stale if it is not the active index and has not been used or updated
+   within the retention period defined in settings."
   [pgvector {:keys [metadata-table-name control-table-name]}]
   (let [retention-cutoff     (t/minus (t/offset-date-time) (t/hours (semantic.settings/stale-index-retention-hours)))
         stale-index-sql (-> {:select [:meta.table_name]
@@ -50,20 +57,43 @@
     (->> (jdbc/execute! pgvector stale-index-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
          (map :table_name))))
 
+(defn- indexer-ran-recently?
+  "Check if the indexer has run within the specified number of hours."
+  [metadata-row hours-ago]
+  (when-let [last-poll-inst (t/instant (:indexer_last_poll metadata-row))]
+    (.isAfter
+     last-poll-inst
+     (t/minus (Instant/now) (t/hours hours-ago)))))
+
+(defn- get-active-index-metadata-row
+  "Get the metadata row for the currently active index."
+  [pgvector {:keys [metadata-table-name control-table-name]}]
+  (jdbc/execute-one! pgvector
+                     (-> {:select [:m.*]
+                          :from [[(keyword control-table-name) :c]]
+                          :join [[(keyword metadata-table-name) :m] [:= :m.id :c.active_id]]}
+                         (sql/format :quoted true))
+                     {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+
 (defn- cleanup-old-gate-tombstones!
-  [pgvector {:keys [gate-table-name]}]
+  [pgvector index-metadata]
   (try
-    (let [retention-cutoff (t/minus (t/offset-date-time)
-                                    (t/hours (semantic.settings/tombstone-retention-hours)))
-          tombstone-cleanup-sql (-> {:delete-from [(keyword gate-table-name)]
-                                     :where [:and
-                                             [:= :document nil]
-                                             [:= :document_hash nil]
-                                             [:< :gated_at retention-cutoff]]}
-                                    (sql/format :quoted true))
-          deleted-count (::jdbc/update-count (jdbc/execute-one! pgvector tombstone-cleanup-sql))]
-      (when (pos? deleted-count)
-        (log/infof "Cleaned up %d old tombstone records from gate table" deleted-count)))
+    (let [retention-hours     (semantic.settings/tombstone-retention-hours)
+          active-metadata-row (get-active-index-metadata-row pgvector index-metadata)]
+      (if-not (indexer-ran-recently? active-metadata-row retention-hours)
+        (log/info "Skipping tombstone cleanup: indexer has not run within the last 24 hours")
+        (let [{:keys [gate-table-name]} index-metadata
+              retention-cutoff (t/minus (t/offset-date-time)
+                                        (t/hours retention-hours))
+              tombstone-cleanup-sql (-> {:delete-from [(keyword gate-table-name)]
+                                         :where [:and
+                                                 [:= :document nil]
+                                                 [:= :document_hash nil]
+                                                 [:< :gated_at retention-cutoff]]}
+                                        (sql/format :quoted true))
+              deleted-count (::jdbc/update-count (jdbc/execute-one! pgvector tombstone-cleanup-sql))]
+          (when (pos? deleted-count)
+            (log/infof "Cleaned up %d old tombstone records from gate table" deleted-count)))))
     (catch Exception e
       (log/error e "Failed to clean up tombstone records from gate table"))))
 

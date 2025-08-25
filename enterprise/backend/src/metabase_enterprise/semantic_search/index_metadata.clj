@@ -361,7 +361,4 @@
   (-> (get-active-index-state pgvector index-metadata)
       :metadata-row
       :indexer_last_poll
-      class)
-  (find-best-index! pgvector index-metadata embedding-model)
-  (record-new-index-table! pgvector index-metadata (:index (find-best-index! pgvector index-metadata embedding-model)))
-  (activate-index! pgvector index-metadata (:id (:metadata-row (find-best-index! pgvector index-metadata embedding-model)))))
+      class))
