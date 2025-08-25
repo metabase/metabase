@@ -1076,20 +1076,223 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-08-26T10:51:08
-      author: jds
-      comment: Add synced_to_source_of_truth column to transform table
+      id: v57.2025-08-25T10:00:00
+      author: edpaget
+      comment: Create branch table
       changes:
-        - addColumn:
-            tableName: transform
+        - createTable:
+            tableName: branch
+            remarks: Store branches for branched modeling
             columns:
               - column:
-                  name: synced_to_source_of_truth
-                  remarks: Whether this transform is synced to the git source of truth
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: slug
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: parent_branch_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+              - column:
+                  name: is_main
                   type: ${boolean.type}
                   defaultValueBoolean: false
                   constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-25T10:00:10
+      author: edpaget
+      comment: Add foreign key constraint for branch.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: branch
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_branch_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v57.2025-08-25T10:00:20
+      author: edpaget
+      comment: Add foreign key constraint for branch.parent_branch_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: branch
+            baseColumnNames: parent_branch_id
+            referencedTableName: branch
+            referencedColumnNames: id
+            constraintName: fk_branch_parent_branch_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v57.2025-08-25T10:00:30
+      author: edpaget
+      comment: Add index on branch.creator_id
+      changes:
+        - createIndex:
+            tableName: branch
+            indexName: idx_branch_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v57.2025-08-25T10:00:40
+      author: edpaget
+      comment: Add index on branch.parent_branch_id
+      changes:
+        - createIndex:
+            tableName: branch
+            indexName: idx_branch_parent_branch_id
+            columns:
+              - column:
+                  name: parent_branch_id
+
+  - changeSet:
+      id: v57.2025-08-25T10:01:00
+      author: edpaget
+      comment: Create branch_model_mapping table
+      changes:
+        - createTable:
+            tableName: branch_model_mapping
+            remarks: Maps original models to branched models
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
                     nullable: false
+              - column:
+                  name: original_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: branched_model_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: branch_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_path
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: is_dirty
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_synced_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-25T10:01:10
+      author: edpaget
+      comment: Add foreign key constraint for branch_model_mapping.branch_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: branch_model_mapping
+            baseColumnNames: branch_id
+            referencedTableName: branch
+            referencedColumnNames: id
+            constraintName: fk_branch_model_mapping_branch_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-25T10:01:20
+      author: edpaget
+      comment: Add unique index on branch_model_mapping
+      changes:
+        - addUniqueConstraint:
+            tableName: branch_model_mapping
+            columnNames: original_id, model_type, branch_id
+            constraintName: idx_branch_model_mapping_unique
+
+  - changeSet:
+      id: v57.2025-08-25T10:01:30
+      author: edpaget
+      comment: Add index on branch_model_mapping for branch_id and model_type
+      changes:
+        - createIndex:
+            tableName: branch_model_mapping
+            indexName: idx_branch_model_mapping_branch_model
+            columns:
+              - column:
+                  name: branch_id
+              - column:
+                  name: model_type
+
+  - changeSet:
+      id: v57.2025-08-25T10:01:40
+      author: edpaget
+      comment: Add index on branch_model_mapping.branched_model_id
+      changes:
+        - createIndex:
+            tableName: branch_model_mapping
+            indexName: idx_branch_model_mapping_branched_model
+            columns:
+              - column:
+                  name: branched_model_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
