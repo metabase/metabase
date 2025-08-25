@@ -53,6 +53,13 @@ export function TransformQueryPageBody({
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
+  if (transform.source.type === "python") {
+    // For Python transforms, redirect to the main transform page
+    // where they can edit the script
+    dispatch(push(getTransformUrl(transform.id)));
+    return null;
+  }
+
   const handleSave = async (query: DatasetQuery) => {
     const { error } = await updateTransform({
       id: transform.id,

@@ -83,7 +83,12 @@ function UpdateTargetForm({
   onClose,
 }: UpdateTargetFormProps) {
   const { source, target, table } = transform;
-  const { database: databaseId } = source.query;
+  const databaseId =
+    source.type === "query"
+      ? source.query.database
+      : source.type === "python"
+        ? source.database
+        : undefined;
   const [updateTransform] = useUpdateTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);

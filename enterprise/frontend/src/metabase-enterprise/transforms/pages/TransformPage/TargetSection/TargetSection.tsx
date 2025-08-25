@@ -59,7 +59,12 @@ type TargetInfoProps = {
 
 function TargetInfo({ transform }: TargetInfoProps) {
   const { source, target, table } = transform;
-  const { database: databaseId } = source.query;
+  const databaseId =
+    source.type === "query"
+      ? source.query.database
+      : source.type === "python"
+        ? source.database
+        : undefined;
 
   const { data: databaseFromApi, isLoading: isDatabaseLoading } =
     useGetDatabaseQuery(

@@ -9,6 +9,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
+import { NewPythonTransformPage } from "./pages/NewPythonTransformPage";
 import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
@@ -32,7 +33,16 @@ if (hasPremiumFeature("transforms")) {
           <Route path="runs" component={RunListPage} />
           <Route path=":transformId" component={TransformPage} />
         </Route>
-        <Route path="new/:type" component={NewTransformQueryPage} />
+        <Route
+          path="new/:type"
+          component={(props: any) =>
+            props.params.type === "python" ? (
+              <NewPythonTransformPage />
+            ) : (
+              <NewTransformQueryPage params={props.params} />
+            )
+          }
+        />
         <Route path="new/card/:cardId" component={NewTransformQueryPage} />
         <Route path=":transformId/query" component={TransformQueryPage} />
       </Route>

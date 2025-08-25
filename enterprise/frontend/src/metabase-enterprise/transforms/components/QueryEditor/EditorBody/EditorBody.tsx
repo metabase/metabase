@@ -17,7 +17,11 @@ import type {
   Database as ApiDatabase,
   NativeQuerySnippet,
   RecentItem,
+  RecentItem,
+  TransformSource,
 } from "metabase-types/api";
+
+import { PythonEditor } from "../PythonEditor";
 
 import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
@@ -36,12 +40,15 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
 type EditorBodyProps = {
   question: Question;
   isNative: boolean;
+  isPython?: boolean;
+  pythonSource?: TransformSource & { type: "python" };
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
   onChange: (newQuestion: Question) => void;
+  onPythonChange?: (script: string) => void;
   onRunQuery: () => Promise<void>;
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
@@ -58,12 +65,15 @@ type EditorBodyProps = {
 export function EditorBody({
   question,
   isNative,
+  isPython = false,
+  pythonSource,
   isRunnable,
   isRunning,
   isResultDirty,
   isShowingDataReference,
   isShowingSnippetSidebar,
   onChange,
+  onPythonChange,
   onRunQuery,
   onCancelQuery,
   onToggleDataReference,
@@ -102,6 +112,24 @@ export function EditorBody({
   };
 
   const dataPickerOptions = useDataPickerOptions({ databases });
+
+  const handlePythonChange = (script: string) => {
+    onPythonChange?.(script);
+  };
+
+  if (isPython) {
+    return (
+      <PythonEditor
+        script={pythonSource?.script || ""}
+        isRunnable={isRunnable}
+        isRunning={isRunning}
+        isResultDirty={isResultDirty}
+        onChange={handlePythonChange}
+        onRunScript={onRunQuery}
+        onCancelScript={onCancelQuery}
+      />
+    );
+  }
 
   return isNative ? (
     <NativeQueryEditor
