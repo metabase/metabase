@@ -4,7 +4,7 @@
    [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.lib-be.metadata.snippets-only :as snippets-only]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -71,7 +71,7 @@
                                                         [:description   {:optional true} [:maybe :string]]
                                                         [:name          native-query-snippet/NativeQuerySnippetName]
                                                         [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (let [provider (snippets-only/snippets-only-metadata-provider)
+  (let [provider (lib.metadata.jvm/snippets-only-metadata-provider)
         _        (check-snippet-name-is-unique provider name)
         snippet  {:content       content
                   :creator_id    api/*current-user-id*
@@ -85,7 +85,7 @@
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [provider    (snippets-only/snippets-only-metadata-provider)
+  (let [provider    (lib.metadata.jvm/snippets-only-metadata-provider)
         snippet     (t2/select-one :model/NativeQuerySnippet :id id)
         body-fields (u/select-keys-when body
                                         :present #{:description :collection_id}
