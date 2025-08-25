@@ -317,6 +317,7 @@
  [lib.metadata.composed-provider
   composed-metadata-provider]
  [lib.native
+  check-snippet-cycles
   engine
   extract-template-tags
   has-template-tag-variables?
@@ -353,7 +354,6 @@
   can-run
   can-save
   check-overwrite
-  check-snippet-overwrite
   preview-query
   query
   query-from-legacy-inner-query

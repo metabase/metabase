@@ -514,7 +514,7 @@
         ;; Keep the original message for backward compatibility
         (throw (ex-info (i18n/tru "Cannot save card with cycles.") {} e))))))
 
-(defn- build-graph [source-entity metadata-provider a-query]
+(defn- build-card-snippet-graph [source-entity metadata-provider a-query]
   (loop [graph (dep/graph)
          stages-visited 0
          stages (stage-seq source-entity a-query)]
@@ -531,24 +531,13 @@
                (inc stages-visited)
                (concat stages (expand-stage metadata-provider stage)))))))
 
+
 (defn check-overwrite
   "Returns nil if the card with given `card-id` can be overwritten with `query`.
   Throws `ExceptionInfo` with a user-facing message otherwise.
 
   Currently checks for cycles (self-referencing queries)."
   [card-id new-query]
-  (build-graph [:card card-id] new-query new-query)
+  (build-card-snippet-graph [:card card-id] new-query new-query)
   ;; return nil if nothing throws
   nil)
-
-(defn check-snippet-overwrite
-  "Returns nil if the snippet with given `snippet-id` can be overwritten with template tags.
-  Throws `ExceptionInfo` with a user-facing message otherwise.
-
-  Currently checks for cycles (self-referencing snippets and cards)."
-  [snippet-id template-tags metadata-provider]
-  (let [pseudo-query {:lib/type :mbql/query
-                      :stages [{:lib/type :mbql.stage/native
-                                :template-tags template-tags}]}]
-    (build-graph [:snippet snippet-id] metadata-provider pseudo-query)
-    nil))

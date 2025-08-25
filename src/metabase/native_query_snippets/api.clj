@@ -6,7 +6,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.lib-be.metadata.snippets-only :as snippets-only]
    [metabase.lib.core :as lib]
-   [metabase.lib.cycles :as lib.cycles]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
@@ -59,7 +58,7 @@
                              :content content
                              :template-tags template-tags)]
       (try
-        (lib.cycles/check-snippet-cycles provider new-snippet)
+        (lib/check-snippet-cycles provider new-snippet)
         (catch ExceptionInfo e
           (throw-circular! e))))))
 
