@@ -6,6 +6,13 @@ import { Button, Group, Modal, Stack, TextInput } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import type { Transform, TransformSource } from "metabase-types/api";
 
+type PythonTransformApiSource = {
+  type: "python";
+  body: string;
+  "target-database": number;
+  "source-database": number;
+};
+
 type CreatePythonTransformModalProps = {
   source: TransformSource & { type: "python" };
   onCreate: (transform: Transform) => void;
@@ -43,10 +50,17 @@ export function CreatePythonTransformModal({
 
   const handleSubmit = async (values: FormValues) => {
     try {
+      const transformedSource: PythonTransformApiSource = {
+        type: "python",
+        body: source.script,
+        "target-database": source.database,
+        "source-database": source.database,
+      };
+
       const transform = await createTransform({
         name: values.name,
         description: values.description,
-        source,
+        source: transformedSource as any,
         target: {
           type: "table",
           schema: values.targetSchema,
