@@ -1,6 +1,6 @@
 import type { Engine } from "metabase-types/api";
 
-import { providerConfig } from "../../DatabaseHostnameWithProviderField/provider-config.mock";
+import { providerConfig } from "../../DatabaseHostnameWithProviderField/test/provider-config.mock";
 
 export const postgresFormConfig = {
   source: {

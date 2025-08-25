@@ -1,6 +1,7 @@
 import type { DatabaseProviderName } from "metabase-types/api/settings";
 
-import { detectDBProvider } from "./database-providers";
+import { detectDBProvider } from "../database-providers";
+
 import { providerConfig } from "./provider-config.mock";
 
 const testCases: { host: string; provider: DatabaseProviderName }[] = [
