@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -258,7 +257,7 @@
 
 (deftest ^:parallel pmbql-query-test
   (testing "Should be able to calculate permissions for a pMBQL query (#39024)"
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
       (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
@@ -267,7 +266,7 @@
 
 (deftest ^:parallel pmbql-native-query-test
   (testing "Should be able to calculate permissions for a pMBQL native query (#39024)"
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           query             (lib/query metadata-provider {:lib/type :mbql.stage/native
                                                           :native   "SELECT *;"})]
       (is (= {:perms/view-data :unrestricted
@@ -311,7 +310,7 @@
                     :paths                #{(format "/collection/%d/read/" collection-1-id)
                                             (format "/collection/%d/read/" collection-2-id)}}
                    (query-perms/required-perms-for-query
-                    (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                    (lib/query (mt/metadata-provider)
                                (lib/->pMBQL native-query)))))))))))
 
 (deftest ^:parallel native-query-source-card-id-join-permissions-test

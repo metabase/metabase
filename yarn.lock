@@ -2783,10 +2783,10 @@
     fs-extra "^9.1.0"
     tempy "^1.0.0"
 
-"@mantine/core@^8.0.2":
-  version "8.0.2"
-  resolved "https://registry.yarnpkg.com/@mantine/core/-/core-8.0.2.tgz#538c3f17d6e8e1505011ddffd7f341ece5db56f3"
-  integrity sha512-2Ps7bRTeTbRwAKTCL9xdflPz0pwOlTq6ohyTbDZMCADqecf09GHI7GiX+HJatqbPZ2t8jK0fN1b48YhjJaxTqg==
+"@mantine/core@8.2.2":
+  version "8.2.2"
+  resolved "https://registry.yarnpkg.com/@mantine/core/-/core-8.2.2.tgz#6983d0a6d640d894dc473555abac05783ddb7863"
+  integrity sha512-+WnqII3zSD72F+7GLcRXZ/MyO4r7A4JM/yWkCSclxR4LeRQ5bd4HBRXkvXRMZP28UeL2b5X9Re2Sig3KVGDBeQ==
   dependencies:
     "@floating-ui/react" "^0.26.28"
     clsx "^2.1.1"
@@ -2795,17 +2795,17 @@
     react-textarea-autosize "8.5.9"
     type-fest "^4.27.0"
 
-"@mantine/dates@^8.0.2":
-  version "8.0.2"
-  resolved "https://registry.yarnpkg.com/@mantine/dates/-/dates-8.0.2.tgz#f8dde223c721fd8e90d31799ec1348d841a43b53"
-  integrity sha512-V1xU00gECfykA4UFln8ulPsPHvaTncsg9zUbzCwqwEAYlZFG3Nnj5eBzzpV3IN1LNDPEVGb1gAOM6jZ+fi2uRQ==
+"@mantine/dates@8.2.2":
+  version "8.2.2"
+  resolved "https://registry.yarnpkg.com/@mantine/dates/-/dates-8.2.2.tgz#da2e1c11ec433445749944e346fbb0f32c59e65b"
+  integrity sha512-ZDY6/OBgz8827Tu+sOxPNYXrsgLxWwF7pXDEL7vQN1XAm3pQdq2ljPn7Ykh/H9d7QEXQAFO6q5knwnyAXjn06g==
   dependencies:
     clsx "^2.1.1"
 
-"@mantine/hooks@^8.0.2":
-  version "8.0.2"
-  resolved "https://registry.yarnpkg.com/@mantine/hooks/-/hooks-8.0.2.tgz#a5b72c8d61a5b3d2567f9e56593756fa5cd156e8"
-  integrity sha512-0jpEdC0KIAZ54D5kd9rJudrEm6vkvnrL9yYHnkuNbxokXSzDdYA/wpHnKR5WW+u6fW4JF6A6A7gN1vXKeC9MSw==
+"@mantine/hooks@8.2.2":
+  version "8.2.2"
+  resolved "https://registry.yarnpkg.com/@mantine/hooks/-/hooks-8.2.2.tgz#1e404bcba3af04270e7220f2ebff988a2080acb1"
+  integrity sha512-fjt0+pc1UxJIIUswu4ur72qVH+/UoFxyYmqWexuHJTOvuB86M//KUvXpFyhJcTdEENBHg2k1fyMpWmgg1VOZ5w==
 
 "@marijn/find-cluster-break@^1.0.0":
   version "1.0.2"
@@ -19491,15 +19491,7 @@ setprototypeof@1.2.0:
   resolved "https://registry.yarnpkg.com/setprototypeof/-/setprototypeof-1.2.0.tgz#66c9a24a73f9fc28cbe66b09fed3d33dcaf1b424"
   integrity sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==
 
-sha.js@^2.4.0, sha.js@^2.4.8:
-  version "2.4.11"
-  resolved "https://registry.yarnpkg.com/sha.js/-/sha.js-2.4.11.tgz#37a5cf0b81ecbc6943de109ba2960d1b26584ae7"
-  integrity sha512-QMEp5B7cftE7APOjk5Y6xgrbWu+WkLVQwk8JNjZ8nKRciZaByEW6MubieAiToS7+dwvrjGhH8jRXz3MVd0AYqQ==
-  dependencies:
-    inherits "^2.0.1"
-    safe-buffer "^5.0.1"
-
-sha.js@^2.4.11:
+sha.js@^2.4.0, sha.js@^2.4.11, sha.js@^2.4.8:
   version "2.4.12"
   resolved "https://registry.yarnpkg.com/sha.js/-/sha.js-2.4.12.tgz#eb8b568bf383dfd1867a32c3f2b74eb52bdbf23f"
   integrity sha512-8LzC5+bvI45BjpfXU8V5fdU2mfeKiQe1D1gIMn7XUlF3OTUrpdJpPPH4EMAnF0DsHHdSZqCdSss5qCmJKuiO3w==

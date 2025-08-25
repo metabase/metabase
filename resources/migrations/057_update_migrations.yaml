@@ -1043,6 +1043,38 @@ databaseChangeLog:
                 job_id IN (SELECT id FROM transform_job WHERE built_in_type IS NOT NULL) AND
                 tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
 
+  - changeSet:
+      id: v57.2025-08-23T10:00:00
+      author: chodorowicz
+      comment: Add provider_name column to metabase_database table
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: provider_name
+                  type: varchar(100)
+                  remarks: "The name of the hosting provider for the database (e.g., AWS RDS, Azure)."
+                  constraints:
+                    nullable: true
+                  defaultValue: null
+
+  - changeSet:
+      id: v57.2025-08-23T15:00:00
+      author: christruter
+      comment: Add data_authority enum field to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: data_authority
+                  remarks: Indicates the data authority status - unconfigured, authoritative, computed, or ingested
+                  type: varchar(20)
+                  defaultValue: 'unconfigured'
+                  constraints:
+                    nullable: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

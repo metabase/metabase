@@ -12,15 +12,17 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api/metabot";
+import { trackDocumentAskMetabot } from "metabase-enterprise/documents/analytics";
 import {
   createDraftCard,
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase-enterprise/documents/documents.slice";
+import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import MetabotThinkingStyles from "metabase-enterprise/metabot/components/MetabotChat/MetabotThinking.module.css";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
@@ -145,6 +147,7 @@ export const MetabotNode = Node.create<{
 export const MetabotComponent = memo(
   ({ editor, getPos, deleteNode, node, extension }: NodeViewProps) => {
     const dispatch = useDispatch();
+    const document = useSelector(getCurrentDocument);
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
@@ -218,6 +221,7 @@ export const MetabotComponent = memo(
         archived: false,
       };
 
+      trackDocumentAskMetabot(document);
       await dispatch(loadMetadataForDocumentCard(card));
 
       dispatch(
@@ -303,7 +307,8 @@ export const MetabotComponent = memo(
             className={S.closeButton}
             onClick={() => deleteNode()}
           >
-            <Icon name="close" />
+            <Icon name="close" data-hide-on-print />
+            <Icon name="metabot" data-show-on-print />
           </Button>
           <Flex flex={1} direction="column" className={S.contentWrapper}>
             <Box
@@ -350,6 +355,7 @@ export const MetabotComponent = memo(
                 classNames={{
                   label: CS.flex, // ensures icon is vertically centered
                 }}
+                data-hide-on-print
               >
                 {isLoading ? <Icon name="close" /> : t`Run`}
               </Button>

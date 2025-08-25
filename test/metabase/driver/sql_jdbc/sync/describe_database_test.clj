@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.sync.describe-database-test
+  {:clj-kondo/config '{:linters
+                       ;; allowing this for now since sync doesn't work with Metadata Providers
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -83,14 +86,14 @@
                  sort))))))
 
 (deftest describe-database-test
-  (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil, :is_writable nil}
-                    {:name "VENUES", :schema "PUBLIC", :description nil, :is_writable nil}
-                    {:name "CATEGORIES", :schema "PUBLIC", :description nil, :is_writable nil}
-                    {:name "CHECKINS", :schema "PUBLIC", :description nil, :is_writable nil}
-                    {:name "ORDERS", :schema "PUBLIC", :description nil, :is_writable nil}
-                    {:name "PEOPLE", :schema "PUBLIC", :description nil, :is_writable nil}
-                    {:name "PRODUCTS", :schema "PUBLIC", :description nil, :is_writable nil}
-                    {:name "REVIEWS", :schema "PUBLIC", :description nil, :is_writable nil}}}
+  (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "VENUES", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "CATEGORIES", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "CHECKINS", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "ORDERS", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "PEOPLE", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "PRODUCTS", :schema "PUBLIC", :description nil, :is_writable true}
+                    {:name "REVIEWS", :schema "PUBLIC", :description nil, :is_writable true}}}
          (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
 
 (defn- describe-database-with-open-resultset-count!

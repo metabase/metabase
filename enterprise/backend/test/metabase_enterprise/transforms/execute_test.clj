@@ -6,7 +6,6 @@
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -29,7 +28,7 @@
 
 (defn- wait-for-table
   [table-name timeout-ms]
-  (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp    (mt/metadata-provider)
         limit (+ (System/currentTimeMillis) timeout-ms)]
     (loop []
       (Thread/sleep 200)

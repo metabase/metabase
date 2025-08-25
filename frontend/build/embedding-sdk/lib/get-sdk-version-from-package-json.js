@@ -9,7 +9,7 @@ module.exports.getSdkVersionFromPackageJson = () => {
       path.join(
         __dirname,
         "../../../../",
-        "enterprise/frontend/src/embedding-sdk/package.template.json",
+        "enterprise/frontend/src/embedding-sdk-bundle/package.template.json",
       ),
     ),
     "utf-8",

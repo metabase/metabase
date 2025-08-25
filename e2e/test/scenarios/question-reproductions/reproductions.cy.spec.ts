@@ -953,7 +953,7 @@ describe("issue 55631", () => {
   });
 });
 
-describe("issue 39033", { tags: "@skip" }, () => {
+describe("issue 39033", () => {
   const question1Name = "Q1";
   const question1Details: NativeQuestionDetails = {
     name: question1Name,
@@ -1122,6 +1122,36 @@ describe("issue 55487", () => {
     cy.go("forward");
 
     cy.findByTestId("object-detail").should("be.visible");
+  });
+});
+
+describe("issue 42723", () => {
+  const questionDetails: StructuredQuestionDetails = {
+    display: "line",
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to change the query without loosing the viz type (metabase#42723)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.queryBuilderFooter().findByLabelText("Switch to data").click();
+    H.tableHeaderClick("Count");
+    H.popover().icon("arrow_up").click();
+    H.tableInteractiveHeader().icon("chevronup").should("be.visible");
+
+    H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
+    H.ensureChartIsActive();
   });
 });
 

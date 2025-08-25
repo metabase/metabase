@@ -1581,3 +1581,41 @@
                  :lib/metadata meta/metadata-provider}]
       (is (=? {:native {:projections [:count]}}
               (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel between-with-options->legacy-test
+  (is (= [:between
+          [:field 72922 {:base-type :type/Text}]
+          [:relative-datetime -15 :day]
+          [:relative-datetime 0 :day]]
+         (lib.convert/->legacy-MBQL [:between
+                                     {:include-current true,
+                                      :lib/uuid        "b8991b40-d452-4922-8768-b07f6f2b1918"}
+                                     [:field
+                                      {:base-type :type/Text
+                                       :lib/uuid  "408cebeb-4511-4e3f-87c4-bc9d9cb84eca"}
+                                      72922]
+                                     [:relative-datetime
+                                      {:lib/uuid "4eeca5bb-1614-48d1-8bfd-30c91dd4f546"}
+                                      -15
+                                      :day]
+                                     [:relative-datetime
+                                      {:lib/uuid "85a69d68-a2df-4c22-8a45-2203c837d3bf"}
+                                      0
+                                      :day]]))))
+
+(deftest ^:parallel and-or-with-options->legacy-test
+  (doseq [tag [:and :or]]
+    (is (= [tag
+            [:starts-with [:field 243 {:base-type :type/Text}] "B" {:case-sensitive false}]
+            [:starts-with [:field 243 {:base-type :type/Text}] "C" {:case-sensitive false}]]
+           (lib.convert/->legacy-MBQL
+            [tag
+             {:lib/uuid "fd823910-ffc9-4508-a6af-fa37fe29514d", :case-sensitive false}
+             [:starts-with
+              {:case-sensitive false, :lib/uuid "dc413cb8-429d-4103-aaa4-06e3d3bf0a4d"}
+              [:field {:base-type :type/Text, :lib/uuid "b94a285d-32a5-45ad-a261-d4c67f1af8db", :effective-type :type/Text} 243]
+              "B"]
+             [:starts-with
+              {:case-sensitive false, :lib/uuid "92c8ee03-6bc6-45c9-865c-57d0c5d53e23"}
+              [:field {:base-type :type/Text, :lib/uuid "044811f6-9e30-4c42-b5b6-6afde5031675", :effective-type :type/Text} 243]
+              "C"]])))))

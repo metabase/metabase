@@ -5,7 +5,6 @@ import {
 } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import { CLOSE_QB } from "metabase/query_builder/actions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
   Card,
@@ -37,7 +36,6 @@ export interface DocumentsState {
   selectedEmbedIndex: number | null;
   cardEmbeds: CardEmbedRef[];
   currentDocument: Document | null;
-  showNavigateBackToDocumentButton: boolean;
   draftCards: Record<number, Card>;
   mentionsCache: Record<string, MentionCacheItem>;
 }
@@ -46,7 +44,6 @@ export const initialState: DocumentsState = {
   selectedEmbedIndex: null,
   cardEmbeds: [],
   currentDocument: null,
-  showNavigateBackToDocumentButton: false,
   draftCards: {},
   mentionsCache: {},
 };
@@ -94,12 +91,6 @@ const documentsSlice = createSlice({
     setCurrentDocument: (state, action: PayloadAction<Document | null>) => {
       state.currentDocument = action.payload;
     },
-    setShowNavigateBackToDocumentButton: (
-      state,
-      action: PayloadAction<boolean>,
-    ) => {
-      state.showNavigateBackToDocumentButton = action.payload;
-    },
     resetDocuments: () => {
       return initialState;
     },
@@ -128,11 +119,6 @@ const documentsSlice = createSlice({
       state.mentionsCache[getMentionsCacheKey(payload)] = payload;
     },
   },
-  extraReducers: (builder) => {
-    builder.addCase(CLOSE_QB, (state) => {
-      state.showNavigateBackToDocumentButton = false;
-    });
-  },
 });
 
 export const {
@@ -142,7 +128,6 @@ export const {
   closeSidebar,
   setCardEmbeds,
   setCurrentDocument,
-  setShowNavigateBackToDocumentButton,
   resetDocuments,
   createDraftCard,
   clearDraftCards,

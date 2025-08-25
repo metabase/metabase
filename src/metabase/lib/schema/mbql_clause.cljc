@@ -10,7 +10,7 @@
 (comment metabase.types.core/keep-me)
 
 (defonce ^:private ^{:doc "Set of all registered MBQL clause tags e.g. #{:starts-with}"} tag-registry
-  (atom #{}))
+  (atom (sorted-set)))
 
 (defn tag->registered-schema-name
   "Given an MBQL clause tag like `:starts-with`, return the name of the schema we'll register for it, e.g.
