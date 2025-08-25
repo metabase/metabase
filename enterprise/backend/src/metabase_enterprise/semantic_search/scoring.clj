@@ -158,18 +158,6 @@
               [:search_index.model :model]]
    :from     [:search_index]})
 
-(defn- user-recency-expr [{:keys [current-user-id]}]
-  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
-   :from   [:recent_views]
-   :where  [:and
-            [:= :recent_views.user_id current-user-id]
-            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
-            [:= :recent_views.model
-             [:case
-              [:= :search_index.model [:inline "dataset"]] [:inline "card"]
-              [:= :search_index.model [:inline "metric"]] [:inline "card"]
-              :else :search_index.model]]]})
-
 (defn- update-with-appdb-score
   [weights scorers grouped-appdb-results search-result]
   (let [id-model-key ((juxt :id :model) search-result)
@@ -200,7 +188,8 @@
   "The appdb-based scorers for search ranking results. Like `base-scorers`, but for scorers that need to query the appdb."
   [{:keys [limit-int] :as search-ctx}]
   (when-not (and limit-int (zero? limit-int))
-    {:user-recency (search.scoring/inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)}))
+    {:user-recency (search.scoring/inverse-duration
+                    (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)}))
 
 (defn with-appdb-scores
   "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.

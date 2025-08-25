@@ -50,6 +50,20 @@
       [:inline 0]]
      ceiling]))
 
+(defn user-recency-expr
+  "Expression to select the `:user-recency` timestamp for the `current-user-id`."
+  [{:keys [current-user-id]}]
+  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
+   :from   [:recent_views]
+   :where  [:and
+            [:= :recent_views.user_id current-user-id]
+            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
+            [:= :recent_views.model
+             [:case
+              [:= :search_index.model [:inline "dataset"]] [:inline "card"]
+              [:= :search_index.model [:inline "metric"]] [:inline "card"]
+              :else :search_index.model]]]})
+
 (defn sum-columns
   "Sum the columns in `column-names`."
   [column-names]

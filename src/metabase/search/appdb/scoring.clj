@@ -30,18 +30,6 @@
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
 
-(defn- user-recency-expr [{:keys [current-user-id]}]
-  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
-   :from   [:recent_views]
-   :where  [:and
-            [:= :recent_views.user_id current-user-id]
-            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
-            [:= :recent_views.model
-             [:case
-              [:= :search_index.model [:inline "dataset"]] [:inline "card"]
-              [:= :search_index.model [:inline "metric"]] [:inline "card"]
-              :else :search_index.model]]]})
-
 (defn- view-count-percentiles*
   [p-value]
   (into {} (for [{:keys [model vcp]} (t2/query (specialization/view-count-percentile-query
@@ -89,7 +77,7 @@
      :pinned       (search.scoring/truthy :pinned)
      :bookmarked   bookmark-score-expr
      :recency      (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
-     :user-recency (search.scoring/inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
+     :user-recency (search.scoring/inverse-duration (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
      :dashboard    (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
      :model        (model-rank-exp search-ctx)
      :mine         (search.scoring/equal :search_index.creator_id (:current-user-id search-ctx))
