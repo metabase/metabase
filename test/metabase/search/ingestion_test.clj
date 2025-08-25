@@ -1,7 +1,9 @@
 (ns metabase.search.ingestion-test
   (:require
    [clojure.test :refer :all]
-   [metabase.search.ingestion :as search.ingestion]))
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.spec :as search.spec]
+   [metabase.test :as mt]))
 
 (deftest extract-model-and-id
   (is (= ["action" "1895"] (#'search.ingestion/extract-model-and-id ["action" [:= 1895 :this.id]])))
@@ -11,3 +13,15 @@
   (is (= ["dataset" "1901"] (#'search.ingestion/extract-model-and-id ["dataset" [:and [:= true true] [:= :this.id 1901] [:= "Card" "Card"]]])))
   (is (= nil (#'search.ingestion/extract-model-and-id ["dataset" [:and [:= true true] [:= :this.model_id 1901] [:= "Card" "Card"]]])))
   (is (= nil (#'search.ingestion/extract-model-and-id ["indexed-entity" [:and [:= 26 :this.model_index_id] [:= 38004300 :this.model_pk]]]))))
+
+(deftest search-items-count-test
+  (testing "search-items-count returns correct count with various searchable items"
+    (mt/with-empty-h2-app-db!
+      (with-redefs [search.spec/search-models #{"card" "dashboard"}]
+        (mt/with-temp [:model/Collection coll {:name "Test Collection"}
+                       :model/Card       _    {:name "Test Card 1"  :collection_id (:id coll)}
+                       :model/Card       _    {:name "Test Card 2"  :collection_id (:id coll)}
+                       :model/Dashboard  _    {:name "Test Dashboard 1" :collection_id (:id coll)}
+                       :model/Dashboard  _    {:name "Test Dashboard 2" :collection_id (:id coll)}]
+          (let [n (search.ingestion/search-items-count)]
+            (is (= 4 n))))))))
