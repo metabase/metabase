@@ -2,17 +2,10 @@ import type { GlobalTypes } from "@storybook/types";
 import { initialize, mswLoader } from "msw-storybook-addon";
 
 import { storybookThemeOptions } from "embedding-sdk-bundle/test/storybook-themes";
-import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import { defineEmbeddingSdkPackageBuildInfo } from "metabase/embedding-sdk/lib/define-embedding-sdk-package-build-info";
 import { defineGlobalDependencies } from "metabase/embedding-sdk/lib/define-global-dependencies";
 
 import { availableLocales } from "./constants";
-
-// To run initialization side effects like Mantine styles, dayjs plugins, etc
-import "embedding-sdk-bundle";
-
-// To load the SDK bundle
-delete getWindow().METABASE_EMBEDDING_SDK_BUNDLE;
 
 defineEmbeddingSdkPackageBuildInfo();
 defineGlobalDependencies();
