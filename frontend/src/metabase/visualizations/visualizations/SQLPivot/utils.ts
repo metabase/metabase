@@ -99,10 +99,57 @@ function calculateRowAggregation(
   }
 }
 
+// Helper function to validate and clean transformed data
+function validateTransformedData(transformedData: any): any {
+  if (
+    !transformedData ||
+    !Array.isArray(transformedData.rows) ||
+    !Array.isArray(transformedData.cols)
+  ) {
+    console.warn(
+      "SQLPivot: Invalid transformed data structure, returning empty data",
+    );
+    return {
+      cols: [],
+      rows: [],
+      results_timezone: transformedData?.results_timezone || undefined,
+    };
+  }
+
+  // Filter out any invalid rows
+  const validRows = transformedData.rows.filter((row: any) => {
+    if (!Array.isArray(row)) {
+      console.warn("SQLPivot: Filtering out invalid row (not an array):", row);
+      return false;
+    }
+    return true;
+  });
+
+  return {
+    ...transformedData,
+    rows: validRows,
+  };
+}
+
 export function transformSQLDataToPivot(
   data: DatasetData,
   settings: SQLPivotSettings,
 ) {
+  // Validate input data structure
+  if (!data || !Array.isArray(data.rows) || !Array.isArray(data.cols)) {
+    console.warn("SQLPivot: Invalid input data structure:", data);
+    return (
+      data || {
+        cols: [],
+        rows: [],
+        results_timezone: undefined,
+        results_metadata: { checksum: null, columns: [] },
+        rows_truncated: 0,
+        native_form: { query: null },
+      }
+    );
+  }
+
   const rawRowColumns = settings["sqlpivot.row_columns"];
   const columnDimensionName = settings["sqlpivot.column_dimension"];
   const rawValueColumns = settings["sqlpivot.value_columns"];
@@ -148,7 +195,7 @@ export function transformSQLDataToPivot(
       settings["sqlpivot.show_row_aggregation"] || false;
     const showColumnAggregation =
       settings["sqlpivot.show_column_aggregation"] || false;
-    return transformToMatrixPivot(
+    const result = transformToMatrixPivot(
       data,
       rowColumnIndexes,
       columnDimensionIndex,
@@ -156,17 +203,24 @@ export function transformSQLDataToPivot(
       showRowAggregation,
       showColumnAggregation,
     );
+    return validateTransformedData(result);
   }
 
   // Otherwise use the original pivot logic
   if (transpose) {
-    return transformToTransposedPivot(
+    const result = transformToTransposedPivot(
       data,
       rowColumnIndexes,
       valueColumnIndexes,
     );
+    return validateTransformedData(result);
   } else {
-    return transformToStandardPivot(data, rowColumnIndexes, valueColumnIndexes);
+    const result = transformToStandardPivot(
+      data,
+      rowColumnIndexes,
+      valueColumnIndexes,
+    );
+    return validateTransformedData(result);
   }
 }
 

@@ -152,11 +152,25 @@ export class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
 
     // If no column filtering is applied, use all columns
     const finalColumnIndexes =
-      columnIndexes.length > 0 ? columnIndexes : cols.map((_, i) => i);
+      columnIndexes.length > 0
+        ? columnIndexes
+        : cols.map((_: any, i: number) => i);
+
+    // Transform and validate the data structure
+    const transformedRows = rows
+      .map((row: any) => {
+        // Ensure row is an array before mapping
+        if (!Array.isArray(row)) {
+          console.warn("SQLPivot: Invalid row data - not an array:", row);
+          return null;
+        }
+        return finalColumnIndexes.map((i: number) => row[i]);
+      })
+      .filter((row: any) => row !== null); // Remove any invalid rows
 
     const finalData = {
-      cols: finalColumnIndexes.map((i) => cols[i]),
-      rows: rows.map((row) => finalColumnIndexes.map((i) => row[i])),
+      cols: finalColumnIndexes.map((i: number) => cols[i]),
+      rows: transformedRows,
       results_timezone,
     };
 
