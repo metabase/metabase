@@ -17,8 +17,8 @@
    {:name "Railway" :pattern #"\.railway\.app$"}
    {:name "Render" :pattern #"\.render\.com$"}
    {:name "Scaleway" :pattern #"\.scw\.cloud$"}
-   {:name "Supabase" :pattern #"pooler\.supabase\.com|\.supabase\.co$"}
-   {:name "Timescale" :pattern #"\.tsdb\.cloud|\.timescale\.com$"}])
+   {:name "Supabase" :pattern #"(pooler\.supabase\.com|\.supabase\.co)$"}
+   {:name "Timescale" :pattern #"(\.tsdb\.cloud|\.timescale\.com)$"}])
 
 (defn detect-provider
   "Detect database provider from host using regex patterns.
