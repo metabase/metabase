@@ -28,7 +28,8 @@
                                                            commons-io/commons-io
                                                            slingshot/slingshot]}
   clojure.java-time/clojure.java-time       {:mvn/version "1.4.3"}              ; java.time utilities
-  clojurewerkz/quartzite                    {:mvn/version "2.2.0"               ; scheduling library
+  clojurewerkz/quartzite                    {:git/sha "a1caa514494b2d4d97a71f2f9355e6bae4c51a87"    ;; Clojure wrapper around Quartz scheduler
+                                             :git/url "https://github.com/michaelklishin/quartzite"
                                              :exclusions  [com.mchange.c3p0/c3p0
                                                            com.zaxxer/HikariCP-java7]}
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
