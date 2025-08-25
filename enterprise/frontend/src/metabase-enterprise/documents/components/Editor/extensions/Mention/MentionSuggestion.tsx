@@ -2,6 +2,8 @@ import type { Editor, Range } from "@tiptap/core";
 import { forwardRef, useCallback, useImperativeHandle } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
+import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import type { SearchResult } from "metabase-types/api";
 
 import {
@@ -11,18 +13,14 @@ import {
 import { EntitySearchSection } from "../shared/EntitySearchSection";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
+import type { MentionCommandProps } from "./MentionExtension";
+
 interface MentionSuggestionProps {
   items: SearchResult[];
-  command: (item: MentionCommandItem) => void;
+  command: (item: MentionCommandProps) => void;
   editor: Editor;
   range: Range;
   query: string;
-}
-
-interface MentionCommandItem {
-  type?: string;
-  id?: number | string;
-  model?: string;
 }
 
 interface SuggestionRef {
@@ -36,14 +34,16 @@ const MentionSuggestionComponent = forwardRef<
   { items: _items, command, editor, range: _range, query },
   ref,
 ) {
+  const document = useSelector(getCurrentDocument);
   const onSelectEntity = useCallback(
     (item: { id: number | string; model: string }) => {
       command({
         id: item.id,
         model: item.model,
+        document,
       });
     },
-    [command],
+    [command, document],
   );
 
   const {
