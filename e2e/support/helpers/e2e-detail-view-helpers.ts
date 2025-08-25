@@ -30,18 +30,19 @@ function getObjectDetails() {
 function verifyObjectDetails(rows: [string, string][]) {
   getObjectDetails().within(() => {
     cy.findAllByTestId("object-details-row").should("have.length", rows.length);
-    for (let i = 0; i < rows.length; ++i) {
-      const [column, value] = rows[i];
+
+    for (let index = 0; index < rows.length; ++index) {
+      const [column, value] = rows[index];
 
       cy.findAllByTestId("object-details-row")
         .should("have.length", rows.length)
-        .eq(i)
+        .eq(index)
         .findByTestId("column")
         .should("have.text", column);
 
       cy.findAllByTestId("object-details-row")
         .should("have.length", rows.length)
-        .eq(i)
+        .eq(index)
         .findByTestId("value")
         .should("have.text", value);
     }
