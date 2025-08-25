@@ -28,9 +28,15 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::transform-source
-  [:map
-   [:type [:= "query"]]
-   [:query [:map [:database :int]]]])
+  [:multi {:dispatch (comp keyword :type)}
+   [:query
+    [:map
+     [:type [:= "query"]]
+     [:query [:map [:database :int]]]]]
+   [:python
+    [:map
+     [:type [:= "python"]]
+     [:body :string]]]])
 
 (mr/def ::transform-target
   [:map
@@ -60,15 +66,16 @@
 
 (defn- check-database-feature
   [transform]
-  (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
-                                (deferred-tru "The source database cannot be found."))
-        feature (transforms.util/required-database-feature transform)]
-    (api/check-400 (not (:is_sample database))
-                   (deferred-tru "Cannot run transforms on the sample database."))
-    (api/check-400 (not (:is_audit database))
-                   (deferred-tru "Cannot run transforms on audit databases."))
-    (api/check-400 (driver.u/supports? (:engine database) feature database)
-                   (deferred-tru "The database does not support the requested transform target type."))))
+  (when (transforms.util/query-transform? transform)
+    (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
+                                  (deferred-tru "The source database cannot be found."))
+          feature (transforms.util/required-database-feature transform)]
+      (api/check-400 (not (:is_sample database))
+                     (deferred-tru "Cannot run transforms on the sample database."))
+      (api/check-400 (not (:is_audit database))
+                     (deferred-tru "Cannot run transforms on audit databases."))
+      (api/check-400 (driver.u/supports? (:engine database) feature database)
+                     (deferred-tru "The database does not support the requested transform target type.")))))
 
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
@@ -156,9 +163,10 @@
           new (merge old body)
           target-fields #(-> % :target (select-keys [:schema :name]))]
       (check-database-feature new)
-      (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
-        (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
-                        {:status-code 400})))
+      (when (transforms.util/query-transform? old)
+        (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
+          (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                          {:status-code 400}))))
       (api/check (not (and (not= (target-fields old) (target-fields new))
                            (transforms.util/target-table-exists? new)))
                  403

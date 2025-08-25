@@ -15,12 +15,18 @@
     (keyword schema name)
     (keyword name)))
 
+(defn query-transform?
+  "Check if this is a query transform: native query / mbql query."
+  [transform]
+  (= :query (-> transform :source :type keyword)))
+
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
-  [{:keys [source target] :as _transform}]
-  (let [db-id (-> source :query :database)
-        {driver :engine :as database} (t2/select-one :model/Database db-id)]
-    (driver/table-exists? driver database target)))
+  [{:keys [source target] :as transform}]
+  (when (query-transform? transform)
+    (let [db-id (-> source :query :database)
+          {driver :engine :as database} (t2/select-one :model/Database db-id)]
+      (driver/table-exists? driver database target))))
 
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."
