@@ -119,6 +119,15 @@ H.describeWithSnowplow(suiteTitle, () => {
         codeBlock().should("contain", '"id":[123]');
         codeBlock().should("contain", '"product_id":[456]');
       });
+
+      cy.get("metabase-dashboard")
+        .invoke("attr", "initial-parameters")
+        .then((attr) => {
+          expect(JSON.parse(attr!)).to.deep.equal({
+            id: [123],
+            product_id: [456],
+          });
+        });
     });
 
     it("can hide dashboard parameters", () => {
@@ -153,6 +162,12 @@ H.describeWithSnowplow(suiteTitle, () => {
         codeBlock().should("contain", '"id"');
         codeBlock().should("contain", '"product_id"');
       });
+
+      cy.get("metabase-dashboard")
+        .invoke("attr", "hidden-parameters")
+        .then((attr) => {
+          expect(JSON.parse(attr!)).to.have.members(["id", "product_id"]);
+        });
     });
   });
 
@@ -214,6 +229,12 @@ H.describeWithSnowplow(suiteTitle, () => {
         codeBlock().should("not.contain", "hidden-parameters="); // not supported for questions yet
         codeBlock().should("contain", '"id":"123"');
       });
+
+      cy.get("metabase-question")
+        .invoke("attr", "initial-sql-parameters")
+        .then((attr) => {
+          expect(JSON.parse(attr!)).to.deep.equal({ id: "123" });
+        });
     });
   });
 

@@ -1,5 +1,6 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -12,6 +13,22 @@ import { useSdkIframeEmbedSetupContext } from "../../context";
 
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
 import { useHideParameter } from "./hooks/use-hide-parameter";
+
+function mapValuesBySlugToById(
+  valuesBySlug: Record<string, any> | undefined,
+  params: { id: string; slug: string }[],
+) {
+  if (!valuesBySlug) {
+    return {};
+  }
+
+  return params.reduce<Record<string, any>>((byId, param) => {
+    if (param.slug in valuesBySlug) {
+      byId[param.id] = valuesBySlug[param.slug];
+    }
+    return byId;
+  }, {});
+}
 
 export const ParameterSettings = () => {
   const {
@@ -51,24 +68,30 @@ export const ParameterSettings = () => {
     SET_INITIAL_PARAMETER_DEBOUNCE_MS,
   );
 
-  const parameterValues = useMemo(() => {
-    if (settings.dashboardId) {
-      return settings.initialParameters;
-    } else if (settings.questionId) {
-      return settings.initialSqlParameters;
-    }
+  /**
+   * Widgets (and most of metabase logic) expect parameter values keyed by
+   * **parameter.id**, but in the embed flow settings we store them by
+   * **parameter.slug**, as the public API of embeds wants them by slug
+   *
+   * Here we convert them to "by-id" to make widgets work properly.
+   */
+  const parameterValuesById = useMemo(() => {
+    const valuesBySlug = match(settings)
+      .with({ dashboardId: P.nonNullable }, (s) => s.initialParameters)
+      .with({ questionId: P.nonNullable }, (s) => s.initialSqlParameters)
+      .otherwise(() => ({}));
 
-    return {};
-  }, [settings]);
+    return mapValuesBySlugToById(valuesBySlug, availableParameters);
+  }, [settings, availableParameters]);
 
   const uiParameters = useMemo(
     () =>
       getValuePopulatedParameters({
         parameters: availableParameters,
-        values: parameterValues,
+        values: parameterValuesById,
         defaultRequired: true,
       }),
-    [availableParameters, parameterValues],
+    [availableParameters, parameterValuesById],
   );
 
   // Only show parameters for dashboards and questions
@@ -94,10 +117,10 @@ export const ParameterSettings = () => {
               parameter={parameter}
               parameters={uiParameters}
               setValue={(value: string) =>
-                updateInitialParameterValue(parameter.id, value)
+                updateInitialParameterValue(parameter.slug, value)
               }
               setParameterValueToDefault={() => {
-                updateInitialParameterValue(parameter.id, parameter.default);
+                updateInitialParameterValue(parameter.slug, parameter.default);
               }}
               enableParameterRequiredBehavior
             />
