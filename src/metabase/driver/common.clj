@@ -9,8 +9,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.core :as warehouses]
-   [metabase.warehouses.provider-detection :as provider-detection]))
+   [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
 
@@ -399,4 +398,4 @@
 ;; Driver-specific extra-info methods
 
 (defmethod driver/extra-info :postgres [_]
-  {:providers (provider-detection/providers-for-api)})
+  {:providers (warehouses/providers-for-api)})
