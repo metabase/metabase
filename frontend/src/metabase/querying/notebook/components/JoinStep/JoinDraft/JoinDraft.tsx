@@ -104,6 +104,8 @@ export function JoinDraft({
     [sourceTableId, handleResetRef],
   );
 
+  const [isOpened, setIsOpened] = useState(false);
+
   return (
     <Flex miw="100%" gap="1rem">
       <NotebookCell className={S.JoinCell} color={color}>
@@ -124,6 +126,8 @@ export function JoinDraft({
             table={rhsTable}
             color={color}
             isReadOnly={isReadOnly}
+            isOpened={isOpened}
+            setIsOpened={setIsOpened}
             columnPicker={
               <JoinTableColumnDraftPicker
                 query={query}
@@ -131,6 +135,7 @@ export function JoinDraft({
                 columns={rhsTableColumns}
                 selectedColumns={selectedRhsTableColumns}
                 onChange={setSelectedRhsTableColumns}
+                onClose={() => setIsOpened(false)}
               />
             }
             onChange={handleTableChange}
