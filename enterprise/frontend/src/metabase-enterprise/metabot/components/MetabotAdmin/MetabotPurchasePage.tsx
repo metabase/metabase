@@ -91,6 +91,7 @@ export const MetabotPurchasePage = () => {
       })
         .unwrap()
         .catch((error: unknown) => {
+          settingUpModalHandlers.close();
           isFetchBaseQueryError(error) && handleFieldError(error.data);
         });
     },
