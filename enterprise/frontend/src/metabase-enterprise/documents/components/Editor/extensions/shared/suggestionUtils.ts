@@ -2,7 +2,6 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import type {
   Database,
-  RecentCollectionItem,
   RecentItem,
   SearchModel,
   SearchResult,
@@ -10,10 +9,8 @@ import type {
 
 import type { MenuItem } from "../../shared/MenuComponents";
 
-export const isRecentQuestion = (
-  item: RecentItem,
-): item is RecentCollectionItem & { model: "card" | "dataset" } =>
-  item.model === "card" || item.model === "dataset";
+export const filterRecents = (item: RecentItem, models: SearchModel[]) =>
+  models.includes(item.model);
 
 export function buildSearchMenuItems(
   searchResults: SearchResult[],
@@ -35,14 +32,11 @@ export function buildSearchMenuItems(
 }
 
 export function buildRecentsMenuItems(
-  recents: Array<RecentCollectionItem & { model: "card" | "dataset" }>,
-  onSelect: (recent: RecentCollectionItem) => void,
+  recents: Array<RecentItem>,
+  onSelect: (recent: RecentItem) => void,
 ): MenuItem[] {
   return recents.map((recent) => {
-    const iconData = getIcon({
-      model: recent.model,
-      display: recent.display ?? undefined,
-    });
+    const iconData = getIcon(recent);
     return {
       icon: iconData.name,
       label: getName(recent),

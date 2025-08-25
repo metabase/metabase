@@ -25,7 +25,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -1039,7 +1038,7 @@
                (mt/with-temp
                  [:model/Card {id :id} (mt/card-with-metadata {:dataset_query query
                                                                :type          card-type})]
-                 (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                 (let [mp (mt/metadata-provider)
                        query (as-> (lib/query mp (lib.metadata/card mp id)) $
                                (lib/filter $ (lib/= (m/find-first (comp #{"status"} :name)
                                                                   (lib/filterable-columns $))
@@ -1094,18 +1093,18 @@
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test
   (testing "violate fk constraints"
-    (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint,
-             :message "Unable to create a new record.",
-             :errors {"group-id" "This Group-id does not exist."}}
+    (is (=? {:type    :metabase.actions.error/violate-foreign-key-constraint,
+             :message "Unable to create a new record."
+             :errors  {"group-id" "This value does not exist in table \"group\"."}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :postgres actions.error/violate-foreign-key-constraint nil :model.row/create
              "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-2
   (testing "violate fk constraints"
-    (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint,
-             :message "Unable to update the record.",
-             :errors {"id" "This Id does not exist."}}
+    (is (=? {:type    :metabase.actions.error/violate-foreign-key-constraint,
+             :message "Other rows refer to this value so it cannot be changed."
+             :errors  {"id" "Referenced in table \"user\"."}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :postgres actions.error/violate-foreign-key-constraint nil :model.row/update
              "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
@@ -1113,7 +1112,7 @@
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-3
   (testing "violate fk constraints"
     (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint,
-             :message "Other tables rely on this row so it cannot be deleted.",
+             :message "Other rows refer to this row so it cannot be deleted.",
              :errors {}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :postgres actions.error/violate-foreign-key-constraint nil :model.row/delete
@@ -1760,3 +1759,50 @@
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                              driver/*driver* conn schema table-name))))))))))))
+
+(deftest sync-writable-test
+  (mt/test-driver :postgres
+    (testing "`sync-tables-and-database!` should set is_writable correctly based on table privileges"
+      (let [db-name "sync_writable_test"
+            details (tx/dbdef->connection-details :postgres :db {:database-name db-name})]
+        (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+          (try
+            (jdbc/execute! conn "CREATE SCHEMA IF NOT EXISTS sync_test_schema")
+
+            (doseq [stmt ["CREATE TABLE sync_test_schema.readonly_table (id INTEGER);"
+                          "CREATE TABLE sync_test_schema.readwrite_table (id INTEGER);"
+                          "CREATE TABLE sync_test_schema.fullaccess_table (id INTEGER);"]]
+              (jdbc/execute! conn stmt))
+
+            (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user")
+            (jdbc/execute! conn "CREATE USER sync_writable_test_user WITH PASSWORD 'password'")
+
+            (jdbc/execute! conn "GRANT USAGE ON SCHEMA sync_test_schema TO sync_writable_test_user")
+
+            (jdbc/execute! conn "GRANT SELECT ON sync_test_schema.readonly_table TO sync_writable_test_user")
+            (jdbc/execute! conn "GRANT SELECT, INSERT ON sync_test_schema.readwrite_table TO sync_writable_test_user")
+            (jdbc/execute! conn "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_test_schema.fullaccess_table TO sync_writable_test_user")
+
+            (let [user-connection-details (assoc details
+                                                 :user "sync_writable_test_user"
+                                                 :password "password")]
+              (mt/with-temp [:model/Database database {:engine "postgres", :details user-connection-details}]
+                (sync/sync-database! database)
+                (testing "only fullaccess table has writeable permissions"
+                  (is (= {"readonly_table"   false
+                          "readwrite_table"  false
+                          "fullaccess_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
+                (testing "After granting full access to all tables and re-syncing"
+                  (doseq [table-name ["readonly_table" "readwrite_table"]]
+                    (jdbc/execute! conn (format "GRANT INSERT, UPDATE, DELETE ON sync_test_schema.%s TO sync_writable_test_user" table-name)))
+                  (sync/sync-database! database)
+                  (is (= {"readonly_table"   true
+                          "readwrite_table"  true
+                          "fullaccess_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))))
+            (finally
+              (jdbc/execute! conn "DROP SCHEMA IF EXISTS sync_test_schema CASCADE")
+              (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user"))))))))

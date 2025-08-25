@@ -132,12 +132,12 @@
 (deftest ^:parallel mbql-cols-nested-queries-test
   (testing "Should be able to infer MBQL columns with nested queries"
     (qp.store/with-metadata-provider meta/metadata-provider
-      (let [base-query (qp.preprocess/preprocess
-                        (lib.tu.macros/mbql-query venues
-                          {:joins [{:fields       :all
-                                    :source-table $$categories
-                                    :condition    [:= $category-id &c.categories.id]
-                                    :alias        "c"}]}))]
+      (let [base-query (-> (lib.tu.macros/mbql-query venues
+                             {:joins [{:fields       :all
+                                       :source-table $$categories
+                                       :condition    [:= $category-id &c.categories.id]
+                                       :alias        "c"}]})
+                           qp.preprocess/preprocess)]
         (doseq [level [0 1 2 3]
                 :let [field (fn [field-key legacy-ref]
                               (let [metadata (meta/field-metadata :venues field-key)]
@@ -145,9 +145,7 @@
                                     (select-keys [:id :name])
                                     (assoc :field_ref legacy-ref))))]]
           (testing (format "%d level(s) of nesting" level)
-            (let [nested-query (lib/query
-                                (qp.store/metadata-provider)
-                                (mt/nest-query base-query level))]
+            (let [nested-query (nth (iterate lib/append-stage base-query) level)]
               (is (=? (lib.tu.macros/$ids venues
                         [(field :id          $id)
                          (field :name        $name)
@@ -178,9 +176,9 @@
                                             {:name "max"}]]
                                           :breakout     [$category]
                                           :order-by     [[:asc $category]]})])
-      (let [query (lib/query
-                   (qp.store/metadata-provider)
-                   (qp.preprocess/preprocess
+      (let [query (qp.preprocess/preprocess
+                   (lib/query
+                    (qp.store/metadata-provider)
                     (lib.tu.macros/mbql-query nil
                       {:source-table "card__1"
                        :aggregation  [[:aggregation-options
@@ -209,17 +207,17 @@
       (qp.store/with-metadata-provider meta/metadata-provider
         (testing "Make sure metadata is correct for the 'EAN' column with"
           (let [base-query (qp.preprocess/preprocess
-                            (lib.tu.macros/mbql-query orders
-                              {:joins [{:fields       :all
-                                        :source-table $$products
-                                        :condition    [:= $product-id &Products.products.id]
-                                        :alias        "Products"}]
-                               :limit 10}))]
+                            (lib/query
+                             meta/metadata-provider
+                             (lib.tu.macros/mbql-query orders
+                               {:joins [{:fields       :all
+                                         :source-table $$products
+                                         :condition    [:= $product-id &Products.products.id]
+                                         :alias        "Products"}]
+                                :limit 10})))]
             (doseq [level (range 4)]
               (testing (format "%d level(s) of nesting" level)
-                (let [nested-query (lib/query
-                                    meta/metadata-provider
-                                    (mt/nest-query base-query level))]
+                (let [nested-query (nth (iterate lib/append-stage base-query) level)]
                   (testing (format "\nQuery = %s" (u/pprint-to-str nested-query))
                     (is (= (lib.tu.macros/$ids products
                              {:name          "EAN"
@@ -235,33 +233,33 @@
                          {:joins [{:fields       :all
                                    :source-table $$products
                                    :condition    [:= $product-id &Products.products.id]
-                                   :alias        "Products"}]})]
-      (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                                        meta/metadata-provider
-                                        [card-1-query
-                                         (lib.tu.macros/mbql-query people)])
-        (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
-          (lib.tu.macros/$ids nil
-            (let [base-query (lib/query
-                              (qp.store/metadata-provider)
-                              (qp.preprocess/preprocess
-                               (lib.tu.macros/mbql-query nil
-                                 {:source-table "card__1"
-                                  :joins        [{:fields       :all
-                                                  :source-table "card__2"
-                                                  :condition    [:= $orders.user-id &Products.products.id]
-                                                  :alias        "Q"}]
-                                  :limit        1})))
-                  fields     #{%orders.discount %products.title %people.source}]
-              (is (= [{:display_name "Discount"
-                       :field_ref    [:field %orders.discount nil]}
-                      {:display_name "Products → Title"
-                       :field_ref    [:field %products.title nil]}
-                      {:display_name "Q → Source"
-                       :field_ref    [:field %people.source {:join-alias "Q"}]}]
-                     (->> (:cols (add-column-info base-query {}))
-                          (filter #(fields (:id %)))
-                          (map #(select-keys % [:display_name :field_ref]))))))))))))
+                                   :alias        "Products"}]})
+          mp (lib.tu/metadata-provider-with-cards-for-queries
+              meta/metadata-provider
+              [card-1-query
+               (lib.tu.macros/mbql-query people)])]
+      (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
+        (lib.tu.macros/$ids nil
+          (let [base-query (qp.preprocess/preprocess
+                            (lib/query
+                             mp
+                             (lib.tu.macros/mbql-query nil
+                               {:source-table "card__1"
+                                :joins        [{:fields       :all
+                                                :source-table "card__2"
+                                                :condition    [:= $orders.user-id &Products.products.id]
+                                                :alias        "Q"}]
+                                :limit        1})))
+                fields     #{%orders.discount %products.title %people.source}]
+            (is (= [{:display_name "Discount"
+                     :field_ref    [:field %orders.discount nil]}
+                    {:display_name "Products → Title"
+                     :field_ref    [:field %products.title nil]}
+                    {:display_name "Q → Source"
+                     :field_ref    [:field %people.source {:join-alias "Q"}]}]
+                   (->> (:cols (add-column-info base-query {}))
+                        (filter #(fields (:id %)))
+                        (map #(select-keys % [:display_name :field_ref])))))))))))
 
 (deftest ^:parallel col-info-for-joined-fields-from-card-test
   (testing "Has the correct display names for joined fields from cards (#14787)"

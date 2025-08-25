@@ -8,7 +8,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.query-processor.store :as qp.store]
+      ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
 (defenterprise swap-destination-db

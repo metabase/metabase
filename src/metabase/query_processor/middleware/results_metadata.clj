@@ -126,7 +126,7 @@
 
 (mu/defn record-and-return-metadata! :- ::qp.schema/rff
   "Post-processing middleware that records metadata about the columns returned when running the query. Returns an rff."
-  [{{:keys [skip-results-metadata?]} :middleware, :as query} :- ::qp.schema/query
+  [{{:keys [skip-results-metadata?]} :middleware, :as query} :- ::qp.schema/any-query
    rff                                                       :- ::qp.schema/rff]
   (if skip-results-metadata?
     rff

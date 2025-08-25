@@ -193,13 +193,13 @@
   {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
-(defn- serialize-mbql-5-query
+(defn- serialize-mbql5-query
   "Saving MBQL 5 queries​ we can assume MBQL 5 queries are normalized enough already, but remove the metadata provider
   before saving it, because it's not something that lends itself well to serialization."
   [query]
   (dissoc query :lib/metadata))
 
-(defn- deserialize-mbql-5-query
+(defn- deserialize-mbql5-query
   "Reading MBQL 5 queries​: normalize them, then attach a MetadataProvider based on their Database."
   [query]
   (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
@@ -218,8 +218,8 @@
             (let [f (if (= (lib/normalized-query-type query) :mbql/query)
                       ;; MBQL 5 queries
                       (case in-or-out
-                        :in  serialize-mbql-5-query
-                        :out deserialize-mbql-5-query)
+                        :in  serialize-mbql5-query
+                        :out deserialize-mbql5-query)
                       ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
                       ;; future we'll probably convert to MBQL 5 before saving so everything in the app DB is MBQL 5
                       (case in-or-out
