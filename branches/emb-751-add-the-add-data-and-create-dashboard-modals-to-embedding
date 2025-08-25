@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-738-setup-sidebar-and-onboarding-page-for-embedding-hub",
-    "hash": "95075fdf5ca81113b20de0ce38387a8e57c13705"
+    "hash": "3a1feaa01c6aa24ad7122c97873800ad284ca586"
   },
   "upstream": {
     "branch": "emb-751-add-the-add-data-and-create-dashboard-modals-to-embedding"
