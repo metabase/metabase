@@ -383,7 +383,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: use_verified_content
-                  type: boolean
+                  type: ${boolean.type}
                   remarks: Whether this metabot should only use verified content
                   constraints:
                     nullable: true
@@ -404,7 +404,7 @@ databaseChangeLog:
                   constraints:
                     nullable: true
         - sql:
-            comment: Migrate collection references from metabot_entity to metabot.collection_id
+            comment: Migrate collection references from metabot_entity to metabot.collection_id with exception to the default metabot instance
             sql: >-
               UPDATE metabot
               SET collection_id = (
@@ -419,7 +419,8 @@ databaseChangeLog:
                 FROM metabot_entity me
                 WHERE me.metabot_id = metabot.id
                   AND me.model = 'collection'
-              );
+              )
+              AND metabot.entity_id != 'metabotmetabotmetabot';
         - sql:
             comment: Migrate metabot_prompt.metabot_entity_id to metabot_prompt.metabot_id
             sql: >-

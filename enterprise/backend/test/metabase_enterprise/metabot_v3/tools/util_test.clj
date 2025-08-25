@@ -3,10 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.util]
    [metabase.collections.models.collection :as collection]
-   [metabase.content-verification.core :as moderation]
    [metabase.permissions.models.permissions :as perms]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (deftest metabot-scope-query-test
   (testing "metabot-scope-query with collection hierarchy"
