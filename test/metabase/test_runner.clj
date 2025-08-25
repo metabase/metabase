@@ -2,6 +2,8 @@
 (ns metabase.test-runner
   "The only purpose of this namespace is to make sure all of the other stuff below gets loaded."
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [cheshire.core :as json]
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -51,7 +53,7 @@
 (defn- all-drivers []
   (into #{:h2 :postgres :mysql}
         (for [^java.io.File file (.listFiles (io/file "modules/drivers"))
-              :when              (.isDirectory file)]
+              :when (.isDirectory file)]
           (keyword (.getName file)))))
 
 (defn- excluded-drivers []
@@ -62,16 +64,16 @@
   [_nil options]
   (let [excluded-driver-dirs (for [driver (excluded-drivers)]
                                (format "modules/drivers/%s" (name driver)))
-        exclude-directory?   (fn [dir]
-                               (let [dir (str dir)]
-                                 (some (fn [excluded]
-                                         (or (str/ends-with? dir excluded)
-                                             (str/includes? dir (str excluded "/"))))
-                                       excluded-driver-dirs)))
-        directories          (for [^java.io.File file (classpath/system-classpath)
-                                   :when              (and (.isDirectory file)
-                                                           (not (exclude-directory? file)))]
-                               file)]
+        exclude-directory? (fn [dir]
+                             (let [dir (str dir)]
+                               (some (fn [excluded]
+                                       (or (str/ends-with? dir excluded)
+                                           (str/includes? dir (str excluded "/"))))
+                                     excluded-driver-dirs)))
+        directories (for [^java.io.File file (classpath/system-classpath)
+                          :when (and (.isDirectory file)
+                                     (not (exclude-directory? file)))]
+                      file)]
     (hawk/find-tests directories options)))
 
 (def ^:private excluded-directories
@@ -87,17 +89,74 @@
    "test_config"
    "test_resources"])
 
-(defn- default-options []
-  {:namespace-pattern   #"^(?:(?:metabase.*)|(?:hooks\..*))" ; anything starting with `metabase*` (including `metabase-enterprise`) or `hooks.*`
-   :exclude-directories excluded-directories
-   :test-warn-time      3000})
+(defn- load-ci-config-json
+  "Load and parse ci-test-config.json from the filesystem.
+   Returns nil if file doesn't exist or parsing fails."
+  [file-path]
+  (try
+    (when (.exists (io/file file-path))
+      (-> file-path slurp (json/parse-string true)))
+    (catch Exception e
+      (log/warn e "Failed to load CI config from" file-path)
+      nil)))
+
+(defn- json-config->edn-ignored
+  "Convert JSON config to hawk's EDN ignored format."
+  [json-config]
+  (let [backend (get json-config :backend {})]
+    (cond-> {}
+      (seq (get backend :ignored_vars []))
+      (assoc :vars (set (get backend :ignored_vars [])))
+
+      (seq (get backend :ignored_namespaces []))
+      (assoc :namespaces (set (get backend :ignored_namespaces [])))
+
+      (seq (get backend :ignored_drivers []))
+      (assoc :drivers (set (get backend :ignored_drivers []))))))
+
+(defn- merge-ignored-configs
+  "Merge CI config ignores with CLI ignores and apply run-ignored-vars overrides."
+  [ci-config cli-ignored run-ignored-vars]
+  (let [edn-ci-config (json-config->edn-ignored ci-config)
+        merged-ignored (merge-with set/union cli-ignored edn-ci-config)]
+    ;; Remove any vars specified in run-ignored-vars
+    (if (seq run-ignored-vars)
+      (update merged-ignored :vars
+              #(set/difference (set %) (set run-ignored-vars)))
+      merged-ignored)))
+
+(defn- default-options
+  "Default options for test runner, with optional CI config integration."
+  ([]
+   (default-options {}))
+  ([{:keys [ci-config-file ignore-ci-config run-ignored-vars ignored]
+     :or {ci-config-file "ci-test-config.json"}}]
+   (let [base-options {:namespace-pattern #"^(?:(?:metabase.*)|(?:hooks\..*))" ; anything starting with `metabase*` (including `metabase-enterprise`) or `hooks.*`
+                       :exclude-directories excluded-directories
+                       :test-warn-time 3000}]
+     (if ignore-ci-config
+       base-options
+       (let [ci-config (load-ci-config-json ci-config-file)]
+         (if ci-config
+           (do
+             (log/info "Loaded CI test config from" ci-config-file)
+             (assoc base-options :ignored
+                    (merge-ignored-configs ci-config (or ignored {}) run-ignored-vars)))
+           base-options))))))
 
 (defn find-tests
   "Find all tests, in case you wish to run them yourself."
   ([]
    (find-tests {}))
   ([options]
-   (hawk/find-tests-with-options (merge (default-options) options))))
+   (let [default-opts (default-options options)
+         ;; Special handling for :ignored to merge rather than replace
+         final-ignored (if (and (:ignored default-opts) (:ignored options))
+                         (merge-with set/union (:ignored default-opts) (:ignored options))
+                         (or (:ignored options) (:ignored default-opts)))
+         merged-options (-> (merge default-opts options)
+                            (assoc :ignored final-ignored))]
+     (hawk/find-tests-with-options merged-options))))
 
 (defn- initialize-all-fixtures []
   (let [steps (initialize/all-components)]
@@ -110,10 +169,24 @@
   "Find and run tests from the REPL."
   [options]
   (initialize-all-fixtures)
-  (hawk/find-and-run-tests-repl (merge (default-options) options)))
+  (let [default-opts (default-options options)
+        ;; Special handling for :ignored to merge rather than replace
+        final-ignored (if (and (:ignored default-opts) (:ignored options))
+                        (merge-with set/union (:ignored default-opts) (:ignored options))
+                        (or (:ignored options) (:ignored default-opts)))
+        merged-options (-> (merge default-opts options)
+                           (assoc :ignored final-ignored))]
+    (hawk/find-and-run-tests-repl merged-options)))
 
 (defn find-and-run-tests-cli
   "Entrypoint for `clojure -X:test`."
   [options]
   (initialize-all-fixtures)
-  (hawk/find-and-run-tests-cli (merge (default-options) options)))
+  (let [default-opts (default-options options)
+        ;; Special handling for :ignored to merge rather than replace
+        final-ignored (if (and (:ignored default-opts) (:ignored options))
+                        (merge-with set/union (:ignored default-opts) (:ignored options))
+                        (or (:ignored options) (:ignored default-opts)))
+        merged-options (-> (merge default-opts options)
+                           (assoc :ignored final-ignored))]
+    (hawk/find-and-run-tests-cli merged-options)))
