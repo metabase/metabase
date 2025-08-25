@@ -1,18 +1,9 @@
-const { H } = cy;
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { CardId, TableId } from "metabase-types/api";
+import { SECOND_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-  REVIEWS,
-  REVIEWS_ID,
-} = SAMPLE_DATABASE;
+const { H } = cy;
+const { DetailView } = H;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("detail view", () => {
   beforeEach(() => {
@@ -23,7 +14,7 @@ describe("detail view", () => {
   });
 
   describe("table", () => {
-    it("works", () => {
+    it("displays object details with relationships and breadcrumbs", () => {
       DetailView.visitTable(PRODUCTS_ID, 1);
 
       cy.findByRole("heading", {
@@ -74,52 +65,75 @@ describe("detail view", () => {
     //   DetailView.visitTable(PRODUCTS_ID, 1);
     // });
   });
-});
 
-const DetailView = {
-  visitModel,
-  visitTable,
-  getObjectDetails,
-  getRelationships,
-  verifyObjectDetails,
-};
+  describe("model", () => {
+    it("displays object details with relationships and breadcrumbs", () => {
+      H.createQuestion({
+        type: "model",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: [
+                ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+                ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
+                ["field", PRODUCTS.EAN, { "join-alias": "Products" }],
+                ["field", PRODUCTS.PRICE, { "join-alias": "Products" }],
+                ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
+                ["field", PRODUCTS.TITLE, { "join-alias": "Products" }],
+                ["field", PRODUCTS.VENDOR, { "join-alias": "Products" }],
+              ],
+              strategy: "left-join",
+              alias: "Products",
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, {}],
+                ["field", PRODUCTS.ID, {}],
+              ],
+              "source-table": PRODUCTS_ID,
+            },
+          ],
+          limit: 5,
+        },
+        collection_id: SECOND_COLLECTION_ID,
+      }).then(({ body: card }) => {
+        DetailView.visitModel(card.id, 1);
+      });
 
-function visitModel(modelIdOrSlug: CardId | string, rowId: string | number) {
-  cy.visit(`/model/${modelIdOrSlug}/detail/${rowId}`);
-}
+      cy.findByRole("heading", {
+        name: "Awesome Concrete Shoes",
+        level: 1,
+      }).should("be.visible");
+      cy.findByRole("heading", { name: "1", level: 2 }).should("be.visible");
+      cy.icon("document").should("be.visible");
 
-function visitTable(tableId: TableId, rowId: string | number) {
-  cy.visit(`/table/${tableId}/detail/${rowId}`);
-  cy.findByTestId("loading-indicator").should("be.visible");
-  cy.wait("@tableMetadata");
-  cy.findByTestId("loading-indicator").should("not.exist");
-}
+      H.appBar().within(() => {
+        cy.findByRole("link", { name: /First collection/ }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: /Second collection/ }).should(
+          "be.visible",
+        );
+      });
 
-function verifyObjectDetails(rows: [string, string][]) {
-  getObjectDetails().within(() => {
-    cy.findAllByTestId("object-details-row").should("have.length", rows.length);
-    for (let i = 0; i < rows.length; ++i) {
-      const [column, value] = rows[i];
+      DetailView.verifyObjectDetails([
+        ["User ID", "1"],
+        ["Product ID", "14"],
+        ["Subtotal", "37.65"],
+        ["Tax", "2.07"],
+        ["Total", "39.72"],
+        ["Discount ($)", "empty"],
+        ["Created At", "February 11, 2025, 9:40 PM"],
+        ["Quantity", "2"],
+        ["Products → Category", "Widget"],
+        ["Products → Created At", "December 31, 2023, 2:41 PM"],
+        ["Products → Ean", "8833419218504"],
+        ["Products → Price", "25.1"],
+        ["Products → Rating", "4"],
+        ["Products → Vendor", "McClure-Lockman"],
+      ]);
 
-      cy.findAllByTestId("object-details-row")
-        .should("have.length", rows.length)
-        .eq(i)
-        .findByTestId("column")
-        .should("have.text", column);
-
-      cy.findAllByTestId("object-details-row")
-        .should("have.length", rows.length)
-        .eq(i)
-        .findByTestId("value")
-        .should("have.text", value);
-    }
+      DetailView.getRelationships().should("not.exist");
+    });
   });
-}
-
-function getRelationships() {
-  return cy.findByTestId("relationships");
-}
-
-function getObjectDetails() {
-  return cy.findByTestId("object-details");
-}
+});

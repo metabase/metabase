@@ -78,6 +78,11 @@ export const getIsCollectionPathVisible = createSelector(
       return false;
     }
 
+    const isModelDetail = /\/model\/.*\/detail\/.*/.test(path);
+    if (isModelDetail) {
+      return true;
+    }
+
     return (
       ((question != null && question.isSaved()) ||
         dashboard != null ||
