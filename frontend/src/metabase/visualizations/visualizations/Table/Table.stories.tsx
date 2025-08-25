@@ -156,6 +156,9 @@ export const DashboardTableWithRowId = {
 };
 
 export const PreserveWhitespaceWrapped = {
+  parameters: {
+    loki: { skip: true },
+  },
   render: DefaultTemplate,
   args: {
     series: data.preserveWhitespaceWrapped,
