@@ -11,6 +11,7 @@ import {
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { usePurchaseMetabotCloudAddOnMutation } from "metabase/api/metabot";
 import ExternalLink from "metabase/common/components/ExternalLink";
+import Markdown from "metabase/common/components/Markdown";
 import { useSetting } from "metabase/common/hooks";
 import {
   Form,
@@ -108,25 +109,16 @@ export const MetabotPurchasePage = () => {
           <Text>{t`Metabot helps you move faster and understand your data better. You can ask it to:`}</Text>
           <List>
             <List.Item>
-              <Text
-                component="span"
-                fw="bold"
-              >{t`Act as a SQL generation copilot`}</Text>{" "}
-              <Text component="span">{
+              <Markdown>{
                 /* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */
-                t`in the Metabase SQL editor`
-              }</Text>
+                t`**Act as a SQL generation copilot** in the Metabase SQL editor`
+              }</Markdown>
             </List.Item>
             <List.Item>
-              <Text
-                component="span"
-                fw="bold"
-              >{t`Help you build queries`}</Text>{" "}
-              <Text component="span">{t`based on models and metrics in a specified collection`}</Text>
+              <Markdown>{t`**Help you build queries** based on models and metrics in a specified collection`}</Markdown>
             </List.Item>
             <List.Item>
-              <Text component="span" fw="bold">{t`Explain queries`}</Text>{" "}
-              <Text component="span">{t`or existing charts`}</Text>
+              <Markdown>{t`**Explain queries** or existing charts`}</Markdown>
             </List.Item>
           </List>
           <video controls aria-label={t`Demonstration of Metabot AI features`}>
@@ -168,14 +160,9 @@ export const MetabotPurchasePage = () => {
                       />
                     </Group>
                   </Flex>
-                  <Text>
-                    {t`Your first month is on us.`}{" "}
-                    <Text
-                      component="span"
-                      fw="bold"
-                    >{t`You won't be charged automatically.`}</Text>{" "}
-                    {t`After the trial, you can decide if you'd like to subscribe.`}
-                  </Text>
+                  <Markdown>
+                    {t`Your first month is on us. **You won't be charged automatically.** After the trial, you can decide if you'd like to subscribe.`}
+                  </Markdown>
                 </Stack>
               </Form>
             )}
