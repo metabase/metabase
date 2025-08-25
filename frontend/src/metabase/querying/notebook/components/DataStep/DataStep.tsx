@@ -66,6 +66,7 @@ export const DataStep = ({
         containerStyle={{ padding: 0 }}
         rightContainerStyle={{ width: 37, padding: 0 }}
         data-testid="data-step-cell"
+        disabled={readOnly}
       >
         <NotebookDataPicker
           query={query}

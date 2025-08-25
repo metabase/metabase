@@ -574,8 +574,10 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       });
 
       cy.log("Data step should be read-only");
-      H.getNotebookStep("data").findByText("Animals").click();
-      assertNoModals();
+      H.getNotebookStep("data")
+        .findByRole("button")
+        .should("contain", "Animals")
+        .should("be.disabled");
 
       cy.log("Join step should be read-only");
       H.getNotebookStep("join")
