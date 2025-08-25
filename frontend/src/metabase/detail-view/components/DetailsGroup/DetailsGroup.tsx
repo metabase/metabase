@@ -37,7 +37,7 @@ export const DetailsGroup = ({
   );
 
   return (
-    <Stack gap="lg">
+    <Stack data-testid="object-details" gap="lg">
       {bodyColumns.map((column, index) => {
         const field = table?.fields?.find((field) => field.id === column.id);
         const value = getRowValue(columns, column, row);
@@ -45,17 +45,24 @@ export const DetailsGroup = ({
         const columnSettings = columnsSettings?.[realIndex] ?? {};
 
         return (
-          <Group align="flex-start" gap="xl" key={index} wrap="nowrap">
+          <Group
+            align="flex-start"
+            data-testid="object-details-row"
+            gap="xl"
+            key={index}
+            wrap="nowrap"
+          >
             <Text
               c="text-secondary"
               className={S.name}
+              data-testid="column"
               flex={responsive ? "0 1 50%" : "0 0 auto"}
               w={responsive ? undefined : rem(224)}
             >
               {getColumnTitle(column, columnSettings)}
             </Text>
 
-            <Flex flex={responsive ? "0 1 50%" : "1"}>
+            <Flex data-testid="value" flex={responsive ? "0 1 50%" : "1"}>
               <Value column={column} field={field} value={value}>
                 {renderValue(tc, value, column, columnSettings)}
               </Value>
