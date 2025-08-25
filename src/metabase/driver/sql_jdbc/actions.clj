@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -71,7 +72,7 @@
                                         ;; the columns in error message should match with columns
                                         ;; in the parameter. It's usually got from calling
                                         ;; GET /api/action/:id/execute, and in there all column names are slugified
-                                         (m/update-existing :errors update-keys u/slugify))
+                                         (m/update-existing :errors perf/update-keys u/slugify))
                                  (assoc (ex-data e) :message (ex-message e)))
                              {:status-code 400}))))))
 
@@ -287,7 +288,7 @@
                         (u/for-map [f field-names]
                           [(u/upper-case-en f) f]))
           remap  (fn [k] (get keymap k k))]
-      (map #(update-keys % remap) rows))))
+      (map #(perf/update-keys % remap) rows))))
 
 (defn- query-rows
   [driver conn query]

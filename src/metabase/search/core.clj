@@ -16,6 +16,8 @@
    [metabase.util.log :as log]
    [potemkin :as p]))
 
+(set! *warn-on-reflection* true)
+
 (comment
   ;; Make sure to import all the engine implementations. In future this can happen automatically, as per drivers.
   ;;
@@ -114,10 +116,7 @@
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
-(defn reindex!
-  "Populate a new index, and make it active. Simultaneously updates the current index."
-  [& {:as opts}]
-  ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
+(defn- reindex-logic! [opts]
   (when (supports-index?)
     (try
       (log/info "Reindexing searchable entities")
@@ -136,6 +135,17 @@
       (catch Exception e
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
+
+(defn reindex!
+  "Populate a new index, and make it active. Simultaneously updates the current index.
+  Returns a future that will complete when the reindexing is done.
+  Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
+  Alternately, if `:async?` is false, it will also run synchronously."
+  [& {:keys [async?] :or {async? true} :as opts}]
+  (let [f #(reindex-logic! opts)]
+    (if (or search.ingestion/*force-sync* (not async?))
+      (doto (promise) (deliver (f)))
+      (future (f)))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."

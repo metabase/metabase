@@ -2,6 +2,10 @@
   "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
   [[metabase.query-processor.streaming-test]] and specifically for each format
   in [[metabase.query-processor.streaming.csv-test]] etc."
+  {:clj-kondo/config '{:linters
+                       ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
+                       ;; metadata providers.
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -10,7 +14,6 @@
    [medley.core :as m]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -315,7 +318,7 @@
               (is (= 101
                      (count (csv/read-csv result)))))))))))
 
-(deftest export-with-remapped-fields
+(deftest ^:parallel export-with-remapped-fields
   (testing "POST /api/dataset/:format"
     (testing "Downloaded CSV/JSON/XLSX results should respect remapped fields (#18440)"
       (let [query {:database (mt/id)
@@ -659,7 +662,7 @@
   (testing "exceptions with stacktraces should have the stacktrace removed"
     (mt/test-driver :databricks
       (let [res (mt/user-http-request :rasta :post 202 "dataset"
-                                      (lib/native-query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (lib/native-query (mt/metadata-provider)
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"
                 :status "failed"
@@ -953,7 +956,7 @@
 (deftest ^:parallel adhoc-mlv2-query-test
   (testing "POST /api/dataset"
     (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
@@ -965,7 +968,7 @@
 (deftest ^:parallel mlv2-query-convert-to-native-test
   (testing "POST /api/dataset/native"
     (testing "Should be able to convert an MLv2 query to native (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))

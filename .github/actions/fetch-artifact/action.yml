@@ -62,11 +62,21 @@ runs:
         # Create target directory
         mkdir -p "$EXTRACT_PATH"
 
-        # Find and move the jar to final location
+        # Find the jar and move all files from its directory
         if [ -e "$TEMP_DIR/metabase.jar" ]; then
-          mv "$TEMP_DIR/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
+          # Move all files to extract path
+          mv "$TEMP_DIR"/* "$EXTRACT_PATH/" 2>/dev/null || true
+          # Rename the jar to custom name if different
+          if [ "$OUTPUT_NAME" != "metabase.jar" ]; then
+            mv "$EXTRACT_PATH/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
+          fi
         elif [ -e "$TEMP_DIR/target/uberjar/metabase.jar" ]; then
-          mv "$TEMP_DIR/target/uberjar/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
+          # Move all files from uberjar directory to extract path
+          mv "$TEMP_DIR/target/uberjar"/* "$EXTRACT_PATH/" 2>/dev/null || true
+          # Rename the jar to custom name if different
+          if [ "$OUTPUT_NAME" != "metabase.jar" ]; then
+            mv "$EXTRACT_PATH/metabase.jar" "$EXTRACT_PATH/$OUTPUT_NAME"
+          fi
         else
           echo "Could not find metabase.jar in extracted files"
           exit 1

@@ -39,6 +39,8 @@
   :export?    true
   :type       :positive-integer)
 
+;;; TODO (Cam 8/19/25) -- Make this a function backed by a dynamic variable so we can override it in tests without
+;;; `with-redefs` but also let the imported var in the driver API pick up changes.
 (def absolute-max-results
   "Maximum number of rows the QP should ever return.
 
@@ -49,7 +51,7 @@
   details."
   1048575)
 
-(def ^:dynamic *minimum-download-row-limit*
+(def ^:dynamic ^:private *minimum-download-row-limit*
   "Minimum download row limit. Using dynamic so we can rebind in tests"
   absolute-max-results)
 

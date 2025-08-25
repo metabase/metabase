@@ -1,10 +1,13 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.results-metadata-test
+  {:clj-kondo/config '{:linters
+                       ;; allowing with-temp in this namespace since it's checking whether we actually save stuff to the
+                       ;; app DB
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [malli.error :as me]
    [metabase.analyze.query-results :as qr]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
@@ -356,7 +359,7 @@
         (do-test 9)
         (testing "With an FK column remapping"
           (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                            (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                            (mt/metadata-provider)
                                             (mt/id :orders :product_id)
                                             (mt/id :products :title))
             ;; Add column remapping from Orders Product ID -> Products.Title

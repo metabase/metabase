@@ -1,11 +1,14 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   CardType,
   ListTransformRunsResponse,
   TransformTagId,
 } from "metabase-types/api";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const DB_NAME = "Writable Postgres12";
 const SOURCE_TABLE = "Animals";
@@ -204,6 +207,95 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         );
       });
     });
+
+    it("should not be possible to create an mbql transform from a table from an unsupported database", () => {
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findAllByTestId("picker-item")
+          .contains("Sample Database")
+          .should("have.attr", "data-disabled", "true");
+
+        cy.findAllByTestId("picker-item")
+          .contains("Orders")
+          .should("have.attr", "data-disabled", "true");
+      });
+    });
+
+    it("should not be possible to create an mbql transform from metrics", () => {
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (tableId) =>
+          H.createQuestion({
+            name: "Metric",
+            type: "metric",
+            query: {
+              "source-table": tableId,
+              aggregation: [["count"]],
+            },
+          }),
+      );
+
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findByText("Collections").click();
+        cy.findAllByTestId("picker-item")
+          .contains("Metric")
+          .should("have.attr", "data-disabled", "true");
+      });
+    });
+
+    it("should not be possible to create a sql transform from a table from an unsupported database", () => {
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("SQL query").click();
+
+      H.popover()
+        .findByRole("option", { name: "Sample Database" })
+        .should("have.attr", "aria-disabled", "true")
+        .click();
+
+      cy.log("Clicking the disabled item does not close the popover");
+      H.popover().should("be.visible");
+    });
+
+    it("should not be possible to create a transform from a question or a model that is based of an unsupported database", () => {
+      function testCardSource({
+        type,
+        label,
+      }: {
+        type: CardType;
+        label: string;
+      }) {
+        cy.log("create a query in the target database");
+        H.createQuestion({
+          name: "Test",
+          type,
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+          },
+        });
+
+        cy.log("create a new transform");
+        visitTransformListPage();
+        getTransformListPage().button("Create a transform").click();
+        H.popover().findByText("A saved question").click();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab(label);
+          cy.findAllByTestId("picker-item")
+            .contains("Test")
+            .should("have.attr", "data-disabled", "true");
+        });
+      }
+
+      testCardSource({ type: "question", label: "Questions" });
+      testCardSource({ type: "model", label: "Models" });
+    });
   });
 
   describe("name and description", () => {
@@ -305,6 +397,46 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.findByText("daily").should("be.visible");
         cy.findByText("hourly").should("not.exist");
       });
+    });
+
+    it("should update tags on all transforms when deleting them from another transform", () => {
+      createMbqlTransform({ name: "Transform B" });
+      createMbqlTransform({
+        name: "Transform A",
+        visitTransform: true,
+      });
+
+      cy.log("Add new tag to transform A");
+      getTagsInput().type("New tag");
+      H.popover().findByText("New tag").click();
+      cy.wait("@createTag");
+      H.popover().findByText("New tag").should("be.visible");
+
+      cy.log("Navigate to transform B");
+      getNavSidebar().findByText("Transforms").click();
+      getTransformListPage().findByText("Transform B").click();
+
+      cy.log("Remove the new tag from transform B");
+      getTagsInput().click();
+      H.popover()
+        .findByRole("option", { name: "New tag" })
+        .findByLabelText("Delete tag")
+        .click({ force: true });
+      H.modal().within(() => {
+        cy.button("Delete tag").click();
+        cy.wait("@deleteTag");
+      });
+
+      cy.log("Navigate to transform A");
+      cy.findByTestId("admin-layout-sidebar").findByText("Transforms").click();
+      getTransformListPage().findByText("Transform A").click();
+
+      cy.log("The tag should be gone");
+      getTagsInput()
+        .parent()
+        // Select the tag pill
+        .get("[data-with-remove=true]")
+        .should("not.exist");
     });
   });
 
@@ -1189,18 +1321,20 @@ function createMbqlTransform({
   targetTable = TARGET_TABLE,
   targetSchema = TARGET_SCHEMA,
   tagIds,
+  name = "MBQL transform",
   visitTransform,
 }: {
   sourceTable?: string;
   targetTable?: string;
   targetSchema?: string;
   tagIds?: TransformTagId[];
+  name?: string;
   visitTransform?: boolean;
 } = {}) {
-  H.getTableId({ name: sourceTable }).then((tableId) => {
-    H.createTransform(
+  return H.getTableId({ name: sourceTable }).then((tableId) => {
+    return H.createTransform(
       {
-        name: "MBQL transform",
+        name,
         source: {
           type: "query",
           query: {

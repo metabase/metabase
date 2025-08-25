@@ -9,7 +9,7 @@ import { LINK_SEARCH_LIMIT, LINK_SEARCH_MODELS } from "./constants";
 import {
   buildRecentsMenuItems,
   buildSearchMenuItems,
-  isRecentQuestion,
+  filterRecents,
 } from "./suggestionUtils";
 
 interface UseEntitySearchOptions {
@@ -44,9 +44,11 @@ export function useEntitySearch({
   const filteredRecents = useMemo(
     () =>
       shouldFetchRecents
-        ? recents.filter(isRecentQuestion).slice(0, LINK_SEARCH_LIMIT)
+        ? recents
+            .filter((recent) => filterRecents(recent, searchModels))
+            .slice(0, LINK_SEARCH_LIMIT)
         : [],
-    [recents, shouldFetchRecents],
+    [recents, shouldFetchRecents, searchModels],
   );
 
   const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery(
