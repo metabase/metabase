@@ -69,7 +69,7 @@ module.exports = {
       },
     },
     {
-      files: ["**/*.stories.tsx"],
+      files: ["**/.storybook/*", "**/*.stories.tsx"],
       rules: {
         "import/no-default-export": 0,
         "no-restricted-imports": 0,
@@ -79,6 +79,7 @@ module.exports = {
       files: ["embedding-sdk-{package,shared}/**/*.{ts,tsx,js,jsx}"],
       excludedFiles: [
         "embedding-sdk-package/{bin,cli}/**/*.{ts,tsx,js,jsx}",
+        "**/.storybook/**",
         "**/jest/**",
         "**/test/**",
         "**/*.spec.{ts,tsx,js,jsx}",

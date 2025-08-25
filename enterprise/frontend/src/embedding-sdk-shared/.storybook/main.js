@@ -1,20 +1,23 @@
-const webpack = require("webpack");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const appConfig = require("../rspack.embedding-sdk-bundle.config");
+/* eslint-disable import/no-commonjs */
+
 const fs = require("fs");
 const path = require("path");
+
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const webpack = require("webpack");
+
 const {
   getBuildInfoValues,
-} = require("../frontend/build/embedding-sdk/rspack/get-build-info-values");
+} = require("build-configs/embedding-sdk/rspack/get-build-info-values");
+
+const appConfig = require("../../../../../rspack.embedding-sdk-bundle.config");
 
 const { isEmbeddingSdkPackageInstalled, embeddingSdkPackageVersion } =
   resolveEmbeddingSdkPackage();
 
 module.exports = {
-  stories: [
-    "../enterprise/frontend/src/embedding-sdk-{package,bundle,shared}/**/*.stories.tsx",
-  ],
-  staticDirs: ["../resources/frontend_client", "./msw-public"],
+  stories: ["../../embedding-sdk-{package,bundle,shared}/**/*.stories.tsx"],
+  staticDirs: ["../../../../../resources/frontend_client", "./msw-public"],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-interactions",
