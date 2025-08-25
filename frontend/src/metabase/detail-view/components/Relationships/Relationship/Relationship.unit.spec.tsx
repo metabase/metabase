@@ -47,10 +47,7 @@ const ROW_ID = 123;
 
 interface SetupOpts {
   dataset?: MockDatasetOpts;
-  href?: string;
-  rowId?: string | number;
   table?: Table;
-  onClick?: () => void;
 }
 
 function setup({ dataset = DATASET, table = ORDERS_TABLE }: SetupOpts = {}) {
