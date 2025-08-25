@@ -156,5 +156,6 @@ describe("Relationship", () => {
 
     expect(screen.getByText("1")).toBeInTheDocument();
     expect(screen.getByText("Order")).toBeInTheDocument();
+    expect(screen.queryByText("Orders")).not.toBeInTheDocument();
   });
 });

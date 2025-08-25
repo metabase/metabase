@@ -3,10 +3,18 @@ import type { CardId, TableId } from "metabase-types/api";
 export const DetailView = {
   visitModel,
   visitTable,
-  getObjectDetails,
+  getDetails,
+  getDetailsRow,
+  getDetailsRowColumnName,
+  getDetailsRowValue,
   getRelationships,
-  verifyObjectDetails,
+  verifyDetails,
 };
+
+interface RowOptions {
+  index: number;
+  rowsCount: number;
+}
 
 function visitModel(modelIdOrSlug: CardId | string, rowId: string | number) {
   cy.intercept("GET", "/api/card/*/query_metadata*").as(
@@ -28,12 +36,27 @@ function getRelationships() {
   return cy.findByTestId("relationships");
 }
 
-function getObjectDetails() {
+function getDetails() {
   return cy.findByTestId("object-details");
 }
 
-function verifyObjectDetails(rows: [string, string][]) {
-  getObjectDetails().within(() => {
+function getDetailsRow({ index, rowsCount }: RowOptions) {
+  return getDetails()
+    .findAllByTestId("object-details-row")
+    .should("have.length", rowsCount)
+    .eq(index);
+}
+
+function getDetailsRowColumnName({ index, rowsCount }: RowOptions) {
+  return getDetailsRow({ index, rowsCount }).findByTestId("column-name");
+}
+
+function getDetailsRowValue({ index, rowsCount }: RowOptions) {
+  return getDetailsRow({ index, rowsCount }).findByTestId("value");
+}
+
+function verifyDetails(rows: [string, string][]) {
+  getDetails().within(() => {
     cy.findAllByTestId("object-details-row").should("have.length", rows.length);
 
     for (let index = 0; index < rows.length; ++index) {
@@ -42,7 +65,7 @@ function verifyObjectDetails(rows: [string, string][]) {
       cy.findAllByTestId("object-details-row")
         .should("have.length", rows.length)
         .eq(index)
-        .findByTestId("column")
+        .findByTestId("column-name")
         .should("have.text", column);
 
       cy.findAllByTestId("object-details-row")

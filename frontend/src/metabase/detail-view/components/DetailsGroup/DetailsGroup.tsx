@@ -55,7 +55,7 @@ export const DetailsGroup = ({
             <Text
               c="text-secondary"
               className={S.name}
-              data-testid="column"
+              data-testid="column-name"
               flex={responsive ? "0 1 50%" : "0 0 auto"}
               w={responsive ? undefined : rem(224)}
             >
