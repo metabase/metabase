@@ -65,9 +65,12 @@
   [schema]
   (letfn [(make-explainer []
             (try
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (let [validator* (mc/validator schema)
-                    explainer* (mc/explainer schema)]
+              (let [validator*
+                    (validator schema)
+
+                    explainer*
+                    #_{:clj-kondo/ignore [:discouraged-var]}
+                    (mc/explainer schema)]
                 ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
                 ;; of calls whose values are valid.
                 (fn schema-explainer [value]
