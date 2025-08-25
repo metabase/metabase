@@ -71,6 +71,7 @@ export function SortStep({
         <SortDisplayName
           displayInfo={Lib.displayInfo(query, stageIndex, clause)}
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
+          disabled={readOnly}
         />
       )}
       renderPopover={({ item: orderBy, index, onClose }) =>
@@ -160,11 +161,13 @@ const checkColumnSelected = (
 interface SortDisplayNameProps {
   displayInfo: Lib.OrderByClauseDisplayInfo;
   onToggleSortDirection: () => void;
+  disabled?: boolean;
 }
 
 function SortDisplayName({
   displayInfo,
   onToggleSortDirection,
+  disabled,
 }: SortDisplayNameProps) {
   const icon = displayInfo.direction === "asc" ? "arrow_up" : "arrow_down";
   return (
@@ -175,6 +178,7 @@ function SortDisplayName({
         event.stopPropagation();
         onToggleSortDirection();
       }}
+      disabled={disabled}
     >
       <Icon name={icon} />
       <span>{displayInfo.longDisplayName}</span>
