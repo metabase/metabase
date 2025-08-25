@@ -8,6 +8,6 @@
 
 (p/import-vars
  [metabase.warehouses.provider-detection
-  providers-for-api]
+  providers-for-engine]
  [metabase.warehouses.settings
   cloud-gateway-ips])
