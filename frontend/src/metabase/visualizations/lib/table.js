@@ -22,14 +22,20 @@ export function getTableClickedObjectRowData(
     : rowIndex;
 
   // originalRowIndex may be null if the pivot table is empty in that cell
-  if (originalRowIndex === null) {
+  if (originalRowIndex === null || originalRowIndex === undefined) {
     return null;
-  } else {
-    return rows[originalRowIndex].map((value, index) => ({
-      value,
-      col: cols[index],
-    }));
   }
+
+  // Check if the row exists before trying to map over it
+  const row = rows[originalRowIndex];
+  if (!row || !Array.isArray(row)) {
+    return null;
+  }
+
+  return row.map((value, index) => ({
+    value,
+    col: cols[index],
+  }));
 }
 
 export function getTableCellClickedObject(
