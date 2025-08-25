@@ -176,8 +176,10 @@
   "The appdb-based scorers for search ranking results. Like `base-scorers`, but for scorers that need to query the appdb."
   [{:keys [limit-int] :as search-ctx}]
   (when-not (and limit-int (zero? limit-int))
-    {:user-recency (search.scoring/inverse-duration
-                    (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)}))
+    (when-not (= :mysql (mdb/db-type))
+      ;; The :user-recency scorer needs to be modified to work with mysql / mariadb (BOT-360)
+      {:user-recency (search.scoring/inverse-duration
+                      (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)})))
 
 (defn with-appdb-scores
   "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.
@@ -192,9 +194,7 @@
   ;; i.e. results that might possibly have user-recency info.
   (let [filtered-search-results (filter (comp recent-views-models :model) search-results)]
     (if-not (and (seq filtered-search-results)
-                 (seq app-db-scorers)
-                 ;; The :user-recency scorer needs to be modified to work with mysql / mariadb (BOT-360)
-                 (#{:postgres :h2} (mdb/db-type)))
+                 (seq app-db-scorers))
       search-results
       (->> (search-index-query filtered-search-results)
            (search.scoring/with-scores search-ctx app-db-scorers)
