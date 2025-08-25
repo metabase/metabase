@@ -56,39 +56,23 @@ describe("detail view", () => {
         .should("be.visible")
         .and("have.text", "Showing 8 rows");
     });
+
+    it("shows 404 error state", () => {
+      DetailView.visitTable(PRODUCTS_ID, 9999);
+
+      cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
+
+      H.appBar().within(() => {
+        cy.findByRole("link", { name: /Sample Database/ }).should("be.visible");
+        cy.findByRole("link", { name: "Products" }).should("be.visible");
+        cy.findByText("9999").should("be.visible");
+      });
+    });
   });
 
   describe("model", () => {
     it("displays object details with breadcrumbs", () => {
-      H.createQuestion({
-        type: "model",
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              fields: [
-                ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-                ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
-                ["field", PRODUCTS.EAN, { "join-alias": "Products" }],
-                ["field", PRODUCTS.PRICE, { "join-alias": "Products" }],
-                ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
-                ["field", PRODUCTS.TITLE, { "join-alias": "Products" }],
-                ["field", PRODUCTS.VENDOR, { "join-alias": "Products" }],
-              ],
-              strategy: "left-join",
-              alias: "Products",
-              condition: [
-                "=",
-                ["field", ORDERS.PRODUCT_ID, {}],
-                ["field", PRODUCTS.ID, {}],
-              ],
-              "source-table": PRODUCTS_ID,
-            },
-          ],
-          limit: 5,
-        },
-        collection_id: SECOND_COLLECTION_ID,
-      }).then(({ body: card }) => {
+      createOrdersJoinProductsModel().then(({ body: card }) => {
         DetailView.visitModel(card.id, 1);
       });
 
@@ -127,5 +111,54 @@ describe("detail view", () => {
 
       DetailView.getRelationships().should("not.exist");
     });
+
+    it("shows 404 error state", () => {
+      createOrdersJoinProductsModel().then(({ body: card }) => {
+        DetailView.visitModel(card.id, 9999);
+      });
+
+      cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
+
+      H.appBar().within(() => {
+        cy.findByRole("link", { name: /First collection/ }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: /Second collection/ }).should(
+          "be.visible",
+        );
+      });
+    });
   });
 });
+
+function createOrdersJoinProductsModel() {
+  return H.createQuestion({
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          fields: [
+            ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+            ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
+            ["field", PRODUCTS.EAN, { "join-alias": "Products" }],
+            ["field", PRODUCTS.PRICE, { "join-alias": "Products" }],
+            ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
+            ["field", PRODUCTS.TITLE, { "join-alias": "Products" }],
+            ["field", PRODUCTS.VENDOR, { "join-alias": "Products" }],
+          ],
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, {}],
+            ["field", PRODUCTS.ID, {}],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+      limit: 5,
+    },
+    collection_id: SECOND_COLLECTION_ID,
+  });
+}
