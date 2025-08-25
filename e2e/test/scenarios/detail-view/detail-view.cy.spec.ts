@@ -94,6 +94,8 @@ describe("detail view", () => {
         cy.findByRole("link", { name: /Second collection/ }).should(
           "be.visible",
         );
+        cy.findByRole("link", { name: /My model/ }).should("be.visible");
+        cy.findByText("Awesome Concrete Shoes").should("be.visible");
       });
 
       DetailView.verifyDetails([
@@ -135,6 +137,8 @@ describe("detail view", () => {
         cy.findByRole("link", { name: /Second collection/ }).should(
           "be.visible",
         );
+        cy.findByRole("link", { name: /My model/ }).should("be.visible");
+        cy.findByText("9999").should("be.visible");
       });
     });
   });
@@ -318,6 +322,7 @@ describe("detail view", () => {
 function createOrdersJoinProductsModel() {
   return H.createQuestion({
     type: "model",
+    name: "My model",
     query: {
       "source-table": ORDERS_ID,
       joins: [

@@ -72,16 +72,16 @@ const AppBarLarge = ({
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >
-          {isQuestionLineageVisible ? (
-            <QuestionLineage />
-          ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs />
-          ) : detailView ? (
+          {detailView ? (
             <DetailViewNav
               ml={DETAIL_VIEW_PADDING_LEFT - 125}
               rowName={detailView.rowName}
               table={detailView.table}
             />
+          ) : isQuestionLineageVisible ? (
+            <QuestionLineage />
+          ) : isCollectionPathVisible ? (
+            <CollectionBreadcrumbs />
           ) : null}
         </AppBarInfoContainer>
       </AppBarLeftContainer>
