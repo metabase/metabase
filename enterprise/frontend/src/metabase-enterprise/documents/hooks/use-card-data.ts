@@ -170,14 +170,15 @@ export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
   const hasTriedToLoad =
     cardToUse !== undefined || isLoadingCard || isLoadingDataset;
   const hasFailedToLoadCard = hasTriedToLoad && !isLoading && id && !cardToUse;
-  const error = useMemo(() => {
+  const getError = () => {
     if (isObject(cardError) && cardError.status === 404) {
       return "not found";
     }
     if (hasFailedToLoadCard) {
       return "unknown";
     }
-  }, [cardError, hasFailedToLoadCard]);
+  };
+  const error = getError();
 
   return {
     card: cardToUse,
