@@ -33,7 +33,6 @@
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.persistence :as qp.persistence]
-   [metabase.query-processor.middleware.pre-alias-aggregations :as qp.pre-alias-aggregations]
    [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
    [metabase.query-processor.middleware.remove-inactive-field-refs :as qp.remove-inactive-field-refs]
    [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
@@ -163,7 +162,6 @@
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
-   (ensure-legacy #'qp.pre-alias-aggregations/pre-alias-aggregations)
    (ensure-legacy #'qp.wrap-value-literals/wrap-value-literals)
    (ensure-mbql5-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)

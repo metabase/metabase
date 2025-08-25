@@ -767,67 +767,6 @@
   [names :- [:sequential :string]]
   (map (unique-name-generator) names))
 
-(def ^:private NamedAggregation
-  [:and
-   mbql.s/aggregation-options
-   [:fn
-    {:error/message "`:aggregation-options` with a `:name`"}
-    #(:name (nth % 2))]])
-
-(def ^:private UniquelyNamedAggregations
-  [:and
-   [:sequential NamedAggregation]
-   [:fn
-    {:error/message "sequence of named aggregations with unique names"}
-    (fn [clauses]
-      (apply distinct? (for [[_tag _wrapped {ag-name :name}] clauses]
-                         ag-name)))]])
-
-(mu/defn uniquify-named-aggregations :- UniquelyNamedAggregations
-  "Make the names of a sequence of named aggregations unique by adding suffixes such as `_2`."
-  [named-aggregations :- [:sequential NamedAggregation]]
-  (let [unique-names (uniquify-names
-                      (for [[_ _wrapped-ag {ag-name :name}] named-aggregations]
-                        ag-name))]
-    (map
-     (fn [[_ wrapped-ag options] unique-name]
-       [:aggregation-options wrapped-ag (assoc options :name unique-name)])
-     named-aggregations
-     unique-names)))
-
-(mu/defn pre-alias-aggregations :- [:sequential NamedAggregation]
-  "Wrap every aggregation clause in an `:aggregation-options` clause, using the name returned
-  by `(aggregation->name-fn ag-clause)` as names for any clauses that do not already have a `:name` in
-  `:aggregation-options`.
-
-    (pre-alias-aggregations annotate/aggregation-name
-     [[:count] [:count] [:aggregation-options [:sum [:field 1 nil] {:name \"Sum-41\"}]])
-    ;; -> [[:aggregation-options [:count] {:name \"count\"}]
-           [:aggregation-options [:count] {:name \"count\"}]
-           [:aggregation-options [:sum [:field 1 nil]] {:name \"Sum-41\"}]]
-
-  Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
-  the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
-  [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential ::mbql.s/Aggregation]]
-  (lib.util.match/replace aggregations
-    [:aggregation-options _ (_ :guard :name)]
-    &match
-
-    [:aggregation-options wrapped-ag options]
-    [:aggregation-options wrapped-ag (assoc options :name (aggregation->name-fn wrapped-ag))]
-
-    [(_ :guard keyword?) & _]
-    [:aggregation-options &match {:name (aggregation->name-fn &match)}]))
-
-(mu/defn pre-alias-and-uniquify-aggregations :- UniquelyNamedAggregations
-  "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
-  `uniquify-named-aggregations`."
-  [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential ::mbql.s/Aggregation]]
-  (-> (pre-alias-aggregations aggregation->name-fn aggregations)
-      uniquify-named-aggregations))
-
 (defn query->max-rows-limit
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of
