@@ -218,8 +218,7 @@
     (if (transforms.util/python-transform? transform)
       ;; Handle Python transform execution
       (try
-        (let [{run-id :id} (transform-run/start-run! id {:run_method :manual})
-              result (transforms.util/execute-python-transform! transform)]
+        (let [{:keys [result run-id]} (transforms.execute/execute-python-transform! transform {:run_method :manual})]
           (transform-run/succeed-started-run! run-id)
           (log/info "Python transform succeeded" result)
           (-> (response/response {:message (deferred-tru "Python transform executed successfully")

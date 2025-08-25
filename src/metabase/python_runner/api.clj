@@ -8,8 +8,8 @@
    [metabase.util.malli.schema :as ms])
   (:import
    (java.io File)
-   [java.nio.file Files]
-   [java.nio.file.attribute FileAttribute]))
+   (java.nio.file Files)
+   (java.nio.file.attribute FileAttribute)))
 
 (set! *warn-on-reflection* true)
 
@@ -34,13 +34,21 @@
        (try
          ~@body
          (finally
-           (doseq [^File file# temp-files#]
-             (try (.delete file#) (catch Exception _#))))))))
+           ;; TODO: we need these files for uploading csv, should we delete it here still?
+           ;; or should we dump csv content to file when upload
+           #_(doseq [^File file# temp-files#]
+               (try (.delete file#) (catch Exception _#))))))))
 
 (defn- safe-slurp
   "Safely slurp a file, returning empty string on error."
   [file]
   (try (slurp file) (catch Exception _ "")))
+
+(defn cleanup-output-files!
+  "Clean up all output files of python execution."
+  [{:keys [output-file stdout-file stderr-file code-file]}]
+  (doseq [^File file [output-file stdout-file stderr-file code-file]]
+    (try (.delete file) (catch Exception _))))
 
 (defn execute-python-code
   "Execute Python code in a sandboxed environment using the run-sandbox.sh script."
@@ -62,8 +70,11 @@
           result (apply shell/sh (conj script-args :dir (io/file ".")))]
       (if (zero? (:exit result))
         {:output (slurp output-file)
+         :output-file output-file
          :stdout (slurp stdout-file)
-         :stderr (slurp stderr-file)}
+         :stdout-file stdout-file
+         :stderr (slurp stderr-file)
+         :stderr-file stderr-file}
         {:status 500
          :body
          {:error     (str "Execution failed: " (:err result))

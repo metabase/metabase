@@ -1,17 +1,25 @@
 (ns metabase-enterprise.transforms.execute
   (:require
    [clojure.core.async :as a]
+   [clojure.java.io :as io]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
+   [metabase.python-runner.api :as python-runner.api]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.upload.core :as upload]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -95,3 +103,51 @@
          ;; but we assume nobody would catch the exception anyway
          (deliver start-promise t))
        (throw t)))))
+
+(defn execute-python-transform!
+  "Execute a Python transform by calling the python runner."
+  [transform {:keys [run_method]}]
+  (when (transforms.util/python-transform? transform)
+    (let [{:keys [source
+                  target]}        transform
+          {:keys [target-database
+                  body]}          source
+          {:keys [schema name]}   target
+          db                      (t2/select-one :model/Database target-database)
+          driver                  (:engine db)]
+      ;; TODO we should have macros for run transform that handle marking status for a run-id properly
+      (try
+        ;; Dynamically load and call the python runner using requiring-resolve
+        (let [{run-id :id} (transform-run/start-run! (:id transform) {:run_method run_method})
+              result (python-runner.api/execute-python-code body)]
+          (if (:error result)
+            (do
+              (transform-run/fail-started-run! run-id {})
+              (throw (ex-info "Python execution failed"
+                              {:error (:error result)
+                               :stdout (:stdout result)
+                               :stderr (:stderr result)})))
+            (do
+              (try
+                ;; TODO would be nice if we have create or replace in upload
+                (when-let [table (t2/select-one :model/Table
+                                                :name (ddl.i/format-name driver name)
+                                                :schema (ddl.i/format-name driver schema)
+                                                :db_id (:id db))]
+                  (upload/delete-upload! table)
+                  ;; TODO shouldn't this be handled in upload?
+                  (t2/delete! :model/Table (:id table)))
+                (upload/create-from-csv-and-sync! {:db         db
+                                                   :filename   (.getName ^File (:output-file result))
+                                                   :file       (:output-file result)
+                                                   :schema     schema
+                                                   :table-name name})
+                (transform-run/succeed-started-run! run-id)
+                {:run_id run-id
+                 :result result}
+                (finally
+                  (python-runner.api/cleanup-output-files! result))))))
+        (catch Exception e
+          (log/error e "Failed to execute transform")
+          (throw (ex-info "Failed to execute Python transform"
+                          {:error (.getMessage e)})))))))
