@@ -40,21 +40,25 @@ interface Props {
   size?: string;
   miw?: string | number;
   maw?: string | number;
-  "data-testid"?: string;
   containerId?: string;
   useExternalDnd?: boolean;
+  draggedItemId?: string | null;
+  currentDroppable?: string | null;
+  "data-testid"?: string;
 }
 
-function SortablePill({
+export function SortablePill({
   id,
   label,
   onRemove,
   containerId,
+  style,
 }: {
   id: string;
   label: string;
-  onRemove: () => void;
+  onRemove?: () => void;
   containerId?: string;
+  style?: React.CSSProperties;
 }) {
   const {
     attributes,
@@ -68,10 +72,15 @@ function SortablePill({
     data: { containerId },
     strategy: horizontalListSortingStrategy,
   });
-  const style = {
-    transform: CSS.Translate.toString(transform),
+  const sortableStyle = {
+    transform: CSS.Transform.toString(transform),
     transition,
   } as CSSProperties;
+
+  const combinedStyle = {
+    ...sortableStyle,
+    ...style,
+  };
 
   return (
     <Pill
@@ -80,9 +89,10 @@ function SortablePill({
       withRemoveButton
       onRemove={onRemove}
       data-reorderable-pill="true"
+      data-containter-id={containerId}
       {...attributes}
       {...listeners}
-      style={style}
+      style={combinedStyle}
       radius="xl"
       draggable
       onDragStart={(e) => {
@@ -101,9 +111,11 @@ export function ReorderableTagsInput({
   maxValues,
   placeholder,
   size = "xs",
-  "data-testid": _dataTestId,
   containerId,
   useExternalDnd = false,
+  draggedItemId,
+  currentDroppable,
+  "data-testid": dataTestId,
 }: Props) {
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
@@ -122,6 +134,7 @@ export function ReorderableTagsInput({
   const { setNodeRef: setDroppableRef } = useDroppable({
     id: containerId || "default",
     disabled: !useExternalDnd,
+    data: { containerId },
   });
 
   const selectedSet = useMemo(() => new Set(value), [value]);
@@ -229,19 +242,30 @@ export function ReorderableTagsInput({
           setIsDragOver(false);
         }}
       >
-        {value.map((v, idx) => (
-          <SortablePill
-            key={v}
-            id={v}
-            label={data.find((o) => o.value === v)?.label ?? v}
-            onRemove={() => removeAt(idx)}
-            containerId={containerId}
-          />
-        ))}
+        {value.map((v, idx) => {
+          // Hide the dragged item if it's being dragged over a different container
+          const shouldHide =
+            useExternalDnd &&
+            draggedItemId === v &&
+            currentDroppable &&
+            currentDroppable !== containerId;
+
+          return (
+            <SortablePill
+              key={v}
+              id={v}
+              label={data.find((o) => o.value === v)?.label ?? v}
+              onRemove={() => removeAt(idx)}
+              containerId={containerId}
+              style={{
+                display: shouldHide ? "none" : "block",
+              }}
+            />
+          );
+        })}
         {!maxValues || value.length < maxValues ? (
           <Combobox.EventsTarget>
             <PillsInput.Field
-              // disabled={draggingRef.current}
               className={S.inputField}
               placeholder={value.length ? undefined : placeholder}
               value={search}
@@ -275,6 +299,7 @@ export function ReorderableTagsInput({
 
   return (
     <Combobox
+      data-test-id={dataTestId}
       store={combobox}
       withinPortal={true}
       onOptionSubmit={(val) => {

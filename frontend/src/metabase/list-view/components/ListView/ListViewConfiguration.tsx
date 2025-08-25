@@ -1,26 +1,24 @@
 import {
   DndContext,
   type DragEndEvent,
+  type DragOverEvent,
+  DragOverlay,
+  type DragStartEvent,
   PointerSensor,
   closestCenter,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { ReorderableTagsInput } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
 import {
-  Box,
-  Divider,
-  Icon,
-  Stack,
-  Text,
-  Menu,
-  Button,
-  ActionIcon,
-} from "metabase/ui";
+  ReorderableTagsInput,
+  SortablePill,
+} from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
+import { ActionIcon, Box, Divider, Icon, Menu, Stack, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
@@ -70,6 +68,10 @@ export const ListViewConfiguration = ({
   const [selectedEntityType, setSelectedEntityType] = useState<
     keyof typeof ENTITY_ICONS
   >(() => settings?.viewSettings?.listSettings?.entityIcon || entityType);
+
+  // Active drag state for overlay
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [currentDroppable, setCurrentDroppable] = useState<string | null>(null);
   useEffect(() => {
     setLeftValues([
       ...(titleColumn ? [titleColumn.name] : []),
@@ -132,7 +134,22 @@ export const ListViewConfiguration = ({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    const containerId = over?.data?.current?.containerId;
+    if (!containerId) {
+      return;
+    }
+    setCurrentDroppable(containerId);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
+    setCurrentDroppable(null);
     const { active, over } = event;
 
     if (!over) {
@@ -228,10 +245,21 @@ export const ListViewConfiguration = ({
     }
   };
 
+  // Get the active item data for the overlay
+  const activeItem = activeId
+    ? {
+        id: activeId,
+        label:
+          allOptions.find((opt) => opt.value === activeId)?.label ?? activeId,
+      }
+    : null;
+
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <Stack
@@ -307,6 +335,8 @@ export const ListViewConfiguration = ({
               data-testid="list-view-left-columns"
               containerId="left"
               useExternalDnd={true}
+              draggedItemId={activeId}
+              currentDroppable={currentDroppable}
             />
 
             {/* Right columns */}
@@ -322,6 +352,8 @@ export const ListViewConfiguration = ({
               data-testid="list-view-right-columns"
               containerId="right"
               useExternalDnd={true}
+              draggedItemId={activeId}
+              currentDroppable={currentDroppable}
             />
           </Box>
         </Stack>
@@ -352,6 +384,12 @@ export const ListViewConfiguration = ({
           )}
         </Stack>
       </Stack>
+
+      <DragOverlay modifiers={[snapCenterToCursor]}>
+        {activeItem ? (
+          <SortablePill id={activeItem.id} label={activeItem.label} />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 };
