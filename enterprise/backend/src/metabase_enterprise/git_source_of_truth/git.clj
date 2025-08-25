@@ -86,18 +86,15 @@
 
     (log/infof "Validating access to git repository %s (branch: %s)" repo-url branch)
 
-    (let [temp-dir (create-temp-directory "metabase-git-validate-")]
-      (try
-        (let [auth-token (config/git-source-auth-token)
-              clone-url (build-clone-url repo-url auth-token)
-              result (execute-git-command temp-dir "ls-remote" "--heads" clone-url branch)]
+    (with-temp-directory temp-dir
+      (let [auth-token (config/git-source-auth-token)
+            clone-url (build-clone-url repo-url auth-token)
+            result (execute-git-command temp-dir "ls-remote" "--heads" clone-url branch)]
 
-          (if (zero? (:exit result))
-            (log/info "Git repository is accessible")
-            (throw (ex-info (format "Git repository is not accessible: %s" (:err result))
-                            {:repo-url repo-url
-                             :branch branch
-                             :exit-code (:exit result)
-                             :stderr (:err result)}))))
-        (finally
-          (cleanup-temp-directory! temp-dir))))))
+        (if (zero? (:exit result))
+          (log/info "Git repository is accessible")
+          (throw (ex-info (format "Git repository is not accessible: %s" (:err result))
+                          {:repo-url repo-url
+                           :branch branch
+                           :exit-code (:exit result)
+                           :stderr (:err result)})))))))
