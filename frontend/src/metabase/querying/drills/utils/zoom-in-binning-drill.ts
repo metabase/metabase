@@ -5,6 +5,7 @@ import type * as Lib from "metabase-lib";
 
 export const zoomInBinningDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   drill,
+  drillInfo,
   clicked,
   applyDrill,
 }) => {
@@ -12,7 +13,7 @@ export const zoomInBinningDrill: Drill<Lib.ZoomDrillThruInfo> = ({
   return [
     {
       name: "zoom-in.binning",
-      title: t`Zoom in`,
+      title: drillInfo.displayName || t`Zoom in`,
       section: "zoom",
       icon: "zoom_in",
       buttonType: "horizontal",
