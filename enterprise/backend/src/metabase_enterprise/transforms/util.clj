@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.util
   (:require
+   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
@@ -15,12 +16,35 @@
     (keyword schema name)
     (keyword name)))
 
+(defn query-transform?
+  "Check if this is a query transform: native query / mbql query."
+  [transform]
+  (= :query (-> transform :source :type keyword)))
+
+(defn python-transform?
+  "Check if this is a Python transform."
+  [transform]
+  (= :python (-> transform :source :type keyword)))
+
+(defn db-connect-str
+  "This should be replaced by a proxy url"
+  [db-id]
+  (let [db-details (t2/select-one-fn :details :model/Database db-id)]
+    (format "postgresql://%s:%s@%s:%s/%s"
+            (or (:user db-details) "christruter")
+            (or (:password db-details) "")
+            ;; important quirk while we're testing
+            (str/replace (or (:host db-details) "127.0.0.1") #"localhost" "127.0.0.1")
+            (or (:port db-details) 5432)
+            (:db db-details))))
+
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
-  [{:keys [source target] :as _transform}]
-  (let [db-id (-> source :query :database)
-        {driver :engine :as database} (t2/select-one :model/Database db-id)]
-    (driver/table-exists? driver database target)))
+  [{:keys [source target] :as transform}]
+  (when (query-transform? transform)
+    (let [db-id (-> source :query :database)
+          {driver :engine :as database} (t2/select-one :model/Database db-id)]
+      (driver/table-exists? driver database target))))
 
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."

@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  python-sandbox:
+    build: .
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /sandbox/output
+    environment:
+      - OUTPUT_FILE=/sandbox/output/result.csv
+      - SCRIPT_FILE=/sandbox/script.py
+      - TIMEOUT=10
+    volumes:
+      - ./user_script.py:/sandbox/script.py:ro
+      - ./output:/sandbox/output
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    cpus: '0.5'

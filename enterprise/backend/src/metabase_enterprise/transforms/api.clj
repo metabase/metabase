@@ -28,9 +28,17 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::transform-source
-  [:map
-   [:type [:= "query"]]
-   [:query [:map [:database :int]]]])
+  [:multi {:dispatch (comp keyword :type)}
+   [:query
+    [:map
+     [:type [:= "query"]]
+     [:query [:map [:database :int]]]]]
+   [:python
+    [:map {:closed true}
+     [:source-database :int]
+     [:target-database :int]
+     [:type [:= "python"]]
+     [:body :string]]]])
 
 (mr/def ::transform-target
   [:map
@@ -60,15 +68,16 @@
 
 (defn- check-database-feature
   [transform]
-  (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
-                                (deferred-tru "The source database cannot be found."))
-        feature (transforms.util/required-database-feature transform)]
-    (api/check-400 (not (:is_sample database))
-                   (deferred-tru "Cannot run transforms on the sample database."))
-    (api/check-400 (not (:is_audit database))
-                   (deferred-tru "Cannot run transforms on audit databases."))
-    (api/check-400 (driver.u/supports? (:engine database) feature database)
-                   (deferred-tru "The database does not support the requested transform target type."))))
+  (when (transforms.util/query-transform? transform)
+    (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
+                                  (deferred-tru "The source database cannot be found."))
+          feature (transforms.util/required-database-feature transform)]
+      (api/check-400 (not (:is_sample database))
+                     (deferred-tru "Cannot run transforms on the sample database."))
+      (api/check-400 (not (:is_audit database))
+                     (deferred-tru "Cannot run transforms on audit databases."))
+      (api/check-400 (driver.u/supports? (:engine database) feature database)
+                     (deferred-tru "The database does not support the requested transform target type.")))))
 
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
@@ -156,9 +165,10 @@
           new (merge old body)
           target-fields #(-> % :target (select-keys [:schema :name]))]
       (check-database-feature new)
-      (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
-        (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
-                        {:status-code 400})))
+      (when (transforms.util/query-transform? old)
+        (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
+          (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                          {:status-code 400}))))
       (api/check (not (and (not= (target-fields old) (target-fields new))
                            (transforms.util/target-table-exists? new)))
                  403
@@ -204,19 +214,35 @@
                     [:id ms/PositiveInt]]]
   (log/info "run transform" id)
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        start-promise (promise)]
-    (u.jvm/in-virtual-thread*
-     (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
-                                                        :run-method :manual}))
-    (when (instance? Throwable @start-promise)
-      (throw @start-promise))
-    (let [result @start-promise
-          run-id (when (and (vector? result) (= (first result) :started))
-                   (second result))]
-      (-> (response/response {:message (deferred-tru "Transform run started")
-                              :run_id run-id})
-          (assoc :status 202)))))
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (if (transforms.util/python-transform? transform)
+      ;; Handle Python transform execution
+      (try
+        (let [{:keys [result run-id]} (transforms.execute/execute-python-transform! transform {:run_method :manual})]
+          (transform-run/succeed-started-run! run-id)
+          (log/info "Python transform succeeded" result)
+          (-> (response/response {:message (deferred-tru "Python transform executed successfully")
+                                  :run_id run-id
+                                  :result result})
+              (assoc :status 200)))
+        (catch Exception e
+          (log/error e "Error executing Python transform")
+          (-> (response/response {:message (deferred-tru "Python transform execution failed")
+                                  :error (.getMessage e)})
+              (assoc :status 500))))
+      ;; Handle MBQL transform execution (existing logic)
+      (let [start-promise (promise)]
+        (u.jvm/in-virtual-thread*
+         (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
+                                                            :run-method :manual}))
+        (when (instance? Throwable @start-promise)
+          (throw @start-promise))
+        (let [result @start-promise
+              run-id (when (and (vector? result) (= (first result) :started))
+                       (second result))]
+          (-> (response/response {:message (deferred-tru "Transform run started")
+                                  :run_id run-id})
+              (assoc :status 202)))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."

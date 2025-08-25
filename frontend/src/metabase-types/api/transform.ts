@@ -22,10 +22,17 @@ export type Transform = {
   last_run?: TransformRun | null;
 };
 
-export type TransformSource = {
-  type: "query";
-  query: DatasetQuery;
-};
+export type TransformSource =
+  | {
+      type: "query";
+      query: DatasetQuery;
+    }
+  | {
+      type: "python";
+      script: string;
+      database: number;
+      table?: number;
+    };
 
 export type TransformTargetType = "table";
 

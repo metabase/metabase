@@ -78,6 +78,24 @@
                                             :schema schema
                                             :name   table-name}})))))))
 
+(deftest create-python-transform-test
+  (mt/with-premium-features #{:transforms}
+    (mt/dataset transforms-dataset/transforms-test
+      (with-transform-cleanup! [table-name "gadget_products"]
+        (let [schema    (get-test-schema)
+              transform-payload {:name   "My beautiful python runner"
+                                 :source {:type "python"
+                                          :body "print('hello world')"}
+                                 :target {:type   "table"
+                                          :schema schema
+                                          :name   table-name}}
+              transform (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                              transform-payload)]
+          (is (= "print('hello chris')"
+                 (-> (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id transform))
+                                           (assoc-in transform-payload [:source :body] "print('hello chris')"))
+                     :source :body))))))))
+
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (testing "Can list without query parameters"
