@@ -5,7 +5,7 @@ import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/hoc/Title";
 import {
   createMockSettings,
@@ -110,11 +110,9 @@ describe("MetabotPurchasePage", () => {
     );
     expect(screen.getByRole("button", { name: /Success/ })).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Setting up Metabot AI, please wait/),
-      ).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText(/Setting up Metabot AI, please wait/),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Done/ })).toBeDisabled();
 
     const postRequests = await findRequests("POST");
@@ -129,9 +127,7 @@ describe("MetabotPurchasePage", () => {
       current_user_matches_store_user: true,
       has_metabot_v3: true,
     });
-    await waitFor(() => {
-      expect(screen.getByText(/Metabot AI is ready/)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(/Metabot AI is ready/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Done/ })).toBeEnabled();
   });
 });
