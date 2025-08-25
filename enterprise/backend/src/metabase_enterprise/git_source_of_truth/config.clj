@@ -1,30 +1,31 @@
 (ns metabase-enterprise.git-source-of-truth.config
   (:require
    [clojure.string]
-   [metabase.config.core :as config]))
+   [metabase.settings.core :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
-(defn git-source-repo-url
-  "Git repository URL to use as source of truth. When set, Metabase will clone this repository and load its content using serdes."
-  []
-  (config/config-str :mb-git-source-repo-url))
+(defsetting git-source-repo-url
+  (deferred-tru "Git repository URL to use as the source of truth for library managed entities.")
+  :visibility :admin
+  :export? true
+  :encryption :no)
 
-(defn git-source-branch
-  "Git branch to checkout. Defaults to 'main' if not specified."
-  []
-  (or (config/config-str :mb-git-source-branch) "main"))
+(defsetting git-source-branch
+  (deferred-tru "Git branch to use for the source of truth for library")
+  :visibility :admin
+  :export? true
+  :encryption :no
+  :default "main")
 
-(defn git-source-path
-  "Path within the git repository to the serdes files. Defaults to '.' (root directory) if not specified."
-  []
-  (or (config/config-str :mb-git-source-path) "."))
-
-(defn git-source-auth-token
-  "Optional authentication token for accessing private git repositories."
-  []
-  (config/config-str :mb-git-source-auth-token))
+(defsetting git-source-path
+  (deferred-tru "Path in the repository to use as the base of the source of truth.")
+  :visibility :admin
+  :export? true
+  :encryption :no
+  :default ".")
 
 (defn enabled?
-  "Check if git source of truth is enabled via environment variables."
+  "Check if git source of truth is enabled"
   []
   (some? (git-source-repo-url)))
 
