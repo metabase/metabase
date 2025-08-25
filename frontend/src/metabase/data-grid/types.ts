@@ -20,6 +20,7 @@ declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     wrap?: boolean;
+    formatNewlines?: boolean;
     enableReordering?: boolean;
     enableSelection?: boolean;
     headerClickTargetSelector?: string;
@@ -38,6 +39,7 @@ export type BodyCellBaseProps<TValue> = {
   backgroundColor?: string;
   align?: CellAlign;
   wrap?: boolean;
+  formatNewlines?: boolean;
   canExpand?: boolean;
   columnId: string;
   rowIndex: number;
@@ -88,6 +90,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Whether text should wrap in this column */
   wrap?: boolean;
+
+  /** Whether to format newlines in text */
+  formatNewlines?: boolean;
 
   /** Initial sort direction for this column */
   sortDirection?: "asc" | "desc";
