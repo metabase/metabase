@@ -76,12 +76,16 @@
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- cleanup-old-gate-tombstones!
+  "Cleans up old tombstone records from the gate table, if the indexer has run recently.
+  Ensures that the gate table does not grow indefinitely with old tombstone records
+  (where document and document_hash are null)."
   [pgvector index-metadata]
   (try
     (let [retention-hours     (semantic.settings/tombstone-retention-hours)
           active-metadata-row (get-active-index-metadata-row pgvector index-metadata)]
       (if-not (indexer-ran-recently? active-metadata-row retention-hours)
-        (log/info "Skipping tombstone cleanup: indexer has not run within the last 24 hours")
+        (log/infof "Skipping tombstone cleanup: indexer has not run within the last %s hours"
+                   retention-hours)
         (let [{:keys [gate-table-name]} index-metadata
               retention-cutoff (t/minus (t/offset-date-time)
                                         (t/hours retention-hours))

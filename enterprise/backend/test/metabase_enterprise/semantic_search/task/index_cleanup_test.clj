@@ -224,4 +224,3 @@
                                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                     remaining-ids (map :id remaining-records)]
                 (is (= #{"recent-tombstone" "non-tombstone"} (set remaining-ids)))))))))))
-
