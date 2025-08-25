@@ -16,7 +16,7 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
 import {
-  runQuestionOrSelectedQuery,
+  runOrCancelQuestionOrSelectedQuery,
   setIsNativeEditorOpen,
   setUIControls,
 } from "metabase/query_builder/actions";
@@ -404,7 +404,7 @@ const NativeQueryEditorWrapper = forwardRef<
   const { isNativeEditorOpen } = props;
 
   const runQuery = useCallback(() => {
-    dispatch(runQuestionOrSelectedQuery());
+    dispatch(runOrCancelQuestionOrSelectedQuery());
   }, [dispatch]);
 
   /**
