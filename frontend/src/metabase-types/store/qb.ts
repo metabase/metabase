@@ -11,7 +11,7 @@ import type {
 } from "metabase-types/api";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
-export type DatasetEditorTab = "query" | "metadata";
+export type DatasetEditorTab = "query" | "columns" | "metadata";
 export type QueryBuilderQueryStatus = "idle" | "running" | "complete";
 export type InitialChartSettingState = {
   section?: string | null;
@@ -51,6 +51,7 @@ export interface QueryBuilderUIControls {
   modalContext: TimelineEventId | null;
   dataReferenceStack: null;
   highlightedNativeQueryLineNumbers: number[];
+  isShowingListViewConfiguration: boolean;
 }
 
 export interface QueryBuilderLoadingControls {

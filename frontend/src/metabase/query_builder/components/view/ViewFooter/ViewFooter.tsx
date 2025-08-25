@@ -15,7 +15,6 @@ import ViewSection from "../ViewSection";
 import { CenterViewFooterButtonGroup } from "./CenterViewFooterButtonGroup";
 import { LeftViewFooterButtonGroup } from "./LeftViewFooterButtonGroup";
 import { RightViewFooterButtonGroup } from "./RightViewFooterButtonGroup";
-import { ViewStyleToggle } from "./ViewStyleToggle";
 
 type ViewFooterProps = { className?: string };
 
@@ -40,7 +39,6 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
     >
       <Group justify="space-between" pos="relative" wrap="nowrap" w="100%">
         {!hideChartSettings && <LeftViewFooterButtonGroup />}
-        {!isVisualized && !question.isSaved() && <ViewStyleToggle />}
         {isVisualized && <CenterViewFooterButtonGroup />}
         <RightViewFooterButtonGroup />
       </Group>

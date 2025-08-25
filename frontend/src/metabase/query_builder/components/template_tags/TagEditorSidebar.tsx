@@ -29,7 +29,7 @@ type GetEmbeddedParamVisibility = (
 
 interface TagEditorSidebarProps {
   query: NativeQuery;
-  databases: Database[];
+  databases?: Database[];
   question: Question;
   sampleDatabaseId: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
@@ -96,7 +96,7 @@ export function TagEditorSidebar({
             tags={tags}
             parametersById={parametersById}
             database={database}
-            databases={databases}
+            databases={databases as Database[]}
             setTemplateTag={setTemplateTag}
             setParameterValue={setParameterValue}
             getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}

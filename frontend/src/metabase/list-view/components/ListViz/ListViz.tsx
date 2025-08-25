@@ -1,11 +1,14 @@
 import { useMemo } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
-import { useSelector } from "metabase/lib/redux";
-import { getQuestion } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { updateQuestion } from "metabase/query_builder/actions";
+import {
+  getIsListViewConfigurationShown,
+  getQuestion,
+} from "metabase/query_builder/selectors";
 import { Box } from "metabase/ui";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -26,6 +29,7 @@ import {
 import type { DatasetColumn } from "metabase-types/api";
 
 import { ListView } from "../ListView/ListView";
+import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
 
 const vizDefinition = {
   identifier: "list",
@@ -192,60 +196,95 @@ const vizDefinition = {
   },
 };
 
-export const ListViz = withRouter(
-  ({
-    data,
-    settings,
-    onVisualizationClick,
-    card,
-    metadata,
-    ...props
-  }: VisualizationProps) => {
-    const question = useSelector(getQuestion);
-    const { sortedColumnName, sortingDirection } = useMemo(() => {
-      if (!question) {
-        return {};
-      }
-      const query = question.query();
-      const [orderBy] = Lib.orderBys(query, -1);
-      if (orderBy) {
-        const { name, direction } = Lib.displayInfo(query, -1, orderBy);
-        return {
-          sortedColumnName: name,
-          sortingDirection: direction,
-        };
-      }
+export const ListViz = ({
+  data,
+  settings,
+  onVisualizationClick,
+  card,
+  metadata,
+  queryBuilderMode,
+}: VisualizationProps) => {
+  const dispatch = useDispatch();
+  const question = useSelector(getQuestion);
+  const isShowingListViewConfiguration = useSelector(
+    getIsListViewConfigurationShown,
+  );
+  const { sortedColumnName, sortingDirection } = useMemo(() => {
+    if (!question) {
       return {};
-    }, [question]);
+    }
+    const query = question.query();
+    const [orderBy] = Lib.orderBys(query, -1);
+    if (orderBy) {
+      const { name, direction } = Lib.displayInfo(query, -1, orderBy);
+      return {
+        sortedColumnName: name,
+        sortingDirection: direction,
+      };
+    }
+    return {};
+  }, [question]);
 
-    // Get the entity type from the question's source table
-    const entityType = useMemo(() => {
-      if (!question) {
-        return undefined;
-      }
+  // Get the entity type from the question's source table
+  const entityType = useMemo(() => {
+    if (!question) {
+      return undefined;
+    }
 
-      try {
-        const query = question.query();
-        const sourceTableId = Lib.sourceTableOrCardId(query);
-        const metadata = question.metadata();
-        const table = metadata.table(sourceTableId);
+    try {
+      const query = question.query();
+      const sourceTableId = Lib.sourceTableOrCardId(query);
+      const metadata = question.metadata();
+      const table = metadata.table(sourceTableId);
 
-        // Return the entity type if available, otherwise undefined
-        // Use type assertion since entity_type exists in the database but not in TypeScript types
-        return (table as any)?.entity_type;
-      } catch (error) {
-        // If there's an error getting the entity type, return undefined
-        console.warn("Could not determine entity type:", error);
-        return undefined;
-      }
-    }, [question]);
+      // Return the entity type if available, otherwise undefined
+      // Use type assertion since entity_type exists in the database but not in TypeScript types
+      return (table as any)?.entity_type;
+    } catch (error) {
+      // If there's an error getting the entity type, return undefined
+      console.warn("Could not determine entity type:", error);
+      return undefined;
+    }
+  }, [question]);
 
-    const handleSort = (column: DatasetColumn) => {
-      onVisualizationClick({ column });
+  const handleSort = (column: DatasetColumn) => {
+    onVisualizationClick({ column });
+  };
+  const updateListSettings = ({
+    left,
+    right,
+    entityIcon,
+  }: {
+    left: string[];
+    right: string[];
+    entityIcon?: string;
+  }) => {
+    const newSettings = {
+      viewSettings: {
+        ...settings.viewSettings,
+        listSettings: {
+          leftColumns: left,
+          rightColumns: right,
+          entityIcon,
+        },
+      },
     };
+    const nextQuestion = question?.updateSettings(newSettings);
+    if (nextQuestion) {
+      dispatch(updateQuestion(nextQuestion));
+    }
+  };
 
-    return (
-      <Box w="100%" h="100%" pos="absolute">
+  return (
+    <Box w="100%" h="100%" pos="absolute">
+      {isShowingListViewConfiguration ? (
+        <ListViewConfiguration
+          data={data}
+          settings={settings}
+          entityType={entityType}
+          onChange={updateListSettings}
+        />
+      ) : (
         <ListView
           data={data}
           settings={settings}
@@ -255,11 +294,11 @@ export const ListViz = withRouter(
           entityType={entityType}
           card={card}
           metadata={metadata}
-          rowIndex={props.location.state?.rowIndex}
+          isInteractive={queryBuilderMode !== "dataset"}
         />
-      </Box>
-    );
-  },
-);
+      )}
+    </Box>
+  );
+};
 
 Object.assign(ListViz, vizDefinition);
