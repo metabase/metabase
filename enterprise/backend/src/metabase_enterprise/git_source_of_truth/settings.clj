@@ -4,7 +4,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting git-sync-key
-  (deferred-tru "An rsa key with write permissions to the git repository.")
+  (deferred-tru "An RSA key with write permissions to the git repository.")
   :type       :string
   :visibility :admin
   :doc        true
@@ -21,9 +21,16 @@
 
 ;; TODO: flip this to true if we have successfully pulled from the repo
 (defsetting git-sync-configured
-  (deferred-tru "Whether github sync is configured.")
+  (deferred-tru "Whether git sync is configured.")
   :type       :boolean
   :visibility :authenticated
   :export?    false
   :encryption :no
   :default    false)
+
+(defsetting git-sync-entities
+  (deferred-tru "A map of which entities are synced to git.")
+  :type       :json
+  :visibility :authenticated
+  :encryption :no
+  :export?    false)

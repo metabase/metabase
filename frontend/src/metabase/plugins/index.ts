@@ -834,5 +834,7 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 };
 
 export const PLUGIN_GIT_SYNC = {
-  GitSyncSettings: PluginPlaceholder,
+  LibraryNav: PluginPlaceholder,
+  GitSyncSettings: NotFoundPlaceholder,
+  GitChangeList: NotFoundPlaceholder,
 };
