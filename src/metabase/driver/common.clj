@@ -397,5 +397,5 @@
 
 ;; Driver-specific extra-info methods
 
-(defmethod driver/extra-info :postgres [_]
-  {:providers (warehouses/providers-for-api)})
+(defmethod driver/extra-info :postgres [driver]
+  {:providers (warehouses/providers-for-engine driver)})
