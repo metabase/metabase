@@ -4,6 +4,7 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.test :as mt]
    [metabase.util :as u]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
@@ -115,8 +116,9 @@
                   (sut pgvector index-metadata))))))))
 
 (defn- default-index [embedding-model index-metadata]
-  (-> (semantic.index/default-index embedding-model)
-      (semantic.index-metadata/qualify-index index-metadata)))
+  (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix semantic.tu/mock-table-suffix]
+    (-> (semantic.index/default-index embedding-model)
+        (semantic.index-metadata/qualify-index index-metadata))))
 
 (defn- add-index! [pgvector index-metadata embedding-model]
   (let [index (default-index embedding-model index-metadata)]

@@ -53,6 +53,7 @@ const CUSTOM_COLORS = [
   "background",
   "background-hover",
   "background-disabled",
+  "background-light",
   "accent-gray",
   "accent-gray-light",
 ] as const;

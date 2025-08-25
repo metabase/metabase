@@ -303,7 +303,8 @@ export const MetabotComponent = memo(
             className={S.closeButton}
             onClick={() => deleteNode()}
           >
-            <Icon name="close" />
+            <Icon name="close" data-hide-on-print />
+            <Icon name="metabot" data-show-on-print />
           </Button>
           <Flex flex={1} direction="column" className={S.contentWrapper}>
             <Box
@@ -350,6 +351,7 @@ export const MetabotComponent = memo(
                 classNames={{
                   label: CS.flex, // ensures icon is vertically centered
                 }}
+                data-hide-on-print
               >
                 {isLoading ? <Icon name="close" /> : t`Run`}
               </Button>
