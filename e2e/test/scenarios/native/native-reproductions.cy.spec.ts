@@ -1,5 +1,6 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   NativeQuestionDetails,
@@ -10,6 +11,7 @@ import type { IconName } from "metabase/ui";
 import type { Database, ListDatabasesResponse } from "metabase-types/api";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
+
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
 
 describe("issue 11727", { tags: "@external" }, () => {
@@ -781,5 +783,64 @@ describe("issue 60719", () => {
       cy.wait("@updateCard");
       cy.findByText("Cannot save card with cycles.").should("be.visible");
     });
+  });
+});
+
+describe("issue 59356", () => {
+  function typeRunShortcut() {
+    cy.get("body").type("{ctrl+enter}{cmd+enter}");
+  }
+
+  function getLoader() {
+    return H.queryBuilderMain().findByTestId("loading-indicator");
+  }
+
+  function getEmptyStateMessage() {
+    return H.queryBuilderMain().findByText(
+      "Here's where your results will appear",
+    );
+  }
+
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should properly cancel the query via the keyboard shortcut (metabase#59356)", () => {
+    cy.log("open the native query");
+    H.startNewNativeQuestion({
+      database: WRITABLE_DB_ID,
+      query: "select pg_sleep(5000)",
+    });
+
+    cy.log("verify that the query is not running");
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 0);
+
+    cy.log("run the query and verify that it is running");
+    typeRunShortcut();
+    getLoader().should("be.visible");
+    getEmptyStateMessage().should("not.exist");
+    cy.get("@dataset.all").should("have.length", 1);
+
+    cy.log("cancel the query and verify that no new query is running");
+    typeRunShortcut();
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 1);
+
+    cy.log("run the query again and verify that it is running");
+    typeRunShortcut();
+    getLoader().should("be.visible");
+    getEmptyStateMessage().should("not.exist");
+    cy.get("@dataset.all").should("have.length", 2);
+
+    cy.log("cancel the query and verify that no new query is running");
+    typeRunShortcut();
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 2);
   });
 });
