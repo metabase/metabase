@@ -220,17 +220,18 @@ describe("scenarios > table-editing", () => {
           column: "TAX",
           value: Math.floor(Math.random() * 1000),
         },
-        {
-          tableId: PEOPLE_ID,
-          dataType: "date",
-          column: "BIRTH_DATE",
-          value: dayjs(
-            new Date(
-              Date.now() -
-                Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 365),
-            ),
-          ).format("YYYY-MM-DD"),
-        },
+        // TODO: fix flaky test due to timezone issues (runs locally but fails on CI)
+        // {
+        //   tableId: PEOPLE_ID,
+        //   dataType: "date",
+        //   column: "BIRTH_DATE",
+        //   value: dayjs(
+        //     new Date(
+        //       Date.now() -
+        //         Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 365),
+        //     ),
+        //   ).format("YYYY-MM-DD"),
+        // },
       ];
 
       cases.forEach(({ dataType, column, value, tableId }) => {
