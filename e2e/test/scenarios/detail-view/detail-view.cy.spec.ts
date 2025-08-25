@@ -6,6 +6,8 @@ const { DetailView } = H;
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
 
+const VERY_LONG_STRING = "VERY_LONG_STRING_".repeat(10);
+
 describe("detail view", () => {
   beforeEach(() => {
     H.restore();
@@ -138,26 +140,19 @@ describe("detail view", () => {
   describe("value rendering", () => {
     it("respects datamodel remapping and viz settings", () => {
       /*
-        - [ ] long text wrapping
-        - [ ] empty value rendering (empty string + null)
-        - [x] pills with links
-          - [x] if field has viz settings set to display as link, there should be only 1 link
         - [ ] remapping works
-          - [x] FK
           - [ ] custom mapping
         - [ ] images are rendered in a frame and with a link underneath
-        - [x] urls/emails are links
-        - [ ] shows unit of currency next to column title when "Where to display the unit of currency" is set to "In the column heading"
         */
 
-      cy.log("user id");
+      cy.log("user id - fk remapping");
       H.remapDisplayValueToFK({
         display_value: ORDERS.USER_ID,
         name: "User",
         fk: PEOPLE.NAME,
       });
 
-      cy.log("product id");
+      cy.log("product id - fk remapping + view as link setting");
       H.remapDisplayValueToFK({
         display_value: ORDERS.PRODUCT_ID,
         name: "Product",
@@ -171,6 +166,26 @@ describe("detail view", () => {
         },
       });
 
+      cy.log("subtotal - currency_in_header: true");
+      cy.request("PUT", `/api/field/${ORDERS.SUBTOTAL}`, {
+        semantic_type: "type/Currency",
+      });
+
+      cy.log("tax - currency_in_header: false");
+      cy.request("PUT", `/api/field/${ORDERS.TAX}`, {
+        semantic_type: "type/Currency",
+        settings: {
+          currency_in_header: false,
+        },
+      });
+
+      cy.log("total - wrapping very long values");
+      cy.request("PUT", `/api/field/${ORDERS.TOTAL}`, {
+        settings: {
+          prefix: VERY_LONG_STRING,
+        },
+      });
+
       createOrdersJoinProductsModel().then(({ body: card }) => {
         DetailView.visitModel(card.id, 1);
       });
@@ -178,9 +193,9 @@ describe("detail view", () => {
       DetailView.verifyDetails([
         ["User", "Hudson Borer"],
         ["Product", "Product: Awesome Concrete Shoes"],
-        ["Subtotal", "37.65"],
-        ["Tax", "2.07"],
-        ["Total", "39.72"],
+        ["Subtotal ($)", "37.65"],
+        ["Tax", "$2.07"],
+        ["Total", `${VERY_LONG_STRING}39.72`],
         ["Discount ($)", "empty"],
         ["Created At", "February 11, 2025, 9:40 PM"],
         ["Quantity", "2"],
@@ -208,6 +223,11 @@ describe("detail view", () => {
           .and("have.attr", "href", "https://example.com/14")
           .and("have.attr", "target", "_blank")
           .and("have.attr", "rel", "noopener noreferrer");
+      });
+
+      cy.log("very long value without whitespace wraps");
+      cy.get("main").should(($main) => {
+        expect(H.isScrollableHorizontally($main[0])).to.be.false;
       });
     });
   });
