@@ -1,7 +1,9 @@
-(ns metabase.python-runner.api-test
+(ns ^:mb/driver-tests metabase.python-runner.api-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -98,7 +100,7 @@
                               "    result = db.read_table('nonexistent_table')\n"
                               "    return result")
           result         (mt/user-http-request :crowberto :post 500 "python-runner/execute"
-                                               {:code transform-code
+                                               {:code                 transform-code
                                                 :db-connection-string "invalid://connection/string"})]
       (is (contains? result :exit-code))
       (is (= 1 (:exit-code result)))
@@ -124,34 +126,42 @@
               :stderr ""}
              result)))))
 
-(deftest ^:parallel transform-function-with-working-database-test
+(deftest transform-function-with-working-database-test
   (testing "transform function successfully connects to PostgreSQL database and reads data"
-    ;; TODO use whichever driver is currently under test
-    (when (try
-            (Class/forName "org.postgresql.Driver")
-            true
-            (catch ClassNotFoundException _ false))
+    (mt/test-drivers [:postgres]
+      (mt/with-empty-db
+        (let [db-details           (:details (mt/db))
+              db-spec              (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              _                    (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
+              _                    (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
+              _                    (jdbc/execute! db-spec ["INSERT INTO students (id, name, score) VALUES (1, 'Alice', 85), (2, 'Bob', 92), (3, 'Charlie', 88), (4, 'Dana', 90)"])
 
-      ;; TODO use a table loaded by the test, get the connection string from :model/Database
-      (let [pg-connection-string "postgresql://christruter:@127.0.0.1:5432/testdb"
-            transform-code (str "import pandas as pd\n"
-                                "\n"
-                                "def transform(db):\n"
-                                "    # Try to read a students table\n"
-                                "    students = db.read_table('students')\n"
-                                "    # Calculate average score\n"
-                                "    avg_score = students['score'].mean()\n"
-                                "    result = pd.DataFrame({\n"
-                                "        'student_count': [len(students)],\n"
-                                "        'average_score': [round(avg_score, 2)]\n"
-                                "    })\n"
-                                "    return result")
-            result (mt/user-http-request :crowberto :post 200 "python-runner/execute"
-                                         {:code transform-code
-                                          :db-connection-string pg-connection-string})]
+              pg-connection-string (format "postgresql://%s:%s@%s:%s/%s"
+                                           (or (:user db-details) "christruter")
+                                           (or (:password db-details) "")
+                                          ;; quirk
+                                           (str/replace (or (:host db-details) "127.0.0.1") #"localhost" "127.0.0.1")
+                                           (or (:port db-details) 5432)
+                                           (:db db-details))
 
-        (is (= {:output "student_count,average_score\n4,87.75\n",
-                :stderr "Successfully connected to database: postgresql://christruter:@host.docker.internal:543...\n",
-                :stdout "Successfully saved 1 rows to CSV\n"}
-               result))))))
+              transform-code       (str "import pandas as pd\n"
+                                        "\n"
+                                        "def transform(db):\n"
+                                        "    # Read the students table\n"
+                                        "    students = db.read_table('students')\n"
+                                        "    # Calculate average score\n"
+                                        "    avg_score = students['score'].mean()\n"
+                                        "    result = pd.DataFrame({\n"
+                                        "        'student_count': [len(students)],\n"
+                                        "        'average_score': [round(avg_score, 2)]\n"
+                                        "    })\n"
+                                        "    return result")
+              result               (mt/user-http-request :crowberto :post 200 "python-runner/execute"
+                                                         {:code                 transform-code
+                                                          :db-connection-string pg-connection-string})]
+
+          (is (= {:output "student_count,average_score\n4,88.75\n"
+                  :stdout "Successfully saved 1 rows to CSV\n"
+                  :stderr ""}
+                 result)))))))
 
