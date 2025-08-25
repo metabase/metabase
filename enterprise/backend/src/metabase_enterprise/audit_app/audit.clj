@@ -271,7 +271,7 @@
           (let [original-engine engine]
             (adjust-audit-db-to-host! audit-db)
             ;; Only sync if we actually changed the engine type
-            (when (not= original-engine (name (mdb/db-type)))
+            (when (not= original-engine (mdb/db-type))
               (when-let [updated-audit-db (t2/select-one :model/Database :is_audit true)]
                 ;; Sync the audit database to update field metadata to match the host database engine
                 ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated

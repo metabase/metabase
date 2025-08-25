@@ -13,7 +13,6 @@
    [metabase.permissions.models.collection.graph-test :refer [graph]]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -54,11 +53,10 @@
                 (sync/sync-database! (t2/select-one :model/Database audit/audit-db-id)))
               (is (partial=
                    {:status :completed}
-                   (qp.store/with-metadata-provider audit/audit-db-id
-                     (qp/process-query
-                      {:database audit/audit-db-id
-                       :type     :query
-                       :query    {:source-table (u/the-id audit-view)}})))))))))))
+                   (qp/process-query
+                    {:database audit/audit-db-id
+                     :type     :query
+                     :query    {:source-table (u/the-id audit-view)}}))))))))))
 
 (deftest audit-db-disallowed-queries-test
   (mt/test-drivers #{:postgres :h2 :mysql}
