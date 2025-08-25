@@ -37,14 +37,6 @@
   :doc        false
   :export?    false)
 
-(defsetting store-api-url
-  (deferred-tru "Store API URL.")
-  :encryption :no
-  :visibility :internal
-  :default    (str "https://store-api" (when (default-to-staging?) ".staging") ".metabase.com")
-  :doc        false
-  :export?    false)
-
 (defsetting migration-dump-file
   (deferred-tru "Dump file for migrations.")
   :encryption :no
