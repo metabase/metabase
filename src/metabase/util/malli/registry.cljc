@@ -3,6 +3,7 @@
   (:require
    #?@(:clj ([malli.experimental.time :as malli.time]
              [net.cgrand.macrovich :as macros]))
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
    [malli.util :as mut])
@@ -14,17 +15,22 @@
   "Make schemas that aren't `=` to identical ones e.g.
 
     [:re #\"\\d{4}\"]
+    [:or :int [:re #\"\\d{4}\"]]
 
   work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
-  (if (and (vector? x)
-           (= (first x) :re))
-    (into (empty x)
-          (map (fn [child]
-                 (cond-> child
-                   (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) child) str)))
-          x)
-    x))
+  (walk/postwalk
+   (fn [form]
+     (cond-> form
+       (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
+       str))
+   x))
+
+(def ^:dynamic *cache-miss-hook*
+  "A hook that is called whenever there is a cache miss, for side effects.
+  This is used in tests or to monitor cache misses."
+  ;; (fn [_k _schema _value] nil)
+  nil)
 
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
@@ -37,6 +43,8 @@
   (let [schema-key (schema-cache-key schema)]
     (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
         (let [v (value-thunk)]
+          (when *cache-miss-hook*
+            (*cache-miss-hook* k schema v))
           (swap! cache assoc-in [k schema-key] v)
           v))))
 
