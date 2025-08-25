@@ -44,19 +44,22 @@
 
 (defn execute-python-code
   "Execute Python code in a sandboxed environment using the run-sandbox.sh script."
-  [code]
+  ;; TODO we take a db connection string not a db-id, as this API will eventually live on a separate service.
+  ;;      this connection string might be replaced with a proxy, or we may use another protocol e.g. flight to
+  ;;      provide data to the python process.
+  [code db-connection-string]
   (with-temp-files [code-file ["python_code_" ".py"]
                     output-file ["python_output_" ".txt"]
                     stdout-file ["python_stdout_" ".txt"]
                     stderr-file ["python_stderr_" ".txt"]]
     (spit code-file code)
 
-    (let [result (shell/sh "/bin/bash" "python-runner/run-sandbox.sh"
-                           code-file
-                           output-file
-                           stdout-file
-                           stderr-file
-                           :dir (io/file "."))]
+    (let [script-args (if db-connection-string
+                        ["/bin/bash" "python-runner/run-sandbox.sh"
+                         code-file output-file stdout-file stderr-file db-connection-string]
+                        ["/bin/bash" "python-runner/run-sandbox.sh"
+                         code-file output-file stdout-file stderr-file])
+          result (apply shell/sh (conj script-args :dir (io/file ".")))]
       (if (zero? (:exit result))
         {:output (slurp output-file)
          :stdout (slurp stdout-file)
@@ -72,7 +75,8 @@
   "Execute Python code in a sandboxed environment and return the output."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map
-                      [:code ms/NonBlankString]]]
+   {:keys [code db-connection-string]} :- [:map
+                                           [:code ms/NonBlankString]
+                                           [:db-connection-string {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-superuser)
-  (execute-python-code code))
+  (execute-python-code code db-connection-string))
