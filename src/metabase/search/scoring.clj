@@ -36,7 +36,7 @@
        [:cast ceiling :float])]]])
 
 (defn inverse-duration
-  "Score at item based on the duration between two dates, where less is better."
+  "Score an item based on the duration between two dates, where less is better."
   [from-column to-column ceiling-in-days]
   (let [ceiling [:inline ceiling-in-days]]
     [:/
@@ -63,6 +63,20 @@
               [:= :search_index.model [:inline "dataset"]] [:inline "card"]
               [:= :search_index.model [:inline "metric"]] [:inline "card"]
               :else :search_index.model]]]})
+
+(defn model-rank-expr
+  "Score an item based on its :model type."
+  [{:keys [context]}]
+  (let [search-order search.config/models-search-order
+        n            (double (count search-order))
+        cases        (map-indexed (fn [i sm]
+                                    [[:= :search_index.model sm]
+                                     (or (search.config/scorer-param context :model sm)
+                                         [:inline (/ (- n i) n)])])
+                                  search-order)]
+    (-> (into [:case] cat (concat cases))
+        ;; if you're not listed, get a very poor score
+        (into [:else [:inline 0.01]]))))
 
 (defn sum-columns
   "Sum the columns in `column-names`."

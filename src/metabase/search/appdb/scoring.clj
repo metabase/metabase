@@ -53,18 +53,6 @@
                                        (into [:case] cat cases)
                                        1))))
 
-(defn- model-rank-exp [{:keys [context]}]
-  (let [search-order search.config/models-search-order
-        n            (double (count search-order))
-        cases        (map-indexed (fn [i sm]
-                                    [[:= :search_index.model sm]
-                                     (or (search.config/scorer-param context :model sm)
-                                         [:inline (/ (- n i) n)])])
-                                  search-order)]
-    (-> (into [:case] cat (concat cases))
-        ;; if you're not listed, get a very poor score
-        (into [:else [:inline 0.01]]))))
-
 (defn base-scorers
   "The default constituents of the search ranking scores."
   [{:keys [search-string limit-int] :as search-ctx}]
@@ -79,7 +67,7 @@
      :recency      (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
      :user-recency (search.scoring/inverse-duration (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
      :dashboard    (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
-     :model        (model-rank-exp search-ctx)
+     :model        (search.scoring/model-rank-expr search-ctx)
      :mine         (search.scoring/equal :search_index.creator_id (:current-user-id search-ctx))
      :exact        (if search-string
                      ;; perform the lower casing within the database, in case it behaves differently to our helper

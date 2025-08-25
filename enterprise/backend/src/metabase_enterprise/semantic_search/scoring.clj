@@ -58,18 +58,6 @@
                                        (into [:case] cat cases)
                                        1))))
 
-(defn- model-rank-exp [{:keys [context]}]
-  (let [search-order search.config/models-search-order
-        n (double (count search-order))
-        cases (map-indexed (fn [i sm]
-                             [[:= :model sm]
-                              (or (search.config/scorer-param context :model sm)
-                                  [:inline (/ (- n i) n)])])
-                           search-order)]
-    (-> (into [:case] cat (concat cases))
-        ;; if you're not listed, get a very poor score
-        (into [:else [:inline 0.01]]))))
-
 (def ^:private rrf-rank-exp
   (let [k 60
         keyword-weight 0.51
@@ -94,7 +82,7 @@
                                                   [:now]
                                                   search.config/stale-time-in-days)
      :dashboard  (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
-     :model      (model-rank-exp search-ctx)
+     :model      (search.scoring/model-rank-expr search-ctx)
      :mine       (search.scoring/equal :creator_id (:current-user-id search-ctx))
      :exact      (if search-string
                    ;; perform the lower casing within the database, in case it behaves differently to our helper
