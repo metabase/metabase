@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
@@ -71,13 +72,11 @@
   (testing "POST /api/search/re-init with semantic search support"
     (mt/with-premium-features #{:semantic-search}
       (semantic.tu/with-index!
-        (let [original-index semantic.tu/mock-index
+        (let [original-index      semantic.tu/mock-index
               original-table-name (:table-name original-index)
-              new-index (with-redefs [semantic.index/model-table-suffix (fn [] 345)]
-                          (-> (semantic.index/default-index semantic.tu/mock-embedding-model)
-                              (semantic.index-metadata/qualify-index
-                               semantic.tu/mock-index-metadata)))
-              new-table-name (:table-name new-index)]
+              new-index           (with-redefs [semantic.index/model-table-suffix (constantly 345)]
+                                    (#'semantic.pgvector-api/fresh-index semantic.tu/mock-index-metadata semantic.tu/mock-embedding-model :force-reset? true))
+              new-table-name      (:table-name new-index)]
 
           (is (semantic.tu/table-exists-in-db? original-table-name))
           (is (not (semantic.tu/table-exists-in-db? new-table-name)))
@@ -87,8 +86,7 @@
             (is (:active best-index)))
 
           (testing "re-init creates the new index"
-            (with-redefs [semantic.index/default-index (fn [_] new-index)
-                          semantic.env/get-index-metadata (fn [] (assoc semantic.tu/mock-index-metadata :index-table-qualifier "%s"))]
+            (with-redefs [semantic.index/model-table-suffix (constantly 345)]
               (let [response (mt/user-http-request :crowberto :post 200 "search/re-init")]
                 (is (contains? response :message))))
 

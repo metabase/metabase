@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
@@ -38,6 +39,8 @@
           (is (= @index-ref (:index active-state)))
           (is (= model1 (:embedding-model (:index active-state))))
           (is (= (:model-name model1) (:model_name (:metadata-row active-state))))
+          (testing "dlq is created"
+            (is (semantic.tu/table-exists-in-db? (semantic.dlq/dlq-table-name-kw index-metadata (:id (:metadata-row active-state))))))
           (testing "idempotent"
             (let [new-index @(sut pgvector index-metadata model1)]
               (is (= @index-ref new-index))
@@ -46,7 +49,9 @@
         (let [new-index    @(sut pgvector index-metadata model2)
               active-state (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
           (is (= model2 (:embedding-model new-index)))
-          (is (= new-index (:index active-state))))
+          (is (= new-index (:index active-state)))
+          (testing "new dlq is created"
+            (is (semantic.tu/table-exists-in-db? (semantic.dlq/dlq-table-name-kw index-metadata (:id (:metadata-row active-state)))))))
         (testing "model1 index still exists"
           (is (=? {:index              {:embedding-model model1}
                    :active             false
@@ -237,10 +242,10 @@
                                  (.interrupt thread)
                                  (when-not (.join thread (Duration/ofSeconds 30))
                                    (log/fatal "Indexing loop thread not exiting during test!")))))))]
-    (with-redefs [semantic.indexer/sleep         (fn [_])       ; do not slow down
+    (with-redefs [semantic.indexer/sleep                         (fn [_])       ; do not slow down
                   ; important to test poll / paging (not many docs in test-data)
-                  semantic.settings/ee-search-indexer-poll-limit    (constantly 4)
-                  semantic.indexer/lag-tolerance Duration/ZERO] ; if too high will slow the test down significantly
+                  semantic.settings/ee-search-indexer-poll-limit (constantly 4)
+                  semantic.indexer/lag-tolerance                 Duration/ZERO] ; if too high will slow the test down significantly
 
       (with-open [index-ref  (open-semantic-search! pgvector index-metadata embedding-model)
                   job-thread ^Closeable (open-job-thread pgvector index-metadata)]

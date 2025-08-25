@@ -35,7 +35,8 @@
     [:indexer_last_poll :timestamp-with-time-zone :null]
     [:indexer_last_seen :timestamp-with-time-zone :null]
     [:indexer_last_seen_id :text :null]
-    [:indexer_last_seen_hash :text :null]]
+    [:indexer_last_seen_hash :text :null]
+    [:indexer_stalled_at :timestamp-with-time-zone :null]]
 
    :control
    [[:id :bigint [:primary-key]] ;; not auto-inc, only one row - still useful to ensure only one row when inserting.
