@@ -13,7 +13,7 @@ import type { SearchModel } from "metabase-types/api";
 
 import S from "./MenuItems.module.css";
 
-interface ExtraItemProps {
+interface ExtraItemProps extends DOMAttributes<HTMLButtonElement> {
   isSelected?: boolean;
   onClick?: () => void;
 }
@@ -64,12 +64,14 @@ export const MenuItemComponent = ({
 export const SearchResultsFooter = ({
   isSelected,
   onClick,
+  ...rest
 }: ExtraItemProps) => (
   <UnstyledButton
     className={S.menuItem}
     onClick={onClick}
     role="option"
     aria-selected={isSelected}
+    {...rest}
   >
     <Group gap="sm" wrap="nowrap" align="center">
       <Icon name="search" size={16} color="inherit" />

@@ -146,6 +146,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
               item={item}
               isSelected={selectedIndex === index}
               onClick={() => selectItem(index)}
+              onMouseEnter={() => setSelectedIndex(index)}
             />
           ))}
           {query.length > 0 && totalItems === 0 && !isLoading ? (

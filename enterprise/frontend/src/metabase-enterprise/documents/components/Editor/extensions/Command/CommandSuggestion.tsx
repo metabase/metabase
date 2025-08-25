@@ -412,7 +412,7 @@ export const CommandSuggestion = forwardRef<
                       key={`search-${index}`}
                       item={item}
                       isSelected={selectedIndex === index}
-                      onClick={() => setSelectedIndex(index)}
+                      onClick={() => selectItem(index)}
                       onMouseEnter={() => setSelectedIndex(index)}
                     />
                   ))}

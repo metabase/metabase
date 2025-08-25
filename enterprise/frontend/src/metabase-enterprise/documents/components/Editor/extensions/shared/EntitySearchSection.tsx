@@ -56,6 +56,7 @@ export function EntitySearchSection({
       <SearchResultsFooter
         isSelected={selectedIndex === menuItems.length}
         onClick={onFooterClick}
+        onMouseEnter={() => onItemHover(menuItems.length)}
       />
 
       {modal === "question-picker" && (

@@ -10,6 +10,10 @@ export const addToDocument = (text: string, newLine: boolean = true) => {
   }
 };
 
+export const clearDocumentContent = () => {
+  documentContent().type("{selectAll}{backspace}");
+};
+
 export const documentSuggestionDialog = () =>
   cy.findByRole("dialog", { name: "Mention Dialog" });
 
@@ -18,6 +22,12 @@ export const documentSuggestionItem = (name: RegExp | string) =>
 
 export const commandSuggestionDialog = () =>
   cy.findByRole("dialog", { name: "Command Dialog" });
+
+export const documentMetabotDialog = () =>
+  cy.findByRole("dialog", { name: "Metabot dialog" });
+
+export const documentMetabotSuggestionItem = (name: RegExp | string) =>
+  documentMetabotDialog().findByRole("option", { name });
 
 export const commandSuggestionItem = (name: RegExp | string) =>
   commandSuggestionDialog().findByRole("option", { name });
