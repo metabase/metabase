@@ -3,10 +3,10 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clj-http.client :as http]
-   [clj-time.core :as time]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
@@ -38,7 +38,7 @@
   ([user-id metabot-id]
    (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))
          claims {:user       user-id
-                 :exp        (time/plus (time/now) (time/seconds (metabot-v3.settings/metabot-ai-service-token-ttl)))
+                 :exp        (t/plus (t/instant) (t/seconds (metabot-v3.settings/metabot-ai-service-token-ttl)))
                  :metabot-id metabot-id}]
      (jwt/encrypt claims secret {:alg :dir, :enc :a128cbc-hs256}))))
 

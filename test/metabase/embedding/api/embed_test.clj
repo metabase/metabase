@@ -3,13 +3,13 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [buddy.sign.util :as buddy-util]
-   [clj-time.core :as time]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.common :as api.embed.common]
@@ -158,7 +158,7 @@
   {:auto_apply_filters true, :description nil, :parameters [], :dashcards [], :tabs [],
    :param_fields {} :width "fixed"})
 
-(def ^:private yesterday (time/minus (time/now) (time/days 1)))
+(def ^:private yesterday (t/minus (t/instant) (t/days 1)))
 
 ;;; ------------------------------------------- GET /api/embed/card/:token -------------------------------------------
 
