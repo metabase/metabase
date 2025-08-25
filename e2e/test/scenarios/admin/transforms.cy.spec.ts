@@ -146,7 +146,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.log("create a new transform");
         visitTransformListPage();
         getTransformListPage().button("Create a transform").click();
-        H.popover().findByText("A saved question").click();
+        H.popover().findByText("A copy of a saved question").click();
         H.expectUnstructuredSnowplowEvent({
           event: "transform_create",
           event_detail: "saved-question",
@@ -284,7 +284,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.log("create a new transform");
         visitTransformListPage();
         getTransformListPage().button("Create a transform").click();
-        H.popover().findByText("A saved question").click();
+        H.popover().findByText("A copy of a saved question").click();
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab(label);
           cy.findAllByTestId("picker-item")
