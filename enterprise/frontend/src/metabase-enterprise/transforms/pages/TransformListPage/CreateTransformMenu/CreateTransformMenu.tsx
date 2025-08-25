@@ -86,10 +86,10 @@ export function CreateTransformMenu() {
                 {t`SQL query`}
               </Menu.Item>
               <Menu.Item
-                leftSection={<Icon name="folder" />}
+                leftSection={<Icon name="copy" />}
                 onClick={handleSavedQuestionClick}
               >
-                {t`A saved question`}
+                {t`A copy of a saved question`}
               </Menu.Item>
             </>
           )}
