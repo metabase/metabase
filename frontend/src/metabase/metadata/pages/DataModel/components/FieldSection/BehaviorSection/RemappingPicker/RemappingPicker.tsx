@@ -329,6 +329,7 @@ export const RemappingPicker = ({
                   p={0}
                   size="compact-xs"
                   variant="subtle"
+                  disabled={isLoadingFieldValues}
                   onClick={() => setIsCustomMappingOpen(true)}
                 >
                   {t`Edit mapping`}
