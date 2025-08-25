@@ -14,7 +14,7 @@ describe("detail view", () => {
   });
 
   describe("table", () => {
-    it("displays object details with relationships and breadcrumbs", () => {
+    it("displays object details with breadcrumbs and relationships", () => {
       DetailView.visitTable(PRODUCTS_ID, 1);
 
       cy.findByRole("heading", {
@@ -59,7 +59,7 @@ describe("detail view", () => {
   });
 
   describe("model", () => {
-    it("displays object details with relationships and breadcrumbs", () => {
+    it("displays object details with breadcrumbs", () => {
       H.createQuestion({
         type: "model",
         query: {
