@@ -14,8 +14,6 @@
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
-   (java.sql Timestamp)
-   (java.time Instant)
    (org.quartz DisallowConcurrentExecution)))
 
 (set! *warn-on-reflection* true)
