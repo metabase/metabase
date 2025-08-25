@@ -39,26 +39,15 @@
           ;; FIXME: With `(mt/with-temporary-setting-values [token-status {:store-users [{:email (:email user)}]}])`,
           ;;  `(premium-features/token-status)` still returns `nil`; thus resort to `with-redefs`:
           (with-redefs [premium-features/token-status (constantly {:store-users [{:email (:email user)}]})]
-            (testing "passes through HTTP status 404 from Store API"
-              (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status 404})))]
-                (is (=? "Could not establish a connection to Metabase Cloud."
-                        (mt/user-http-request user :post 404 "ee/cloud-add-ons/metabase-ai"
-                                              {:terms_of_service true})))))
-            (testing "passes through HTTP status 403 from Store API"
-              (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status 403})))]
-                (is (=? "Could not establish a connection to Metabase Cloud."
-                        (mt/user-http-request user :post 403 "ee/cloud-add-ons/metabase-ai"
-                                              {:terms_of_service true})))))
-            (testing "passes through HTTP status 401 from Store API"
-              (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status 401})))]
-                (is (=? "Could not establish a connection to Metabase Cloud."
-                        (mt/user-http-request user :post 401 "ee/cloud-add-ons/metabase-ai"
-                                              {:terms_of_service true})))))
-            (testing "passes through HTTP status 400 from Store API"
-              (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status 400})))]
-                (is (=? "Could not purchase this add-on."
-                        (mt/user-http-request user :post 400 "ee/cloud-add-ons/metabase-ai"
-                                              {:terms_of_service true})))))
+            (doseq [[status-code error-message] {404 "Could not establish a connection to Metabase Cloud."
+                                                 403 "Could not establish a connection to Metabase Cloud."
+                                                 401 "Could not establish a connection to Metabase Cloud."
+                                                 400 "Could not purchase this add-on."}]
+              (testing (format "passes through HTTP status %d from Store API" status-code)
+                (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
+                  (is (=? error-message
+                          (mt/user-http-request user :post status-code "ee/cloud-add-ons/metabase-ai"
+                                                {:terms_of_service true}))))))
             (testing "responds with HTTP status 500 for other errors from Store API"
               (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {})))]
                 (is (=? "Unexpected error"
