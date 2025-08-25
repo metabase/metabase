@@ -1085,10 +1085,6 @@ export const getSubmittableQuestion = (state, question) => {
     .setQuery(cleanQuery)
     .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
-  if (submittableQuestion.display() === "list") {
-    submittableQuestion = submittableQuestion.setDisplay("table");
-  }
-
   return submittableQuestion;
 };
 

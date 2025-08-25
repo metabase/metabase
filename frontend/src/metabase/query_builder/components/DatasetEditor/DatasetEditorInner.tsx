@@ -477,6 +477,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
         tempModelSettings.display,
       );
     }
+    debugger;
     const questionWithMetadata =
       questionWithUpdatedSettings.setResultMetadataDiff(metadataDiff);
     if (isShowingListViewConfiguration) {
