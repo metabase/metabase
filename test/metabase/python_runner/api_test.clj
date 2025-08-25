@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]))
 
@@ -128,21 +129,16 @@
 
 (deftest transform-function-with-working-database-test
   (testing "transform function successfully connects to PostgreSQL database and reads data"
+    (println "Starting transform-function-with-working-database-test")
     (mt/test-drivers [:postgres]
+      (println "Inside mt/test-drivers with postgres")
       (mt/with-empty-db
-        (let [db-details           (:details (mt/db))
-              db-spec              (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [db-spec              (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               _                    (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
               _                    (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
               _                    (jdbc/execute! db-spec ["INSERT INTO students (id, name, score) VALUES (1, 'Alice', 85), (2, 'Bob', 92), (3, 'Charlie', 88), (4, 'Dana', 90)"])
 
-              pg-connection-string (format "postgresql://%s:%s@%s:%s/%s"
-                                           (or (:user db-details) "christruter")
-                                           (or (:password db-details) "")
-                                          ;; quirk
-                                           (str/replace (or (:host db-details) "127.0.0.1") #"localhost" "127.0.0.1")
-                                           (or (:port db-details) 5432)
-                                           (:db db-details))
+              pg-connection-string (transforms.util/db-connect-str (:id (mt/db)))
 
               transform-code       (str "import pandas as pd\n"
                                         "\n"

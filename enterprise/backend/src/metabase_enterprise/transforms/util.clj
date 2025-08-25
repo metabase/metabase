@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.util
   (:require
+   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
@@ -24,6 +25,18 @@
   "Check if this is a Python transform."
   [transform]
   (= :python (-> transform :source :type keyword)))
+
+(defn db-connect-str
+  "This should be replaced by a proxy url"
+  [db-id]
+  (let [db-details (t2/select-one-fn :details :model/Database db-id)]
+    (format "postgresql://%s:%s@%s:%s/%s"
+            (or (:user db-details) "christruter")
+            (or (:password db-details) "")
+            ;; important quirk while we're testing
+            (str/replace (or (:host db-details) "127.0.0.1") #"localhost" "127.0.0.1")
+            (or (:port db-details) 5432)
+            (:db db-details))))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
