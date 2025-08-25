@@ -39,13 +39,20 @@ export function useTokenRefresh() {
  */
 export function useTokenRefreshUntil(
   tokenFeature: TokenStatusFeature,
-  { intervalMs = REFRESH_INTERVAL },
+  {
+    intervalMs = REFRESH_INTERVAL,
+    skip = false,
+  }: { intervalMs?: number; skip?: boolean },
 ) {
   /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the patten in many components */
   const res = useGetSettingsQuery();
   const dispatch = useDispatch();
 
   useEffect(() => {
+    if (skip) {
+      return;
+    }
+
     const tokenStatusFeatures = res?.data?.["token-status"]?.features;
     const isTokenFeatureMissing = !tokenStatusFeatures?.includes(tokenFeature);
 
@@ -55,5 +62,5 @@ export function useTokenRefreshUntil(
       }, intervalMs);
       return () => clearTimeout(timeout);
     }
-  }, [res, dispatch, tokenFeature, intervalMs]);
+  }, [res, dispatch, tokenFeature, intervalMs, skip]);
 }
