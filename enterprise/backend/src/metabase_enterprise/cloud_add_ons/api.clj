@@ -6,7 +6,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]))
 
 (def ^:private error-no-connection
   (deferred-tru "Could not establish a connection to Metabase Cloud."))
@@ -46,6 +47,7 @@
       (premium-features/clear-cache)
       {:status 200 :body {}}
       (catch Exception e
+        (log/warnf e "Error adding purchasing add-on '%s'" product-type)
         (case (-> e ex-data :status)
           404 {:status 404 :body error-no-connection}
           403 {:status 403 :body error-no-connection}
