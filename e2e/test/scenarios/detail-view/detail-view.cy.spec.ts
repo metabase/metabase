@@ -1,5 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SECOND_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  FIRST_COLLECTION_ID,
+  SECOND_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 const { DetailView } = H;
@@ -78,6 +81,7 @@ describe("detail view", () => {
     it("displays object details with breadcrumbs", () => {
       createOrdersJoinProductsModel().then(({ body: card }) => {
         DetailView.visitModel(card.id, 1);
+        cy.wrap(card.id).as("modelId");
       });
 
       cy.findByRole("heading", {
@@ -88,13 +92,25 @@ describe("detail view", () => {
       cy.icon("document").should("be.visible");
 
       H.appBar().within(() => {
-        cy.findByRole("link", { name: /First collection/ }).should(
-          "be.visible",
-        );
-        cy.findByRole("link", { name: /Second collection/ }).should(
-          "be.visible",
-        );
-        cy.findByRole("link", { name: /My model/ }).should("be.visible");
+        cy.findByRole("link", { name: /First collection/ })
+          .should("be.visible")
+          .and(
+            "have.attr",
+            "href",
+            `/collection/${FIRST_COLLECTION_ID}-first-collection`,
+          );
+        cy.findByRole("link", { name: /Second collection/ })
+          .should("be.visible")
+          .and(
+            "have.attr",
+            "href",
+            `/collection/${SECOND_COLLECTION_ID}-second-collection`,
+          );
+        cy.get("@modelId").then((modelId) => {
+          cy.findByRole("link", { name: /My model/ })
+            .should("be.visible")
+            .and("have.attr", "href", `/model/${modelId}-my-model`);
+        });
         cy.findByText("Awesome Concrete Shoes").should("be.visible");
       });
 
