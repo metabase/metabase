@@ -18,7 +18,7 @@ export function DatabaseHostnameWithProviderField(
   const provider = detectDBProvider(value, props.providers);
 
   useEffect(() => {
-    setFieldValue("provider_name", provider);
+    setFieldValue("provider_name", provider ?? "");
   }, [provider, setFieldValue]);
 
   return (
