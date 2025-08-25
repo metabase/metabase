@@ -28,7 +28,8 @@
 (p/import-vars
  [metabase.driver.settings
   report-timezone
-  report-timezone!])
+  report-timezone!
+  report-timezone-long])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Current Driver                                                 |
