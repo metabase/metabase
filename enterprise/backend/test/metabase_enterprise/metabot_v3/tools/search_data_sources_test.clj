@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.search-data-sources :as sds]
    [metabase.api.common :as api]
-   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.test :as mt]))
