@@ -429,8 +429,7 @@ describe("scenarios > table-editing", () => {
         cy.findByText("Record successfully created").should("be.visible");
         cy.findByLabelText("close icon").click();
       });
-      
-      
+
       H.expectUnstructuredSnowplowEvent({
         event: "edit_data_record_modified",
         event_detail: "create",
