@@ -46,7 +46,7 @@ Part of IAM credentials for AWS. Metabase will encrypt these credentials.
 
 ### Additional Athena connection string options
 
-You can specify additional options via a string, e.g., `UseResultsetStreaming=0;LogLevel=6`.
+You can specify [additional options](https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver-advanced-connection-parameters.html) via a string, e.g., `LogPath=/tmp;ResultFetcher=S3;`.
 
 ### Include User ID and query hash in queries
 
