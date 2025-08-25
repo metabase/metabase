@@ -328,6 +328,7 @@
   recognize-template-tags
   required-native-extras
   template-tag-card-ids
+  template-tag-snippet-ids
   template-tags-referenced-cards
   template-tags
   with-different-database

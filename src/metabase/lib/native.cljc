@@ -274,10 +274,27 @@
   [query :- ::lib.schema/query]
   (:template-tags (lib.util/query-stage query 0)))
 
+;; TODO: what's ideal here? Where could this live?
+(defn template-tag-card-ids*
+  "Returns the card IDs from the value of :template-tags on a query or a native-query-snippet"
+  [template-tags-value]
+  (not-empty (into #{} (keep (fn [[_k m]] (:card-id m))) template-tags-value)))
+
 (mu/defn template-tag-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
   "Returns the card IDs from the template tags of the native query of `query`."
   [query :- ::lib.schema/query]
-  (not-empty (into #{} (keep (fn [[_k m]] (:card-id m))) (template-tags query))))
+  (template-tag-card-ids* (template-tags query)))
+
+;; TODO: ditto
+(defn template-tag-snippet-ids*
+  "Returns the snippet IDs from the value of :template-tags on a query or a native-query-snippet"
+  [template-tags-value]
+  (not-empty (into #{} (keep (fn [[_k m]] (:snippet-id m))) template-tags-value)))
+
+(mu/defn template-tag-snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/native-query-snippet]]
+  "Returns the snippet IDs from the template tags of the native query of `query`."
+  [query :- ::lib.schema/query]
+  (template-tag-snippet-ids* (template-tags query)))
 
 (mu/defn template-tags-referenced-cards :- [:maybe [:sequential ::lib.schema.metadata/card]]
   "Returns Card instances referenced by the given native `query`."
