@@ -13,6 +13,7 @@
    [metabase.permissions.models.collection.graph-test :refer [graph]]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -48,13 +49,14 @@
 
           (testing "A non-native query can be run on views in the audit DB"
             (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})]
-              (is (str/starts-with? "v_" (u/lower-case-en (:name audit-view))))
+              (is (str/starts-with? (u/lower-case-en (:name audit-view)) "v_"))
               (is (partial=
                    {:status :completed}
-                   (qp/process-query
-                    {:database audit/audit-db-id
-                     :type     :query
-                     :query    {:source-table (u/the-id audit-view)}}))))))))))
+                   (qp.store/with-metadata-provider audit/audit-db-id
+                     (qp/process-query
+                      {:database audit/audit-db-id
+                       :type     :query
+                       :query    {:source-table (u/the-id audit-view)}})))))))))))
 
 (deftest audit-db-disallowed-queries-test
   (mt/test-drivers #{:postgres :h2 :mysql}
