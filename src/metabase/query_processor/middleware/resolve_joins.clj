@@ -134,8 +134,9 @@
   (into []
         (comp (map :fields)
               (filter sequential?)
-              (mapcat (fn [[tag id-or-name opts]]
-                        [tag id-or-name (assoc opts :qp/ignore-coercion true)])))
+              cat
+              (map (fn [[tag id-or-name opts :as x]]
+                     [tag id-or-name (assoc opts :qp/ignore-coercion true)])))
         joins))
 
 (defn- should-add-join-fields?
