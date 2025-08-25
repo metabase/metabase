@@ -296,6 +296,7 @@
            models
            premium-features
            settings
+           store-api
            task
            util}}
 
@@ -1171,6 +1172,14 @@
    :api  #{metabase.startup.core}
    :uses #{util}}
 
+  store-api
+  {:team "Cloud"
+   :api  #{metabase.store-api.core
+           metabase.store-api.init}
+   :uses #{config
+           settings
+           util}}
+
   sync
   {:team "Querying"
    :api #{metabase.sync.api
@@ -1570,6 +1579,14 @@
            task
            util}}
 
+  enterprise/cloud-add-ons
+  {:team "Cloud"
+   :api  #{metabase-enterprise.cloud-add-ons.api}
+   :uses #{api
+           premium-features
+           util
+           enterprise/harbormaster}}
+
   enterprise/content-translation
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.content-translation.dictionary
@@ -1659,7 +1676,7 @@
   {:team "Cloud"
    :api  #{metabase-enterprise.harbormaster.client}
    :uses #{api
-           cloud-migration
+           store-api
            util}}
 
   enterprise/impersonation
