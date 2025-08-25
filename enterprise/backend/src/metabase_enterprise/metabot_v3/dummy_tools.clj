@@ -146,9 +146,10 @@
                      (lib.metadata/table metadata-provider id)
                      (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
      (let [query-needed? (or with-fields? with-metrics?)
+           db-id (if metadata-provider (:db-id base) (:db_id base))
            mp (when query-needed?
                 (or metadata-provider
-                    (lib.metadata.jvm/application-database-metadata-provider (:db_id base))))
+                    (lib.metadata.jvm/application-database-metadata-provider db-id)))
            table-query (when query-needed?
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
@@ -164,7 +165,7 @@
             ;; :display_name should be (lib/display-name table-query), but we want to avoid creating the query if possible
             :display_name (some->> (:name base)
                                    (u.humanization/name->human-readable-name :simple))
-            :database_id (:db_id base)
+            :database_id db-id
             :database_schema (:schema base)}
            (m/assoc-some :description (:description base)
                          :metrics (when with-metrics?
