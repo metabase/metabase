@@ -214,21 +214,21 @@
            (analytics/inc! :metabase-database/status {:driver engine :healthy true})
 
            ;; Detect and update provider name if not already set (only for postgres databases)
-           (when (= (name engine) "postgres")
+           (when (and (= (name engine) "postgres")
+                      (nil? (:provider_name database)))
              (try
                (log/info (u/format-color :blue "Provider detection: checking database %s {:id %d, :provider_name %s, :details %s}"
                                          (:name database) (:id database) (:provider_name database)
                                          (select-keys details [:host])))
                (let [detected-provider (provider-detection/detect-provider-from-database
-                                        (assoc database :details details))]
-                 (log/info (u/format-color :blue "Provider detection: detected provider %s for database %s"
-                                           detected-provider (:name database)))
+                                        (assoc database :details details))
+                     provider-to-set (or detected-provider "")]
                  (log/info (u/format-color :blue "Provider detection: updating %s {:id %d} from '%s' to '%s'"
                                            (:name database) (:id database)
-                                           (:provider_name database) detected-provider))
+                                           (:provider_name database) provider-to-set))
                  ;; Use direct query to avoid triggering search index updates
                  (t2/query {:update :metabase_database
-                            :set {:provider_name detected-provider}
+                            :set {:provider_name provider-to-set}
                             :where [:= :id (:id database)]}))
                (catch Throwable provider-e
                  (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))
