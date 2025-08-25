@@ -3,10 +3,6 @@
   flex-direction: column;
   height: 100%;
   background-color: var(--mb-color-bg-white);
-
-  &:has(.sidebar) {
-    border-top: 1px solid var(--mb-color-border);
-  }
 }
 
 .header {
