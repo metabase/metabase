@@ -78,6 +78,41 @@
         ;; if you're not listed, get a very poor score
         (into [:else [:inline 0.01]]))))
 
+;; TODO move these to the spec definitions
+(def ^:private bookmarked-models [:card :collection :dashboard])
+
+(def ^:private bookmarked-sub-models {:card [:card :metric :dataset]})
+
+(def bookmarked-models-and-sub-models
+  "Set that is the union of all bookmarked-models and bookmarked-sub-models"
+  (into (set bookmarked-models) cat (vals bookmarked-sub-models)))
+
+(def bookmark-score-expr
+  "Score an item based on whether it has been bookmarked."
+  (let [match-clause (fn [m] [[:and
+                               (if-let [sms (bookmarked-sub-models (keyword m))]
+                                 [:in :search_index.model (mapv (fn [k] [:inline (name k)]) sms)]
+                                 [:= :search_index.model [:inline m]])
+                               [:!= nil (keyword (str m "_bookmark." m "_id"))]]
+                              [:inline 1]])]
+    (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
+
+(defn- bookmark-join [model user-id]
+  (let [model-name (name model)
+        table-name (str model-name "_bookmark")]
+    [(keyword table-name)
+     [:and
+      (if-let [sms (bookmarked-sub-models model)]
+        [:in :search_index.model (mapv (fn [m] [:inline (name m)]) sms)]
+        [:= :search_index.model [:inline model-name]])
+      [:= (keyword (str table-name ".user_id")) user-id]
+      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :text]]]]))
+
+(defn join-bookmarks
+  "Add join clause to bookmark tables for :bookmarked scorer."
+  [qry user-id]
+  (apply sql.helpers/left-join qry (mapcat #(bookmark-join % user-id) bookmarked-models)))
+
 (defn sum-columns
   "Sum the columns in `column-names`."
   [column-names]
