@@ -9,14 +9,19 @@ export const DetailView = {
 };
 
 function visitModel(modelIdOrSlug: CardId | string, rowId: string | number) {
+  cy.intercept("GET", "/api/card/*/query_metadata*").as(
+    "modelDetailTableMetadata",
+  );
   cy.visit(`/model/${modelIdOrSlug}/detail/${rowId}`);
+  cy.wait("@modelDetailTableMetadata");
 }
 
 function visitTable(tableId: TableId, rowId: string | number) {
+  cy.intercept("GET", "/api/table/*/query_metadata*").as(
+    "tableDetailTableMetadata",
+  );
   cy.visit(`/table/${tableId}/detail/${rowId}`);
-  cy.findByTestId("loading-indicator").should("be.visible");
-  cy.wait("@tableMetadata");
-  cy.findByTestId("loading-indicator").should("not.exist");
+  cy.wait("@tableDetailTableMetadata");
 }
 
 function getRelationships() {

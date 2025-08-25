@@ -9,8 +9,6 @@ describe("detail view", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-
-    cy.intercept("GET", "/api/table/*/query_metadata*").as("tableMetadata");
   });
 
   describe("table", () => {
@@ -57,8 +55,11 @@ describe("detail view", () => {
         .and("have.text", "Showing 8 rows");
     });
 
-    it("shows 404 error state", () => {
+    it("shows loading state and 404 error state", () => {
       DetailView.visitTable(PRODUCTS_ID, 9999);
+
+      cy.findByTestId("loading-indicator").should("be.visible");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
 
@@ -116,6 +117,9 @@ describe("detail view", () => {
       createOrdersJoinProductsModel().then(({ body: card }) => {
         DetailView.visitModel(card.id, 9999);
       });
+
+      cy.findByTestId("loading-indicator").should("be.visible");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
 
