@@ -43,10 +43,6 @@ describe(
     [{ strictMode: false }, { strictMode: true }].forEach(({ strictMode }) => {
       describe(`Common cases ${strictMode ? "with" : "without"} strict mode`, () => {
         it("should display an SDK question", () => {
-          cy.window().then((win) => {
-            cy.spy(win.console, "warn").as("consoleWarn");
-          });
-
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             { strictMode },
@@ -291,7 +287,7 @@ describe(
     describe("Components", () => {
       it("should display an SDK question with custom layout components", () => {
         cy.window().then((win) => {
-          cy.spy(win.console, "warn").as("consoleWarn");
+          cy.spy(win.console, "error").as("consoleError");
         });
 
         mountSdkContent(
@@ -309,14 +305,12 @@ describe(
 
           cy.findByTestId("visualization-root").should("be.visible");
         });
+
+        cy.get("@consoleError").should("not.be.called");
       });
 
       it("should show an error on a component level if SDK components are not wrapped within the MetabaseProvider", () => {
         sdkBundleCleanup();
-
-        cy.window().then((win) => {
-          cy.spy(win.console, "warn").as("consoleWarn");
-        });
 
         cy.mount(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
 
@@ -325,6 +319,41 @@ describe(
             /Ensure all SDK components are wrapped in the Provider component./,
           ).should("exist");
         });
+      });
+
+      it("should show a console error if SDK Package component uses a prop that is not yet available in SDK bundle", () => {
+        sdkBundleCleanup();
+
+        cy.window().then((win) => {
+          cy.spy(win.console, "error").as("consoleError");
+        });
+
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={ORDERS_QUESTION_ID}
+            {...{ foo: "bar" }}
+          />,
+        );
+
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          "this property is not recognized by the component",
+        );
+      });
+
+      it("should show a console error if SDK Package component not uses a prop that is still expected by SDK bundle", () => {
+        sdkBundleCleanup();
+
+        cy.window().then((win) => {
+          cy.spy(win.console, "error").as("consoleError");
+        });
+
+        mountSdkContent(<InteractiveQuestion />);
+
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          "this property is required by the component",
+        );
       });
     });
 

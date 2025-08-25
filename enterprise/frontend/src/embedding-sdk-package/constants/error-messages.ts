@@ -8,4 +8,12 @@ export const SDK_NOT_LOADED_YET_MESSAGE =
   "Error loading the Embedding Analytics SDK. The loading state is `Loaded` but the SDK bundle is not loaded yet.";
 
 export const SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE =
-  "The component is not available in the Embedding Analytics SDK bundle. Update the analytics server to serve the correct bundle.";
+  "The component is not available in the Embedding Analytics SDK bundle. Update your analytics server to access the component.";
+
+export const SDK_COMPONENT_MISSING_REQUIRED_PROPERTY_MESSAGE =
+  // eslint-disable-next-line no-literal-metabase-strings -- console.error message
+  "this property is required by the component. Your Embedding Analytics SDK and Metabase Instance are out of sync. Update them to matching versions, and adjust props based on the updated TypeScript types.";
+
+export const SDK_COMPONENT_UNRECOGNIZED_PROPERTY_MESSAGE =
+  // eslint-disable-next-line no-literal-metabase-strings -- console.error message
+  "this property is not recognized by the component and will be ignored. Your Embedding Analytics SDK and Metabase Instance are out of sync. Update them to matching versions, and adjust props based on the updated TypeScript types.";
