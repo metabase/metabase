@@ -125,17 +125,17 @@ const config = {
       displayName: "sdk",
 
       testMatch: [
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/**/*.unit.spec.{js,jsx,ts,tsx}",
       ],
 
       setupFiles: [
         ...baseConfig.setupFiles,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/setup-env.js",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/jest/setup-env.js",
       ],
 
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/console-restrictions.js",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/jest/console-restrictions.js",
       ],
     },
     {
@@ -143,7 +143,7 @@ const config = {
       displayName: "core",
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/",
       ],
     },
   ],

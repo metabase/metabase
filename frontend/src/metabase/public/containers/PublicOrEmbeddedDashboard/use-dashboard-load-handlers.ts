@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { getEventHandlers } from "embedding-sdk/store/selectors";
+import { getEventHandlers } from "embedding-sdk-bundle/store/selectors";
 import { useSelector } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import type { Dashboard } from "metabase-types/api";

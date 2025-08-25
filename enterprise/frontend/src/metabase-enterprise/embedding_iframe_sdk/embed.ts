@@ -4,7 +4,10 @@ import {
   openSamlLoginPopup,
   validateSessionToken,
 } from "embedding/auth-common";
-import { INVALID_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
+import {
+  INVALID_AUTH_METHOD,
+  MetabaseError,
+} from "embedding-sdk-bundle/errors";
 
 import {
   ALLOWED_EMBED_SETTING_KEYS,

@@ -8,7 +8,7 @@ import {
   StaticDashboard,
   StaticQuestion,
   defineMetabaseAuthConfig,
-} from "embedding-sdk";
+} from "embedding-sdk-bundle";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
