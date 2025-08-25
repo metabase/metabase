@@ -1059,7 +1059,7 @@
           (doseq [arg-id [table-id (str table-id)]]
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
-                                         :database_id 1
+                                         :database_id (mt/id)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1075,7 +1075,7 @@
           (testing "Without field values"
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
-                                         :database_id 1
+                                         :database_id (mt/id)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1092,7 +1092,7 @@
           (testing "Without fields"
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
-                                         :database_id 1
+                                         :database_id (mt/id)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1106,7 +1106,7 @@
           (testing "Without fields and metric default time dimension"
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
-                                         :database_id 1
+                                         :database_id (mt/id)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
@@ -1122,7 +1122,7 @@
           (testing "Without fields and metrics"
             (is (=? {:structured_output {:name "ORDERS"
                                          :display_name "Orders"
-                                         :database_id 1
+                                         :database_id (mt/id)
                                          :database_schema "PUBLIC"
                                          :id table-id
                                          :type "table"
