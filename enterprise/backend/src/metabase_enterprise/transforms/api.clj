@@ -28,15 +28,9 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::transform-source
-  [:multi {:dispatch :type}
-   ["query" [:map
-             [:type [:= "query"]]
-             [:query [:map [:database :int]]]]]
-   ["python" [:map
-              [:type [:= "python"]]
-              [:script :string]
-              [:database :int]
-              [:table {:optional true} :int]]]])
+  [:map
+   [:type [:= "query"]]
+   [:query [:map [:database :int]]]])
 
 (mr/def ::transform-target
   [:map
@@ -66,17 +60,15 @@
 
 (defn- check-database-feature
   [transform]
-  ;; Skip database checks for Python transforms since they don't use a source database
-  (when (= "query" (get-in transform [:source :type]))
-    (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
-                                  (deferred-tru "The source database cannot be found."))
-          feature (transforms.util/required-database-feature transform)]
-      (api/check-400 (not (:is_sample database))
-                     (deferred-tru "Cannot run transforms on the sample database."))
-      (api/check-400 (not (:is_audit database))
-                     (deferred-tru "Cannot run transforms on audit databases."))
-      (api/check-400 (driver.u/supports? (:engine database) feature database)
-                     (deferred-tru "The database does not support the requested transform target type.")))))
+  (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
+                                (deferred-tru "The source database cannot be found."))
+        feature (transforms.util/required-database-feature transform)]
+    (api/check-400 (not (:is_sample database))
+                   (deferred-tru "Cannot run transforms on the sample database."))
+    (api/check-400 (not (:is_audit database))
+                   (deferred-tru "Cannot run transforms on audit databases."))
+    (api/check-400 (driver.u/supports? (:engine database) feature database)
+                   (deferred-tru "The database does not support the requested transform target type."))))
 
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
@@ -215,8 +207,8 @@
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         start-promise (promise)]
     (u.jvm/in-virtual-thread*
-     (transforms.execute/run-transform-by-type! transform {:start-promise start-promise
-                                                           :run-method :manual}))
+     (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
+                                                        :run-method :manual}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise

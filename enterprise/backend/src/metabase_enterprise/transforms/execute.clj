@@ -53,65 +53,6 @@
     (finally
       (canceling/chan-end-run! run-id))))
 
-(defn run-python-transform!
-  "Execute a Python transform script (currently just logs received values)"
-  [run-id driver transform-details opts]
-  (try
-    (log/info "Python transform execution started"
-              {:run-id run-id
-               :driver driver
-               :transform-details transform-details
-               :opts opts})
-    ;; TODO: Implement actual Python execution
-    ;; For now, just log and succeed
-    (transform-run/succeed-started-run! run-id)
-    (catch Throwable t
-      (transform-run/fail-started-run! run-id {:message (.getMessage t)})
-      (throw t))))
-
-(defn run-transform-by-type!
-  "Run a transform based on its source type.
-
-  This is executing synchronously, but supports being kicked off in the background
-  by delivering the `start-promise` just before the start when the beginning of the execution has been booked
-  in the database."
-  ([transform] (run-transform-by-type! transform nil))
-  ([{:keys [id source target] :as transform} {:keys [run-method start-promise]}]
-   (case (:type source)
-     "query" (run-mbql-transform! transform {:run-method run-method :start-promise start-promise})
-     "python" (run-python-transform-wrapper! transform {:run-method run-method :start-promise start-promise})
-     (throw (ex-info "Unsupported transform source type" {:source-type (:type source)})))))
-
-(defn run-python-transform-wrapper!
-  "Wrapper for Python transforms that handles the execution flow"
-  [{:keys [id source target] :as transform} {:keys [run-method start-promise]}]
-  (try
-    ;; mark the execution as started and notify any observers
-    (let [{run-id :id} (try
-                         (transform-run/start-run! id {:run_method run-method})
-                         (catch java.sql.SQLException e
-                           (if (= (.getSQLState e) "23505")
-                             (throw (ex-info "Transform is already running"
-                                             {:error :already-running
-                                              :transform-id id}
-                                             e))
-                             (throw e))))]
-      (when start-promise
-        (deliver start-promise [:started run-id]))
-      (log/info "Executing Python transform" id "with target" (pr-str target))
-      ;; Create transform details for Python execution
-      (let [transform-details {:transform-type :python
-                               :script (:script source)
-                               :requirements (:requirements source)
-                               :output-table (keyword (str (:schema target) "." (:name target)))}
-            opts {:overwrite? true}]
-        (run-python-transform! run-id nil transform-details opts)))
-    (catch Throwable t
-      (log/error t "Error executing Python transform")
-      (when start-promise
-        (deliver start-promise t))
-      (throw t))))
-
 (defn run-mbql-transform!
   "Run `transform` and sync its target table.
 
