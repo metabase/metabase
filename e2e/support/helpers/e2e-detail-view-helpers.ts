@@ -19,6 +19,14 @@ function visitTable(tableId: TableId, rowId: string | number) {
   cy.findByTestId("loading-indicator").should("not.exist");
 }
 
+function getRelationships() {
+  return cy.findByTestId("relationships");
+}
+
+function getObjectDetails() {
+  return cy.findByTestId("object-details");
+}
+
 function verifyObjectDetails(rows: [string, string][]) {
   getObjectDetails().within(() => {
     cy.findAllByTestId("object-details-row").should("have.length", rows.length);
@@ -38,12 +46,4 @@ function verifyObjectDetails(rows: [string, string][]) {
         .should("have.text", value);
     }
   });
-}
-
-function getRelationships() {
-  return cy.findByTestId("relationships");
-}
-
-function getObjectDetails() {
-  return cy.findByTestId("object-details");
 }
