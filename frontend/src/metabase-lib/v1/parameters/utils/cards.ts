@@ -14,7 +14,7 @@ export function getCardUiParameters(
   card: Card,
   metadata: Metadata,
   parameterValues: { [key: string]: any } = {},
-  parameters = getParametersFromCard(card),
+  parameters = getParametersFromCard(card, metadata),
   collectionPreview?: boolean,
 ): UiParameter[] {
   if (!card) {

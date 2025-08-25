@@ -15,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
@@ -40,7 +41,7 @@
   [field]
   ;; Opts should probably override all of these
   (-> (select-keys field [:base-type :effective-type :coercion-strategy :semantic-type :database-type :name])
-      (update-keys u/->snake_case_en)))
+      (perf/update-keys u/->snake_case_en)))
 
 (defn- str-id-field->type-info
   "Return _type info_ for `_field` with string `field-name`, coming from the source query or joins."

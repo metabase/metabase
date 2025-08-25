@@ -4,7 +4,7 @@ title: "Metabase config file template"
 
 # Metabase config file template
 
-You can generate the following docs by changing into the top-level Metabase directory and running:
+You can generate this doc page by changing into the top-level Metabase directory and running:
 
 ```
 clojure -M:doc:ee config-template
@@ -120,8 +120,18 @@ config:
     default-maps-enabled: true
     download-row-limit: null
     ee-ai-features-enabled: false
+    ee-embedding-model: Snowflake/snowflake-arctic-embed-l-v2.0
+    ee-embedding-model-dimensions: 1024
+    ee-embedding-provider: ai-service
+    ee-openai-api-base-url: https://api.openai.com
     ee-openai-api-key: null
     ee-openai-model: gpt-4-turbo-preview
+    ee-search-gate-max-batch-size: 512
+    ee-search-gate-write-timeout: 5
+    ee-search-indexer-exit-early-cold-duration: 30
+    ee-search-indexer-lag-tolerance-multiplier: 2
+    ee-search-indexer-max-run-duration: 60
+    ee-search-indexer-poll-limit: 1000
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
     email-from-name: null
@@ -160,6 +170,7 @@ config:
     help-link-custom-destination: https://www.metabase.com/help/premium
     http-channel-host-strategy: external-only
     humanization-strategy: simple
+    index-update-thread-count: 2
     install-analytics-database: true
     jdbc-data-warehouse-max-connection-pool-size: 15
     jwt-attribute-email: email
@@ -210,6 +221,7 @@ config:
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
     notification-thread-pool-size: 3
+    openai-max-tokens-per-batch: 4000
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
@@ -242,9 +254,11 @@ config:
     saml-user-provisioning-enabled: true
     scim-enabled: null
     sdk-encryption-validation-key: null
-    search-engine: appdb
     search-language: null
     search-typeahead-enabled: true
+    semantic-search-enabled: true
+    semantic-search-min-results-threshold: 100
+    semantic-search-results-limit: 1000
     send-email-on-first-login-from-new-device: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
@@ -268,6 +282,7 @@ config:
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
     ssh-heartbeat-interval-sec: 180
+    stale-index-retention-hours: 24
     start-of-week: sunday
     subscription-allowed-domains: null
     surveys-enabled: true

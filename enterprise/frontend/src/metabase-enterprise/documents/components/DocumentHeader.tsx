@@ -6,6 +6,7 @@ import DateTime, {
 } from "metabase/common/components/DateTime";
 import {
   ActionIcon,
+  Box,
   Button,
   Flex,
   Icon,
@@ -13,12 +14,21 @@ import {
   Text,
   TextInput,
   Tooltip,
+  Transition,
+  type TransitionProps,
 } from "metabase/ui";
 import type { Document } from "metabase-types/api";
 
+import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
 import S from "./DocumentHeader.module.css";
+
+const saveButtonTransition: TransitionProps["transition"] = {
+  in: { opacity: 1, visibility: "visible", width: "auto" },
+  out: { opacity: 0, visibility: "hidden", width: 0 },
+  transitionProperty: "opacity",
+};
 
 interface DocumentHeaderProps {
   document: Document | undefined;
@@ -49,7 +59,8 @@ export const DocumentHeader = ({
 }: DocumentHeaderProps) => {
   const handlePrint = useCallback(() => {
     window.print();
-  }, []);
+    trackDocumentPrint(document);
+  }, [document]);
 
   return (
     <Flex
@@ -99,60 +110,75 @@ export const DocumentHeader = ({
         )}
       </Flex>
       <Flex gap="md" align="center" className={S.actionsContainer}>
-        {showSaveButton && (
-          <Button onClick={onSave} variant="filled" data-hide-on-print>
-            {t`Save`}
-          </Button>
-        )}
-        <Menu position="bottom-end">
-          <Menu.Target>
-            <ActionIcon
-              variant="subtle"
-              size="md"
-              aria-label={t`More options`}
-              data-hide-on-print
+        <Transition
+          mounted={showSaveButton}
+          transition={saveButtonTransition}
+          duration={200}
+          keepMounted
+        >
+          {(style) => (
+            <Box
+              style={
+                style.display === "none" ? saveButtonTransition.out : style
+              }
             >
-              <Icon name="ellipsis" />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<Icon name="document" />}
-              onClick={handlePrint}
-            >
-              {t`Print Document`}
-            </Menu.Item>
-            {!isNewDocument && (
-              <>
-                {canWrite && (
-                  <Menu.Item
-                    leftSection={<Icon name="move" />}
-                    onClick={onMove}
-                  >
-                    {t`Move`}
-                  </Menu.Item>
-                )}
-                <Menu.Item
-                  leftSection={<Icon name={"bookmark"} />}
-                  onClick={onToggleBookmark}
-                >
-                  {isBookmarked ? t`Remove from Bookmarks` : t`Bookmark`}
-                </Menu.Item>
-                {canWrite && (
-                  <>
-                    <Menu.Divider />
+              <Button onClick={onSave} variant="filled" data-hide-on-print>
+                {t`Save`}
+              </Button>
+            </Box>
+          )}
+        </Transition>
+        {!document?.archived && (
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <ActionIcon
+                variant="subtle"
+                size="md"
+                aria-label={t`More options`}
+                data-hide-on-print
+              >
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="document" />}
+                onClick={handlePrint}
+              >
+                {t`Print Document`}
+              </Menu.Item>
+              {!isNewDocument && (
+                <>
+                  {canWrite && (
                     <Menu.Item
-                      leftSection={<Icon name="trash" />}
-                      onClick={onArchive}
+                      leftSection={<Icon name="move" />}
+                      onClick={onMove}
                     >
-                      {t`Move to trash`}
+                      {t`Move`}
                     </Menu.Item>
-                  </>
-                )}
-              </>
-            )}
-          </Menu.Dropdown>
-        </Menu>
+                  )}
+                  <Menu.Item
+                    leftSection={<Icon name={"bookmark"} />}
+                    onClick={onToggleBookmark}
+                  >
+                    {isBookmarked ? t`Remove from Bookmarks` : t`Bookmark`}
+                  </Menu.Item>
+                  {canWrite && (
+                    <>
+                      <Menu.Divider />
+                      <Menu.Item
+                        leftSection={<Icon name="trash" />}
+                        onClick={onArchive}
+                      >
+                        {t`Move to trash`}
+                      </Menu.Item>
+                    </>
+                  )}
+                </>
+              )}
+            </Menu.Dropdown>
+          </Menu>
+        )}
       </Flex>
     </Flex>
   );

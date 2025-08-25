@@ -695,7 +695,8 @@
                                 (fn [driver db options f]
                                   (do-with-resolved-connection driver db options
                                                                (fn [conn]
-                                                                 (driver/set-role! driver/*driver* conn role-a)
+                                                                 (when-not (:connection db)
+                                                                   (driver/set-role! driver/*driver* conn role-a))
                                                                  (f conn))))]
                     (is (= default-table-set (tables-set)))))))))))))
 

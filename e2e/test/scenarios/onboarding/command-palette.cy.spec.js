@@ -387,6 +387,21 @@ describe("command palette", () => {
       cy.findByText("Report an issue").should("be.visible");
     });
   });
+
+  describe("ee", () => {
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+    });
+
+    it("should have a 'New document' item", () => {
+      cy.visit("/");
+      cy.findByRole("button", { name: /search/ }).click();
+      H.commandPalette().within(() => {
+        cy.findByText("New document").should("be.visible").click();
+        cy.location("pathname").should("eq", "/document/new");
+      });
+    });
+  });
 });
 
 H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {

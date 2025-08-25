@@ -6,11 +6,9 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.transformations.nest-breakouts :as nest-breakouts]))
 
@@ -116,15 +114,13 @@
                                   (lib/aggregate (lib/cum-count))
                                   (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
                                   (lib/breakout products-category))
-            preprocessed      (qp.store/with-metadata-provider metadata-provider
-                                (lib.query/query metadata-provider (driver/with-driver :h2
-                                                                     (add/add-alias-info (qp.preprocess/preprocess query)))))
-            actual            (qp.store/with-metadata-provider metadata-provider
-                                (driver/with-driver :h2
-                                  (-> (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation preprocessed)
-                                      lib/->legacy-MBQL
-                                      add/add-alias-info
-                                      lib/->pMBQL)))]
+            preprocessed      (driver/with-driver :h2
+                                (add/add-alias-info
+                                 (qp.preprocess/preprocess
+                                  (lib/query metadata-provider query))))
+            actual            (driver/with-driver :h2
+                                (-> (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation preprocessed)
+                                    add/add-alias-info))]
         (is (=? {:stages [{;; join alias is escaped:
                            ;;
                            ;;    (metabase.driver/escape-alias :oracle "test_data_products__via__product_id")
@@ -156,8 +152,8 @@
                                                   ::add/source-alias  "test_data_products__v_d795ff70"
                                                   ::add/desired-alias "test_data_products__v_d795ff70"}
                                           "test_data_products__via__product_id__category"]]
-                           :aggregation [[:count {:name "count"}]
-                                         [:cum-count {:name "count_2"}]]}]}
+                           :aggregation [[:count {::add/desired-alias "count"}]
+                                         [:cum-count {::add/desired-alias "count_2"}]]}]}
                 actual))))))
 
 (deftest ^:parallel cumulative-count-offset-day-of-year-test

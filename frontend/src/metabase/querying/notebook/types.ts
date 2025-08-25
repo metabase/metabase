@@ -1,6 +1,8 @@
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import type { NotebookDataPickerProps } from "./components/NotebookDataPicker";
+
 export type NotebookStepType =
   | "data"
   | "join"
@@ -42,6 +44,11 @@ export interface NotebookStepAction {
   action: (args: { openStep: (id: string) => void }) => void;
 }
 
+export type NotebookDataPickerOptions = Pick<
+  NotebookDataPickerProps,
+  "shouldDisableItem"
+>;
+
 export interface NotebookStepProps {
   step: NotebookStep;
   query: Lib.Query;
@@ -51,6 +58,7 @@ export interface NotebookStepProps {
   reportTimezone: string;
   readOnly?: boolean;
   updateQuery: (query: Lib.Query) => Promise<void>;
+  dataPickerOptions?: NotebookDataPickerOptions;
 }
 
 export interface NotebookStepHeaderProps {

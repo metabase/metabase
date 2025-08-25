@@ -11,12 +11,12 @@ import {
   Flex,
   Group,
   Icon,
-  NumberInput,
   Select,
   Text,
   Tooltip,
 } from "metabase/ui";
 
+import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue/NumberInputWithFallbackValue";
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
@@ -48,8 +48,8 @@ export function DateIntervalPicker({
   const unitOptions = getUnitOptions(value, availableUnits);
   const dateRangeText = formatDateRange(value);
 
-  const handleIntervalChange = (inputValue: number | "") => {
-    if (inputValue !== "") {
+  const handleIntervalChange = (inputValue: number | string) => {
+    if (typeof inputValue === "number") {
       onChange(setInterval(value, inputValue));
     }
   };
@@ -73,7 +73,8 @@ export function DateIntervalPicker({
   return (
     <form onSubmit={handleSubmit}>
       <Flex p="md" align="center">
-        <NumberInput
+        <NumberInputWithFallbackValue
+          allowDecimal={false}
           value={interval}
           aria-label={t`Interval`}
           w="4rem"

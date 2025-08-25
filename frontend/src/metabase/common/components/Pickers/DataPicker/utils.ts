@@ -55,6 +55,7 @@ export const getDataPickerValue = (
         : displayInfo.isMetric
           ? "metric"
           : "card",
+      database_id: pickerInfo.databaseId,
     };
   }
 
@@ -107,7 +108,12 @@ export const getTableItem = (
   const table = tables?.find((db) => db.id === tableId);
   const name = table?.name ?? "";
 
-  return { model: "table", id: tableId, name };
+  return {
+    model: "table",
+    id: tableId,
+    name,
+    database_id: table?.db_id,
+  };
 };
 
 export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {

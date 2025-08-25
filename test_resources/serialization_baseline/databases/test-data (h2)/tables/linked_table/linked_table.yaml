@@ -18,6 +18,8 @@ serdes/meta:
   model: Database
 - id: linked_table
   model: Table
-database_require_filter: null
 archived_at: null
+database_require_filter: null
 deactivated_at: null
+is_writable: null
+data_authority: unconfigured

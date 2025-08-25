@@ -21,6 +21,7 @@
   (:require
    [buddy.core.hash :as buddy-hash]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -40,15 +41,13 @@
 ;; we should see tx timeout policies set accordingly e.g: SET LOCAL statement_timeout
 ;; we should use one transaction per write to limit opportunity for error here.
 (def ^Duration gate-write-timeout
-  "The time in which gate-documents! transactions should commit.
+  "[[semantic.settings/ee-search-gate-write-timeout]] wrapped in seconds duration.
+
+  The time in which gate-documents! transactions should commit.
   Optimistically enforced by SET LOCAL statement_timeout.
   This value is used to determine the lag-tolerance, and the degree to which we might
   expect to see out of order commits (e.g. lag-tolerance = gate-write-timeout * 2)."
-  (Duration/ofSeconds 5))
-
-(def max-batch-size
-  "The maximum number of documents that can be sent to (gate-documents!) without causing an error"
-  512)
+  (Duration/ofSeconds (semantic.settings/ee-search-gate-write-timeout)))
 
 (defn deleted-search-doc->gate-doc
   "Converts a deleted document reference into a gate table record.
@@ -107,9 +106,7 @@
   Returns a count of rows actually updated/inserted."
   [pgvector index-metadata gate-document-batch]
   {:pre [;; countable only
-         (seqable? gate-document-batch)
-         ;; too many documents and we might see buffer size limits get hit in the driver, TODO: bench/play with this - document expectations
-         (<= (bounded-count (inc max-batch-size) gate-document-batch) max-batch-size)]}
+         (seqable? gate-document-batch)]}
   ;; We will fix the transaction policy here (rather than letting caller decide) to encapsulate timeout behaviour
   ;; and to ensure the READ COMMITTED :isolation level is set.
   ;; NOTE: we depend on the UPDATE behaviour described here: https://www.postgresql.org/docs/current/transaction-iso.html#XACT-READ-COMMITTED
@@ -172,10 +169,14 @@
   - :lag-tolerance (Duration) (should be at least gate-write-timeout + some buffer for timeout variation)
 
   Call (next-watermark) on the result to determine where to poll next."
-  [pgvector index-metadata watermark & {:keys [^Duration lag-tolerance
-                                               limit]
-                                        :or   {lag-tolerance (.multipliedBy gate-write-timeout 2) ; heuristic: still depends on postgres enforcing timeouts. We might still need a slow-pass over everything occasionally in the future.
-                                               limit         1000}}]
+  [pgvector index-metadata watermark
+   & {:keys [^Duration lag-tolerance
+             limit]
+      :or   {;; heuristic: still depends on postgres enforcing timeouts. We might still need a slow-pass over
+             ;; everything occasionally in the future.
+             lag-tolerance (.multipliedBy gate-write-timeout
+                                          (semantic.settings/ee-search-indexer-lag-tolerance-multiplier))
+             limit         1000}}]
   {:pre [(pos? limit)]}
   (let [;; IMPORTANT: these Instant conversion must only be used for heuristic / approximate conditions (such as confidence-time)
         ;; as their precision does not match the actual SQL clock_timestamp() value.

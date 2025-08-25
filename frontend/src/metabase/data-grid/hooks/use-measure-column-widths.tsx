@@ -132,6 +132,9 @@ export const useMeasureColumnWidths = <TData, TValue>(
                   key={header.column.id}
                   data-measure-id={header.column.id}
                   data-measure-type="header"
+                  style={{
+                    minWidth: header.column.columnDef.minSize,
+                  }}
                 >
                   {headerCell}
                 </div>
