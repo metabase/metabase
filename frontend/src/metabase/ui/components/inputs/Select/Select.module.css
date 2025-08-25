@@ -1,7 +1,6 @@
 .SelectRoot {
   border-color: var(--mb-color-border);
   padding: 0;
-  overflow: auto;
 
   & > div {
     max-height: none !important;
@@ -89,12 +88,6 @@
   }
 }
 
-.SelectItems_Options {
-  padding: 0.75rem;
-  max-height: rem(500px);
-  overflow-y: auto;
-}
-
 .SelectItems_Item {
   --combobox-option-padding: 0;
 
@@ -150,10 +143,15 @@
   line-height: var(--select-item-line-height);
 }
 
+.SelectItems_Options {
+  padding: 0.75rem;
+}
+
 .Dropdown {
   background-color: var(--mb-color-background);
   border-color: var(--mb-color-border);
-  overflow: auto;
+  /* need to override the inline style from Mantine */
+  max-height: rem(500px) !important;
 }
 
 .SelectError {
