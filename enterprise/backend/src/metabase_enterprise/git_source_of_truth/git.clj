@@ -87,9 +87,7 @@
     (log/infof "Validating access to git repository %s (branch: %s)" repo-url branch)
 
     (with-temp-directory temp-dir
-      (let [auth-token (config/git-source-auth-token)
-            clone-url (build-clone-url repo-url auth-token)
-            result (execute-git-command temp-dir "ls-remote" "--heads" clone-url branch)]
+      (let [result (execute-git-command temp-dir "ls-remote" "--heads" repo-url branch)]
 
         (if (zero? (:exit result))
           (log/info "Git repository is accessible")
