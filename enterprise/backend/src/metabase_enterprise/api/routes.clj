@@ -20,6 +20,7 @@
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.documents.api]
    [metabase-enterprise.email.api]
+   [metabase-enterprise.git-source-of-truth.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
@@ -98,6 +99,7 @@
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/git-source-of-truth"          (premium-handler metabase-enterprise.git-source-of-truth.api/routes :serialization)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
