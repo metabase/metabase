@@ -61,9 +61,9 @@
   "Check if the indexer has run within the specified number of hours."
   [metadata-row hours-ago]
   (when-let [last-poll-inst (t/instant (:indexer_last_poll metadata-row))]
-    (.isAfter
+    (t/after?
      last-poll-inst
-     (t/minus (Instant/now) (t/hours hours-ago)))))
+     (t/minus (t/instant) (t/hours hours-ago)))))
 
 (defn- get-active-index-metadata-row
   "Get the metadata row for the currently active index."
