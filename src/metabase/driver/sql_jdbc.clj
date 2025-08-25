@@ -155,9 +155,9 @@
 
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
-  (let [sql #p (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
-                                  :quoted true
-                                  :dialect (sql.qp/quote-style driver)))]
+  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver)))]
     (driver-api/execute-write-sql! db-id sql)))
 
 (defmethod driver/truncate! :sql-jdbc

@@ -118,7 +118,7 @@
       (try
         ;; Dynamically load and call the python runner using requiring-resolve
         (let [{run-id :id} (transform-run/start-run! (:id transform) {:run_method run_method})
-              result (python-runner.api/execute-python-code body "PLACEHOLDER")]
+              result (python-runner.api/execute-python-code body (transforms.util/db-connect-str target-database))]
           (if (:error result)
             (do
               (transform-run/fail-started-run! run-id {})
@@ -137,8 +137,8 @@
                   ;; TODO shouldn't this be handled in upload?
                   (t2/delete! :model/Table (:id table)))
                 (upload/create-from-csv-and-sync! {:db         db
-                                                   :filename   (.getName ^File (:output-file result))
-                                                   :file       (:output-file result)
+                                                   :filename   (.getName (File. ^String (:output-file result)))
+                                                   :file       (File. ^String (:output-file result))
                                                    :schema     schema
                                                    :table-name name})
                 (transform-run/succeed-started-run! run-id)
