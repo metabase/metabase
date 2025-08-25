@@ -74,7 +74,7 @@ export function TableDetailPage({ params }: Props) {
 
   useEffect(() => {
     if (table) {
-      dispatch(setDetailView({ rowName, table }));
+      dispatch(setDetailView({ rowName, table, collectionId: null }));
     }
   }, [dispatch, rowName, table]);
 

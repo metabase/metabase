@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
-import { useGetCardQueryMetadataQuery } from "metabase/api";
+import { useGetCardQuery, useGetCardQueryMetadataQuery } from "metabase/api";
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
@@ -32,6 +32,12 @@ export function ModelDetailPage({ params }: Props) {
   const rowId = params.rowId;
 
   const {
+    data: card,
+    error: cardError,
+    isLoading: isCardLoading,
+  } = useGetCardQuery(cardId == null ? skipToken : { id: cardId });
+
+  const {
     data: metadata,
     error: metadataError,
     isLoading: isMetadataLoading,
@@ -56,13 +62,14 @@ export function ModelDetailPage({ params }: Props) {
     objectQuery ? Lib.toLegacyQuery(objectQuery) : skipToken,
   );
 
-  const error = metadataError ?? queryError;
-  const isLoading = isMetadataLoading || isQueryLoading;
+  const error = metadataError ?? queryError ?? cardError;
+  const isLoading = isMetadataLoading || isQueryLoading || isCardLoading;
 
   const data = useMemo(() => {
     return dataset ? extractRemappedColumns(dataset.data) : undefined;
   }, [dataset]);
 
+  const collectionId = card?.collection_id ?? null;
   const columns = useMemo(() => data?.cols ?? [], [data]);
   const row = useMemo(() => (data?.rows ?? [])[0], [data]);
   const rowName = getRowName(columns, row) || rowId;
@@ -76,9 +83,9 @@ export function ModelDetailPage({ params }: Props) {
 
   useEffect(() => {
     if (table) {
-      dispatch(setDetailView({ rowName, table }));
+      dispatch(setDetailView({ rowName, table, collectionId }));
     }
-  }, [dispatch, rowName, table]);
+  }, [dispatch, rowName, table, collectionId]);
 
   useUnmount(() => {
     dispatch(setDetailView(null));
