@@ -211,6 +211,7 @@
         query (-> query
                   (assoc :lib/metadata metadata-provider)
                   (dissoc :lib.convert/converted?)
+
                   lib.normalize/normalize)
         stages (:stages query)]
     (cond-> query
@@ -491,8 +492,8 @@
       (cond-> graph
         card-id  (dep/depend [:card from-id] [:card  card-id])
         table-id (dep/depend [:card from-id] [:table table-id]))
-      (catch #?(:clj Exception :cljs :default) _e
-        (throw (ex-info (i18n/tru "Cannot save card with cycles.") {}))))))
+      (catch #?(:clj Exception :cljs :default) e
+        (throw (ex-info (i18n/tru "Cannot save card with cycles.") {} e))))))
 
 (defn- build-graph [source-id metadata-provider a-query]
   (loop [graph (dep/graph)

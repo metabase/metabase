@@ -1,12 +1,8 @@
 /** DataGrid overrides */
 
-.tableRoot {
-  border-top: 1px solid var(--mb-color-border);
-}
-
 .tableRow {
   &:hover .tableBodyCell {
-    background-color: var(--mb-base-color-blue-10);
+    background-color: var(--mb-base-color-blue-5);
   }
 
   &:hover .tableHeaderCell {
@@ -15,7 +11,7 @@
   }
 
   &[data-row-selected="true"] .tableBodyCell {
-    background-color: var(--mb-base-color-blue-10);
+    background-color: var(--mb-base-color-blue-5);
   }
 }
 
@@ -32,9 +28,10 @@
 
 .tableHeaderCell {
   border-right: 1px solid var(--mb-color-border);
+  font-weight: 700;
 
-  &[data-column-id="__MB_ROW_SELECT"] {
-    border-right: none;
+  &:hover {
+    color: var(--mb-color-brand);
   }
 }
 
@@ -44,11 +41,7 @@
 
 .tableBodyCell {
   background-color: var(--mb-color-bg-white);
-  border-right: 1px solid var(--mb-color-border-alpha-30);
-
-  &[data-column-id="__MB_ROW_SELECT"] {
-    border-right: none;
-  }
+  border-right: 1px solid var(--mb-color-border);
 }
 
 .headerCellContainer {
@@ -62,4 +55,14 @@
 .sortIndicator {
   flex-shrink: 0;
   margin-left: 0.25rem;
+}
+
+.pencilIcon {
+  cursor: pointer;
+  color: var(--mb-color-brand);
+  visibility: hidden;
+}
+
+.tableRow:hover .pencilIcon {
+  visibility: visible;
 }

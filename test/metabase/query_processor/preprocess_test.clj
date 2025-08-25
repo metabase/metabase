@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -51,8 +52,8 @@
                     :num-rows 5}
                    (run-query))))
           (testing "preprocess should return same results even when query was cached."
-            (is (= expected-results
-                   (qp.preprocess/preprocess query)))))))))
+            (is (= (lib.schema.util/remove-lib-uuids expected-results)
+                   (lib.schema.util/remove-lib-uuids (qp.preprocess/preprocess query))))))))))
 
 (driver/register! ::custom-escape-spaces-to-underscores :parent :h2)
 
@@ -232,7 +233,7 @@
                    {:source-table "card__2"
                     :aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
                     :breakout     [[:field "RATING" {:base-type :type/Float}]]}))]
-      (let [preprocessed (lib/query mp (qp.preprocess/preprocess query))
+      (let [preprocessed (qp.preprocess/preprocess query)
             stages       (:stages preprocessed)]
         (testing "added metadata"
           (testing "first stage (from Card 1)"
@@ -314,9 +315,11 @@
                  {:aggregation [[:count]]
                   :breakout    [[:field %products.created-at {:source-field %product-id, :temporal-unit :month}]
                                 [:field %products.category {:source-field %product-id}]]}))]
+    ;; actually, ok just to not return `:source-alias`, which is used for mysterious FE legacy historical purposes. We
+    ;; can go ahead and return various Lib keys for Lib purposes.
     (doseq [col (qp.preprocess/query->expected-cols query)]
       (testing (pr-str (:name col))
-        (is (empty? (m/filter-vals #(= % "PRODUCTS__via__PRODUCT_ID") col)))))
+        (is (not (contains? col :source-alias)))))
     (testing "result metadata should still contain fk_field_id"
       (is (=? [{:fk_field_id (meta/id :orders :product-id)}
                {:fk_field_id (meta/id :orders :product-id)}
@@ -357,7 +360,9 @@
                                   ;; the `:default` temporal unit gets removed somewhere
                                   &People.people.birth-date
                                   &Products.products.price])}}
-              (qp.preprocess/preprocess query)))
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL)))
       (is (= [;; orders.id, from :fields
               "ID"
               ;; from the People join :fields
@@ -428,7 +433,7 @@
                                    [:field (meta/id :venues :price) {:base-type               :type/Text
                                                                      :source-field            (meta/id :checkins :venue-id)
                                                                      :source-field-join-alias "CH"}]
-                                   "Basic"]}))]
+                                   "1234"]}))]
       (is (=? {:query {:source-query {:source-table (meta/id :orders)
                                       :fields       [[:field (meta/id :orders :id)         nil]
                                                      [:field (meta/id :orders :user-id)    nil]
@@ -478,10 +483,10 @@
                                        (meta/id :venues :price)
                                        {:source-field-join-alias "CH"
                                         :join-alias              "VENUES__via__VENUE_ID__via__CH"}]
-                                      [:value "Basic" {}]]}}
-              (qp.preprocess/preprocess query)))
-      (testing "Query should be convertable back to MBQL 5"
-        (is (lib/query mp (qp.preprocess/preprocess query)))))))
+                                      [:value 1234 {}]]}}
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL))))))
 
 (deftest ^:parallel returned-columns-no-duplicates-test
   (testing "Don't return columns from a join twice (QUE-1607)"
@@ -505,7 +510,9 @@
                                 [:field "count" {:base-type :type/Integer}]
                                 [:field (meta/id :people :birth-date) {:join-alias "Q2"}]
                                 [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}}
-              (qp.preprocess/preprocess query)))
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL)))
       (is (= ["CREATED_AT"
               "count"
               "Q2__BIRTH_DATE"
@@ -580,7 +587,7 @@
                                      :fields [[:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]
                                      :stages [{:breakout [[:field {} (meta/id :products :category)]]}
                                               {:fields [[:field {} (meta/id :products :category)]]}]}]}]}
-                (lib/query mp (qp.preprocess/preprocess query))))
+                (qp.preprocess/preprocess query)))
         (is (= [["Products → Category"                     "Products__CATEGORY"]
                 ["Count"                                   "count"]
                 ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
@@ -599,17 +606,20 @@
                                              (meta/id :products :category)
                                              {:source-field (meta/id :orders :product-id)}]]}})]
       (testing "one stage"
-        (is (=? [{:name                     "CATEGORY"
-                  :display_name             "Product → Category"
-                  ;; technically this should probably be `:source/implicitly-joinable` but we reify the join during
-                  ;; preprocessing so it comes from joins now I guess. Probably fine. Note that join alias doesn't come
-                  ;; back in this case because [[metabase.lib.metadata.result-metadata/remove-implicit-join-aliases]]
-                  ;; strips it out. We should probably leave it in, but we were doing it for some sort of reason.
-                  :lib/source               :source/joins
-                  :lib/breakout?            true
-                  :lib/source-column-alias  "CATEGORY"
-                  :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                  :fk_field_id              (meta/id :orders :product-id)}
+        (is (=? [{:name                         "CATEGORY"
+                  :display_name                 "Product → Category"
+                  ;; This should be `:source/implicitly-joinable` because we reify the join during preprocessing, and
+                  ;; join doesn't exist in the original version of the query. Note that join alias doesn't come back in
+                  ;; this case because [[metabase.lib.metadata.result-metadata/remove-implicit-join-aliases]] strips it
+                  ;; out.
+                  :lib/source                   :source/implicitly-joinable
+                  :lib/breakout?                true
+                  :lib/source-column-alias      "CATEGORY"
+                  :lib/desired-column-alias     "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                  :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
+                  :source_alias                 (symbol "nil #_\"key is not present.\"")
+                  :fk_field_id                  (meta/id :orders :product-id)}
                  {:name                     "count"
                   :display_name             "Count"
                   :lib/source               :source/aggregations

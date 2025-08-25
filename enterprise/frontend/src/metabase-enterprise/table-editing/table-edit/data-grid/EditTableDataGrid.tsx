@@ -1,12 +1,7 @@
 import type { OnChangeFn, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
-import {
-  DataGrid,
-  type RowIdColumnOptions,
-  useDataGridInstance,
-} from "metabase/data-grid";
-import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
+import { DataGrid, useDataGridInstance } from "metabase/data-grid";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import type { DescribeActionFormResponse } from "../../api/types";
@@ -66,14 +61,9 @@ export const EditTableDataGrid = ({
     getCellState,
   });
 
-  const columnRowSelectOptions = useTableColumnRowSelect(true);
-
-  const rowIdColumnOptions: RowIdColumnOptions = useMemo(
-    () => ({
-      variant: "expandButton",
-    }),
-    [],
-  );
+  const columnRowSelectOptions = useTableColumnRowSelect({
+    onRowEditClick: onRowExpandClick,
+  });
 
   const handleBodyCellClick = useCallback(
     (
@@ -81,11 +71,6 @@ export const EditTableDataGrid = ({
       rowIndex: number,
       columnId: string,
     ) => {
-      if (columnId === ROW_ID_COLUMN_ID) {
-        onRowExpandClick(rowIndex);
-        return;
-      }
-
       if (
         editingCell?.rowIndex === rowIndex &&
         editingCell?.columnId === columnId
@@ -102,30 +87,26 @@ export const EditTableDataGrid = ({
 
       handleSelectEditingCell(rowIndex, columnId);
     },
-    [
-      onRowExpandClick,
-      handleSelectEditingCell,
-      editingCell,
-      updateFormDescription,
-    ],
+    [handleSelectEditingCell, editingCell, updateFormDescription],
   );
 
   const columnSizingMap = useMemo(() => {
     return {
-      [ROW_SELECT_COLUMN_ID]: 35,
-      [ROW_ID_COLUMN_ID]: 35,
+      [ROW_SELECT_COLUMN_ID]: 74,
     };
   }, []);
 
-  const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
+  const columnOrder = useMemo(
+    () => [ROW_SELECT_COLUMN_ID, ...cols.map(({ name }) => name)],
+    [cols],
+  );
 
   const tableProps = useDataGridInstance({
     data: rows,
-    rowId: rowIdColumnOptions,
     columnsOptions,
     columnOrder,
     columnSizingMap,
-    columnPinning: { left: [ROW_SELECT_COLUMN_ID, ROW_ID_COLUMN_ID] },
+    columnPinning: { left: [ROW_SELECT_COLUMN_ID] },
     enableRowSelection: true,
     rowSelection,
     onRowSelectionChange,
@@ -140,7 +121,6 @@ export const EditTableDataGrid = ({
         bodyContainer: S.tableBodyContainer,
         bodyCell: S.tableBodyCell,
         row: S.tableRow,
-        root: S.tableRoot,
       },
 
       // Overrides theme constants and default bg

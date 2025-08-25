@@ -26,7 +26,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.cloud.bigquery TableResult)))
+   (com.google.cloud.bigquery BigQuery TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -44,13 +44,13 @@
   [table-name]
   (bigquery.tx/execute! (format "DROP TABLE IF EXISTS `%s`;" (fmt-table-name table-name))))
 
-(deftest sanity-check-test
+(deftest ^:parallel sanity-check-test
   (mt/test-driver
     :bigquery-cloud-sdk
     (mt/dataset
       test-data
       (is (seq (mt/rows
-                (mt/run-mbql-query orders)))))))
+                (mt/run-mbql-query orders {:limit 1})))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -71,7 +71,7 @@
                               (driver/can-connect? :bigquery-cloud-sdk
                                                    (assoc db-details :dataset-filters-patterns fake-dataset-id))))))))
 
-(deftest table-rows-sample-test
+(deftest ^:parallel table-rows-sample-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "without worrying about pagination"
       (is (= [[1 "Red Medicine"]
@@ -84,17 +84,18 @@
                                                         (t2/select-one :model/Field :id (mt/id :venues :name))]
                                                        (constantly conj))
                   (sort-by first)
-                  (take 5)))))
+                  (take 5)))))))
 
-   ;; the initial dataset isn't realized until it's used the first time. because of that,
-   ;; we don't care how many pages it took to load this dataset above. it will be a large
-   ;; number because we're just tracking the number of times `get-query-results` gets invoked.
-
+(deftest ^:parallel table-rows-sample-test-2
+  (mt/test-driver :bigquery-cloud-sdk
+    ;; the initial dataset isn't realized until it's used the first time. because of that,
+    ;; we don't care how many pages it took to load this dataset above. it will be a large
+    ;; number because we're just tracking the number of times `get-query-results` gets invoked.
     (testing "with pagination"
       (let [pages-retrieved (atom 0)
             page-callback   (fn [] (swap! pages-retrieved inc))]
-        (with-bindings {#'bigquery/*page-size*     25
-                        #'bigquery/*page-callback* page-callback}
+        (binding [bigquery/*page-size*     25
+                  bigquery/*page-callback* page-callback]
           (let [results (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
                                                                   [(t2/select-one :model/Field :id (mt/id :venues :id))
                                                                    (t2/select-one :model/Field :id (mt/id :venues :name))]
@@ -109,11 +110,11 @@
                    (take 5 results)))
             (testing "results are not duplicated when pagination occurs (#45953)"
               (is (= (count results) (count (distinct results)))))
-           ;; the `(sort-by)` above will cause the entire resultset to be realized, so
-           ;; we want to make sure that it really did retrieve 25 rows per request
-           ;; this only works if the timeout has been temporarily set to 0 (see above)
+            ;; the `(sort-by)` above will cause the entire resultset to be realized, so
+            ;; we want to make sure that it really did retrieve 25 rows per request
+            ;; this only works if the timeout has been temporarily set to 0 (see above)
 
-           ;; TODO Temporarily disabling due to flakiness (#33140)
+            ;; TODO Temporarily disabling due to flakiness (#33140)
             #_(is (= 4 @pages-retrieved))))))))
 
 ;; These look like the macros from metabase.query-processor-test.expressions-test
@@ -134,59 +135,77 @@
      (mt/$ids ~'bird-count
        (calculate-bird-scarcity* ~formula ~filter-clause))))
 
-(deftest nulls-and-zeroes-test
+(deftest ^:parallel nulls-and-zeroes-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing (str "hey... expressions should work if they are just a Field! (Also, this lets us take a peek at the "
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              #_:clj-kondo/ignore
-             (calculate-bird-scarcity $count))))
+             (calculate-bird-scarcity $count))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-2
+  (mt/test-driver :bigquery-cloud-sdk
     (testing (str "do expressions automatically handle division by zero? Should return `nil` in the results for places "
                   "where that was attempted")
       (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
              (calculate-bird-scarcity [:/ 100.0 $count]
-                                      [:!= $count nil]))))
+                                      [:!= $count nil]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-3
+  (mt/test-driver :bigquery-cloud-sdk
     (testing (str "do expressions handle division by `nil`? Should return `nil` in the results for places where that "
                   "was attempted")
       (is (= [[nil] [10.0] [12.5] [20.0] [20.0] [nil] [9.09] [7.14] [12.5] [7.14]]
              (calculate-bird-scarcity [:/ 100.0 $count]
                                       [:or
                                        [:= $count nil]
-                                       [:!= $count 0]]))))
+                                       [:!= $count 0]]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-4
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
       (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:/ 100.0 $count]))))
+             (calculate-bird-scarcity [:/ 100.0 $count]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-5
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "ok, what if we use multiple args to divide, and more than one is zero?"
       (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:/ 100.0 $count $count]))))
+             (calculate-bird-scarcity [:/ 100.0 $count $count]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-6
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "are nulls/zeroes still handled appropriately when nested inside other expressions?"
       (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))
+             (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-7
+  (mt/test-driver :bigquery-cloud-sdk
     (testing (str "if a zero is present in the NUMERATOR we should return ZERO and not NULL "
                   "(`0 / 10 = 0`; `10 / 0 = NULL`, at least as far as MBQL is concerned)")
       (is (= [[nil] [0.0] [0.0] [1.0] [0.8] [0.5] [0.5] [nil] [0.0] [0.0]]
-             (calculate-bird-scarcity [:/ $count 10]))))
+             (calculate-bird-scarcity [:/ $count 10]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-8
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "can addition handle nulls & zeroes?"
       (is (= [[nil] [10.0] [10.0] [20.0] [18.0] [15.0] [15.0] [nil] [10.0] [10.0]]
-             (calculate-bird-scarcity [:+ $count 10]))))
+             (calculate-bird-scarcity [:+ $count 10]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-9
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "can subtraction handle nulls & zeroes?"
       (is (= [[nil] [10.0] [10.0] [0.0] [2.0] [5.0] [5.0] [nil] [10.0] [10.0]]
-             (calculate-bird-scarcity [:- 10 $count]))))
+             (calculate-bird-scarcity [:- 10 $count]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-10
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "can multiplications handle nulls & zeros?"
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              (calculate-bird-scarcity [:* 1 $count]))))))
 
-(deftest db-default-timezone-test
+(deftest ^:parallel db-default-timezone-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= "UTC"
            (driver/db-default-timezone :bigquery-cloud-sdk (mt/db))))))
@@ -230,7 +249,7 @@
                 (is (<= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
                 (is (<= 20 @invocation-count))))))))))
 
-(def native-dataset
+(def ^:private native-dataset
   (tx/native-dataset-definition
    "native-dataset"
    [["categories"
@@ -489,19 +508,18 @@
                  (into [] (filter (fn [x] (= (:table-name x) "records_o"))
                                   (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records" "records_o"]}))))))))))
 
-(deftest query-nested-fields-test
-  (mt/test-driver
-    :bigquery-cloud-sdk
-    (mt/dataset
-      nested-records
-      (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
-              :rows [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
-             (mt/rows+column-names
-              (mt/run-mbql-query records
-                {:fields [(mt/id :records :r :a)
-                          (mt/id :records :r :b)
-                          (mt/id :records :r :rr :aa)
-                          (mt/id :records :r :rr)]})))))))
+(deftest ^:parallel query-nested-fields-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/dataset nested-records
+      (let [query (mt/mbql-query records
+                    {:fields [(mt/id :records :r :a)
+                              (mt/id :records :r :b)
+                              (mt/id :records :r :rr :aa)
+                              (mt/id :records :r :rr)]})]
+        (mt/with-native-query-testing-context query
+          (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
+                  :rows    [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
+                 (mt/rows+column-names (qp/process-query query)))))))))
 
 (deftest sync-table-with-required-filter-test
   (mt/test-driver
@@ -564,48 +582,53 @@
     :bigquery-cloud-sdk
     (mt/dataset native-dataset
       (testing "Partitioned tables that require a partition filter can be synced"
-        (let [table-names  ["partition_by_range" "partition_by_time_2" "partition_by_datetime"
-                            "partition_by_ingestion_time_2" "partition_by_ingestion_time_not_required_2"]
-              mv-names     ["mv_partition_by_datetime" "mv_partition_by_range"]]
-          (let [table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in (concat mv-names table-names)])
-                all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
-            (testing "Field values are correctly synced"
-              ;; Manually activate Field values since they are not created during sync (#53387)
-              (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
-                (field-values/get-or-create-full-field-values! field))
-              (is (= {"customer_id"   #{1 2 3}
-                      "vip_customer"  #{42}
-                      "name"          #{"Khuat" "Quang" "Ngoc"}
-                      "company"       #{"Metabase" "Tesla" "Apple"}
-                      "ev_company"    #{"Tesla"}
-                      "is_awesome"    #{true false}
-                      "is_opensource" #{true false}}
-                     (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
-                                     :from   [[:metabase_field :field]]
-                                     :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
-                                     :where  [:and [:in :field.table_id table-ids]
-                                              [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
-                          (map #(update % :values (comp set json/decode)))
-                          (map (juxt :field-name :values))
-                          (into {}))))))
+        (let [table-names   ["partition_by_range" "partition_by_time_2" "partition_by_datetime"
+                             "partition_by_ingestion_time_2" "partition_by_ingestion_time_not_required_2"]
+              mv-names      ["mv_partition_by_datetime" "mv_partition_by_range"]
+              table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in (concat mv-names table-names)])
+              all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
+          (testing "Field values are correctly synced"
+            ;; Manually activate Field values since they are not created during sync (#53387)
+            (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
+              (field-values/get-or-create-full-field-values! field))
+            (is (= {"customer_id"   #{1 2 3}
+                    "vip_customer"  #{42}
+                    "name"          #{"Khuat" "Quang" "Ngoc"}
+                    "company"       #{"Metabase" "Tesla" "Apple"}
+                    "ev_company"    #{"Tesla"}
+                    "is_awesome"    #{true false}
+                    "is_opensource" #{true false}}
+                   (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
+                                   :from   [[:metabase_field :field]]
+                                   :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
+                                   :where  [:and [:in :field.table_id table-ids]
+                                            [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
+                        (map #(update % :values (comp set json/decode)))
+                        (map (juxt :field-name :values))
+                        (into {}))))))))))
 
-          (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
-            (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
-                                                                        :name "partition_by_ingestion_time_not_required_2")]
-              (is (=? [{:name           "_PARTITIONTIME"
-                        :database_type "TIMESTAMP"
-                        :base_type     :type/DateTimeWithLocalTZ
-                        :database_position 1}
-                       {:name           "_PARTITIONDATE"
-                        :database_type "DATE"
-                        :base_type     :type/Date
-                        :database_position 2}]
-                      (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
-                                 :database_partitioned true {:order-by [[:name :desc]]}))))
-            (testing "and query this table should return the column pseudocolumn as well"
-              (is (malli=
-                   [:tuple :boolean ms/TemporalString ms/TemporalString]
-                   (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required_2 {:limit 1}))))))))))))
+(deftest full-sync-partitioned-table-test-2
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (mt/dataset native-dataset
+      (testing "Partitioned tables that require a partition filter can be synced"
+        (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
+          (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
+                                                                      :name "partition_by_ingestion_time_not_required_2")]
+            (is (=? [{:name           "_PARTITIONTIME"
+                      :database_type "TIMESTAMP"
+                      :base_type     :type/DateTimeWithLocalTZ
+                      :database_position 1}
+                     {:name           "_PARTITIONDATE"
+                      :database_type "DATE"
+                      :base_type     :type/Date
+                      :database_position 2}]
+                    (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
+                               :database_partitioned true {:order-by [[:name :desc]]}))))
+          (testing "and query this table should return the column pseudocolumn as well"
+            (is (malli=
+                 [:tuple :boolean ms/TemporalString ms/TemporalString]
+                 (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required_2 {:limit 1})))))))))))
 
 (deftest sync-update-require-partition-option-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -851,10 +874,10 @@
               "`describe-fields` should see the fields in the table")
           (sync/sync-database! (mt/db) {:scan :schema})
           (testing "We should be able to run queries against the table"
-            (doseq [[col-nm param-v] [[:numeric_col (bigdec numeric-val)]
-                                      [:decimal_col (bigdec decimal-val)]
-                                      [:bignumeric_col (bigdec bignumeric-val)]
-                                      [:bigdecimal_col (bigdec bigdecimal-val)]]]
+            (doseq [[col-nm param-v] {"numeric_col"    (bigdec numeric-val)
+                                      "decimal_col"    (bigdec decimal-val)
+                                      "bignumeric_col" (bigdec bignumeric-val)
+                                      "bigdecimal_col" (bigdec bigdecimal-val)}]
               (testing (format "filtering against %s" col-nm))
               (is (= 1
                      (-> (mt/first-row
@@ -1271,29 +1294,29 @@
                      (:error result)))))))
       (is (< (count before-names) (+ (count (future-thread-names)) 5))))))
 
-(deftest alternate-host-test
+(deftest ^:parallel alternate-host-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Alternate BigQuery host can be configured"
       (mt/with-temp [:model/Database {:as temp-db}
                      {:engine  :bigquery-cloud-sdk
                       :details (-> (:details (mt/db))
                                    (assoc :host "bigquery.example.com"))}]
-        (let [client (#'bigquery/database-details->client (:details temp-db))]
+        (let [^BigQuery client (#'bigquery/database-details->client (:details temp-db))]
           (is (= "bigquery.example.com"
                  (.getHost (.getOptions client)))
               "BigQuery client should be configured with alternate host"))))))
 
-(deftest user-agent-is-set-test
+(deftest ^:parallel user-agent-is-set-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "User agent is set for bigquery requests"
-      (let [client (#'bigquery/database-details->client (:details (mt/db)))
-            mb-version (:tag config/mb-version-info)
-            run-mode   (name config/run-mode)
-            user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)]
+      (let [^BigQuery client (#'bigquery/database-details->client (:details (mt/db)))
+            mb-version       (:tag config/mb-version-info)
+            run-mode         (name config/run-mode)
+            user-agent       (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)]
         (is (= user-agent
                (-> client .getOptions .getUserAgent)))))))
 
-(deftest timestamp-precision-test
+(deftest ^:parallel timestamp-precision-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [sql (str "select"
                    " timestamp '2024-12-11 16:23:55.123456 UTC' col_timestamp,"

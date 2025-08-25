@@ -48,10 +48,7 @@ export const visitNewEmbedPage = ({
 
   cy.wait("@dashboard");
 
-  cy.get("#iframe-embed-container", {
-    // we are loading lots of JS, so on a slow connection it will take a long while.
-    timeout: 20000,
-  }).should("have.attr", "data-iframe-loaded", "true");
+  cy.get("[data-iframe-loaded]", { timeout: 20000 }).should("have.length", 1);
 };
 
 export const assertRecentItemName = (
@@ -80,10 +77,11 @@ type NavigateToStepOptions =
       dismissEmbedTerms?: boolean;
       resourceName?: never;
     }
-  | ({ experience: "dashboard" | "chart"; dismissEmbedTerms?: boolean } & (
-      | { resourceName: string; skipResourceSelection?: never }
-      | { skipResourceSelection: true }
-    ));
+  | {
+      experience: "dashboard" | "chart" | "browser";
+      dismissEmbedTerms?: boolean;
+      resourceName: string;
+    };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
@@ -98,6 +96,8 @@ export const navigateToEntitySelectionStep = (
     cy.findByText("Chart").click();
   } else if (experience === "exploration") {
     cy.findByText("Exploration").click();
+  } else if (experience === "browser") {
+    cy.findByText("Browser").click();
   }
 
   // exploration template does not have the entity selection step
@@ -108,12 +108,13 @@ export const navigateToEntitySelectionStep = (
     });
   }
 
-  if (experience !== "exploration" && !options.skipResourceSelection) {
+  if (experience !== "exploration") {
     const { resourceName } = options;
 
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
       .with("chart", () => "Questions")
+      .with("browser", () => "Collections")
       .otherwise(() => "");
 
     cy.log(`searching for ${resourceType} via the picker modal`);
@@ -124,6 +125,11 @@ export const navigateToEntitySelectionStep = (
     entityPickerModal().within(() => {
       cy.findByText(resourceType).click();
       cy.findAllByText(resourceName).first().click();
+
+      // Collection picker requires an explicit confirmation.
+      if (experience === "browser") {
+        cy.findByText("Select").click();
+      }
     });
 
     cy.log(`${resourceType} title should be visible by default`);

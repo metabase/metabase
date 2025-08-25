@@ -3,6 +3,7 @@ import { updateQuestion } from "metabase/query_builder/actions/core";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Collection,
@@ -40,15 +41,17 @@ interface NativeQueryEditorTopBarProps {
   snippetCollections?: Collection[];
   sidebarFeatures: SidebarFeatures;
 
-  toggleEditor: () => void;
+  toggleEditor?: () => void;
+  toggleDataReference?: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
-  onOpenModal: (modalType: QueryModalType) => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
   onChange: (queryText: string) => void;
-  setParameterValue: (parameterId: ParameterId, value: string) => void;
+  setParameterValue?: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  databaseIsDisabled?: (database: Database) => boolean;
 }
 
 const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
@@ -77,9 +80,11 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     nativeEditorSelectedText,
     setIsNativeEditorOpen,
     toggleEditor,
+    toggleDataReference,
     onSetDatabaseId,
     hasParametersList = true,
     setDatasetQuery,
+    databaseIsDisabled,
   } = props;
 
   const dispatch = useDispatch();
@@ -127,9 +132,10 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           setDatabaseId={setDatabaseId}
           setTableId={setTableId}
           editorContext={editorContext}
+          databaseIsDisabled={databaseIsDisabled}
         />
       )}
-      {hasParametersList && (
+      {hasParametersList && setParameterValue && (
         <ResponsiveParametersList
           question={question}
           parameters={parameters}
@@ -154,12 +160,14 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
             isShowingDataReference={isShowingDataReference}
             isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
             isShowingSnippetSidebar={isShowingSnippetSidebar}
+            toggleDataReference={toggleDataReference}
             onOpenModal={onOpenModal}
           />
         )}
         {query.hasWritePermission() &&
           !question.isArchived() &&
-          setIsNativeEditorOpen && (
+          setIsNativeEditorOpen &&
+          toggleEditor && (
             <VisibilityToggler
               isOpen={isNativeEditorOpen}
               readOnly={!!readOnly}

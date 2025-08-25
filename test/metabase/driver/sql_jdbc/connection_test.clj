@@ -1,4 +1,8 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.connection-test
+  {:clj-kondo/config '{:linters
+                       ;; allowing this for now since we sorta need to put real DBs in the app DB to test the DB ID
+                       ;; -> connection pool stuff
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -119,18 +123,18 @@
               :databricks
               (assoc details :log-level 0)
 
-              (cond-> details
+              (cond
                 ;; swap localhost and 127.0.0.1
                 (and (string? (:host details))
                      (str/includes? (:host details) "localhost"))
-                (update :host str/replace "localhost" "127.0.0.1")
+                (update details :host str/replace "localhost" "127.0.0.1")
 
                 (and (string? (:host details))
                      (str/includes? (:host details) "127.0.0.1"))
-                (update :host str/replace "127.0.0.1" "localhost")
+                (update details :host str/replace "127.0.0.1" "localhost")
 
                 :else
-                (assoc :new-config "something"))))))
+                (assoc details :new-config "something"))))))
 
 (deftest connection-pool-invalidated-on-details-change
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})

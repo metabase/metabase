@@ -3,10 +3,13 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
-   [metabase.driver.sql-jdbc.sync.describe-database
-    :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.card :as lib.card]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -21,7 +24,7 @@
 
 (deftest ^:parallel describe-database-test
   (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
-                         {:name table, :schema "PUBLIC", :description nil}))}
+                         {:name table, :schema "PUBLIC", :description nil, :is_writable true}))}
          (driver/describe-database :h2 (mt/db)))))
 
 (deftest describe-fields-sync-with-composite-pks-test
@@ -168,8 +171,8 @@
                  (driver/connection-properties driver))))
 
 (deftest syncable-schemas-with-schema-filters-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
-                                             :+features [:actions]
+  (mt/test-drivers (mt/normal-driver-select {:+parent     :sql-jdbc
+                                             :+features   [:actions]
                                              :+conn-props ["schema-filters"]})
     (let [fake-schema-name (u/qualified-name ::fake-schema)]
       (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
@@ -186,88 +189,92 @@
             patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
         (testing "syncable-schemas works as expected"
           (testing "with an inclusion filter"
-            (mt/with-temp [:model/Database db-filtered {:engine  driver
-                                                        :details (-> (mt/db)
-                                                                     :details
-                                                                     (assoc filter-type-prop "inclusion"
-                                                                            patterns-type-prop "public"))}]
-              (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
-                (is      (contains? syncable "public"))
-                (is (not (contains? syncable fake-schema-name))))))
+            (let [db-filtered (-> (mt/db)
+                                  (update :details assoc filter-type-prop "inclusion", patterns-type-prop "public")
+                                  ;; so we don't stomp on the connection pool for the normal test DB.
+                                  (assoc :id Integer/MAX_VALUE))
+                  syncable    (driver/syncable-schemas driver/*driver* db-filtered)]
+              (is      (contains? syncable "public"))
+              (is (not (contains? syncable fake-schema-name)))))
           (testing "with an exclusion filter"
-            (mt/with-temp [:model/Database db-filtered {:engine  driver
-                                                        :details (-> (mt/db)
-                                                                     :details
-                                                                     (assoc filter-type-prop "exclusion"
-                                                                            patterns-type-prop "public"))}]
-              (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
-                (is (not (contains? syncable "public")))
-                (is (not (contains? syncable fake-schema-name)))))))))))
+            (let [db-filtered (-> (mt/db)
+                                  (update :details assoc filter-type-prop "exclusion", patterns-type-prop "public")
+                                  (assoc :id Integer/MAX_VALUE))
+                  syncable (driver/syncable-schemas driver/*driver* db-filtered)]
+              (is (not (contains? syncable "public")))
+              (is (not (contains? syncable fake-schema-name))))))))))
 
 (deftest ^:parallel uuid-filtering-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :+features [:uuid-type]})
-    (let [uuid (random-uuid)
-          uuid-query (mt/native-query {:query (format "select cast('%s' as %s) as x"
-                                                      uuid
-                                                      (sql.tx/field-base-type->sql-type driver/*driver* :type/UUID))})]
-      (mt/with-temp [:model/Card card (-> (mt/card-with-source-metadata-for-query uuid-query)
-                                          (assoc :type :model))]
-        (let [col-metadata (first (:result_metadata card))
-              model-query {:database (mt/id)
-                           :type :query
-                           :query {:source-table (str "card__" (:id card))}}]
-          (is (= :type/UUID (:base_type col-metadata)))
-          (are [expected filt]
-               (= expected
-                  (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
-            [[uuid]] [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]]
-            [[uuid]] [:= (:field_ref col-metadata) (:field_ref col-metadata)]
-            [[uuid]] [:= (:field_ref col-metadata) (str uuid)]
-            [[uuid]] [:!= (:field_ref col-metadata) (str (random-uuid))]
-            [[uuid]] [:starts-with (:field_ref col-metadata) (str uuid)]
-            [[uuid]] [:ends-with (:field_ref col-metadata) (str uuid)]
-            [[uuid]] [:contains (:field_ref col-metadata) (str uuid)]
+    (let [uuid        (random-uuid)
+          uuid-query  (mt/native-query {:query (format "select cast('%s' as %s) as x"
+                                                       uuid
+                                                       (sql.tx/field-base-type->sql-type driver/*driver* :type/UUID))})
+          mp          (lib.tu/mock-metadata-provider
+                       (mt/metadata-provider)
+                       {:cards [(merge (mt/card-with-source-metadata-for-query uuid-query)
+                                       {:id   1
+                                        :type :model})]})
+          col         (first (lib.card/card-returned-columns mp (lib.metadata/card mp 1)))
+          model-query (lib/query
+                       mp
+                       {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table "card__1"}})]
+      (is (= :type/UUID (:base-type col)))
+      (are [expected filt]
+           (= expected
+              (mt/rows (qp/process-query (lib/filter model-query filt))))
+        [[uuid]] (lib/= col (lib/normalize [:value {:base-type :type/UUID} (str uuid)]))
+        [[uuid]] (lib/= col col)
+        [[uuid]] (lib/= col (str uuid))
+        [[uuid]] (lib/!= col (str (random-uuid)))
+        [[uuid]] (lib/starts-with col (str uuid))
+        [[uuid]] (lib/ends-with col (str uuid))
+        [[uuid]] (lib/contains col (str uuid))
 
-            ;; Test partial uuid values
-            [[uuid]] [:contains (:field_ref col-metadata) (subs (str uuid) 0 1)]
-            [[uuid]] [:starts-with (:field_ref col-metadata) (subs (str uuid) 0 1)]
-            [[uuid]] [:ends-with (:field_ref col-metadata) (subs (str uuid) (dec (count (str uuid))))]
+          ;; Test partial uuid values
+        [[uuid]] (lib/contains col (subs (str uuid) 0 1))
+        [[uuid]] (lib/starts-with col (subs (str uuid) 0 1))
+        [[uuid]] (lib/ends-with col (subs (str uuid) (dec (count (str uuid)))))
 
-            ;; Cannot match a uuid, but should not blow up
-            [[uuid]] [:!= (:field_ref col-metadata) "q"]
-            [] [:= (:field_ref col-metadata) "q"]
-            [] [:starts-with (:field_ref col-metadata) "q"]
-            [] [:ends-with (:field_ref col-metadata) "q"]
-            [] [:contains (:field_ref col-metadata) "q"]
+          ;; Cannot match a uuid, but should not blow up
+        [[uuid]] (lib/!= col "q")
+        []       (lib/= col "q")
+        []       (lib/starts-with col "q")
+        []       (lib/ends-with col "q")
+        []       (lib/contains col "q")
 
-            ;; empty/null handling
-            [] [:is-empty (:field_ref col-metadata)]
-            [[uuid]] [:not-empty (:field_ref col-metadata)]
-            [] [:is-null (:field_ref col-metadata)]
-            [[uuid]] [:not-null (:field_ref col-metadata)]
+          ;; empty/null handling
+        []       (lib/is-empty col)
+        [[uuid]] (lib/not-empty col)
+        []       (lib/is-null col)
+        [[uuid]] (lib/not-null col)
 
-            ;; nil value handling
-            [[uuid]] [:!= (:field_ref col-metadata) nil]
-            [] [:= (:field_ref col-metadata) nil])
-          (testing ":= uses indexable query"
-            (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]]
-                     (some-fn #(= uuid %)
-                              #(= [:metabase.util.honey-sql-2/typed
-                                   [:cast (str uuid) [:raw "uuid"]]
-                                   {:database-type "uuid"}]
-                                  %))]
-                    (sql.qp/->honeysql
-                     driver/*driver*
-                     [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]])))
-            (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]]
-                     (some-fn #(= uuid %)
-                              #(= [:metabase.util.honey-sql-2/typed
-                                   [:cast (str uuid) [:raw "uuid"]]
-                                   {:database-type "uuid"}]
-                                  %))]
-                    (sql.qp/->honeysql
-                     driver/*driver*
-                     [:= (:field_ref col-metadata) uuid])))))))))
+          ;; nil value handling
+        [[uuid]] (lib/!= col nil)
+        []       (lib/= col nil))
+      (testing ":= uses indexable query"
+        (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (lib/->legacy-MBQL (lib/ref col)))]]
+                 (some-fn #(= uuid %)
+                          #(= [:metabase.util.honey-sql-2/typed
+                               [:cast (str uuid) [:raw "uuid"]]
+                               {:database-type "uuid"}]
+                              %))]
+                (sql.qp/->honeysql
+                 driver/*driver*
+                 [:=
+                  (lib/->legacy-MBQL (lib/ref col))
+                  [:value (str uuid) {:base_type :type/UUID}]])))
+        (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (lib/->legacy-MBQL (lib/ref col)))]]
+                 (some-fn #(= uuid %)
+                          #(= [:metabase.util.honey-sql-2/typed
+                               [:cast (str uuid) [:raw "uuid"]]
+                               {:database-type "uuid"}]
+                              %))]
+                (sql.qp/->honeysql
+                 driver/*driver*
+                 [:= (lib/->legacy-MBQL (lib/ref col)) uuid])))))))
 
 (deftest query-canceled-test?
   (testing "walks a chain of exceptions"

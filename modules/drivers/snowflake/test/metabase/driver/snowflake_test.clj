@@ -21,7 +21,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.events.core :as events]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -177,7 +176,10 @@
         false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))))
+        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))
+    (testing "Application parameter is set to identify Metabase connections"
+      (is (= "Metabase_Metabase"
+             (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
 
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
@@ -984,7 +986,7 @@
   (testing "#37065"
     (mt/test-driver :snowflake
       (mt/dataset dst-change
-        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [metadata-provider (mt/metadata-provider)
               ds-tz-test (lib.metadata/table metadata-provider (mt/id :dst_tz_test))
               dtz        (lib.metadata/field metadata-provider (mt/id :dst_tz_test :dtz))
               query      (-> (lib/query metadata-provider ds-tz-test)
@@ -1041,7 +1043,7 @@
     (mt/test-driver :snowflake
       (let [variant-base-type (sql-jdbc.sync/database-type->base-type :snowflake :VARIANT)
             metadata-provider (lib.tu/merged-mock-metadata-provider
-                               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                               (mt/metadata-provider)
                                {:fields [{:id             (mt/id :venues :name)
                                           :base-type      variant-base-type
                                           :effective-type variant-base-type

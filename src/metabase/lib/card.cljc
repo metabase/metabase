@@ -20,7 +20,8 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata _style]
@@ -38,16 +39,6 @@
     (= (:type card-metadata) :model) (assoc :model? true)
     (= (:type card-metadata) :metric) (assoc :metric? true)
     (= (lib.util/source-card-id query) (:id card-metadata)) (assoc :is-source-card true)))
-
-(mu/defmethod lib.metadata.calculation/visible-columns-method :metadata/card :- ::lib.metadata.calculation/visible-columns
-  [query                                              :- ::lib.schema/query
-   stage-number                                       :- :int
-   {:keys [fields result-metadata] :as card-metadata} :- ::lib.schema.metadata/card
-   {:keys [include-implicitly-joinable?] :as options} :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
-  (concat
-   (lib.metadata.calculation/returned-columns query stage-number card-metadata options)
-   (when include-implicitly-joinable?
-     (lib.metadata.calculation/implicitly-joinable-columns query stage-number (concat fields result-metadata)))))
 
 (mu/defn fallback-display-name :- ::lib.schema.common/non-blank-string
   "If for some reason the metadata is unavailable. This is better than returning nothing I guess."
@@ -79,7 +70,7 @@
    card-id               :- [:maybe ::lib.schema.id/card]
    field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
-                                (update-keys u/->kebab-case-en))
+                                (perf/update-keys u/->kebab-case-en))
         ;; use the (possibly user-specified) display name as the "original display name" going forward ONLY IF THE
         ;; CARD THIS CAME FROM WAS A MODEL! BUT DON'T USE IT IF IT ALREADY CONTAINS A `→`!!!
         source-metadata-col (cond-> source-metadata-col
@@ -90,16 +81,13 @@
                                      (when-some [card (lib.metadata/card metadata-providerable card-id)]
                                        (= (:type card) :model))))
                               (assoc :lib/model-display-name (:display-name source-metadata-col)))
-        col (cond-> (merge
-                     {:base-type :type/*, :lib/type :metadata/column}
-                     field-metadata
-                     (m/filter-vals some? source-metadata-col)
-                     {:lib/type                :metadata/column
-                      :lib/source              :source/card
-                      :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
-              card-id
-              (assoc :lib/card-id card-id)
-
+        col (merge
+             {:base-type :type/*, :lib/type :metadata/column}
+             field-metadata
+             (m/filter-vals some? source-metadata-col)
+             {:lib/type                :metadata/column
+              :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
+        col (cond-> col
               (:metabase.lib.field/temporal-unit source-metadata-col)
               (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit source-metadata-col)))
 
@@ -111,6 +99,8 @@
               (assoc :fk-target-field-id nil))]
     (-> col
         lib.field.util/update-keys-for-col-from-previous-stage
+        (merge (when card-id
+                 {:lib/source :source/card, :lib/card-id card-id}))
         ;; :effective-type is required, but not always set, see e.g.,
         ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
         (u/assoc-default :effective-type (:base-type col))
@@ -214,7 +204,7 @@
                        binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))
             result-cols))))
 
-(mu/defn card-metadata-columns :- [:maybe ::maybe-columns]
+(mu/defn card-returned-columns :- [:maybe ::maybe-columns]
   "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
@@ -226,7 +216,10 @@
                           (source-model-cols metadata-providerable card))]
         (not-empty
          (into []
-               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable)
+               ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
+               ;; 'crazy long' column name then we need to use that in the next stage.
+               ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
+               (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util/non-truncating-unique-name-generator))
                (cond-> result-cols
                  (seq model-cols) (merge-model-metadata model-cols))))))))
 
@@ -237,7 +230,7 @@
   ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
   ;; but handle that case anyway. (#29739)
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
-    (card-metadata-columns metadata-providerable card)))
+    (card-returned-columns metadata-providerable card)))
 
 (mu/defmethod lib.metadata.calculation/returned-columns-method :metadata/card :- ::lib.metadata.calculation/returned-columns
   [query         :- ::lib.schema/query
@@ -245,16 +238,16 @@
    card          :- ::lib.schema.metadata/card
    options       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (mapv (fn [col]
-          (assoc col :lib/source :source/card))
+          (assoc col :lib/source :source/card, :lib/card-id (:id card)))
         (if (= (:type card) :metric)
           (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
                                  (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
-            (not-empty (lib.metadata.calculation/returned-columns
-                        (assoc metric-query :lib/metadata (:lib/metadata query))
-                        -1
-                        (lib.util/query-stage metric-query -1)
-                        options)))
-          (card-metadata-columns query card))))
+            (lib.metadata.calculation/returned-columns
+             (assoc metric-query :lib/metadata (:lib/metadata query))
+             -1
+             (lib.util/query-stage metric-query -1)
+             options))
+          (card-returned-columns query card))))
 
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."

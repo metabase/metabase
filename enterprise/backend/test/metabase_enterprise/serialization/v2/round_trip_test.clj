@@ -33,6 +33,7 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models.serialization :as serdes]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml])
@@ -140,45 +141,46 @@
       (is (necessary? b) (format "We can remove %s files from %s" b source-dir-path)))))
 
 (deftest baseline-comparison-test
-  (let [wrote-files? (volatile! false)
-        temp-dir     (temp-dir "serialization_test")
-        output-dir   (.toFile (.resolve temp-dir "serialization_output"))]
-    (try
-      (mt/with-empty-h2-app-db!
-        (delete-dir-contents! dev-inspect-dir)
+  (search.tu/with-index-disabled
+    (let [wrote-files? (volatile! false)
+          temp-dir     (temp-dir "serialization_test")
+          output-dir   (.toFile (.resolve temp-dir "serialization_output"))]
+      (try
+        (mt/with-empty-h2-app-db!
+          (delete-dir-contents! dev-inspect-dir)
 
-        (load-extract! source-dir output-dir)
+          (load-extract! source-dir output-dir)
 
-        (let [source-files  (fileset source-dir)
-              output-files  (fileset output-dir)
-              missing-files (set/difference source-files output-files)
-              added-files   (set/difference output-files source-files)]
+          (let [source-files  (fileset source-dir)
+                output-files  (fileset output-dir)
+                missing-files (set/difference source-files output-files)
+                added-files   (set/difference output-files source-files)]
 
-          (testing "No files are missing"
-            (is (empty? missing-files)))
-          (testing "No files have been added"
-            (is (empty? added-files)))
+            (testing "No files are missing"
+              (is (empty? missing-files)))
+            (testing "No files have been added"
+              (is (empty? added-files)))
 
-          (testing "File contents\n"
-            (doseq [file source-files
-                    :let [ref-file (io/file source-dir file)
-                          out-file (io/file output-dir file)]
-                    :when (.exists out-file)
-                    :let [delta (compare-files ref-file out-file)]]
+            (testing "File contents\n"
+              (doseq [file source-files
+                      :let [ref-file (io/file source-dir file)
+                            out-file (io/file output-dir file)]
+                      :when (.exists out-file)
+                      :let [delta (compare-files ref-file out-file)]]
 
-              (is (nil? delta)
-                  (str "Content mismatch for file: " (strip-base-path source-dir file)))
+                (is (nil? delta)
+                    (str "Content mismatch for file: " (strip-base-path source-dir file)))
 
-             ;; Leave behind files for developers to inspect
-              (when (and (.exists dev-inspect-dir) delta)
-                (vreset! wrote-files? true)
-                (create-files-to-diff! ref-file out-file))))
+              ;; Leave behind files for developers to inspect
+                (when (and (.exists dev-inspect-dir) delta)
+                  (vreset! wrote-files? true)
+                  (create-files-to-diff! ref-file out-file))))
 
-          (when @wrote-files?
-            (log/warn "Mismatching files have been written to /dev/serialization_deltas"))))
+            (when @wrote-files?
+              (log/warn "Mismatching files have been written to /dev/serialization_deltas"))))
 
-      (finally
-        (delete-dir-contents! output-dir)))))
+        (finally
+          (delete-dir-contents! output-dir))))))
 
 (defn- update-baseline!
   "Run this if you've examined the output of [[directory-comparison-test]], and are happy to accept the changes."

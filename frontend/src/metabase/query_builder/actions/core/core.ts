@@ -36,6 +36,7 @@ import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
   getIsResultDirty,
+  getIsShowingRawTable,
   getOriginalQuestion,
   getParameters,
   getQuestion,
@@ -152,22 +153,40 @@ export const navigateToNewCardInsideQB = createThunkAction(
           ),
         );
       } else {
-        const card = getCardAfterVisualizationClick(nextCard, previousCard);
-        const url = Urls.serializedQuestion(card);
+        // when navigating in the "raw" table mode, preserve the original viz settings
+        const isRawTable = getIsShowingRawTable(getState());
+        const currentCard = getCard(getState());
+        const adjustedNextCard =
+          isRawTable && currentCard != null
+            ? {
+                ...nextCard,
+                display: currentCard.display,
+                visualization_settings: currentCard.visualization_settings,
+              }
+            : nextCard;
+        const cardAfterClick = getCardAfterVisualizationClick(
+          adjustedNextCard,
+          previousCard,
+        );
+        const url = Urls.serializedQuestion(cardAfterClick);
         if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
           dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());
-          if (!cardQueryIsEquivalent(previousCard, nextCard)) {
+          if (!cardQueryIsEquivalent(previousCard, adjustedNextCard)) {
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
           // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(setCardAndRun({ ...card, type: "question" }));
+          dispatch(setCardAndRun({ ...cardAfterClick, type: "question" }));
         }
+
         if (objectId !== undefined) {
-          dispatch(zoomInRow({ objectId }));
+          // TODO: this should happen after we navigated to a new card, but in reality we open details view before navigation, which adds one more item in browser history
+          setTimeout(() => {
+            dispatch(zoomInRow({ objectId }));
+          });
         }
       }
     };

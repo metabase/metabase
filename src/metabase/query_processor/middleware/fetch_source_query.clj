@@ -42,7 +42,7 @@
     (cons first-stage more)))
 
 (mu/defn normalize-card-query :- ::lib.schema.metadata/card
-  "Convert Card's query (`:datasaet-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
+  "Convert Card's query (`:dataset-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
   [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
    {card-id :id, :as card} :- ::lib.schema.metadata/card]
   (let [persisted-info (:lib/persisted-info card)
@@ -59,7 +59,7 @@
                                     ;; permissions enforcement
                                     (assoc stage :qp/stage-is-from-source-card card-id))
                     card-metadata (into [] (remove :remapped-from)
-                                        (lib.card/card-metadata-columns metadata-providerable card))
+                                        (lib.card/card-returned-columns metadata-providerable card))
                     last-stage    (cond-> (last stages)
                                     (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
                                     ;; This will be applied, if still appropriate, by
@@ -125,8 +125,7 @@
                             ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
                             ;; the metadata associated with Fields themselves)
                             (assoc :qp/stage-had-source-card (:id card)
-                                   :source-query/model?      (= (:type card) :model)
-                                   :source-query/entity-id   (:entity-id card))
+                                   :source-query/model?      (= (:type card) :model))
                             (dissoc :source-card))]
       (into (vec card-stages) [stage']))))
 

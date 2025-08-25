@@ -5,7 +5,8 @@ import {
   useMemo,
   useState,
 } from "react";
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
+import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
 
@@ -37,14 +38,17 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
 
-  const [persistedSettings, persistSettings] = useUserSetting(
-    "sdk-iframe-embed-setup-settings",
-    { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
-  );
+  const [persistedSettings, persistSettings] = usePersistedSettings();
 
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
-  const { recentDashboards, recentQuestions, addRecentItem } = useRecentItems();
+  const {
+    recentDashboards,
+    recentQuestions,
+    recentCollections,
+    addRecentItem,
+    isRecentsLoading,
+  } = useRecentItems();
 
   const defaultSettings = useMemo(() => {
     return getDefaultSdkIframeEmbedSettings(
@@ -66,8 +70,10 @@ export const SdkIframeEmbedSetupProvider = ({
         settings,
       )
         .with({ template: "exploration" }, () => "exploration")
-        .with({ questionId: P.nonNullable }, () => "chart")
-        .otherwise(() => "dashboard"),
+        .with({ componentName: "metabase-question" }, () => "chart")
+        .with({ componentName: "metabase-browser" }, () => "browser")
+        .with({ componentName: "metabase-dashboard" }, () => "dashboard")
+        .exhaustive(),
     [settings],
   );
 
@@ -120,6 +126,7 @@ export const SdkIframeEmbedSetupProvider = ({
     updateSettings,
     recentDashboards,
     recentQuestions,
+    recentCollections,
     addRecentItem,
     isEmbedSettingsLoaded,
     isLoadingParameters,
@@ -129,25 +136,43 @@ export const SdkIframeEmbedSetupProvider = ({
   // Once the persisted settings are loaded, check if they are valid.
   // If they are, set them as the current settings.
   useEffect(() => {
-    if (!isEmbedSettingsLoaded) {
-      // We consider the settings to be valid if it has at least one
-      // of the following properties set.
-      const isPersistedSettingValid =
-        persistedSettings?.dashboardId ||
-        persistedSettings?.questionId ||
-        persistedSettings?.template;
-
-      if (isPersistedSettingValid) {
-        setRawSettings(persistedSettings);
-      }
+    if (!isEmbedSettingsLoaded && !isRecentsLoading) {
+      setRawSettings({ ...settings, ...persistedSettings });
 
       setEmbedSettingsLoaded(true);
     }
-  }, [persistedSettings, isEmbedSettingsLoaded]);
+  }, [persistedSettings, isEmbedSettingsLoaded, settings, isRecentsLoading]);
 
   return (
     <SdkIframeEmbedSetupContext.Provider value={value}>
       {children}
     </SdkIframeEmbedSetupContext.Provider>
   );
+};
+
+const getSettingsToPersist = (
+  settings: Partial<SdkIframeEmbedSetupSettings>,
+) => {
+  return _.pick(settings, ["theme", "useExistingUserSession"]);
+};
+
+const usePersistedSettings = () => {
+  const [rawPersisted, rawPersistSettings] = useUserSetting(
+    "sdk-iframe-embed-setup-settings",
+    { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
+  );
+
+  const persistedSettings = useMemo(
+    () => getSettingsToPersist(rawPersisted || {}),
+    [rawPersisted],
+  );
+
+  const persistSettings = useCallback(
+    (settings: Partial<SdkIframeEmbedSetupSettings>) => {
+      rawPersistSettings(getSettingsToPersist(settings));
+    },
+    [rawPersistSettings],
+  );
+
+  return [persistedSettings, persistSettings] as const;
 };

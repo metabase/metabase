@@ -187,7 +187,7 @@ jobs:
       - name: Get current SDK version
         id: current-sdk-version
         run: |
-          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk/package.template.json)
+          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk-bundle/package.template.json)
           echo "sdk_current_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Get next SDK patch version
@@ -298,8 +298,8 @@ jobs:
         run: |
           yarn embedding-sdk:generate-changelog -o changelog-diff
 
-      - name: Build SDK bundle
-        run: yarn run build-embedding-sdk
+      - name: Build SDK package
+        run: yarn run build-embedding-sdk-package
 
       - name: Generate SDK package.json in the build directory
         run: yarn run embedding-sdk:generate-package
@@ -350,8 +350,8 @@ jobs:
 
       - name: Update changelog
         run: |
-          cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
-          mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+          cat changelog-diff enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md > new-changelog
+          mv new-changelog enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
@@ -401,12 +401,12 @@ jobs:
            "release-x.53.x": "53-stable",
            "release-x.54.x": "54-stable",
            "release-x.55.x": "55-stable",
-           "release-x.56.x": "56-nightly",
+           "release-x.56.x": "56-stable",
            "esbuild-main": "56-esbuild"
            }')[inputs.branch]}}
 
       - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-        if: ${{ inputs.branch == 'release-x.55.x' }}
+        if: ${{ inputs.branch == 'release-x.56.x' }}
         working-directory: sdk
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest

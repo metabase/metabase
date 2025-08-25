@@ -155,8 +155,8 @@ export function removeSummaryGroupingField({
   index = 0,
 }: {
   field: string;
-  stage: number;
-  index: number;
+  stage?: number;
+  index?: number;
 }) {
   getNotebookStep("summarize", { stage, index })
     .findByTestId("breakout-step")

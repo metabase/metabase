@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -82,7 +82,7 @@
 (deftest ^:parallel internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       (mt/id :venues :category_id)
                                       (qp.test-util/field-values-from-def defs/test-data :categories :name))
       (let [{:keys [rows cols]} (qp.test-util/rows-and-cols
@@ -106,7 +106,7 @@
 (deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       (mt/id :venues :category_id)
                                       (mt/id :categories :name))
       (doseq [[sort-order expected] {:desc ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse"
@@ -247,7 +247,7 @@
 (deftest ^:parallel binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:fields [{:id          (mt/id :venues :latitude)
                                                  :fingerprint {:type {:type/Number {:min nil, :max nil}}}}]})
       (is (=? {:status :failed
@@ -319,6 +319,7 @@
                 {:breakout [$price]
                  :fields   [$price]})))))))
 
+;;; TODO (Cam 8/6/25) -- move this and other binning-related tests to `binning-test`
 (deftest ^:parallel binning-with-source-card-with-explicit-joins-test
   (testing "Make sure binning works with a source card that contains explicit joins"
     (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries :left-join)
@@ -346,4 +347,18 @@
                   _                (is (some? binning-strategy))
                   query            (-> query
                                        (lib/breakout (lib/with-binning people-longitude binning-strategy)))]
-              (mt/rows (qp/process-query query)))))))))
+              ;; only check the query for H2; other databases might name `LONGITUDE` differently
+              (when (= driver/*driver* :h2)
+                (is (=? {:stages [{:source-card 1
+                                   :aggregation [[:count {}]]
+                                   :breakout    [[:field
+                                                  {:binning {:strategy :bin-width, :bin-width 20.0}}
+                                                  "People__LONGITUDE"]]}]}
+                        query)))
+              (is (= [[-180.0 75]
+                      [-160.0 383]
+                      [-140.0 879]
+                      [-120.0 3803]
+                      [-100.0 11345]
+                      [-80.0  2275]]
+                     (mt/formatted-rows [1.0 int] (qp/process-query query)))))))))))

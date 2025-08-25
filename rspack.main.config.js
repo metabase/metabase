@@ -22,12 +22,14 @@ const {
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
+const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
 const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
@@ -38,6 +40,14 @@ const E2E_PATH = __dirname + "/e2e";
 const PORT = process.env.PORT || 8080;
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
+
+// If you want to test metabase locally with a custom domain, either use
+// `metabase.local` or add your custom domain via the `MB_TEST_CUSTOM_DOMAINS`
+// environment variable so that rspack will allow requests from them.
+const TEST_CUSTOM_DOMAINS =
+  process.env.MB_TEST_CUSTOM_DOMAINS?.split(",")
+    .map((domain) => domain.trim())
+    .filter(Boolean) ?? [];
 
 const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
 
@@ -195,6 +205,7 @@ const config = {
       ".svg",
     ],
     alias: {
+      "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
       metabase: SRC_PATH,
@@ -214,7 +225,7 @@ const config = {
       "ee-plugins": resolveEnterprisePathOrNoop("/plugins"),
       "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
       embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk": SDK_SRC_PATH,
+      "embedding-sdk-bundle": SDK_SRC_PATH,
       "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
         "/sdk-iframe-embedding-plugins",
       ),
@@ -323,6 +334,7 @@ if (shouldEnableHotRefresh) {
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
+    allowedHosts: ["localhost", "metabase.local", ...TEST_CUSTOM_DOMAINS],
     // tweak stats to make the output in the console more legible
     devMiddleware: {
       stats: { preset: "errors-warnings", timings: true },

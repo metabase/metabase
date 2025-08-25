@@ -276,7 +276,9 @@
       ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/appdb-index-size
-                     {:description "Number of rows in the active index table."})
+                     {:description "Number of rows in the active appdb index table."})
+   (prometheus/gauge :metabase-search/semantic-index-size
+                     {:description "Number of rows in the active semantic index table."})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
@@ -289,7 +291,33 @@
    (prometheus/gauge :metabase-search/engine-active
                      {:description "Whether a given engine is active. This does NOT mean that it is the default."
                       :labels [:engine]})
-   ;; notification metrics
+   (prometheus/counter :metabase-search/semantic-embedding-tokens
+                       {:description (str "Number of tokens consumed by the given embedding model and provider. "
+                                          "Not all providers track token use.")
+                        :labels [:model :provider]})
+   (prometheus/counter :metabase-search/semantic-permission-filter-ms
+                       {:description "Total number of ms spent filtering readable docs"})
+   (prometheus/counter :metabase-search/semantic-collection-filter-ms
+                       {:description "Total number of ms spent filtering search results by collection"})
+   (prometheus/counter :metabase-search/semantic-search-ms
+                       {:description "Total number of ms spent performing a semantic search"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-embedding-ms
+                       {:description "Total number of ms spent calculating the embedding of the search string"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-db-query-ms
+                       {:description "Total number of ms spent querying the search index"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-appdb-scores-ms
+                       {:description "Total number of ms spent adding appdb-based scores"})
+   (prometheus/counter :metabase-search/semantic-fallback-triggered
+                       {:description "Number of times semantic search triggered fallback to appdb search due to insufficient results"
+                        :labels [:fallback-engine]})
+   (prometheus/histogram :metabase-search/semantic-results-before-fallback
+                         {:description "Distribution of result counts from semantic search when fallback is triggered"
+                          :buckets [0 1 5 10 20 50 100]})
+
+;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
                         :labels [:payload-type]})

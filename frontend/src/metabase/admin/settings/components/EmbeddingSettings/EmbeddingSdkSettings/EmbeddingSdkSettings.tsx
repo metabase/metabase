@@ -16,7 +16,6 @@ import {
 } from "metabase/plugins";
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Flex,
@@ -28,6 +27,7 @@ import {
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
+import { LinkButton } from "../EmbeddingOption/LinkButton";
 import { EmbeddingToggle } from "../EmbeddingToggle";
 
 import S from "./EmbeddingSdkSettings.module.css";
@@ -67,12 +67,18 @@ export function EmbeddingSdkSettings() {
     utm: utmTags,
   });
 
-  const quickStartUrl = useUrlWithUtm(
+  const sdkQuickStartUrl = useUrlWithUtm(
     "https://metaba.se/sdk-quick-start",
     utmTags,
   );
 
-  const documentationUrl = useUrlWithUtm("https://metaba.se/sdk-docs", utmTags);
+  const sdkDocumentationUrl = useUrlWithUtm(
+    "https://metaba.se/sdk-docs",
+    utmTags,
+  );
+
+  // The quickstart is part of the documentation page, unlike the SDK, so we only need a single docs link.
+  const embedJsDocumentationUrl = useDocsUrl("embedding/embedded-analytics-js");
 
   const SwitchBinariesLink = (
     <ExternalLink
@@ -147,7 +153,7 @@ export function EmbeddingSdkSettings() {
               size="compact-xs"
               variant="outline"
               component={ExternalLink}
-              href={quickStartUrl}
+              href={sdkQuickStartUrl}
               rightSection={<Icon size={12} name="external" />}
               fz="sm"
             >
@@ -158,7 +164,7 @@ export function EmbeddingSdkSettings() {
               size="compact-xs"
               variant="outline"
               component={ExternalLink}
-              href={documentationUrl}
+              href={sdkDocumentationUrl}
               rightSection={<Icon size={12} name="external" />}
               fz="sm"
             >
@@ -174,8 +180,6 @@ export function EmbeddingSdkSettings() {
             <Text fz="h3" fw={600} c="text-dark">
               {t`Embedded Analytics JS`}
             </Text>
-
-            <Badge size="sm">{t`Beta`}</Badge>
           </Group>
 
           <Group gap="sm" align="center" justify="space-between" w="100%">
@@ -193,23 +197,21 @@ export function EmbeddingSdkSettings() {
                   size="compact-xs"
                   variant="outline"
                   component={ExternalLink}
-                  href={quickStartUrl}
-                  rightSection={<Icon size={12} name="external" />}
-                  fz="sm"
-                >
-                  {t`Quick start`}
-                </Button>
-
-                <Button
-                  size="compact-xs"
-                  variant="outline"
-                  component={ExternalLink}
-                  href={documentationUrl}
+                  href={embedJsDocumentationUrl?.url}
                   rightSection={<Icon size={12} name="external" />}
                   fz="sm"
                 >
                   {t`Documentation`}
                 </Button>
+
+                <LinkButton
+                  size="compact-xs"
+                  variant="outline"
+                  to="/embed-js"
+                  fz="sm"
+                >
+                  {t`Try it out`}
+                </LinkButton>
               </Group>
             ) : (
               <UpsellEmbeddingButton

@@ -26,6 +26,7 @@ import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
@@ -62,6 +63,7 @@ type OwnProps = {
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
   viewHeight: number;
+  placeholder?: string;
   highlightedLineNumbers?: number[];
 
   isInitiallyOpen?: boolean;
@@ -79,6 +81,7 @@ type OwnProps = {
   hasTopBar?: boolean;
   hasParametersList?: boolean;
   hasEditingSidebar?: boolean;
+  hasRunButton?: boolean;
   sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
   resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
@@ -86,26 +89,27 @@ type OwnProps = {
   editorContext?: "question";
 
   runQuery: () => void;
-  toggleEditor: () => void;
-  handleResize: () => void;
+  toggleEditor?: () => void;
+  handleResize?: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
   runQuestionQuery: (opts?: {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
   }) => void;
-  setNativeEditorSelectedRange: (range: SelectionRange[]) => void;
-  openDataReferenceAtQuestion: (id: CardId) => void;
-  openSnippetModalWithSelectedText: () => void;
-  insertSnippet: (snippet: NativeQuerySnippet) => void;
+  setNativeEditorSelectedRange?: (range: SelectionRange[]) => void;
+  openDataReferenceAtQuestion?: (id: CardId) => void;
+  openSnippetModalWithSelectedText?: () => void;
+  insertSnippet?: (snippet: NativeQuerySnippet) => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
-  setParameterValue: (parameterId: ParameterId, value: string) => void;
-  onOpenModal: (modalType: QueryModalType) => void;
+  setParameterValue?: (parameterId: ParameterId, value: string) => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
   toggleDataReference: () => void;
   toggleTemplateTagsEditor: () => void;
-  toggleSnippetSidebar: () => void;
+  toggleSnippetSidebar?: () => void;
   cancelQuery?: () => void;
-  closeSnippetModal: () => void;
+  closeSnippetModal?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
+  databaseIsDisabled?: (database: Database) => boolean;
 };
 
 interface ExplicitSizeProps {
@@ -185,12 +189,12 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     }
   };
 
-  focus() {
+  focus = () => {
     if (this.props.readOnly) {
       return;
     }
     this.editor.current?.focus();
-  }
+  };
 
   handleRightClickSelection = () => {
     this.setState({ isSelectedTextPopoverOpen: true });
@@ -230,9 +234,12 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
         variables: true,
         snippets: true,
         promptInput: true,
+        formatQuery: true,
+        aiGeneration: true,
       },
       hasTopBar = true,
       hasEditingSidebar = true,
+      hasRunButton = hasEditingSidebar,
       resizableBoxProps = {},
       snippetCollections = [],
       question,
@@ -246,6 +253,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       forwardedRef,
       runQuery,
       highlightedLineNumbers,
+      placeholder,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -291,9 +299,11 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             isShowingSnippetSidebar={this.props.isShowingSnippetSidebar}
             isNativeEditorOpen={this.props.isNativeEditorOpen}
             toggleEditor={this.props.toggleEditor}
+            toggleDataReference={this.props.toggleDataReference}
             setParameterValue={this.props.setParameterValue}
             setDatasetQuery={this.props.setDatasetQuery}
             onFormatQuery={canFormatQuery ? this.handleFormatQuery : undefined}
+            databaseIsDisabled={this.props.databaseIsDisabled}
           />
         )}
         <div
@@ -314,7 +324,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             resizeHandles={["s"]}
             {...resizableBoxProps}
             onResizeStop={(e, data) => {
-              this.props.handleResize();
+              this.props.handleResize?.();
               if (typeof resizableBoxProps?.onResizeStop === "function") {
                 resizableBoxProps.onResizeStop(e, data);
               }
@@ -332,6 +342,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 ref={this.editor}
                 query={question.query()}
                 readOnly={readOnly}
+                placeholder={placeholder}
                 highlightedLineNumbers={highlightedLineNumbers}
                 onChange={this.onChange}
                 onRunQuery={runQuery}
@@ -343,7 +354,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 }
               />
 
-              {hasEditingSidebar && !readOnly && (
+              {hasRunButton && !readOnly && (
                 <NativeQueryEditorRunButton
                   cancelQuery={this.props.cancelQuery}
                   isResultDirty={this.props.isResultDirty}

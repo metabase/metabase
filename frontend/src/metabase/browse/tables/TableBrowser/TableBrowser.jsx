@@ -99,6 +99,7 @@ const TableBrowserItem = ({
 }) => {
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
+  const isTableWritable = table.is_writable;
 
   return (
     <BrowseCard
@@ -114,7 +115,7 @@ const TableBrowserItem = ({
             tableId={table.id}
             dbId={dbId}
             xraysEnabled={xraysEnabled}
-            canEditTables={canEditTables}
+            canEditTables={canEditTables && isTableWritable}
           />
         )}
       </>

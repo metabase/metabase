@@ -3,6 +3,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { mockEmbedJsToDevServer } from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
@@ -32,6 +33,8 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+
+    mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
@@ -222,6 +225,40 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
   });
 
+  it("can search and select a collection for browser", () => {
+    visitNewEmbedPage();
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Browser").click();
+      cy.findByText("Next").click();
+      cy.findByText("Select a collection to embed").should("be.visible");
+      cy.findByTestId("embed-browse-entity-button").click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByText("Select a collection").should("be.visible");
+      cy.findByText("First collection").click();
+      cy.findByText("Select").click();
+    });
+
+    cy.log("collection is added to recents list");
+    getEmbedSidebar().within(() => {
+      getRecentItemCards()
+        .should("contain", "First collection")
+        .should("have.attr", "data-selected", "true");
+    });
+
+    cy.log("collection is shown in the breadcrumbs and preview");
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByTestId("sdk-breadcrumbs")
+        .findAllByText("First collection")
+        .first()
+        .should("be.visible");
+
+      cy.findByText("Second collection").should("be.visible");
+    });
+  });
+
   describe("when there is no recent activity", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/activity/recents?*", {
@@ -268,6 +305,23 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.entityPickerModal().within(() => {
         cy.findByText("Select a chart").should("be.visible");
+      });
+    });
+
+    it("can open a collection picker from browser empty state", () => {
+      getEmbedSidebar().within(() => {
+        cy.findByText("Browser").click();
+        cy.findByText("Next").click();
+
+        cy.log("shows empty state for missing recent collections");
+        cy.findByTestId("embed-recent-item-card").should("not.exist");
+        cy.findByText("No recent collections").should("be.visible");
+
+        cy.findByTitle("Browse collections").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        cy.findByText("Select a collection").should("be.visible");
       });
     });
   });

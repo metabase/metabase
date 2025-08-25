@@ -8,6 +8,7 @@ const esmPackages = [
   "d3",
   "devlop",
   "echarts",
+  "fetch-mock",
   "hast.*",
   "html-void-elements",
   "is-absolute-url",
@@ -29,6 +30,7 @@ const esmPackages = [
 
 const baseConfig = {
   moduleNameMapper: {
+    "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
@@ -125,17 +127,18 @@ const config = {
       displayName: "sdk",
 
       testMatch: [
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/**/*.unit.spec.{js,jsx,ts,tsx}",
       ],
 
       setupFiles: [
         ...baseConfig.setupFiles,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/setup-env.js",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/jest/setup-env.js",
       ],
 
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/console-restrictions.js",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/jest/setup-after-env.js",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/jest/console-restrictions.js",
       ],
     },
     {
@@ -143,7 +146,7 @@ const config = {
       displayName: "core",
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/",
       ],
     },
   ],

@@ -273,14 +273,21 @@
    [true  [:= {:decode/normalize common/normalize-keyword-lower} :current]]
    [false :int]])
 
+(mr/def ::relative-datetime.unit
+  [:or
+   [:= :default]
+   [:ref ::temporal-bucketing/unit.date-time.interval]])
+
 ;;; TODO (Cam 7/16/25) -- I think unit is rewuired unless `n` is `:current`
 (mbql-clause/define-catn-mbql-clause :relative-datetime :- :type/DateTime
   [:n    [:schema [:ref ::relative-datetime.amount]]]
-  [:unit [:? [:schema [:ref ::temporal-bucketing/unit.date-time.interval]]]])
+  [:unit [:? [:schema [:ref ::relative-datetime.unit]]]])
 
 (mbql-clause/define-tuple-mbql-clause :time :- :type/Time
   #_:timestr [:schema [:ref ::expression/string]]
-  #_:unit [:ref ::temporal-bucketing/unit.time.interval])
+  #_:unit    [:or
+              [:= {:decode/normalize common/normalize-keyword-lower} :default]
+              [:ref ::temporal-bucketing/unit.time.interval]])
 
 ;;; this has some stuff that's missing from [[::temporal-bucketing/unit.date-time.extract]], like `:week-of-year-iso`
 (mr/def ::temporal-extract.unit

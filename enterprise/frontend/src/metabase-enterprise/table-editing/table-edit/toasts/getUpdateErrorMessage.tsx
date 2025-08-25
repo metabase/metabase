@@ -13,13 +13,21 @@ export const getUpdateApiErrorMessage = (
 
   if (
     Array.isArray(maybeError.data?.errors) &&
-    "error" in maybeError.data?.errors[0]
+    ("message" in maybeError.data?.errors[0] ||
+      "error" in maybeError.data?.errors[0])
   ) {
-    return maybeError.data.errors[0].error;
+    return maybeError.data.errors[0].message ?? maybeError.data.errors[0].error;
   }
 
-  if (Array.isArray(maybeError.errors) && "error" in maybeError.errors[0]) {
-    return maybeError.errors[0].error;
+  if (
+    Array.isArray(maybeError.errors) &&
+    ("message" in maybeError.errors[0] || "error" in maybeError.errors[0])
+  ) {
+    return maybeError.errors[0].message ?? maybeError.errors[0].error;
+  }
+
+  if (typeof maybeError.data?.message === "string") {
+    return maybeError.data.message;
   }
 
   return t`Unknown error`;

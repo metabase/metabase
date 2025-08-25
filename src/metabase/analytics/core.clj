@@ -24,6 +24,7 @@
   clear!
   connection-pool-info
   inc!
+  observe!
   set!
   setup!
   shutdown!]

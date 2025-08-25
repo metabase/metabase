@@ -28,7 +28,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
@@ -58,7 +59,7 @@
   from the driver to values calculated by MLv2."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
+  (let [driver-col (perf/update-keys driver-col u/->kebab-case-en)]
     (merge lib-col
            (m/filter-vals some? driver-col)
            ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
@@ -136,16 +137,20 @@
    cols  :- [:sequential ::kebab-cased-map]]
   (mapv (fn [col]
           (let [converted-timezone (when-let [expression-name ((some-fn :lib/expression-name :lib/original-expression-name) col)]
-                                     (when-let [expr (try
-                                                       (lib.expression/resolve-expression query expression-name)
-                                                       (catch #?(:clj Throwable :cljs :default) e
-                                                         (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
-                                                         (log/debugf "In query:\n%s" (u/pprint-to-str query))
-                                                         nil))]
-                                       (lib.util.match/match-one expr
-                                         :convert-timezone
-                                         (let [[_convert-timezone _opts _expr source-tz] &match]
-                                           source-tz))))]
+                                     ;; don't look inside expressions that happened inside of joins,
+                                     ;; `lib.expression/resolve-expression` is unfortunately not smart enough to
+                                     ;; figure out how to find them and will just log a noisy error
+                                     (when-not (:lib/original-join-alias col)
+                                       (when-let [expr (try
+                                                         (lib.expression/resolve-expression query expression-name)
+                                                         (catch #?(:clj Throwable :cljs :default) e
+                                                           (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
+                                                           (log/debugf "In query:\n%s" (u/pprint-to-str query))
+                                                           nil))]
+                                         (lib.util.match/match-one expr
+                                           :convert-timezone
+                                           (let [[_convert-timezone _opts _expr source-tz] &match]
+                                             source-tz)))))]
             (cond-> col
               converted-timezone (assoc :converted-timezone converted-timezone))))
         cols))
@@ -178,19 +183,25 @@
       (set/union aliases (implicit-join-aliases query previous-stage-number))
       aliases)))
 
-;;; TODO (Cam 7/30/25) -- I have no real idea why we're doing this. It seems dumb and broken; a column from a reified
-;;; explicit join that gets `:source/joins` should always have a join aliases -- see my notes on
-;;; `:metabase.lib.metadata.result-metadata/column.validate-join-alias`. Can we just remove `:source-alias` (which is
-;;; used by the FE for mysterious/unknown purposes) and leave the Lib keys in the correct shape?
 (defn- remove-implicit-join-aliases
+  "If an implicit join was reified by the QP preprocessor, we need to remove traces of that reification from result
+  metadata, so anyone using it in combination with the un-preprocessed query doesn't accidentally introduce field refs
+  that include generated join aliases for joins that don't exist yet."
   [query cols]
-  (let [implicit-aliases (implicit-join-aliases query -1)]
-    (map (fn [col]
-           (cond-> col
-             (when-let [join-alias (any-join-alias col)]
-               (contains? implicit-aliases join-alias))
-             (dissoc :metabase.lib.join/join-alias :lib/original-join-alias :source-alias)))
-         cols)))
+  (let [implicit-aliases    (implicit-join-aliases query -1)
+        maybe-update-source (fn [col]
+                              (cond-> col
+                                (= (:lib/source col) :source/joins)
+                                (assoc :lib/source :source/implicitly-joinable)))
+        remove-aliases      (fn [col]
+                              (dissoc col :metabase.lib.join/join-alias :lib/original-join-alias :source-alias))
+        implicitly-joined?  (fn [col]
+                              (when-let [join-alias (any-join-alias col)]
+                                (contains? implicit-aliases join-alias)))
+        maybe-update-col    (fn [col]
+                              (cond-> col
+                                (implicitly-joined? col) (-> remove-aliases maybe-update-source)))]
+    (map maybe-update-col cols)))
 
 (mu/defn- add-legacy-source :- [:sequential
                                 [:merge
@@ -342,7 +353,7 @@
                      lib-cols)]
       (->> initial-cols
            (map (fn [col]
-                  (update-keys col u/->kebab-case-en)))
+                  (perf/update-keys col u/->kebab-case-en)))
            ((fn [cols]
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))

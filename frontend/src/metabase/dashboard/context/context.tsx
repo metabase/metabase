@@ -147,6 +147,7 @@ const DashboardContextProviderInner = forwardRef(
       isLoading,
       isLoadingWithoutCards,
       parameters,
+      isEmbeddingIframe,
 
       // redux actions
       addCardToDashboard,
@@ -172,13 +173,13 @@ const DashboardContextProviderInner = forwardRef(
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
 
-    const { refreshDashboard } = useRefreshDashboard({
+    const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
       parameterQueryParams,
     });
 
     const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
-      useDashboardRefreshPeriod({ onRefresh: refreshDashboard });
+      useDashboardRefreshPeriod({ onRefresh: refreshDashboardCardData });
 
     const {
       isFullscreen,
@@ -194,7 +195,9 @@ const DashboardContextProviderInner = forwardRef(
       setTheme,
     } = useDashboardTheme(initTheme);
 
-    const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
+    const shouldRenderAsNightMode = Boolean(
+      isNightMode && (isFullscreen || isEmbeddingIframe),
+    );
 
     const handleError = useCallback(
       (error: unknown) => {
@@ -402,6 +405,7 @@ const DashboardContextProviderInner = forwardRef(
           isNavigatingBackToDashboard,
           parameters,
           parameterValues,
+          isEmbeddingIframe,
 
           // redux actions
           addCardToDashboard,

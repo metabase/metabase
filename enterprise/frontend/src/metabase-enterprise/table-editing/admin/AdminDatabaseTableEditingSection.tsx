@@ -7,30 +7,46 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
-import { hasFeature } from "metabase/admin/databases/utils";
 import Toggle from "metabase/common/components/Toggle";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Box, Flex } from "metabase/ui";
-import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
+import type {
+  Database,
+  DatabaseData,
+  DatabaseId,
+  DatabaseLocalSettingAvailability,
+} from "metabase-types/api";
 
 import {
   DATABASE_TABLE_EDITING_SETTING,
   isDatabaseTableEditingEnabled,
 } from "../settings";
 
+enum DisabledReasonKey {
+  MissingDriverFeature = "driver-feature-missing",
+  NoWriteableTable = "permissions/no-writable-table",
+  SyncInProgress = "database-metadata/sync-in-progress",
+  DatabaseEmtpy = "database-metadata/not-populated",
+}
+
+const VISIBLE_REASONS: string[] = [
+  DisabledReasonKey.NoWriteableTable,
+  DisabledReasonKey.SyncInProgress,
+  DisabledReasonKey.DatabaseEmtpy,
+];
+
 export function AdminDatabaseTableEditingSection({
   database,
+  settingsAvailable,
   updateDatabase,
 }: {
   database: Database;
+  settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseData>,
   ) => Promise<void>;
 }) {
-  const showTableEditingSection =
-    !!database.id && hasFeature(database, "actions/data-editing");
-
   const [error, setError] = useState<string | null>(null);
 
   const handleToggle = async (enabled: boolean) => {
@@ -53,7 +69,21 @@ export function AdminDatabaseTableEditingSection({
     }
   };
 
-  if (!showTableEditingSection) {
+  const dataEditingSetting =
+    settingsAvailable?.[DATABASE_TABLE_EDITING_SETTING];
+
+  const isSettingDisabled =
+    !dataEditingSetting || dataEditingSetting.enabled === false;
+
+  const firstDisabledReason =
+    dataEditingSetting?.enabled === false
+      ? dataEditingSetting?.reasons?.[0]
+      : undefined;
+
+  const shouldShowSection =
+    !firstDisabledReason || VISIBLE_REASONS.includes(firstDisabledReason.key);
+
+  if (!dataEditingSetting || !shouldShowSection) {
     return null;
   }
 
@@ -69,12 +99,14 @@ export function AdminDatabaseTableEditingSection({
           id="table-editing-toggle"
           value={isDatabaseTableEditingEnabled(database)}
           onChange={handleToggle}
+          disabled={isSettingDisabled}
         />
       </Flex>
       <Box maw="22.5rem">
         {error ? <Error>{error}</Error> : null}
         <Description>
-          {t`Your database connection will need Write permissions.`}
+          {firstDisabledReason?.message ??
+            t`Your database connection will need Write permissions.`}
         </Description>
       </Box>
     </DatabaseInfoSection>

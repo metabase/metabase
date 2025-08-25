@@ -21,6 +21,7 @@
    [metabase.lib.extraction :as lib.extraction]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
@@ -33,6 +34,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.page]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -63,6 +65,7 @@
          lib.extraction/keep-me
          lib.fe-util/keep-me
          lib.field/keep-me
+         metabase.lib.field.util/keep-me
          lib.filter.update/keep-me
          lib.filter/keep-me
          lib.join/keep-me
@@ -75,6 +78,7 @@
          lib.normalize/keep-me
          metabase.lib.options/keep-me
          lib.order-by/keep-me
+         lib.parse/keep-me
          lib.query/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
@@ -241,7 +245,10 @@
   find-visible-column-for-ref
   remove-field
   with-fields]
+ [metabase.lib.field.util
+  update-keys-for-col-from-previous-stage]
  [lib.filter
+  add-filter-to-stage
   filter
   filters
   filterable-columns
@@ -297,7 +304,8 @@
   available-metrics]
  [lib.limit
   current-limit
-  limit]
+  limit
+  max-rows-limit]
  [lib.metadata.calculation
   column-name
   describe-query
@@ -328,6 +336,7 @@
   with-native-query
   with-template-tags]
  [metabase.lib.options
+  ensure-uuid
   options
   update-options]
  [lib.order-by
@@ -338,6 +347,9 @@
   orderable-columns]
  [lib.normalize
   normalize]
+ [metabase.lib.page
+  current-page
+  with-page]
  [lib.parse
   parse]
  [lib.query
@@ -385,6 +397,7 @@
   with-temporal-bucket]
  [lib.util
   fresh-uuids
+  native-stage?
   normalized-query-type
   previous-stage
   previous-stage-number

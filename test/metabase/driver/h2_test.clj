@@ -18,7 +18,6 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
@@ -222,7 +221,7 @@
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
     #_{:clj-kondo/ignore [:equals-true]}
-    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select 1"
       "update venues set name = 'bill'"
       "delete venues"
@@ -243,7 +242,7 @@
       "create table venues"
       "alter table venues add column address varchar(255)")
 
-    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
        EXEC ('open -a Calculator.app')"
@@ -251,10 +250,10 @@
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
 
-    (is (= nil (#'h2/check-action-commands-allowed {:database (u/the-id (mt/db)) :native {:query nil}})))
+    (is (= nil (#'h2/check-action-commands-allowed {:database (mt/id) :native {:query nil}})))
 
     (is (= nil (#'h2/check-action-commands-allowed
-                {:database (u/the-id (mt/db))
+                {:database (mt/id)
                  :engine :h2
                  :native {:query (str/join "; "
                                            ["select 1"
@@ -266,7 +265,7 @@
       (is (thrown? clojure.lang.ExceptionInfo
                    #"DDL commands are not allowed to be used with h2."
                    (#'h2/check-action-commands-allowed
-                    {:database (u/the-id (mt/db))
+                    {:database (mt/id)
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
 
@@ -394,7 +393,7 @@
 (deftest ^:parallel actions-maybe-parse-sql-error-test-4
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
-            :message "Other tables rely on this row so it cannot be deleted.",
+            :message "Other rows refer to this row so it cannot be deleted.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/delete
@@ -404,7 +403,7 @@
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to create a new record.",
-            :errors {"GROUP-ID" "This Group-id does not exist."}}
+            :errors {"GROUP-ID" "This value does not exist in table \"group\"."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/create
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
@@ -413,7 +412,16 @@
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to update the record.",
-            :errors {"GROUP-ID" "This Group-id does not exist."}}
+            :errors {"GROUP-ID" "This value does not exist in table \"group\"."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/update
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
+
+(deftest ^:parallel actions-maybe-parse-sql-violate-check-constraint-test
+  (testing "violate check constraint"
+    (is (= {:type :metabase.actions.error/violate-check-constraint,
+            :message "Some of your values violate the constraint: users_email_check"
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :h2 actions.error/violate-check-constraint nil :model.row/create
+            "Check constraint violation: \"users_email_check\"")))))

@@ -7,9 +7,9 @@ import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase-enterprise/embedding_if
 
 import { trackEmbedWizardExperienceSelected } from "../analytics";
 import {
-  EMBED_EXPERIENCES,
   EMBED_FALLBACK_DASHBOARD_ID,
   EMBED_FALLBACK_QUESTION_ID,
+  getEmbedExperiences,
 } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type { SdkIframeEmbedSetupExperience } from "../types";
@@ -43,6 +43,7 @@ export const SelectEmbedExperienceStep = () => {
         () => recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
       )
       .with("exploration", () => 0) // resource id does not apply
+      .with("browser", () => 0) // resource id does not apply
       .exhaustive();
 
     replaceSettings({
@@ -69,7 +70,7 @@ export const SelectEmbedExperienceStep = () => {
         }
       >
         <Stack gap="md">
-          {EMBED_EXPERIENCES.map((experience) => (
+          {getEmbedExperiences().map((experience) => (
             <Radio
               key={experience.value}
               value={experience.value}

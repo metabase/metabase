@@ -20,6 +20,7 @@ export const SelectEmbedOptionsStep = () => {
     (experience === "chart" && settings.questionId);
 
   const isExplorationEmbed = settings.template === "exploration";
+  const isBrowserEmbed = settings.componentName === "metabase-browser";
 
   const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
@@ -30,8 +31,7 @@ export const SelectEmbedOptionsStep = () => {
     [theme, updateSettings],
   );
 
-  const isDashboardOrInteractiveQuestion =
-    settings.dashboardId || (settings.questionId && settings.drills);
+  const isDashboardOrQuestion = settings.dashboardId || settings.questionId;
 
   return (
     <Stack gap="md">
@@ -48,7 +48,7 @@ export const SelectEmbedOptionsStep = () => {
             />
           )}
 
-          {isDashboardOrInteractiveQuestion && (
+          {isDashboardOrQuestion && (
             <Checkbox
               label={t`Allow downloads`}
               checked={settings.withDownloads}
@@ -67,6 +67,14 @@ export const SelectEmbedOptionsStep = () => {
               }
             />
           )}
+
+          {isBrowserEmbed && (
+            <Checkbox
+              label={t`Allow editing dashboards and questions`}
+              checked={!settings.readOnly}
+              onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
+            />
+          )}
         </Stack>
       </Card>
 
@@ -77,7 +85,9 @@ export const SelectEmbedOptionsStep = () => {
           </Text>
 
           <Text size="sm" c="text-medium" mb="lg">
-            {t`Set default values and control visibility`}
+            {experience === "dashboard"
+              ? t`Set default values and control visibility`
+              : t`Set default values for parameters`}
           </Text>
 
           <ParameterSettings />
@@ -93,7 +103,7 @@ export const SelectEmbedOptionsStep = () => {
 
         {isQuestionOrDashboardEmbed && (
           <>
-            <Divider mb="md" />
+            <Divider mt="lg" mb="md" />
 
             <Checkbox
               label={t`Show ${experience} title`}

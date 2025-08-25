@@ -170,7 +170,7 @@ describe("scenarios > table-editing", () => {
       openEditRowModal(2);
       H.modal().within(() => {
         cy.get("@rowId").then((rowId) => {
-          cy.findAllByRole("textbox").first().should("have.value", rowId);
+          cy.findByTestId("ID-field-input").should("have.text", rowId);
         });
       });
     });
@@ -207,7 +207,7 @@ describe("scenarios > table-editing", () => {
       // we use randomized values here to allow multiple runs in one session (since non-changed values are not updated)
       const cases = [
         {
-          table: "Products",
+          tableId: PRODUCTS_ID,
           dataType: "string",
           column: "EAN",
           value: Math.floor(Math.random() * 100000)
@@ -215,48 +215,62 @@ describe("scenarios > table-editing", () => {
             .padStart(13, "0"),
         },
         {
-          table: "Orders",
+          tableId: ORDERS_ID,
           dataType: "number",
           column: "TAX",
           value: Math.floor(Math.random() * 1000),
         },
+        {
+          tableId: PEOPLE_ID,
+          dataType: "date",
+          column: "BIRTH_DATE",
+          value: dayjs(
+            new Date(
+              Date.now() -
+                Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 365),
+            ),
+          ).format("YYYY-MM-DD"),
+        },
       ];
 
-      cases.forEach(({ dataType, column, value, table }) => {
+      cases.forEach(({ dataType, column, value, tableId }) => {
         it(`should allow to edit a cell with type ${dataType}`, () => {
-          if (table === "Products") {
-            cy.visit(
-              `/browse/databases/${SAMPLE_DB_ID}/tables/${PRODUCTS_ID}/edit`,
-            );
-          }
+          cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${tableId}/edit`);
 
           // Locate the table and the specific cell to edit
           cy.findByTestId("table-root")
             .findAllByRole("row")
             .eq(1) // Select the second row (index 1)
             .within(() => {
-              cy.get(`[data-column-id='${column}']`).as("targetCell").click({
-                scrollBehavior: false,
-              }); // Activate inline editing
+              cy.get(`[data-column-id='${column}']`)
+                .as("targetCell")
+                .click({ scrollBehavior: "center" }); // Activate inline editing
             });
 
           // Edit the cell value
           cy.get("@targetCell")
-            .find("input") // Assuming the cell becomes an input field
-            .type(`{selectAll}{backspace}${value}`, {
-              scrollBehavior: false,
-            }) // Enter the new value
+            .find("input")
+            .first() // Assuming the cell becomes an input field
+            .type(`{selectAll}{backspace}${value}`) // Enter the new value
             .blur(); // Trigger the save action by blurring the input
 
           cy.wait("@updateTableData").then(({ response }) => {
             expect(response?.body.outputs[0].op).to.equal("updated");
-            expect(response?.body.outputs[0].row[column]).to.equal(value);
+            if (dataType === "date") {
+              expect(
+                dayjs(response?.body.outputs[0].row[column]).format(
+                  "YYYY-MM-DD",
+                ),
+              ).to.equal(value);
+            } else {
+              expect(response?.body.outputs[0].row[column]).to.equal(value);
+            }
           });
 
           H.expectUnstructuredSnowplowEvent({
             event: "edit_data_record_modified",
             event_detail: "update",
-            target_id: table === "Products" ? PRODUCTS_ID : ORDERS_ID,
+            target_id: tableId,
             triggered_from: "inline",
             result: "success",
           });
@@ -392,7 +406,7 @@ describe("scenarios > table-editing", () => {
       cy.wait("@getOrdersTable");
     });
 
-    it("should allow to create and delete a row", () => {
+    it("should allow to create a row", () => {
       cy.findByTestId("new-record-button").click();
 
       H.modal().within(() => {
@@ -415,7 +429,8 @@ describe("scenarios > table-editing", () => {
         cy.findByText("Record successfully created").should("be.visible");
         cy.findByLabelText("close icon").click();
       });
-
+      
+      
       H.expectUnstructuredSnowplowEvent({
         event: "edit_data_record_modified",
         event_detail: "create",
@@ -423,64 +438,13 @@ describe("scenarios > table-editing", () => {
         triggered_from: "modal",
         result: "success",
       });
-
-      // We want to check if the new row is added as the last row to the table
-      // eslint-disable-next-line no-unsafe-element-filtering
-      cy.findByTestId("table-scroll-container")
-        .scrollTo("bottom")
-        .findAllByRole("row")
-        .last()
-        .should("have.attr", "data-dataset-index", "2000")
-        .within(() => {
-          cy.get('[data-column-id="TAX"]').should("have.text", "50");
-          cy.get('[data-column-id="TOTAL"]').should("have.text", "100");
-          cy.get('[data-column-id="DISCOUNT"]').should("have.text", "10");
-
-          cy.findByTestId("detail-shortcut").click({
-            scrollBehavior: false,
-            force: true,
-          });
-        });
-
-      H.modal()
-        .first()
-        .within(() => {
-          cy.findByText("Edit record").should("be.visible");
-          cy.findByTestId("delete-row-icon").click();
-        });
-
-      H.modal()
-        .first()
-        .within(() => {
-          cy.findByText("Delete this record?").should("be.visible");
-          cy.findByText("Delete record").click();
-        });
-
-      cy.wait("@executeBulk").then(({ response, request }) => {
-        expect(request.body.action).to.equal("data-grid.row/delete");
-        expect(response?.body.outputs[0].op).to.equal("deleted");
-      });
-
-      H.undoToast().findByText("Successfully deleted").should("be.visible");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "edit_data_record_modified",
-        event_detail: "delete",
-        target_id: ORDERS_ID,
-        triggered_from: "modal",
-        result: "success",
-      });
     });
 
     it("should allow to delete multiple rows (bulk)", () => {
-      cy.findByTestId("delete-records-bulk-button").should("be.disabled");
-
       cy.findAllByTestId("row-select-checkbox").eq(15).click();
       cy.findAllByTestId("row-select-checkbox").eq(16).click();
 
-      cy.findByTestId("delete-records-bulk-button")
-        .should("not.be.disabled")
-        .click();
+      cy.findByTestId("toast-card").findByText("Delete").click();
 
       H.modal().within(() => {
         cy.findByText("Delete 2 records?").should("be.visible");
@@ -492,9 +456,9 @@ describe("scenarios > table-editing", () => {
         expect(response?.body.outputs[0].op).to.equal("deleted");
       });
 
-      H.undoToast().findByText("Successfully deleted").should("be.visible");
+      cy.findByTestId("toast-card").should("not.exist");
 
-      cy.findByTestId("delete-records-bulk-button").should("be.disabled");
+      H.undoToast().findByText("Successfully deleted").should("be.visible");
     });
   });
 });
@@ -542,7 +506,7 @@ function openEditRowModal(rowIndex: number) {
         scrollBehavior: false,
       });
 
-      cy.findByTestId("detail-shortcut").click({
+      cy.findByTestId("row-edit-icon").click({
         scrollBehavior: false,
       });
     });
