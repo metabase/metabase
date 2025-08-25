@@ -26,7 +26,6 @@ import { ENTITY_ICONS, getEntityIcon, useListColumns } from "./ListView";
 import S from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
 
-// Helper function to transform entity icon keys to readable format
 const formatEntityIconName = (key: string): string => {
   return key
     .replace("entity/", "")
@@ -34,6 +33,10 @@ const formatEntityIconName = (key: string): string => {
     .replace(/([A-Z])/g, " $1")
     .trim();
 };
+
+const MAX_LEFT_COLUMNS = 2;
+const MAX_RIGHT_COLUMNS = 5;
+type ContainerId = "left" | "right";
 
 export const ListViewConfiguration = ({
   data,
@@ -63,15 +66,6 @@ export const ListViewConfiguration = ({
     ...(titleColumn ? [titleColumn.name] : []),
     ...(subtitleColumn ? [subtitleColumn.name] : []),
   ]);
-
-  // Selected icon state
-  const [selectedEntityType, setSelectedEntityType] = useState<
-    keyof typeof ENTITY_ICONS
-  >(() => settings?.viewSettings?.listSettings?.entityIcon || entityType);
-
-  // Active drag state for overlay
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [currentDroppable, setCurrentDroppable] = useState<string | null>(null);
   useEffect(() => {
     setLeftValues([
       ...(titleColumn ? [titleColumn.name] : []),
@@ -86,6 +80,15 @@ export const ListViewConfiguration = ({
       rightColumns.map((col) => col?.name).filter(Boolean) as string[],
     );
   }, [rightColumns]);
+
+  // Selected icon state
+  const [selectedEntityType, setSelectedEntityType] = useState<
+    keyof typeof ENTITY_ICONS
+  >(() => settings?.viewSettings?.listSettings?.entityIcon || entityType);
+
+  // Active drag state for overlay
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [currentDroppable, setCurrentDroppable] = useState<string | null>(null);
 
   // All options from cols
   const allOptions = cols.map((col) => ({
@@ -114,7 +117,6 @@ export const ListViewConfiguration = ({
     .filter(Boolean) as DatasetColumn[];
 
   const firstRow = data.rows?.[0];
-  const emptySettings = {} as ComputedVisualizationSettings;
 
   const onConfigurationChange = ({
     left = leftValues,
@@ -144,6 +146,8 @@ export const ListViewConfiguration = ({
     if (!containerId) {
       return;
     }
+    // Storing the id of container under dragged element
+    // to hide it in original container when dragging between the two.
     setCurrentDroppable(containerId);
   };
 
@@ -157,28 +161,25 @@ export const ListViewConfiguration = ({
     }
 
     const activeId = String(active.id);
-    const from = active.data?.current?.containerId as
-      | "left"
-      | "right"
-      | undefined;
+    const from = active.data?.current?.containerId as ContainerId | undefined;
 
     if (!from) {
       return;
     }
 
     // Determine target container - could be from over item's containerId or over.id itself
-    let to: "left" | "right" | undefined;
+    let to: ContainerId | undefined;
     let overIndexInTo = -1;
 
     // Check if we're dropping on an item (has containerId)
     if (over.data?.current?.containerId) {
-      to = over.data.current.containerId as "left" | "right";
+      to = over.data.current.containerId as ContainerId;
       const toList = to === "left" ? leftValues : rightValues;
       overIndexInTo = toList.indexOf(String(over.id));
     }
     // Check if we're dropping on a container itself (droppable area)
     else if (over.id === "left" || over.id === "right") {
-      to = over.id as "left" | "right";
+      to = over.id as ContainerId;
       overIndexInTo = -1; // Append to end when dropping on container
     }
 
@@ -215,9 +216,8 @@ export const ListViewConfiguration = ({
       return;
     }
 
-    // Different containers: move
-    // Enforce max sizes: left max 2, right max 5
-    const maxForTo = to === "left" ? 2 : 5;
+    // Moving items between containers
+    const maxForTo = to === "left" ? MAX_LEFT_COLUMNS : MAX_RIGHT_COLUMNS;
     const toCurrent = to === "left" ? leftValues : rightValues;
     if (toCurrent.length >= maxForTo) {
       return;
@@ -330,8 +330,8 @@ export const ListViewConfiguration = ({
               onChange={(value) =>
                 onConfigurationChange({ left: value, right: rightValues })
               }
-              maxValues={2}
-              placeholder={leftValues.length > 0 ? "" : "Title + Subtitle"}
+              maxValues={MAX_LEFT_COLUMNS}
+              placeholder={leftValues.length > 0 ? "" : t`Title + Subtitle`}
               data-testid="list-view-left-columns"
               containerId="left"
               useExternalDnd={true}
@@ -347,8 +347,10 @@ export const ListViewConfiguration = ({
               onChange={(value) =>
                 onConfigurationChange({ left: leftValues, right: value })
               }
-              maxValues={5}
-              placeholder={rightValues.length === 5 ? "" : "Right columns"}
+              maxValues={MAX_RIGHT_COLUMNS}
+              placeholder={
+                rightValues.length === MAX_RIGHT_COLUMNS ? "" : t`Right columns`
+              }
               data-testid="list-view-right-columns"
               containerId="right"
               useExternalDnd={true}
@@ -370,7 +372,6 @@ export const ListViewConfiguration = ({
             <ListViewItem
               row={firstRow}
               cols={cols}
-              settings={emptySettings}
               entityIcon={getEntityIcon(selectedEntityType)}
               imageColumn={undefined}
               titleColumn={selectedTitleColumn}

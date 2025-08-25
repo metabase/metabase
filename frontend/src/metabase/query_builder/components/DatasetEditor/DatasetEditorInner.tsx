@@ -63,7 +63,7 @@ import type {
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
-import { DatasetEditorNewSidebar } from "./DatasetEditorNewSidebar/DatasetEditorNewSidebar";
+import { DatasetEditorSettingsSidebar } from "./DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
@@ -145,7 +145,6 @@ function getSidebar(
     onFieldMetadataChange,
     onMappedDatabaseColumnChange,
     updateVisualizationSettings,
-    _visualizationSettings,
   }: {
     datasetEditorTab: DatasetEditorTab;
     isQueryError?: unknown;
@@ -155,7 +154,6 @@ function getSidebar(
     onFieldMetadataChange: (values: Partial<DatasetColumn>) => void;
     onMappedDatabaseColumnChange: (value: number) => void;
     updateVisualizationSettings: (settings: VisualizationSettings) => void;
-    _visualizationSettings?: VisualizationSettings | null;
   },
 ): ReactNode {
   const {
@@ -206,7 +204,7 @@ function getSidebar(
       return <div />;
     }
     return (
-      <DatasetEditorNewSidebar
+      <DatasetEditorSettingsSidebar
         settings={question.settings()}
         rawSeries={props.rawSeries}
         onUpdateSettings={onUpdateModelSettings}
@@ -641,7 +639,6 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           updateQuestion(nextQuestion);
         }
       },
-      visualizationSettings: editedVisualizationSettings,
     },
   );
 
@@ -720,7 +717,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
               <QueryVisualization
                 {...props}
-                question={tempQuestion}
+                // question={tempQuestion}
                 className={CS.spread}
                 noHeader
                 queryBuilderMode="dataset"

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { displayNameForColumn } from "metabase/lib/formatting";
@@ -197,113 +196,109 @@ const vizDefinition = {
   },
 };
 
-export const ListViz = withRouter(
-  ({
-    data,
-    settings,
-    onVisualizationClick,
-    card,
-    metadata,
-    queryBuilderMode,
-    ...props
-  }: VisualizationProps) => {
-    const dispatch = useDispatch();
-    const question = useSelector(getQuestion);
-    const isShowingListViewConfiguration = useSelector(
-      getIsListViewConfigurationShown,
-    );
-    const { sortedColumnName, sortingDirection } = useMemo(() => {
-      if (!question) {
-        return {};
-      }
-      const query = question.query();
-      const [orderBy] = Lib.orderBys(query, -1);
-      if (orderBy) {
-        const { name, direction } = Lib.displayInfo(query, -1, orderBy);
-        return {
-          sortedColumnName: name,
-          sortingDirection: direction,
-        };
-      }
+export const ListViz = ({
+  data,
+  settings,
+  onVisualizationClick,
+  card,
+  metadata,
+  queryBuilderMode,
+}: VisualizationProps) => {
+  const dispatch = useDispatch();
+  const question = useSelector(getQuestion);
+  const isShowingListViewConfiguration = useSelector(
+    getIsListViewConfigurationShown,
+  );
+  const { sortedColumnName, sortingDirection } = useMemo(() => {
+    if (!question) {
       return {};
-    }, [question]);
-
-    // Get the entity type from the question's source table
-    const entityType = useMemo(() => {
-      if (!question) {
-        return undefined;
-      }
-
-      try {
-        const query = question.query();
-        const sourceTableId = Lib.sourceTableOrCardId(query);
-        const metadata = question.metadata();
-        const table = metadata.table(sourceTableId);
-
-        // Return the entity type if available, otherwise undefined
-        // Use type assertion since entity_type exists in the database but not in TypeScript types
-        return (table as any)?.entity_type;
-      } catch (error) {
-        // If there's an error getting the entity type, return undefined
-        console.warn("Could not determine entity type:", error);
-        return undefined;
-      }
-    }, [question]);
-
-    const handleSort = (column: DatasetColumn) => {
-      onVisualizationClick({ column });
-    };
-    const updateListSettings = ({
-      left,
-      right,
-      entityIcon,
-    }: {
-      left: string[];
-      right: string[];
-      entityIcon?: string;
-    }) => {
-      const newSettings = {
-        viewSettings: {
-          ...settings.viewSettings,
-          listSettings: {
-            leftColumns: left,
-            rightColumns: right,
-            entityIcon,
-          },
-        },
+    }
+    const query = question.query();
+    const [orderBy] = Lib.orderBys(query, -1);
+    if (orderBy) {
+      const { name, direction } = Lib.displayInfo(query, -1, orderBy);
+      return {
+        sortedColumnName: name,
+        sortingDirection: direction,
       };
-      const nextQuestion = question?.updateSettings(newSettings);
-      if (nextQuestion) {
-        dispatch(updateQuestion(nextQuestion));
-      }
-    };
+    }
+    return {};
+  }, [question]);
 
-    return (
-      <Box w="100%" h="100%" pos="absolute">
-        {isShowingListViewConfiguration ? (
-          <ListViewConfiguration
-            data={data}
-            settings={settings}
-            entityType={entityType}
-            onChange={updateListSettings}
-          />
-        ) : (
-          <ListView
-            data={data}
-            settings={settings}
-            sortedColumnName={sortedColumnName}
-            sortingDirection={sortingDirection}
-            onSortClick={handleSort}
-            entityType={entityType}
-            card={card}
-            metadata={metadata}
-            rowIndex={props.location.state?.rowIndex}
-            isInteractive={queryBuilderMode !== "dataset"}
-          />
-        )}
-      </Box>
-    );
-  },
-);
+  // Get the entity type from the question's source table
+  const entityType = useMemo(() => {
+    if (!question) {
+      return undefined;
+    }
+
+    try {
+      const query = question.query();
+      const sourceTableId = Lib.sourceTableOrCardId(query);
+      const metadata = question.metadata();
+      const table = metadata.table(sourceTableId);
+
+      // Return the entity type if available, otherwise undefined
+      // Use type assertion since entity_type exists in the database but not in TypeScript types
+      return (table as any)?.entity_type;
+    } catch (error) {
+      // If there's an error getting the entity type, return undefined
+      console.warn("Could not determine entity type:", error);
+      return undefined;
+    }
+  }, [question]);
+
+  const handleSort = (column: DatasetColumn) => {
+    onVisualizationClick({ column });
+  };
+  const updateListSettings = ({
+    left,
+    right,
+    entityIcon,
+  }: {
+    left: string[];
+    right: string[];
+    entityIcon?: string;
+  }) => {
+    const newSettings = {
+      viewSettings: {
+        ...settings.viewSettings,
+        listSettings: {
+          leftColumns: left,
+          rightColumns: right,
+          entityIcon,
+        },
+      },
+    };
+    const nextQuestion = question?.updateSettings(newSettings);
+    if (nextQuestion) {
+      dispatch(updateQuestion(nextQuestion));
+    }
+  };
+
+  return (
+    <Box w="100%" h="100%" pos="absolute">
+      {isShowingListViewConfiguration ? (
+        <ListViewConfiguration
+          data={data}
+          settings={settings}
+          entityType={entityType}
+          onChange={updateListSettings}
+        />
+      ) : (
+        <ListView
+          data={data}
+          settings={settings}
+          sortedColumnName={sortedColumnName}
+          sortingDirection={sortingDirection}
+          onSortClick={handleSort}
+          entityType={entityType}
+          card={card}
+          metadata={metadata}
+          isInteractive={queryBuilderMode !== "dataset"}
+        />
+      )}
+    </Box>
+  );
+};
 
 Object.assign(ListViz, vizDefinition);

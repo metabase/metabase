@@ -5,6 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import {
   getFirstQueryResult,
   getIsVisualized,
+  getOriginalQuestion,
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { Group } from "metabase/ui";
@@ -22,7 +23,10 @@ type ViewFooterProps = { className?: string };
 export const ViewFooter = ({ className }: ViewFooterProps) => {
   const isVisualized = useSelector(getIsVisualized);
   const question = useSelector(getQuestion);
+  const originalQuestion = useSelector(getOriginalQuestion);
   const result = useSelector(getFirstQueryResult);
+  const showListDisplayToggle =
+    originalQuestion?.display() === "list" && !isVisualized;
 
   if (!question || !result) {
     return null;
@@ -40,7 +44,7 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
     >
       <Group justify="space-between" pos="relative" wrap="nowrap" w="100%">
         {!hideChartSettings && <LeftViewFooterButtonGroup />}
-        {!isVisualized && !question.isSaved() && <ViewStyleToggle />}
+        {/* {showListDisplayToggle && <ViewStyleToggle />} */}
         {isVisualized && <CenterViewFooterButtonGroup />}
         <RightViewFooterButtonGroup />
       </Group>

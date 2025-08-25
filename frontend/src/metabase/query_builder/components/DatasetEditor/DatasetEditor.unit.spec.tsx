@@ -34,9 +34,11 @@ const mockSavedModel = { ...mockSavedCard, type: "model" };
 const mockSavedMetric = { ...mockSavedCard, type: "metric" };
 const mockUnsavedCard = createMockUnsavedCard();
 
-const noop = () => null;
+const noop = () => {};
 const defaultDatasetEditorProps = {
   datasetEditorTab: "query",
+  rawSeries: [],
+  visualizationSettings: {},
   isDirty: false,
   isMetadataDirty: false,
   isRunning: true,
@@ -57,6 +59,7 @@ const defaultDatasetEditorProps = {
   toggleDataReference: noop,
   toggleSnippetSidebar: noop,
   toggleTemplateTagsEditor: noop,
+  runDirtyQuestionQuery: noop,
 };
 
 const renderDatasetEditor = async (card: Card | UnsavedCard) => {

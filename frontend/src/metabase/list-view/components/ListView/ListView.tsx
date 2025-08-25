@@ -1,7 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type CSSProperties, useMemo, useRef } from "react";
 import { t } from "ttag";
-import { useMount } from "react-use";
 
 import { Icon, Stack, Text } from "metabase/ui";
 import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";
@@ -22,7 +21,6 @@ export interface ListViewProps {
   entityType?: string;
   card: Card;
   metadata?: Metadata;
-  rowIndex?: number;
   isInteractive?: boolean;
 }
 
@@ -35,7 +33,6 @@ export function ListView({
   entityType,
   card,
   metadata,
-  rowIndex,
   isInteractive,
 }: ListViewProps) {
   const { cols, rows } = data;
@@ -53,13 +50,6 @@ export function ListView({
     useListColumns(cols, settings.viewSettings?.listSettings);
 
   const openObjectDetail = useObjectDetail(data, card, metadata);
-  useMount(() => {
-    if (rowIndex && rowIndex < rows.length) {
-      window.requestAnimationFrame(() => {
-        virtualizer.scrollToIndex(rowIndex, { align: "center" });
-      });
-    }
-  });
 
   // Get the appropriate icon based on entity type
   const entityIcon =
@@ -73,7 +63,7 @@ export function ListView({
     >
       <Stack className={styles.listContainer}>
         <div className={styles.listHeader}>
-          {/* Entity Type Icon Column Header */}
+          {/* Entity Type Icon Column Placeholder */}
           <div style={{ width: 32, flexShrink: 0 }} />
 
           {/* Title and Subtitle Column */}
@@ -196,6 +186,10 @@ export function useListColumns(
   cols: DatasetColumn[],
   listSettings?: ListSettings,
 ) {
+  // Column role is based on it's position in the list:
+  // - First column is title
+  // - Second column is subtitle
+  // - Next 0-5 columns are right columns
   const titleColumn = useMemo(() => {
     const defaultTitleColumn =
       cols.find((col) => Lib.isEntityName(Lib.legacyColumnTypeInfo(col))) ||
@@ -241,7 +235,7 @@ export function useListColumns(
     if (listSettings && Array.isArray(listSettings.rightColumns)) {
       return listSettings.rightColumns
         .map((colName) => cols.find((col) => col.name === colName))
-        .filter(Boolean);
+        .filter(Boolean) as DatasetColumn[];
     }
     return defaultRightColumns;
   }, [cols, titleColumn, subtitleColumn, imageColumn, listSettings]);

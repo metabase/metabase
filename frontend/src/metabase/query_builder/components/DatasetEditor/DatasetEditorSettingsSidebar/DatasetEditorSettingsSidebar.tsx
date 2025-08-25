@@ -9,21 +9,23 @@ import type { RawSeries } from "metabase-types/api";
 
 import { ListViewColumnsCustomization } from "./ListViewColumnsCustomization";
 
-type DatasetEditorNewSidebarProps = {
+type DatasetEditorSettingsSidebarProps = {
   onUpdateSettings: (settings: any) => void;
   settings: any;
   rawSeries: RawSeries;
 };
-export const DatasetEditorNewSidebar = ({
+export const DatasetEditorSettingsSidebar = ({
   onUpdateSettings,
   settings = {},
   rawSeries,
-}: DatasetEditorNewSidebarProps) => {
+}: DatasetEditorSettingsSidebarProps) => {
   const dispatch = useDispatch();
   const isShowingListViewConfiguration = useSelector(
     getIsListViewConfigurationShown,
   );
-  const currentView = settings?.viewSettings?.defaultView ?? "table";
+  const currentView = (settings?.viewSettings?.defaultView ?? "table") as
+    | "table"
+    | "list";
   const cols = useMemo(() => rawSeries[0]?.data?.cols, [rawSeries]);
 
   if (currentView === "list" && isShowingListViewConfiguration) {

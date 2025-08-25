@@ -24,7 +24,6 @@ export function useSaveQuestion({
 
   return useCallback(
     async (updatedQuestion: Question, { rerunQuery } = {}) => {
-      debugger;
       await dispatch(apiUpdateQuestion(updatedQuestion, { rerunQuery }));
       await dispatch(setUIControls({ isModifiedFromNotebook: false }));
 

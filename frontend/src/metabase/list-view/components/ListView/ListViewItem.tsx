@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 
 import { formatValue } from "metabase/lib/formatting";
-import { Box, Flex, Icon, Image, Text } from "metabase/ui";
+import { Box, Flex, Icon, type IconName, Image, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
@@ -13,7 +13,7 @@ export interface ListViewItemProps {
   className?: string;
   row: DatasetData["rows"][number];
   cols: DatasetColumn[];
-  settings: ComputedVisualizationSettings;
+  settings?: ComputedVisualizationSettings;
   entityIcon: string;
   imageColumn?: DatasetColumn;
   titleColumn?: DatasetColumn;
@@ -26,7 +26,7 @@ export interface ListViewItemProps {
 export function ListViewItem({
   row,
   cols,
-  settings,
+  settings = {},
   entityIcon,
   imageColumn,
   titleColumn,
@@ -56,7 +56,7 @@ export function ListViewItem({
           backgroundColor: "var(--mb-color-background-light)",
         }}
       >
-        <Icon name={entityIcon} size={16} c="text-light" />
+        <Icon name={entityIcon as IconName} size={16} c="text-light" />
       </Box>
 
       {/* Title and Subtitle Content */}

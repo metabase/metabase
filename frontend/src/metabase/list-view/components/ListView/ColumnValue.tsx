@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Box, Flex, Text } from "metabase/ui";
 import type { DatasetColumn } from "metabase-types/api";
 
 import styles from "./ListView.module.css";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 
 // Light background colors for category values
 const CATEGORY_COLORS = [

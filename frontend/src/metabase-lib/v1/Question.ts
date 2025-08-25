@@ -722,7 +722,6 @@ class Question {
     includeDatasetQuery = true,
     includeOriginalCardId = true,
     includeDisplayIsLocked = false,
-    includeDisplay = true,
     creationType,
   }: {
     includeEntityId?: boolean;
