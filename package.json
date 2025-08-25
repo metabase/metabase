@@ -517,7 +517,7 @@
     "enterprise/frontend/src/embedding-sdk-package/README.md": [
       "prettier --write"
     ],
-    "+.storybook/**/*.{js,jsx,ts,tsx,css}": [
+    "+(.storybook|enterprise/frontend/src/embedding-sdk-shared/.storybook)/**/*.{js,jsx,ts,tsx,css}": [
       "prettier --write"
     ],
     "**/*": [
