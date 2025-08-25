@@ -491,7 +491,7 @@ const assertValidProps = (
 };
 
 const EntityPickerLoadingSkeleton = () => (
-  <Box data-testid="loading-indicator">
+  <Box data-testid="loading-indicator" className={S.loadingSkeleton}>
     <Flex px="2rem" gap="1.5rem" mb="3.5rem">
       <Repeat times={3}>
         <Skeleton h="2rem" w="5rem" mb="0.5rem" />
