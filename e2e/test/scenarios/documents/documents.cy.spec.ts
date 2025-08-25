@@ -11,11 +11,12 @@ import {
 
 const { H } = cy;
 
-describe("documents", () => {
+H.describeWithSnowplowEE("documents", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.resetSnowplow();
   });
 
   it("should allow you to create a new document from the new button and save", () => {
@@ -41,6 +42,8 @@ describe("documents", () => {
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
     cy.title().should("eq", "Test Document · Metabase");
+
+    H.expectUnstructuredSnowplowEvent({ event: "document_created" });
 
     H.appBar()
       .findByRole("link", { name: /First collection/ })
@@ -175,10 +178,33 @@ describe("documents", () => {
       });
 
       it("not found", () => {
-        cy.get("@documentId").then((id) => cy.visit(`/document/${id + 1}`));
+        cy.get("@documentId").then((id) =>
+          cy.visit(`/document/${(id as unknown as number) + 1}`),
+        );
         H.main().within(() => {
           cy.findByText("We're a little lost...").should("exist");
           cy.findByText("The page you asked for couldn't be found.");
+        });
+      });
+
+      it("should allow you to print", () => {
+        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        cy.findByRole("button", { name: "More options" }).click();
+
+        // This needs to be *after* the page load to work
+        cy.window().then((win: Window) => {
+          cy.stub(win, "print").as("printStub");
+        });
+
+        H.popover().findByText("Print Document").click();
+
+        cy.get("@printStub").should("have.been.calledOnce");
+
+        cy.get("@documentId").then((id) => {
+          H.expectUnstructuredSnowplowEvent({
+            event: "document_print",
+            target_id: id,
+          });
         });
       });
     });
@@ -369,6 +395,13 @@ describe("documents", () => {
         cy.realPress("{downarrow}");
         H.addToDocument("\n", false);
 
+        cy.get("@documentId").then((id) => {
+          H.expectUnstructuredSnowplowEvent({
+            event: "document_add_card",
+            target_id: id,
+          });
+        });
+
         H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).should("exist");
 
         cy.realPress("{downarrow}");
@@ -458,6 +491,13 @@ describe("documents", () => {
           cy.findAllByTestId("result-item").findByText("Orders").click();
         });
 
+        cy.get("@documentId").then((id) => {
+          H.expectUnstructuredSnowplowEvent({
+            event: "document_replace_card",
+            target_id: id,
+          });
+        });
+
         H.getDocumentCard(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).should(
           "not.exist",
         );
@@ -494,6 +534,7 @@ describe("documents", () => {
         H.addToDocument("");
         H.addToDocument("Adding a static link: /", false);
         H.commandSuggestionItem("Link").click();
+
         H.addToDocument("Ord", false);
         H.commandSuggestionItem(/Orders, Count$/).click();
         H.addToDocument(" And continue typing", false);
@@ -515,6 +556,17 @@ describe("documents", () => {
 
         cy.wait("@documentGet");
 
+        cy.get("@documentId").then((id) => {
+          H.expectUnstructuredSnowplowEvent({
+            event: "document_saved",
+            target_id: id,
+          });
+          H.expectUnstructuredSnowplowEvent({
+            event: "document_add_smart_link",
+            target_id: id,
+          });
+        });
+
         cy.findByTestId("toast-undo")
           .findByText("Document saved")
           .should("be.visible");
@@ -530,6 +582,27 @@ describe("documents", () => {
         cy.location("pathname").should(
           "not.include",
           ORDERS_BY_YEAR_QUESTION_ID.toString(),
+        );
+
+        // Navigating to a question from a document should result in a back button
+        cy.findByLabelText("Back to Foo Document").click();
+
+        cy.get("@documentId").then((id) =>
+          cy.location("pathname").should("equal", `/document/${id}`),
+        );
+
+        H.getDocumentCard("Orders, Count, Grouped by Created At (year)").within(
+          () => {
+            H.cartesianChartCircle().eq(1).click();
+          },
+        );
+
+        H.popover().findByText("See these Orders").click();
+
+        cy.findByLabelText("Back to Foo Document").click();
+
+        cy.get("@documentId").then((id) =>
+          cy.location("pathname").should("equal", `/document/${id}`),
         );
       });
     });

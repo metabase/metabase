@@ -5,8 +5,8 @@ import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
-import { defineMetabaseAuthConfig } from "embedding-sdk-bundle/sdk-package/lib/public/define-metabase-auth-config";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
+import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
 
 import {
   MOCK_INSTANCE_URL,

@@ -2,7 +2,6 @@ import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import { Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -50,10 +49,12 @@ export function SourceDatasetBreadcrumbs({
             maw="auto"
             position="bottom"
           >
+            {/* We use span here for ref forwarding */}
             <span>
               <HeadBreadcrumbs.Badge
                 inactiveColor="text-light"
-                icon={{ name: "warning", color: color("danger") }}
+                icon={{ name: "warning", color: "var(--mb-color-danger)" }}
+                to={Urls.question(question.card())}
               >
                 {question.displayName()}
               </HeadBreadcrumbs.Badge>

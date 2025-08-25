@@ -187,7 +187,7 @@ jobs:
       - name: Get current SDK version
         id: current-sdk-version
         run: |
-          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk-bundle/package.template.json)
+          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk-package/package.template.json)
           echo "sdk_current_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Get next SDK patch version
