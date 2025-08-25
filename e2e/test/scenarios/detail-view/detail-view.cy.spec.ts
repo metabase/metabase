@@ -105,6 +105,8 @@ describe("detail view", () => {
         ["Discount ($)", "empty"],
         ["Created At", "February 11, 2025, 9:40 PM"],
         ["Quantity", "2"],
+        ["Order image", "https://example.com/order/1.jpg"],
+        ["Product image", "https://example.com/product/14.jpg"],
         ["Products → Category", "Widget"],
         ["Products → Created At", "December 31, 2023, 2:41 PM"],
         ["Products → Ean", "8833419218504"],
@@ -139,12 +141,6 @@ describe("detail view", () => {
 
   describe("value rendering", () => {
     it("respects datamodel remapping and viz settings", () => {
-      /*
-        - [ ] remapping works
-          - [ ] custom mapping
-        - [ ] images are rendered in a frame and with a link underneath
-        */
-
       cy.log("user id - fk remapping");
       H.remapDisplayValueToFK({
         display_value: ORDERS.USER_ID,
@@ -186,8 +182,67 @@ describe("detail view", () => {
         },
       });
 
+      cy.log("quantity - custom mapping");
+      cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+        settings: {
+          has_field_values: "list",
+        },
+      });
+      cy.request("POST", `/api/field/${ORDERS.QUANTITY}/dimension`, {
+        name: "Quantity",
+        human_readable_field_id: null,
+        type: "internal",
+      });
+      cy.request("GET", `/api/field/${ORDERS.QUANTITY}/values`).then(
+        ({ body: response }) => {
+          const values = response.values.map(([value]: [number]) => {
+            if (value === 2) {
+              return [value, "two"];
+            }
+
+            return [value, String(value)];
+          });
+
+          cy.request("POST", `/api/field/${ORDERS.QUANTITY}/values`, {
+            values,
+          });
+        },
+      );
+
       createOrdersJoinProductsModel().then(({ body: card }) => {
+        cy.request("PUT", `/api/card/${card.id}`, {
+          result_metadata: card.result_metadata.map((column) => {
+            if (
+              column.name === "Order image" ||
+              column.name === "Product image"
+            ) {
+              return {
+                ...column,
+                semantic_type: "type/ImageURL",
+                settings: {
+                  view_as: "image",
+                },
+              };
+            }
+
+            return column;
+          }),
+        });
+
         DetailView.visitModel(card.id, 1);
+      });
+
+      DetailView.getHeader().within(() => {
+        cy.findByRole("img")
+          .should("be.visible")
+          .and("have.attr", "src", "https://example.com/order/1.jpg");
+
+        cy.findByRole("heading", {
+          name: "Awesome Concrete Shoes",
+          level: 1,
+        }).should("be.visible");
+
+        cy.findByRole("heading", { name: "1", level: 2 }).should("be.visible");
       });
 
       DetailView.verifyDetails([
@@ -198,7 +253,8 @@ describe("detail view", () => {
         ["Total", `${VERY_LONG_STRING}39.72`],
         ["Discount ($)", "empty"],
         ["Created At", "February 11, 2025, 9:40 PM"],
-        ["Quantity", "2"],
+        ["Quantity", "two"],
+        ["Product image", "https://example.com/product/14.jpg"],
         ["Products → Category", "Widget"],
         ["Products → Created At", "December 31, 2023, 2:41 PM"],
         ["Products → Ean", "8833419218504"],
@@ -208,7 +264,7 @@ describe("detail view", () => {
       ]);
 
       cy.log("user id remapped to user name");
-      DetailView.getDetailsRowValue({ index: 0, rowsCount: 14 }).within(() => {
+      DetailView.getDetailsRowValue({ index: 0, rowsCount: 15 }).within(() => {
         cy.findByRole("link", { name: "Hudson Borer" })
           .should("be.visible")
           .and("have.attr", "href", `/table/${PEOPLE_ID}/detail/1`);
@@ -217,7 +273,7 @@ describe("detail view", () => {
       cy.log(
         "product id remapped to product title, and custom view_as setting",
       );
-      DetailView.getDetailsRowValue({ index: 1, rowsCount: 14 }).within(() => {
+      DetailView.getDetailsRowValue({ index: 1, rowsCount: 15 }).within(() => {
         cy.findByRole("link", { name: "Product: Awesome Concrete Shoes" })
           .should("be.visible")
           .and("have.attr", "href", "https://example.com/14")
@@ -228,6 +284,20 @@ describe("detail view", () => {
       cy.log("very long value without whitespace wraps");
       cy.get("main").should(($main) => {
         expect(H.isScrollableHorizontally($main[0])).to.be.false;
+      });
+
+      cy.log("image should be rendered in a frame with a link");
+      DetailView.getDetailsRowValue({ index: 8, rowsCount: 15 }).within(() => {
+        cy.findByRole("img")
+          .should("be.visible")
+          .and("have.attr", "src", "https://example.com/product/14.jpg");
+
+        cy.findByRole("link")
+          .should("be.visible")
+          .and("have.text", "https://example.com/product/14.jpg")
+          .and("have.attr", "href", "https://example.com/product/14.jpg")
+          .and("have.attr", "target", "_blank")
+          .and("have.attr", "rel", "noopener noreferrer");
       });
     });
   });
@@ -271,6 +341,20 @@ function createOrdersJoinProductsModel() {
           "source-table": PRODUCTS_ID,
         },
       ],
+      expressions: {
+        "Order image": [
+          "concat",
+          "https://example.com/order/",
+          ["field", ORDERS.ID],
+          ".jpg",
+        ],
+        "Product image": [
+          "concat",
+          "https://example.com/product/",
+          ["field", ORDERS.PRODUCT_ID],
+          ".jpg",
+        ],
+      },
       limit: 5,
     },
     collection_id: SECOND_COLLECTION_ID,

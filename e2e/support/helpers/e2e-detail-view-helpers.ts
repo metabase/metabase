@@ -3,6 +3,7 @@ import type { CardId, TableId } from "metabase-types/api";
 export const DetailView = {
   visitModel,
   visitTable,
+  getHeader,
   getDetails,
   getDetailsRow,
   getDetailsRowColumnName,
@@ -32,8 +33,8 @@ function visitTable(tableId: TableId, rowId: string | number) {
   cy.wait("@tableDetailTableMetadata");
 }
 
-function getRelationships() {
-  return cy.findByTestId("relationships");
+function getHeader() {
+  return cy.findByTestId("detail-view-header");
 }
 
 function getDetails() {
@@ -53,6 +54,10 @@ function getDetailsRowColumnName({ index, rowsCount }: RowOptions) {
 
 function getDetailsRowValue({ index, rowsCount }: RowOptions) {
   return getDetailsRow({ index, rowsCount }).findByTestId("value");
+}
+
+function getRelationships() {
+  return cy.findByTestId("relationships");
 }
 
 function verifyDetails(rows: [string, string][]) {
