@@ -177,60 +177,6 @@ export const DatabaseReplicationForm = ({
 
   return (
     <Stack>
-      <Card radius="md" bg="bg-light" p="md" my="sm">
-        <Stack>
-          <Group justify="space-between">
-            <Box ta="left">
-              <Text c="text-light">{database.name}</Text>
-              {!previewResponseLoading &&
-              typeof previewResponse?.totalEstimatedRowCount === "number" ? (
-                <Text fw="bold">
-                  {t`${compactEnglishNumberFormat.format(previewResponse.totalEstimatedRowCount)} rows`}
-                </Text>
-              ) : (
-                <Skeleton height="1.5em" width="10em" />
-              )}
-            </Box>
-
-            {previewResponseLoading && <Loader />}
-
-            <Box ta="right">
-              <Text c="text-light">{t`Available Cloud Storage`}</Text>
-              {!previewResponseLoading &&
-              typeof previewResponse?.freeQuota === "number" ? (
-                <Text fw="bold" w="100%">
-                  {t`${compactEnglishNumberFormat.format(previewResponse.freeQuota)} rows`}
-                </Text>
-              ) : (
-                <Skeleton height="1.5em" width="10em" />
-              )}
-            </Box>
-          </Group>
-
-          {!previewResponseLoading &&
-          typeof storageUtilizationPercent === "number" ? (
-            <Progress
-              value={storageUtilizationPercent}
-              color={
-                previewResponse?.canSetReplication
-                  ? colors.success
-                  : colors.error
-              }
-            />
-          ) : (
-            <Skeleton height="1em" width="100%" />
-          )}
-
-          {previewResponse && !previewResponse.canSetReplication && (
-            <>
-              <Divider />
-              <Text>{t`Not enough storage. Please upgrade your plan or modify the replication scope by excluding schemas.`}</Text>
-              <ExternalLink href={storeUrl}>{t`Get more storage`}</ExternalLink>
-            </>
-          )}
-        </Stack>
-      </Card>
-
       <FormProvider
         initialValues={initialValues}
         onSubmit={onSubmit}
@@ -451,6 +397,63 @@ export const DatabaseReplicationForm = ({
                   )}
                 </Card>
               }
+
+              <Card radius="md" bg="bg-light" p="md" my="sm">
+                <Stack>
+                  <Group justify="space-between">
+                    <Box ta="left">
+                      <Text c="text-light">{database.name}</Text>
+                      {!previewResponseLoading &&
+                      typeof previewResponse?.totalEstimatedRowCount ===
+                        "number" ? (
+                        <Text fw="bold">
+                          {t`${compactEnglishNumberFormat.format(previewResponse.totalEstimatedRowCount)} rows`}
+                        </Text>
+                      ) : (
+                        <Skeleton height="1.5em" width="10em" />
+                      )}
+                    </Box>
+
+                    {previewResponseLoading && <Loader />}
+
+                    <Box ta="right">
+                      <Text c="text-light">{t`Available Cloud Storage`}</Text>
+                      {!previewResponseLoading &&
+                      typeof previewResponse?.freeQuota === "number" ? (
+                        <Text fw="bold" w="100%">
+                          {t`${compactEnglishNumberFormat.format(previewResponse.freeQuota)} rows`}
+                        </Text>
+                      ) : (
+                        <Skeleton height="1.5em" width="10em" />
+                      )}
+                    </Box>
+                  </Group>
+
+                  {!previewResponseLoading &&
+                  typeof storageUtilizationPercent === "number" ? (
+                    <Progress
+                      value={storageUtilizationPercent}
+                      color={
+                        previewResponse?.canSetReplication
+                          ? colors.success
+                          : colors.error
+                      }
+                    />
+                  ) : (
+                    <Skeleton height="1em" width="100%" />
+                  )}
+
+                  {previewResponse && !previewResponse.canSetReplication && (
+                    <>
+                      <Divider />
+                      <Text>{t`Not enough storage. Please upgrade your plan or modify the replication scope by excluding schemas.`}</Text>
+                      <ExternalLink
+                        href={storeUrl}
+                      >{t`Get more storage`}</ExternalLink>
+                    </>
+                  )}
+                </Stack>
+              </Card>
 
               <Flex justify="end">
                 <Group align="center" gap="sm">
