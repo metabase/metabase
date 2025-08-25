@@ -13,7 +13,7 @@
 
 (defn- by-name
   [dimensions dimension-name]
-  (m/find-first (comp #{dimension-name} :name) dimensions))
+  (m/find-first (comp #{dimension-name} :display_name) dimensions))
 
 (defn- test-card
   []
