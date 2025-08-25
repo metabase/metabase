@@ -73,7 +73,7 @@
 
 (defn enhanced-database-tables
   "Get database tables formatted with the new metabot tools schema format.
-  
+
   Returns tables with :type, :display_name, :database_id, :database_schema, :fields (with field-id), :metrics.
   This format is used by metabot context and other modern tools."
   ([database-id]
