@@ -10,7 +10,7 @@ describe("SDK environment config", () => {
       (await import("metabase/embedding-sdk/config")).isEmbeddingSdk(),
     ).toBe(false);
 
-    await import("embedding-sdk-bundle");
+    await import("embedding-sdk-package");
 
     expect(
       (await import("metabase/embedding-sdk/config")).isEmbeddingSdk(),
@@ -22,7 +22,7 @@ describe("SDK environment config", () => {
       (await import("metabase/embedding-sdk/config")).isEmbeddingSdk(),
     ).toBe(false);
 
-    await import("embedding-sdk-bundle/bundle");
+    await import("embedding-sdk-bundle");
 
     expect(
       (await import("metabase/embedding-sdk/config")).isEmbeddingSdk(),
