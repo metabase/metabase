@@ -56,14 +56,6 @@ describe("detail view", () => {
         .should("be.visible")
         .and("have.text", "Showing 8 rows");
     });
-
-    // it("breadcrumbs", () => {
-    //   H.restore("postgres-writable");
-    //   H.resetTestTable({ type: "postgres", table: "multi_schema" });
-    //   H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-
-    //   DetailView.visitTable(PRODUCTS_ID, 1);
-    // });
   });
 
   describe("model", () => {
