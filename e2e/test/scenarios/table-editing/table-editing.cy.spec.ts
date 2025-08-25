@@ -257,11 +257,10 @@ describe("scenarios > table-editing", () => {
           cy.wait("@updateTableData").then(({ response }) => {
             expect(response?.body.outputs[0].op).to.equal("updated");
             if (dataType === "date") {
-              expect(
-                dayjs(response?.body.outputs[0].row[column]).format(
-                  "YYYY-MM-DD",
-                ),
-              ).to.equal(value);
+              // BE returns the date in the report timezone, so we should ignore the timezone offset
+              expect(response?.body.outputs[0].row[column]).to.satisfy(
+                (date: string) => date.startsWith(value.toString()),
+              );
             } else {
               expect(response?.body.outputs[0].row[column]).to.equal(value);
             }
