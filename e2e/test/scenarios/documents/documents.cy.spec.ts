@@ -231,6 +231,7 @@ H.describeWithSnowplowEE("documents", () => {
       });
 
       cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.addPostgresDatabase();
     });
 
     it("should support typing with a markdown syntax", () => {
@@ -387,6 +388,66 @@ H.describeWithSnowplowEE("documents", () => {
             dashboard_id: id,
           });
         });
+      });
+
+      it("should support keyboard and mouse selection in suggestions without double highlight", () => {
+        H.documentContent().click();
+        H.addToDocument("/", false);
+
+        assertOnlyOneOptionActive(/Ask Metabot/);
+
+        cy.realPress("{downarrow}");
+        cy.realPress("{downarrow}");
+
+        //Link should be active
+        assertOnlyOneOptionActive("Link");
+
+        // Hover over Quote
+        H.commandSuggestionItem(/Quote/).realHover();
+
+        assertOnlyOneOptionActive(/Quote/);
+
+        H.addToDocument("pro", false);
+
+        assertOnlyOneOptionActive(/Products by Category/);
+
+        cy.realPress("{downarrow}");
+        assertOnlyOneOptionActive(/Products average/);
+
+        H.commandSuggestionItem(/Products by Category/).realHover();
+
+        assertOnlyOneOptionActive(/Products by Category/);
+
+        cy.realPress("Escape");
+
+        H.clearDocumentContent();
+
+        H.addToDocument("@ord", false);
+
+        cy.realPress("{downarrow}");
+        cy.realPress("{downarrow}");
+
+        assertOnlyOneOptionActive(/Orders, Count$/, "mention");
+
+        H.documentSuggestionDialog()
+          .findByRole("option", { name: /Browse all/ })
+          .realHover();
+
+        assertOnlyOneOptionActive(/Browse all/, "mention");
+
+        cy.realPress("Escape");
+        H.clearDocumentContent();
+        H.addToDocument("/", false);
+
+        H.commandSuggestionItem(/Ask Metabot/).click();
+        H.addToDocument("@", false);
+
+        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
+        cy.realPress("{downarrow}");
+        assertOnlyOneOptionActive(/Sample/, "metabot");
+
+        H.documentMetabotSuggestionItem(/QA Postgres/).realHover();
+        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
       });
 
       it("should support adding cards and updating viz settings", () => {
@@ -616,3 +677,24 @@ H.describeWithSnowplowEE("documents", () => {
     });
   });
 });
+
+const assertOnlyOneOptionActive = (
+  name: string | RegExp,
+  dialog: "command" | "mention" | "metabot" = "command",
+) => {
+  const dialogContainer =
+    dialog === "command"
+      ? H.commandSuggestionDialog
+      : dialog === "mention"
+        ? H.documentSuggestionDialog
+        : H.documentMetabotDialog;
+
+  dialogContainer()
+    .findByRole("option", { name })
+    .should("have.attr", "aria-selected", "true");
+
+  dialogContainer()
+    .findAllByRole("option")
+    .filter("[aria-selected=true]")
+    .should("have.length", 1);
+};

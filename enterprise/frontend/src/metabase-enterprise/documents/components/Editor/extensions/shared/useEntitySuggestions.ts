@@ -30,6 +30,7 @@ interface UseEntitySuggestionsResult {
     handleModalSelect: (item: QuestionPickerValueItem) => void;
     handleModalClose: () => void;
     openModal: () => void;
+    hoverHandler: (index: number) => void;
   };
 }
 
@@ -96,6 +97,11 @@ export function useEntitySuggestions({
     selectItem(selectedIndex);
   }, [selectItem, selectedIndex]);
 
+  const hoverHandler = useCallback(
+    (index: number) => setSelectedIndex(index),
+    [],
+  );
+
   const onKeyDown = useCallback(
     ({ event }: { event: KeyboardEvent }) => {
       if (event.key === "ArrowUp") {
@@ -160,6 +166,7 @@ export function useEntitySuggestions({
       handleModalSelect,
       handleModalClose,
       openModal,
+      hoverHandler,
     },
   };
 }

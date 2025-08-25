@@ -1,3 +1,4 @@
+import type { DOMAttributes } from "react";
 import { t } from "ttag";
 
 import {
@@ -12,7 +13,7 @@ import type { SearchModel } from "metabase-types/api";
 
 import S from "./MenuItems.module.css";
 
-interface ExtraItemProps {
+interface ExtraItemProps extends DOMAttributes<HTMLButtonElement> {
   isSelected?: boolean;
   onClick?: () => void;
 }
@@ -31,16 +32,18 @@ export const MenuItemComponent = ({
   item,
   isSelected,
   onClick,
+  ...rest
 }: {
   item: MenuItem;
   isSelected?: boolean;
   onClick?: () => void;
-}) => (
+} & DOMAttributes<HTMLButtonElement>) => (
   <UnstyledButton
     className={S.menuItem}
     onClick={onClick || item.action}
     role="option"
     aria-selected={isSelected}
+    {...rest}
   >
     <Group gap="sm" wrap="nowrap" align="center">
       <Icon name={item.icon} size={16} color={item.iconColor || "inherit"} />
@@ -61,12 +64,14 @@ export const MenuItemComponent = ({
 export const SearchResultsFooter = ({
   isSelected,
   onClick,
+  ...rest
 }: ExtraItemProps) => (
   <UnstyledButton
     className={S.menuItem}
     onClick={onClick}
     role="option"
     aria-selected={isSelected}
+    {...rest}
   >
     <Group gap="sm" wrap="nowrap" align="center">
       <Icon name="search" size={16} color="inherit" />
