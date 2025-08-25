@@ -60,6 +60,7 @@
 
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
+                        all-ex-messages
                         auto-retry
                         string-to-bytes
                         bytes-to-string

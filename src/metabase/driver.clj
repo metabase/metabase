@@ -842,13 +842,14 @@
   as keywords whenever possible. This provides for both unified error messages and categories which let us point
   users to the erroneous input fields.
   Error messages can also be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
-  `metabase.util.i18n/tru`."
-  {:added "0.32.0" :arglists '([this message])}
+  `metabase.util.i18n/tru`.
+  Passed a collection of all non-nil exception messages that were thrown during connection attempt."
+  {:added "0.32.0" :arglists '([this messages])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod humanize-connection-error-message ::driver [_ message]
-  message)
+(defmethod humanize-connection-error-message ::driver [_ messages]
+  (first messages))
 
 (defmulti mbql->native
   "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL query in
