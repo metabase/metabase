@@ -27,16 +27,6 @@ export const Breadcrumb = ({
   icon,
   ...props
 }: Props) => {
-  const content = (
-    <Ellipsified tooltip={children}>
-      <Group align="center" gap={rem(10)} wrap="nowrap">
-        {icon && <Icon flex="0 0 auto" name={icon} />}
-
-        <Box>{children}</Box>
-      </Group>
-    </Ellipsified>
-  );
-
   if (href) {
     return (
       <Box
@@ -46,14 +36,22 @@ export const Breadcrumb = ({
         to={href}
         {...props}
       >
-        {content}
+        <Group align="center" gap={rem(10)} wrap="nowrap">
+          {icon && <Icon flex="0 0 auto" name={icon} />}
+
+          <Ellipsified tooltip={children}>{children}</Ellipsified>
+        </Group>
       </Box>
     );
   }
 
   return (
     <Box c="text-secondary" className={cx(S.breadcrumb, className)} {...props}>
-      {content}
+      <Group align="center" gap={rem(10)} wrap="nowrap">
+        {icon && <Icon flex="0 0 auto" name={icon} />}
+
+        <Ellipsified tooltip={children}>{children}</Ellipsified>
+      </Group>
     </Box>
   );
 };
