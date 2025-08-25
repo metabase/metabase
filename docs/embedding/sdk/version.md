@@ -24,7 +24,7 @@ Version 52 is the minimum version supported for the Embedded analytics SDK.
 
 ## You can pin instances to a version on Metabase Cloud
 
-Metabase Cloud upgrades your Metabase as new versions roll out so you don't have to deal with upgrades. But if you're using the SDK with Metabase Cloud, you may want to pin your version so you can upgrade manually. This way you can make sure that your embeds don't break when you upgrade both your Metabase and your SDK version.
+Metabase Cloud upgrades your instance automatically as new versions roll out. But if you're using the SDK with Metabase Cloud, you may want to pin your version so you can upgrade manually. This way you can make sure that your embeds don't break when you upgrade both your Metabase and your SDK version.
 
 ### Manually pinning your instance version on Metabase Cloud
 
