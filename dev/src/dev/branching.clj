@@ -52,9 +52,9 @@
                         (t2/insert-returning-instance! :model/Card
                                                        {:name (str "Branched " (:name original-card))
                                                         :collection_id (:id target-collection)
-                                                        :dataset_query (update-in (:dataset_query original-card)
-                                                                                  [:native :query]
-                                                                                  #(str % " -- BRANCHED VERSION"))
+                                                        :dataset_query (update (:dataset_query original-card)
+                                                                               :native
+                                                                               assoc :query "SELECT 420 as result -- BRANCHED VERSION")
                                                         :display (:display original-card)
                                                         :visualization_settings (:visualization_settings original-card)
                                                         :creator_id (:id user)})))
