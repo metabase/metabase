@@ -31,7 +31,7 @@ import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/Ar
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
-import { EmbeddingHub } from "metabase/embedding/components/EmbeddingHub";
+import { EmbeddingHub } from "metabase/embedding/embedding-hub/components/EmbeddingHub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
