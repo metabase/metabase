@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-751-add-the-add-data-and-create-dashboard-modals-to-embedding"
+    }
+  ]
 }
