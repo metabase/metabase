@@ -1,8 +1,11 @@
+import fs from "node:fs";
 import path from "node:path";
 
+import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import * as ciTasks from "./ci_tasks";
+import { collectFailingTests } from "./collectFailedTests";
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -60,9 +63,12 @@ function getSplittableSpecs(specs) {
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
-  setupNodeEvents(on, config) {
+  setupNodeEvents(cypressOn, config) {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
+
+    // Use cypress-on-fix to enable multiple handlers
+    const on = cypressOnFix(cypressOn);
 
     // CLI grep can't handle commas in the name
     // needed when we want to run only specific tests
@@ -148,28 +154,21 @@ const defaultConfig = {
     require("@cypress/grep/src/plugin")(config);
 
     if (isCI) {
-      console.log("🔧 cypress-split: Initializing plugin in CI mode");
       cypressSplit(on, config, getSplittableSpecs);
-      console.log("🔧 cypress-split: Plugin initialized successfully");
-      // Temporarily disabled to test if it interferes with cypress-split
-      // collectFailingTests(on, config);
-      console.log(
-        "🔧 cypress-split: collectFailingTests temporarily disabled for debugging",
-      );
+      collectFailingTests(on, config);
     }
 
     // this is an official workaround to keep recordings of the failed specs only
     // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
-    // Temporarily disabled to test if it interferes with cypress-split
-    // on("after:spec", (spec, results) => {
-    //   if (results && results.video) {
-    //     // Do we have test failures?
-    //     if (results && results.video && results.stats.failures === 0) {
-    //       // delete the video if the spec passed
-    //       fs.unlinkSync(results.video);
-    //     }
-    //   }
-    // });
+    on("after:spec", (spec, results) => {
+      if (results && results.video) {
+        // Do we have test failures?
+        if (results && results.video && results.stats.failures === 0) {
+          // delete the video if the spec passed
+          fs.unlinkSync(results.video);
+        }
+      }
+    });
 
     return config;
   },

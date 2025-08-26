@@ -121,18 +121,16 @@ jobs:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_OUTPUT_FILE: "./e2e/support/newTimings.json"
+          SPLIT_OUTPUT_FILE: "newTimings.json"
           SPLIT_TIME_THRESHOLD: 0.01
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
         shell: bash
         run: |
-          # Ensure e2e/support directory exists for cypress-split output
-          mkdir -p ./e2e/support
-          # Create empty newTimings.json file if it doesn't exist
-          if [ ! -f "./e2e/support/newTimings.json" ]; then
-            echo '{"durations": []}' > ./e2e/support/newTimings.json
+          # Create empty newTimings.json file in current directory if it doesn't exist
+          if [ ! -f "newTimings.json" ]; then
+            echo '{"durations": []}' > newTimings.json
           fi
           echo "Running tests with specs: $SPEC_PATH"
           echo "=== BEFORE TEST EXECUTION ==="
@@ -187,7 +185,7 @@ jobs:
           SPLIT: ${{ inputs.total_chunks || 1 }}
           SPLIT_INDEX: ${{ inputs.split_index || 0 }}
           SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_OUTPUT_FILE: "./e2e/support/newTimings.json"
+          SPLIT_OUTPUT_FILE: "newTimings.json"
           SPLIT_TIME_THRESHOLD: 0.01
           SPEC_PATH: ${{ env.specs || inputs.specs }}
         run: |
@@ -274,7 +272,7 @@ jobs:
         continue-on-error: true
         with:
           name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
-          path: ./e2e/support/newTimings.json
+          path: newTimings.json
           retention-days: 7
 
       - name: Publish Summary
