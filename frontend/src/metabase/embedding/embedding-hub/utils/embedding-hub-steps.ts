@@ -89,6 +89,11 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         variant: "outline",
       },
     ],
+    image: {
+      src: "app/assets/img/embedding_hub_secure_embeds_diagram.png",
+      srcSet: "app/assets/img/embedding_hub_secure_embeds_diagram@2x.png 2x",
+      alt: t`Diagram of the SSO authentication workflow`,
+    },
   };
 
   const EMBED_PRODUCTION: EmbeddingHubStep = {
