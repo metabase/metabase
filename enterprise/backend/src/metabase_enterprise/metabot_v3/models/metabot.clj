@@ -16,6 +16,18 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/Metabot :prompts]
+  "Hydrate the list of prompts for a collection of metabots."
+  [_model k metabots]
+  (mi/instances-with-hydrated-data
+   metabots k
+   #(group-by :metabot_id
+              (t2/select :model/MetabotPrompt {:where [:in :metabot_id (map :id metabots)]}))
+   :id
+   {:default []}))
+
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
 (defmethod serdes/hash-fields :model/Metabot
