@@ -4,7 +4,7 @@ Transform Runner - Executes user-defined transform functions and saves results a
 
 This script:
 1. Imports the user's code from /sandbox/script.py
-2. Creates a db object with read_table method if database connection is provided
+2. Creates a db object with read_table method using Metabase API
 3. Calls the transform() function defined by the user with db parameter
 4. Saves the returned DataFrame as CSV to the output file
 """
@@ -12,57 +12,78 @@ import os
 import sys
 import traceback
 import pandas as pd
+import json
 from pathlib import Path
 try:
-    import sqlalchemy
+    import requests
 except ImportError:
-    sqlalchemy = None
+    print("ERROR: requests library is required but not available", file=sys.stderr)
+    sys.exit(1)
 
 
-class DatabaseConnection:
-    """Database connection wrapper that provides read_table functionality."""
+class MetabaseAPIConnection:
+    """Metabase API connection wrapper that provides read_table functionality."""
 
-    def __init__(self, connection_string=None):
-        self.connection_string = connection_string
-        self.engine = None
-
-        if connection_string and sqlalchemy:
-            try:
-                self.engine = sqlalchemy.create_engine(connection_string)
-                # Test the connection
-                with self.engine.connect() as conn:
-                    conn.execute(sqlalchemy.text("SELECT 1"))
-                # print(f"Successfully connected to database: {connection_string[:50]}...", file=sys.stderr)
-            except Exception as e:
-                print(f"WARNING: Failed to create database engine: {e}", file=sys.stderr)
-                self.engine = None
-
-    def read_table(self, table_name, schema=None):
+    def __init__(self, metabase_url=None):
         """
-        Read a table from the database and return as a pandas DataFrame.
+        Initialize connection to Metabase API.
 
         Args:
-            table_name: Name of the table to read
-            schema: Optional schema name
+            metabase_url: Base URL for Metabase API (e.g., http://127.0.0.1:3000)
+        """
+        self.metabase_url = metabase_url or "http://127.0.0.1:3000"
+        self.session = requests.Session()
+        # For now, we rely on the fact that this runs in a secure environment
+        # where the Metabase instance trusts the python-runner service
+
+    def read_table(self, table_id, limit=None):
+        """
+        Read a table from Metabase using the API and return as a pandas DataFrame.
+
+        Args:
+            table_id: A table ID
+            limit: Optional row limit (defaults to API's default limit)
 
         Returns:
             pandas.DataFrame: The table data
         """
-        if not self.engine:
-            raise RuntimeError("No database connection available. Please provide a valid db-connection-string.")
+
+        table_id = int(table_id)
 
         try:
-            if schema:
-                full_table_name = f"{schema}.{table_name}"
-            else:
-                full_table_name = table_name
+            # Build API URL
+            url = f"{self.metabase_url}/api/python-runner/table/{table_id}/data"
+            params = {}
+            if limit:
+                params['limit'] = limit
 
-            query = f"SELECT * FROM {full_table_name}"
-            df = pd.read_sql(query, self.engine)
+            # Make API request
+            response = self.session.get(url, params=params, stream=True)
+            response.raise_for_status()
+
+            # # Parse JSONLines response
+            # rows = []
+            # for line in response.iter_lines(decode_unicode=True):
+            #     if line.strip():
+            #         data = json.loads(line)
+            #         rows.append(data)
+
+            rows = response.json()
+
+            if not rows:
+                # Empty table
+                return pd.DataFrame()
+
+            # Convert to DataFrame
+            df = pd.DataFrame(rows)
             return df
 
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"Failed to fetch table {table_id} from Metabase API: {e}")
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Failed to parse JSON response for table {table_id}: {e}")
         except Exception as e:
-            raise RuntimeError(f"Failed to read table '{full_table_name}': {e}")
+            raise RuntimeError(f"Failed to read table {table_id}: {e}")
 
 
 def main():
@@ -73,11 +94,11 @@ def main():
             print("ERROR: OUTPUT_FILE environment variable not set", file=sys.stderr)
             sys.exit(1)
 
-        # Get database connection string from environment variable
-        db_connection_string = os.environ.get('DB_CONNECTION_STRING')
+        # Get Metabase API configuration from environment variables
+        metabase_url = os.environ.get('METABASE_URL', 'http://127.0.0.1:3000')
 
-        # Create database connection object
-        db = DatabaseConnection(db_connection_string)
+        # Create Metabase API connection object
+        db = MetabaseAPIConnection(metabase_url)
 
         # Import the user's script
         sys.path.insert(0, '/sandbox')

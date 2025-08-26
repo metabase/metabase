@@ -1,16 +1,9 @@
 FROM python:3.11-slim
 
-# Install system dependencies needed for psycopg2 (PostgreSQL driver)
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install pandas and PostgreSQL database dependencies
+# Install pandas and HTTP client dependencies
 RUN pip install --no-cache-dir \
     pandas==2.1.4 \
-    sqlalchemy==2.0.23 \
-    psycopg2==2.9.9
+    requests==2.31.0
 
 # Create non-root user for security
 RUN useradd -m -u 1000 -s /bin/bash sandboxuser && \
