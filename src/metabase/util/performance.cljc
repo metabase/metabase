@@ -7,7 +7,7 @@
               [cljs.core :as core]
               [goog.object :as gobject])])
   #?@(:clj [(:import (clojure.lang ITransientCollection LazilyPersistentVector RT)
-                     java.util.Iterator)]
+                     (java.util ArrayList HashMap Iterator))]
       :default ()))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -391,3 +391,47 @@
                                        arr)
                            :else x))]
        (thisfn x))))
+
+;;;; Cross-platform mutable list and map wrapper functions.
+
+(defn make-list
+  "Create an empty mutable list. Returns ArrayList in Clojure, js array in ClojureScript."
+  []
+  #?(:clj (ArrayList.)
+     :cljs #js []))
+
+(defn list-add!
+  "Add a value to the end of a mutable list. Returns the list for chaining."
+  [lst value]
+  #?(:clj (do (.add ^ArrayList lst value) lst)
+     :cljs (do (.push lst value) lst)))
+
+(defn list-set!
+  "Replace the current value in the mutable list by the given index with the new value."
+  [lst index new-value]
+  #?(:clj (do (.set ^ArrayList lst index new-value) lst)
+     :cljs (do (aset lst index new-value) lst)))
+
+(defn list-nth
+  "Get value at index from mutable list."
+  [lst index]
+  #?(:clj (.get ^ArrayList lst index)
+     :cljs (aget lst index)))
+
+(defn make-map
+  "Create an empty mutable map. Returns HashMap in Clojure, plain js object in ClojureScript."
+  []
+  #?(:clj (HashMap.)
+     :cljs (js/Map.)))
+
+(defn map-get
+  "Get value by key from mutable map."
+  [m key]
+  #?(:clj (.get ^HashMap m key)
+     :cljs (.get m key)))
+
+(defn map-put!
+  "Put a key-value pair into a mutable map. Returns the map for chaining."
+  [m key value]
+  #?(:clj (do (.put ^HashMap m key value) m)
+     :cljs (do (.set m key value) m)))

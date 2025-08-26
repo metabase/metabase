@@ -19,10 +19,10 @@
       (resolve-joins/resolve-joins query))))
 
 (deftest ^:parallel joins->fields-test
-  (is (= [[:field 1 {:join-alias "B"}]
-          [:field 2 {:join-alias "B"}]
-          [:field 3 {:join-alias "C"}]
-          [:field 4 {:join-alias "C"}]]
+  (is (= [[:field 1 {:join-alias "B", :qp/ignore-coercion true}]
+          [:field 2 {:join-alias "B", :qp/ignore-coercion true}]
+          [:field 3 {:join-alias "C", :qp/ignore-coercion true}]
+          [:field 4 {:join-alias "C", :qp/ignore-coercion true}]]
          (#'resolve-joins/joins->fields [{:alias "A"
                                           :fields :all}
                                          {:alias "B"
@@ -67,8 +67,10 @@
                                     &c.categories.name]}]
                    :fields [$venues.id
                             $venues.name
-                            &c.categories.id
-                            &c.categories.name]})
+                            [:field %categories.id {:join-alias         "c"
+                                                    :qp/ignore-coercion true}]
+                            [:field %categories.name {:join-alias         "c"
+                                                      :qp/ignore-coercion true}]]})
                 (resolve-joins
                  (mt/mbql-query venues
                    {:fields [$venues.id $venues.name]
@@ -88,7 +90,8 @@
                      :fields       [&c.categories.name]}]
                    :fields [$venues.id
                             $venues.name
-                            &c.categories.name]})
+                            [:field %categories.name {:join-alias         "c"
+                                                      :qp/ignore-coercion true}]]})
                 (resolve-joins
                  (mt/mbql-query venues
                    {:fields [$venues.id $venues.name]
@@ -205,8 +208,8 @@
                               :order-by [[:asc $name]]
                               :limit    3}))]
       (is (query= (mt/mbql-query venues
-                    {:fields   [[:field (mt/id :categories :id) {:join-alias "cat"}]
-                                [:field (mt/id :categories :name) {:join-alias "cat"}]]
+                    {:fields   [[:field (mt/id :categories :id)   {:join-alias "cat", :qp/ignore-coercion true}]
+                                [:field (mt/id :categories :name) {:join-alias "cat", :qp/ignore-coercion true}]]
                      :joins    [{:alias           "cat"
                                  :source-query    {:source-table $$categories}
                                  :source-metadata source-metadata
@@ -280,7 +283,9 @@
                             :fingerprint   {:global {:distinct-count 15, :nil% 0.0}}}]]
       (is (query= (mt/mbql-query users
                     {:fields [$id
-                              [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
+                              [:field "_USER_ID" {:base-type          :type/Integer
+                                                  :join-alias         "alias"
+                                                  :qp/ignore-coercion true}]]
                      :joins  [{:fields       [[:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
                                :alias        "alias"
                                :strategy     :left-join

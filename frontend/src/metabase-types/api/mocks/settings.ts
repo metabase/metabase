@@ -132,6 +132,7 @@ export const createMockTokenFeatures = (
   ai_entity_analysis: false,
   ai_sql_fixer: false,
   ai_sql_generation: false,
+  offer_metabase_ai: false,
   database_routing: false,
   development_mode: false,
   documents: false,
@@ -154,6 +155,7 @@ export const createMockSettingDefinition = <
 export const createMockSettings = (
   opts?: Partial<Settings | EnterpriseSettings>,
 ): EnterpriseSettings => ({
+  "analytics-uuid": "eefb3320-1d3f-4686-a22a-1d30ae729525",
   "admin-email": "admin@metabase.test",
   "airgap-enabled": false,
   "allowed-iframe-hosts": "*",
