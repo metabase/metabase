@@ -34,10 +34,10 @@ export const EmbeddingHub = () => {
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This link only shows for admins.
   const embedJsDocsUrl = useDocsUrl("embedding/embedded-analytics-js", {
     utm: {
-      utm_campaign: "product",
       utm_content: "embed-js-docs",
       utm_medium: "docs",
-      utm_source: "embedding-hub",
+      utm_source: "product",
+      utm_campaign: "embedding-hub",
     },
   });
 
