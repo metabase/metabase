@@ -9,6 +9,7 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { getIsPaidPlan } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
 import type { AdminPath } from "metabase-types/store";
@@ -41,6 +42,7 @@ export const AdminNavbar = ({
   adminPaths,
 }: AdminNavbarProps) => {
   const isPaidPlan = useSelector(getIsPaidPlan);
+  const isAdmin = useSelector(getUserIsAdmin);
   const dispatch = useDispatch();
 
   useRegisterShortcut(
@@ -91,7 +93,7 @@ export const AdminNavbar = ({
           ))}
         </AdminNavbarItems>
 
-        {!isPaidPlan && <StoreLink />}
+        {!isPaidPlan && isAdmin && <StoreLink />}
         <AdminExitLink
           to="/"
           data-testid="exit-admin"
