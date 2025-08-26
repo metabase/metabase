@@ -1,75 +1,82 @@
 (ns metabase-enterprise.git-source-of-truth.api
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.git-source-of-truth.config :as config]
-   [metabase-enterprise.git-source-of-truth.git :as git]
-   [metabase-enterprise.serialization.cmd :as serdes-cmd]
+   [metabase-enterprise.git-source-of-truth.settings :as settings]
+   [metabase-enterprise.git-source-of-truth.sources :as sources]
 
+   [metabase-enterprise.serialization.cmd :as serdes-cmd]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import (java.io File)
+           (java.nio.file Files)
+           (java.nio.file.attribute FileAttribute)))
 
-(defn- load-from-git-repository!
-  "Load Metabase configuration from git repository using serdes."
-  [repo-dir]
-  (let [serdes-path (git/get-serdes-path (.toString repo-dir))]
-    (log/infof "Loading Metabase configuration from serdes path: %s" serdes-path)
-
+(defn cleanup-temp-directory!
+  "Clean up temporary directory and all its contents."
+  [temp-dir]
+  (when temp-dir
     (try
-      (serdes-cmd/v2-load-internal! serdes-path {}
-                                    :require-initialized-db? false)
-      (log/info "Successfully loaded configuration from git repository")
+      (let [dir-file (io/file temp-dir)]
+        (when (.exists ^File dir-file)
+          (log/debugf "Cleaning up temporary directory: %s" temp-dir)
+
+          (letfn [(delete-file [file]
+                    (when (.isDirectory file)
+                      (doseq [child (.listFiles file)]
+                        (delete-file child)))
+                    (.delete file))]
+            (delete-file dir-file))
+
+          (log/debugf "Successfully cleaned up temporary directory: %s" temp-dir)))
       (catch Exception e
-        (log/error e "Failed to load configuration from git repository")
-        (throw e)))))
+        (log/warnf e "Failed to clean up temporary directory: %s" temp-dir)))))
+
+(defmacro with-temp-directory
+  "Makes a temp dir and then deletes it outside the form."
+  [binding & body]
+  `(let [~binding (.toFile (Files/createTempDirectory "git-source-of-truth-" (into-array FileAttribute [])))]
+     (try ~@body
+          (finally
+            (cleanup-temp-directory! ~binding)))))
 
 (defn- reload-from-git!
   "Reloads the Metabase entities from the library"
   []
-  (if (config/enabled?)
-    (do
-      (log/info "Reloading Metabase configuration from git repository")
+  (if-let [source (sources/get-source)]
+    (with-temp-directory dir
+      (log/info "Reloading Metabase configuration from source")
+      (try
+        (serdes-cmd/v2-load-internal! (sources/load-source! dir)
+                                      {}
+                                      :require-initialized-db? false)
 
-      (git/with-temp-directory repo-dir
-        (try
-          ;; Validate configuration first
-          (config/validate-config!)
-          (log/info "Git source of truth configuration validated successfully")
+        (log/info "Successfully reloaded entities from git repository")
+        {:status :success
+         :message "Successfully reloaded from git repository"}
 
-          ;; Clone the repository (this will get the latest version)
-          (git/clone-repository! repo-dir)
+        (catch Exception e
+          (log/errorf e "Failed to reload from git repository: %s" (.getMessage e))
+          (let [error-msg (cond
+                            (instance? java.net.UnknownHostException e)
+                            "Network error: Unable to reach git repository host"
 
-          ;; Load configuration using serdes
-          (load-from-git-repository! repo-dir)
+                            (str/includes? (.getMessage e) "Authentication failed")
+                            "Authentication failed: Please check your git credentials"
 
-          (log/info "Successfully reloaded entities from git repository")
-          {:status :success
-           :message "Successfully reloaded from git repository"}
+                            (str/includes? (.getMessage e) "Repository not found")
+                            "Repository not found: Please check the repository URL"
 
-          (catch Exception e
-            (log/errorf e "Failed to reload from git repository: %s" (.getMessage e))
-            (let [error-msg (cond
-                              (instance? java.net.UnknownHostException e)
-                              "Network error: Unable to reach git repository host"
+                            (str/includes? (.getMessage e) "branch")
+                            "Branch error: Please check the specified branch exists"
 
-                              (str/includes? (.getMessage e) "Authentication failed")
-                              "Authentication failed: Please check your git credentials"
-
-                              (str/includes? (.getMessage e) "Repository not found")
-                              "Repository not found: Please check the repository URL"
-
-                              (str/includes? (.getMessage e) "branch")
-                              "Branch error: Please check the specified branch exists"
-
-                              :else
-                              (format "Failed to reload from git repository: %s" (.getMessage e)))]
-              {:status :error
-               :message error-msg
-               :details {:error-type (type e)
-                         :repo-url (config/git-source-repo-url)
-                         :branch (config/git-source-branch)}})))))
-
+                            :else
+                            (format "Failed to reload from git repository: %s" (.getMessage e)))]
+            {:status :error
+             :message error-msg
+             :details {:error-type (type e)}}))))
     {:status :error
      :message "Git source of truth is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
