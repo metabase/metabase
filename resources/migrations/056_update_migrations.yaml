@@ -486,20 +486,7 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-08-22T12:00:06
       author: sloansparger
-      comment: Add foreign key constraint metabot_prompt.metabot_id -> metabot.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metabot_prompt
-            baseColumnNames: metabot_id
-            referencedTableName: metabot
-            referencedColumnNames: id
-            constraintName: fk_metabot_prompt_metabot_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v56.2025-08-22T12:00:07
-      author: sloansparger
-      comment: Add index on metabot_prompt.metabot_id
+      comment: Add index and foreign key constraint for metabot_prompt.metabot_id.
       changes:
         - createIndex:
             tableName: metabot_prompt
@@ -507,29 +494,29 @@ databaseChangeLog:
             columns:
               - column:
                   name: metabot_id
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: metabot_id
+            referencedTableName: metabot
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_metabot_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            constraintName: fk_metabot_prompt_metabot_id
+        - dropIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_metabot_id
 
   - changeSet:
-      id: v56.2025-08-22T12:00:08
+      id: v56.2025-08-22T12:00:07
       author: sloansparger
-      comment: Drop foreign key constraint metabot_prompt.metabot_entity_id
+      comment: Drop foreign key constraint and index on metabot_prompt.metabot_entity_id.
       changes:
         - dropForeignKeyConstraint:
             baseTableName: metabot_prompt
             constraintName: fk_metabot_prompt_metabot_entity_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: metabot_prompt
-            baseColumnNames: metabot_entity_id
-            referencedTableName: metabot_entity
-            referencedColumnNames: id
-            constraintName: fk_metabot_prompt_metabot_entity_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v56.2025-08-22T12:00:09
-      author: sloansparger
-      comment: Drop index on metabot_prompt.metabot_entity_id
-      changes:
         - dropIndex:
             tableName: metabot_prompt
             indexName: idx_metabot_prompt_metabot_entity_id
@@ -540,9 +527,16 @@ databaseChangeLog:
             columns:
               - column:
                   name: metabot_entity_id
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: metabot_entity_id
+            referencedTableName: metabot_entity
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_metabot_entity_id
+            onDelete: CASCADE
 
   - changeSet:
-      id: v56.2025-08-22T12:00:10
+      id: v56.2025-08-22T12:00:08
       author: sloansparger
       comment: Drop metabot_entity_id column from metabot_prompt
       changes:
@@ -582,7 +576,7 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
-      id: v56.2025-08-22T12:00:11
+      id: v56.2025-08-22T12:00:09
       author: sloansparger
       comment: Remove metabot_entity table as collection association is now direct
       changes:
