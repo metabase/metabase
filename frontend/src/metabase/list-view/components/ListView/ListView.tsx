@@ -157,7 +157,13 @@ function ColumnHeader({
   return (
     <button
       onClick={() => onSortClick(column)}
-      style={{ ...style, cursor: "pointer", textAlign: "left" }}
+      style={{
+        ...style,
+        cursor: "pointer",
+        textAlign: "left",
+        display: "flex",
+        alignItems: "center",
+      }}
     >
       <Text fw="bold" size="sm" c="text-medium" style={{ display: "inline" }}>
         {column.display_name}

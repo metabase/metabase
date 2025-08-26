@@ -2,15 +2,29 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListColumns } from "metabase/list-view/components/ListView";
-import { Box, Button, Group, Icon, Stack, Text, TextInput } from "metabase/ui";
+import {
+  Button,
+  type FlexProps,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
+import { ColumnItem } from "metabase/visualizations/components/settings/ColumnItem";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn } from "metabase-types/api";
+
+import styles from "./ListViewColumnsSidebar.module.css";
 
 export type ListViewColumnsSidebarProps = {
   cols?: DatasetColumn[];
   settings?: ComputedVisualizationSettings | null;
   onDone?: () => void;
 };
+
+type OnDragStartHandler = FlexProps["onDragStart"];
+type DragEventArg = Parameters<NonNullable<OnDragStartHandler>>[0];
 
 /**
  * Renders a list of currently unused columns for ListViewConfiguration.
@@ -74,30 +88,15 @@ export function ListViewColumnsSidebar({
         <Text mt="md">{t`Drag a column into a well to place it there.`}</Text>
         <Stack gap="sm">
           {filtered.map((opt) => (
-            <Box
+            <ColumnItem
               key={opt.value}
               draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData("text/plain", opt.value);
+              title={opt.label}
+              className={styles.listViewColumnItem}
+              onDragStart={(e: DragEventArg) => {
+                e?.dataTransfer?.setData("text/plain", opt.value);
               }}
-              p="sm"
-              style={{
-                border: "1px solid var(--mb-color-border)",
-                borderRadius: "var(--mantine-radius-sm)",
-                background: "var(--mb-color-background)",
-                cursor: "grab",
-              }}
-            >
-              <Group
-                wrap="nowrap"
-                gap="sm"
-                align="center"
-                justify="space-between"
-              >
-                <Text>{opt.label}</Text>
-                <Icon name="grabber" size={14} c="text-medium" />
-              </Group>
-            </Box>
+            />
           ))}
           {filtered.length === 0 ? (
             <Text size="sm" c="text-light">{t`No available columns`}</Text>

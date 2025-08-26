@@ -3,7 +3,7 @@ import cx from "classnames";
 import CS from "metabase/css/core/index.css";
 import type { AccentColorOptions } from "metabase/lib/colors/types";
 import type { IconProps } from "metabase/ui";
-import { Flex, Group, Icon, Text } from "metabase/ui";
+import { Flex, type FlexProps, Group, Icon, Text } from "metabase/ui";
 
 import { ChartSettingActionIcon } from "../ChartSettingActionIcon";
 import { ChartSettingColorPicker } from "../ChartSettingColorPicker";
@@ -25,6 +25,7 @@ export interface ColumnItemProps {
   onEnable?: (target: HTMLElement) => void;
   onColorChange?: (newColor: string) => void;
   accentColorOptions?: AccentColorOptions;
+  onDragStart?: FlexProps["onDragStart"];
 }
 
 export const ColumnItem = ({
@@ -42,6 +43,7 @@ export const ColumnItem = ({
   onEnable,
   onColorChange,
   accentColorOptions,
+  onDragStart,
 }: ColumnItemProps) => (
   <Flex
     w="100%"
@@ -65,6 +67,8 @@ export const ColumnItem = ({
     px="sm"
     py="xs"
     my="sm"
+    draggable={draggable}
+    onDragStart={onDragStart}
   >
     <Group wrap="nowrap" gap="xs" p="xs">
       {draggable && (
