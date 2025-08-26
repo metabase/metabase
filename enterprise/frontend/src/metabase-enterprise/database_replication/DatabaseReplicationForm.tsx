@@ -462,10 +462,16 @@ export const DatabaseReplicationForm = ({
                   {previewResponse && !previewResponse.canSetReplication && (
                     <>
                       <Divider />
-                      <Text>{t`Not enough storage. Please upgrade your plan or modify the replication scope by excluding schemas.`}</Text>
-                      <ExternalLink
-                        href={storeUrl}
-                      >{t`Get more storage`}</ExternalLink>
+                      {replicatedTables.length === 0 ? (
+                        <Text>{t`Nothing to replicate. Please select schemas containing at least one table to be replicated.`}</Text>
+                      ) : (
+                        <>
+                          <Text>{t`Not enough storage. Please upgrade your plan or modify the replication scope by excluding schemas.`}</Text>
+                          <ExternalLink
+                            href={storeUrl}
+                          >{t`Get more storage`}</ExternalLink>
+                        </>
+                      )}
                     </>
                   )}
                 </Stack>
