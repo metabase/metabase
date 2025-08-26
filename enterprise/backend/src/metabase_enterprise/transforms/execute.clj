@@ -118,14 +118,14 @@
       (try
         ;; Dynamically load and call the python runner using requiring-resolve
         (let [{run-id :id} (transform-run/start-run! (:id transform) {:run_method run_method})
-              result (python-runner.api/execute-python-code body (transforms.util/db-connect-str target-database))]
-          (if (:error result)
+              {:keys [body] :as result} (python-runner.api/execute-python-code body (transforms.util/db-connect-str target-database))]
+          (if (:error body)
             (do
               (transform-run/fail-started-run! run-id {})
               (throw (ex-info "Python execution failed"
-                              {:error (:error result)
-                               :stdout (:stdout result)
-                               :stderr (:stderr result)})))
+                              {:error (:error body)
+                               :stdout (:stdout body)
+                               :stderr (:stderr body)})))
             (do
               (try
                 ;; TODO would be nice if we have create or replace in upload
