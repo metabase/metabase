@@ -14,13 +14,6 @@ export interface ColumnItem {
   stageIndex: number;
 }
 
-export interface SegmentItem {
-  segment: Lib.SegmentMetadata;
-  displayName: string;
-  stageIndex: number;
-  filterPositions: number[];
-}
-
 export type FilterOperatorOption<T extends Lib.FilterOperatorName> = {
   operator: T;
 };
