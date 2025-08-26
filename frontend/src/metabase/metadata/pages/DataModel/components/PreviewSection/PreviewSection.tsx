@@ -104,6 +104,7 @@ const PreviewSectionBase = ({
         {previewType === "filtering" && (
           <FilteringPreview
             databaseId={databaseId}
+            field={field}
             fieldId={fieldId}
             /**
              * Make sure internal component state is reset when changing any field settings.

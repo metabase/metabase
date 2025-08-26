@@ -1,0 +1,1 @@
+export const DETAIL_VIEW_PADDING_LEFT = 112;

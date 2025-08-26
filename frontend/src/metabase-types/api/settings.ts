@@ -210,6 +210,7 @@ const tokenStatusFeatures = [
   "metabase-store-managed",
   "metabot-v3",
   "no-upsell",
+  "offer-metabase-ai",
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
@@ -230,6 +231,10 @@ const tokenStatusFeatures = [
 
 export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
 
+interface TokenStatusStoreUsers {
+  email: string;
+}
+
 export interface TokenStatus {
   status: TokenStatusStatus;
   valid: boolean;
@@ -237,6 +242,7 @@ export interface TokenStatus {
   "error-details"?: string;
   trial?: boolean;
   features?: TokenStatusFeature[];
+  "store-users"?: TokenStatusStoreUsers[];
 }
 
 export type DayOfWeekId =
@@ -279,6 +285,7 @@ export const tokenFeatures = [
   "collection_cleanup",
   "cache_preemptive",
   "metabot_v3",
+  "offer_metabase_ai",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
@@ -438,6 +445,7 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
   "application-font-files": FontFile[] | null;

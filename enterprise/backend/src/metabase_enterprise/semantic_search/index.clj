@@ -103,6 +103,17 @@
 
     :else (Instant/ofEpochMilli (inst-ms document-timestamp))))
 
+(defn- to-boolean
+  "MySQL booleans are represented as 0/1, so we must ensure we're casting them to
+   real booleans when inserting them into our postgres db"
+  [b]
+  {:pre [(some? b)]}
+  (cond
+    (boolean? b) b
+    (= 0 b) false
+    (= 1 b) true
+    :else (throw (ex-info "Unexpected boolean value" {:v b}))))
+
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
@@ -117,10 +128,10 @@
    :name                (:name doc)
    :content             searchable_text
    :display_type        display_type
-   :archived            archived
-   :official_collection official_collection
-   :pinned              pinned
-   :verified            verified
+   :archived            (some-> archived to-boolean)
+   :official_collection (some-> official_collection to-boolean)
+   :pinned              (some-> pinned to-boolean)
+   :verified            (some-> verified to-boolean)
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
    :model_created_at    (some-> created_at to-instant)
@@ -582,11 +593,12 @@
   "Build a hybrid search query with additional `scorers`"
   [index embedding search-context scorers]
   ;; The purpose of this query is just to project the coalesced hybrid columns with standard names so the scorers know
-  ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]).
+  ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]). Likewise, the :search_index alias
+  ;; allows us to re-use scoring expressions between the appdb and semantic backends without adjusting column names.
   (let [hybrid-query (hybrid-search-query index embedding search-context)
         full-query {:with [[:hybrid_results hybrid-query]]
                     :select [:id :model_id :model :content :verified :metadata :semantic_rank :keyword_rank]
-                    :from [:hybrid_results]
+                    :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
 
@@ -648,7 +660,7 @@
                                        :regular-docs-count (count regular-docs)
                                        :time-ms time-ms})
 
-    (analytics/inc! :metabase-search/permission-filtering-ms time-ms)
+    (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
 
     result))
 
@@ -743,12 +755,14 @@
     (if (or (nil? filter-type) (= filter-type "all"))
       docs
       (let [timer (u/start-timer)
-            filtered-docs (filter-by-collection docs search-context)]
+            filtered-docs (filter-by-collection docs search-context)
+            time-ms (u/since-ms timer)]
         (log/debug "Collection filter" {:filter  filter-type
                                         :before  (count docs)
                                         :after   (count filtered-docs)
                                         :dropped (- (count docs) (count filtered-docs))
-                                        :time_ms (u/since-ms timer)})
+                                        :time_ms time-ms})
+        (analytics/inc! :metabase-search/semantic-collection-filter-ms time-ms)
         filtered-docs))))
 
 (defn query-index
@@ -774,35 +788,46 @@
             raw-results (into [] xform reducible)
             db-query-time-ms (u/since-ms db-timer)
 
+            filter-timer (u/start-timer)
             filtered-results (->> raw-results
                                   filter-read-permitted
                                   (apply-collection-filter search-context)
                                   (mapv search/collapse-id))
+            filter-time-ms (u/since-ms filter-timer)
 
+            appdb-scorers (scoring/appdb-scorers search-context)
+            appdb-scores-timer (u/start-timer)
+            final-results (->> filtered-results
+                               (scoring/with-appdb-scores search-context appdb-scorers weights))
+            appdb-scores-time-ms (u/since-ms appdb-scores-timer)
             total-time-ms (u/since-ms timer)]
 
         (log/debug "Semantic search"
                    {:search-string-length (count search-string)
+                    :raw-results-count (count raw-results)
+                    :final-results-count (count final-results)
                     :embedding-time-ms embedding-time-ms
                     :db-query-time-ms db-query-time-ms
-                    :raw-results-count (count raw-results)
-                    :final-results-count (count filtered-results)
+                    :filter-time-ms filter-time-ms
+                    :appdb-scores-time-ms appdb-scores-time-ms
                     :total-time-ms total-time-ms})
 
-        (analytics/inc! :metabase-search/semantic-search-ms
-                        {:embedding-model (:name embedding-model)}
-                        total-time-ms)
         (analytics/inc! :metabase-search/semantic-embedding-ms
                         {:embedding-model (:name embedding-model)}
                         embedding-time-ms)
         (analytics/inc! :metabase-search/semantic-db-query-ms
                         {:embedding-model (:name embedding-model)}
                         db-query-time-ms)
+        (analytics/inc! :metabase-search/semantic-appdb-scores-ms
+                        appdb-scores-time-ms)
+        (analytics/inc! :metabase-search/semantic-search-ms
+                        {:embedding-model (:name embedding-model)}
+                        total-time-ms)
 
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
 
-        {:results filtered-results
+        {:results final-results
          :raw-count (count raw-results)}))))
 
 (comment

@@ -32,9 +32,8 @@
       (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
-  [{:keys [id ::lib.join/join-alias], :as metric-metadata}]
-  (let [effective-type (or (:effective-type metric-metadata)
-                           (:base-type metric-metadata)
+  [{:keys [id], join-alias ::lib.join/join-alias, :as metric-metadata}]
+  (let [effective-type (or ((some-fn :effective-type :base-type) metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
                              (let [ag-effective-type (lib.schema.expression/type-of aggregation)]
                                (when (isa? ag-effective-type :type/*)
