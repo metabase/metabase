@@ -2,6 +2,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
@@ -121,7 +122,16 @@
               {:keys [body] :as result} (python-runner.api/execute-python-code body)]
           (if (:error body)
             (do
-              (transform-run/fail-started-run! run-id {})
+              (let [message (str/join "\n"
+                                      [(format "exit code %d" (:exit-code body))
+                                       "======"
+                                       "stdout"
+                                       "======"
+                                       (:stdout body)
+                                       "stderr"
+                                       "======"
+                                       (:stderr body)])]
+                (transform-run/fail-started-run! run-id {:message message}))
               (throw (ex-info "Python execution failed"
                               {:error (:error body)
                                :stdout (:stdout body)
