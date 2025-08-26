@@ -267,7 +267,6 @@
     (testing "PUT /api/ee/metabot-v3/metabot/:id should regenerate prompts when config changes"
       (mt/with-premium-features #{:metabot-v3}
         (let [mp (mt/metadata-provider)
-              base-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
               metric-query {:type :query, :database (mt/id), :query {:source-table (mt/id :products)}}
               model-query {:type :query, :database (mt/id), :query {:source-table (mt/id :products)}}]
           (mt/with-temp [:model/Collection {collection-id-1 :id} {:name "Collection 1"}
