@@ -48,9 +48,14 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     icon: "dashboard",
     // eslint-disable-next-line no-literal-metabase-strings -- only shown to admins.
     description: t`Metabase X-rays let you select a table to automatically generate a dashboard populated with charts. Alternatively, you can create a dashboard manually.`,
+    video: {
+      id: "FOAXF4p1AL0",
+      trackingId: "COmu2w0SqGagUoVp",
+      title: t`How to find and use X-rays?`,
+    },
     actions: [
       {
-        label: t`Generate dashboard`,
+        label: t`Generate automatic dashboard`,
         // TODO(EMB-741): use a wizard
         to: "/auto/dashboard/table/1",
         variant: "outline",
