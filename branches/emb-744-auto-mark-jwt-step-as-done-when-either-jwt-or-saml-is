@@ -2,5 +2,8 @@
   "base": {
     "name": "emb-741-add-a-wizard-to-select-a-table-to-x-ray-in-embedding-hub",
     "hash": "7a76c57b3c303443b047470dc4c6900b1a742356"
+  },
+  "upstream": {
+    "branch": "emb-744-auto-mark-jwt-step-as-done-when-either-jwt-or-saml-is"
   }
 }
