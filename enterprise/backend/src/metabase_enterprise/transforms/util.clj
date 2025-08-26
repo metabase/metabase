@@ -36,7 +36,7 @@
             ;; important quirk while we're testing
             (str/replace (or (:host db-details) "127.0.0.1") #"localhost" "127.0.0.1")
             (or (:port db-details) 5432)
-            (:db db-details))))
+            (or (:db db-details) (:dbname db-details)))))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
