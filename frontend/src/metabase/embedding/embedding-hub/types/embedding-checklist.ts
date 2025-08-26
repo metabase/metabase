@@ -30,6 +30,9 @@ interface EmbeddingHubAction {
 
   /** CTA button variant. */
   variant?: "outline" | "subtle" | "filled";
+
+  /** Which modal to trigger? */
+  modal?: "add-data" | "new-dashboard";
 }
 
 interface EmbeddingHubImage {
