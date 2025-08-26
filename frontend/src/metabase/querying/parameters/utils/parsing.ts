@@ -1,7 +1,10 @@
 import dayjs from "dayjs";
 
-import { type NumberValue, parseNumber } from "metabase/lib/number";
-import type { DateFilterValue } from "metabase/querying/filters/types";
+import { parseNumber } from "metabase/lib/number";
+import type {
+  DateFilterValue,
+  NumberFilterValue,
+} from "metabase/querying/filters/types";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import type { ParameterValueOrArray, TemporalUnit } from "metabase-types/api";
@@ -32,7 +35,7 @@ export function normalizeStringParameterValue(
 }
 
 export function serializeNumberParameterValue(
-  value: (NumberValue | null)[],
+  value: NumberFilterValue[],
 ): ParameterValueOrArray {
   return value.map((item) => {
     return typeof item === "bigint" ? String(item) : item;
@@ -41,25 +44,23 @@ export function serializeNumberParameterValue(
 
 export function deserializeNumberParameterValue(
   value: ParameterValueOrArray | null | undefined,
-): (NumberValue | null)[] {
-  return normalizeArray(value).reduce(
-    (values: (NumberValue | null)[], item) => {
-      if (item === null) {
-        values.push(null);
+): NumberFilterValue[] {
+  const normalizedValue = normalizeArray(value);
+  return normalizeArray(value).reduce((values: NumberFilterValue[], item) => {
+    if (item === null && normalizedValue.length > 1) {
+      values.push(null);
+    }
+    if (typeof item === "number" && Number.isFinite(item)) {
+      values.push(item);
+    }
+    if (typeof item === "string") {
+      const number = parseNumber(item);
+      if (number != null) {
+        values.push(number);
       }
-      if (typeof item === "number" && Number.isFinite(item)) {
-        values.push(item);
-      }
-      if (typeof item === "string") {
-        const number = parseNumber(item);
-        if (number != null) {
-          values.push(number);
-        }
-      }
-      return values;
-    },
-    [],
-  );
+    }
+    return values;
+  }, []);
 }
 
 export function normalizeNumberParameterValue(

@@ -1,4 +1,4 @@
-import type { IconName } from "metabase/ui";
+import type { NumberValue } from "metabase/lib/number";
 import type * as Lib from "metabase-lib";
 
 import type {
@@ -20,14 +20,6 @@ export interface SegmentItem {
   displayName: string;
   stageIndex: number;
   filterPositions: number[];
-}
-
-export interface GroupItem {
-  key: string;
-  displayName: string;
-  icon: IconName;
-  columnItems: ColumnItem[];
-  segmentItems: SegmentItem[];
 }
 
 export type FilterOperatorOption<T extends Lib.FilterOperatorName> = {
@@ -123,3 +115,5 @@ export type DateFilterDisplayOpts = {
 };
 
 export type BooleanFilterValue = "true" | "false" | "is-null" | "not-null";
+
+export type NumberFilterValue = NumberValue | null;
