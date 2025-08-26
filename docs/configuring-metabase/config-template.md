@@ -288,6 +288,7 @@ config:
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
+    tombstone-retention-hours: 24
     unaggregated-query-row-limit: null
     uploads-settings: null
     use-tenants: false
