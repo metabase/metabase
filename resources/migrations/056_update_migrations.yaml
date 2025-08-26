@@ -558,13 +558,28 @@ databaseChangeLog:
                   type: int
                   remarks: The metabot entity this prompt is associated with
                   constraints:
-                    nullable: false
+                    nullable: true
             preConditions:
               - onFail: MARK_RAN
               - not:
                   - columnExists:
                       tableName: metabot_prompt
                       columnName: metabot_entity_id
+        - sql:
+            comment: Restore metabot_prompt.metabot_entity_id values from metabot_prompt.metabot_id
+            sql: >-
+              UPDATE metabot_prompt
+              SET metabot_entity_id = (
+                SELECT me.id
+                FROM metabot_entity me
+                WHERE me.metabot_id = metabot_prompt.metabot_id
+                  AND me.model = 'collection'
+                LIMIT 1
+              );
+        - addNotNullConstraint:
+            tableName: metabot_prompt
+            columnName: metabot_entity_id
+            columnDataType: int
 
   - changeSet:
       id: v56.2025-08-22T12:00:11
@@ -639,55 +654,6 @@ databaseChangeLog:
               SELECT id, 'collection', collection_id
               FROM metabot
               WHERE collection_id IS NOT NULL;
-            preConditions:
-              - onFail: MARK_RAN
-              - not:
-                  - columnExists:
-                      tableName: metabot_prompt
-                      columnName: metabot_entity_id
-        - sql:
-            comment: Restore metabot_prompt.metabot_entity_id from metabot_prompt.metabot_id
-            sql: >-
-              UPDATE metabot_prompt
-              SET metabot_entity_id = (
-                SELECT me.id
-                FROM metabot_entity me
-                WHERE me.metabot_id = metabot_prompt.metabot_id
-                  AND me.model = 'collection'
-                LIMIT 1
-              );
-        - addNotNullConstraint:
-            tableName: metabot_prompt
-            columnName: metabot_entity_id
-            columnDataType: int
-        - addForeignKeyConstraint:
-            baseTableName: metabot_prompt
-            baseColumnNames: metabot_entity_id
-            referencedTableName: metabot_entity
-            referencedColumnNames: id
-            constraintName: fk_metabot_prompt_metabot_entity_id
-            onDelete: CASCADE
-        - createIndex:
-            tableName: metabot_prompt
-            indexName: idx_metabot_prompt_metabot_entity_id
-            columns:
-              - column:
-                  name: metabot_entity_id
-        - dropForeignKeyConstraint:
-            baseTableName: metabot_prompt
-            constraintName: fk_metabot_prompt_metabot_id
-        - dropIndex:
-            tableName: metabot_prompt
-            indexName: idx_metabot_prompt_metabot_id
-        - dropColumn:
-            tableName: metabot_prompt
-            columnName: metabot_id
-        - dropColumn:
-            tableName: metabot
-            columnName: collection_id
-        - dropColumn:
-            tableName: metabot
-            columnName: use_verified_content
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
