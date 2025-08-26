@@ -36,7 +36,7 @@
        [:cast ceiling :float])]]])
 
 (defn inverse-duration
-  "Score at item based on the duration between two dates, where less is better."
+  "Score an item based on the duration between two dates, where less is better."
   [from-column to-column ceiling-in-days]
   (let [ceiling [:inline ceiling-in-days]]
     [:/
@@ -49,6 +49,34 @@
         [:inline (double seconds-in-a-day)]]]
       [:inline 0]]
      ceiling]))
+
+(defn user-recency-expr
+  "Expression to select the `:user-recency` timestamp for the `current-user-id`."
+  [{:keys [current-user-id]}]
+  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
+   :from   [:recent_views]
+   :where  [:and
+            [:= :recent_views.user_id current-user-id]
+            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
+            [:= :recent_views.model
+             [:case
+              [:= :search_index.model [:inline "dataset"]] [:inline "card"]
+              [:= :search_index.model [:inline "metric"]] [:inline "card"]
+              :else :search_index.model]]]})
+
+(defn model-rank-expr
+  "Score an item based on its :model type."
+  [{:keys [context]}]
+  (let [search-order search.config/models-search-order
+        n            (double (count search-order))
+        cases        (map-indexed (fn [i sm]
+                                    [[:= :search_index.model sm]
+                                     (or (search.config/scorer-param context :model sm)
+                                         [:inline (/ (- n i) n)])])
+                                  search-order)]
+    (-> (into [:case] cat (concat cases))
+        ;; if you're not listed, get a very poor score
+        (into [:else [:inline 0.01]]))))
 
 (defn sum-columns
   "Sum the columns in `column-names`."
@@ -82,7 +110,6 @@
   "Scoring stats for each `index-row`."
   [weights scorers index-row]
   (mapv (fn [k]
-          ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
           (let [score  (or (get index-row k) 0)
                 weight (or (weights k) 0)]
             {:score        score

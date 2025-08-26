@@ -593,11 +593,12 @@
   "Build a hybrid search query with additional `scorers`"
   [index embedding search-context scorers]
   ;; The purpose of this query is just to project the coalesced hybrid columns with standard names so the scorers know
-  ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]).
+  ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]). Likewise, the :search_index alias
+  ;; allows us to re-use scoring expressions between the appdb and semantic backends without adjusting column names.
   (let [hybrid-query (hybrid-search-query index embedding search-context)
         full-query {:with [[:hybrid_results hybrid-query]]
                     :select [:id :model_id :model :content :verified :metadata :semantic_rank :keyword_rank]
-                    :from [:hybrid_results]
+                    :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
 
@@ -794,9 +795,10 @@
                                   (mapv search/collapse-id))
             filter-time-ms (u/since-ms filter-timer)
 
+            appdb-scorers (scoring/appdb-scorers search-context)
             appdb-scores-timer (u/start-timer)
             final-results (->> filtered-results
-                               (scoring/with-appdb-scores search-context))
+                               (scoring/with-appdb-scores search-context appdb-scorers weights))
             appdb-scores-time-ms (u/since-ms appdb-scores-timer)
             total-time-ms (u/since-ms timer)]
 
