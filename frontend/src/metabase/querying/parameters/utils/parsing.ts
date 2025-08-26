@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 
 import { parseNumber } from "metabase/lib/number";
+import { isNotNull } from "metabase/lib/types";
 import type { DateFilterValue } from "metabase/querying/filters/types";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
@@ -44,22 +45,22 @@ export function serializeNumberParameterValue(
 export function deserializeNumberParameterValue(
   value: ParameterValueOrArray | null | undefined,
 ): NumberFilterValue[] {
-  const normalizedValue = normalizeArray(value);
-  return normalizedValue.reduce((values: NumberFilterValue[], item) => {
+  const parsedValue = normalizeArray(value).map((item) => {
     if (typeof item === "number" && Number.isFinite(item)) {
-      values.push(item);
+      return item;
     }
     if (typeof item === "string") {
       const number = parseNumber(item);
       if (number != null) {
-        values.push(number);
+        return number;
       }
     }
-    if (item === null && normalizedValue.length === 2) {
-      values.push(null);
-    }
-    return values;
-  }, []);
+    return null;
+  });
+
+  return parsedValue.length === 2 && parsedValue.some(isNotNull)
+    ? parsedValue
+    : parsedValue.filter(isNotNull);
 }
 
 export function normalizeNumberParameterValue(

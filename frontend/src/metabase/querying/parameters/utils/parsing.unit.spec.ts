@@ -38,6 +38,9 @@ describe("number parameters", () => {
     { value: [10.1], expectedValue: [10.1] },
     { value: [-10.1], expectedValue: [-10.1] },
     { value: [10, 9007199254740993n], expectedValue: [10, "9007199254740993"] },
+    { value: [10, 20], expectedValue: [10, 20] },
+    { value: [10, null], expectedValue: [10, null] },
+    { value: [null, 20], expectedValue: [null, 20] },
   ])("should serialize $value", ({ value, expectedValue }) => {
     expect(serializeNumberParameterValue(value)).toEqual(expectedValue);
   });
@@ -50,6 +53,10 @@ describe("number parameters", () => {
     { value: [1, 2, 3], expectedValue: [1, 2, 3] },
     { value: ["1", "2", "3"], expectedValue: [1, 2, 3] },
     { value: [10, "9007199254740993"], expectedValue: [10, 9007199254740993n] },
+    { value: [null, null], expectedValue: [] },
+    { value: [10, 20], expectedValue: [10, 20] },
+    { value: [10, null], expectedValue: [10, null] },
+    { value: [null, 20], expectedValue: [null, 20] },
   ])("should deserialize $value", ({ value, expectedValue }) => {
     expect(deserializeNumberParameterValue(value)).toEqual(expectedValue);
   });
@@ -61,6 +68,7 @@ describe("number parameters", () => {
       value: [0, "1", 1.5, "abc", "9007199254740993"],
       expectedValue: [0, 1, 1.5, "9007199254740993"],
     },
+    { value: [null, null], expectedValue: [] },
   ])("should normalize $value", ({ value, expectedValue }) => {
     expect(normalizeNumberParameterValue(value)).toEqual(expectedValue);
   });
