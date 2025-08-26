@@ -42,7 +42,7 @@ export function Relationships({
   );
 
   return (
-    <Stack gap="md">
+    <Stack data-testid="relationships" gap="md">
       <Text c="text-secondary" fz={17}>
         {jt`${(
           <Text

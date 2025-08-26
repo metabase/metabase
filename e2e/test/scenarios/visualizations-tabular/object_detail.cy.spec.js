@@ -154,6 +154,8 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
 
     H.modal().findByRole("link", { name: "77 Orders" }).click();
+    cy.log("should close the modal when browsing relationships");
+    cy.findByTestId("object-detail").should("not.exist");
 
     cy.findByTestId("qb-filters-panel")
       .findByText("Product ID is 3")
@@ -274,6 +276,8 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.findByRole("link", { name: "8 Reviews" }).should("be.visible");
       cy.findByRole("link", { name: "92 Orders" }).should("be.visible").click();
     });
+    cy.log("should close the modal when browsing relationships");
+    cy.findByTestId("object-detail").should("not.exist");
 
     cy.wait("@dataset");
 
@@ -450,7 +454,339 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         .and("eq", "https://metabase.test?rating=4");
     });
   });
+
+  it("should support keyboard navigation and opened row highlighting", () => {
+    H.visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": PEOPLE_ID },
+      },
+    });
+
+    getObjectDetailShortcut(0).icon("sidebar_open").should("be.visible");
+
+    getRow(0).should("have.css", "background-color", "rgba(0, 0, 0, 0)");
+    H.openObjectDetail(0);
+    getRow(0).should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.findByTestId("object-detail")
+      .findByRole("heading", { name: "Hudson Borer" })
+      .should("be.visible");
+
+    cy.log("navigates down");
+    getRow(1).should("have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.realPress("ArrowDown");
+    getRow(1).should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.findByTestId("object-detail")
+      .findByRole("heading", { name: "Domenica Williamson" })
+      .should("be.visible");
+
+    cy.log("navigates up");
+    getRow(0).should("have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.realPress("ArrowUp");
+    getRow(0).should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.findByTestId("object-detail")
+      .findByRole("heading", { name: "Hudson Borer" })
+      .should("be.visible");
+
+    cy.log("does not navigate outside of bounds");
+    cy.realPress("ArrowUp");
+    getRow(0).should("not.have.css", "background-color", "rgba(0, 0, 0, 0)");
+    cy.findByTestId("object-detail")
+      .findByRole("heading", { name: "Hudson Borer" })
+      .should("be.visible");
+  });
+
+  it("should support toggling the sidebar", () => {
+    H.visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": PEOPLE_ID },
+      },
+    });
+
+    getObjectDetailShortcut(0).icon("sidebar_open").should("be.visible");
+    H.openObjectDetail(0);
+
+    // realHover does not work behind the modal overlay, so we're working around it with realMouseMove
+    getRow(0).then(($row) => {
+      const rect = $row[0].getBoundingClientRect();
+      const detailShortcutWidth = 24;
+      const detailShortcutOffset = 10;
+      const x = detailShortcutOffset + detailShortcutWidth / 2;
+      const y = rect.height / 2;
+
+      getRow(0).realMouseMove(x, y, { scrollBehavior: false });
+      getRow(0)
+        .findByTestId("detail-shortcut")
+        .icon("sidebar_closed")
+        .should("be.visible");
+      H.tooltip().should("be.visible").and("contain.text", "Hide details");
+
+      getRow(0).realClick({ x, y, scrollBehavior: false });
+      getRow(0)
+        .findByTestId("detail-shortcut")
+        .icon("sidebar_open")
+        .should("be.visible");
+      H.tooltip().should("be.visible").and("contain.text", "View details");
+    });
+  });
+
+  it("should respect viz settings column order and visibility", () => {
+    H.visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": PEOPLE_ID },
+      },
+    });
+
+    H.openVizSettingsSidebar();
+    cy.findByTestId("sidebar-left").within(() => {
+      cy.findByTestId("Address-hide-button").click();
+
+      cy.findAllByRole("listitem")
+        .eq("7")
+        .as("stateItem")
+        .should("have.text", "State");
+      H.moveDnDKitElement(cy.get("@stateItem"), { vertical: -300 });
+    });
+
+    H.openObjectDetail(0);
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.log("hidden columns are not shown");
+      cy.findByText("Address").should("not.exist");
+
+      cy.log("viz settings columns order is respected");
+      cy.findAllByText(/State|Email/).then(($elements) => {
+        const texts = $elements
+          .map((_index, element) => element.textContent)
+          .get();
+
+        expect(texts.indexOf("State")).to.be.lessThan(texts.indexOf("Email"));
+      });
+    });
+  });
+
+  describe("detail page links - questions", () => {
+    it("no primary keys", () => {
+      H.visitQuestionAdhoc({
+        display: "table",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ADDRESS],
+              ["field", PEOPLE.EMAIL],
+              ["field", PEOPLE.NAME],
+            ],
+            limit: 5,
+          },
+        },
+      });
+
+      H.openObjectDetail(0);
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByLabelText("Copy link to this record").should("not.exist");
+        cy.findByLabelText("Open in full page").should("not.exist");
+      });
+    });
+
+    it("1 primary key", () => {
+      H.grantClipboardPermissions();
+      H.visitQuestionAdhoc({
+        display: "table",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ID],
+              ["field", PEOPLE.ADDRESS],
+              ["field", PEOPLE.EMAIL],
+              ["field", PEOPLE.NAME],
+            ],
+            limit: 5,
+          },
+        },
+      });
+
+      H.openObjectDetail(0);
+      cy.findByTestId("object-detail").within(() => {
+        const expectedUrl = `http://localhost:4000/table/${PEOPLE_ID}/detail/1`;
+
+        cy.findByLabelText("Copy link to this record").click();
+        cy.window()
+          .then((window) => window.navigator.clipboard.readText())
+          .should("equal", expectedUrl);
+
+        cy.findByLabelText("Open in full page").click();
+        cy.location("href").should("eq", expectedUrl);
+        cy.findByRole("heading", { name: "Hudson Borer" }).should("be.visible");
+      });
+    });
+
+    it("2 primary keys", () => {
+      H.visitQuestionAdhoc({
+        display: "table",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ID],
+              ["field", PEOPLE.ADDRESS],
+              ["field", PEOPLE.EMAIL],
+              ["field", PEOPLE.NAME],
+            ], //["field", ORDERS.ID],
+            joins: [
+              {
+                "source-table": ORDERS_ID,
+                fields: [["field", ORDERS.ID]],
+                strategy: "left-join",
+                alias: "Orders",
+                condition: [
+                  "=",
+                  ["field", PEOPLE.ID],
+                  ["field", ORDERS.USER_ID],
+                ],
+              },
+            ],
+            limit: 5,
+          },
+        },
+      });
+
+      H.openObjectDetail(0);
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByLabelText("Copy link to this record").should("not.exist");
+        cy.findByLabelText("Open in full page").should("not.exist");
+      });
+    });
+  });
+
+  describe("detail page links - models", () => {
+    it("no primary keys", () => {
+      H.createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ADDRESS],
+              ["field", PEOPLE.EMAIL],
+              ["field", PEOPLE.NAME],
+            ],
+            limit: 5,
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      H.openObjectDetail(0);
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByLabelText("Copy link to this record").should("not.exist");
+        cy.findByLabelText("Open in full page").should("not.exist");
+      });
+    });
+
+    it("1 primary key", () => {
+      H.grantClipboardPermissions();
+      H.createQuestion({
+        type: "model",
+        name: "model",
+        query: {
+          "source-table": PEOPLE_ID,
+          fields: [
+            ["field", PEOPLE.ID],
+            ["field", PEOPLE.ADDRESS],
+            ["field", PEOPLE.EMAIL],
+            ["field", PEOPLE.NAME],
+          ],
+          limit: 5,
+        },
+      }).then(({ body: card }) => {
+        const slug = [card.id, card.name].join("-");
+
+        H.visitModel(card.id);
+        H.openObjectDetail(0);
+
+        cy.findByTestId("object-detail").within(() => {
+          const expectedUrl = `http://localhost:4000/model/${slug}/detail/1`;
+
+          cy.findByLabelText("Copy link to this record").click();
+          cy.window()
+            .then((window) => window.navigator.clipboard.readText())
+            .should("equal", expectedUrl);
+
+          cy.findByLabelText("Open in full page").click();
+          cy.location("href").should("eq", expectedUrl);
+          cy.findByRole("heading", { name: "Hudson Borer" }).should(
+            "be.visible",
+          );
+        });
+      });
+    });
+
+    it("2 primary keys", () => {
+      H.createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": PEOPLE_ID,
+            fields: [
+              ["field", PEOPLE.ID],
+              ["field", PEOPLE.ADDRESS],
+              ["field", PEOPLE.EMAIL],
+              ["field", PEOPLE.NAME],
+            ],
+            joins: [
+              {
+                "source-table": ORDERS_ID,
+                fields: [["field", ORDERS.ID]],
+                strategy: "left-join",
+                alias: "Orders",
+                condition: [
+                  "=",
+                  ["field", PEOPLE.ID],
+                  ["field", ORDERS.USER_ID],
+                ],
+              },
+            ],
+            limit: 5,
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      H.openObjectDetail(0);
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByLabelText("Copy link to this record").should("not.exist");
+        cy.findByLabelText("Open in full page").should("not.exist");
+      });
+    });
+  });
 });
+
+function getObjectDetailShortcut(rowIndex) {
+  return getRow(rowIndex)
+    .realHover({ scrollBehavior: false })
+    .findByTestId("detail-shortcut")
+    .should("be.visible");
+}
+
+function getRow(rowIndex) {
+  return cy.get(`[data-index=${rowIndex}]`);
+}
 
 function drillPK({ id }) {
   cy.get(".test-Table-ID").contains(id).first().click();
