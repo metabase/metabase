@@ -46,10 +46,7 @@ export function deserializeNumberParameterValue(
   value: ParameterValueOrArray | null | undefined,
 ): NumberFilterValue[] {
   const normalizedValue = normalizeArray(value);
-  return normalizeArray(value).reduce((values: NumberFilterValue[], item) => {
-    if (item === null && normalizedValue.length > 1) {
-      values.push(null);
-    }
+  return normalizedValue.reduce((values: NumberFilterValue[], item) => {
     if (typeof item === "number" && Number.isFinite(item)) {
       values.push(item);
     }
@@ -58,6 +55,9 @@ export function deserializeNumberParameterValue(
       if (number != null) {
         values.push(number);
       }
+    }
+    if (item === null && normalizedValue.length > 1) {
+      values.push(null);
     }
     return values;
   }, []);
