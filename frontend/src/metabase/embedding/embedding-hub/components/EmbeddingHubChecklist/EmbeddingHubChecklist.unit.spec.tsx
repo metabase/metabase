@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -20,6 +21,9 @@ const setup = ({
 } = {}) => {
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
+    settings: mockSettings({
+      "show-metabase-links": true,
+    }),
   });
 
   return renderWithProviders(
@@ -56,32 +60,21 @@ describe("EmbeddingChecklist", () => {
   });
 
   it("shows docs links on call-to-action buttons", async () => {
-    setup();
+    setup({ defaultOpenStep: "configure-row-column-security" });
 
-    await userEvent.click(screen.getByText("Configure sandboxing"));
-
-    expect(
-      await screen.findByRole("link", { name: "Configure permissions" }),
-    ).toHaveAttribute(
+    const link = screen.getByRole("link", { name: /Read the docs/ });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/permissions/embedding.html",
-    );
-
-    await userEvent.click(screen.getByText("Secure your embeds"));
-
-    expect(
-      await screen.findByRole("link", { name: "Learn more" }),
-    ).toHaveAttribute(
-      "href",
-      "https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-jwt.html",
+      expect.stringContaining("permissions/row-and-column-security"),
     );
   });
 
-  it("should show database button on 'Add your data' step", async () => {
+  it("should add data button on 'Add your data' step", async () => {
     setup();
 
     await userEvent.click(screen.getByText("Add your data"));
 
-    expect(screen.getByText("Add Database")).toBeInTheDocument();
+    expect(screen.getByText("Add data")).toBeInTheDocument();
   });
 });
