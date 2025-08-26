@@ -8,13 +8,12 @@ import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { trackSimpleEvent } from "metabase/lib/analytics";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { getDatabases } from "metabase/reference/selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Group, Icon, Loader, Paper } from "metabase/ui";
+import { ActionIcon, Group, Icon, Loader, Paper } from "metabase/ui";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { BrowseHeaderContent } from "../../components/BrowseHeader.styled";
@@ -149,36 +148,43 @@ const TableBrowserItemButtons = ({
 
   return (
     <Paper p="sm" className={cx(CS.hoverChild, S.tableBrowserItemButtons)}>
-      <Group gap="md">
+      <Group gap="sm">
         {xraysEnabled && (
-          <Link to={`/auto/dashboard/table/${tableId}`}>
-            <Icon
-              name="bolt_filled"
-              tooltip={t`X-ray this table`}
-              color={color("warning")}
-            />
-          </Link>
+          <ActionIcon
+            component={Link}
+            to={`/auto/dashboard/table/${tableId}`}
+            size="sm"
+            tooltip={t`X-ray this table`}
+            color="warning"
+            aria-label={t`X-ray this table`}
+          >
+            <Icon name="bolt" />
+          </ActionIcon>
         )}
         {canEditTables && (
-          <Link
+          <ActionIcon
+            component={Link}
             to={PLUGIN_TABLE_EDITING.getTableEditUrl(tableId, dbId)}
             onClick={handleEditTableClicked}
+            size="sm"
+            tooltip={t`Edit this table`}
+            color="text-medium"
+            aria-label={t`Edit this table`}
             data-testid="edit-table-icon"
           >
-            <Icon
-              name="pencil"
-              tooltip={t`Edit this table`}
-              color={"var(--mb-color-text-medium)"}
-            />
-          </Link>
+            <Icon name="pencil" />
+          </ActionIcon>
         )}
-        <Link to={`/reference/databases/${dbId}/tables/${tableId}`}>
-          <Icon
-            name="reference"
-            tooltip={t`Learn about this table`}
-            color={color("text-medium")}
-          />
-        </Link>
+        <ActionIcon
+          component={Link}
+          to={`/reference/databases/${dbId}/tables/${tableId}`}
+          size="sm"
+          tooltip={t`Learn about this table`}
+          color="text-medium"
+          aria-label={t`Learn about this table`}
+        >
+          <Icon name="reference" />
+        </ActionIcon>
       </Group>
     </Paper>
   );
