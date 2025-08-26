@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-751-add-the-add-data-and-create-dashboard-modals-to-embedding",
-    "hash": "fd35e1bb0ff52ca109bdcaca630da385429efce4"
+    "hash": "e114786d59d63894783223dc9e8c96687f97c306"
   },
   "upstream": {
     "branch": "emb-741-add-a-wizard-to-select-a-table-to-x-ray-in-embedding-hub"
