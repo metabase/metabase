@@ -1,10 +1,3 @@
-/* Override styles for incomplete steps */
-.incompleteControl:not([data-css-specificity-hack="🪗"]) {
-  .label {
-    color: var(--mb-color-text-primary) !important;
-  }
-}
-
 /* Override styles for completed steps */
 .completedControl:not([data-css-specificity-hack="🪗"]) {
   background: linear-gradient(
@@ -12,22 +5,6 @@
     var(--mb-base-color-palm-10) 3rem,
     transparent 3rem
   ) !important;
-
-  &:hover {
-    background: linear-gradient(
-      to right,
-      var(--mb-base-color-palm-10) 3rem,
-      transparent 3rem
-    ) !important;
-  }
-
-  .icon {
-    color: var(--mb-color-success) !important;
-  }
-
-  .label {
-    color: var(--mb-color-text-secondary) !important;
-  }
 }
 
 .video {

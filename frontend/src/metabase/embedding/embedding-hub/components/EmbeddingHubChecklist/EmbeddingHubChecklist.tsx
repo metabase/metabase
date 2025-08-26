@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 
-import AccordionS from "metabase/home/components/Onboarding/OnboardingAccordion.module.css";
 import { Accordion, Icon, Stack, Text } from "metabase/ui";
 
 import { useScrollListItemIntoView } from "../../hooks/use-scroll-list-item-into-view";
 import type { EmbeddingHubStep, EmbeddingHubStepId } from "../../types";
 
+import AccordionS from "./EmbeddingHubAccordion.module.css";
 import S from "./EmbeddingHubChecklist.module.css";
 import { EmbeddingHubStepActions } from "./EmbeddingHubStepActions";
 import { EmbeddingHubVideo } from "./VideoTutorial";
@@ -56,7 +56,7 @@ export const EmbeddingHubChecklist = ({
           >
             <Accordion.Control
               icon={renderStepIcon(step)}
-              className={isCompleted ? S.completedControl : S.incompleteControl}
+              className={isCompleted ? S.completedControl : undefined}
             >
               {step.title}
             </Accordion.Control>

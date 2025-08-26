@@ -1,3 +1,5 @@
+/** Styles duplicated from Onboarding.module.css. We will want to create a shared accordion module at one point. **/
+
 .item:not([data-css-specificity-hack="🪗"]) {
   &,
   & + &,
