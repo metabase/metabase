@@ -221,7 +221,7 @@
                                          (:name database) (:id database) (:provider_name database)
                                          (select-keys details [:host])))
                (let [detected-provider (provider-detection/detect-provider-from-database
-                                        (assoc database :details details))
+                                        database)
                      provider-to-set (or detected-provider "")]
                  (log/info (u/format-color :blue "Provider detection: updating %s {:id %d} from '%s' to '%s'"
                                            (:name database) (:id database)
