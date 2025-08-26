@@ -50,7 +50,6 @@ export function NumberInputWidget({
   const [unsavedArrayValue, setUnsavedArrayValue] =
     useState<NumberFilterValue[]>(arrayValue);
 
-  const isValid = getIsValid(unsavedArrayValue, arity);
   const allValuesUnset = !unsavedArrayValue.some(isNotNull);
   const isEmpty = unsavedArrayValue.length === 0 || allValuesUnset;
   const isRequired = parameter?.required;
@@ -79,10 +78,6 @@ export function NumberInputWidget({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!isValid) {
-      return;
-    }
-
     if (isRequired && isEmpty) {
       if (hasValue(parameter.default)) {
         setValue(parameter.default);
@@ -147,7 +142,7 @@ export function NumberInputWidget({
           unsavedValue={unsavedArrayValue}
           defaultValue={parameter?.default}
           isValueRequired={parameter?.required ?? false}
-          isValid={isValid}
+          isValid
         />
       </Footer>
     </Box>
@@ -177,16 +172,4 @@ function getValue(option: string | number | ParameterValue) {
     return option[0];
   }
   return String(option);
-}
-
-function getIsValid(value: NumberFilterValue[], arity: number | "n") {
-  if (arity === 1) {
-    return value.length === 1 && value.every(isNotNull);
-  }
-  if (arity === 2) {
-    return value.length > 0 && value.some(isNotNull);
-  }
-  if (arity === "n") {
-    return value.length > 0 && value.every(isNotNull);
-  }
 }
