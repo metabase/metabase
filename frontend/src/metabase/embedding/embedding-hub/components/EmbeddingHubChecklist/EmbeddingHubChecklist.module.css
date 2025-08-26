@@ -1,0 +1,15 @@
+/* Override styles for completed steps */
+.completedControl:not([data-css-specificity-hack="🪗"]) {
+  background: linear-gradient(
+    to right,
+    var(--mb-base-color-palm-10) 3rem,
+    transparent 3rem
+  ) !important;
+}
+
+.video {
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
+  width: 100%;
+}
