@@ -19,7 +19,7 @@
 
 (def date-extraction-units
   "Units that you can EXTRACT from a date or datetime. These return integers in temporal bucketing expressions."
-  (set ordered-date-extraction-units))
+  (into (sorted-set) ordered-date-extraction-units))
 
 (mr/def ::unit.date.extract
   (into [:enum {:error/message    "Valid date extraction unit"
@@ -33,7 +33,7 @@
 
 (def date-truncation-units
   "Units that you can TRUNCATE a date or datetime to. In temporal bucketing expressions these return a `:type/Date`."
-  (set ordered-date-truncation-units))
+  (into (sorted-set) ordered-date-truncation-units))
 
 (mr/def ::unit.date.truncate
   (into [:enum {:error/message    "Valid date truncation unit"
@@ -47,7 +47,7 @@
 
 (def date-bucketing-units
   "Valid date or datetime bucketing units for either truncation or extraction operations."
-  (set ordered-date-bucketing-units))
+  (into (sorted-set) ordered-date-bucketing-units))
 
 (mr/def ::unit.date
   (into [:enum {:error/message    "Valid date bucketing unit"
@@ -63,7 +63,7 @@
 
 (def time-extraction-units
   "Units that you can EXTRACT from a time or datetime. These return integers in temporal bucketing expressions."
-  (set ordered-time-extraction-units))
+  (into (sorted-set) ordered-time-extraction-units))
 
 (mr/def ::unit.time.extract
   (into [:enum {:error/message "Valid time extraction unit"}] time-extraction-units))
@@ -76,7 +76,7 @@
 (def time-truncation-units
   "Units you can TRUNCATE a time or datetime to. These return the same type as the expression being bucketed in temporal
   bucketing expressions."
-  (set ordered-time-truncation-units))
+  (into (sorted-set) ordered-time-truncation-units))
 
 (mr/def ::unit.time.truncate
   (into [:enum {:error/message    "Valid time truncation unit"
@@ -92,7 +92,7 @@
 
 (def time-bucketing-units
   "Valid time bucketing units for either truncation or extraction operations."
-  (set ordered-time-bucketing-units))
+  (into (sorted-set) ordered-time-bucketing-units))
 
 (mr/def ::unit.time
   (into [:enum {:error/message    "Valid time bucketing unit"
@@ -116,7 +116,7 @@
 
 (def datetime-bucketing-units
   "Valid datetime bucketing units for either truncation or extraction operations."
-  (set ordered-datetime-bucketing-units))
+  (into (sorted-set) ordered-datetime-bucketing-units))
 
 (mr/def ::unit.date-time
   (into [:enum {:error/message    "Valid datetime bucketing unit"
