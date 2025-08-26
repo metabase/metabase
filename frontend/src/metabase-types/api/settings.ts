@@ -424,6 +424,8 @@ interface AdminSettings {
   "show-simple-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
@@ -644,6 +646,8 @@ export interface EnterpriseSettings extends Settings {
   "saml-group-mappings": Record<string, GroupId[]> | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
   /**
    * @deprecated
    */

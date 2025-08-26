@@ -7,6 +7,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import type { EmbeddingHubStepId } from "../../types";
 import { getEmbeddingHubSteps } from "../../utils";
+import { EmbeddingHub } from "../EmbeddingHub";
 
 import { EmbeddingHubChecklist } from "./EmbeddingHubChecklist";
 
@@ -76,5 +77,62 @@ describe("EmbeddingChecklist", () => {
     await userEvent.click(screen.getByText("Add your data"));
 
     expect(screen.getByText("Add data")).toBeInTheDocument();
+  });
+});
+
+describe("EmbeddingHub completion logic", () => {
+  const setupEmbeddingHub = (settingsOverride = {}) => {
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+      settings: mockSettings({
+        "show-metabase-links": true,
+        "embedding-hub-test-embed-snippet-created": false,
+        "embedding-hub-production-embed-snippet-created": false,
+        ...settingsOverride,
+      }),
+    });
+
+    return renderWithProviders(<EmbeddingHub />, {
+      storeInitialState: state,
+    });
+  };
+
+  it("marks test embed step as completed when instance setting is true", () => {
+    setupEmbeddingHub({
+      "embedding-hub-test-embed-snippet-created": true,
+    });
+
+    const testEmbedStep = screen.getByTestId("create-test-embed-item");
+    expect(
+      within(testEmbedStep).getByLabelText("check icon"),
+    ).toBeInTheDocument();
+  });
+
+  it("marks production embed step as completed when instance setting is true", () => {
+    setupEmbeddingHub({
+      "embedding-hub-production-embed-snippet-created": true,
+    });
+
+    const productionEmbedStep = screen.getByTestId("embed-production-item");
+    expect(
+      within(productionEmbedStep).getByLabelText("check icon"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not mark steps as completed when instance settings are false", () => {
+    setupEmbeddingHub({
+      "embedding-hub-test-embed-snippet-created": false,
+      "embedding-hub-production-embed-snippet-created": false,
+    });
+
+    const testEmbedStep = screen.getByTestId("create-test-embed-item");
+    const productionEmbedStep = screen.getByTestId("embed-production-item");
+
+    expect(
+      within(testEmbedStep).queryByLabelText("check icon"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(productionEmbedStep).queryByLabelText("check icon"),
+    ).not.toBeInTheDocument();
   });
 });
