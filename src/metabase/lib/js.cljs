@@ -2341,6 +2341,11 @@
   [a-drill-thru pivot-type]
   (to-array (lib.core/pivot-columns-for-type a-drill-thru (keyword pivot-type))))
 
+(defn ^:export zoom-in-geographic-drill-details
+  [{:keys [column subtype]}]
+  #js {"subtype" (name subtype)
+       "columnType" (some-> column :semantic-type name)})
+
 (defn ^:export with-different-table
   "Changes an existing `a-query` to use a different source table or card.
 

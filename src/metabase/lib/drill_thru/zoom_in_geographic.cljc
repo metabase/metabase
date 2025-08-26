@@ -163,9 +163,10 @@
 
 (mu/defn- binned-lat-lon->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.binned-lat-lon->binned-lat-lon]
   [metadata-providerable                                             :- ::lib.schema.metadata/metadata-providerable
-   {:keys [lat-column lon-column lat-value lon-value], :as _context} :- ContextWithLatLon]
+   {:keys [column lat-column lon-column lat-value lon-value], :as _context} :- ContextWithLatLon]
   (when (and lat-value
-             lon-value)
+             lon-value
+             (= (:semantic-type column) :type/Latitude))
     (when-let [{lat-bin-width :bin-width} (lib.binning/resolve-bin-width metadata-providerable lat-column lat-value)]
       (when-let [{lon-bin-width :bin-width} (lib.binning/resolve-bin-width metadata-providerable lon-column lon-value)]
         (let [[new-lat-bin-width new-lon-bin-width] (if (and (>= lat-bin-width 20)

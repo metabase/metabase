@@ -606,6 +606,15 @@ export type PivotDrillDetails = {
   stageIndex: number;
 };
 
+export type ZoomInGeographicDrillType =
+  | "binned-lat-lon->binned-lat-lon"
+  | "country-city-state->binned-lat-lon";
+
+export type ZoomInGeographicDrillDetails = {
+  subtype: ZoomInGeographicDrillType;
+  columnType?: string;
+};
+
 export interface ClickObjectDimension {
   value: RowValue;
   column: DatasetColumn;

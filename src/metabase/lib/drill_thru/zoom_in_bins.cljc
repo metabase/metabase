@@ -69,16 +69,19 @@
      In other words, this bin adds a filter for the selected bin and then divides the bin width in the breakout binning
      options by 10."
   (:require
+   [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.util.malli :as mu]))
 
@@ -86,13 +89,24 @@
 ;;; available-drill-thrus
 ;;;
 
+(defn- has-lat-lon? [query stage-number]
+  (->> [(lib.metadata.calculation/returned-columns query stage-number)
+        (lib.metadata.calculation/visible-columns query stage-number)]
+       (some (fn [columns]
+               [(some lib.types.isa/latitude? columns)
+                (some lib.types.isa/longitude? columns)]))
+       (every? identity)))
+
 (mu/defn zoom-in-binning-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.binning]
   "Return a drill thru that 'zooms in' on a breakout that uses `:binning` if applicable.
   See [[metabase.lib.drill-thru.zoom-in-bins]] docstring for more information."
   [query                                 :- ::lib.schema/query
-   _stage-number                         :- :int
+   stage-number                         :- :int
    {:keys [column value], :as _context}  :- ::lib.schema.drill-thru/context]
-  (when (and column value (not= value :null))
+  (when (and column value (not= value :null)
+             (or (not (or (= (:semantic-type :type/latitude))
+                          (= (:semantic-type :type/longitude))))
+                 (not (has-lat-lon? query stage-number))))
     (when-let [existing-breakout (first (lib.breakout/existing-breakouts query
                                                                          (lib.underlying/top-level-stage-number query)
                                                                          column))]
