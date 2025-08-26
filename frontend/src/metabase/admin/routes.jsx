@@ -6,6 +6,7 @@ import AdminApp from "metabase/admin/app/components/AdminApp";
 import { DatabaseConnectionModal } from "metabase/admin/databases/containers/DatabaseConnectionModal";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
 import { DatabaseListApp } from "metabase/admin/databases/containers/DatabaseListApp";
+import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
@@ -61,10 +62,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         component={createAdminRouteGuard("databases")}
       >
         <IndexRoute component={DatabaseListApp} />
-        <Route component={DatabaseListApp}>
-          <Route component={IsAdmin}>
-            <ModalRoute path="create" modal={DatabaseConnectionModal} noWrap />
-          </Route>
+        <Route component={DatabaseListApp} />
+        <Route component={IsAdmin}>
+          <Route path="create" component={DatabasePage} />
         </Route>
         <Route path=":databaseId" component={DatabaseEditApp}>
           <ModalRoute path="edit" modal={DatabaseConnectionModal} noWrap />
