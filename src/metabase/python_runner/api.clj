@@ -5,7 +5,11 @@
    [clojure.java.shell :as shell]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.util.malli.schema :as ms])
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.request.core :as request]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -91,3 +95,24 @@
                                            [:db-connection-string {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-superuser)
   (execute-python-code code db-connection-string))
+
+(api.macros/defendpoint :get "/table/:id/data"
+  "Fetch table data for Python transforms."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [db-id (api/check-404 (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id))
+        _ (api/read-check :model/Database db-id)
+        _ (api/read-check :model/Table id)
+
+        ;; TODO
+        row-limit (or (request/limit) 10000)
+
+        query {:database db-id
+               :type :query
+               :query {:source-table id
+                       :limit row-limit}}]
+
+    ;; TODO: jsonl
+    (qp.streaming/streaming-response [rff :json]
+      (qp/process-query query rff))))

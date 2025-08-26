@@ -161,3 +161,11 @@
                   :stderr ""}
                  result)))))))
 
+(deftest get-table-data-test
+  (testing "can retrieve table data"
+    (mt/test-drivers [:h2]
+      (mt/dataset test-data)
+      (let [result (mt/user-http-request :crowberto :get 200
+                                         (format "python-runner/table/%d/data" (mt/id :orders))
+                                         :limit "2")]
+        (is (= ["1" "2"] (map :ID result)))))))
