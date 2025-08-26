@@ -49,7 +49,7 @@
     (with-temp-directory dir
       (log/info "Reloading Metabase configuration from source")
       (try
-        (serdes-cmd/v2-load-internal! (sources/load-source! dir)
+        (serdes-cmd/v2-load-internal! (sources/load-source! source (.toString dir))
                                       {}
                                       :require-initialized-db? false)
 

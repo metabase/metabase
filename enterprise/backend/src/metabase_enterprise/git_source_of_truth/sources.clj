@@ -11,7 +11,7 @@
    (java.nio.file.attribute FileAttribute)))
 
 (defprotocol ISource
-  (load-source! [dir]
+  (load-source! [this dir]
     "Loads the source, taking a directory and returning an absolute path to the source directory that can be loaded
     with serdes. The returned path may be different from the original because sources may use subdirectories.
 
@@ -57,7 +57,7 @@
 
 (defrecord GitSource [url branch path]
   ISource
-  (load-source! [dir]
+  (load-source! [_this dir]
     (clone-repository! url branch dir)
     (get-serdes-path dir path)))
 
