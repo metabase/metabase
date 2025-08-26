@@ -177,6 +177,7 @@ jobs:
     outputs:
       sdk_version: ${{ fromJson(steps.new-sdk-version.outputs.result).version }}
       major_version: ${{ fromJson(steps.new-sdk-version.outputs.result).majorVersion }}
+      pre_release_label: ${{ fromJson(steps.new-sdk-version.outputs.result).preReleaseLabel }}
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
@@ -216,7 +217,7 @@ jobs:
 
               return {
                 version: `${currentVersionWithoutSuffix}-${preReleaseLabel}.${nextPreReleaseVersion}`,
-                "pre-release-label": preReleaseLabel,
+                preReleaseLabel,
                 majorVersion,
               };
             }
@@ -228,6 +229,7 @@ jobs:
 
             return {
               version: suffix ? `${newVersion}-${suffix}` : newVersion,
+              preReleaseLabel: '',
               majorVersion
             }
 
@@ -426,7 +428,7 @@ jobs:
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           # Please keep the value in sync with `inputs.branch`'s release branch
           npm publish --tag ${{fromJson('{
-           "master": "${{ needs.determine-sdk-version.outputs.pre-release-label || 'nightly' }}",
+           "master": "${{ needs.determine-sdk-version.outputs.pre_release_label || 'nightly' }}",
            "release-x.51.x": "51-stable",
            "release-x.52.x": "52-stable",
            "release-x.53.x": "53-stable",
