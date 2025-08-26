@@ -30,8 +30,16 @@ export const EmbeddingHub = () => {
 
   const closeModal = () => setOpenedModal(null);
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
-  const embedJsDocsUrl = useDocsUrl("embedding/embedded-analytics-js");
+  // TODO: will be replaced by a dropdown
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- This link only shows for admins.
+  const embedJsDocsUrl = useDocsUrl("embedding/embedded-analytics-js", {
+    utm: {
+      utm_campaign: "product",
+      utm_content: "embed-js-docs",
+      utm_medium: "docs",
+      utm_source: "embedding-hub",
+    },
+  });
 
   return (
     <Box mih="100%" px="lg" py="xl" bg="bg-white">
