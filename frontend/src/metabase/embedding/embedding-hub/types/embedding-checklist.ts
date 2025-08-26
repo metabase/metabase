@@ -15,6 +15,7 @@ export interface EmbeddingHubStep {
   description: string;
 
   image?: EmbeddingHubImage;
+  video?: EmbeddingHubVideo;
   actions?: EmbeddingHubAction[];
 }
 
@@ -35,4 +36,10 @@ interface EmbeddingHubImage {
   src: string;
   srcSet?: string;
   alt: string;
+}
+
+export interface EmbeddingHubVideo {
+  id: string;
+  trackingId: string;
+  title: string;
 }

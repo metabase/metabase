@@ -8,6 +8,7 @@ import type { EmbeddingHubStep, EmbeddingHubStepId } from "../../types";
 
 import S from "./EmbeddingHubChecklist.module.css";
 import { EmbeddingHubStepActions } from "./EmbeddingHubStepActions";
+import { EmbeddingHubVideo } from "./VideoTutorial";
 
 interface EmbeddingHubChecklistProps {
   steps: EmbeddingHubStep[];
@@ -70,6 +71,14 @@ export const EmbeddingHubChecklist = ({
                     src={step.image.src}
                     srcSet={step.image.srcSet}
                     width="100%"
+                  />
+                )}
+
+                {step.video && (
+                  <EmbeddingHubVideo
+                    id={step.video.id}
+                    trackingId={step.video.trackingId}
+                    title={step.video.title}
                   />
                 )}
 
