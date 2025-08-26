@@ -64,7 +64,9 @@
 
 (defn- source-database-id
   [transform]
-  (-> transform :source :query :database))
+  (if (transforms.util/python-transform? transform)
+    (-> transform :source :source-database)
+    (-> transform :source :query :database)))
 
 (defn- check-database-feature
   [transform]
