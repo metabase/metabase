@@ -3842,7 +3842,9 @@ describe("issue 48524", () => {
   it("should not apply last used parameters when some parameters have values set in the URL (metabase#48524)", () => {
     createDashboard();
 
-    cy.log("open the dashboard with 2 parameters to populate last used values");
+    cy.log(
+      "open the dashboard with 2 parameters to populate their last used values",
+    );
     H.visitDashboard("@dashboardId", {
       params: {
         [reviewerFilter.slug]: ["abbey-heidenreich"],
@@ -3858,7 +3860,7 @@ describe("issue 48524", () => {
     H.assertTableRowsCount(1);
 
     cy.log(
-      "open the dashboard with only 1 value to verify that the last used values are not used in this case",
+      "open the dashboard with only 1 parameter value to verify that the last used values are not applied in this case",
     );
     H.visitDashboard("@dashboardId", {
       params: {
