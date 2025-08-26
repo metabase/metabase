@@ -17,6 +17,7 @@ export type ParametersListProps = {
     question: Question;
     dashboard: Dashboard | null;
     editingParameter: Parameter | null | undefined;
+    linkedFilterParameters: Parameter[];
 
     isEditing: boolean;
     isSortable?: boolean;
