@@ -19,7 +19,11 @@ interface EmbeddingHubChecklistProps {
 
   defaultOpenStep?: EmbeddingHubStepId;
   completedSteps?: Partial<Record<EmbeddingHubStepId, boolean>>;
+<<<<<<< HEAD
   onModalAction?: (modal: EmbeddingHubModalToTrigger) => void;
+=======
+  onModalAction?: (modalType: "add-data" | "new-dashboard") => void;
+>>>>>>> 314a26cf6bd (step updates)
 }
 
 export const EmbeddingHubChecklist = ({

@@ -37,7 +37,11 @@ interface EmbeddingHubAction {
   variant?: "outline" | "subtle" | "filled";
 
   /** Which modal to trigger? */
+<<<<<<< HEAD
   modal?: EmbeddingHubModalToTrigger;
+=======
+  modal?: "add-data" | "new-dashboard";
+>>>>>>> 314a26cf6bd (step updates)
 }
 
 interface EmbeddingHubImage {

@@ -10,7 +10,11 @@ export const EmbeddingHubStepActions = ({
   onModalAction,
 }: {
   step: EmbeddingHubStep;
+<<<<<<< HEAD
   onModalAction?: (modal: EmbeddingHubModalToTrigger) => void;
+=======
+  onModalAction?: (modalType: "add-data" | "new-dashboard") => void;
+>>>>>>> 314a26cf6bd (step updates)
 }) => {
   if (!step.actions?.length) {
     return null;
