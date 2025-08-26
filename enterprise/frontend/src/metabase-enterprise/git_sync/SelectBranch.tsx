@@ -86,6 +86,14 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
 
   const defaultBranch = branches.find((b) => b.isDefault);
 
+  const isExactMatch = useMemo(
+    () =>
+      filteredBranches.some(
+        (b) => b.name.toLowerCase() === searchValue.toLowerCase(),
+      ),
+    [filteredBranches, searchValue],
+  );
+
   return (
     <Combobox store={combobox} withinPortal position="bottom-start">
       <Combobox.Target>
@@ -144,7 +152,7 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
                   </Combobox.Option>
                 ))}
 
-              {searchValue && filteredBranches.length === 0 && (
+              {searchValue && !isExactMatch && (
                 <Combobox.Option
                   value="create-new"
                   onClick={() => handleCreateAndSwitch(searchValue)}

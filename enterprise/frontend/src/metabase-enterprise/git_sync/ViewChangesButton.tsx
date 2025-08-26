@@ -21,24 +21,10 @@ export const ViewChangesButton = () => {
   return (
     <>
       <Button
-        variant="outline"
+        variant="default"
         size="sm"
         leftSection={<Icon name="eye" size={14} />}
         onClick={() => setModalOpened(true)}
-        styles={{
-          root: {
-            color: "var(--mb-color-text-white)",
-            border: "1px solid var(--mb-color-bg-white-alpha-15)",
-            fontSize: "13px",
-            fontWeight: 700,
-            whiteSpace: "nowrap",
-            "&:hover": {
-              color: "var(--mb-color-text-white)",
-              backgroundColor: "var(--mb-color-bg-black-alpha-60)",
-              borderColor: "var(--mb-color-text-white-alpha-85)",
-            },
-          },
-        }}
       >
         {t`View changes`}
       </Button>

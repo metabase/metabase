@@ -19,6 +19,14 @@
   :encryption :no
   :export?    false)
 
+(defsetting git-sync-default-branch
+  (deferred-tru "The default branch for git sync.")
+  :type       :string
+  :visibility :authenticated
+  :export?    false
+  :encryption :no
+  :default    nil)
+
 ;; TODO: flip this to true if we have successfully pulled from the repo
 (defsetting git-sync-configured
   (deferred-tru "Whether git sync is configured.")

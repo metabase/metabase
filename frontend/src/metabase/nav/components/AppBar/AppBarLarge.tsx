@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_GIT_SYNC, PLUGIN_METABOT } from "metabase/plugins";
+import { Group } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
@@ -51,7 +53,7 @@ const AppBarLarge = ({
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
-
+  const gitSyncConfigured = useSelector((_state) => true);
   return (
     <AppBarRoot hasSidebarOpen={isNavBarVisible || isMetabotVisible}>
       <AppBarLeftContainer>
@@ -76,6 +78,10 @@ const AppBarLarge = ({
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
+          <Group gap="xs" miw={300} display="flex" align="center" wrap="nowrap">
+            {gitSyncConfigured && <PLUGIN_GIT_SYNC.SelectBranch />}
+            {gitSyncConfigured && <PLUGIN_GIT_SYNC.ViewChangesButton />}
+          </Group>
           {isSearchVisible &&
             (isEmbeddingIframe ? (
               <SearchBar />

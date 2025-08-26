@@ -152,7 +152,6 @@ export function MainNavbarView({
               {t`Home`}
             </PaddedSidebarLink>
           </SidebarSection>
-
           {shouldDisplayGettingStarted && (
             <SidebarSection>
               <ErrorBoundary>
@@ -177,7 +176,6 @@ export function MainNavbarView({
               </ErrorBoundary>
             </SidebarSection>
           )}
-
           {bookmarks.length > 0 && (
             <SidebarSection>
               <ErrorBoundary>
@@ -192,7 +190,6 @@ export function MainNavbarView({
               </ErrorBoundary>
             </SidebarSection>
           )}
-
           <SidebarSection>
             <ErrorBoundary>
               <CollectionSectionHeading
@@ -217,7 +214,6 @@ export function MainNavbarView({
               )}
             </ErrorBoundary>
           </SidebarSection>
-
           <SidebarSection>
             <ErrorBoundary>
               <BrowseNavSection
@@ -228,7 +224,6 @@ export function MainNavbarView({
               />
             </ErrorBoundary>
           </SidebarSection>
-
           {trashCollection && (
             <TrashSidebarSection>
               <ErrorBoundary>

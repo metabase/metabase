@@ -603,6 +603,7 @@ export interface EnterpriseSettings extends Settings {
   "application-logo-url"?: string;
   "git-sync-key"?: string | null;
   "git-sync-url"?: string | null;
+  "git-sync-default-branch"?: string | null;
   "git-sync-entities"?: Partial<Record<SyncableEntity, boolean>> | null;
   "git-sync-configured"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;

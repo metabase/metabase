@@ -42,6 +42,11 @@ export const GitSyncSettings = () => {
           title={t`RSA key`}
           inputType="textarea"
         />
+        <AdminSettingInput
+          name="git-sync-default-branch"
+          title={t`Default branch`}
+          inputType="text"
+        />
       </SettingsSection>
       <GitSyncEntities />
     </SettingsPageWrapper>
