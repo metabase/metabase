@@ -639,15 +639,6 @@ databaseChangeLog:
               SELECT id, 'collection', collection_id
               FROM metabot
               WHERE collection_id IS NOT NULL;
-        - addColumn:
-            tableName: metabot_prompt
-            columns:
-              - column:
-                  name: metabot_entity_id
-                  type: int
-                  remarks: The metabot entity this prompt is associated with
-                  constraints:
-                    nullable: true
             preConditions:
               - onFail: MARK_RAN
               - not:
