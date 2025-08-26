@@ -10,11 +10,8 @@ interface DocsLinkProps {
 }
 
 export const DocsLink = ({ docsPath, children }: DocsLinkProps) => {
-  const { url, showMetabaseLinks } = useDocsUrl(docsPath);
-
-  if (!showMetabaseLinks) {
-    return null;
-  }
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- we are in admin so we must always show the link.
+  const { url } = useDocsUrl(docsPath);
 
   return (
     <Button
