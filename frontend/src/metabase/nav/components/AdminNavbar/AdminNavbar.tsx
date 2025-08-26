@@ -8,8 +8,9 @@ import LogoIcon from "metabase/common/components/LogoIcon";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { PLUGIN_GIT_SYNC } from "metabase/plugins";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { Button, Icon } from "metabase/ui";
+import { Button, Flex, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
 import type { AdminPath } from "metabase-types/store";
 
@@ -41,6 +42,11 @@ export const AdminNavbar = ({
   adminPaths,
 }: AdminNavbarProps) => {
   const isPaidPlan = useSelector(getIsPaidPlan);
+  const gitSyncConfigured = useSelector(
+    (_state) =>
+      // getSetting(state, "git-sync-configured"),
+      true,
+  );
   const dispatch = useDispatch();
 
   useRegisterShortcut(
@@ -91,11 +97,15 @@ export const AdminNavbar = ({
           ))}
         </AdminNavbarItems>
 
-        {!isPaidPlan && <StoreLink />}
-        <AdminExitLink
-          to="/"
-          data-testid="exit-admin"
-        >{t`Exit admin`}</AdminExitLink>
+        <Flex ml="auto" align="center" gap="md">
+          {gitSyncConfigured && <PLUGIN_GIT_SYNC.SelectBranch />}
+          {gitSyncConfigured && <PLUGIN_GIT_SYNC.ViewChangesButton />}
+          {!isPaidPlan && <StoreLink />}
+          <AdminExitLink
+            to="/"
+            data-testid="exit-admin"
+          >{t`Exit admin`}</AdminExitLink>
+        </Flex>
       </MobileHide>
     </AdminNavbarRoot>
   );
