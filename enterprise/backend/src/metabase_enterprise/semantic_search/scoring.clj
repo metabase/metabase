@@ -166,20 +166,24 @@
 (def ^:private recent-views-models
   (into #{} (map name recent-views/rv-models)))
 
+(def ^:private appdb-scorer-models
+  (into recent-views-models (map name search.scoring/bookmarked-models-and-sub-models)))
+
 (comment
   (require '[clojure.set :as set]
            '[metabase.search.spec :as search.spec])
   ;; #{"segment" "database" "action" "indexed-entity"}
-  (set/difference search.spec/search-models recent-views-models))
+  (set/difference search.spec/search-models appdb-scorer-models))
 
 (defn appdb-scorers
   "The appdb-based scorers for search ranking results. Like `base-scorers`, but for scorers that need to query the appdb."
   [{:keys [limit-int] :as search-ctx}]
   (when-not (and limit-int (zero? limit-int))
-    (when-not (= :mysql (mdb/db-type))
-      ;; The :user-recency scorer needs to be modified to work with mysql / mariadb (BOT-360)
-      {:user-recency (search.scoring/inverse-duration
-                      (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)})))
+    (merge {:bookmarked search.scoring/bookmark-score-expr}
+           (when-not (= :mysql (mdb/db-type))
+             ;; The :user-recency scorer needs to be modified to work with mysql / mariadb (BOT-360)
+             {:user-recency (search.scoring/inverse-duration
+                             (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)}))))
 
 (defn with-appdb-scores
   "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.
@@ -189,17 +193,19 @@
   This will extract required info from `search-results`, make an appdb query to select additional scorers, combine
   those with the existing `:score` and `:all-scores` in the `search-results`, then re-sort the results by the new
   combined `:score`."
-  [search-ctx app-db-scorers weights search-results]
-  ;; filtered-search-results are the search-results that have models that are tracked in the recent_views table,
-  ;; i.e. results that might possibly have user-recency info.
-  (let [filtered-search-results (filter (comp recent-views-models :model) search-results)]
-    (if-not (and (seq filtered-search-results)
-                 (seq app-db-scorers))
+  [search-ctx appdb-scorers weights search-results]
+  ;; search-results-to-score are the search-results that have models that are relevant to the appdb-scorers.
+  (let [{:keys [current-user-id]} search-ctx
+        search-results-to-score (filter (comp appdb-scorer-models :model) search-results)
+        maybe-join-bookmarks #(cond-> % (:bookmarked appdb-scorers) (search.scoring/join-bookmarks current-user-id))]
+    (if-not (and (seq search-results-to-score)
+                 (seq appdb-scorers))
       search-results
-      (->> (search-index-query filtered-search-results)
-           (search.scoring/with-scores search-ctx app-db-scorers)
+      (->> (search-index-query search-results-to-score)
+           (search.scoring/with-scores search-ctx appdb-scorers)
+           maybe-join-bookmarks
            t2/query
-           (update-with-appdb-scores weights (keys app-db-scorers) search-results)
+           (update-with-appdb-scores weights (keys appdb-scorers) search-results)
            (sort-by :score >)
            vec))))
 
