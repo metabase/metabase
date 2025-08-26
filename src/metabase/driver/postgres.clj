@@ -1214,5 +1214,18 @@
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
 
-(defmethod driver/extra-info :postgres [driver]
-  {:providers (warehouses/providers-for-engine driver)})
+(defmethod driver/extra-info :postgres
+  [_driver]
+  {:providers [{:name "Aiven" :pattern "\\.aivencloud\\.com$"}
+               {:name "Amazon RDS" :pattern "\\.rds\\.amazonaws\\.com$"}
+               {:name "Azure" :pattern "\\.postgres\\.database\\.azure\\.com$"}
+               {:name "Crunchy Data" :pattern "\\.db\\.postgresbridge\\.com$"}
+               {:name "DigitalOcean" :pattern "db\\.ondigitalocean\\.com$"}
+               {:name "Fly.io" :pattern "\\.fly\\.dev$" :engines [:postgres]}
+               {:name "Neon" :pattern "\\.neon\\.tech$" :engines [:postgres]}
+               {:name "PlanetScale" :pattern "\\.psdb\\.cloud$"}
+               {:name "Railway" :pattern "\\.railway\\.app$" :engines [:postgres]}
+               {:name "Render" :pattern "\\.render\\.com$" :engines [:postgres]}
+               {:name "Scaleway" :pattern "\\.scw\\.cloud$" :engines [:postgres]}
+               {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
+               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})
