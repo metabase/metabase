@@ -184,6 +184,9 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
 
+      - name: Prepare build scripts
+        run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
+
       - name: Get current SDK version
         id: current-sdk-version
         run: |
@@ -194,46 +197,19 @@ jobs:
         id: new-sdk-version
         uses: actions/github-script@v7
         with:
-          script: |
+          script: | #js
+            const { getNextSdkVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+
             const branch = "${{ inputs.branch }}";
-
             const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
-            const [currentVersionWithoutSuffix, suffix] = currentVersion.split("-");
-            const versionParts = currentVersionWithoutSuffix.split(".");
-            const [_, majorVersion] = versionParts
 
-            if (branch === "master") {
-              if (!suffix) {
-                throw new Error("Expected pre-release suffix on master branch, got: " + currentVersion);
-              }
-
-              // When the `currentVersion` is `0.57.0-alpha.1`
-              // The `suffix` is `alpha.1`
-              // The `preReleaseLabel is `alpha`
-              // The `preReleaseVersion` is `1`
-              const suffixParts = suffix ? suffix.split(".") : [];
-
-              const preReleaseLabel = suffixParts[0] ?? "";
-              const preReleaseVersion = suffixParts[1] ? parseInt(suffixParts[1]) : 0;
-              const nextPreReleaseVersion = preReleaseVersion + 1;
-
-              return {
-                version: `${currentVersionWithoutSuffix}-${preReleaseLabel}.${nextPreReleaseVersion}`,
-                preReleaseLabel,
-                majorVersion,
-              };
-            }
-
-            // 0.57.0 => 0.57.1
-            // 0.57.0-alpha -> 0.57.1-alpha
-            versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
-            const newVersion = versionParts.join(".");
+            const result = getNextSdkVersion(branch, currentVersion);
 
             return {
-              version: suffix ? `${newVersion}-${suffix}` : newVersion,
-              preReleaseLabel: '',
-              majorVersion
-            }
+              version: result.version,
+              preReleaseLabel: result.preReleaseLabel,
+              majorVersion: result.majorVersion
+            };
 
       - name: Append workflow summary
         run: |
@@ -437,15 +413,23 @@ jobs:
         working-directory: sdk
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-          npm publish --tag ${{ fromJson(format('{
-            "master": "{0}",
-            "release-x.51.x": "51-stable",
-            "release-x.52.x": "52-stable",
-            "release-x.53.x": "53-stable",
-            "release-x.54.x": "54-stable",
-            "release-x.55.x": "55-stable",
-            "release-x.56.x": "56-stable"
-          }', steps.compute-tag.outputs.masterTag))[inputs.branch] }}
+
+          TAG=$(jq -r --null-input \
+            --arg branch "${{ inputs.branch }}" \
+            --arg masterTag "${{ steps.compute-tag.outputs.masterTag }}" '
+            {
+              "master": $masterTag,
+              "release-x.51.x": "51-stable",
+              "release-x.52.x": "52-stable",
+              "release-x.53.x": "53-stable",
+              "release-x.54.x": "54-stable",
+              "release-x.55.x": "55-stable",
+              "release-x.56.x": "56-stable"
+            }[$branch]'
+          )
+
+          echo "Resolved npm tag: $TAG"
+          npm publish --tag "$TAG"
 
       - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
         if: ${{ inputs.branch == 'release-x.56.x' }}
