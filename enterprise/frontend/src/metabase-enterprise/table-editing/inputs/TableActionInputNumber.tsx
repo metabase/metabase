@@ -6,6 +6,7 @@ import type { TableActionInputSharedProps } from "./types";
 
 export type TableActionInputNumberProps = TableActionInputSharedProps & {
   allowDecimal?: boolean;
+  hideControls?: boolean;
   classNames?: {
     wrapper?: string;
     numberInputElement?: string;
@@ -14,6 +15,7 @@ export type TableActionInputNumberProps = TableActionInputSharedProps & {
 
 export const TableActionInputNumber = ({
   allowDecimal,
+  hideControls = true,
   autoFocus,
   inputProps,
   initialValue,
@@ -25,9 +27,12 @@ export const TableActionInputNumber = ({
 }: TableActionInputNumberProps) => {
   const [value, setValue] = useState<string | number>(initialValue ?? "");
 
-  const handleChange = useCallback(
-    (value: string | number) => {
-      setValue(value);
+  const handleChange = useCallback((value: string | number) => {
+    setValue(value);
+  }, []);
+
+  const handleChangeValue = useCallback(
+    ({ value }: { value: string }) => {
       onChange?.(numberToRawValue(value));
     },
     [onChange],
@@ -50,11 +55,13 @@ export const TableActionInputNumber = ({
 
   return (
     <NumberInput
+      hideControls={hideControls}
       allowDecimal={allowDecimal}
       defaultValue={(initialValue ?? "").toString()}
       autoFocus={autoFocus}
       onKeyUp={handleKeyUp}
       onChange={handleChange}
+      onValueChange={handleChangeValue}
       onBlur={handleBlur}
       classNames={{
         wrapper: classNames?.wrapper,

@@ -14,12 +14,13 @@ import { isSyncInProgress } from "metabase/lib/syncing";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { getDatabases } from "metabase/reference/selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Group, Icon, Loader } from "metabase/ui";
+import { Group, Icon, Loader, Paper } from "metabase/ui";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { BrowseHeaderContent } from "../../components/BrowseHeader.styled";
 import { trackTableClick } from "../analytics";
 
+import S from "./TableBrowser.module.css";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
 const propTypes = {
@@ -147,7 +148,7 @@ const TableBrowserItemButtons = ({
   };
 
   return (
-    <Box className={cx(CS.hoverChild)}>
+    <Paper p="sm" className={cx(CS.hoverChild, S.tableBrowserItemButtons)}>
       <Group gap="md">
         {xraysEnabled && (
           <Link to={`/auto/dashboard/table/${tableId}`}>
@@ -179,7 +180,7 @@ const TableBrowserItemButtons = ({
           />
         </Link>
       </Group>
-    </Box>
+    </Paper>
   );
 };
 

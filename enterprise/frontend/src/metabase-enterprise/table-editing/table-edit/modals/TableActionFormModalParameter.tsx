@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 
-import { Group, Stack, Text } from "metabase/ui";
+import { Box, Group, Stack, Text } from "metabase/ui";
 
 import {
   TableActionFormInputType,
@@ -46,7 +46,7 @@ export function TableActionFormModalParameter({
           </Text>
         </Stack>
       </Group>
-      {children}
+      <Box>{children}</Box>
     </>
   );
 }
