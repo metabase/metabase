@@ -30,18 +30,6 @@
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
 
-(defn- user-recency-expr [{:keys [current-user-id]}]
-  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
-   :from   [:recent_views]
-   :where  [:and
-            [:= :recent_views.user_id current-user-id]
-            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
-            [:= :recent_views.model
-             [:case
-              [:= :search_index.model [:inline "dataset"]] [:inline "card"]
-              [:= :search_index.model [:inline "metric"]] [:inline "card"]
-              :else :search_index.model]]]})
-
 (defn- view-count-percentiles*
   [p-value]
   (into {} (for [{:keys [model vcp]} (t2/query (specialization/view-count-percentile-query
@@ -65,18 +53,6 @@
                                        (into [:case] cat cases)
                                        1))))
 
-(defn- model-rank-exp [{:keys [context]}]
-  (let [search-order search.config/models-search-order
-        n            (double (count search-order))
-        cases        (map-indexed (fn [i sm]
-                                    [[:= :search_index.model sm]
-                                     (or (search.config/scorer-param context :model sm)
-                                         [:inline (/ (- n i) n)])])
-                                  search-order)]
-    (-> (into [:case] cat (concat cases))
-        ;; if you're not listed, get a very poor score
-        (into [:else [:inline 0.01]]))))
-
 (defn base-scorers
   "The default constituents of the search ranking scores."
   [{:keys [search-string limit-int] :as search-ctx}]
@@ -89,9 +65,9 @@
      :pinned       (search.scoring/truthy :pinned)
      :bookmarked   bookmark-score-expr
      :recency      (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
-     :user-recency (search.scoring/inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
+     :user-recency (search.scoring/inverse-duration (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
      :dashboard    (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
-     :model        (model-rank-exp search-ctx)
+     :model        (search.scoring/model-rank-expr search-ctx)
      :mine         (search.scoring/equal :search_index.creator_id (:current-user-id search-ctx))
      :exact        (if search-string
                      ;; perform the lower casing within the database, in case it behaves differently to our helper
