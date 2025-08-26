@@ -27,28 +27,6 @@
 (defn- branched-cte
   [table]
   (let [current-branch-id (:id @branching/*current-branch*)]
-    (comment
-      (clojure.pprint/print-table
-       (binding [branching/*enable-branch-hook* false]
-         (t2/query {:select (into [[[:coalesce :bm.original_id :branched.id] :id]]
-                                  [:name :bm.branch_id :bm.branched_model_id])
-                    :from [[table :branched]]
-                    :left-join [[:branch_model_mapping :bm]
-                                [:and
-                                 [:= :bm.branched_model_id :branched.id]
-                                 [:= :bm.model_type [:inline (name table)]]]]
-                    :where [:or
-                            [:and [:is-not :bm.branched_model_id nil]
-                             [:= :bm.branch_id current-branch-id]]
-                            [:and
-                             [:is :bm.branched_model_id nil]
-                             [:not-exists
-                              {:select [1]
-                               :from [[:branch_model_mapping :bm2]]
-                               :where [:and
-                                       [:= :bm2.branch_id current-branch-id]
-                                       [:= :bm2.original_id :branched.id]
-                                       [:= :bm2.model_type [:inline (name table)]]]}]]]}))))
     {:select (into [[[:coalesce :bm.original_id :branched.id] :id]]
                    (for [col-name (table @branchables)
                          :when (not (contains? #{"id" "ID"} col-name))]
