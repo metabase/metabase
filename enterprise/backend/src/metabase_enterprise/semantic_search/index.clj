@@ -214,8 +214,6 @@
         excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
     (zipmap update-keys (map excluded-kw update-keys))))
 
-(def table-name-prefix "index_")
-
 (defn hash-identifier-if-exceeds-pg-limit
   "Sometimes we need to generate new table/index names, such as when forcing a new index despite no change in index parameters.
   When we do so we need to be sure any index names do not exceed the postgres limit for names. This function will hash the identifier
@@ -225,7 +223,7 @@
   [identifier]
   (if (<= (count identifier) 63)
     identifier
-    (let [hashed-name (str table-name-prefix "_" (u/encode-base64-bytes (buddy-hash/sha1 identifier)))]
+    (let [hashed-name (str "index_" (u/encode-base64-bytes (buddy-hash/sha1 identifier)))]
       (log/warnf "Using hashed name for index table %s as original table name %s exceeded the maximum table name length" hashed-name identifier)
       hashed-name)))
 
@@ -241,7 +239,7 @@
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
         abbrev-model-name (embedding/abbrev-model-name model-name)
-        ideal-table-name (str table-name-prefix provider-name "_" abbrev-model-name "_" vector-dimensions)]
+        ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
     (hash-identifier-if-exceeds-pg-limit ideal-table-name)))
 
 (defn default-index
