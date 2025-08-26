@@ -1,7 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > drillthroughs > geographic drill", () => {
   beforeEach(() => {
@@ -87,6 +87,45 @@ describe("scenarios > visualizations > drillthroughs > geographic drill", () => 
       cy.findByText("Zoom in: City").should("be.visible");
       cy.findByText("Zoom in: State").should("be.visible");
       cy.findByText("Zoom in: Lat/Lon").should("not.exist");
+      cy.findByText("Zoom in").should("be.visible");
+    });
+  });
+
+  it("should display both normal and lat/lon zoom in when lat/lon and a binnable column both exist", () => {
+    H.createQuestion(
+      {
+        name: "Geographic Drills",
+        query: {
+          "source-table": PEOPLE_ID,
+          joins: [
+            {
+              "source-table": ORDERS_ID,
+              condition: [
+                "=",
+                ["field", PEOPLE.ID, null],
+                ["field", ORDERS.USER_ID, null],
+              ],
+            },
+          ],
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PEOPLE.STATE, null],
+            ["field", PEOPLE.CITY, null],
+            ["field", PEOPLE.LATITUDE, { binning: { strategy: "default" } }],
+            ["field", PEOPLE.LONGITUDE, { binning: { strategy: "default" } }],
+            ["field", ORDERS.SUBTOTAL, { binning: { strategy: "default" } }],
+          ],
+        },
+        display: undefined,
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("table-body").findAllByText("1").first().click();
+    H.popover().within(() => {
+      cy.findByText("Zoom in: City").should("be.visible");
+      cy.findByText("Zoom in: State").should("be.visible");
+      cy.findByText("Zoom in: Lat/Lon").should("be.visible");
       cy.findByText("Zoom in").should("be.visible");
     });
   });

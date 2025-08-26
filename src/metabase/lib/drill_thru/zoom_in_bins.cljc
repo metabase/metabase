@@ -104,8 +104,8 @@
    stage-number                         :- :int
    {{:keys [semantic-type] :as column} :column, :keys [value], :as _context}  :- ::lib.schema.drill-thru/context]
   (when (and column value (not= value :null)
-             (or (not (or (= semantic-type :type/latitude)
-                          (= semantic-type :type/longitude)))
+             (or (not (or (= semantic-type :type/Latitude)
+                          (= semantic-type :type/Longitude)))
                  (not (has-lat-lon? query stage-number))))
     (when-let [existing-breakout (first (lib.breakout/existing-breakouts query
                                                                          (lib.underlying/top-level-stage-number query)
