@@ -10,7 +10,7 @@ layout: new-docs
 
 # Password settings on Metabase Cloud
 
-Password strength is goverened by environment variables. On Metabase Cloud, these two variables are set as following:
+Password strength is goverened by environment variables. On Metabase Cloud, these two variables are set like this:
 
 - [MB_PASSWORD_COMPLEXITY](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_password_complexity) is set to `strong`
 - [MB_PASSWORD_LENGTH](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_password_length) is set to 12
