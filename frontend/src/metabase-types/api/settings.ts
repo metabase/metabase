@@ -544,7 +544,6 @@ export type UserSettings = {
     SdkIframeEmbedSetupSettings,
     "theme" | "useExistingUserSession"
   > | null;
-  "git-branch": string | null;
 };
 
 /**

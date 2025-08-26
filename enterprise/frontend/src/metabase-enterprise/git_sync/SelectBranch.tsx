@@ -71,9 +71,10 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
   const handleCreateAndSwitch = useCallback(
     async (branchName: string) => {
       try {
+        const currentBranchObj = branches.find((b) => b.name === displayBranch);
         const result = await createBranch({
           name: branchName.trim(),
-          sourceBranch: displayBranch,
+          parent_branch_id: currentBranchObj?.id,
         }).unwrap();
 
         handleBranchSelect(result);
@@ -81,10 +82,12 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
         console.error("Failed to create branch:", error);
       }
     },
-    [createBranch, displayBranch, handleBranchSelect],
+    [createBranch, displayBranch, handleBranchSelect, branches],
   );
 
-  const defaultBranch = branches.find((b) => b.isDefault);
+  const defaultBranch = branches.find(
+    (b) => b.name === "main" || !b.parent_branch_id,
+  );
 
   const isExactMatch = useMemo(
     () =>
@@ -140,7 +143,7 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
               )}
 
               {filteredBranches
-                .filter((b) => !b.isDefault)
+                .filter((b) => b !== defaultBranch)
                 .map((branch) => (
                   <Combobox.Option
                     key={branch.name}
