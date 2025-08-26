@@ -32,7 +32,7 @@ export const EmbeddingHubXrayPickerModal = ({
 
   return (
     <DataPickerModal
-      title={t`Choose a table for your X-ray dashboard`}
+      title={t`Choose a table to generate a dashboard`}
       value={undefined}
       models={["table"]}
       onChange={handleTableSelect}

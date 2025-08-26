@@ -19,7 +19,7 @@ const setup = ({ isAdmin = true } = {}) => {
 };
 
 describe("EmbeddingHub", () => {
-  it("opens AddDataModal when 'Add data' button is clicked", async () => {
+  it("opens AddDataModal when 'Add data' is clicked", async () => {
     setup();
 
     await userEvent.click(screen.getByText("Add your data"));
@@ -32,7 +32,7 @@ describe("EmbeddingHub", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens CreateDashboardModal when 'Build your own' button is clicked", async () => {
+  it("opens CreateDashboardModal when 'Build your own' is clicked", async () => {
     setup();
 
     await userEvent.click(screen.getByText("Create a dashboard"));
@@ -42,6 +42,20 @@ describe("EmbeddingHub", () => {
 
     expect(
       dialog.getByRole("heading", { name: "New dashboard" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens DataPickerModal when 'Generate automatic dashboard' is clicked", async () => {
+    setup();
+
+    await userEvent.click(screen.getByText("Create a dashboard"));
+    await userEvent.click(screen.getByText("Generate automatic dashboard"));
+
+    const dialog = screen.getByTestId("entity-picker-modal");
+    expect(dialog).toBeInTheDocument();
+
+    expect(
+      await within(dialog).findByText("Choose a table to generate a dashboard"),
     ).toBeInTheDocument();
   });
 });
