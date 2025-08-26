@@ -229,6 +229,7 @@ const tokenStatusFeatures = [
   "embedding-sdk",
   "embedding",
   "embedding-simple",
+  "embedding-hub",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
