@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.metabot :as metabot-v3.api.metabot]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -260,7 +261,29 @@
           (is (= "Not found."
                  (mt/user-http-request :crowberto :put 404
                                        (format "ee/metabot-v3/metabot/%d" Integer/MAX_VALUE)
-                                       {:use_verified_content true}))))))))
+                                       {:use_verified_content true}))))
+
+        (testing "should prevent updating collection_id on primary metabot instance"
+          (mt/with-temp [:model/Metabot {primary-metabot-id :id} {:name "Primary Metabot"
+                                                                  :entity_id (get-in metabot-v3.config/metabot-config
+                                                                                     [metabot-v3.config/internal-metabot-id :entity-id])
+                                                                  :use_verified_content false
+                                                                  :collection_id nil}]
+            (is (= "Cannot update collection_id for the primary metabot instance."
+                   (mt/user-http-request :crowberto :put 400
+                                         (format "ee/metabot-v3/metabot/%d" primary-metabot-id)
+                                         {:collection_id collection-id-1})))
+            ;; Verify the collection_id was not updated
+            (let [unchanged-metabot (t2/select-one :model/Metabot :id primary-metabot-id)]
+              (is (= nil (:collection_id unchanged-metabot))))
+
+            ;; Verify that updating other fields still works
+            (with-redefs [metabot-v3.api.metabot/generate-sample-prompts (constantly nil)]
+              (let [response (mt/user-http-request :crowberto :put 200
+                                                   (format "ee/metabot-v3/metabot/%d" primary-metabot-id)
+                                                   {:use_verified_content true})]
+                (is (true? (:use_verified_content response)))
+                (is (= nil (:collection_id response)))))))))))
 
 (deftest metabot-prompt-regeneration-on-config-change-test
   (mt/dataset test-data

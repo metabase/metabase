@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
@@ -88,18 +89,23 @@
                        [:collection_id {:optional true} [:maybe pos-int?]]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
-  (let [old-metabot (t2/select-one :model/Metabot :id id)
-        verified-content-changed? (and (contains? metabot-updates :use_verified_content)
-                                       (not= (:use_verified_content old-metabot)
-                                             (:use_verified_content metabot-updates)))
-        collection-changed? (and (contains? metabot-updates :collection_id)
-                                 (not= (:collection_id old-metabot)
-                                       (:collection_id metabot-updates)))]
-    (t2/update! :model/Metabot id metabot-updates)
-    (when (or verified-content-changed? collection-changed?)
-      (delete-all-metabot-prompts id)
-      (generate-sample-prompts id))
-    (t2/select-one :model/Metabot :id id)))
+  (let [old-metabot (t2/select-one :model/Metabot :id id)]
+    ;; Prevent updating collection_id on the primary metabot instance
+    (when (and (contains? metabot-updates :collection_id)
+               (= (:entity_id old-metabot)
+                  (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id :entity-id])))
+      (api/check-400 false "Cannot update collection_id for the primary metabot instance."))
+    (let [verified-content-changed? (and (contains? metabot-updates :use_verified_content)
+                                         (not= (:use_verified_content old-metabot)
+                                               (:use_verified_content metabot-updates)))
+          collection-changed? (and (contains? metabot-updates :collection_id)
+                                   (not= (:collection_id old-metabot)
+                                         (:collection_id metabot-updates)))]
+      (t2/update! :model/Metabot id metabot-updates)
+      (when (or verified-content-changed? collection-changed?)
+        (delete-all-metabot-prompts id)
+        (generate-sample-prompts id))
+      (t2/select-one :model/Metabot :id id))))
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones."
