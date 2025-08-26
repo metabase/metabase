@@ -147,7 +147,10 @@
                                        nil)]
         (try
           (sql-jdbc.conn/invalidate-pool-for-db! db)
-          ;; a little bit hacky to redefine the log fn, but it's the most direct way to test
+          ;; HACK: The ClickHouse driver also calls `db->pooled-connection-spec` to answer
+          ;; `driver-supports? :connection-impersonation`. That perturbs the call count below, so we check it once
+          ;; up front before we start counting.
+          (driver/database-supports? driver/*driver* :connection-impersonation db)
           (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
                   db-hash-1   (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]
