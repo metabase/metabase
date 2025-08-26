@@ -98,7 +98,8 @@
                                      (lib/aggregate (lib/sum orders-total))
                                      (lib/breakout (lib/with-temporal-bucket
                                                      orders-order-date :day))
-                                     (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0) :desc)))]
+                                     (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0) :desc))
+                                     (lib/limit 5))]
             (mt/with-temp [:model/Transform transform {:name   "transform"
                                                        :source {:type  :query
                                                                 :query aggregated-query}
@@ -116,3 +117,26 @@
                         ["2024-01-21T00:00:00Z" 19.99]
                         ["2024-01-23T00:00:00Z" 14.99]]
                        query-result))))))))))
+
+(deftest sqlserver-without-limit-errors-test
+  (mt/test-driver :sqlserver
+    (mt/dataset transforms-dataset/transforms-test
+      (let [target-type "table"
+            schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+        (with-transform-cleanup! [target-table {:type   target-type
+                                                :schema schema
+                                                :name   "prodcuts_count"}]
+          (let [mp (mt/metadata-provider)
+                transforms-products (lib.metadata/table mp (mt/id :transforms_products))
+                products-id (lib.metadata/field mp (mt/id :transforms_products :id))
+                query (-> (lib/query mp transforms-products)
+                          (lib/aggregate (lib/count))
+                          (lib/order-by products-id :asc))]
+            (mt/with-temp [:model/Transform transform {:name   "transform"
+                                                       :source {:type  :query
+                                                                :query query}
+                                                       :target target-table}]
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table expressions, unless TOP, OFFSET or FOR XML is also specified."
+                   (transforms.execute/run-mbql-transform! transform {:run-method :manual}))))))))))
