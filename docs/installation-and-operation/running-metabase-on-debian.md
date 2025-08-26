@@ -103,8 +103,6 @@ WantedBy=multi-user.target
 EOF
 ```
 
-## Final steps
-
 The best part of setting up Metabase as a systemd service is that it will start up at every system boot, and get restarted automatically if it crashes. We only have a few more quick steps to finish registering our service and having Metabase up and running.
 
 ## Ensure your database is ready
