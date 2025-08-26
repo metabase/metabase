@@ -194,14 +194,14 @@
   those with the existing `:score` and `:all-scores` in the `search-results`, then re-sort the results by the new
   combined `:score`."
   [search-ctx appdb-scorers weights search-results]
-  ;; filtered-search-results are the search-results that have models that are relevant to the appdb-scorers.
+  ;; search-results-to-score are the search-results that have models that are relevant to the appdb-scorers.
   (let [{:keys [current-user-id]} search-ctx
-        filtered-search-results (filter (comp appdb-scorer-models :model) search-results)
+        search-results-to-score (filter (comp appdb-scorer-models :model) search-results)
         maybe-join-bookmarks #(cond-> % (:bookmarked appdb-scorers) (search.scoring/join-bookmarks current-user-id))]
-    (if-not (and (seq filtered-search-results)
+    (if-not (and (seq search-results-to-score)
                  (seq appdb-scorers))
       search-results
-      (->> (search-index-query filtered-search-results)
+      (->> (search-index-query search-results-to-score)
            (search.scoring/with-scores search-ctx appdb-scorers)
            maybe-join-bookmarks
            t2/query
