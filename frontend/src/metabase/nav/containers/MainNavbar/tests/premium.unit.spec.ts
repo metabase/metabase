@@ -12,7 +12,7 @@ describe("nav > containers > MainNavbar (EE with token) > Getting Started sectio
     });
 
     expect(
-      screen.getByRole("link", { name: "Embedding hub" }),
+      screen.getByRole("link", { name: /Embedding hub/ }),
     ).toBeInTheDocument();
   });
 
@@ -24,7 +24,7 @@ describe("nav > containers > MainNavbar (EE with token) > Getting Started sectio
     });
 
     expect(
-      screen.queryByRole("link", { name: "Embedding hub" }),
+      screen.queryByRole("link", { name: /Embedding hub/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -36,7 +36,7 @@ describe("nav > containers > MainNavbar (EE with token) > Getting Started sectio
     });
 
     expect(
-      screen.queryByRole("link", { name: "Embedding hub" }),
+      screen.queryByRole("link", { name: /Embedding hub/ }),
     ).not.toBeInTheDocument();
   });
 });

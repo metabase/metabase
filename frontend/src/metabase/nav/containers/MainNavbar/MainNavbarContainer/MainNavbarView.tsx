@@ -142,7 +142,7 @@ export function MainNavbarView({
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
 
-  const isEmbeddingHubFeatureEnabled = useHasTokenFeature("embedding");
+  const isEmbeddingFeatureEnabled = useHasTokenFeature("embedding");
 
   return (
     <ErrorBoundary>
@@ -158,7 +158,7 @@ export function MainNavbarView({
               {t`Home`}
             </PaddedSidebarLink>
 
-            {isEmbeddingHubFeatureEnabled && isAdmin && (
+            {isEmbeddingFeatureEnabled && isAdmin && (
               <PaddedSidebarLink
                 isSelected={nonEntityItem?.url === "/embedding-hub"}
                 icon="code_block"
