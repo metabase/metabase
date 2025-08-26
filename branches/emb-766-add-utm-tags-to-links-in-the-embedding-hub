@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-738-setup-sidebar-and-onboarding-page-for-embedding-hub",
     "hash": "7a06823da5b2694e46f5162073f32c9ec8195782"
+  },
+  "upstream": {
+    "branch": "emb-766-add-utm-tags-to-links-in-the-embedding-hub"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 62747,
+        "gqlID": "PR_kwDOAczgH86la3W0"
+      }
+    }
   }
 }
