@@ -189,7 +189,7 @@ export function ReorderableTagsInput({
         classNames={{
           input: cx(S.pillsRow, {
             [S.max]: maxValues && value.length >= maxValues,
-            [S.dragOver]: isDragOver,
+            [S.dragOver]: isDragOver || currentDroppable === containerId,
           }),
         }}
         onMouseDownCapture={(e: React.MouseEvent<HTMLDivElement>) => {
