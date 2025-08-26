@@ -4,7 +4,7 @@ import _ from "underscore";
 import { logout } from "metabase/auth/actions";
 import Collections from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { PLUGIN_DOCUMENTS, PLUGIN_METABOT } from "metabase/plugins";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";
 import {
@@ -30,6 +30,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isNavBarOpen: getIsNavbarOpen(state),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
   isMetabotVisible: PLUGIN_METABOT.getMetabotVisible(state),
+  isDocumentSidebarOpen: PLUGIN_DOCUMENTS.getSidebarOpen(state),
   isLogoVisible: getIsLogoVisible(state),
   isSearchVisible: getIsSearchVisible(state),
   isEmbeddingIframe: getIsEmbeddingIframe(state),
