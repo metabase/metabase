@@ -121,6 +121,13 @@
    :model/Action
    (fn [_] {:creator_id (rasta-id)})
 
+   :model/Branch
+   (fn [_] (default-timestamped
+            (let [name (u.random/random-name)]
+              {:name name
+               :slug (u/slugify name)
+               :creator_id (rasta-id)})))
+
    :model/Channel
    (fn [_] (default-timestamped
             {:name (u.random/random-name)
@@ -834,7 +841,7 @@
            {:delete-from (t2/table-name model)
             :where [:and max-id-condition additional-conditions]}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (search/reindex! {:in-place? true :async? false})))))
+        (search/reindex! {:in-place? true})))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has

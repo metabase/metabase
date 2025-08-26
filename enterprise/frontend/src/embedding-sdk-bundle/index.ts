@@ -1,129 +1,71 @@
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import { defineEmbeddingSdkPackageBuildInfo } from "metabase/embedding-sdk/lib/define-embedding-sdk-package-build-info";
-import { defineGlobalDependencies } from "metabase/embedding-sdk/lib/define-global-dependencies";
+/* eslint-disable import/order */
 
-// Enable SDK mode as we are in the SDK package
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+
+// Enable SDK mode as we are in the SDK bundle
+// This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
-defineEmbeddingSdkPackageBuildInfo();
-defineGlobalDependencies();
+// Import the embedding SDK vendors side-effects
+import "metabase/embedding-sdk/vendors-side-effects";
 
-export { CollectionBrowser } from "embedding-sdk-bundle/sdk-package/components/public/CollectionBrowser";
-export { CreateQuestion } from "embedding-sdk-bundle/sdk-package/components/public/CreateQuestion";
-export { CreateDashboardModal } from "embedding-sdk-bundle/sdk-package/components/public/CreateDashboardModal";
-export { EditableDashboard } from "embedding-sdk-bundle/sdk-package/components/public/dashboard/EditableDashboard";
-export { InteractiveDashboard } from "embedding-sdk-bundle/sdk-package/components/public/dashboard/InteractiveDashboard";
-export { StaticDashboard } from "embedding-sdk-bundle/sdk-package/components/public/dashboard/StaticDashboard";
-export { InteractiveQuestion } from "embedding-sdk-bundle/sdk-package/components/public/InteractiveQuestion";
-export { StaticQuestion } from "embedding-sdk-bundle/sdk-package/components/public/StaticQuestion";
-export { MetabaseProvider } from "embedding-sdk-bundle/sdk-package/components/public/MetabaseProvider";
-export { MetabotQuestion } from "embedding-sdk-bundle/sdk-package/components/public/MetabotQuestion";
-export * from "embedding-sdk-bundle/sdk-package/components/public/debug/SdkDebugInfo";
+// Import the EE plugins required by the embedding sdk.
+import "sdk-ee-plugins";
 
-export { useApplicationName } from "embedding-sdk-bundle/sdk-package/hooks/public/use-application-name";
-export { useAvailableFonts } from "embedding-sdk-bundle/sdk-package/hooks/public/use-available-fonts";
-export { useCurrentUser } from "embedding-sdk-bundle/sdk-package/hooks/public/use-current-user";
-export { useCreateDashboardApi } from "embedding-sdk-bundle/sdk-package/hooks/public/use-create-dashboard-api";
-export { useMetabaseAuthStatus } from "embedding-sdk-bundle/sdk-package/hooks/public/use-metabase-auth-status";
+// Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
+import "sdk-specific-imports";
 
-export { defineMetabaseAuthConfig } from "embedding-sdk-bundle/sdk-package/lib/public/define-metabase-auth-config";
-export { defineMetabaseTheme } from "embedding-sdk-bundle/sdk-package/lib/public/define-metabase-theme";
+import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
-export {
-  type CollectionBrowserProps,
-  type CollectionBrowserListColumns,
-} from "./components/public/CollectionBrowser";
-export { type CreateDashboardModalProps } from "./components/public/CreateDashboardModal";
-export { type CreateQuestionProps } from "./components/public/CreateQuestion";
-export type {
-  StaticDashboardProps,
-  InteractiveDashboardProps,
-  EditableDashboardProps,
+import { CollectionBrowser } from "./components/public/CollectionBrowser";
+import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
+import { CreateQuestion } from "./components/public/CreateQuestion";
+import { InteractiveQuestion } from "./components/public/InteractiveQuestion";
+import { ComponentProvider } from "./components/public/ComponentProvider";
+import { MetabotQuestion } from "./components/public/MetabotQuestion";
+import { StaticQuestion } from "./components/public/StaticQuestion";
+import {
+  EditableDashboard,
+  InteractiveDashboard,
+  StaticDashboard,
 } from "./components/public/dashboard";
-export {
-  type SdkQuestionProps,
-  type InteractiveQuestionBackButtonProps,
-  type InteractiveQuestionBreakoutDropdownProps,
-  type InteractiveQuestionChartTypeDropdownProps,
-  type InteractiveQuestionChartTypeSelectorProps,
-  type InteractiveQuestionDownloadWidgetProps,
-  type InteractiveQuestionDownloadWidgetDropdownProps,
-  type InteractiveQuestionEditorProps,
-  type InteractiveQuestionEditorButtonProps,
-  type InteractiveQuestionFilterProps,
-  type InteractiveQuestionFilterDropdownProps,
-  type InteractiveQuestionQuestionSettingsProps,
-  type InteractiveQuestionQuestionSettingsDropdownProps,
-  type InteractiveQuestionQuestionVisualizationProps,
-  type InteractiveQuestionResetButtonProps,
-  type InteractiveQuestionSaveButtonProps,
-  type InteractiveQuestionSaveQuestionFormProps,
-  type InteractiveQuestionSummarizeDropdownProps,
-  type InteractiveQuestionTitleProps,
-  type DrillThroughQuestionProps,
-} from "./components/public/SdkQuestion";
-export {
-  type InteractiveQuestionComponents,
-  type InteractiveQuestionProps,
-} from "./components/public/InteractiveQuestion";
-export {
-  type StaticQuestionProps,
-  type StaticQuestionComponents,
-} from "./components/public/StaticQuestion";
-export { type MetabaseProviderProps } from "./types/metabase-provider";
+import { SdkDebugInfo } from "./components/public/debug/SdkDebugInfo";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getSdkStore } from "./store/index";
+import {
+  getAvailableFonts,
+  getLoginStatus,
+} from "embedding-sdk-bundle/store/selectors";
+import { getUser } from "metabase/selectors/user";
+import { useInitData } from "./hooks/private/use-init-data";
+import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
+import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
 
-export type {
-  CustomDashboardCardMenuItem,
-  DashCardMenuItem,
-  DashboardCardCustomMenuItem,
-  DashboardCardMenuCustomElement,
-  DashboardCardMenu,
-} from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
+/**
+ * IMPORTANT!
+ * Any rename/removal change for object is a breaking change between the SDK Bundle and the SDK NPM package,
+ * and should be done via the deprecation of the field first.
+ */
+const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
+  CollectionBrowser,
+  CreateDashboardModal,
+  CreateQuestion,
+  EditableDashboard,
+  InteractiveDashboard,
+  InteractiveQuestion,
+  ComponentProvider,
+  MetabotQuestion,
+  SdkDebugInfo,
+  StaticDashboard,
+  StaticQuestion,
+  getSdkStore,
+  createDashboard,
+  getApplicationName,
+  getAvailableFonts,
+  getLoginStatus,
+  getUser,
+  useInitData,
+  useLogVersionInfo,
+};
 
-export type {
-  ButtonProps,
-  ChartColor,
-  CreateDashboardValues,
-  EntityTypeFilterKeys,
-  LoginStatus,
-  MetabaseAuthConfig,
-  MetabaseAuthConfigWithApiKey,
-  MetabaseAuthConfigWithJwt,
-  MetabaseAuthConfigWithSaml,
-  MetabaseClickActionPluginsConfig,
-  MetabaseColors,
-  MetabaseClickAction,
-  MetabaseComponentTheme,
-  MetabaseCollection,
-  MetabaseCollectionItem,
-  MetabaseDataPointObject,
-  MetabaseDashboard,
-  MetabaseDashboardPluginsConfig,
-  MetabaseFontFamily,
-  MetabasePluginsConfig,
-  MetabaseQuestion,
-  MetabaseTheme,
-  MetabaseUser,
-  SdkCollectionId,
-  SdkDashboardId,
-  SdkDashboardLoadEvent,
-  SdkEntityId,
-  SdkErrorComponent,
-  SdkErrorComponentProps,
-  SdkEventHandlersConfig,
-  SdkQuestionId,
-  SdkQuestionTitleProps,
-  SdkUserId,
-  SqlParameterValues,
-} from "./types";
-
-export type {
-  UserBackendJwtResponse,
-  MetabaseFetchRequestTokenFn,
-  MetabaseEmbeddingSessionToken,
-} from "./types/refresh-token";
-
-export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
-
-export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-export type { IconName } from "metabase/embedding-sdk/types/icon";
+window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;

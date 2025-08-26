@@ -1264,6 +1264,25 @@ describe("issue 49304", () => {
   });
 });
 
+describe("issue 41305", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to right click in the suggestion popover without closing it (metabase#41305)", () => {
+    H.openProductsTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "contains(", blur: false });
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .findByText("The column or text to check.")
+      .rightclick();
+    H.popover().should("have.length", 2);
+  });
+});
+
 describe("issue 49305", () => {
   beforeEach(() => {
     H.restore();

@@ -17,7 +17,7 @@ const SCRIPT_TAG_PATH = path.resolve(
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_SRC_PATH =
+const SDK_BUNDLE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 
 const OUT_FILE_NAME = "embed.js";
@@ -77,7 +77,7 @@ module.exports = {
     extensions: [".js", ".ts"],
     alias: {
       embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk-bundle": SDK_SRC_PATH,
+      "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
     },
   },
 };

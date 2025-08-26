@@ -811,7 +811,6 @@ export const PLUGIN_SMTP_OVERRIDE: {
 export const PLUGIN_DOCUMENTS = {
   getRoutes: () => null as React.ReactElement | null,
   shouldShowDocumentInNewItemMenu: () => false,
-  DocumentBackButton: PluginPlaceholder as React.ComponentType<any>,
   getCurrentDocument: (_state: any) => null as Document | null,
 };
 
@@ -837,4 +836,6 @@ export const PLUGIN_GIT_SYNC = {
   LibraryNav: PluginPlaceholder,
   GitSyncSettings: NotFoundPlaceholder,
   GitChangeList: NotFoundPlaceholder,
+  SelectBranch: PluginPlaceholder as ComponentType<{ disabled?: boolean }>,
+  ViewChangesButton: PluginPlaceholder as ComponentType,
 };

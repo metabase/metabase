@@ -35,6 +35,7 @@ interface DashCardMenuProps {
   position?: MenuProps["position"];
   onEditVisualization?: () => void;
   openUnderlyingQuestionItems?: React.ReactNode;
+  canEdit?: boolean;
 }
 
 function isDashCardMenuEmpty(
@@ -58,6 +59,7 @@ export const DashCardMenu = ({
   position = "bottom-end",
   onEditVisualization,
   openUnderlyingQuestionItems,
+  canEdit,
 }: DashCardMenuProps) => {
   const store = useStore();
 
@@ -121,6 +123,7 @@ export const DashCardMenu = ({
           isDownloadingData={isDownloadingData}
           onDownload={() => setMenuView("download")}
           onEditVisualization={onEditVisualization}
+          canEdit={canEdit}
         />
         {openUnderlyingQuestionItems && (
           <Menu trigger="click-hover" shadow="md" position="right" width={200}>

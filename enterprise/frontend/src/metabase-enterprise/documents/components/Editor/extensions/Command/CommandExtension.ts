@@ -2,19 +2,27 @@ import { type Editor, Extension, type Range } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 
+import {
+  trackDocumentAddCard,
+  trackDocumentAddSmartLink,
+  trackDocumentAskMetabot,
+} from "metabase-enterprise/documents/analytics";
+import type { Document } from "metabase-types/api";
+
 export interface CommandOptions {
   suggestion: Partial<SuggestionOptions>;
 }
 
-interface CommandProps {
+export interface CommandProps {
   command?: string;
   clearQuery?: boolean;
   switchToLinkMode?: boolean;
   switchToEmbedMode?: boolean;
   selectItem?: boolean;
   embedItem?: boolean;
-  entityId?: number;
+  entityId?: number | string;
   model?: string;
+  document?: Document | null;
 }
 
 export const CommandPluginKey = new PluginKey("command");
@@ -63,6 +71,10 @@ export const CommandExtension = Extension.create<CommandOptions>({
               })
               .setTextSelection(range.from + 1)
               .run();
+            if (props.document) {
+              trackDocumentAddCard(props.document);
+            }
+
             return;
           }
           if (props.selectItem && props.entityId && props.model) {
@@ -78,6 +90,9 @@ export const CommandExtension = Extension.create<CommandOptions>({
                 },
               })
               .run();
+            if (props.document) {
+              trackDocumentAddSmartLink(props.document);
+            }
             return;
           }
 
@@ -95,6 +110,9 @@ export const CommandExtension = Extension.create<CommandOptions>({
                 attrs: {},
               })
               .run();
+            if (props.document) {
+              trackDocumentAskMetabot(props.document);
+            }
             return;
           }
 

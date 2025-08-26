@@ -164,7 +164,11 @@ export const SdkQuestionDefaultView = ({
       style={style}
     >
       <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-        <Group justify="space-between" align="flex-end">
+        <Group
+          justify="space-between"
+          align="flex-end"
+          data-testid="interactive-question-top-toolbar"
+        >
           <Group gap="xs">
             <Box mr="sm">
               <BackButton />

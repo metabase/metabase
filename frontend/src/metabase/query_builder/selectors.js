@@ -5,7 +5,6 @@ import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
-import { getDashboardById } from "metabase/dashboard/selectors";
 import Databases from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import Timelines from "metabase/entities/timelines";
@@ -1018,16 +1017,15 @@ export const getDataReferenceStack = createSelector(
         : [],
 );
 
-export const getDashboardId = (state) => {
-  return state.qb.parentDashboard.dashboardId;
-};
-
 export const getIsEditingInDashboard = (state) => {
-  return state.qb.parentDashboard.isEditing;
+  return (
+    state.qb.parentEntity.model === "dashboard" &&
+    state.qb.parentEntity.isEditing
+  );
 };
 
-export const getDashboard = (state) => {
-  return getDashboardById(state, getDashboardId(state));
+export const getParentEntity = (state) => {
+  return state.qb.parentEntity;
 };
 
 export const getEmbeddingParameters = createSelector([getCard], (card) => {

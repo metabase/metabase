@@ -407,7 +407,7 @@
 
 (defn invite-user
   "Implementation for `POST /`, invites a user to Metabase."
-  [{:keys [email user_group_memberships] :as body}]
+  [{:keys [email user_group_memberships source] :as body}]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
@@ -421,7 +421,7 @@
       (analytics/track-event! :snowplow/invite
                               {:event           :invite-sent
                                :invited-user-id new-user-id
-                               :source          "admin"})
+                               :source          (or source "admin")})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 
@@ -434,7 +434,8 @@
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+            [:source                 {:optional true, :default "admin"} [:maybe ms/NonBlankString]]]]
   (invite-user body))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

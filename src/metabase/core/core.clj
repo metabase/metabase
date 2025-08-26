@@ -7,6 +7,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api-routes.core :as api-routes]
    [metabase.app-db.core :as mdb]
+   [metabase.branching.core :as branching]
    [metabase.classloader.core :as classloader]
    [metabase.cloud-migration.core :as cloud-migration]
    [metabase.config.core :as config]
@@ -205,7 +206,8 @@
           handler       (server/make-handler server-routes)]
       (server/start-web-server! handler))
     ;; run our initialization process
-    (init!)
+    (binding [branching/*enable-branch-hook* false]
+      (init!))
     ;; Ok, now block forever while Jetty does its thing
     (when (config/config-bool :mb-jetty-join)
       (.join (server/instance)))

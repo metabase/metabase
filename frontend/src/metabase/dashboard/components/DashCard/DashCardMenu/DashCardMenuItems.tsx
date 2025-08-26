@@ -25,6 +25,7 @@ type DashCardMenuItemsProps = {
   onDownload: () => void;
   onEditVisualization?: () => void;
   dashcardId?: DashCardId;
+  canEdit?: boolean;
 };
 export const DashCardMenuItems = ({
   question,
@@ -33,6 +34,7 @@ export const DashCardMenuItems = ({
   onDownload,
   onEditVisualization,
   dashcardId,
+  canEdit,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
 
@@ -57,14 +59,14 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
-    if (withEditLink && onEditVisualization) {
+    if (withEditLink && canEdit && onEditVisualization) {
       items.push({
         key: "MB_EDIT_VISUALIZER_QUESTION",
         iconName: "lineandbar",
         label: t`Edit visualization`,
         onClick: onEditVisualization,
       });
-    } else if (withEditLink && canEditQuestion(question)) {
+    } else if (withEditLink && canEdit && canEditQuestion(question)) {
       const type = question.type();
       if (type === "question") {
         items.push({
@@ -138,6 +140,7 @@ export const DashCardMenuItems = ({
     onEditVisualization,
     dashcardId,
     dispatch,
+    canEdit,
   ]);
 
   return menuItems.map((item) => {

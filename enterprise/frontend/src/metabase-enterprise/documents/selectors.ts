@@ -31,12 +31,7 @@ export const getSelectedEmbedIndex = createSelector(
 
 export const getCurrentDocument = createSelector(
   getDocumentsState,
-  (documents) => documents?.currentDocument,
-);
-
-export const getShowNavigateBackToDocumentButton = createSelector(
-  getDocumentsState,
-  (documents) => documents?.showNavigateBackToDocumentButton ?? false,
+  (documents) => documents?.currentDocument || null,
 );
 
 // Get all draft cards

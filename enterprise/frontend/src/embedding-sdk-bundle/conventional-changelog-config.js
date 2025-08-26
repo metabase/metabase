@@ -6,7 +6,7 @@ module.exports = {
   options: {
     preset: "angular",
     pkg: {
-      path: "enterprise/frontend/src/embedding-sdk-bundle/package.template.json",
+      path: "enterprise/frontend/src/embedding-sdk-package/package.template.json",
     },
     tagPrefix: "embedding-sdk-",
     transform: function (commit, cb) {

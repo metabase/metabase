@@ -534,6 +534,7 @@ export function DashCardVisualization({
             question={question}
             result={result}
             dashcard={dashcard}
+            canEdit={!isVisualizerDashboardCard(dashcard)}
             onEditVisualization={onEditVisualization}
             openUnderlyingQuestionItems={
               onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)

@@ -24,18 +24,20 @@ const {
   getSdkVersionFromPackageJson,
 } = require("./frontend/build/embedding-sdk/lib/get-sdk-version-from-package-json");
 
-const SDK_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
+const SDK_PACKAGE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-package";
+
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 
 const EMBEDDING_SDK_BUNDLE_HOST = process.env.EMBEDDING_SDK_BUNDLE_HOST || "";
 
 const config = {
-  context: SDK_SRC_PATH,
+  context: SDK_PACKAGE_SRC_PATH,
 
   devtool: false,
 
   entry: "./index.ts",
+
   output: {
     path: BUILD_PATH + "/dist",
     publicPath: "",

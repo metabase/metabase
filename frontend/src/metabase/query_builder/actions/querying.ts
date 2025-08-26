@@ -269,7 +269,7 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
   }
 };
 
-export const runQuestionOrSelectedQuery =
+export const runOrCancelQuestionOrSelectedQuery =
   () => (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
     if (!question) {
@@ -279,6 +279,7 @@ export const runQuestionOrSelectedQuery =
     const isRunning = getIsRunning(getState());
     if (isRunning) {
       dispatch(cancelQuery());
+      return;
     }
 
     const query = question.query();

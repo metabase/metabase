@@ -3,14 +3,22 @@
    [clojure.core.memoize :as memoize]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase.activity-feed.core :as activity-feed]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
    [metabase.util :as u]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]))
+   [next.jdbc.result-set :as jdbc.rs]
+   [toucan2.core :as t2]))
+
+;;
+;; index-based scorers: these scorers only rely on columns in the search index in the pgvector db
+;;
 
 (defn- view-count-percentile-query
   [index-table p-value]
@@ -133,3 +141,106 @@
   (def embedding-model ((requiring-resolve 'metabase-enterprise.semantic-search.embedding/get-configured-model)))
   (def index ((requiring-resolve 'metabase-enterprise.semantic-search.index/default-index) embedding-model))
   (def index-table (:table-name index)))
+
+;;
+;; appdb-based scorers: these scorers rely on tables in the appdb
+;;
+
+(defn- search-doc->values
+  [{:keys [id model]}]
+  ;; :inline otherwise H2 can't deduce the types from the query params and the id is returned as text.
+  [[:inline id] [:inline model]])
+
+(defn- user-recency-query
+  [{:keys [current-user-id]} search-results]
+  {:with     [[[:search_docs {:columns [:model_id :model]}]
+               {:values (map search-doc->values search-results)}]]
+   :select   [[:sd.model_id :id]
+              [:sd.model :model]
+              [(search.scoring/inverse-duration [:max :rv.timestamp] [:now] search.config/stale-time-in-days)
+               :user_recency]]
+   :from     [[:search_docs :sd]]
+   :join     [[:recent_views :rv]
+              [:and
+               [:= :rv.user_id current-user-id]
+               [:= :rv.model_id :sd.model_id]
+               [:=
+                :rv.model
+                [:case
+                 [:in :sd.model [[:inline "dataset"] [:inline "metric"]]]
+                 [:inline "card"]
+                 :else
+                 :sd.model]]]]
+   :group-by [:sd.model_id :sd.model]})
+
+(defn- execute-user-recency-query!
+  [search-ctx search-results]
+  (t2/query (user-recency-query search-ctx search-results)))
+
+(defn- update-result-with-user-recency
+  [weight grouped-recency-results search-result]
+  (let [id-model-key ((juxt :id :model) search-result)
+        user-recency-row (get grouped-recency-results id-model-key)
+        user-recency (:user_recency user-recency-row 0)
+        contribution (* weight user-recency)]
+    (-> search-result
+        (update :score + contribution)
+        (update :all-scores conj {:score user-recency
+                                  :name :user-recency
+                                  :weight weight
+                                  :contribution contribution}))))
+
+(defn- update-results-with-user-recency
+  [search-ctx search-results user-recency-results]
+  (if-not (seq user-recency-results)
+    search-results
+    (map (let [weight (search.config/weight (:context search-ctx) :user-recency)
+               grouped-recency-results (m/index-by (juxt :id :model) user-recency-results)]
+           (partial update-result-with-user-recency weight grouped-recency-results))
+         search-results)))
+
+(def ^:private recent-views-models
+  (into #{} (map name activity-feed/rv-models)))
+
+(comment
+  (require '[clojure.set :as set]
+           '[metabase.search.spec :as search.spec])
+  ;; #{"segment" "database" "action" "indexed-entity"}
+  (set/difference search.spec/search-models recent-views-models))
+
+(defn with-appdb-scores
+  "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.
+
+  Supported appdb based scorers: `:user-recency` (postgres and H2)
+
+  This will extract required info from `search-results`, make an appdb query to select additional scorers, combine
+  those with the existing `:score` and `:all-scores` in the `search-results`, then re-sort the results by the new
+  combined `:score`."
+  [search-ctx search-results]
+  ;; filtered-search-results are the search-results that have models that are tracked in the recent_views table,
+  ;; i.e. results that might possibly have user-recency info.
+  (let [filtered-search-results (filter (comp recent-views-models :model) search-results)]
+    (if-not (and (seq filtered-search-results)
+                 ;; The user-recency-query needs to be modified to work with mysql / mariadb (BOT-360)
+                 (#{:postgres :h2} (mdb/db-type)))
+      search-results
+      (->> (execute-user-recency-query! search-ctx filtered-search-results)
+           (update-results-with-user-recency search-ctx search-results)
+           (sort-by :score >)
+           vec))))
+
+(comment
+  (def search-ctx {:current-user-id 3})
+  (def search-docs (-> (map-indexed
+                        (fn [idx doc]
+                          (assoc doc :score idx :all-scores []))
+                        [{:id 1 :model "dataset"}
+                         {:id 1 :model "dashboard"}
+                         {:id 2 :model "table"}
+                         {:id 2 :model "card"}
+                         {:id 4 :model "indexed-entity"}
+                         {:id 7 :model "card"}])
+                       vec))
+  (with-appdb-scores search-ctx search-docs)
+  (->> (execute-user-recency-query! search-ctx search-docs)
+       (update-results-with-user-recency search-ctx search-docs)))

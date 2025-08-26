@@ -16,7 +16,7 @@ import {
   turnIntoModel,
 } from "./helpers/e2e-models-helpers";
 
-const { PRODUCTS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, ORDERS_ID, PRODUCTS_ID, ACCOUNTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > models", () => {
   beforeEach(() => {
@@ -37,6 +37,18 @@ describe("scenarios > models", () => {
   });
 
   it("allows to turn a GUI question into a model", () => {
+    H.createQuestion(
+      {
+        name: "Accounts Model",
+        query: { "source-table": ACCOUNTS_ID },
+        type: "model",
+      },
+      {
+        wrapId: true,
+        idAlias: "accountsModelId",
+      },
+    );
+
     cy.get("@productsQuestionId").then((id) => {
       cy.request("PUT", `/api/card/${id}`, {
         name: "Products Model",
@@ -79,6 +91,37 @@ describe("scenarios > models", () => {
       getCollectionItemRow("Q1").icon("table2");
 
       cy.url().should("not.include", "/question/" + id);
+    });
+
+    cy.log(
+      "Question Lineage should show link to archived models (metabase#52071)",
+    );
+    cy.get("@accountsModelId").then((modelId) => {
+      H.createQuestion(
+        {
+          name: "Accounts Model Quest",
+          query: { "source-table": `card__${modelId}` },
+        },
+        {
+          wrapId: true,
+          idAlias: "accountsQuestionId",
+        },
+      );
+
+      H.archiveQuestion(modelId);
+
+      cy.get("@accountsQuestionId").then((questionId) => {
+        H.visitQuestion(questionId);
+        cy.findByTestId("qb-header-left-side").within(() => {
+          cy.icon("warning").should("exist");
+
+          cy.findByRole("link", { name: /accounts model/i }).should(
+            "have.attr",
+            "href",
+            `/model/${modelId}-accounts-model`,
+          );
+        });
+      });
     });
   });
 

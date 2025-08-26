@@ -4,10 +4,9 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase.models.interface :as mi]
+   [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/TransformJob [_model] :transform_job)
 
@@ -90,3 +89,36 @@
                         {:job_id   job-id
                          :tag_id   tag-id
                          :position (get new-positions tag-id)})))))))
+
+(defn- translated-name-and-description [job]
+  (let [values {"hourly"
+                [(i18n/deferred-trs "Hourly job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''hourly'' every hour")]
+
+                "daily"
+                [(i18n/deferred-trs "Daily job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''daily'' once per day")]
+
+                "weekly"
+                [(i18n/deferred-trs "Weekly job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''weekly'' once per week")]
+
+                "monthly"
+                [(i18n/deferred-trs "Monthly job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''monthly'' once per month")]}
+        [name description] (get values (:built_in_type job))]
+    {:name name :description description}))
+
+(t2/define-after-select :model/TransformJob [job]
+  (if (nil? (:built_in_type job))
+    job
+    (merge job (translated-name-and-description job))))
+
+(t2/define-before-update :model/TransformJob [job]
+  (if (nil? (:built_in_type job))
+    job
+    (-> (merge (translated-name-and-description job) ;; default translations
+               {:built_in_type nil}                  ;; never translate again
+               (t2/changes job))                     ;; user edits
+        (update :name        str) ;; convert deferred to strings
+        (update :description str))))

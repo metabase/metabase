@@ -56,52 +56,56 @@ describe("issue 29943", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("selects the right column when clicking a column header (metabase#29943)", () => {
-    H.createQuestion(
-      {
-        type: "model",
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            Custom: ["+", 1, 1],
+  it(
+    "selects the right column when clicking a column header (metabase#29943)",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": ORDERS_ID,
+            expressions: {
+              Custom: ["+", 1, 1],
+            },
+            fields: [
+              ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+              ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
+              ["expression", "Custom", { "base-type": "type/Integer" }],
+            ],
+            limit: 5, // optimization
           },
-          fields: [
-            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-            ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
-            ["expression", "Custom", { "base-type": "type/Integer" }],
-          ],
-          limit: 5, // optimization
         },
-      },
-      { visitQuestion: true },
-    );
+        { visitQuestion: true },
+      );
 
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
+      H.openQuestionActions();
+      H.popover().findByText("Edit metadata").click();
+      H.waitForLoaderToBeRemoved();
 
-    reorderTotalAndCustomColumns();
-    cy.button("Save changes").click();
-    cy.wait("@dataset");
+      reorderTotalAndCustomColumns();
+      cy.button("Save changes").click();
+      cy.wait("@dataset");
 
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
+      H.openQuestionActions();
+      H.popover().findByText("Edit metadata").click();
+      H.waitForLoaderToBeRemoved();
 
-    assertColumnSelected(0, "ID");
+      assertColumnSelected(0, "ID");
 
-    getHeaderCell(1, "Custom");
-    H.tableHeaderClick("Custom");
-    assertColumnSelected(1, "Custom");
+      getHeaderCell(1, "Custom");
+      H.tableHeaderClick("Custom");
+      assertColumnSelected(1, "Custom");
 
-    getHeaderCell(2, "Total");
-    H.tableHeaderClick("Total");
-    assertColumnSelected(2, "Total");
+      getHeaderCell(2, "Total");
+      H.tableHeaderClick("Total");
+      assertColumnSelected(2, "Total");
 
-    getHeaderCell(0, "ID");
-    H.tableHeaderClick("ID");
-    assertColumnSelected(0, "ID");
-  });
+      getHeaderCell(0, "ID");
+      H.tableHeaderClick("ID");
+      assertColumnSelected(0, "ID");
+    },
+  );
 });
 
 describe("issue 35711", () => {

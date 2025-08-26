@@ -24,7 +24,7 @@
 
 (deftest ^:parallel describe-database-test
   (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
-                         {:name table, :schema "PUBLIC", :description nil, :is_writable nil}))}
+                         {:name table, :schema "PUBLIC", :description nil, :is_writable true}))}
          (driver/describe-database :h2 (mt/db)))))
 
 (deftest describe-fields-sync-with-composite-pks-test

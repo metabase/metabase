@@ -3,7 +3,7 @@ import type { QueryModalType } from "metabase/query_builder/constants";
 import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
 import type {
   Card,
-  DashboardId,
+  CollectionItemModel,
   Dataset,
   Field,
   ParameterValueOrArray,
@@ -59,15 +59,17 @@ export interface QueryBuilderLoadingControls {
   timeoutId: string;
 }
 
-export interface QueryBuilderDashboardState {
-  dashboardId: DashboardId | null;
+export interface QueryBuilderParentEntityState {
+  id: number | string | null;
+  name: string | null;
+  model: CollectionItemModel | null;
   isEditing: boolean;
 }
 
 export interface QueryBuilderState {
   uiControls: QueryBuilderUIControls;
   loadingControls: QueryBuilderLoadingControls;
-  parentDashboard: QueryBuilderDashboardState;
+  parentEntity: QueryBuilderParentEntityState;
   queryStatus: QueryBuilderQueryStatus;
   queryResults: Dataset[] | null;
   queryStartTime: number | null;

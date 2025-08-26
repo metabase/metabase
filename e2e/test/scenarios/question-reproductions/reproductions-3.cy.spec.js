@@ -2415,8 +2415,8 @@ describe("issue 50038", () => {
                   strategy: "left-join",
                   condition: [
                     "=",
-                    ["field", ORDERS_ID, {}],
-                    ["field", PRODUCTS_ID, {}],
+                    ["field", PRODUCTS.ID, null],
+                    ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
                   ],
                 },
               ],

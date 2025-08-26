@@ -9,6 +9,7 @@
    [metabase-enterprise.action-v2.init]
    [metabase-enterprise.advanced-config.init]
    [metabase-enterprise.audit-app.init]
+   [metabase-enterprise.branching.init]
    [metabase-enterprise.cache.init]
    [metabase-enterprise.database-replication.init]
    [metabase-enterprise.documents.init]

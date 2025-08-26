@@ -426,7 +426,11 @@ function DashboardQueryBuilder({
         }
       }}
       onNavigateBack={onNavigateBack}
-      backToDashboard={dashboard}
+      backToDashboard={{
+        model: "dashboard",
+        id: dashboard.id,
+        name: dashboard.name,
+      }}
       entityTypes={dataPickerProps?.entityTypes}
       withResetButton
       withChartTypeSelector

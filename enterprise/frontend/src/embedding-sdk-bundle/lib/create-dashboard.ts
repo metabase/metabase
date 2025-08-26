@@ -1,9 +1,9 @@
+import { getCollectionNumericIdFromReference } from "embedding-sdk-bundle/store/collections";
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type {
   CreateDashboardValues,
   MetabaseDashboard,
-} from "embedding-sdk-bundle";
-import { getCollectionNumericIdFromReference } from "embedding-sdk-bundle/store/collections";
-import type { SdkStore } from "embedding-sdk-bundle/store/types";
+} from "embedding-sdk-package";
 import { createDashboard as createDashboardMutation } from "metabase/api/dashboard";
 
 export const createDashboard =

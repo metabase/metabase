@@ -20,6 +20,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform-tag",
   "transform-job",
   "transform-run",
+  "git-branch",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
