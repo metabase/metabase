@@ -13,6 +13,7 @@
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
+   [metabase-enterprise.cloud-add-ons.api]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
@@ -75,6 +76,7 @@
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
+   "/cloud-add-ons"              metabase-enterprise.cloud-add-ons.api/routes
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
                                      (premium-handler :attached-dwh)
                                      (premium-handler :etl-connections))

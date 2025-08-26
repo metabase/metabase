@@ -8,7 +8,7 @@ import {
 } from "./AdminLayout.styled";
 
 interface AdminLayoutProps {
-  sidebar: React.ReactNode;
+  sidebar?: React.ReactNode;
   children: React.ReactNode;
   upsell?: React.ReactNode;
   headerHeight?: number;
@@ -23,9 +23,11 @@ export function AdminLayout({
   return (
     <AdminWrapper headerHeight={headerHeight}>
       <AdminMain>
-        <AdminSidebar data-testid="admin-layout-sidebar">
-          {sidebar}
-        </AdminSidebar>
+        {sidebar && (
+          <AdminSidebar data-testid="admin-layout-sidebar">
+            {sidebar}
+          </AdminSidebar>
+        )}
         <AdminContent data-testid="admin-layout-content">
           {upsell ? (
             <Flex justify="space-between" w="100%">

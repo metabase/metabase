@@ -168,7 +168,8 @@
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "ws://*:9630")]
-                  :manifest-src ["'self'"]}]
+                  :manifest-src ["'self'"]
+                  :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defn- content-security-policy-header-with-frame-ancestors

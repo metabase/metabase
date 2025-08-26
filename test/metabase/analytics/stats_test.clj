@@ -547,7 +547,8 @@
     :enhancements
     :llm-autodescription
     :query-reference-validation
-    :session-timeout-config})
+    :session-timeout-config
+    :offer-metabase-ai})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
