@@ -35,17 +35,13 @@ const vizDefinition = {
   identifier: "list",
   iconName: "list",
   getUiName: () => t`List`,
-
-  canSavePng: false,
-  disableSettingsConfig: true,
-  noHeader: true,
   hidden: true,
-  supportPreviewing: false,
 
   checkRenderable: () => {},
   isSensible: () => true,
 
   settings: {
+    ...columnSettings({ hidden: true }),
     "list.entity_icon": {
       default: null,
     },

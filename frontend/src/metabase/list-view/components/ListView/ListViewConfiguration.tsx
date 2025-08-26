@@ -23,7 +23,7 @@ import {
   Box,
   Divider,
   Icon,
-  IconName,
+  type IconName,
   Menu,
   Stack,
   Text,
