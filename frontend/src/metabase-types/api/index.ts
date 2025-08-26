@@ -20,6 +20,7 @@ export * from "./email";
 export * from "./entity-id";
 export * from "./field";
 export * from "./geojson";
+export * from "./git-sync";
 export * from "./group";
 export * from "./logger";
 export * from "./metabot";
