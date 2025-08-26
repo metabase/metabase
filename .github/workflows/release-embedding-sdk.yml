@@ -214,8 +214,8 @@ jobs:
               const suffixParts = suffix ? suffix.split(".") : [];
 
               const preReleaseLabel = suffixParts[0] ?? "";
-              const preReleaseVersion = suffixParts[1] ? parseInt(suffixParts[1]) : 0;
-              const nextPreReleaseVersion = preReleaseVersion + 1;
+              const preReleaseVersion = suffixParts[1] ? parseInt(suffixParts[1]) : null;
+              const nextPreReleaseVersion = preReleaseVersion !== null ? preReleaseVersion + 1 : 0;
 
               return {
                 version: `${currentVersionWithoutSuffix}-${preReleaseLabel}.${nextPreReleaseVersion}`,
