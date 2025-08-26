@@ -1934,6 +1934,15 @@ Fetch size for result sets. We want to ensure that the jdbc ResultSet objects ar
 
 Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).
 
+### `MB_STALE_INDEX_RETENTION_HOURS`
+
+- Type: integer
+- Default: `24`
+
+Number of hours to retain stale semantic search indexes before cleanup.
+
+Number of hours to retain stale semantic search indexes before cleanup.
+
 ### `MB_START_OF_WEEK`
 
 - Type: keyword

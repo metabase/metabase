@@ -1302,31 +1302,33 @@
              (let [reasons (cond-> []
                              (and enabled? (not (enabled?)))
                              (conj {:key     :setting-disabled
+                                    :type    :error
                                     :message "This setting is disabled for all databases."})
 
                              (and driver-feature (not (driver-supports? driver-feature)))
                              (conj {:key     :driver-feature-missing
+                                    :type    :error
                                     :message (format "The %s driver does not support the `%s` feature"
                                                      (driver/display-name driver)
                                                      (name driver-feature))})
 
                              true
-                             (into (setting/disabled-for-db-reasons setting-def database)))]
+                             (into (setting/disabled-for-db-reasons setting-def database)))
+                   enabled? (every? (comp #{:warning} :type) reasons)]
                (if (empty? reasons)
-                 {:enabled true}
-                 {:enabled false, :reasons reasons}))]))))
+                 {:enabled enabled?}
+                 {:enabled enabled?, :reasons reasons}))]))))
 
 (mr/def ::available-settings
   [:map-of
    :keyword
-   [:multi {:dispatch :enabled}
-    [true [:map [:enabled [:= true]]]]
-    [false [:map
-            [:enabled [:= false]]
-            [:reasons
-             [:sequential [:map
-                           [:key :keyword]
-                           [:message [:or :string [:fn i18n/localized-string?]]]]]]]]]])
+   [:map
+    [:enabled :boolean]
+    [:reasons {:optional true}
+     [:sequential [:map
+                   [:key :keyword]
+                   [:type [:enum :error :warning]]
+                   [:message [:or :string [:fn i18n/localized-string?]]]]]]]])
 
 (api.macros/defendpoint :get "/:id/settings-available" :- [:map [:settings ::available-settings]]
   "Get all database-local settings and their availability for the given database."

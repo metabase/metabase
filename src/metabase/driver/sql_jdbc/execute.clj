@@ -377,7 +377,11 @@
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (let [read-only? (not write?)]
+    (let [read-only? (not (or write?
+                              ;; we need to set autoCommit to false which causes postgresql
+                              ;; to enforce readOnly which will break queries that rely on
+                              ;; ddl statements, etc (#61892)
+                              (and (-> options :download?) (= driver :postgres))))]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
         ;; to be a hint to the driver to enable database optimizations

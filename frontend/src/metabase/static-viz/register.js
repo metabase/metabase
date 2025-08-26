@@ -8,6 +8,7 @@ import { ComboChart } from "metabase/visualizations/visualizations/ComboChart";
 import { Funnel } from "metabase/visualizations/visualizations/Funnel";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { PieChart } from "metabase/visualizations/visualizations/PieChart";
+import RowChart from "metabase/visualizations/visualizations/RowChart";
 import { SankeyChart } from "metabase/visualizations/visualizations/SankeyChart";
 import { Scalar } from "metabase/visualizations/visualizations/Scalar";
 import { ScatterPlot } from "metabase/visualizations/visualizations/ScatterPlot";
@@ -26,5 +27,6 @@ export const registerStaticVisualizations = () => {
   registerVisualization(ScatterPlot);
   registerVisualization(PieChart);
   registerVisualization(SankeyChart);
+  registerVisualization(RowChart);
   setDefaultVisualization(Scalar);
 };

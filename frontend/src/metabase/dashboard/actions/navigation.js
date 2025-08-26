@@ -4,8 +4,6 @@ import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 
-import { getDashboardId } from "../selectors";
-
 import { getNewCardUrl } from "./getNewCardUrl";
 
 export const EDIT_QUESTION = "metabase/dashboard/EDIT_QUESTION";
@@ -13,13 +11,15 @@ export const editQuestion = createThunkAction(
   EDIT_QUESTION,
   (question, mode = "notebook") =>
     (dispatch, getState) => {
-      const dashboardId = getDashboardId(getState());
+      const state = getState();
+      const { dashboardId, dashboards } = state.dashboard;
+      const dashboard = dashboards[dashboardId];
       const { isNative } = Lib.queryDisplayInfo(question.query());
       const finalMode = isNative ? "view" : mode;
       const url = Urls.question(question.card(), { mode: finalMode });
 
       dispatch(openUrl(url));
-      return { dashboardId };
+      return { id: dashboardId, name: dashboard.name, model: "dashboard" };
     },
 );
 
@@ -61,6 +61,6 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         dispatch(openUrl(url));
       }
 
-      return { dashboardId };
+      return { model: "dashboard", id: dashboardId, name: dashboard.name };
     },
 );
