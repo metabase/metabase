@@ -34,7 +34,10 @@ export interface GitSyncStatus {
 }
 
 export interface GitDiff {
-  path: string;
+  id: number;
+  name: string;
   status: "added" | "modified" | "deleted";
-  content: any;
+  content_type: "card" | "dashboard" | "collection";
+  current?: any; // The branched version (for added/modified)
+  original?: any; // The original version (for modified/deleted)
 }

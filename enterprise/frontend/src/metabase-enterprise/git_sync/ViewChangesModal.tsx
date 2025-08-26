@@ -15,7 +15,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import { useGetGitDiffQuery } from "metabase-enterprise/api/git-sync";
+import { useGetGitDiffQuery, useListGitBranchesQuery } from "metabase-enterprise/api/git-sync";
 import type { GitDiff } from "metabase-types/api";
 
 interface ViewChangesModalProps {
@@ -29,14 +29,18 @@ export const ViewChangesModal = ({
   onClose,
   currentBranch,
 }: ViewChangesModalProps) => {
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<number | null>(null);
 
-  const { data: diffs = [], isLoading } = useGetGitDiffQuery(
-    { branch: currentBranch, base: "main" },
-    { skip: !opened },
+  const { data: branches = [] } = useListGitBranchesQuery();
+  const currentBranchObj = branches.find((b) => b.name === currentBranch);
+  
+  const { data: diffs = [], isLoading, error } = useGetGitDiffQuery(
+    { branchId: currentBranchObj?.id || 0 },
+    { skip: !opened || !currentBranchObj },
   );
 
-  const selectedDiff = diffs.find((d) => d.path === selectedFile) || diffs[0];
+
+  const selectedDiff = diffs.find((d) => d.id === selectedItem) || diffs[0];
 
   const getStatusText = (status: GitDiff["status"]) => {
     switch (status) {
@@ -83,7 +87,7 @@ export const ViewChangesModal = ({
           <Stack align="center">
             <Text c="dimmed">{t`No changes found`}</Text>
             <Text size="sm" c="dimmed">
-              {t`This branch is up to date with main`}
+              {t`This branch has no changes`}
             </Text>
           </Stack>
         </Center>
@@ -107,13 +111,13 @@ export const ViewChangesModal = ({
             <Stack gap={0}>
               {diffs.map((diff) => (
                 <UnstyledButton
-                  key={diff.path}
-                  onClick={() => setSelectedFile(diff.path)}
+                  key={diff.id}
+                  onClick={() => setSelectedItem(diff.id)}
                   p="sm"
                   style={{
                     backgroundColor:
-                      selectedFile === diff.path ||
-                      (!selectedFile && diff === selectedDiff)
+                      selectedItem === diff.id ||
+                      (!selectedItem && diff === selectedDiff)
                         ? "var(--mb-color-bg-medium)"
                         : "transparent",
                     borderRadius: 0,
@@ -129,10 +133,10 @@ export const ViewChangesModal = ({
                   <Group gap="xs" justify="space-between" w="100%">
                     <Box style={{ flex: 1, minWidth: 0 }}>
                       <Text size="md" truncate>
-                        {diff.path}
+                        {diff.name}
                       </Text>
                       <Text size="xs" c="text-medium" truncate>
-                        {t`Transform`}
+                        {diff.content_type === "card" ? t`Question` : t`${diff.content_type}`}
                       </Text>
                     </Box>
                     <Badge
@@ -167,7 +171,7 @@ export const ViewChangesModal = ({
                   <Group justify="space-between">
                     <Group gap="xs">
                       <Text fw={600} size="sm">
-                        {selectedDiff.path}
+                        {selectedDiff.name}
                       </Text>
                       <Badge
                         size="xs"
@@ -184,32 +188,96 @@ export const ViewChangesModal = ({
                       </Badge>
                     </Group>
                     <Text size="xs" c="text-medium">
-                      {t`Transform`}
+                      {selectedDiff.content_type === "card" ? t`Question` : t`${selectedDiff.content_type}`}
                     </Text>
                   </Group>
                 </Box>
 
-                <ScrollArea flex={1} p="md">
-                  <Code
-                    block
-                    style={{
-                      backgroundColor: "var(--mb-color-bg-white)",
-                      border: "1px solid var(--mb-color-border)",
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                      fontSize: "12px",
-                      lineHeight: "1.5",
-                    }}
-                  >
-                    {selectedDiff.content
-                      ? JSON.stringify(selectedDiff.content, null, 2)
-                      : "Content unavailable"}
-                  </Code>
+                <ScrollArea flex={1}>
+                  {selectedDiff.status === "added" && selectedDiff.current && (
+                    <Stack gap="md" p="md">
+                      <Text fw={600} c="success" size="sm">{t`Added Content`}</Text>
+                      <Code
+                        block
+                        style={{
+                          backgroundColor: "var(--mb-color-bg-white)",
+                          border: "1px solid var(--mb-color-border)",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          fontSize: "12px",
+                          lineHeight: "1.5",
+                        }}
+                      >
+                        {JSON.stringify(selectedDiff.current, null, 2)}
+                      </Code>
+                    </Stack>
+                  )}
+
+                  {selectedDiff.status === "deleted" && selectedDiff.original && (
+                    <Stack gap="md" p="md">
+                      <Text fw={600} c="red" size="sm">{t`Deleted Content`}</Text>
+                      <Code
+                        block
+                        style={{
+                          backgroundColor: "var(--mb-color-bg-white)",
+                          border: "1px solid var(--mb-color-border)",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          fontSize: "12px",
+                          lineHeight: "1.5",
+                        }}
+                      >
+                        {JSON.stringify(selectedDiff.original, null, 2)}
+                      </Code>
+                    </Stack>
+                  )}
+
+                  {selectedDiff.status === "modified" && (
+                    <Stack gap={0}>
+                      {selectedDiff.original && (
+                        <Box p="md" style={{ borderBottom: "1px solid var(--mb-color-border)" }}>
+                          <Text fw={600} c="text-medium" size="sm" mb="md">{t`Original`}</Text>
+                          <Code
+                            block
+                            style={{
+                              backgroundColor: "var(--mb-color-bg-white)",
+                              border: "1px solid var(--mb-color-border)",
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-word",
+                              fontSize: "12px",
+                              lineHeight: "1.5",
+                            }}
+                          >
+                            {JSON.stringify(selectedDiff.original, null, 2)}
+                          </Code>
+                        </Box>
+                      )}
+                      
+                      {selectedDiff.current && (
+                        <Box p="md">
+                          <Text fw={600} c="brand" size="sm" mb="md">{t`Modified`}</Text>
+                          <Code
+                            block
+                            style={{
+                              backgroundColor: "var(--mb-color-bg-white)",
+                              border: "1px solid var(--mb-color-border)",
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-word",
+                              fontSize: "12px",
+                              lineHeight: "1.5",
+                            }}
+                          >
+                            {JSON.stringify(selectedDiff.current, null, 2)}
+                          </Code>
+                        </Box>
+                      )}
+                    </Stack>
+                  )}
                 </ScrollArea>
               </Stack>
             ) : (
               <Center h="100%">
-                <Text c="dimmed">{t`Select a file to view changes`}</Text>
+                <Text c="dimmed">{t`Select an item to view changes`}</Text>
               </Center>
             )}
           </Box>
