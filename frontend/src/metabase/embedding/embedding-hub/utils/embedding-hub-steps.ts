@@ -75,6 +75,11 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         variant: "outline",
       },
     ],
+    image: {
+      src: "app/assets/img/embedding_hub_row_column_security.png",
+      srcSet: "app/assets/img/embedding_hub_row_column_security@2x.png 2x",
+      alt: t`Screenshot of configuring row and column security`,
+    },
   };
 
   const SECURE_EMBEDS: EmbeddingHubStep = {
