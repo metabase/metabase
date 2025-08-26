@@ -113,4 +113,159 @@ describe("formatValue", () => {
       expect(screen.getByText("200")).toBeInTheDocument();
     });
   });
+
+  describe("collapseNewlines", () => {
+    it("should collapse newlines in plain text when collapseNewlines is true", () => {
+      const result = formatValue("Line 1\nLine 2\nLine 3", {
+        collapseNewlines: true,
+        jsx: false,
+      });
+      expect(result).toBe("Line 1 Line 2 Line 3");
+    });
+
+    it("should preserve newlines when collapseNewlines is false", () => {
+      const result = formatValue("Line 1\nLine 2\nLine 3", {
+        collapseNewlines: false,
+        jsx: false,
+      });
+      expect(result).toBe("Line 1\nLine 2\nLine 3");
+    });
+
+    it("should preserve newlines when collapseNewlines is not specified", () => {
+      const result = formatValue("Line 1\nLine 2\nLine 3", {
+        jsx: false,
+      });
+      expect(result).toBe("Line 1\nLine 2\nLine 3");
+    });
+
+    it("should collapse newlines in jsx link display text", () => {
+      setup("http://example.com", {
+        collapseNewlines: true,
+        jsx: true,
+        rich: true,
+        view_as: "link",
+        link_text: "Display\nText\nWith\nNewlines",
+        clicked: { value: "http://example.com" },
+      });
+      expect(screen.getByRole("link")).toHaveTextContent(
+        "Display Text With Newlines",
+      );
+    });
+
+    it("should collapse newlines in JSX email link display text", () => {
+      const column = createMockColumn({
+        base_type: "type/Text",
+        semantic_type: "type/Email",
+      });
+      setup("user@example.com", {
+        collapseNewlines: true,
+        jsx: true,
+        rich: true,
+        column,
+        link_text: "Contact\nUser",
+        clicked: { value: "user@example.com" },
+      });
+      expect(screen.getByRole("link")).toHaveTextContent("Contact User");
+    });
+
+    it("should collapse newlines with prefix and suffix", () => {
+      setup("Value\nwith\nnewlines", {
+        collapseNewlines: true,
+        prefix: "Prefix:\n ",
+        suffix: " \n:Suffix",
+        jsx: true,
+      });
+      expect(
+        screen.getByText((content) =>
+          content.includes("Prefix: Value with newlines :Suffix"),
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should handle null values with collapseNewlines", () => {
+      const result = formatValue(null, {
+        collapseNewlines: true,
+        jsx: false,
+      });
+      expect(result).toBe(null);
+    });
+
+    it("should handle numbers with collapseNewlines", () => {
+      const result = formatValue(123.45, {
+        collapseNewlines: true,
+        jsx: false,
+        column: createMockColumn({ base_type: "type/Float" }),
+      });
+      expect(result).toBe("123.45");
+    });
+
+    it("should collapse newlines in remapped values", () => {
+      const column = createMockColumn({
+        base_type: "type/Integer",
+        remapping: new Map([[1, "Value\nwith\nnewlines"]]),
+      } as any);
+      setup(1, {
+        column,
+        collapseNewlines: true,
+        jsx: true,
+      });
+      expect(screen.getByText("Value with newlines")).toBeInTheDocument();
+    });
+
+    it("should collapse multiple consecutive newlines", () => {
+      const result = formatValue("Line 1\n\n\nLine 2", {
+        collapseNewlines: true,
+        jsx: false,
+      });
+      expect(result).toBe("Line 1   Line 2");
+    });
+
+    it("should collapse Windows CRLF newlines", () => {
+      const result = formatValue("Line 1\r\nLine 2\r\nLine 3", {
+        collapseNewlines: true,
+        jsx: false,
+      });
+      expect(result).toBe("Line 1 Line 2 Line 3");
+    });
+
+    it("should collapse old Mac CR newlines", () => {
+      const result = formatValue("Line 1\rLine 2\rLine 3", {
+        collapseNewlines: true,
+        jsx: false,
+      });
+      expect(result).toBe("Line 1 Line 2 Line 3");
+    });
+
+    it("should collapse mixed newline types", () => {
+      const result = formatValue("Line 1\nLine 2\r\nLine 3\rLine 4", {
+        collapseNewlines: true,
+        jsx: false,
+      });
+      expect(result).toBe("Line 1 Line 2 Line 3 Line 4");
+    });
+
+    it("should collapse Unicode line separators", () => {
+      const result = formatValue("Line 1\u2028Line 2\u2029Line 3", {
+        collapseNewlines: true,
+        jsx: false,
+      });
+      expect(result).toBe("Line 1 Line 2 Line 3");
+    });
+
+    it("should collapse newlines in click behavior link text", () => {
+      setup("Text\nwith\nnewlines", {
+        collapseNewlines: true,
+        jsx: true,
+        rich: true,
+        click_behavior: {
+          type: "link",
+          linkType: "url",
+          linkTemplate: "http://example.com",
+        },
+      });
+      expect(screen.getByTestId("link-formatted-text")).toHaveTextContent(
+        "Text with newlines",
+      );
+    });
+  });
 });
