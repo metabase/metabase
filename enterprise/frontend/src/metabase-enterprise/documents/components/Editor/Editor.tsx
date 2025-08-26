@@ -164,7 +164,11 @@ export const Editor: React.FC<EditorProps> = ({
     if (editor && initialContent !== undefined) {
       // Use Promise.resolve() to avoid flushSync warning
       Promise.resolve().then(() => {
-        editor.commands.setContent(initialContent || "");
+        editor
+          .chain()
+          .setMeta("addToHistory", false)
+          .setContent(initialContent || "")
+          .run();
       });
     }
   }, [editor, initialContent]);
