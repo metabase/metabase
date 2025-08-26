@@ -160,6 +160,37 @@
                   ["card" 1 "card ancient"]]
                  (search-results :recency "card"))))))))
 
+(deftest user-recency-test
+  (let [user-id     (mt/user->id :crowberto)
+        right-now   (Instant/now)
+        long-ago    (.minus right-now 10 ChronoUnit/DAYS)
+        forever-ago (.minus right-now 30 ChronoUnit/DAYS)
+        recent-view (fn [model-id timestamp]
+                      {:model     "card"
+                       :model_id  model-id
+                       :user_id   user-id
+                       :timestamp timestamp})]
+    (mt/with-temp [:model/Card        {c1 :id} {}
+                   :model/Card        {c2 :id} {}
+                   :model/Card        {c3 :id} {}
+                   :model/Card        {c4 :id} {}
+                   :model/RecentViews _ (recent-view c1 forever-ago)
+                   :model/RecentViews _ (recent-view c2 right-now)
+                   :model/RecentViews _ (recent-view c2 forever-ago)
+                   :model/RecentViews _ (recent-view c4 forever-ago)
+                   :model/RecentViews _ (recent-view c4 long-ago)]
+      (with-index-contents!
+        [{:model "card"    :id c1 :name "card ancient"}
+         {:model "metric"  :id c2 :name "card recent"}
+         {:model "dataset" :id c3 :name "card unseen"}
+         {:model "dataset" :id c4 :name "card old"}]
+        (testing "We prefer results more recently viewed by the current user"
+          (is (= [["metric"  c2 "card recent"]
+                  ["dataset" c4 "card old"]
+                  ["card"    c1 "card ancient"]
+                  ["dataset" c3 "card unseen"]]
+                 (search-results :user-recency "card" {:current-user-id user-id}))))))))
+
 (deftest view-count-test
   (mt/with-premium-features #{:semantic-search}
     (testing "the more view count the better"

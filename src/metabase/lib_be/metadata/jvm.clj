@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
+   [metabase.util.performance :as perf]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -30,6 +31,8 @@
   (or (qualified-keyword? k)
       (str/includes? k ".")))
 
+;;; TODO (Cam 8/8/25) -- this is duplicated with [[metabase.lib.schema.common/memoized-kebab-key]]... should we use that
+;;; here too? Or is it better if this keeps its own cache, which presumably has a smaller set of keys to deal with?
 (def ^{:private true
        :arglists '([k])} memoized-kebab-key
   "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU caching
@@ -49,10 +52,11 @@
                       (lib.normalize/normalize schema instance))
                     identity)]
     (-> instance
-        (update-keys memoized-kebab-key)
+        (perf/update-keys memoized-kebab-key)
         (assoc :lib/type metadata-type)
         normalize
-        u.snake-hating-map/snake-hating-map)))
+        u.snake-hating-map/snake-hating-map
+        (vary-meta assoc :metabase/toucan-instance instance))))
 
 ;;;
 ;;; Database
@@ -321,6 +325,28 @@
   (instance->metadata segment :metadata/segment))
 
 ;;;
+;;; Native Query Snippet
+;;;
+
+(derive :metadata/native-query-snippet :model/NativeQuerySnippet)
+
+(methodical/defmethod t2.model/resolve-model :metadata/native-query-snippet
+  [model]
+  (t2/resolve-model :model/NativeQuerySnippet) ; for side-effects
+  model)
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/native-query-snippet
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
+         {:select [:id :name :description :content :archived :collection_id]}))
+
+(t2/define-after-select :metadata/native-query-snippet
+  [snippet]
+  (instance->metadata snippet :metadata/native-query-snippet))
+
+;;;
 ;;; MetadataProvider
 ;;;
 
@@ -334,13 +360,16 @@
 
 (defn- metadatas [database-id metadata-type ids]
   (let [database-id-key (case metadata-type
-                          :metadata/table :db_id
-                          :metadata/card  :database_id
+                          :metadata/table                :db_id
+                          :metadata/card                 :card/database_id
+                          :metadata/native-query-snippet nil
                           :table/db_id)]
     (when (seq ids)
       (t2/select metadata-type
-                 database-id-key database-id
-                 :id             [:in (set ids)]))))
+                 :id [:in (set ids)]
+                 (if database-id-key
+                   {:where [:= database-id-key database-id]}
+                   {})))))
 
 (defn- tables [database-id]
   (t2/select :metadata/table

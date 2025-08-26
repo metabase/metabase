@@ -278,6 +278,7 @@
                                   :error      :metabase-enterprise.serialization.v2.load/not-found,
                                   :model      "Collection",
                                   :path       [{:id "DoesNotExist", :model "Collection"}],
+                                  :local-id   nil
                                   :table      :collection}
                                  (extract-and-sanitize-exception-map log))))
                         (testing "Snowplow event about error was sent"

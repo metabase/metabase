@@ -35,6 +35,20 @@
         (is (= all-columns
                (field-names :crowberto)))))))
 
+(deftest query-metadata-not-sandboxed-for-admins-test
+  (testing "GET /api/table/:id/query_metadata"
+    ;; checks that admins are exempt from normal perms checking.
+    ;; the above test did not trigger this case because the admin is not *in* "All Users".
+    (met/with-gtaps-for-all-users!
+      {:gtaps      {:venues
+                    {:remappings {}
+                     :query      (mt.tu/restricted-column-query (mt/id))}}
+       :attributes {:cat 50}}
+      (is (= #{"ID" "CATEGORY_ID" "NAME"}
+             (field-names :rasta)))
+      (is (= all-columns
+             (field-names :crowberto))))))
+
 (deftest native-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (met/with-gtaps! {:gtaps      {:venues

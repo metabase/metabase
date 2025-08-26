@@ -106,6 +106,34 @@ describe("DatabaseForm", () => {
   });
 });
 
+describe("DatabaseForm with provider name", () => {
+  it("submits provider name", async () => {
+    const { onSubmit } = setup({
+      initialValues: {
+        engine: "postgres",
+      },
+    });
+
+    const connectionString =
+      "jdbc:postgresql://user:passs@pooler.ap-southeast-1.aws.neon.tech:5432/mydb";
+    await userEvent.type(
+      screen.getByLabelText("Connection string (optional)"),
+      connectionString,
+    );
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    await userEvent.click(saveButton);
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider_name: "Neon",
+        }),
+      );
+    });
+  });
+});
+
 const EXPECTED_DEFAULT_SCHEMA = {
   schedules: {
     metadata_sync: undefined,
@@ -117,4 +145,5 @@ const EXPECTED_DEFAULT_SCHEMA = {
   is_sample: false,
   is_full_sync: true,
   is_on_demand: false,
+  provider_name: null,
 };

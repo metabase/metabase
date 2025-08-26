@@ -71,10 +71,11 @@
                 update-map)))
 
 (t2/define-after-update :model/Document
-  [{:keys [id collection_id archived archived_directly]}]
+  [{:keys [id collection_id archived archived_directly] :as instance}]
   (sync-document-cards-collection! id collection_id
                                    :archived archived
-                                   :archived-directly archived_directly))
+                                   :archived-directly archived_directly)
+  instance)
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 

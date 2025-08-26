@@ -94,10 +94,10 @@
    "acquireRetryAttempts"         (if driver-api/is-test? 1 0)
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
-   "minPoolSize"                  (if (:router-database-id database)
-                                    0 1)
-   "initialPoolSize"              (if (:router-database-id database)
-                                    0 1)
+   ;; In the case of serverless databases, we don't want to periodically
+   ;; wake them up to keep a connection open (#58373).
+   "minPoolSize"                  0
+   "initialPoolSize"              0
    "maxPoolSize"                  (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,

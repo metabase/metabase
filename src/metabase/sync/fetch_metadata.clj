@@ -27,7 +27,7 @@
   [database :- i/DatabaseInstance]
   (log-if-error "db-metadata"
     (let [driver (driver.u/database->driver database)]
-      (driver/do-with-resilient-connection driver database driver/describe-database))))
+      (driver/describe-database driver database))))
 
 (defn include-nested-fields-for-table
   "Add nested-field-columns for table to set of fields."

@@ -266,8 +266,12 @@
   (check-read-only-statements query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
-(defmethod driver/execute-write-query! :h2
-  [driver query]
+(mu/defmethod driver/execute-write-query! :h2
+  [driver :- :keyword
+   query  :- [:map
+              [:type   [:= :native]]
+              [:native [:map
+                        [:query :string]]]]]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
@@ -538,7 +542,9 @@
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
-  (apply sql-jdbc.sync/post-filtered-active-tables args))
+  ;; HACK: we assume that all h2 tables are writable
+  (eduction (map #(assoc % :is_writable true))
+            (apply sql-jdbc.sync/post-filtered-active-tables args)))
 
 (defmethod sql-jdbc.sync/excluded-schemas :h2
   [_]

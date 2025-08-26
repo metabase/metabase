@@ -391,7 +391,7 @@ export function mapFieldsToNestedObject(
  * @returns The semicolon-separated string.
  */
 function objectToString(
-  obj: Record<string, string> | undefined,
+  obj: Record<string, string | undefined> | undefined,
   filterProperties: Array<string> = [],
 ) {
   if (!obj) {

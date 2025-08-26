@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.resolve-referenced-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -18,7 +17,7 @@
 (deftest ^:parallel resolve-card-resources-test
   (testing "resolve stores source table from referenced card"
     (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                             (mt/metadata-provider)
                              [(mt/mbql-query venues
                                 {:filter [:< $price 3]})])
           query             (lib/query

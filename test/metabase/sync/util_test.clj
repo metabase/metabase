@@ -28,7 +28,7 @@
 
 (driver/register! ::concurrent-sync-test, :abstract? true)
 
-(defmethod driver/describe-database ::concurrent-sync-test [& _]
+(defmethod driver/describe-database* ::concurrent-sync-test [& _]
   (swap! calls-to-describe-database inc)
   (Thread/sleep 1000)
   {:tables #{}})

@@ -194,7 +194,12 @@
 
 (defn- order-data [data viz-settings]
   (if (some? (::mb.viz/table-columns viz-settings))
-    (let [[ordered-cols output-order] (qp.streaming/order-cols (:cols data) viz-settings)
+    (let [;; Deduplicate table-columns by name to handle duplicated viz settings
+          deduped-table-columns     (->> (::mb.viz/table-columns viz-settings)
+                                         (m/index-by ::mb.viz/table-column-name)
+                                         vals)
+          deduped-viz-settings      (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
+          [ordered-cols output-order] (qp.streaming/order-cols (:cols data) deduped-viz-settings)
           keep-filtered-idx           (fn [row] (if output-order
                                                   (let [row-v (into [] row)]
                                                     (for [i output-order] (row-v i)))
@@ -384,21 +389,6 @@
   (-> m
       (assoc :data (:data result))
       (dissoc :result)))
-
-(mu/defmethod render :row :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card _dashcard data]
-  (let [viz-settings (get card :visualization_settings)
-        image-bundle   (image-bundle/make-image-bundle
-                        render-type
-                        (js.svg/row-chart viz-settings data))]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
 
 (mu/defmethod render :scalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]

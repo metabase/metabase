@@ -5,7 +5,7 @@ import { defer } from "metabase/lib/promise";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe.skip("issue 15860", () => {
+describe("issue 15860", { tags: "@skip" }, () => {
   const q1IdFilter = {
     name: "Q1 ID",
     slug: "q1_id",
@@ -974,7 +974,7 @@ describe("issue 40660", () => {
 });
 
 // Skipped since it does not make sense when CSP is disabled
-describe.skip("issue 49142", () => {
+describe("issue 49142", { tags: "@skip" }, () => {
   const questionDetails = {
     name: "Products",
     query: { "source-table": PRODUCTS_ID, limit: 2 },

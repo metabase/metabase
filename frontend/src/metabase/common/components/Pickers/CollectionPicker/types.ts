@@ -33,7 +33,7 @@ export type CollectionPickerItem = TypeWithModel<
   CollectionItemId,
   CollectionPickerModel
 > &
-  Pick<Partial<SearchResult>, "description" | "can_write"> & {
+  Pick<Partial<SearchResult>, "description" | "can_write" | "database_id"> & {
     location?: string | null;
     effective_location?: string | null;
     is_personal?: boolean;

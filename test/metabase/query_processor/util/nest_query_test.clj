@@ -32,6 +32,7 @@
   (driver/with-driver (or driver/*driver* :h2)
     (-> query
         qp.preprocess/preprocess
+        lib/->legacy-MBQL
         :query
         nest-query/nest-expressions
         remove-source-metadata)))
@@ -39,36 +40,38 @@
 (deftest ^:parallel nest-expressions-test
   (driver/with-driver :h2
     (qp.store/with-metadata-provider meta/metadata-provider
-      (is (partial= (lib.tu.macros/$ids venues
-                      {:source-query {:source-table $$venues
-                                      :expressions  {"double_price" [:* [:field %price {::add/source-table  $$venues
-                                                                                        ::add/source-alias  "PRICE"
-                                                                                        ::add/desired-alias "PRICE"}]
-                                                                     2]}
-                                      :fields       [[:field %price       {::add/source-table  $$venues
-                                                                           ::add/source-alias  "PRICE"
-                                                                           ::add/desired-alias "PRICE"}]
-                                                     [:expression "double_price" {::add/desired-alias "double_price"}]]}
-                       :breakout     [[:field %price {::add/source-table  ::add/source
+      (is (=? (lib.tu.macros/$ids venues
+                {:source-query {:source-table $$venues
+                                :expressions  {"double_price" [:* [:field %price {::add/source-table  $$venues
+                                                                                  ::add/source-alias  "PRICE"
+                                                                                  ::add/desired-alias "PRICE"}]
+                                                               2]}
+                                :fields       [[:field %price       {::add/source-table  $$venues
+                                                                     ::add/source-alias  "PRICE"
+                                                                     ::add/desired-alias "PRICE"}]
+                                               [:expression "double_price" {::add/desired-alias "double_price"}]]}
+                 :breakout     [[:field %price {::add/source-table  ::add/source
+                                                ::add/source-alias  "PRICE"
+                                                ::add/desired-alias "PRICE"}]
+                                [:field "double_price" {:base-type          :type/Integer
+                                                        ::add/source-table  ::add/source
+                                                        ::add/source-alias  "double_price"
+                                                        ::add/desired-alias "double_price"}]]
+                 :aggregation  [[:aggregation-options [:count] {::add/desired-alias "count"}]]
+                 :order-by     [[:asc [:field %price {::add/source-table  ::add/source
                                                       ::add/source-alias  "PRICE"
-                                                      ::add/desired-alias "PRICE"}]
-                                      [:field "double_price" {:base-type          :type/Integer
-                                                              ::add/source-table  ::add/source
+                                                      ::add/desired-alias "PRICE"}]]
+                                [:asc [:field "double_price" {::add/source-table  ::add/source
                                                               ::add/source-alias  "double_price"
-                                                              ::add/desired-alias "double_price"}]]
-                       :aggregation  [[:aggregation-options [:count] {:name               "count"
-                                                                      ::add/desired-alias "count"}]]
-                       :order-by     [[:asc [:field %price {::add/source-table  ::add/source
-                                                            ::add/source-alias  "PRICE"
-                                                            ::add/desired-alias "PRICE"}]]]})
-                    (-> (lib.tu.macros/mbql-query venues
-                          {:expressions {"double_price" [:* $price 2]}
-                           :breakout    [$price
-                                         [:expression "double_price"]]
-                           :aggregation [[:count]]})
-                        qp.preprocess/preprocess
-                        add/add-alias-info
-                        nest-expressions))))))
+                                                              ::add/desired-alias "double_price"}]]]})
+              (-> (lib.tu.macros/mbql-query venues
+                    {:expressions {"double_price" [:* $price 2]}
+                     :breakout    [$price
+                                   [:expression "double_price"]]
+                     :aggregation [[:count]]})
+                  qp.preprocess/preprocess
+                  add/add-alias-info
+                  nest-expressions))))))
 
 (deftest ^:parallel nest-order-by-expressions-test
   (testing "Expressions in an order-by clause result in nesting"
@@ -298,30 +301,33 @@
 
 (deftest ^:parallel nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"
-    (mt/dataset test-data
-      (mt/with-temp [:model/Card base {:dataset_query
-                                       (mt/mbql-query
+    (let [mp (lib.tu/mock-metadata-provider
+              (mt/metadata-provider)
+              {:cards [{:id            1
+                        :dataset-query (mt/mbql-query
                                          reviews
-                                         {:breakout [$product_id]
+                                         {:breakout    [$product_id]
                                           :aggregation [[:count]]
-                                          ;; filter on an implicit join
-                                          :filter [:= $product_id->products.category "Doohickey"]})}]
-        ;; the result returned is not important, just important that the query is valid and completes
-        (is (vector?
-             (mt/rows
-              (qp/process-query
-               (mt/mbql-query
-                 orders
-                 {:joins [{:source-table (str "card__" (:id base))
-                           :alias (str "Question " (:id base))
-                           :condition [:=
-                                       $product_id
-                                       [:field
-                                        %reviews.product_id
-                                        {:join-alias (str "Question " (:id base))}]]
-                           :fields :all}]
-                  :expressions {"CC" [:+ 1 1]}
-                  :limit 2})))))))))
+                                         ;; filter on an implicit join
+                                          :filter      [:= $product_id->products.category "Doohickey"]})}]})]
+      ;; the result returned is not important, just important that the query is valid and completes
+      (is (vector?
+           (mt/rows
+            (qp/process-query
+             (lib/query
+              mp
+              (mt/mbql-query
+                orders
+                {:joins       [{:source-table "card__1"
+                                :alias        "Question 1"
+                                :condition    [:=
+                                               $product_id
+                                               [:field
+                                                %reviews.product_id
+                                                {:join-alias "Question 1"}]]
+                                :fields       :all}]
+                 :expressions {"CC" [:+ 1 1]}
+                 :limit       2})))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel nest-expressions-with-joins-test
@@ -600,7 +606,13 @@
                                         :fk-field-id  %product-id
                                         :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
                       add/add-alias-info
-                      nest-expressions))))))))
+                      nest-expressions
+                      ;; I'm tired of dealing with the nondeterministic order mentioned above, so just sort them by ID
+                      ;; and call it a day for now.
+                      (update-in [:source-query :fields] (fn [fields]
+                                                           (concat
+                                                            (take 3 fields)
+                                                            (sort-by second (drop 3 fields)))))))))))))
 
 (deftest ^:parallel uniquify-aliases-test
   (driver/with-driver :h2
@@ -620,8 +632,7 @@
                                                       ::add/source-table  ::add/source
                                                       ::add/source-alias  "CATEGORY_2"
                                                       ::add/desired-alias "CATEGORY_2"}]]
-                 :aggregation  [[:aggregation-options [:count] {:name               "count"
-                                                                ::add/desired-alias "count"}]]
+                 :aggregation  [[:aggregation-options [:count] {::add/desired-alias "count"}]]
                  :order-by     [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
                                                             ::add/source-table  ::add/source
                                                             ::add/source-alias  "CATEGORY_2"
@@ -635,6 +646,7 @@
                      :limit       1})
                   qp.preprocess/preprocess
                   add/add-alias-info
+                  lib/->legacy-MBQL
                   :query
                   nest-query/nest-expressions))))))
 
@@ -676,6 +688,7 @@
                                                [:field "DISCOUNT" {:base-type :type/Float}]]})
                       qp.preprocess/preprocess
                       add/add-alias-info
+                      lib/->legacy-MBQL
                       :query
                       nest-query/nest-expressions
                       (->> (assoc {:database (meta/id)
@@ -812,17 +825,23 @@
                      :join-alias "p"
                      ::add/desired-alias "p__CREATED_AT"
                      ::add/source-table "p"}]]}}
-                (->> (lib.tu.macros/mbql-query orders
-                       {:expressions {"double_total" [:* $total 2]}
-                        ;; this is a broken field ref! It should use the join alias `p`. Luckily
-                        ;; the [[metabase.query-processor.middleware.resolve-joined-fields]] middleware should fix it
-                        ;; for us.
-                        :breakout    [!hour-of-day.people.created-at
-                                      [:expression "double_total"]]
-                        :aggregation [[:count]]
-                        :joins [{:source-table $$people
-                                 :alias        "p"
-                                 :condition    [:= $user-id &p.people.id]}]})
-                     qp.preprocess/preprocess
-                     add/add-alias-info
-                     nest-expressions)))))))
+                (-> (lib.tu.macros/mbql-query orders
+                      {:expressions {"double_total" [:* $total 2]}
+                       ;; this is a broken field ref! It should use the join alias `p`. Luckily
+                       ;; the [[metabase.query-processor.middleware.resolve-joined-fields]] middleware should fix it
+                       ;; for us.
+                       :breakout    [!hour-of-day.people.created-at
+                                     [:expression "double_total"]]
+                       :aggregation [[:count]]
+                       :joins [{:source-table $$people
+                                :alias        "p"
+                                :condition    [:= $user-id &p.people.id]}]})
+                    qp.preprocess/preprocess
+                    add/add-alias-info
+                    nest-expressions
+                    ;; I'm tired of dealing with the nondeterministic order mentioned above, so just sort them by ID and
+                    ;; call it a day for now.
+                    (update-in [:source-query :fields] (fn [fields]
+                                                         (concat
+                                                          (take 3 fields)
+                                                          (sort-by second (drop 3 fields))))))))))))

@@ -34,19 +34,19 @@
    x))
 
 (defn- add-alias-info [query]
-  (driver/with-driver (or driver/*driver* :h2)
-    (-> (if (:lib/type query)
-          (->> query
-               qp.preprocess/preprocess
-               (lib/query (:lib/metadata query))
-               add/add-alias-info)
-          (qp.store/with-metadata-provider (if (qp.store/initialized?)
-                                             (qp.store/metadata-provider)
-                                             meta/metadata-provider)
-            (-> query
-                qp.preprocess/preprocess
-                add/add-alias-info)))
-        remove-source-metadata)))
+  (if-not (:lib/type query)
+    (-> (lib/query
+         (if (qp.store/initialized?)
+           (qp.store/metadata-provider)
+           meta/metadata-provider)
+         query)
+        add-alias-info
+        lib/->legacy-MBQL)
+    (driver/with-driver (or driver/*driver* :h2)
+      (->> query
+           qp.preprocess/preprocess
+           add/add-alias-info
+           remove-source-metadata))))
 
 (deftest ^:parallel join-in-source-query-test
   (is (=? (lib.tu.macros/mbql-query venues
@@ -178,8 +178,7 @@
   (is (=? (lib.tu.macros/mbql-query checkins
             {:aggregation [[:aggregation-options
                             [:count]
-                            {:name               "count"
-                             ::add/source-alias  "count"
+                            {::add/source-alias  "count"
                              ::add/desired-alias "count"}]]
              :filter      [:!=
                            [:field %date {::add/source-table $$checkins
@@ -197,18 +196,15 @@
             {:source-query {:source-table $$venues
                             :aggregation  [[:aggregation-options
                                             [:count]
-                                            {:name               "count"
-                                             ::add/source-alias  "count"
+                                            {::add/source-alias  "count"
                                              ::add/desired-alias "count"}]
                                            [:aggregation-options
                                             [:count]
-                                            {:name               "count_2"
-                                             ::add/source-alias  "count_2"
+                                            {::add/source-alias  "count_2"
                                              ::add/desired-alias "count_2"}]
                                            [:aggregation-options
                                             [:count]
-                                            {:name               "count_3"
-                                             ::add/source-alias  "count_3"
+                                            {::add/source-alias  "count_3"
                                              ::add/desired-alias "count_3"}]]}
              :fields       [[:field "count" {:base-type          :type/Integer
                                              ::add/source-table  ::add/source
@@ -351,8 +347,7 @@
                                     ::add/source-table  ::add/source
                                     ::add/source-alias  "COOL.double_price"
                                     ::add/desired-alias "COOL.double_price"}]]
-                 {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
-                                                                ::add/desired-alias "COOL.COOL.count"}]]
+                 {:aggregation [[:aggregation-options [:count] {::add/desired-alias "COOL.count"}]]
                   :breakout    [double-price]
                   :order-by    [[:asc double-price]]})))
             (-> (lib.tu.macros/mbql-query venues
@@ -561,8 +556,7 @@
   (testing "Make sure we add info to `:aggregation` reference clauses correctly"
     (is (=? (lib.tu.macros/$ids checkins
               {:stages [{:aggregation [[:sum
-                                        {:name               "sum"
-                                         ::add/desired-alias "sum"}
+                                        {::add/desired-alias "sum"}
                                         [:field {::add/source-table $$checkins
                                                  ::add/source-alias "USER_ID"}
                                          %user-id]]]
@@ -702,7 +696,10 @@
                                             {:temporal-unit      :day
                                              ::add/source-alias  "CREATED_AT"
                                              ::add/desired-alias "CREATED_AT_2"}]]]}}
-                  (add/add-alias-info (qp.preprocess/preprocess query)))))))))
+                  (-> query
+                      qp.preprocess/preprocess
+                      add/add-alias-info
+                      lib/->legacy-MBQL))))))))
 
 ;;; see also [[metabase.lib.join.util-test/desired-alias-should-respect-ref-name-test]]
 (deftest ^:parallel preserve-field-options-name-test
@@ -712,8 +709,8 @@
                               :breakout     [[:field (meta/id :orders :id) {}]]
                               :aggregation  [[:aggregation-options
                                               [:cum-sum [:field (meta/id :orders :id) {}]]
-                                              {:name "sum"}]]}
-               :breakout     [[:field "id" {:base-type :type/Integer, ::add/desired-alias "id"}]
+                                              {:name "sum", ::add/desired-alias "sum"}]]}
+               :breakout     [[:field "ID" {:base-type :type/Integer, ::add/desired-alias "ID"}]
                               [:field "sum" {:base-type :type/Integer, ::add/desired-alias "__cumulative_sum"}]]
                :aggregation  [[:aggregation-options
                                [:cum-sum [:field "sum" {:base-type :type/Integer}]]
@@ -724,7 +721,7 @@
                                :aggregation  [[:aggregation-options
                                                [:cum-sum [:field (meta/id :orders :id) nil]]
                                                {:name "sum"}]]}
-                :breakout     [[:field "id" {:base-type :type/Integer}]
+                :breakout     [[:field "ID" {:base-type :type/Integer}]
                                [:field "sum" {:base-type :type/Integer, :name "__cumulative_sum"}]]
                 :aggregation  [[:aggregation-options
                                 [:cum-sum [:field "sum" {:base-type :type/Integer}]]
@@ -750,6 +747,7 @@
                                 $total]})
                     qp.preprocess/preprocess
                     add/add-alias-info
+                    lib/->legacy-MBQL
                     :query)))))))
 
 (deftest ^:parallel nested-query-field-literals-test
@@ -769,8 +767,7 @@
                                 [:cum-sum
                                  [:field "TOTAL" {::add/source-table ::add/source
                                                   ::add/source-alias "TOTAL"}]]
-                                {:name "sum"
-                                 ::add/source-alias "sum" ; FIXME This key shouldn't be here, this doesn't come from the source query.
+                                {::add/source-alias "sum" ; FIXME This key shouldn't be here, this doesn't come from the source query.
                                  ::add/desired-alias "sum"}]]
                  :breakout [[:field "CREATED_AT" {::add/source-alias "CREATED_AT"
                                                   ::add/desired-alias "CREATED_AT"}]
@@ -786,6 +783,7 @@
                                      [:field "CREATED_AT_2" {:base-type :type/Date, :temporal-unit :default}]]})
                     qp.preprocess/preprocess
                     add/add-alias-info
+                    lib/->legacy-MBQL
                     :query)))))))
 
 (deftest ^:parallel globally-unique-join-aliases-test
@@ -820,6 +818,7 @@
                   (-> query
                       qp.preprocess/preprocess
                       (add/add-alias-info {:globally-unique-join-aliases? true})
+                      lib/->legacy-MBQL
                       :query))))))))
 
 ;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
@@ -887,7 +886,9 @@
       (qp.store/with-metadata-provider mp
         (driver/with-driver :h2
           (let [preprocessed (-> query qp.preprocess/preprocess)
-                expected     (add/add-alias-info preprocessed)]
+                expected     (-> preprocessed
+                                 add/add-alias-info
+                                 lib/->legacy-MBQL)]
             (testing ":source-query -> :source-query -> :joins"
               (is (=? [{:alias     "Reviews"
                         :condition [:=
@@ -936,7 +937,7 @@
                                               {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]
                        :aggregation         [[:aggregation-options
                                               [:avg [:field "RATING" {::add/source-alias "RATING"}]]
-                                              {:name "avg", ::add/desired-alias "avg"}]]
+                                              {::add/desired-alias "avg"}]]
                        :order-by            [[:asc
                                               [:field
                                                "Reviews__CREATED_AT"
@@ -971,6 +972,7 @@
                   (-> query
                       qp.preprocess/preprocess
                       add/add-alias-info
+                      lib/->legacy-MBQL
                       :query))))))))
 
 (deftest ^:parallel nested-literal-boolean-expression-with-name-collisions-test
@@ -1101,8 +1103,8 @@
                                    :alias        "PRODUCTS__via__PRODUCT_ID"
                                    :fk-field-id  %product-id
                                    :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]}))]
-      (is (=? [[:expression "pivot-grouping" {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"}]
-               [:expression "pivot-grouping" {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"}]]
+      (is (=? [[:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]
+               [:expression {::add/source-table ::add/none, ::add/desired-alias "pivot-grouping"} "pivot-grouping"]]
               (lib.util.match/match (-> query
                                         add/add-alias-info
                                         qp.preprocess/preprocess)
@@ -1165,8 +1167,7 @@
                                          ::add/desired-alias "PRODUCTS__via__PRODUC_8b0b9fea"
                                          ::add/source-table  "PRODUCTS__via__PRODUCT_ID"}
                                  any?]]]
-                 :aggregation [[:sum {:name               "sum"
-                                      ::add/source-table  ::add/none
+                 :aggregation [[:sum {::add/source-table  ::add/none
                                       ::add/source-alias  "sum"
                                       ::add/desired-alias "sum"}
                                 [:field {::add/source-table  (meta/id :orders)
@@ -1248,8 +1249,7 @@
                                            (meta/id :orders :total)
                                            {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 50}}]]}})]
     (is (=? {:aggregation [[:count
-                            {:name               "count"
-                             ::add/source-table  ::add/none
+                            {::add/source-table  ::add/none
                              ::add/source-alias  "count"
                              ::add/desired-alias "count"}]]
              :breakout    [[:field
@@ -1289,6 +1289,30 @@
                  ::add/source-table  ::add/none}
                 "my_numberLiteral"]
                [:value {} 1]]
+              (-> (add-alias-info query)
+                  :stages
+                  first
+                  :filters
+                  first))))))
+
+(deftest ^:parallel field-name-ref-in-first-stage-test
+  (testing "Should add correct alias info if we use a field name ref in the first stage of a query"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:type       :query
+                  :database   (meta/id)
+                  :query      {:source-table (meta/id :products)}
+                  :parameters [{:type   :id
+                                :value  [144]
+                                :id     "92eb69ea"
+                                :target [:dimension [:field "ID" {:base-type :type/BigInteger}]]}]})]
+      (is (=? [:=
+               {}
+               [:field
+                {::add/source-alias "ID"
+                 ::add/source-table (meta/id :products)}
+                "ID"]
+               [:value {} 144]]
               (-> (add-alias-info query)
                   :stages
                   first
