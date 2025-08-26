@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-738-setup-sidebar-and-onboarding-page-for-embedding-hub",
-    "hash": "7a06823da5b2694e46f5162073f32c9ec8195782"
+    "hash": "638d634f248bf5574fa913acc2b7ca0827d3e1b8"
   },
   "upstream": {
     "branch": "emb-766-add-utm-tags-to-links-in-the-embedding-hub"
