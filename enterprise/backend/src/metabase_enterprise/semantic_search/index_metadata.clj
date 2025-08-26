@@ -73,7 +73,7 @@
 
 (def default-index-metadata
   "The default index metadata configuration that will be used for the search engine integration."
-  {:version                   "1"
+  {:version                   "2"
    :metadata-table-name       "index_metadata"
    :control-table-name        "index_control"
    :gate-table-name           "index_gate"
