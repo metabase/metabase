@@ -525,9 +525,14 @@
    (actual-collection-id body))
   (let [body (cond-> body
                (string? (:type body)) (update :type keyword))]
-    (-> (card/create-card! body @api/*current-user*)
-        hydrate-card-details
-        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
+    (u/prog1 (-> (card/create-card! body @api/*current-user*)
+                 hydrate-card-details
+                 (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))
+      (when branching/*current-branch*
+        (t2/insert! :model/BranchModelMapping {:original_id (:id <>)
+                                               :branched_model_id (:id <>)
+                                               :model_type "report_card"
+                                               :branch_id (:id @branching/*current-branch*)})))))
 
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"

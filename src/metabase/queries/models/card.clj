@@ -11,6 +11,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.branching.core :as branching]
    [metabase.cache.core :as cache]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -1129,15 +1130,14 @@
     (cache/invalidate-config! {:questions [(:id card-before-update)]
                                :with-overrides? true})
     ;; ok, now save the Card
-    (t2/debug
-      (t2/update! :model/Card (or branched-id (:id card-before-update))
-                  ;; `collection_id` and `description` can be `nil` (in order to unset them).
-                  ;; Other values should only be modified if they're passed in as non-nil
-                  (u/select-keys-when card-updates
-                                      :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id}
-                                      :non-nil #{:dataset_query :display :name :visualization_settings :archived
-                                                 :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                                 :result_metadata :collection_preview :verified-result-metadata?})))
+    (t2/update! :model/Card (or branched-id (:id card-before-update))
+                ;; `collection_id` and `description` can be `nil` (in order to unset them).
+                ;; Other values should only be modified if they're passed in as non-nil
+                (u/select-keys-when card-updates
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id}
+                                    :non-nil #{:dataset_query :display :name :visualization_settings :archived
+                                               :enable_embedding :type :parameters :parameter_mappings :embedding_params
+                                               :result_metadata :collection_preview :verified-result-metadata?}))
     ;; ok, now update dependent dashcard parameters
     (try
       (update-associated-parameters! card-before-update card-updates)

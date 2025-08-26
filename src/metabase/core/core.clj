@@ -136,42 +136,43 @@
   ;; we have to skip creating sample content if we're running tests, because it causes some tests to timeout
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
-  (mdb/setup-db! :create-sample-content? (not config/is-test?))
-  ;; Disable read-only mode if its on during startup.
-  ;; This can happen if a cloud migration process dies during h2 dump.
-  (when (cloud-migration/read-only-mode)
-    (cloud-migration/read-only-mode! false))
-  (init-status/set-progress! 0.4)
-  ;; Set up Prometheus
-  (log/info "Setting up prometheus metrics")
-  (analytics/setup!)
-  (init-status/set-progress! 0.5)
-  (premium-features/airgap-check-user-count)
-  (init-status/set-progress! 0.55)
-  (task/init-scheduler!)
-  (analytics/add-listeners-to-scheduler!)
-  ;; run a very quick check to see if we are doing a first time installation
-  ;; the test we are using is if there is at least 1 User in the database
-  (let [new-install? (not (setup/has-user-setup))]
-    ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
-    (config-from-file/init-from-file-if-code-available!)
-    (init-status/set-progress! 0.6)
-    (when new-install?
-      (log/info "Looks like this is a new installation ... preparing setup wizard")
-      ;; create setup token
-      (create-setup-token-and-log-setup-url!)
-      ;; publish install event
-      (events/publish-event! :event/install {}))
-    (init-status/set-progress! 0.7)
-    ;; deal with our sample database as needed
-    (when (config/load-sample-content?)
-      (if new-install?
-        ;; add the sample database DB for fresh installs
-        (sample-data/extract-and-sync-sample-database!)
-        ;; otherwise update if appropriate
-        (sample-data/update-sample-database-if-needed!)))
-    (init-status/set-progress! 0.8))
-  (ensure-audit-db-installed!)
+  (binding [branching/*enable-branch-hook* false]
+    (mdb/setup-db! :create-sample-content? (not config/is-test?))
+    ;; Disable read-only mode if its on during startup.
+    ;; This can happen if a cloud migration process dies during h2 dump.
+    (when (cloud-migration/read-only-mode)
+      (cloud-migration/read-only-mode! false))
+    (init-status/set-progress! 0.4)
+    ;; Set up Prometheus
+    (log/info "Setting up prometheus metrics")
+    (analytics/setup!)
+    (init-status/set-progress! 0.5)
+    (premium-features/airgap-check-user-count)
+    (init-status/set-progress! 0.55)
+    (task/init-scheduler!)
+    (analytics/add-listeners-to-scheduler!)
+    ;; run a very quick check to see if we are doing a first time installation
+    ;; the test we are using is if there is at least 1 User in the database
+    (let [new-install? (not (setup/has-user-setup))]
+      ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
+      (config-from-file/init-from-file-if-code-available!)
+      (init-status/set-progress! 0.6)
+      (when new-install?
+        (log/info "Looks like this is a new installation ... preparing setup wizard")
+        ;; create setup token
+        (create-setup-token-and-log-setup-url!)
+        ;; publish install event
+        (events/publish-event! :event/install {}))
+      (init-status/set-progress! 0.7)
+      ;; deal with our sample database as needed
+      (when (config/load-sample-content?)
+        (if new-install?
+          ;; add the sample database DB for fresh installs
+          (sample-data/extract-and-sync-sample-database!)
+          ;; otherwise update if appropriate
+          (sample-data/update-sample-database-if-needed!)))
+      (init-status/set-progress! 0.8))
+    (ensure-audit-db-installed!))
   (notification/seed-notification!)
 
   (init-status/set-progress! 0.9)
@@ -206,8 +207,7 @@
           handler       (server/make-handler server-routes)]
       (server/start-web-server! handler))
     ;; run our initialization process
-    (binding [branching/*enable-branch-hook* false]
-      (init!))
+    (init!)
     ;; Ok, now block forever while Jetty does its thing
     (when (config/config-bool :mb-jetty-join)
       (.join (server/instance)))
