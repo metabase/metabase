@@ -29,7 +29,7 @@ export type TransformSource =
     }
   | {
       type: "python";
-      script: string;
+      body: string;
       database: number;
       table?: number;
     };
