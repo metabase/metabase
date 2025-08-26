@@ -119,7 +119,6 @@ describe("scenarios > table-editing", () => {
       cy.wait("@getTableDataQuery");
 
       cy.findByTestId("filters-visibility-control").should("have.text", "1");
-      cy.findByTestId("filters-visibility-control").click();
 
       cy.findByTestId("qb-filters-panel")
         .should("be.visible")
