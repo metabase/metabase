@@ -1,6 +1,7 @@
+const { H } = cy;
+
 import dayjs from "dayjs";
 
-const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -4388,6 +4389,90 @@ describe.skip("issue 48824", () => {
     H.filterWidget()
       .findByText("Vorheriger 30 Tage, ab vor 7 tage")
       .should("be.visible");
+  });
+});
+
+describe("issue 62627", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  function toggleLinkedFilter(parameterName) {
+    cy.button(parameterName)
+      .parent()
+      .findByRole("switch")
+      .click({ force: true });
+  }
+
+  it("should properly link inline parameters (metabase#62627)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+
+    cy.log("add a top-level filter");
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Vendor");
+    H.setDashboardParameterName("Vendor");
+    H.dashboardParameterSidebar().button("Done").click();
+
+    cy.log("add an inline card filter");
+    H.showDashboardCardActions();
+    H.findDashCardAction(H.getDashboardCard(), "Add a filter").click();
+    H.popover().findByText("Text or Category").click();
+    H.selectDashboardFilter(H.getDashboardCard(), "Category");
+    H.setDashboardParameterName("Category");
+    H.dashboardParameterSidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      toggleLinkedFilter("Vendor");
+    });
+    H.saveDashboard();
+
+    cy.log(
+      "verify that the inline parameter is linked to the top-level parameter",
+    );
+    H.dashboardParametersContainer().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Balistreri-Muller").click();
+      cy.button("Add filter").click();
+    });
+    H.getDashboardCard().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Widget").should("be.visible");
+      cy.findByText("Gadget").should("not.exist");
+    });
+
+    cy.log("make the top-level parameter be linked to the inline parameter");
+    H.editDashboard();
+    H.getDashboardCard().findByTestId("editing-parameter-widget").click();
+    H.dashboardParameterSidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      toggleLinkedFilter("Vendor");
+    });
+    H.editingDashboardParametersContainer()
+      .findByTestId("editing-parameter-widget")
+      .click();
+    H.dashboardParameterSidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      toggleLinkedFilter("Category");
+    });
+    H.saveDashboard();
+
+    cy.log(
+      "verify that the top-level parameter is linked to the inline parameter",
+    );
+    H.dashboardParametersContainer().within(() =>
+      H.filterWidget().icon("close").click(),
+    );
+    H.getDashboardCard().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.dashboardParametersContainer().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Barrows-Johns").should("be.visible");
+      cy.findByText("Americo Sipes and Sons").should("not.exist");
+    });
   });
 });
 
