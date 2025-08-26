@@ -34,6 +34,24 @@
   [:map
    [:overwrite? :boolean]])
 
+(defmacro with-transform-lifecycle
+  "Macro to manage transform run lifecycle. Starts a run, executes body,
+   and handles success/failure appropriately.
+
+   Usage:
+   (with-transform-lifecycle [run-id transform-id opts]
+     ;; body that returns result on success or throws on failure
+     )"
+  [[run-id-sym [transform-id opts]] & body]
+  `(let [{~run-id-sym :id} (transform-run/start-run! ~transform-id ~opts)]
+     (try
+       (let [result# (do ~@body)]
+         (transform-run/succeed-started-run! ~run-id-sym)
+         result#)
+       (catch Throwable t#
+         (transform-run/fail-started-run! ~run-id-sym {:message (.getMessage t#)})
+         (throw t#)))))
+
 (defn- sync-target!
   ([transform-id run-id]
    (let [{:keys [source target]} (t2/select-one :model/Transform transform-id)
@@ -48,7 +66,7 @@
 (defn run-transform!
   "Run a compiled transform"
   [run-id driver transform-details opts]
-  ;; local run is responsible for status
+  ;; local run is responsible for status, using canceling lifecycle
   (try
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
@@ -115,14 +133,12 @@
           {:keys [schema name]}   target
           db                      (t2/select-one :model/Database target-database)
           driver                  (:engine db)]
-      ;; TODO we should have macros for run transform that handle marking status for a run-id properly
       (try
-        ;; Dynamically load and call the python runner using requiring-resolve
-        (let [{run-id :id} (transform-run/start-run! (:id transform) {:run_method run_method})
-              {:keys [body] :as result} (python-runner.api/execute-python-code body)]
-          (if (:error body)
-            (do
-              (let [message (str/join "\n"
+
+        (with-transform-lifecycle [run-id [(:id transform) {:run_method run_method}]]
+          (let [{:keys [body] :as result} (python-runner.api/execute-python-code body)]
+            (if (:error body)
+              (throw (ex-info (str/join "\n"
                                       [(format "exit code %d" (:exit-code body))
                                        "======"
                                        "stdout"
@@ -130,13 +146,11 @@
                                        (:stdout body)
                                        "stderr"
                                        "======"
-                                       (:stderr body)])]
-                (transform-run/fail-started-run! run-id {:message message}))
-              (throw (ex-info "Python execution failed"
-                              {:error (:error body)
-                               :stdout (:stdout body)
-                               :stderr (:stderr body)})))
-            (do
+                                       (:stderr body)])
+                              {:status-code 400
+                               :error       (:stderr body)
+                               :stdout      (:stdout body)
+                               :stderr      (:stderr body)}))
               (try
                 ;; TODO would be nice if we have create or replace in upload
                 (when-let [table (t2/select-one :model/Table
@@ -151,7 +165,6 @@
                                                    :file       (File. ^String (:output-file result))
                                                    :schema     schema
                                                    :table-name name})
-                (transform-run/succeed-started-run! run-id)
                 {:run_id run-id
                  :result result}
                 (finally
