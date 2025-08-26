@@ -1,8 +1,16 @@
 import userEvent from "@testing-library/user-event";
 
+import {
+  setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockRecentTableDatabaseInfo,
+  createMockRecentTableItem,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { EmbeddingHub } from "./EmbeddingHub";
@@ -14,6 +22,22 @@ const setup = ({ isAdmin = true } = {}) => {
       "show-metabase-links": true,
     }),
   });
+
+  setupRecentViewsAndSelectionsEndpoints(
+    [
+      createMockRecentTableItem({
+        id: 10,
+        name: "foobar",
+        display_name: "Foo Bar Table",
+        database: createMockRecentTableDatabaseInfo({
+          id: 1,
+        }),
+      }),
+    ],
+    ["selections"],
+  );
+
+  setupSearchEndpoints([]);
 
   return renderWithProviders(<EmbeddingHub />, { storeInitialState: state });
 };
@@ -57,5 +81,11 @@ describe("EmbeddingHub", () => {
     expect(
       await within(dialog).findByText("Choose a table to generate a dashboard"),
     ).toBeInTheDocument();
+
+    expect(
+      await within(dialog).findByText("Foo Bar Table"),
+    ).toBeInTheDocument();
+
+    userEvent.click(within(dialog).getByText("Foo Bar Table"));
   });
 });
