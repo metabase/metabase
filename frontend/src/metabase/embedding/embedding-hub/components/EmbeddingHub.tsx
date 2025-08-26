@@ -19,9 +19,8 @@ export const EmbeddingHub = () => {
   const embeddingSteps = useMemo(() => getEmbeddingHubSteps(), []);
   const completedSteps = useCompletedEmbeddingHubSteps();
 
-  const [openModal, setOpenModal] = useState<EmbeddingHubModalToTrigger | null>(
-    null,
-  );
+  const [openedModal, setOpenedModal] =
+    useState<EmbeddingHubModalToTrigger | null>(null);
 
   // Find the first unchecked step to open by default.
   // This is undefined when every step has been completed.
@@ -29,7 +28,7 @@ export const EmbeddingHub = () => {
     (step) => !completedSteps[step.id],
   );
 
-  const closeModal = () => setOpenModal(null);
+  const closeModal = () => setOpenedModal(null);
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
   const embedJsDocsUrl = useDocsUrl("embedding/embedded-analytics-js");
@@ -48,19 +47,21 @@ export const EmbeddingHub = () => {
           steps={embeddingSteps}
           completedSteps={completedSteps}
           defaultOpenStep={firstUncompletedStep?.id}
-          onModalAction={setOpenModal}
+          onModalAction={setOpenedModal}
         />
 
         <AddDataModal
-          opened={openModal?.type === "add-data"}
+          opened={openedModal?.type === "add-data"}
           onClose={closeModal}
           initialTab={
-            openModal?.type === "add-data" ? openModal?.initialTab : undefined
+            openedModal?.type === "add-data"
+              ? openedModal?.initialTab
+              : undefined
           }
         />
 
         <CreateDashboardModal
-          opened={openModal?.type === "new-dashboard"}
+          opened={openedModal?.type === "new-dashboard"}
           onClose={closeModal}
         />
       </Box>
