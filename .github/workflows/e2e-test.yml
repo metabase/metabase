@@ -121,7 +121,8 @@ jobs:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_TIME_THRESHOLD: 1
+          SPLIT_OUTPUT_FILE: "./e2e/support/newTimings.json"
+          SPLIT_TIME_THRESHOLD: 0.01
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
@@ -180,7 +181,7 @@ jobs:
           SPLIT: ${{ inputs.total_chunks || 1 }}
           SPLIT_INDEX: ${{ inputs.split_index || 0 }}
           SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_TIME_THRESHOLD: 0
+          SPLIT_TIME_THRESHOLD: 0.01
           SPEC_PATH: ${{ env.specs || inputs.specs }}
         run: |
           echo "Running tests with specs: $SPEC_PATH"
@@ -248,9 +249,11 @@ jobs:
         if: always()
         run: |
           echo "Looking for updated timing file..."
+          ls -la ./e2e/support/newTimings.json || echo "e2e/support/newTimings.json not found"
+          echo "Content of new timing file:"
+          head -20 ./e2e/support/newTimings.json 2>/dev/null || echo "Could not read new timing file"
+          echo "Also checking original timing file:"
           ls -la ./e2e/support/timings.json || echo "e2e/support/timings.json not found"
-          echo "Content of timing file:"
-          head -20 ./e2e/support/timings.json 2>/dev/null || echo "Could not read timing file"
           pwd
 
       - name: Upload Timing Data
@@ -259,7 +262,7 @@ jobs:
         continue-on-error: true
         with:
           name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
-          path: ./e2e/support/timings.json
+          path: ./e2e/support/newTimings.json
           retention-days: 7
 
       - name: Publish Summary

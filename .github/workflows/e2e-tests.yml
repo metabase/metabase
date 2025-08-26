@@ -117,7 +117,7 @@ jobs:
         run: |
           npx cypress-split-merge \
             --parent-folder timing-files \
-            --split-file timings.json \
+            --split-file newTimings.json \
             --output e2e/support/timings.json
         continue-on-error: true
 
