@@ -21,9 +21,8 @@ export const EmbeddingHubXrayPickerModal = ({
     (tableId: TableId) => {
       const url = `/auto/dashboard/table/${tableId}`;
       dispatch(push(url));
-      onClose();
     },
-    [dispatch, onClose],
+    [dispatch],
   );
 
   if (!opened) {

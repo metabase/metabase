@@ -67,7 +67,7 @@ export const EmbeddingHub = () => {
         />
 
         <EmbeddingHubXrayPickerModal
-          opened={openModal?.type === "xray-dashboard"}
+          opened={openedModal?.type === "xray-dashboard"}
           onClose={closeModal}
         />
       </Box>
