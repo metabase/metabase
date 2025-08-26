@@ -6,7 +6,7 @@ import { Box, Button, Group, Icon, Stack, Text, TextInput } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn } from "metabase-types/api";
 
-export type ListViewColumnsCustomizationProps = {
+export type ListViewColumnsSidebarProps = {
   cols?: DatasetColumn[];
   settings?: ComputedVisualizationSettings | null;
   onDone?: () => void;
@@ -17,15 +17,15 @@ export type ListViewColumnsCustomizationProps = {
  * Items are draggable and set dataTransfer text/plain as the column "name",
  * so they can be dropped into ReorderableTagsInput inside ListViewConfiguration.
  */
-export function ListViewColumnsCustomization({
+export function ListViewColumnsSidebar({
   cols = [],
   settings,
   onDone,
-}: ListViewColumnsCustomizationProps) {
+}: ListViewColumnsSidebarProps) {
   const [query, setQuery] = useState("");
   const { titleColumn, subtitleColumn, rightColumns } = useListColumns(
     cols,
-    settings?.viewSettings?.listSettings,
+    settings?.["list.columns"],
   );
   const { unusedOptions } = useMemo(() => {
     const allOptions = (cols ?? []).map((col) => ({

@@ -18,7 +18,16 @@ import {
   ReorderableTagsInput,
   SortablePill,
 } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
-import { ActionIcon, Box, Divider, Icon, Menu, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Divider,
+  Icon,
+  IconName,
+  Menu,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
@@ -58,7 +67,7 @@ export const ListViewConfiguration = ({
   // Use the same default inference as the list view
   const { titleColumn, subtitleColumn, rightColumns } = useListColumns(
     cols,
-    settings?.viewSettings?.listSettings,
+    settings?.["list.columns"],
   );
 
   // Selected values
@@ -82,9 +91,9 @@ export const ListViewConfiguration = ({
   }, [rightColumns]);
 
   // Selected icon state
-  const [selectedEntityType, setSelectedEntityType] = useState<
-    keyof typeof ENTITY_ICONS
-  >(() => settings?.viewSettings?.listSettings?.entityIcon || entityType);
+  const [selectedEntityIcon, setSelectedEntityIcon] = useState<string>(
+    () => settings?.["list.entity_icon"] || getEntityIcon(entityType),
+  );
 
   // Active drag state for overlay
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -204,13 +213,13 @@ export const ListViewConfiguration = ({
         onConfigurationChange({
           left: next,
           right: rightValues,
-          entityIcon: selectedEntityType,
+          entityIcon: selectedEntityIcon,
         });
       } else {
         onConfigurationChange({
           left: leftValues,
           right: next,
-          entityIcon: selectedEntityType,
+          entityIcon: selectedEntityIcon,
         });
       }
       return;
@@ -234,13 +243,13 @@ export const ListViewConfiguration = ({
       onConfigurationChange({
         left: nextTo,
         right: nextFrom,
-        entityIcon: selectedEntityType,
+        entityIcon: selectedEntityIcon,
       });
     } else {
       onConfigurationChange({
         left: nextFrom,
         right: nextTo,
-        entityIcon: selectedEntityType,
+        entityIcon: selectedEntityIcon,
       });
     }
   };
@@ -293,7 +302,7 @@ export const ListViewConfiguration = ({
                 >
                   <Icon
                     tooltip="Entity icon"
-                    name={ENTITY_ICONS[selectedEntityType]}
+                    name={selectedEntityIcon as IconName}
                     size={16}
                     c="text-light"
                   />
@@ -306,11 +315,11 @@ export const ListViewConfiguration = ({
                     key={key}
                     leftSection={<Icon name={iconName} size={16} />}
                     onClick={() => {
-                      setSelectedEntityType(key as keyof typeof ENTITY_ICONS);
+                      setSelectedEntityIcon(iconName);
                       onConfigurationChange({
                         left: leftValues,
                         right: rightValues,
-                        entityIcon: key,
+                        entityIcon: iconName,
                       });
                     }}
                   >
@@ -372,7 +381,7 @@ export const ListViewConfiguration = ({
             <ListViewItem
               row={firstRow}
               cols={cols}
-              entityIcon={getEntityIcon(selectedEntityType)}
+              entityIcon={selectedEntityIcon}
               imageColumn={undefined}
               titleColumn={selectedTitleColumn}
               subtitleColumn={selectedSubtitleColumn}

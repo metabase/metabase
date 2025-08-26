@@ -26,7 +26,7 @@ import {
   isString,
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, Series } from "metabase-types/api";
 
 import { ListView } from "../ListView/ListView";
 import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
@@ -46,7 +46,52 @@ const vizDefinition = {
   isSensible: () => true,
 
   settings: {
-    ...columnSettings({ hidden: true }),
+    "list.entity_icon": {
+      default: null,
+    },
+    "list.columns": {
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]: Series) => {
+        const defaultTitleColumn =
+          cols.find((col) => Lib.isEntityName(Lib.legacyColumnTypeInfo(col))) ||
+          cols.find((col) => Lib.isTitle(Lib.legacyColumnTypeInfo(col))) ||
+          cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col))) ||
+          cols[0];
+        const defaultSubtitleColumn =
+          defaultTitleColumn &&
+          Lib.isID(Lib.legacyColumnTypeInfo(defaultTitleColumn))
+            ? null
+            : cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col)));
+
+        const imageColumn = cols.find(
+          (col) =>
+            Lib.isAvatarURL(Lib.legacyColumnTypeInfo(col)) ||
+            Lib.isImageURL(Lib.legacyColumnTypeInfo(col)),
+        );
+
+        const usedColumns = new Set(
+          [defaultTitleColumn, defaultSubtitleColumn, imageColumn].filter(
+            Boolean,
+          ),
+        );
+
+        const defaultRightColumns = cols
+          .filter((col) => !usedColumns.has(col))
+          .slice(0, 4)
+          .map((col) => col?.name);
+
+        return {
+          left: [defaultTitleColumn, defaultSubtitleColumn]
+            .filter(Boolean)
+            .map((col) => col?.name),
+          right: defaultRightColumns,
+          image: imageColumn?.name,
+        };
+      },
+    },
   },
 
   // TODO Unify with the same code in Table viz
@@ -260,14 +305,11 @@ export const ListViz = ({
     entityIcon?: string;
   }) => {
     const newSettings = {
-      viewSettings: {
-        ...settings.viewSettings,
-        listSettings: {
-          leftColumns: left,
-          rightColumns: right,
-          entityIcon,
-        },
+      "list.columns": {
+        left,
+        right,
       },
+      "list.entity_icon": entityIcon,
     };
     const nextQuestion = question?.updateSettings(newSettings);
     if (nextQuestion) {

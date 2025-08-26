@@ -77,7 +77,7 @@ type MetadataDiff = Record<string, Partial<Field>>;
 
 export type DatasetEditorInnerProps = {
   question: Question;
-  rawSeries: RawSeries;
+  rawSeries: RawSeries | null;
   visualizationSettings?: VisualizationSettings | null;
   datasetEditorTab: DatasetEditorTab;
   metadata?: Metadata;
@@ -197,7 +197,7 @@ function getSidebar(
   }
 
   if (datasetEditorTab === "metadata") {
-    if (isQueryError) {
+    if (isQueryError || !props.rawSeries) {
       return null;
     }
     if (!focusedField) {
@@ -299,6 +299,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     },
   );
   const tempRawSeries = useMemo(() => {
+    if (!rawSeries || !rawSeries.length) {
+      return rawSeries;
+    }
+
     return [
       {
         ...rawSeries[0],
@@ -406,18 +410,6 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     [focusedFieldName, setMetadataDiff, inheritMappedFieldProperties],
   );
 
-  const [isTabHintVisible, { turnOn: showTabHint, turnOff: hideTabHint }] =
-    useToggle(false);
-
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    if (result) {
-      timeoutId = setTimeout(() => showTabHint(), 500);
-    }
-    return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
-
   const onChangeEditorTab = useCallback(
     (tab: DatasetEditorTab) => {
       setDatasetEditorTab(tab);
@@ -430,7 +422,9 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
        * `dirty` checks.
        */
       const display = question.display();
-      if (display === "list") {
+      const tempDisplay = tempModelSettings.display;
+      const hasListViewSelected = display === "list" || tempDisplay === "list";
+      if (hasListViewSelected) {
         if (tab !== "metadata") {
           setTempModelSettings({
             display: "table",
@@ -442,8 +436,18 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           display: question.display(),
         });
       }
+      if (hasListViewSelected && isShowingListViewConfiguration) {
+        dispatch(setUIControls({ isShowingListViewConfiguration: false }));
+      }
     },
-    [initialEditorHeight, setDatasetEditorTab, question],
+    [
+      initialEditorHeight,
+      setDatasetEditorTab,
+      question,
+      dispatch,
+      isShowingListViewConfiguration,
+      tempModelSettings,
+    ],
   );
 
   const handleCancelEdit = () => {
@@ -477,7 +481,6 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
         tempModelSettings.display,
       );
     }
-    debugger;
     const questionWithMetadata =
       questionWithUpdatedSettings.setResultMetadataDiff(metadataDiff);
     if (isShowingListViewConfiguration) {
@@ -731,14 +734,6 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
                 renderEmptyMessage={isEditingColumns}
               />
             </DebouncedFrame>
-            <Box
-              className={cx(DatasetEditorS.TabHintToastContainer, {
-                [DatasetEditorS.isVisible]:
-                  isEditingColumns && isTabHintVisible && !result?.error,
-              })}
-            >
-              <TabHintToast onClose={hideTabHint} />
-            </Box>
           </Box>
         </Flex>
         <ViewSidebar side="right" isOpen={!!sidebar}>

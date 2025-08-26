@@ -28,6 +28,15 @@
   flex-shrink: 0;
   cursor: pointer;
   color: var(--mb-color-text-primary);
+  flex: 0 0 auto;
+  min-width: 4rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
+
+  > span {
+    width: 100%;
+    flex: 1;
+  }
 }
 
 .dragging {
@@ -35,5 +44,5 @@
 }
 
 .inputField {
-  min-width: 6rem;
+  min-width: 1rem;
 }

@@ -258,7 +258,7 @@ export function ReorderableTagsInput({
               onRemove={() => removeAt(idx)}
               containerId={containerId}
               style={{
-                display: shouldHide ? "none" : "block",
+                display: shouldHide ? "none" : "flex",
               }}
             />
           );

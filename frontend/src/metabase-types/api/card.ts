@@ -325,6 +325,10 @@ export type VisualizationSettings = {
   "sankey.show_edge_labels"?: boolean;
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
 
+  // List view settings
+  "list.columns"?: ListViewColumns;
+  "list.entity_icon"?: string;
+
   [key: string]: any;
 } & EmbedVisualizationSettings;
 
@@ -462,4 +466,10 @@ export type GetRemappedCardParameterValueRequest = {
   card_id: CardId;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
+};
+
+export type ListViewColumns = {
+  left: string[];
+  right: string[];
+  image?: string;
 };

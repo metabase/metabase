@@ -59,10 +59,6 @@ function getSettingDefinitionsForSeries(series) {
   const definitions = {
     ...COMMON_SETTINGS,
     ...(visualization.settings || {}),
-    viewSettings: {
-      defaultView: "table",
-      ...series?.[0]?.card?.visualization_settings?.viewSettings,
-    },
   };
   for (const id in definitions) {
     definitions[id].id = id;

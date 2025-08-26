@@ -7,7 +7,12 @@ import { useObjectDetail } from "metabase/visualizations/components/TableInterac
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Card, DatasetColumn, DatasetData } from "metabase-types/api";
+import type {
+  Card,
+  DatasetColumn,
+  DatasetData,
+  ListViewColumns,
+} from "metabase-types/api";
 
 import styles from "./ListView.module.css";
 import { ListViewItem } from "./ListViewItem";
@@ -47,14 +52,13 @@ export function ListView({
   const virtualRows = virtualizer.getVirtualItems();
 
   const { titleColumn, subtitleColumn, imageColumn, rightColumns } =
-    useListColumns(cols, settings.viewSettings?.listSettings);
+    useListColumns(cols, settings?.["list.columns"]);
 
   const openObjectDetail = useObjectDetail(data, card, metadata);
 
   // Get the appropriate icon based on entity type
   const entityIcon =
-    getEntityIcon(settings.viewSettings?.listSettings?.entityIcon) ||
-    getEntityIcon(entityType);
+    settings?.["list.entity_icon"] || getEntityIcon(entityType);
 
   return (
     <Stack
@@ -177,44 +181,25 @@ function ColumnHeader({
   );
 }
 
-type ListSettings = {
-  leftColumns: string[];
-  rightColumns: string[];
-};
-
 export function useListColumns(
   cols: DatasetColumn[],
-  listSettings?: ListSettings,
+  listSettings?: ListViewColumns,
 ) {
   // Column role is based on it's position in the list:
   // - First column is title
   // - Second column is subtitle
   // - Next 0-5 columns are right columns
   const titleColumn = useMemo(() => {
-    const defaultTitleColumn =
-      cols.find((col) => Lib.isEntityName(Lib.legacyColumnTypeInfo(col))) ||
-      cols.find((col) => Lib.isTitle(Lib.legacyColumnTypeInfo(col))) ||
-      cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col))) ||
-      cols[0];
-    if (listSettings && Array.isArray(listSettings.leftColumns)) {
-      return cols.find((col) => listSettings.leftColumns[0] === col.name);
-    }
-    return defaultTitleColumn;
+    return !listSettings
+      ? null
+      : cols.find((col) => listSettings?.left[0] === col.name);
   }, [cols, listSettings]);
 
   const subtitleColumn = useMemo(() => {
-    const defaultSubtitleColumn =
-      titleColumn && Lib.isID(Lib.legacyColumnTypeInfo(titleColumn))
-        ? null
-        : cols.find((col) => Lib.isID(Lib.legacyColumnTypeInfo(col)));
-    if (listSettings && Array.isArray(listSettings.leftColumns)) {
-      if (listSettings.leftColumns.length > 1) {
-        return cols.find((col) => listSettings.leftColumns[1] === col.name);
-      }
-      return undefined;
-    }
-    return defaultSubtitleColumn;
-  }, [cols, listSettings, titleColumn]);
+    return !listSettings || listSettings.left.length < 2
+      ? null
+      : cols.find((col) => listSettings?.left[1] === col.name);
+  }, [cols, listSettings]);
 
   const imageColumn = useMemo(() => {
     return cols.find(
@@ -225,20 +210,12 @@ export function useListColumns(
   }, [cols]);
 
   const rightColumns = useMemo(() => {
-    const usedColumns = new Set(
-      [titleColumn, subtitleColumn, imageColumn].filter(Boolean),
-    );
-
-    const defaultRightColumns = cols
-      .filter((col) => !usedColumns.has(col))
-      .slice(0, 4);
-    if (listSettings && Array.isArray(listSettings.rightColumns)) {
-      return listSettings.rightColumns
-        .map((colName) => cols.find((col) => col.name === colName))
-        .filter(Boolean) as DatasetColumn[];
-    }
-    return defaultRightColumns;
-  }, [cols, titleColumn, subtitleColumn, imageColumn, listSettings]);
+    return !listSettings
+      ? []
+      : (listSettings.right
+          .map((colName) => cols.find((col) => col.name === colName))
+          .filter(Boolean) as DatasetColumn[]);
+  }, [cols, listSettings]);
 
   return {
     titleColumn,
@@ -253,8 +230,8 @@ export const ENTITY_ICONS = {
   "entity/CompanyTable": "company",
   "entity/TransactionTable": "receipt",
   "entity/SubscriptionTable": "sync",
-  "entity/ProductTable": "document",
-  "entity/EventTable": "document",
+  "entity/ProductTable": "label",
+  "entity/EventTable": "calendar",
   "entity/GenericTable": "document",
 } as const;
 

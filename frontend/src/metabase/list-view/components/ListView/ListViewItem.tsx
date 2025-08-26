@@ -15,8 +15,8 @@ export interface ListViewItemProps {
   cols: DatasetColumn[];
   settings?: ComputedVisualizationSettings;
   entityIcon: string;
-  imageColumn?: DatasetColumn;
-  titleColumn?: DatasetColumn;
+  imageColumn?: DatasetColumn | null;
+  titleColumn?: DatasetColumn | null;
   subtitleColumn?: DatasetColumn | null;
   rightColumns: DatasetColumn[];
   style?: CSSProperties;

@@ -8,7 +8,7 @@ import { Button, Group, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { CardDisplayType, RawSeries } from "metabase-types/api";
 
-import { ListViewColumnsCustomization } from "./ListViewColumnsCustomization";
+import { ListViewColumnsSidebar } from "./ListViewColumnsSidebar";
 
 export type ModelSettings = {
   display: CardDisplayType;
@@ -33,7 +33,7 @@ export const DatasetEditorSettingsSidebar = ({
 
   if (display === "list" && isShowingListViewConfiguration) {
     return (
-      <ListViewColumnsCustomization
+      <ListViewColumnsSidebar
         cols={cols}
         settings={visualizationSettings}
         onDone={() =>
