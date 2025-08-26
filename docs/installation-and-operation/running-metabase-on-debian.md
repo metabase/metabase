@@ -130,7 +130,7 @@ server {
 }
 ```
 
-### Register your Metabase service
+## Register your Metabase service
 
 Now, it's time to register our Metabase service with systemd so it will start up at system boot:
 
