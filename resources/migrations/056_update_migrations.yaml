@@ -376,7 +376,7 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-08-22T12:00:00
       author: sloansparger
-      comment: Migrate metabot relationships to direct foreign keys and remove metabot_entity table
+      comment: Add use_verified_content column to metabot
       changes:
         - addColumn:
             tableName: metabot
@@ -388,12 +388,27 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                   defaultValueBoolean: false
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:01
+      author: sloansparger
+      comment: Add collection_id column to metabot
+      changes:
+        - addColumn:
+            tableName: metabot
+            columns:
               - column:
                   name: collection_id
                   type: int
                   remarks: ID of the collection this metabot can access
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:02
+      author: sloansparger
+      comment: Add metabot_id column to metabot_prompt
+      changes:
         - addColumn:
             tableName: metabot_prompt
             columns:
@@ -403,6 +418,12 @@ databaseChangeLog:
                   remarks: The metabot this prompt is associated with
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:03
+      author: sloansparger
+      comment: Migrate collection references from metabot_entity to metabot.collection_id with exception to the default metabot instance
+      changes:
         - sql:
             comment: Migrate collection references from metabot_entity to metabot.collection_id with exception to the default metabot instance
             sql: >-
@@ -421,6 +442,20 @@ databaseChangeLog:
                   AND me.model = 'collection'
               )
               AND metabot.entity_id != 'metabotmetabotmetabot';
+      rollback:
+        - sql:
+            comment: Clear collection_id values set by the migration
+            sql: >-
+              UPDATE metabot
+              SET collection_id = NULL
+              WHERE collection_id IS NOT NULL
+              AND metabot.entity_id != 'metabotmetabotmetabot';
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:04
+      author: sloansparger
+      comment: Migrate metabot_prompt.metabot_entity_id to metabot_prompt.metabot_id
+      changes:
         - sql:
             comment: Migrate metabot_prompt.metabot_entity_id to metabot_prompt.metabot_id
             sql: >-
@@ -430,10 +465,29 @@ databaseChangeLog:
                 FROM metabot_entity me
                 WHERE me.id = metabot_prompt.metabot_entity_id
               );
+      rollback:
+        - sql:
+            comment: Clear metabot_id values set by the migration
+            sql: >-
+              UPDATE metabot_prompt
+              SET metabot_id = NULL
+              WHERE metabot_id IS NOT NULL;
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:05
+      author: sloansparger
+      comment: Add not null constraint to metabot_prompt.metabot_id
+      changes:
         - addNotNullConstraint:
             tableName: metabot_prompt
             columnName: metabot_id
             columnDataType: int
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:06
+      author: sloansparger
+      comment: Add foreign key constraint metabot_prompt.metabot_id -> metabot.id
+      changes:
         - addForeignKeyConstraint:
             baseTableName: metabot_prompt
             baseColumnNames: metabot_id
@@ -441,21 +495,76 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_metabot_prompt_metabot_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:07
+      author: sloansparger
+      comment: Add index on metabot_prompt.metabot_id
+      changes:
         - createIndex:
             tableName: metabot_prompt
             indexName: idx_metabot_prompt_metabot_id
             columns:
               - column:
                   name: metabot_id
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:08
+      author: sloansparger
+      comment: Drop foreign key constraint metabot_prompt.metabot_entity_id
+      changes:
         - dropForeignKeyConstraint:
             baseTableName: metabot_prompt
             constraintName: fk_metabot_prompt_metabot_entity_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: metabot_entity_id
+            referencedTableName: metabot_entity
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_metabot_entity_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:09
+      author: sloansparger
+      comment: Drop index on metabot_prompt.metabot_entity_id
+      changes:
         - dropIndex:
             tableName: metabot_prompt
             indexName: idx_metabot_prompt_metabot_entity_id
+      rollback:
+        - createIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_metabot_entity_id
+            columns:
+              - column:
+                  name: metabot_entity_id
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:10
+      author: sloansparger
+      comment: Drop metabot_entity_id column from metabot_prompt
+      changes:
         - dropColumn:
             tableName: metabot_prompt
             columnName: metabot_entity_id
+      rollback:
+        - addColumn:
+            tableName: metabot_prompt
+            columns:
+              - column:
+                  name: metabot_entity_id
+                  type: int
+                  remarks: The metabot entity this prompt is associated with
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:11
+      author: sloansparger
+      comment: Remove metabot_entity table as collection association is now direct
+      changes:
         - dropTable:
             tableName: metabot_entity
             comment: Remove metabot_entity table as collection association is now direct
