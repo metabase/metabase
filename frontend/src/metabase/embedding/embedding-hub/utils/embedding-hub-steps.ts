@@ -124,8 +124,8 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     TEST_EMBED,
     ADD_DATA,
     CREATE_DASHBOARD,
-    CONFIGURE_ROW_COLUMN_SECURITY,
     SECURE_EMBEDS,
+    CONFIGURE_ROW_COLUMN_SECURITY,
     EMBED_PRODUCTION,
   ];
 };
