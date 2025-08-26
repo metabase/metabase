@@ -40,14 +40,10 @@ export function ManageSection({ transform }: ManageSectionProps) {
         {transform.source.type === "python" && (
           <div style={{ padding: "1rem" }}>
             <p>
-              <strong>{t`Database ID`}:</strong> {transform.source.database}
+              <strong>{t`Database ID`}:</strong>{" "}
+              {transform.source["source-database"]}
             </p>
-            {transform.source.table && (
-              <p>
-                <strong>{t`Table ID`}:</strong> {transform.source.table}
-              </p>
-            )}
-            <pre>{transform.source.script}</pre>
+            <pre>{transform.source.body}</pre>
           </div>
         )}
       </Card>

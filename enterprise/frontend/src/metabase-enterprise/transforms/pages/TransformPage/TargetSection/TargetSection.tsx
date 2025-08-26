@@ -63,7 +63,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
     source.type === "query"
       ? source.query.database
       : source.type === "python"
-        ? source.database
+        ? source["source-database"]
         : undefined;
 
   const { data: databaseFromApi, isLoading: isDatabaseLoading } =

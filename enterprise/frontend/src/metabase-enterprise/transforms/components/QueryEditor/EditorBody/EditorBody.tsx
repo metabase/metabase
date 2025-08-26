@@ -120,7 +120,7 @@ export function EditorBody({
   if (isPython) {
     return (
       <PythonEditor
-        script={pythonSource?.script || ""}
+        script={pythonSource?.body || ""}
         isRunnable={isRunnable}
         isRunning={isRunning}
         isResultDirty={isResultDirty}

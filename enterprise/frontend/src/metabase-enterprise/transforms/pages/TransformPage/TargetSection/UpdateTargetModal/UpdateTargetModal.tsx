@@ -87,7 +87,7 @@ function UpdateTargetForm({
     source.type === "query"
       ? source.query.database
       : source.type === "python"
-        ? source.database
+        ? source["source-database"]
         : undefined;
   const [updateTransform] = useUpdateTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();

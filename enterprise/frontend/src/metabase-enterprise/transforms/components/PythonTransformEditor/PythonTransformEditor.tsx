@@ -27,10 +27,10 @@ export function PythonTransformEditor({
   const [isSourceDirty, setIsSourceDirty] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
 
-  const handleScriptChange = (script: string) => {
+  const handleScriptChange = (body: string) => {
     const newSource = {
       ...source,
-      script,
+      body,
     };
     setSource(newSource);
     setIsSourceDirty(true);
@@ -72,7 +72,7 @@ export function PythonTransformEditor({
 
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
-  const canSave = Boolean(source.script.trim() && source.database);
+  const canSave = Boolean(source.body.trim() && source["source-database"]);
 
   return (
     <Flex
@@ -91,13 +91,13 @@ export function PythonTransformEditor({
       />
       <Flex direction="column" style={{ flex: 1 }} p="md">
         <PythonDataPicker
-          database={source.database}
+          database={source["source-database"]}
           onChange={handleDataChange}
         />
 
         <Flex direction="column" style={{ flex: 1, marginTop: "1rem" }}>
           <PythonEditor
-            script={source.script}
+            script={source.body}
             isRunnable={true}
             isRunning={isRunning}
             isResultDirty={false}
