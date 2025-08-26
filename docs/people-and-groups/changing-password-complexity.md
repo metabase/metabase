@@ -24,6 +24,12 @@ The settings above can be used independently, so it's fine to use only one or th
 By default, Metabase also prevents users from setting passwords that are in a list of common passwords (like `qwerty123` and
 `passw0rd`). Changing the complexity requirement to `weak` disables this behavior.
 
+## Metabase Cloud passwords
+
+If your instance is hosted on Metabase Cloud, the follwing password compexity rules apply:
+- passwords need to be at least 12 characters long
+- passwords must contain at least 2 lowercase, 2 uppercase, 1 digit, and 1 special character
+
 ## Disabling password logins
 
 {% include plans-blockquote.html feature="Disabling password logins" %}
