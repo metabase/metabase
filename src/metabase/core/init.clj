@@ -53,6 +53,7 @@
    [metabase.settings.init]
    [metabase.setup.init]
    [metabase.sso.init]
+   [metabase.store-api.init]
    [metabase.sync.init]
    [metabase.system.init]
    [metabase.task-history.init]

@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.settings :as api.auth]
-   [metabase.cloud-migration.core :as cloud-migration]
+   [metabase.store-api.core :as store-api]
    [metabase.util :as m.util]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -42,7 +42,7 @@
   `->config` either gets the store-api-url and api-key from settings or throws an exception when either are unset or
   blank."
   []
-  (let [store-api-url (cloud-migration/store-api-url)
+  (let [store-api-url (store-api/store-api-url)
         _ (when (str/blank? store-api-url)
             (log/error "Missing store-api-url. Cannot create hm client config.")
             (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
