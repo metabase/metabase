@@ -682,43 +682,6 @@
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
-;; historical test: don't do this going forward
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-(deftest ^:parallel pivot-dataset-with-added-expression-test
-  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-    (mt/dataset test-data
-      (testing "POST /api/dataset/pivot"
-        ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
-        ;; the GROUP BY expression
-        (when (#{:mongo :h2 :sqlite} driver/*driver*)
-          (testing "with an added expression"
-            ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
-            ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].
-            (let [query  (-> (qp.pivot.test-util/pivot-query)
-                             (assoc-in [:query :fields] [[:expression "test-expr"]])
-                             (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
-                  result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
-                  rows   (mt/rows result)]
-              (is (= 1144 (:row_count result)))
-              (is (= 1144 (count rows)))
-              (let [cols (mt/cols result)]
-                (is (= ["User → State"
-                        "User → Source"
-                        "Product → Category"
-                        "pivot-grouping"
-                        "Count"
-                        "Sum of Quantity"
-                        "test-expr"]
-                       (map :display_name cols)))
-                (is (=? {:base_type       "type/Integer"
-                         :effective_type  "type/Integer"
-                         :name            "pivot-grouping"
-                         :display_name    "pivot-grouping"
-                         :field_ref       ["expression" "pivot-grouping"]
-                         :source          "breakout"}
-                        (nth cols 3))))
-              (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
-
 (deftest ^:parallel pivot-dataset-row-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data

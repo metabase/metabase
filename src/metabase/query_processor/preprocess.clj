@@ -21,6 +21,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
+   [metabase.query-processor.middleware.drop-fields-in-summaries :as drop-fields-in-summaries]
    [metabase.query-processor.middleware.ensure-joins-use-source-query :as ensure-joins-use-source-query]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.expand-aggregations :as expand-aggregations]
@@ -123,6 +124,7 @@
    (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-pmbql #'validate/validate-query)
    (ensure-pmbql #'fetch-source-query/resolve-source-cards)
+   (ensure-pmbql #'drop-fields-in-summaries/drop-fields-in-summaries)
    (ensure-pmbql #'expand-aggregations/expand-aggregations)
    (ensure-pmbql #'metrics/adjust)
    (ensure-pmbql #'expand-macros/expand-macros)
