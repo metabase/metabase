@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { push } from "react-router-redux";
 
 import {
   setupRecentViewsAndSelectionsEndpoints,
@@ -13,7 +14,16 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
+jest.mock("react-router-redux", () => ({
+  push: jest.fn(() => ({
+    type: "@@router/CALL_HISTORY_METHOD",
+    payload: { method: "push" },
+  })),
+}));
+
 import { EmbeddingHub } from "./EmbeddingHub";
+
+const mockPush = push as jest.MockedFunction<typeof push>;
 
 const setup = ({ isAdmin = true } = {}) => {
   const state = createMockState({
@@ -43,6 +53,10 @@ const setup = ({ isAdmin = true } = {}) => {
 };
 
 describe("EmbeddingHub", () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+  });
+
   it("opens AddDataModal when 'Add data' is clicked", async () => {
     setup();
 
@@ -86,6 +100,8 @@ describe("EmbeddingHub", () => {
       await within(dialog).findByText("Foo Bar Table"),
     ).toBeInTheDocument();
 
-    userEvent.click(within(dialog).getByText("Foo Bar Table"));
+    await userEvent.click(within(dialog).getByText("Foo Bar Table"));
+
+    expect(mockPush).toHaveBeenCalledWith("/auto/dashboard/table/10");
   });
 });
