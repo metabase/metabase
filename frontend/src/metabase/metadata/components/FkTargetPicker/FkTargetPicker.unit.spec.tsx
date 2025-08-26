@@ -73,7 +73,9 @@ describe("FkTargetPicker", () => {
     const select = screen.getByPlaceholderText("No key available");
     await userEvent.click(select);
 
-    expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Didn't find any results"),
+    ).toBeInTheDocument();
   });
 
   it("should render options with label, description, and icon", async () => {

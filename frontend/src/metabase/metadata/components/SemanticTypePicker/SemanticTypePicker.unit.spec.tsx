@@ -115,7 +115,7 @@ describe("SemanticTypePicker", () => {
         initialValue: TYPE.CancelationDate,
       });
 
-      expect(screen.getByText("Cancelation date")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Cancelation date")).toBeInTheDocument();
 
       await assertSemanticTypesVisibility({
         visibleTypes: ["Creation date", "Cancelation date"],
@@ -128,7 +128,7 @@ describe("SemanticTypePicker", () => {
         initialValue: TYPE.CancelationDate,
       });
 
-      expect(screen.getByText("Cancelation date")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Cancelation date")).toBeInTheDocument();
 
       const picker = screen.getByPlaceholderText("Select a semantic type");
       await userEvent.click(picker);
