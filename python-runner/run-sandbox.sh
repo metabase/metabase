@@ -10,7 +10,7 @@ CODE_FILE="$1"
 OUTPUT_FILE="$2"
 STDOUT_FILE="$3"
 STDERR_FILE="$4"
-METABASE_URL="$4"
+METABASE_URL="$5"
 
 # Create output directory if it doesn't exist
 OUTPUT_DIR="$(dirname "$OUTPUT_FILE")"
