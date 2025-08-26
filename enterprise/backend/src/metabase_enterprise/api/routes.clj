@@ -92,7 +92,7 @@
    "/audit-app" (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe" (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing" metabase-enterprise.billing.api.routes/routes
-   "/branch" (premium-handler metabase-enterprise.branching.api/routes :documents)
+   "/branch" metabase-enterprise.branching.api/routes
    "/content-translation" (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/database-replication" (-> database-replication.api/routes ;; database-replication requires all these features.
                                (premium-handler :attached-dwh)

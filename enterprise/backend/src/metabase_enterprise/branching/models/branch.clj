@@ -20,18 +20,18 @@
 
  ;;; ------------------------------------------------- Helper Functions -------------------------------------------------
 
-(mu/defn parent :- [:maybe (ms/InstanceOf :model/Branch)]
+(mu/defn get-parent :- [:maybe (ms/InstanceOf :model/Branch)]
   "Get the parent branch of the given branch, if it exists."
   [branch :- (ms/InstanceOf :model/Branch)]
   (when-let [parent-id (:parent_branch_id branch)]
     (t2/select-one :model/Branch :id parent-id)))
 
-(mu/defn children :- [:set (ms/InstanceOf :model/Branch)]
+(mu/defn get-children :- [:set (ms/InstanceOf :model/Branch)]
   "Get all direct child branches of the given branch."
   [branch :- (ms/InstanceOf :model/Branch)]
   (set (t2/select :model/Branch :parent_branch_id (:id branch))))
 
-(mu/defn has-children? :- :boolean
+(mu/defn get-has-children? :- :boolean
   "Check if the given branch has any child branches."
   [branch :- (ms/InstanceOf :model/Branch)]
   (t2/exists? :model/Branch :parent_branch_id (:id branch)))
@@ -48,16 +48,16 @@
   :parent
   "Hydrate a branch with its parent branch."
   [branch]
-  (parent branch))
+  (get-parent branch))
 
 (mi/define-simple-hydration-method children
   :children
   "Hydrate a branch with its direct child branches."
   [branch]
-  (children branch))
+  (get-children branch))
 
 (mi/define-simple-hydration-method has-children?
   :has_children
   "Hydrate a branch with a boolean indicating whether it has child branches."
   [branch]
-  (has-children? branch))
+  (get-has-children? branch))

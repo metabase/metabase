@@ -5,6 +5,7 @@
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.branching.core :as branching]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]
@@ -602,6 +603,17 @@
           (api/column-will-change? :collection_id card-before-update card-updates))
       (assoc :collection_id collection-id))))
 
+(defn- on-current-branch?
+  [{:keys [id]}]
+  (and branching/*current-branch-name*
+       (t2/exists? :model/BranchModelMapping :original_id id :branch_id (:id @branching/*current-branch*) :model_type "report_card")))
+
+(defn- maybe-get-branched-id
+  [{:keys [id]}]
+  (when branching/*current-branch-name*
+    (t2/select-one-fn :branched_model_id :model/BranchModelMapping
+                      :original_id id :branch_id (:id @branching/*current-branch*) :model_type "report_card")))
+
 (mu/defn update-card!
   "Updates a card - impl"
   [id :- ms/PositiveInt
@@ -653,10 +665,17 @@
                                                metadata
                                                (assoc :result_metadata           metadata
                                                       :verified-result-metadata? true))
-          card                               (-> (card/update-card! {:card-before-update    card-before-update
-                                                                     :card-updates          card-updates
-                                                                     :actor                 @api/*current-user*
-                                                                     :delete-old-dashcards? delete-old-dashcards?})
+          card                               (-> (if-not (on-current-branch? card-before-update)
+                                                   (u/prog1 (card/create-card! (merge card-before-update card-updates) @api/*current-user*)
+                                                     (t2/insert! :model/BranchModelMapping {:original_id id
+                                                                                            :branched_model_id (:id <>)
+                                                                                            :model_type "report_card"
+                                                                                            :branch_id (:id @branching/*current-branch*)}))
+                                                   (card/update-card! {:card-before-update    card-before-update
+                                                                       :branched-id           (maybe-get-branched-id card-before-update)
+                                                                       :card-updates          card-updates
+                                                                       :actor                 @api/*current-user*
+                                                                       :delete-old-dashcards? delete-old-dashcards?}))
                                                  hydrate-card-details
                                                  (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))]
       ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
