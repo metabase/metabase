@@ -623,7 +623,7 @@
 
 (defn- arrays->vectors
   [obj]
-  (if (.isArray (class obj))
+  (if (and obj (.isArray (class obj)))
     (mapv arrays->vectors obj)
     obj))
 
