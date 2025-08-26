@@ -792,7 +792,12 @@ describe("metabot-streaming", () => {
 
       expect(
         _.pick((await lastReqBody(agentSpy))?.context, "capabilities"),
-      ).toEqual({ capabilities: ["frontend:write_notebook_query_v1"] });
+      ).toEqual({
+        capabilities: [
+          "frontend:navigate_user_v1",
+          "frontend:write_notebook_query_v1",
+        ],
+      });
     });
 
     it("should allow components to register additional context", async () => {
