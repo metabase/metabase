@@ -573,6 +573,7 @@ databaseChangeLog:
       changes:
         - dropTable:
             tableName: metabot_entity
+            cascadeConstraints: true
             comment: Remove metabot_entity table as collection association is now direct
       rollback:
         - createTable:
