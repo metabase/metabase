@@ -60,8 +60,7 @@ import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getSeriesYAxisIndex } from "./utils";
 
-const CARTESIAN_LABEL_DENSITY_SCALE_FACTOR = 1.2;
-const WATERFALL_LABEL_DENSITY_SCALE_FACTOR = 0.6;
+const MIN_LABEL_SPACING_PX = 40;
 
 const getBlurLabelStyle = (
   settings: ComputedVisualizationSettings,
@@ -195,16 +194,14 @@ function getShowLabelFn(
     return () => true;
   }
 
-  const { averageLabelWidth, totalNumberOfLabels, type } = chartDataDensity;
+  const { averageLabelWidth, totalNumberOfLabels } = chartDataDensity;
   if (totalNumberOfLabels === 0 || averageLabelWidth === 0) {
     return () => true;
   }
 
-  const scaleFactor =
-    type === "combo"
-      ? CARTESIAN_LABEL_DENSITY_SCALE_FACTOR
-      : WATERFALL_LABEL_DENSITY_SCALE_FACTOR;
-  const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
+  const maxNumberOfLabels = Math.floor(
+    chartWidth / (averageLabelWidth + MIN_LABEL_SPACING_PX),
+  );
   if (totalNumberOfLabels <= maxNumberOfLabels) {
     return () => true;
   }
@@ -748,8 +745,9 @@ function getShowStackedLabelFn(
     return () => true;
   }
 
-  const scaleFactor = CARTESIAN_LABEL_DENSITY_SCALE_FACTOR;
-  const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
+  const maxNumberOfLabels = Math.floor(
+    chartWidth / (averageLabelWidth + MIN_LABEL_SPACING_PX),
+  );
   if (totalNumberOfLabels <= maxNumberOfLabels) {
     return () => true;
   }
