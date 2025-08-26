@@ -16,9 +16,9 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       },
     ],
     image: {
-      src: "app/assets/img/embedding_hub_create_test_embed.png",
-      srcSet: "app/assets/img/embedding_hub_create_test_embed@2x.png 2x",
-      alt: t`Screenshot of creating a test embed`,
+      src: "app/assets/img/embedding_hub_create_embed.png",
+      srcSet: "app/assets/img/embedding_hub_create_embed@2x.png 2x",
+      alt: t`Screenshot of creating an embed`,
     },
   };
 
@@ -89,8 +89,8 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
     actions: [
       {
-        label: t`Learn more`,
-        docsPath: "people-and-groups/authenticating-with-jwt",
+        label: t`Read the docs`,
+        docsPath: "embedding/securing-embeds",
         variant: "outline",
       },
     ],
@@ -113,6 +113,11 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         variant: "outline",
       },
     ],
+    image: {
+      src: "app/assets/img/embedding_hub_create_embed.png",
+      srcSet: "app/assets/img/embedding_hub_create_embed@2x.png 2x",
+      alt: t`Screenshot of creating an embed`,
+    },
   };
 
   return [

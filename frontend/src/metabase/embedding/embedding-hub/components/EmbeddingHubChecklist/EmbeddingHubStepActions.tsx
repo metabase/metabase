@@ -17,14 +17,10 @@ export const EmbeddingHubStepActions = ({
   return (
     <Group gap="sm">
       {step.actions.map((action, index) => {
-        const button = (
-          <Button variant={action.variant ?? "outline"}>{action.label}</Button>
-        );
-
         if (action.docsPath) {
           return (
             <DocsLink key={index} docsPath={action.docsPath}>
-              {button}
+              {action.label}
             </DocsLink>
           );
         }
@@ -32,7 +28,9 @@ export const EmbeddingHubStepActions = ({
         if (action.to) {
           return (
             <Link key={index} to={action.to}>
-              {button}
+              <Button variant={action.variant ?? "outline"}>
+                {action.label}
+              </Button>
             </Link>
           );
         }
