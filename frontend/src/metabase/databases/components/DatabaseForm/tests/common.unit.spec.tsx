@@ -152,7 +152,7 @@ describe("DatabaseForm with provider name", () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          provider_name: "",
+          provider_name: null,
         }),
       );
     });

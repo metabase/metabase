@@ -394,4 +394,3 @@
     (if (nil? json-unfolding)
       true
       json-unfolding)))
-

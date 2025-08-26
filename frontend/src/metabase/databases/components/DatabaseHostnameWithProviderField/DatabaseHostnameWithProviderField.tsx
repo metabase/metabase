@@ -20,7 +20,7 @@ export function DatabaseHostnameWithProviderField(
   }, [value, props.providers]);
 
   useEffect(() => {
-    setFieldValue("provider_name", provider ?? "");
+    setFieldValue("provider_name", provider ?? null);
   }, [provider, setFieldValue]);
 
   return (

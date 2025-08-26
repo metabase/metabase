@@ -213,22 +213,16 @@
            (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
            (analytics/inc! :metabase-database/status {:driver engine :healthy true})
 
-           ;; Detect and update provider name if not already set (only for databases that support provider detection)
-           (when (and (get (driver/extra-info driver) :providers)
-                      (nil? (:provider_name database)))
-             (try
-               (log/info (u/format-color :blue "Provider detection: checking database %s {:id %d, :provider_name %s, :details %s}"
-                                         (:name database) (:id database) (:provider_name database)
-                                         (select-keys details [:host])))
-               (let [detected-provider (provider-detection/detect-provider-from-database
-                                        database)
-                     provider-to-set (or detected-provider "")]
+           ;; Detect and update provider name
+           (when-let [provider (provider-detection/detect-provider-from-database database)]
+             (when (not= provider (:provider_name database))
+               (try
                  (log/info (u/format-color :blue "Provider detection: updating %s {:id %d} from '%s' to '%s'"
                                            (:name database) (:id database)
-                                           (:provider_name database) provider-to-set))
-                 (t2/update! :model/Database (:id database) {:provider_name provider-to-set}))
-               (catch Throwable provider-e
-                 (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))
+                                           (:provider_name database) provider))
+                 (t2/update! :model/Database (:id database) {:provider_name provider})
+                 (catch Throwable provider-e
+                   (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database))))))
 
            (catch Throwable e
              (let [humanized-message (some->> (u/all-ex-messages e)
