@@ -3,7 +3,11 @@ import { useMemo } from "react";
 import { Accordion, Icon, Stack, Text } from "metabase/ui";
 
 import { useScrollListItemIntoView } from "../../hooks/use-scroll-list-item-into-view";
-import type { EmbeddingHubStep, EmbeddingHubStepId } from "../../types";
+import type {
+  EmbeddingHubModalToTrigger,
+  EmbeddingHubStep,
+  EmbeddingHubStepId,
+} from "../../types";
 
 import AccordionS from "./EmbeddingHubAccordion.module.css";
 import S from "./EmbeddingHubChecklist.module.css";
@@ -15,6 +19,7 @@ interface EmbeddingHubChecklistProps {
 
   defaultOpenStep?: EmbeddingHubStepId;
   completedSteps?: Partial<Record<EmbeddingHubStepId, boolean>>;
+  onModalAction?: (modal: EmbeddingHubModalToTrigger) => void;
 }
 
 export const EmbeddingHubChecklist = ({
@@ -22,6 +27,7 @@ export const EmbeddingHubChecklist = ({
 
   defaultOpenStep,
   completedSteps = {},
+  onModalAction,
 }: EmbeddingHubChecklistProps) => {
   const stepIds = useMemo(() => steps.map((step) => step.id), [steps]);
 
@@ -84,7 +90,10 @@ export const EmbeddingHubChecklist = ({
 
                 <Text>{step.description}</Text>
 
-                <EmbeddingHubStepActions step={step} />
+                <EmbeddingHubStepActions
+                  step={step}
+                  onModalAction={onModalAction}
+                />
               </Stack>
             </Accordion.Panel>
           </Accordion.Item>
