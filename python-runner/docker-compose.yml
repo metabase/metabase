@@ -3,11 +3,12 @@ version: '3.8'
 services:
   python-sandbox:
     build: .
+    image: python-sandbox:latest
     network_mode: none
     read_only: true
     tmpfs:
       - /tmp
-      - /sandbox/output
+      # - /sandbox/output
     environment:
       - OUTPUT_FILE=/sandbox/output/result.csv
       - SCRIPT_FILE=/sandbox/script.py

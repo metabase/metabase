@@ -167,7 +167,7 @@
    "/public"               (+public-exceptions 'metabase.public-sharing.api)
    "/pulse"                metabase.pulse.api/pulse-routes
    ;; TODO spin this out to a separate service
-   "/python-runner"        (+auth 'metabase.python-runner.api)
+   "/python-runner"        'metabase.python-runner.api ;; (+auth 'metabase.python-runner.api)
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
