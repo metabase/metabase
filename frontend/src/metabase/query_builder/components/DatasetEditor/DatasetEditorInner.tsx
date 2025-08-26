@@ -17,7 +17,6 @@ import Button from "metabase/common/components/Button";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import EditBar from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { useToggle } from "metabase/common/hooks/use-toggle";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { connect, useDispatch } from "metabase/lib/redux";
@@ -65,12 +64,11 @@ import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {
   DatasetEditorSettingsSidebar,
-  ModelSettings,
+  type ModelSettings,
 } from "./DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
-import { TabHintToast } from "./TabHintToast";
 import { EDITOR_TAB_INDEXES } from "./constants";
 
 type MetadataDiff = Record<string, Partial<Field>>;
