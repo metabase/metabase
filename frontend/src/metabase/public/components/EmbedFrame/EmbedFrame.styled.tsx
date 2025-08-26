@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
@@ -79,7 +80,9 @@ export const TitleAndDescriptionContainer = styled(FullWidthContainer, {
     `}
 `;
 
-export const DashboardTabsContainer = styled(FullWidthContainer)<{
+export const DashboardTabsContainer = styled(FullWidthContainer, {
+  shouldForwardProp: isPropValid,
+})<{
   narrow?: boolean;
 }>`
   ${breakpointMaxSmall} {
