@@ -976,7 +976,7 @@
                              ;; :total_count
                              :limit  (if (zero? limit) 1 limit)
                              :offset offset))
-        rows        (t2/debug (t2/query limit-query))
+        rows        (t2/query limit-query)
         res         {:total  (->> rows first :total_count)
                      :data   (if (= limit 0)
                                []
