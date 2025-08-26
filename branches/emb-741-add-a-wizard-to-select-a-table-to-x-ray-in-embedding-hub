@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-751-add-the-add-data-and-create-dashboard-modals-to-embedding",
     "hash": "72ab06dae433c75426cd5a2975339ad46301dae2"
+  },
+  "upstream": {
+    "branch": "emb-741-add-a-wizard-to-select-a-table-to-x-ray-in-embedding-hub"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 62715,
+        "gqlID": "PR_kwDOAczgH86lVKyu"
+      }
+    }
   }
 }
