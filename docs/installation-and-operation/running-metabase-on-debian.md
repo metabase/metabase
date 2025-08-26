@@ -111,7 +111,7 @@ The best part of setting up Metabase as a systemd service is that it will start 
 
 If you're running a PostgreSQL application database, make sure you've created a database for Metabase, as well as a user that can access that database. These values should match what you've set in your Metabase config for the `MB_DB_TYPE`, `MB_DB_DBNAME`, `MB_DB_USER`, and `MB_DB_PASS` environment variables. If you don't have your database properly configured, Metabase won't be able to start.
 
-### Ensure Nginx proxies requests to Metabase
+## Ensure Nginx proxies requests to Metabase
 
 Getting into too much detail about configuring Nginx is well outside the scope of this guide, but here's a quick `nginx.conf` file that will get you up and running.
 
