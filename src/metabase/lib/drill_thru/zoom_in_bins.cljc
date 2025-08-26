@@ -102,10 +102,10 @@
   See [[metabase.lib.drill-thru.zoom-in-bins]] docstring for more information."
   [query                                 :- ::lib.schema/query
    stage-number                         :- :int
-   {:keys [column value], :as _context}  :- ::lib.schema.drill-thru/context]
+   {{:keys [semantic-type] :as column} :column, :keys [value], :as _context}  :- ::lib.schema.drill-thru/context]
   (when (and column value (not= value :null)
-             (or (not (or (= (:semantic-type :type/latitude))
-                          (= (:semantic-type :type/longitude))))
+             (or (not (or (= semantic-type :type/latitude)
+                          (= semantic-type :type/longitude)))
                  (not (has-lat-lon? query stage-number))))
     (when-let [existing-breakout (first (lib.breakout/existing-breakouts query
                                                                          (lib.underlying/top-level-stage-number query)

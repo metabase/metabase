@@ -166,6 +166,9 @@
    {:keys [column lat-column lon-column lat-value lon-value], :as _context} :- ContextWithLatLon]
   (when (and lat-value
              lon-value
+             ;; Only display this drill for latitude columns.  We only display this drill when we have both latitude
+             ;; and longitude columns, so by default, we get this drill twice whenever it shows up.  Only displaying
+             ;; it for one column type fixes that.
              (= (:semantic-type column) :type/Latitude))
     (when-let [{lat-bin-width :bin-width} (lib.binning/resolve-bin-width metadata-providerable lat-column lat-value)]
       (when-let [{lon-bin-width :bin-width} (lib.binning/resolve-bin-width metadata-providerable lon-column lon-value)]
