@@ -6,12 +6,12 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const TEST_EMBED: EmbeddingHubStep = {
     id: "create-test-embed",
     title: t`Create a test embed`,
-    icon: "check",
+    icon: "play",
     description: t`Test out the capabilities of Embedded Analytics JS by embedding a sample dashboard.`,
     actions: [
       {
         label: t`Create an embed`,
-        to: "/embed-js",
+        to: "/embed-js?auth_method=user_session",
         variant: "outline",
       },
     ],
@@ -113,7 +113,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     actions: [
       {
         label: t`Create an embed`,
-        to: "/embed-js",
+        to: "/embed-js?auth_method=sso",
         variant: "outline",
       },
     ],
