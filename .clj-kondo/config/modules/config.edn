@@ -1566,6 +1566,7 @@
            app-db
            audit-app
            classloader
+           config
            driver
            lib
            models
