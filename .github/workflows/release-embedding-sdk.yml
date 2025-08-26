@@ -428,7 +428,7 @@ jobs:
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           # Please keep the value in sync with `inputs.branch`'s release branch
           npm publish --tag ${{fromJson('{
-           "master": "${{ needs.determine-sdk-version.outputs.pre_release_label || 'nightly' }}",
+           "master": "${{ needs.determine-sdk-version.outputs.pre_release_label != '' && needs.determine-sdk-version.outputs.pre_release_label || 'nightly' }}",
            "release-x.51.x": "51-stable",
            "release-x.52.x": "52-stable",
            "release-x.53.x": "53-stable",
