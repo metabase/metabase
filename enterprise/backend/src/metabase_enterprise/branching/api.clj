@@ -38,14 +38,16 @@
   [_route-params
    {:keys [parent_id]} :- [:map
                            [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
-  {:data (if parent_id
-           (branch/branches-by-parent-id parent_id)
-           (t2/select :model/Branch))})
+  {:data (map #(select-keys % [:id :name :slug :description :creator_id :parent_branch_id :created_at :updated_at])
+              (if parent_id
+                (branch/branches-by-parent-id parent_id)
+                (t2/select :model/Branch)))})
 
 (api.macros/defendpoint :get "/:id"
   "Get a single branch by ID. Open access for authenticated users."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (or (t2/select-one :model/Branch :id id)
+  (or (some-> (t2/select-one :model/Branch :id id)
+              (select-keys [:id :name :slug :description :creator_id :parent_branch_id :created_at :updated_at]))
       (throw (ex-info (tru "Branch not found.") {:status-code 404}))))
 
 (api.macros/defendpoint :post "/"
@@ -64,7 +66,8 @@
                       description (assoc :description description)
                       parent_branch_id (assoc :parent_branch_id parent_branch_id))
         new-id (t2/insert-returning-pk! :model/Branch branch-data)]
-    (t2/select-one :model/Branch :id new-id)))
+    (-> (t2/select-one :model/Branch :id new-id)
+        (select-keys [:id :name :slug :description :creator_id :parent_branch_id :created_at :updated_at]))))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a branch by ID. Open access for authenticated users."
@@ -74,7 +77,7 @@
       (throw (ex-info (tru "Branch not found.") {:status-code 404})))
 
     ;; Check if there are child branches
-    (when (branch/has-children? branch)
+    (when (branch/get-has-children? branch)
       (throw (ex-info (tru "Cannot delete branch with child branches.") {:status-code 400})))
 
     (t2/delete! :model/Branch :id id)

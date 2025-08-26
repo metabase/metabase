@@ -1,22 +1,29 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { Badge } from "metabase/common/components/Badge";
 import { useUserSetting } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
 import {
+  ActionIcon,
   Box,
   Combobox,
   Divider,
+  Group,
   Icon,
   Loader,
   ScrollArea,
-  Select,
   Stack,
   Text,
   TextInput,
+  Tooltip,
+  UnstyledButton,
   useCombobox,
 } from "metabase/ui";
 import {
   useCreateGitBranchMutation,
+  useDeleteGitBranchMutation,
   useListGitBranchesQuery,
 } from "metabase-enterprise/api/git-sync";
 import type { GitBranch } from "metabase-types/api";
@@ -30,22 +37,30 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
     shouldDebounce: false,
   });
   const [searchValue, setSearchValue] = useState("");
-
-  const displayBranch = currentBranch || "main";
+  const currentUser = useSelector(getCurrentUser);
 
   const { data: branches = [], isLoading } = useListGitBranchesQuery();
+
+  const defaultBranch = branches.find((b) => !b.parent_branch_id);
+  const displayBranch = currentBranch || defaultBranch?.name;
   const [createBranch, { isLoading: isCreatingBranch }] =
     useCreateGitBranchMutation();
+  const [deleteBranch, { isLoading: isDeletingBranch }] =
+    useDeleteGitBranchMutation();
 
   const filteredBranches = useMemo(() => {
+    const availableBranches = branches.filter(
+      (branch) => branch.name !== displayBranch,
+    );
+
     if (!searchValue) {
-      return branches;
+      return availableBranches;
     }
     const search = searchValue.toLowerCase();
-    return branches.filter((branch) =>
+    return availableBranches.filter((branch) =>
       branch.name.toLowerCase().includes(search),
     );
-  }, [branches, searchValue]);
+  }, [branches, searchValue, displayBranch]);
 
   const combobox = useCombobox({
     onDropdownClose: () => {
@@ -85,8 +100,24 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
     [createBranch, displayBranch, handleBranchSelect, branches],
   );
 
-  const defaultBranch = branches.find(
-    (b) => b.name === "main" || !b.parent_branch_id,
+  const handleDeleteBranch = useCallback(
+    async (event: React.MouseEvent, branch: GitBranch) => {
+      event.stopPropagation();
+
+      if (branch.name === displayBranch) {
+        const defaultBranch = branches.find((b) => !b.parent_branch_id);
+        if (defaultBranch) {
+          setCurrentBranch(defaultBranch.name);
+        }
+      }
+
+      try {
+        await deleteBranch(branch.id).unwrap();
+      } catch (error) {
+        console.error("Failed to delete branch:", error);
+      }
+    },
+    [deleteBranch, displayBranch, branches, setCurrentBranch],
   );
 
   const isExactMatch = useMemo(
@@ -98,23 +129,28 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
   );
 
   return (
-    <Combobox store={combobox} withinPortal position="bottom-start">
+    <Combobox store={combobox} withinPortal position="bottom-end">
       <Combobox.Target>
-        <Select
-          placeholder={t`Select branch`}
-          value={displayBranch}
+        <UnstyledButton
           onClick={() => combobox.toggleDropdown()}
-          leftSection={<Icon name="git_branch" size={14} />}
-          rightSection={
-            isLoading || isCreatingBranch ? <Loader size="xs" /> : undefined
-          }
           disabled={disabled || isCreatingBranch}
-          readOnly
-          data={[{ value: displayBranch, label: displayBranch }]}
-        />
+          style={{ minWidth: 0 }}
+        >
+          <Badge
+            icon={{ name: "git_branch", size: 14 }}
+            activeColor="text-dark"
+            inactiveColor="text-dark"
+            isSingleLine
+          >
+            {displayBranch}
+            {(isLoading || isCreatingBranch || isDeletingBranch) && (
+              <Loader size="xs" ml="xs" />
+            )}
+          </Badge>
+        </UnstyledButton>
       </Combobox.Target>
 
-      <Combobox.Dropdown>
+      <Combobox.Dropdown style={{ minWidth: 320 }}>
         <Stack gap={0}>
           <Box p="sm">
             <TextInput
@@ -135,40 +171,68 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
                     value={defaultBranch.name}
                     onClick={() => handleBranchSelect(defaultBranch)}
                     active={defaultBranch.name === currentBranch}
+                    py="xs"
                   >
-                    {defaultBranch.name}
+                    <Group justify="space-between" w="100%">
+                      <Text>{defaultBranch.name}</Text>
+                    </Group>
                   </Combobox.Option>
-                  <Divider my="sm" />
+                  {filteredBranches.filter((b) => b !== defaultBranch).length >
+                    0 && <Divider my="xs" />}
                 </>
               )}
 
               {filteredBranches
                 .filter((b) => b !== defaultBranch)
-                .map((branch) => (
-                  <Combobox.Option
-                    key={branch.name}
-                    value={branch.name}
-                    onClick={() => handleBranchSelect(branch)}
-                    active={branch.name === currentBranch}
-                  >
-                    {branch.name}
-                  </Combobox.Option>
-                ))}
+                .map((branch) => {
+                  const isAuthor = currentUser?.id === branch.creator_id;
+                  const canDelete = isAuthor && branch.name !== displayBranch;
+
+                  return (
+                    <Combobox.Option
+                      key={branch.id}
+                      value={branch.name}
+                      onClick={() => handleBranchSelect(branch)}
+                      active={branch.name === currentBranch}
+                      py="xs"
+                    >
+                      <Group justify="space-between" w="100%">
+                        <Text>{branch.name}</Text>
+                        {canDelete && (
+                          <Tooltip label={t`Delete branch`}>
+                            <ActionIcon
+                              size="xs"
+                              variant="subtle"
+                              color="red"
+                              onClick={(e) => handleDeleteBranch(e, branch)}
+                              disabled={isDeletingBranch}
+                            >
+                              <Icon name="close" size={12} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+                      </Group>
+                    </Combobox.Option>
+                  );
+                })}
 
               {searchValue && !isExactMatch && (
                 <Combobox.Option
                   value="create-new"
                   onClick={() => handleCreateAndSwitch(searchValue)}
                   disabled={isCreatingBranch}
+                  py="xs"
                 >
                   <Text c="brand">{t`Create "${searchValue}"`}</Text>
                 </Combobox.Option>
               )}
 
               {!searchValue && filteredBranches.length === 0 && (
-                <Box p="md">
-                  <Text size="sm" c="dimmed" ta="center">
-                    {t`No branches found`}
+                <Box p="sm">
+                  <Text size="md" c="text-medium" ta="center">
+                    {branches.length === 0
+                      ? t`Type a name to create your first branch`
+                      : t`No branches found`}
                   </Text>
                 </Box>
               )}
