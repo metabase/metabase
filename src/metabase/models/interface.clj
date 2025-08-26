@@ -58,6 +58,11 @@
   on a future deserialization."
   false)
 
+(def ^:dynamic *allow-sync-protected-writes?*
+  "This is dynamically bound to true to allow writes to entities that are synced to source of truth.
+  Normally these are read-only but during deserialization we need to be able to update them."
+  false)
+
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
   ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
@@ -578,6 +583,24 @@
   [instance]
   (-> instance
       add-entity-id))
+
+(defn- prevent-sync-protected-writes
+  "Prevents writes to entities that are synced to source of truth, unless explicitly allowed."
+  [instance]
+  (when (and (:synced_to_source_of_truth instance)
+             (not (or *allow-sync-protected-writes?* *deserializing?*)))
+    (throw (ex-info "Cannot modify entities synced to source of truth"
+                    {:entity-id (:entity_id instance)
+                     :model (model instance)})))
+  instance)
+
+(t2/define-before-insert :hook/git-sync-protected
+  [instance]
+  (prevent-sync-protected-writes instance))
+
+(t2/define-before-update :hook/git-sync-protected
+  [instance]
+  (prevent-sync-protected-writes instance))
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)

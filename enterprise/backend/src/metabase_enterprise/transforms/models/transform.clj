@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -11,7 +12,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/git-sync-protected]]
   (derive :model/Transform trait))
 
 (t2/deftransforms :model/Transform
@@ -108,4 +109,32 @@
                       (for [tag-id to-insert]
                         {:transform_id transform-id
                          :tag_id       tag-id
-                         :position     (get new-positions tag-id)})))))))
+                         :position     (get new-positions tag-id)}))))))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+  (defmethod serdes/hash-fields :model/Transform
+    [_transform]
+    [:name :created_at])
+
+  (defmethod serdes/make-spec "Transform"
+    [_model-name _opts]
+    {:copy [:name :description :source :target :entity_id]
+     :skip [:synced_to_source_of_truth]
+     :transform
+     {:created_at (serdes/date)
+      :updated_at (serdes/date)}})
+
+  (defmethod serdes/dependencies "Transform"
+    [_transform]
+    #{})
+
+  (defmethod serdes/descendants "Transform"
+    [_model-name _id]
+    {})
+
+  (defmethod serdes/load-one! "Transform"
+    [ingested maybe-local]
+  ;; Set synced_to_source_of_truth to true for all transforms loaded from source
+    (let [adjusted-ingested (assoc ingested :synced_to_source_of_truth true)]
+      (serdes/default-load-one! adjusted-ingested maybe-local))))
