@@ -511,7 +511,6 @@
         snippet-id (dep/depend from-entity [:snippet snippet-id])
         table-id (dep/depend from-entity [:table table-id]))
       (catch #?(:clj Exception :cljs :default) e
-        ;; Keep the original message for backward compatibility
         (throw (ex-info (i18n/tru "Cannot save card with cycles.") {} e))))))
 
 (defn- build-card-snippet-graph [source-entity metadata-provider a-query]

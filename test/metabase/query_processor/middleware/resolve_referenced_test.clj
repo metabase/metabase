@@ -129,7 +129,7 @@
                                  :type     :native
                                  :native   {:query         "SELECT * FROM {{snippet: snippet-a}}"
                                             :template-tags (make-snippet-template-tag 100 "snippet-a")}}])
-            ;; Add snippet to metadata provider using the correct key
+            ;; Add snippet to metadata provider
             metadata-provider-with-snippet
             (lib.tu/mock-metadata-provider
              metadata-provider
