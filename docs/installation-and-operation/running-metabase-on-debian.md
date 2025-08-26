@@ -54,7 +54,7 @@ sudo -u metabase wget -O /home/metabase/metabase.jar https://downloads.metabase.
 
 [Environment variables](../configuring-metabase/environment-variables.md) let you configure and customize your Metabase instance.
 
-We will create a file to hold these environment variables, which we'll reference later when creating the systemd service for Metabase.
+We'll create a file to store these environment variables, which we'll use when creating the systemd service for Metabase.
 
 This command will create an environment variable file at `/home/metabase/.env`, which you should update to point to your [PostgreSQL application database](/docs/latest/installation-and-operation/configuring-application-database):
 
