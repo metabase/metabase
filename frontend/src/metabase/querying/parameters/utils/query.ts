@@ -162,7 +162,7 @@ function getNumberParameterFilterClause(
   const operator = NUMBER_OPERATORS[type] ?? "=";
   return match({ operator, values })
     .with(
-      { operator: P.union("=", "!="), values: [] },
+      { operator: P.union("=", "!="), values: P.array(P.nonNullable) },
       { operator: P.union(">=", "<="), values: [P.nonNullable] },
       { operator: "between", values: [P.nonNullable, P.nonNullable] },
       ({ values }) => Lib.numberFilterClause({ operator, column, values }),
