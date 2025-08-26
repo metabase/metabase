@@ -216,6 +216,14 @@
   [dashboard-cards :- [:sequential NewDashboardCard]]
   (when (seq dashboard-cards)
     (t2/with-transaction [_conn]
+      (let [card-ids (keep :card_id dashboard-cards)]
+        (when (seq card-ids)
+          (let [in-report-cards (t2/select :model/Card :id [:in card-ids] :document_id [:<> nil])]
+            (when (seq in-report-cards)
+              (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
+                              {:status-code 400
+                               :in-report-card-ids (map :id in-report-cards)}))))))
+
       (let [dashboard-card-ids (t2/insert-returning-pks!
                                 :model/DashboardCard
                                 (for [dashcard dashboard-cards]

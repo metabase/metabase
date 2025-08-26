@@ -39,3 +39,6 @@ import "./user_provisioning";
 import "./clean_up";
 import "./metabot";
 import "./database_replication";
+import "./documents";
+import "./semantic_search";
+import "./transforms";

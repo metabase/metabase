@@ -26,6 +26,7 @@ const MODEL_NAME: Record<EnabledSearchModel, string> = {
   metric: "Metric",
   table: "Table",
   "indexed-entity": "Indexed record",
+  document: "Document",
 };
 
 const TEST_TYPES: Array<EnabledSearchModel> = [

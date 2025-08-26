@@ -211,6 +211,7 @@
         query (-> query
                   (assoc :lib/metadata metadata-provider)
                   (dissoc :lib.convert/converted?)
+
                   lib.normalize/normalize)
         stages (:stages query)]
     (cond-> query

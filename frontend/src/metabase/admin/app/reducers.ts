@@ -6,6 +6,7 @@ import { isNotNull } from "metabase/lib/types";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_METABOT,
+  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import type { AdminPath, AdminPathKey } from "metabase-types/store";
@@ -22,11 +23,13 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/databases",
       key: "databases",
     },
+    ...PLUGIN_METABOT.getAdminPaths(),
     {
       name: t`Table Metadata`,
       path: "/admin/datamodel",
       key: "data-model",
     },
+    ...PLUGIN_TRANSFORMS.getAdminPaths(),
     {
       name: t`People`,
       path: "/admin/people",
@@ -47,7 +50,6 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/tools",
       key: "tools",
     },
-    ...PLUGIN_METABOT.adminNavItem,
   ];
 
   return items;

@@ -89,7 +89,7 @@
   [driver database]
   (sql-jdbc.sync/dbms-version driver (sql-jdbc.conn/db->pooled-connection-spec database)))
 
-(defmethod driver/describe-database :sql-jdbc
+(defmethod driver/describe-database* :sql-jdbc
   [driver database]
   (sql-jdbc.sync/describe-database driver database))
 

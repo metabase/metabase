@@ -61,6 +61,12 @@ export const LegendLayout = ({
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
+      <MainContainer>
+        {isVertical && actionButtons && (
+          <LegendActions>{actionButtons}</LegendActions>
+        )}
+        {hasDimensions && <ChartContainer>{children}</ChartContainer>}
+      </MainContainer>
       {isVisible && (
         <LegendContainer
           isVertical={isVertical}
@@ -81,12 +87,6 @@ export const LegendLayout = ({
           )}
         </LegendContainer>
       )}
-      <MainContainer>
-        {isVertical && actionButtons && (
-          <LegendActions>{actionButtons}</LegendActions>
-        )}
-        {hasDimensions && <ChartContainer>{children}</ChartContainer>}
-      </MainContainer>
     </LegendLayoutRoot>
   );
 };

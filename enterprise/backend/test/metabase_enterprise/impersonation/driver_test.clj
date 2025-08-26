@@ -684,10 +684,9 @@
 
                 (sync/sync-database! database {:scan :schema})
 
-                (let [tables-set #(->> (driver/do-with-resilient-connection
+                (let [tables-set #(->> (driver/describe-database
                                         driver/*driver*
-                                        (t2/select-one :model/Database (mt/id))
-                                        driver/describe-database)
+                                        (t2/select-one :model/Database (mt/id)))
                                        :tables
                                        set)
                       default-table-set (tables-set)
@@ -696,7 +695,8 @@
                                 (fn [driver db options f]
                                   (do-with-resolved-connection driver db options
                                                                (fn [conn]
-                                                                 (driver/set-role! driver/*driver* conn role-a)
+                                                                 (when-not (:connection db)
+                                                                   (driver/set-role! driver/*driver* conn role-a))
                                                                  (f conn))))]
                     (is (= default-table-set (tables-set)))))))))))))
 

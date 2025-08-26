@@ -5,7 +5,6 @@
    [metabase-enterprise.metabot-v3.api.metabot :as metabot-v3.api.metabot]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -207,7 +206,7 @@
                                        {:items [{:id (str card-id-1) :model "dataset"}]}))))))))
 
 (deftest sample-prompts-e2e-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         model-source-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
         metric-source-query (-> model-source-query
                                 (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))

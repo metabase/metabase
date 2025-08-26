@@ -337,8 +337,8 @@
   "The resolved `:fields` from a join, which we automatically append to the parent stage's `:fields`."
   [query
    stage-number
-   {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join}
-   options :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join} :- ::lib.schema.join/join
+   options                                                                  :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (when-not (= fields :none)
     (let [cols  (join-returned-columns-relative-to-parent-stage query stage-number join options)
           cols' (if (= fields :all)

@@ -124,24 +124,26 @@
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
                         :query    source-query}
-          preprocessed (lib/without-cleaning
-                        (fn []
-                          (request/as-admin
-                            ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))))]
+          preprocessed (-> (lib/without-cleaning
+                            (fn []
+                              (request/as-admin
+                                ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))))
+                           lib/->legacy-MBQL)]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))
                       {:source-query source-query}
                       e)))))
 
-(defn- card-gtap->source
+(mu/defn- card-gtap->source :- ::mbql.s/SourceQuery
   [{card-id :card_id :as gtap}]
   (update-in (fetch-source-query-legacy/card-id->source-query-and-metadata card-id)
              [:source-query :parameters]
              concat
              (gtap->parameters gtap)))
 
-(defn- table-gtap->source [{table-id :table_id, :as gtap}]
+(mu/defn- table-gtap->source :- ::mbql.s/SourceQuery
+  [{table-id :table_id, :as gtap}]
   {:source-query {:source-table table-id, :parameters (gtap->parameters gtap)}})
 
 (mu/defn- mbql-query-metadata :- [:+ :map]

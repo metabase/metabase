@@ -51,6 +51,7 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [clojure.main]
    [clojure.string :as str]
    [clojure.test]
    [dev.debug-qp :as debug-qp]
@@ -99,6 +100,8 @@
   debug-qp/keep-me
   model-tracking/keep-me
   dev.h2/keep-me)
+
+(apply require clojure.main/repl-requires)
 
 #_:clj-kondo/ignore
 (defn tap>-spy [x]

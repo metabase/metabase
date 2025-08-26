@@ -45,19 +45,6 @@
     [:action-kw :keyword]
     [:mapping [:maybe :map]]]])
 
-(mr/def ::execute-form
-  "A description of the form to render for executing an action"
-  [:map
-   [:title :string]
-   ;; TODO fully define the shape of a parameter
-   [:parameters [:sequential [:map {:closed false}
-                              [:id :string]
-                              [:display_name :string]
-                              [:input_type :string]
-                              [:optional :boolean]
-                              [:readonly :boolean]
-                              [:value {:optional true} :any]]]]])
-
 (mu/defn- fetch-unified-action :- ::action-expression
   "Resolve various flavors of action-id into plain data, making it easier to dispatch on. Fetch config etc."
   [scope :- ::types/scope.hydrated
@@ -200,7 +187,8 @@
   [{}
    {}
    ;; TODO support for bulk actions
-   {:keys [action scope input]}] :- ::execute-form
+   {:keys [action scope input]}]
+  :- :metabase-enterprise.action-v2.execute-form/action-description
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)

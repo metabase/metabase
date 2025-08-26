@@ -692,24 +692,30 @@
          (lib.equality/matching-column-sets? query stage-number fields
                                              (lib.metadata.calculation/default-columns-for-stage query stage-number)))))
 
-(defn- normalize-fields-for-join [query stage-number removed-location join]
-  (cond
-    ;; Nothing to do if it's already a keyword.
-    (#{:none :all} (:fields join)) join
+(defn- normalize-fields-for-join [query stage-number removed-location {join-alias :alias, :as join}]
+  (let [update-field  (fn [field-ref]
+                        (lib.join/with-join-alias field-ref join-alias))
+        update-fields (fn [fields]
+                        (mapv update-field fields))
+        join          (cond-> join
+                        (sequential? (:fields join)) (update :fields update-fields))]
+    (cond
+      ;; Nothing to do if it's already a keyword.
+      (#{:none :all} (:fields join)) join
 
-    ;; If it's missing, treat it as `:all` unless we just removed a field.
-    ;; TODO: This really should be a different function called by `remove-field`; it also needs to filter on the stage.
-    (and (or (= removed-location [:aggregation])
-             (= removed-location [:breakout]))
-         (not (contains? join :fields)))
-    (assoc join :fields :all)
+      ;; If it's missing, treat it as `:all` unless we just removed a field.
+      ;; TODO: This really should be a different function called by `remove-field`; it also needs to filter on the stage.
+      (and (or (= removed-location [:aggregation])
+               (= removed-location [:breakout]))
+           (not (contains? join :fields)))
+      (assoc join :fields :all)
 
-    (lib.equality/matching-column-sets?
-     query stage-number (:fields join)
-     (lib.join/join-fields-to-add-to-parent-stage query stage-number (assoc join :fields :all) nil))
-    (assoc join :fields :all)
+      (lib.equality/matching-column-sets?
+       query stage-number (:fields join)
+       (lib.join/join-fields-to-add-to-parent-stage query stage-number (assoc join :fields :all) nil))
+      (assoc join :fields :all)
 
-    :else join))
+      :else join)))
 
 (defn- normalize-fields-for-stage [query stage-number removed-location]
   (let [stage (lib.util/query-stage query stage-number)]

@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
@@ -13,13 +14,11 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (def missing-value (symbol "nil #_\"key is not present.\""))
@@ -37,7 +36,7 @@
   ([] (ai-session-token :rasta (str (random-uuid))))
   ([metabot-id] (ai-session-token :rasta metabot-id))
   ([user metabot-id]
-   (-> user mt/user->id (#'metabot-v3.tools.api/get-ai-service-token metabot-id))))
+   (-> user mt/user->id (#'metabot-v3.client/get-ai-service-token metabot-id))))
 
 (deftest create-dashboard-subscription-test
   (mt/with-premium-features #{:metabot-v3}
@@ -237,7 +236,7 @@
   (mt/with-premium-features #{:metabot-v3}
     (let [conversation-id (str (random-uuid))
           ai-token (ai-session-token)
-          mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          mp (mt/metadata-provider)
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
                            (lib/breakout (lib/with-temporal-bucket
@@ -376,15 +375,9 @@
   [coll]
   (boolean (and (seqable? coll) (seq coll) (every? string? coll))))
 
-(defn- ensure-field-values!
-  [table-name-or-id]
-  (run! field-values/create-or-update-full-field-values!
-        (t2/reducible-select :model/Field :table_id (cond-> table-name-or-id (keyword? table-name-or-id) mt/id))))
-
 (deftest answer-sources-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :products)
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           model-source-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
           metric-source-query (-> model-source-query
                                   (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
@@ -536,9 +529,7 @@
 
 (deftest get-metric-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :orders)
-    (ensure-field-values! :products)
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
                            (lib/breakout (lib/with-temporal-bucket
@@ -645,7 +636,7 @@
 
 (deftest ^:parallel get-query-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
                            (lib/breakout (lib/with-temporal-bucket
@@ -670,8 +661,7 @@
 
 (deftest get-report-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :products)
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating))))
                            (lib/breakout (lib.metadata/field mp (mt/id :products :vendor)))
@@ -727,9 +717,7 @@
 
 (deftest get-model-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :orders)
-    (ensure-field-values! :products)
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           source-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           model-data {:name "Model model"
                       :description "Model desc"
@@ -870,10 +858,28 @@
                                       :with_fields false
                                       :with_metrics false)))))))))))
 
+(deftest field-values-auto-populate-test
+  (mt/with-premium-features #{:metabot-v3}
+    (t2/delete! :model/FieldValues :field_id [:in (t2/select-fn-vec :id :model/Field :table_id (mt/id :orders))])
+    (let [table-id (mt/id :orders)
+          conversation-id (str (random-uuid))
+          ai-token (ai-session-token)
+          response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/field-values"
+                                         {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                         {:arguments
+                                          {:entity_type "table"
+                                           :entity_id   table-id
+                                           :field_id    (-> table-id
+                                                            metabot-v3.tools.u/table-field-id-prefix
+                                                            (str 8)) ; quantity
+                                           :limt        15}
+                                          :conversation_id conversation-id})]
+      (is (=? {:structured_output {:values int-sequence?}
+               :conversation_id conversation-id}
+              response)))))
+
 (deftest get-table-details-test
   (mt/with-premium-features #{:metabot-v3}
-    (ensure-field-values! :orders)
-    (ensure-field-values! :products)
     (let [table-id (mt/id :orders)
           metric-data {:name "Metric"
                        :description "Model based metric"

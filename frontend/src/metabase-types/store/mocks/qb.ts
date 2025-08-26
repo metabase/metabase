@@ -1,5 +1,5 @@
 import type {
-  QueryBuilderDashboardState,
+  QueryBuilderParentEntityState,
   QueryBuilderState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
@@ -38,10 +38,12 @@ export const createMockQueryBuilderUIControlsState = (
   ...opts,
 });
 
-export const createMockQueryBuilderDashboardState = (
-  opts?: Partial<QueryBuilderDashboardState>,
-): QueryBuilderDashboardState => ({
-  dashboardId: null,
+export const createMockQueryBuilderParentEntityState = (
+  opts?: Partial<QueryBuilderParentEntityState>,
+): QueryBuilderParentEntityState => ({
+  id: null,
+  model: null,
+  name: null,
   isEditing: false,
   ...opts,
 });
@@ -55,7 +57,7 @@ export const createMockQueryBuilderState = (
     documentTitle: "",
     timeoutId: "",
   },
-  parentDashboard: createMockQueryBuilderDashboardState(),
+  parentEntity: createMockQueryBuilderParentEntityState(),
 
   queryStatus: "complete",
   queryResults: null,

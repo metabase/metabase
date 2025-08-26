@@ -66,25 +66,25 @@ Go to your Metabase and find the page that you want to embed.
 For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../configuring-metabase/settings.md#site-url), such as:
 
 ```
-src="http://metabase.yourcompany.com/"
+src="https://metabase.yourcompany.com/"
 ```
 
 To embed a specific Metabase dashboard, you'll want to use the dashboard's Entity ID URL `/dashboard/entity/[Entity ID]`.
 
 ```
-src="http://metabase.yourcompany.com/dashboard/entity/[Entity ID]"
+src="https://metabase.yourcompany.com/dashboard/entity/[Entity ID]"
 ```
 
 To get a dashboard's Entity ID, visit the dashboard and click on the **info** button. In the **Overview** tab, copy the **Entity ID**. Then in your iframe's `src` attribute to:
 
 ```
-src=http://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b
+src=https://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b
 ```
 
 If your dashboard has more than one tab, select the tab you want people to land on and copy the Tab's ID. Add the tab's ID to the URL:
 
 ```
-src=http://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b?tab=YLNdEYtzuSMA0lqO7u3FD
+src=https://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b?tab=YLNdEYtzuSMA0lqO7u3FD
 ```
 
 You _can_ use a dashboard's sequential ID, but you should prefer the Entity ID, as Entity IDs are stable across different Metabase environments (e.g., if you're testing on a staging environment, the Entity IDs will remain the same when [exporting the data and importing it](../installation-and-operation/serialization.md) into a production environment).
@@ -99,7 +99,7 @@ If you want to point to a question, collection, or model, visit the item, click 
 
 Use this option if you want to send people directly to your SSO login screen (i.e., skip over the Metabase login screen with an SSO button), and redirect to Metabase automatically upon authentication.
 
-You'll need to set the `src` attribute to your auth endpoint, with a `return_to` parameter pointing to the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `http://metabase.yourcompany.com/dashboard/1`:
+You'll need to set the `src` attribute to your auth endpoint, with a `return_to` parameter pointing to the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `https://metabase.yourcompany.com/dashboard/1`:
 
 ```
 https://metabase.example.com/auth/sso?return_to=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1

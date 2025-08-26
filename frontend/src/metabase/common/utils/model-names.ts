@@ -34,6 +34,9 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
   get table() {
     return t`Table`;
   },
+  get document() {
+    return t`Document`;
+  },
 };
 
 export const getTranslatedEntityName = (type: string) =>

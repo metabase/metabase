@@ -89,7 +89,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: People - User
       fields: all
-      ident: join_DuL1yrlkmnqOgz4drGiG4@0__People - User
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     - alias: Group Members - User
@@ -109,7 +108,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: Group Members - User
       fields: all
-      ident: join_DuL1yrlkmnqOgz4drGiG4@0__Group Members - User
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     limit: 200

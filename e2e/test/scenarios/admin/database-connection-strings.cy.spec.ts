@@ -253,7 +253,7 @@ describe("Database connection strings", () => {
     );
 
     cy.findByLabelText("Port").should("have.value", "1111");
-    cy.findByLabelText("Database type").should("have.text", "PostgreSQL");
+    cy.findByLabelText("Database type").should("have.value", "PostgreSQL");
   });
 
   describe("actual database connections", { tags: "@external" }, () => {
@@ -289,12 +289,10 @@ describe("Database connection strings", () => {
       cy.url().should("match", /\/admin\/databases\/\d/);
       waitForDbSync();
 
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(
-          "Your database was added! Want to configure permissions?",
-        ).should("exist");
-        cy.button("Maybe later").click();
-      });
+      cy.findByRole("link", { name: "Manage permissions" }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
     });
 
     it("should successfully connect to PostgreSQL using connection string", () => {
@@ -331,12 +329,10 @@ describe("Database connection strings", () => {
       cy.url().should("match", /\/admin\/databases\/\d/);
       waitForDbSync();
 
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(
-          "Your database was added! Want to configure permissions?",
-        ).should("exist");
-        cy.button("Maybe later").click();
-      });
+      cy.findByRole("link", { name: "Manage permissions" }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
     });
 
     it("should handle connection failures gracefully", () => {

@@ -5,6 +5,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
@@ -37,7 +38,8 @@
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
-      (is (= #{"dashboard" "dataset" "action" "card" "metric"}
+      (is (= (cond-> #{"dashboard" "dataset" "action" "card" "metric"}
+               config/ee-available? (conj "document"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
@@ -49,7 +51,8 @@
                       :created-by #{1}})))))
 
     (testing "created at"
-      (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+      (is (= (cond-> #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+               config/ee-available? (conj "document"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))

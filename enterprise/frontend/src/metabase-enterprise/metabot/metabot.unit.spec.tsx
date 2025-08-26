@@ -15,6 +15,7 @@ import {
 } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
+import { downloadObjectAsJson } from "metabase/lib/download";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import {
   type MockStreamedEndpointParams,
@@ -48,6 +49,10 @@ import {
   metabotReducer,
   setVisible,
 } from "./state";
+
+jest.mock("metabase/lib/download", () => ({
+  downloadObjectAsJson: jest.fn(),
+}));
 
 const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
   mockStreamedEndpoint("/api/ee/metabot-v3/v2/agent-streaming", params);
@@ -271,6 +276,41 @@ describe("metabot-streaming", () => {
       const heading = await screen.findByRole("heading", { level: 1 });
       expect(heading).toBeInTheDocument();
       expect(heading).toHaveTextContent(`You, but don't tell anyone.`);
+    });
+
+    it("should present the user an option to provide feedback", async () => {
+      setup();
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+
+      await enterChatMessage("Who is your favorite?");
+      const lastMessage = await lastChatMessage();
+      expect(lastMessage).toHaveTextContent(/You, but don't tell anyone./);
+
+      const feedbackModal = () => screen.findByTestId("metabot-feedback-modal");
+      const thumbsUp = () =>
+        within(lastMessage!).findByTestId("metabot-chat-message-thumbs-up");
+      const thumbsDown = () =>
+        within(lastMessage!).findByTestId("metabot-chat-message-thumbs-down");
+      const mockDownloadObjectAsJson =
+        downloadObjectAsJson as jest.MockedFunction<
+          typeof downloadObjectAsJson
+        >;
+
+      expect(await thumbsUp()).toBeInTheDocument();
+      expect(await thumbsDown()).toBeInTheDocument();
+      await userEvent.click(await thumbsDown());
+
+      expect(await feedbackModal()).toBeInTheDocument();
+      await userEvent.click(
+        await within(await feedbackModal()).findByRole("button", {
+          name: /Download/,
+        }),
+      );
+
+      expect(mockDownloadObjectAsJson).toHaveBeenCalledTimes(1);
+
+      expect(await thumbsUp()).toBeDisabled();
+      expect(await thumbsDown()).toBeDisabled();
     });
 
     it("should present the user an option to retry a response", async () => {

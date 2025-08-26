@@ -8,6 +8,8 @@ import type {
   PaginationResponse,
   RowValue,
   SearchModel,
+  UnsavedCard,
+  Version,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -128,10 +130,16 @@ export type MetabotAdhocQueryInfo = {
   error?: any;
 };
 
+export type MetabotDocumentInfo = {
+  type: "document";
+  id: number;
+};
+
 export type MetabotEntityInfo =
   | MetabotCardInfo
   | MetabotDashboardInfo
-  | MetabotAdhocQueryInfo;
+  | MetabotAdhocQueryInfo
+  | MetabotDocumentInfo;
 
 /* Metabot v3 - API Request Types */
 
@@ -189,6 +197,20 @@ export type DeleteSuggestedMetabotPromptRequest = {
   prompt_id: SuggestedMetabotPrompt["id"];
 };
 
+export interface MetabotFeedback {
+  metabot_id: MetabotId;
+  feedback: {
+    positive: boolean;
+    message_id: string;
+    issue_type?: string | undefined;
+    freeform_feedback: string;
+  };
+  conversation_data: any;
+  version: Version;
+  submission_time: string;
+  is_admin: boolean;
+}
+
 /* Metabot v3 - Entity Types */
 
 export type MetabotId = number;
@@ -210,3 +232,22 @@ export type MetabotEntity = {
 export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
   model_id: MetabotEntity["id"];
 };
+
+/* Metabot v3 - Document Types */
+
+export interface MetabotGenerateContentRequest {
+  instructions: string;
+  references?: Record<string, string>;
+}
+
+export interface MetabotGenerateContentResponse {
+  draft_card: (UnsavedCard & { name?: string }) | null;
+  description: string;
+  error: string | null;
+}
+
+/* Metabot v3 - Add-on Purchase Types */
+
+export interface PurchaseMetabotAddOnRequest {
+  terms_of_service: boolean;
+}

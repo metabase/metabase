@@ -1,78 +1,20 @@
 (ns metabase.search.appdb.scoring
   (:require
    [clojure.core.memoize :as memoize]
-   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config.core :as config]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
+   [metabase.search.scoring :as search.scoring]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(def ^:private seconds-in-a-day 86400)
-
-(defn truthy
-  "Prefer it when a (potentially nullable) boolean is true."
-  [column]
-  [:coalesce [:cast column :integer] [:inline 0]])
-
-(defn equal
-  "Prefer it when it matches a specific (non-null) value"
-  [column value]
-  [:coalesce [:case [:= column value] [:inline 1] :else [:inline 0]] [:inline 0]])
-
-(defn prefix
-  "Prefer it when the given value is a completion of a specific (non-null) value"
-  [column value]
-  [:coalesce [:case [:like column (str (str/replace value "%" "%%") "%")] [:inline 1] :else [:inline 0]] [:inline 0]])
-
-(defn size
-  "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
-  [column ceiling]
-  [:least
-   [:inline 1]
-   [:/
-    [:coalesce column [:inline 0]]
-    ;; protect against div / 0
-    [:greatest
-     [:inline 1]
-     (if (number? ceiling)
-       [:inline (double ceiling)]
-       [:cast ceiling :float])]]])
-
-(defn inverse-duration
-  "Score at item based on the duration between two dates, where less is better."
-  [from-column to-column ceiling-in-days]
-  (let [ceiling [:inline ceiling-in-days]]
-    [:/
-     [:greatest
-      [:- ceiling
-       [:/
-        ;; Use seconds for granularity in the fraction.
-        ;; TODO will probably need to specialize this based on (mdb/db-type)
-        [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]]
-        [:inline (double seconds-in-a-day)]]]
-      [:inline 0]]
-     ceiling]))
-
-(defn- sum-columns [column-names]
-  (if (seq column-names)
-    (reduce (fn [expr col] [:+ expr col])
-            (first column-names)
-            (rest column-names))
-    [:inline 1]))
-
-(defn- weighted-score [context [column-alias expr]]
-  [:* [:inline (search.config/weight context column-alias)] expr])
-
-(defn- select-items [context scorers]
-  (concat
-   (for [[column-alias expr] scorers]
-     [expr column-alias])
-   [[(sum-columns (map (partial weighted-score context) scorers))
-     :total_score]]))
+(defn all-scores
+  "Score stats for each scorer"
+  [weights scorers index-row]
+  (search.scoring/all-scores weights scorers index-row))
 
 ;; TODO move these to the spec definitions
 (def ^:private bookmarked-models [:card :collection :dashboard])
@@ -119,9 +61,9 @@
   (let [views (view-count-percentiles percentile)
         cases (for [[sm v] views]
                 [[:= :search_index.model [:inline (name sm)]] (max (or v 0) 1)])]
-    (size :view_count (if (seq cases)
-                        (into [:case] cat cases)
-                        1))))
+    (search.scoring/size :view_count (if (seq cases)
+                                       (into [:case] cat cases)
+                                       1))))
 
 (defn- model-rank-exp [{:keys [context]}]
   (let [search-order search.config/models-search-order
@@ -144,20 +86,20 @@
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:text         (specialization/text-score)
      :view-count   (view-count-expr search.config/view-count-scaling-percentile)
-     :pinned       (truthy :pinned)
+     :pinned       (search.scoring/truthy :pinned)
      :bookmarked   bookmark-score-expr
-     :recency      (inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
-     :user-recency (inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
-     :dashboard    (size :dashboardcard_count search.config/dashboard-count-ceiling)
+     :recency      (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
+     :user-recency (search.scoring/inverse-duration (user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
+     :dashboard    (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
      :model        (model-rank-exp search-ctx)
-     :mine         (equal :search_index.creator_id (:current-user-id search-ctx))
+     :mine         (search.scoring/equal :search_index.creator_id (:current-user-id search-ctx))
      :exact        (if search-string
                      ;; perform the lower casing within the database, in case it behaves differently to our helper
-                     (equal [:lower :search_index.name] [:lower search-string])
+                     (search.scoring/equal [:lower :search_index.name] [:lower search-string])
                      [:inline 0])
      :prefix       (if search-string
                      ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                     (prefix [:lower :search_index.name] (u/lower-case-en search-string))
+                     (search.scoring/prefix [:lower :search_index.name] (u/lower-case-en search-string))
                      [:inline 0])}))
 
 (defenterprise scorers
@@ -165,8 +107,6 @@
   metabase-enterprise.search.scoring
   [search-ctx]
   (base-scorers search-ctx))
-
-(defn- scorer-select-items [search-ctx scorers] (select-items (:context search-ctx) scorers))
 
 (defn- bookmark-join [model user-id]
   (let [model-name (name model)
@@ -185,6 +125,6 @@
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
   [{:keys [current-user-id] :as search-ctx} scorers qry]
-  (-> (apply sql.helpers/select qry (scorer-select-items search-ctx scorers))
+  (-> (search.scoring/with-scores search-ctx scorers qry)
       (join-bookmarks current-user-id)
       (sql.helpers/order-by [:total_score :desc])))

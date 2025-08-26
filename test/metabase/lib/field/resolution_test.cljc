@@ -104,18 +104,22 @@
              -1
              a-field-clause))]
     (testing "For fields with parents we should return them with a combined name including parent's name"
-      (is (=? {:table-id          (meta/id :venues)
-               :name              "grandparent.parent"
-               :parent-id         (metabase.lib.field-test/grandparent-parent-child-id :grandparent)
-               :id                (metabase.lib.field-test/grandparent-parent-child-id :parent)
-               :visibility-type   :normal}
+      (is (=? {:table-id                (meta/id :venues)
+               :name                    "grandparent.parent"
+               :nfc-path                ["grandparent"]
+               :lib/source-column-alias "parent"
+               :parent-id               (metabase.lib.field-test/grandparent-parent-child-id :grandparent)
+               :id                      (metabase.lib.field-test/grandparent-parent-child-id :parent)
+               :visibility-type         :normal}
               (col-info [:field {:lib/uuid (str (random-uuid))} (metabase.lib.field-test/grandparent-parent-child-id :parent)]))))
     (testing "nested-nested fields should include grandparent name (etc)"
-      (is (=? {:table-id          (meta/id :venues)
-               :name              "grandparent.parent.child"
-               :parent-id         (metabase.lib.field-test/grandparent-parent-child-id :parent)
-               :id                (metabase.lib.field-test/grandparent-parent-child-id :child)
-               :visibility-type   :normal}
+      (is (=? {:table-id                (meta/id :venues)
+               :name                    "grandparent.parent.child"
+               :nfc-path                ["grandparent" "parent"]
+               :lib/source-column-alias "child"
+               :parent-id               (metabase.lib.field-test/grandparent-parent-child-id :parent)
+               :id                      (metabase.lib.field-test/grandparent-parent-child-id :child)
+               :visibility-type         :normal}
               (col-info [:field {:lib/uuid (str (random-uuid))} (metabase.lib.field-test/grandparent-parent-child-id :child)]))))))
 
 (deftest ^:parallel fallback-metadata-from-saved-question-when-missing-from-metadata-provider-test
@@ -246,13 +250,13 @@
                        :database     (meta/id)
                        :stages       [{:lib/type                     :mbql.stage/native
                                        :lib/stage-metadata           {:lib/type :metadata/results
-                                                                      :columns  (lib.card/card-metadata-columns mp (lib.metadata/card mp 1))}
+                                                                      :columns  (lib.card/card-returned-columns mp (lib.metadata/card mp 1))}
                                        :native                       "SELECT * FROM some_table;"
                                        ;; `:qp` and `:source-query` keys get added by QP middleware during preprocessing.
                                        :qp/stage-is-from-source-card 1}
                                       {:lib/type                     :mbql.stage/mbql
                                        :lib/stage-metadata           {:lib/type :metadata/results
-                                                                      :columns  (lib.card/card-metadata-columns mp (lib.metadata/card mp 2))}
+                                                                      :columns  (lib.card/card-returned-columns mp (lib.metadata/card mp 2))}
                                        :fields                       [[:field {:base-type :type/DateTime, :lib/uuid "48052020-59e3-47e7-bfdc-38ab12c27292"}
                                                                        "EXAMPLE_TIMESTAMP"]
                                                                       [:field {:base-type :type/DateTime, :temporal-unit :week, :lib/uuid "dd9bdda4-688c-4a14-8ff6-88d4e2de6628"}
@@ -748,10 +752,6 @@
                                                               [:field (meta/id :venues :longitude) nil]
                                                               [:field (meta/id :venues :price) nil]]}})
             field-ref [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :name)]]
-        (testing `lib.field.resolution/resolve-column-in-previous-stage-metadata
-          (let [stage-cols (get-in (lib.util/query-stage query 0) [:lib/stage-metadata :columns])]
-            (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
-                    (#'lib.field.resolution/resolve-column-in-previous-stage-metadata query field-ref stage-cols)))))
         (testing `lib.field.resolution/resolve-field-ref
           (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
                   (lib.field.resolution/resolve-field-ref query -1 field-ref))))))))
@@ -765,6 +765,27 @@
                :name            "Unknown Field"
                :display-name    "Unknown Field"}
               (lib.field.resolution/resolve-field-ref query -1 field-ref))))))
+
+(deftest ^:parallel fallback-metadata-for-unreturned-field-id-ref-test
+  (testing "Fallback metadata for a Field ID ref that is not returned by this query should at least include the actual correct :name"
+    (let [query     (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          field-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :orders :id)]]
+      (is (=? {:base-type                                :type/BigInteger
+               :display-name                             "ID"
+               :effective-type                           :type/BigInteger
+               :id                                       (meta/id :orders :id)
+               :name                                     "ID"
+               :semantic-type                            :type/PK
+               :table-id                                 (meta/id :orders)
+               :visibility-type                          :normal
+               :lib/original-display-name                "ID"
+               :lib/original-name                        "ID"
+               :lib/source                               :source/table-defaults
+               :lib/source-column-alias                  "ID"
+               :lib/source-uuid                          "00000000-0000-0000-0000-000000000000"
+               :lib/type                                 :metadata/column
+               ::lib.field.resolution/fallback-metadata? true}
+              (into (sorted-map) (lib.field.resolution/resolve-field-ref query -1 field-ref)))))))
 
 (deftest ^:parallel do-not-propagate-lib-expression-names-from-cards-test
   (testing "Columns coming from a source card should not propagate :lib/expression-name"
@@ -1020,8 +1041,8 @@
                :name                                     "ID"
                :table-id                                 (meta/id :products)
                ;; TODO (Cam 7/29/25) -- maybe we need to add a `:source/indetermiate` option or something. Because
-               ;; this is wrong... but nothing else is right either.
-               :lib/source                               :source/table-defaults
+               ;; this is probably wrong... but nothing else is right either.
+               :lib/source                               :source/previous-stage
                ::lib.field.resolution/fallback-metadata? true}
               (lib.field.resolution/resolve-field-ref
                query -1
@@ -1242,3 +1263,123 @@
                :lib/source-column-alias      "Cat__NAME"
                :lib/desired-column-alias     (symbol "nil #_\"key is not present.\"")}
               (lib.field.resolution/resolve-field-ref query -1 bad-ref))))))
+
+(deftest ^:parallel nested-literal-boolean-expression-with-name-collisions-test
+  (testing "Don't resolve a `:field` ref to an expression if it has a conflicting name"
+    (let [true-value  [:value {:base-type :type/Boolean, :effective-type :type/Boolean, :lib/expression-name "T"} true]
+          false-value [:value {:base-type :type/Boolean, :effective-type :type/Boolean, :lib/expression-name "F"} false]
+          query       (lib.tu.macros/mbql-5-query nil
+                        {:stages [{:source-table $$orders
+                                   :expressions  [true-value
+                                                  false-value]
+                                   :fields       [[:expression {} "T"]
+                                                  [:expression {} "F"]]}
+                                  {:expressions [true-value
+                                                 false-value]
+                                   :fields      [[:expression {} "T"]
+                                                 [:expression {} "F"]
+                                                 [:field {:base-type :type/Boolean} "T"]
+                                                 [:field {:base-type :type/Boolean} "F"]]}]})]
+      (is (=? {:lib/source                   :source/previous-stage
+               :lib/source-column-alias      "T"
+               :lib/expression-name          (symbol "nil #_\"key is not present.\"")
+               :lib/original-expression-name "T"}
+              (lib.field.resolution/resolve-field-ref query -1 [:field
+                                                                {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Boolean}
+                                                                "T"]))))))
+
+(deftest ^:parallel resolve-incorrect-field-ref-for-expression-test
+  (testing "resolve the incorrect use of a field ref correctly"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query venues
+                   {:fields      [[:expression "my_numberLiteral"]]
+                    :expressions {"my_numberLiteral" [:value 1 {:base_type :type/Integer}]}}))]
+      (is (=? {:base-type               :type/Integer
+               :display-name            "my_numberLiteral"
+               :name                    "my_numberLiteral"
+               :lib/expression-name     "my_numberLiteral"
+               :lib/source              :source/expressions
+               :lib/source-column-alias "my_numberLiteral"
+               :lib/source-uuid         "00000000-0000-0000-0000-000000000000"
+               :lib/type                :metadata/column}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "my_numberLiteral"]))))))
+
+(deftest ^:parallel field-name-ref-in-first-stage-test
+  (testing "Should be able to resolve a field name ref in the first stage of a query"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table (meta/id :products)
+                              :fields       [[:field {} (meta/id :products :id)]
+                                             [:field {} (meta/id :products :title)]]
+                              :filters      [[:=
+                                              {}
+                                              [:field {:base-type :type/BigInteger} "ID"]
+                                              [:value {:base-type :type/BigInteger} 144]]]}]})]
+      (is (=? (-> (lib.field.resolution/resolve-field-ref
+                   query
+                   -1
+                   [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)])
+                  (dissoc :lib/original-ref :lib/original-display-name))
+              (lib.field.resolution/resolve-field-ref
+               query
+               -1
+               [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} "ID"]))))))
+
+;;; See also [[metabase.query-processor-test.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]]
+(deftest ^:parallel resolve-unreturned-column-from-reified-implicit-join-in-previous-stage-test
+  (let [query     (lib/query
+                   meta/metadata-provider
+                   {:lib/type :mbql/query
+                    :database (meta/id)
+                    :stages   [{:lib/type     :mbql.stage/mbql
+                                :source-table (meta/id :orders)
+                                :fields       [[:field {} (meta/id :orders :user-id)]
+                                               [:field {:join-alias "PEOPLE__via__USER_ID"} (meta/id :people :email)]]
+                                :joins        [{:lib/type            :mbql/join
+                                                :qp/is-implicit-join true
+                                                :stages              [{:lib/type     :mbql.stage/mbql
+                                                                       :source-table (meta/id :people)}]
+                                                :alias               "PEOPLE__via__USER_ID"
+                                                :conditions          [[:= {}
+                                                                       [:field
+                                                                        {}
+                                                                        (meta/id :orders :user-id)]
+                                                                       [:field
+                                                                        {:join-alias "PEOPLE__via__USER_ID"}
+                                                                        (meta/id :people :id)]]]
+                                                :fk-field-id         (meta/id :orders :user-id)}]}
+                               {:lib/type :mbql.stage/mbql}
+                               {:lib/type :mbql.stage/mbql}]})
+        field-ref [:field
+                   {:base-type         :type/Text
+                    :join-alias        "PEOPLE__via__USER_ID"
+                    :source-field-name "USER_ID"
+                    :source-field      (meta/id :orders :user-id)
+                    :lib/uuid          "978082dd-2728-4053-b9cc-01bbd64f3507"
+                    :effective-type    :type/Text}
+                   (meta/id :people :state)]]
+    (is (=? {:display-name                             "User → State"
+             :effective-type                           :type/Text
+             :fingerprint                              some?
+             :fk-field-name                            "USER_ID"
+             :id                                       (meta/id :people :state)
+             :name                                     "STATE"
+             :semantic-type                            :type/State
+             :table-id                                 (meta/id :people)
+             :lib/breakout?                            false
+             :lib/original-display-name                "State"
+             :lib/original-fk-field-id                 (meta/id :orders :user-id)
+             :lib/original-join-name                   "PEOPLE__via__USER_ID"
+             :lib/original-name                        "STATE"
+             :lib/source                               :source/previous-stage
+             :lib/source-column-alias                  "PEOPLE__via__USER_ID__STATE"
+             :lib/source-uuid                          "978082dd-2728-4053-b9cc-01bbd64f3507"
+             :lib/type                                 :metadata/column
+             ::lib.field.resolution/fallback-metadata? true}
+            (into (sorted-map) (lib.field.resolution/resolve-field-ref query -1 field-ref))))))

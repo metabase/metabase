@@ -607,7 +607,7 @@
 
 (deftest series-are-compatible-test
   (mt/dataset test-data
-    (let [database-id->metadata-provider {(mt/id) (lib.metadata.jvm/application-database-metadata-provider (mt/id))}]
+    (let [database-id->metadata-provider {(mt/id) (mt/metadata-provider)}]
       (testing "area-line-bar charts"
         (mt/with-temp
           [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
@@ -957,6 +957,52 @@
                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:cache_ttl 1234})
                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:cache_ttl nil})
                  (:cache_ttl (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card)))))))))))
+
+(deftest pivot-card-cache-test
+  #_(testing "Pivot queries are cached correctly"
+      (let [existing-config (t2/select-one :model/CacheConfig :model_id 0 :model "root")]
+        (try
+          (when existing-config
+            (t2/delete! :model/CacheConfig :model_id 0 :model "root"))
+          (t2/delete! :model/QueryCache)
+          (mt/with-temp
+            [:model/CacheConfig _ {:model_id 0
+                                   :model "root"
+                                   :strategy "ttl"
+                                   :config {:multiplier 100
+                                            :min_duration_ms 1}}
+             :model/Card card (assoc (api.pivots/pivot-card)
+                                     :type :question
+                                     :name "Test Pivot Card")]
+            (testing "First pivot query execution is not cached"
+              (let [response (mt/user-http-request :rasta :post 202
+                                                   (format "card/pivot/%d/query" (u/the-id card))
+                                                   {:ignore_cache false})]
+                (is (nil? (:cached response)))
+                (is (some? (:data response)))))
+
+            (testing "Second pivot query execution is cached"
+              (let [response (mt/user-http-request :rasta :post 202
+                                                   (format "card/pivot/%d/query" (u/the-id card))
+                                                   {:ignore_cache false})]
+                (is (some? (:cached response)))
+                (is (some? (:data response)))))
+
+            (testing "Cached pivot query returns same results"
+              (let [uncached-response (mt/user-http-request :rasta :post 202
+                                                            (format "card/pivot/%d/query" (u/the-id card))
+                                                            {:ignore_cache true})
+
+                    cached-response (mt/user-http-request :rasta :post 202
+                                                          (format "card/pivot/%d/query" (u/the-id card))
+                                                          {:ignore_cache false})]
+                (is (nil? (:cached uncached-response)))
+                (is (some? (:cached cached-response)))
+                (is (= (get-in uncached-response [:data :rows])
+                       (get-in cached-response [:data :rows]))))))
+          (finally
+            (when existing-config
+              (t2/insert! :model/CacheConfig existing-config)))))))
 
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
@@ -3423,7 +3469,7 @@
   (testing "POST /api/card"
     (testing "Should be able to save a Card with an MLv2 query (#39024)"
       (mt/with-model-cleanup [:model/Card]
-        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [metadata-provider (mt/metadata-provider)
               venues            (lib.metadata/table metadata-provider (mt/id :venues))
               query             (lib/query metadata-provider venues)
               response          (mt/user-http-request :crowberto :post 200 "card"
@@ -3441,7 +3487,7 @@
 (deftest ^:parallel run-mlv2-card-query-test
   (testing "POST /api/card/:id/query"
     (testing "Should be able to run a query for a Card with an MLv2 query (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
@@ -3512,7 +3558,7 @@
     (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))))
 
 (deftest ^:parallel can-run-adhoc-query-test
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [metadata-provider (mt/metadata-provider)
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
     (mt/with-temp [:model/Card card {:dataset_query query}

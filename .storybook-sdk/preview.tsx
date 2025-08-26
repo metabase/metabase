@@ -1,15 +1,20 @@
 import { GlobalTypes } from "@storybook/types";
 import { initialize, mswLoader } from "msw-storybook-addon";
 
-import { storybookThemeOptions } from "embedding-sdk/test/storybook-themes";
+import { storybookThemeOptions } from "embedding-sdk-bundle/test/storybook-themes";
 
 import { availableLocales } from "./constants";
+import { defineEmbeddingSdkPackageBuildInfo } from "../frontend/src/metabase/embedding-sdk/lib/define-embedding-sdk-package-build-info";
 import { defineGlobalDependencies } from "../frontend/src/metabase/embedding-sdk/lib/define-global-dependencies";
+import { EMBEDDING_SDK_CONFIG } from "../frontend/src/metabase/embedding-sdk/config";
+
+// Enable SDK mode as we are previewing the SDK code
+EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
 // To run initialization side effects like Mantine styles, dayjs plugins, etc
-// Also to properly watch and recompile when the SDK code is updated
-// This does not break the SDK Bundle loading logic
-import "embedding-sdk/bundle";
+import "metabase/embedding-sdk/vendors-side-effects";
+
+defineEmbeddingSdkPackageBuildInfo();
 defineGlobalDependencies();
 
 // @ts-expect-error: See metabase/lib/delay

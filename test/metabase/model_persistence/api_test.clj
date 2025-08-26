@@ -206,7 +206,7 @@
 
 (deftest persist-database-test
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-    (let [db-id (:id (mt/db))]
+    (let [db-id (mt/id)]
       (mt/with-temp
         [:model/Card card {:database_id db-id
                            :type        :model}]
@@ -236,7 +236,7 @@
 
 (deftest unpersist-database-test
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-    (let [db-id (:id (mt/db))]
+    (let [db-id (mt/id)]
       (mt/with-temp
         [:model/Card _ {:database_id db-id
                         :type        :model}]

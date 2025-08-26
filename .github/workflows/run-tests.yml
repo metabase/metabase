@@ -72,8 +72,6 @@ jobs:
     if: ${{ !cancelled() && !(needs.files-changed.outputs.documentation == 'true' && needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.frontend_all == 'false' && needs.files-changed.outputs.e2e_all == 'false') }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
-    with:
-      source_changed: ${{ needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.frontend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true' }}
 
   backend-tests:
     if: ${{ !cancelled() }}
@@ -82,6 +80,13 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
+
+  semantic-search-tests:
+    needs: files-changed
+    uses: ./.github/workflows/semantic-search.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   app-db-tests:
     needs: files-changed

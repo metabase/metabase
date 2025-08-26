@@ -395,7 +395,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         );
       });
 
-      it.skip("allows to map to all relevant columns", () => {
+      it("allows to map to all relevant columns", { tags: "@skip" }, () => {
         H.editDashboard();
 
         cy.log("## date columns");
@@ -544,7 +544,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         );
       });
 
-      it.skip("allows to map to all relevant columns", () => {
+      it("allows to map to all relevant columns", { tags: "@skip" }, () => {
         H.editDashboard();
 
         cy.log("## date columns");

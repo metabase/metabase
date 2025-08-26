@@ -11,6 +11,7 @@
           "metabase-enterprise/*",
           "cljs/metabase.lib*",
           "/embedding-sdk",
+          "/embedding-sdk-bundle",
         ],
         "paths": [
           {
@@ -48,6 +49,12 @@
     "ttag/no-module-declaration": 2,
   },
   "overrides": [
+    {
+      "files": ["./app.js"],
+      "rules": {
+        "import/no-duplicates": 0,
+      },
+    },
     {
       "files": ["**/*.stories.tsx"],
       "rules": {

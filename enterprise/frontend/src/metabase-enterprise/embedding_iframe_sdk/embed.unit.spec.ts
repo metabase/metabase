@@ -1,183 +1,176 @@
-import _ from "underscore";
+import { act } from "react-dom/test-utils";
 
-import { MetabaseEmbed } from "./embed";
+import type { MetabaseEmbedElement } from "./embed";
+
+const defineMetabaseConfig = (config: unknown) => {
+  (window as any).metabaseConfig = config;
+};
 
 describe("embed.js script tag for sdk iframe embedding", () => {
-  const defaultSettings = {
-    apiKey: "test-api-key",
-    instanceUrl: "http://localhost:3000",
-    target: document.createElement("div"),
-  };
+  let consoleErrorSpy: jest.SpyInstance;
 
-  it("throws when target element is not found", () => {
-    expect(() => {
-      new MetabaseEmbed({
-        ...defaultSettings,
-        dashboardId: 1,
-        target: "#not-existent-target",
-      });
-    }).toThrow('cannot find embed container "#not-existent-target"');
+  beforeEach(() => {
+    jest.resetModules();
+    // @ts-expect-error -- test cleanup
+    delete window.metabaseConfig;
+    require("./embed"); // we do things when the script is loaded
+
+    document.body.innerHTML = "";
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  it("throws when target element is undefined", () => {
-    expect(() => {
-      new MetabaseEmbed({
-        ...defaultSettings,
-        questionId: 1,
-        // @ts-expect-error -- we are testing for incorrect configuration
-        target: undefined,
-      });
-    }).toThrow("target must be provided");
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
-  it("throws when instance url is not provided", () => {
-    expect(() => {
-      // @ts-expect-error -- we are testing for incorrect configuration
-      new MetabaseEmbed({ ...defaultSettings, instanceUrl: undefined });
-    }).toThrow("instanceUrl must be provided");
+  it("reports an error when instance url is not provided", () => {
+    const embed = document.createElement("metabase-question");
+    embed.setAttribute("question-id", "1");
+    document.body.appendChild(embed);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[metabase.embed.error]",
+      expect.objectContaining({
+        message: "instanceUrl must be provided",
+      }),
+    );
   });
 
-  it("throws when both question id and dashboard id are provided", () => {
-    expect(() => {
-      // @ts-expect-error -- we are testing for incorrect configuration
-      new MetabaseEmbed({
-        ...defaultSettings,
-        questionId: 10,
-        dashboardId: 10,
-      });
-    }).toThrow("can't use both dashboardId and questionId at the same time");
+  it("does not report an error when instanceUrl is updated to be the same", () => {
+    defineMetabaseConfig({
+      instanceUrl: "https://foo-bar-baz.com",
+    });
+    const embed = document.createElement("metabase-question");
+    embed.setAttribute("question-id", "10");
+    document.body.appendChild(embed);
+
+    defineMetabaseConfig({
+      instanceUrl: "https://foo-bar-baz.com",
+    });
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
-  it("does not throw an error when instanceUrl is updated to be the same", () => {
+  it("reports an error when useExistingUserSession is updated to be a different value", async () => {
+    defineMetabaseConfig({
+      instanceUrl: "https://foo-bar-baz.com",
+      useExistingUserSession: true,
+    });
+    const embed = document.createElement("metabase-question");
+    embed.setAttribute("question-id", "10");
+
+    await act(async () => {
+      document.body.appendChild(embed);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     expect(() => {
-      const embed = new MetabaseEmbed({
-        ...defaultSettings,
+      defineMetabaseConfig({
         instanceUrl: "https://foo-bar-baz.com",
-        questionId: 10,
+        useExistingUserSession: false,
       });
-
-      embed.updateSettings({ instanceUrl: "https://foo-bar-baz.com" });
-    }).not.toThrow();
-  });
-
-  it("throws an error when useExistingUserSession is updated to be a different value", () => {
-    expect(() => {
-      const embed = new MetabaseEmbed({
-        ..._.omit(defaultSettings, "apiKey"),
-        instanceUrl: "https://foo-bar-baz.com",
-        questionId: 10,
-        target: document.createElement("div"),
-        useExistingUserSession: true,
-      });
-
-      embed.updateSettings({ useExistingUserSession: false });
     }).toThrow(
       "useExistingUserSession cannot be updated after the embed is created",
     );
   });
 
-  it("throws when question id is provided in the exploration template", () => {
-    expect(() => {
-      // @ts-expect-error -- we are testing for incorrect configuration
-      new MetabaseEmbed({
-        ...defaultSettings,
-        template: "exploration",
-        questionId: 10,
-      });
-    }).toThrow(
-      "the exploration template can't be used with dashboardId or questionId",
-    );
-  });
-
-  it("throws when dashboard id is provided in the exploration template", () => {
-    expect(() => {
-      // @ts-expect-error -- we are testing for incorrect configuration
-      new MetabaseEmbed({
-        ...defaultSettings,
-        template: "exploration",
-        dashboardId: 10,
-      });
-    }).toThrow(
-      "the exploration template can't be used with dashboardId or questionId",
-    );
-  });
-
-  it("throws when neither question id, dashboard id, or template are provided", () => {
-    expect(() => {
-      // @ts-expect-error -- we are testing for incorrect configuration
-      new MetabaseEmbed({ ...defaultSettings });
-    }).toThrow("either dashboardId, questionId, or template must be provided");
-  });
-
-  it.each([["view-content"], ["curate-content"]] as const)(
-    "throws when initialCollection is not provided for the %s template",
-    (template: "view-content" | "curate-content") => {
-      expect(() => {
-        // @ts-expect-error -- we are testing for incorrect configuration
-        new MetabaseEmbed({
-          ...defaultSettings,
-          template,
-        });
-      }).toThrow(
-        `initialCollection must be provided for the ${template} template`,
-      );
-    },
-  );
-
   it("fires ready event immediately when addEventListener is called when embed is ready", () => {
     const readyHandler = jest.fn();
 
-    const embed = new MetabaseEmbed({
-      ...defaultSettings,
-      dashboardId: 1,
+    defineMetabaseConfig({
+      instanceUrl: "http://localhost:3000",
     });
+    const embed = document.createElement("metabase-dashboard");
+    embed.setAttribute("dashboard-id", "1");
+    document.body.appendChild(embed);
 
-    // Simulate the embed being ready.
-    (embed as any)._isEmbedReady = true;
+    // @ts-expect-error -- Simulate the embed being ready.
+    (embed as MetabaseEmbedElement)._isEmbedReady = true;
 
     // The handler should be called immediately.
     embed.addEventListener("ready", readyHandler);
     expect(readyHandler).toHaveBeenCalledTimes(1);
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
-  it.each([
-    [{ apiKey: "test-key", useExistingUserSession: true }],
-    [{ apiKey: "test-key", preferredAuthMethod: "jwt" }],
-    [{ useExistingUserSession: true, preferredAuthMethod: "jwt" }],
-    [
-      {
-        apiKey: "test-key",
-        useExistingUserSession: true,
-        preferredAuthMethod: "jwt",
-      },
-    ],
-  ] as const)(
-    "throws when auth methods are not mutually exclusive",
-    (authConfig) => {
-      const settings = {
-        ..._.omit(defaultSettings, "apiKey"),
-        dashboardId: 1,
-      };
+  const authErrorTestCases = [
+    { apiKey: "test-key", useExistingUserSession: true },
+    { apiKey: "test-key", preferredAuthMethod: "jwt" },
+    { useExistingUserSession: true, preferredAuthMethod: "jwt" },
+    {
+      apiKey: "test-key",
+      useExistingUserSession: true,
+      preferredAuthMethod: "jwt",
+    },
+  ].flatMap((authConfig) => [
+    { ...authConfig, dashboardId: 1 },
+    { ...authConfig, questionId: 1 },
+  ]);
 
-      expect(() => {
-        new MetabaseEmbed({ ...settings, ...authConfig });
-      }).toThrow(
-        "apiKey, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
+  it.each(authErrorTestCases)(
+    "reports an error when auth methods are not mutually exclusive for %p",
+    (settings) => {
+      const { questionId, dashboardId, ...config } = settings as Partial<
+        typeof settings
+      > & {
+        questionId?: number;
+        dashboardId?: number;
+      };
+      defineMetabaseConfig({
+        instanceUrl: "http://localhost:3000",
+        ...config,
+      });
+
+      const tagName = questionId ? "metabase-question" : "metabase-dashboard";
+      const embed = document.createElement(tagName);
+      if (questionId) {
+        embed.setAttribute("question-id", String(questionId));
+      } else if (dashboardId) {
+        embed.setAttribute("dashboard-id", String(dashboardId));
+      }
+      document.body.appendChild(embed);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[metabase.embed.error]",
+        expect.objectContaining({
+          message:
+            "apiKey, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
+        }),
       );
     },
   );
 
-  it("does not throw when only one auth method is provided", () => {
-    const settings = {
-      ..._.omit(defaultSettings, "apiKey"),
-      dashboardId: 1,
-      target: document.createElement("div"),
-    };
+  const singleAuthTestCases = [
+    { apiKey: "test-key" },
+    { useExistingUserSession: true },
+    { preferredAuthMethod: "jwt" },
+  ].flatMap((authConfig) => [
+    { ...authConfig, dashboardId: 1 },
+    { ...authConfig, questionId: 1 },
+  ]);
 
-    expect(() => {
-      new MetabaseEmbed({ ...settings, apiKey: "test-key" });
-      new MetabaseEmbed({ ...settings, useExistingUserSession: true });
-      new MetabaseEmbed({ ...settings, preferredAuthMethod: "jwt" });
-    }).not.toThrow();
-  });
+  it.each(singleAuthTestCases)(
+    "does not report an error when only one auth method is provided for %p",
+    (settings) => {
+      const { questionId, dashboardId, ...config } = settings as Partial<
+        typeof settings
+      > & {
+        questionId?: number;
+        dashboardId?: number;
+      };
+      defineMetabaseConfig({
+        instanceUrl: "http://localhost:3000",
+        ...config,
+      });
+
+      const tagName = questionId ? "metabase-question" : "metabase-dashboard";
+      const embed = document.createElement(tagName);
+      if (questionId) {
+        embed.setAttribute("question-id", String(questionId));
+      } else if (dashboardId) {
+        embed.setAttribute("dashboard-id", String(dashboardId));
+      }
+      document.body.appendChild(embed);
+
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    },
+  );
 });

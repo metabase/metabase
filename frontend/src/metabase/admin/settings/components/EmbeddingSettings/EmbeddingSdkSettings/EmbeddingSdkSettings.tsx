@@ -67,12 +67,18 @@ export function EmbeddingSdkSettings() {
     utm: utmTags,
   });
 
-  const quickStartUrl = useUrlWithUtm(
+  const sdkQuickStartUrl = useUrlWithUtm(
     "https://metaba.se/sdk-quick-start",
     utmTags,
   );
 
-  const documentationUrl = useUrlWithUtm("https://metaba.se/sdk-docs", utmTags);
+  const sdkDocumentationUrl = useUrlWithUtm(
+    "https://metaba.se/sdk-docs",
+    utmTags,
+  );
+
+  // The quickstart is part of the documentation page, unlike the SDK, so we only need a single docs link.
+  const embedJsDocumentationUrl = useDocsUrl("embedding/embedded-analytics-js");
 
   const SwitchBinariesLink = (
     <ExternalLink
@@ -147,7 +153,7 @@ export function EmbeddingSdkSettings() {
               size="compact-xs"
               variant="outline"
               component={ExternalLink}
-              href={quickStartUrl}
+              href={sdkQuickStartUrl}
               rightSection={<Icon size={12} name="external" />}
               fz="sm"
             >
@@ -158,7 +164,7 @@ export function EmbeddingSdkSettings() {
               size="compact-xs"
               variant="outline"
               component={ExternalLink}
-              href={documentationUrl}
+              href={sdkDocumentationUrl}
               rightSection={<Icon size={12} name="external" />}
               fz="sm"
             >
@@ -187,6 +193,17 @@ export function EmbeddingSdkSettings() {
 
             {isSimpleEmbedFeatureEnabled ? (
               <Group gap="md">
+                <Button
+                  size="compact-xs"
+                  variant="outline"
+                  component={ExternalLink}
+                  href={embedJsDocumentationUrl?.url}
+                  rightSection={<Icon size={12} name="external" />}
+                  fz="sm"
+                >
+                  {t`Documentation`}
+                </Button>
+
                 <LinkButton
                   size="compact-xs"
                   variant="outline"

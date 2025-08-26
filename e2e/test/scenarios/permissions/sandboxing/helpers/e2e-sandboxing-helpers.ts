@@ -59,7 +59,6 @@ const addCustomColumnToQuestion = (customColumnType: CustomColumnType) => {
 };
 
 const baseQuery = {
-  type: "query",
   "source-table": PRODUCTS_ID,
   limit: 20,
 };

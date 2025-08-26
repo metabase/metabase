@@ -5,10 +5,10 @@ import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
 
+import S from "./UpsellCard.module.css";
 import { UpsellCta } from "./UpsellCta";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
@@ -42,6 +42,7 @@ export type UpsellCardProps = {
   large?: boolean;
   style?: React.CSSProperties;
   onClick?: () => void;
+  buttonStyle?: React.CSSProperties;
 } & CardWidthProps &
   CardLinkProps;
 
@@ -58,6 +59,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   maxWidth,
   large = false,
   onClick,
+  buttonStyle,
   ...props
 }: UpsellCardProps) => {
   const urlWithParams = useUpsellLink({
@@ -99,6 +101,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
           </Text>
           <Box mx="md" mb="lg">
             <UpsellCta
+              style={buttonStyle}
               onClick={onClick}
               url={buttonLink ? urlWithParams : undefined}
               internalLink={internalLink}

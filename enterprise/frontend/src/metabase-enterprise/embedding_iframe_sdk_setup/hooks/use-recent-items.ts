@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { match } from "ts-pattern";
 
 import { useListRecentsQuery } from "metabase/api";
 import type { RecentItem } from "metabase-types/api";
@@ -22,6 +23,11 @@ export const useRecentItems = () => {
     SdkIframeEmbedSetupRecentItem[]
   >([]);
 
+  // Users can select collections from the collection picker.
+  const [localRecentCollections, setLocalRecentCollections] = useState<
+    SdkIframeEmbedSetupRecentItem[]
+  >([]);
+
   const recentDashboards = useMemo(() => {
     return getCombinedRecentItems(
       "dashboard",
@@ -38,15 +44,24 @@ export const useRecentItems = () => {
     );
   }, [apiRecentItems, localRecentQuestions]);
 
+  const recentCollections = useMemo(() => {
+    return getCombinedRecentItems(
+      "collection",
+      localRecentCollections,
+      apiRecentItems ?? [],
+    );
+  }, [apiRecentItems, localRecentCollections]);
+
   const addRecentItem = useCallback(
     (
-      type: "dashboard" | "question",
+      type: "dashboard" | "question" | "collection",
       recentItemToAdd: SdkIframeEmbedSetupRecentItem,
     ) => {
-      const setRecentItems =
-        type === "dashboard"
-          ? setLocalRecentDashboards
-          : setLocalRecentQuestions;
+      const setRecentItems = match(type)
+        .with("dashboard", () => setLocalRecentDashboards)
+        .with("question", () => setLocalRecentQuestions)
+        .with("collection", () => setLocalRecentCollections)
+        .exhaustive();
 
       // Bump the added item to the top of the list.
       setRecentItems((prev) =>
@@ -62,6 +77,7 @@ export const useRecentItems = () => {
   return {
     recentDashboards,
     recentQuestions,
+    recentCollections,
     addRecentItem,
     isRecentsLoading: isLoading,
   };
@@ -72,7 +88,7 @@ export const useRecentItems = () => {
  * recent items that users have chosen in the modal locally.
  */
 const getCombinedRecentItems = (
-  model: "dashboard" | "card",
+  model: "dashboard" | "card" | "collection",
   localRecentItems: SdkIframeEmbedSetupRecentItem[],
   apiRecentItems: RecentItem[],
 ): SdkIframeEmbedSetupRecentItem[] => {

@@ -130,6 +130,10 @@
   (let [{:keys [tag hash]} mb-version-info]
     (format "%s (%s)" tag hash)))
 
+(def ^String mb-version-hash
+  "A string representing the hash of the current version of Metabase."
+  (:hash mb-version-info))
+
 (def ^String mb-app-id-string
   "A formatted version string including the word 'Metabase' appropriate for passing along
    with database connections so admins can identify them as Metabase ones.

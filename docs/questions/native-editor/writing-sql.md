@@ -92,6 +92,16 @@ You can use [Snippets](snippets.md) to save, reuse, and share SQL code across mu
 
 When you run a query from the SQL editor, Metabase sends the query to your database exactly as it is written. Any results or errors displayed in Metabase are the same as the results or errors that you would get if you ran the query directly against your database. If the SQL syntax of your query doesn’t match the SQL dialect used by your database, your database won’t be able to run the query.
 
+## The native query editor is designed for reading data, not writing it
+
+The native SQL editor is designed for asking questions about your data. Don't use the editor for:
+
+- Multi-statement queries
+- Stored procedures and function calls
+- DDL statements (like `CREATE`, `ALTER`, or `DROP`)
+
+Depending on your connection's privileges, some of the above actions may work, but none are officially supported, and we recommend against using the native query editor for these tasks.
+
 ## Question version history
 
 For questions, [dashboards](../../dashboards/start.md), and [models](../../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.

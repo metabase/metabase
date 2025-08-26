@@ -98,8 +98,9 @@
   You should pass the results thru a unique name function."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    col                   :- ::lib.schema.metadata/column]
-  (let [source-alias ((some-fn :lib/source-column-alias :name) col)]
-    (if-let [join-alias (or (current-join-alias col)
-                            (implicit-join-name metadata-providerable col))]
-      (joined-field-desired-alias join-alias source-alias)
-      source-alias)))
+  (or (:lib/ref-name col)
+      (let [source-alias ((some-fn :lib/source-column-alias :name) col)]
+        (if-let [join-alias (or (current-join-alias col)
+                                (implicit-join-name metadata-providerable col))]
+          (joined-field-desired-alias join-alias source-alias)
+          source-alias))))

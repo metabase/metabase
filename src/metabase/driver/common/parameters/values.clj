@@ -27,9 +27,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -157,12 +155,16 @@
                                (first params)
                                params)))
         nil-value?        (and (seq matching-params)
-                               (every? (fn [param]
-                                         (nil? (:value param)))
+                               (every? (fn [{:keys [value], :as _param}]
+                                         (or (nil? value)
+                                             (and (sequential? value)
+                                                  (every? nil? value))))
                                        matching-params))]
     (cond
       ;; if we have matching parameter(s) with at least one actual value, return them.
-      (and (seq matching-params) (some :value matching-params))
+      (and (seq matching-params)
+           (some :value matching-params)
+           (not nil-value?))
       (normalize-params (filter :value matching-params))
       ;; If a FieldFilter has value=nil, return a [[params/no-value]]
       ;; so that this filter can be substituted with "1 = 1" regardless of whether or not this tag has default value
@@ -240,7 +242,7 @@
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
-        snippet    (or (t2/select-one :model/NativeQuerySnippet :id snippet-id)
+        snippet    (or (lib.metadata/native-query-snippet (qp.store/metadata-provider) snippet-id)
                        (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
                                        {:snippet-id   snippet-id
                                         :snippet-name snippet-name

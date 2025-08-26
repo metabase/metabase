@@ -140,6 +140,7 @@ type VisualizationOwnProps = {
   height?: number | null;
   isAction?: boolean;
   isDashboard?: boolean;
+  isDocument?: boolean;
   isMobile?: boolean;
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
@@ -257,6 +258,7 @@ class Visualization extends PureComponent<
     height: 0,
     isAction: false,
     isDashboard: false,
+    isDocument: false,
     isEditing: false,
     isEmbeddingSdk: false,
     isFullscreen: false,
@@ -590,6 +592,7 @@ class Visualization extends PureComponent<
       height: rawHeight,
       isAction,
       isDashboard,
+      isDocument,
       isEditing,
       isEmbeddingSdk,
       isFullscreen,
@@ -845,6 +848,7 @@ class Visualization extends PureComponent<
                     height={rawHeight}
                     hovered={hovered}
                     isDashboard={!!isDashboard}
+                    isDocument={!!isDocument}
                     isEditing={!!isEditing}
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}

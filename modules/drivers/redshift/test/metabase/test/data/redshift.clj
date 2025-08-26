@@ -246,10 +246,10 @@
 
 (defonce ^:private ^{:arglists '([driver database])}
   original-describe-database
-  (get-method driver/describe-database :redshift))
+  (get-method driver/describe-database* :redshift))
 
 ;; For test databases, only sync the tables that are qualified by the db name
-(defmethod driver/describe-database :redshift
+(defmethod driver/describe-database* :redshift
   [driver database]
   (if *override-describe-database-to-filter-by-db-name?*
     (let [r                (original-describe-database driver database)

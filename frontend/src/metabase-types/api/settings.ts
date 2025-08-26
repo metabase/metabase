@@ -210,6 +210,7 @@ const tokenStatusFeatures = [
   "metabase-store-managed",
   "metabot-v3",
   "no-upsell",
+  "offer-metabase-ai",
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
@@ -230,6 +231,10 @@ const tokenStatusFeatures = [
 
 export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
 
+interface TokenStatusStoreUsers {
+  email: string;
+}
+
 export interface TokenStatus {
   status: TokenStatusStatus;
   valid: boolean;
@@ -237,6 +242,7 @@ export interface TokenStatus {
   "error-details"?: string;
   trial?: boolean;
   features?: TokenStatusFeature[];
+  "store-users"?: TokenStatusStoreUsers[];
 }
 
 export type DayOfWeekId =
@@ -279,6 +285,7 @@ export const tokenFeatures = [
   "collection_cleanup",
   "cache_preemptive",
   "metabot_v3",
+  "offer_metabase_ai",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
@@ -286,6 +293,9 @@ export const tokenFeatures = [
   "development_mode",
   "etl_connections",
   "etl_connections_pg",
+  "documents",
+  "semantic_search",
+  "transforms",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -435,6 +445,7 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
   "application-font-files": FontFile[] | null;
@@ -528,7 +539,10 @@ export type UserSettings = {
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
   "trial-banner-dismissal-timestamp"?: string | null;
-  "sdk-iframe-embed-setup-settings"?: SdkIframeEmbedSetupSettings | null;
+  "sdk-iframe-embed-setup-settings"?: Pick<
+    SdkIframeEmbedSetupSettings,
+    "theme" | "useExistingUserSession"
+  > | null;
 };
 
 /**
@@ -574,6 +588,8 @@ export type ColorSettings = Record<string, string>;
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };
 
+export type SearchEngineSettingValue = "semantic" | "appdb" | "in-place";
+
 export type DatabaseReplicationConnections = Record<
   DatabaseId,
   { connection_id: string }
@@ -595,6 +611,7 @@ export interface EnterpriseSettings extends Settings {
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
   "session-timeout": TimeoutValue | null;
+  "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;

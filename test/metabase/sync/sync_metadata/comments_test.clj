@@ -125,4 +125,4 @@
                            (tx/map->TableDefinition {:table-name table-name
                                                      :table-comment added-comment}))])
           (sync-tables/sync-tables-and-database! (mt/db))
-          (is (true? (t2/exists? :model/Table :db_id (u/the-id (mt/db)) :description added-comment))))))))
+          (is (true? (t2/exists? :model/Table :db_id (mt/id) :description added-comment))))))))

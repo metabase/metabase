@@ -556,3 +556,35 @@
             :lib/source    :source/card
             :lib/breakout? false}]
           (lib/returned-columns (lib.tu/query-with-source-card)))))
+
+(deftest ^:parallel propagate-crazy-long-identifiers-from-card-metadata-test
+  (testing "respect crazy-long identifiers in card metadata (we need to use these to refer to native columns in the second stage) (#47584)"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id              1
+                        :dataset-query   {:type     :native
+                                          :database (meta/id)
+                                          :native   {:query "SELECT *"}}
+                        :result-metadata [{:base_type             :type/Text
+                                           :database_type         "CHARACTER VARYING"
+                                           :display_name          "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                           :effective_type        :type/Text
+                                           :name                  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                           :lib/source            :source/native}]}]})
+          query (-> (lib/query mp (lib.metadata/card mp 1))
+                    lib/append-stage)]
+      (testing "card returned columns"
+        (is (=? [{:lib/source               :source/card
+                  :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                  :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}]
+                (lib/returned-columns query (lib.metadata/card mp 1)))))
+      (testing "first stage returned columns"
+        (is (=? [{:lib/source               :source/card
+                  :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                  :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}]
+                (lib/returned-columns query 0))))
+      (testing "second stage returned columns"
+        (is (=? [{:lib/source               :source/previous-stage
+                  :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_00028d48"
+                  :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}]
+                (lib/returned-columns query 1)))))))
