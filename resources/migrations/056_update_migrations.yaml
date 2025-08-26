@@ -559,6 +559,12 @@ databaseChangeLog:
                   remarks: The metabot entity this prompt is associated with
                   constraints:
                     nullable: false
+            preConditions:
+              - onFail: MARK_RAN
+              - not:
+                  - columnExists:
+                      tableName: metabot_prompt
+                      columnName: metabot_entity_id
 
   - changeSet:
       id: v56.2025-08-22T12:00:11
