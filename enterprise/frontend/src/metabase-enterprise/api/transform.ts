@@ -48,6 +48,17 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       providesTags: (transform) =>
         transform ? provideTransformTags(transform) : [],
     }),
+    listTransformDependencies: builder.query<Transform[], TransformId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/transform/${id}/transform`,
+      }),
+      providesTags: (transforms, error, id) =>
+        invalidateTags(error, [
+          idTag("transform", id),
+          ...(transforms?.flatMap(provideTransformTags) ?? []),
+        ]),
+    }),
     runTransform: builder.mutation<void, TransformId>({
       query: (id) => ({
         method: "POST",
@@ -111,6 +122,7 @@ export const transformApi = EnterpriseApi.injectEndpoints({
 export const {
   useListTransformsQuery,
   useListTransformRunsQuery,
+  useListTransformDependenciesQuery,
   useGetTransformQuery,
   useLazyGetTransformQuery,
   useRunTransformMutation,
