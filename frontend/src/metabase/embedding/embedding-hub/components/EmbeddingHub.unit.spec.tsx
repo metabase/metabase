@@ -89,7 +89,7 @@ describe("EmbeddingHub", () => {
     await userEvent.click(screen.getByText("Create a dashboard"));
     await userEvent.click(screen.getByText("Generate automatic dashboard"));
 
-    const dialog = screen.getByTestId("entity-picker-modal");
+    const dialog = await screen.findByTestId("entity-picker-modal");
     expect(dialog).toBeInTheDocument();
 
     expect(
