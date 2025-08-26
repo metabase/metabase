@@ -105,7 +105,13 @@ describe("scenarios > visualizations > drillthroughs > geographic drill", () => 
                 ["field", PEOPLE.ID, null],
                 ["field", ORDERS.USER_ID, null],
               ],
+              alias: "Orders",
+              fields: "all",
             },
+          ],
+          filter: [
+            "not-null",
+            ["field", ORDERS.SUBTOTAL, { "join-alias": "Orders" }],
           ],
           aggregation: [["count"]],
           breakout: [
@@ -113,7 +119,11 @@ describe("scenarios > visualizations > drillthroughs > geographic drill", () => 
             ["field", PEOPLE.CITY, null],
             ["field", PEOPLE.LATITUDE, { binning: { strategy: "default" } }],
             ["field", PEOPLE.LONGITUDE, { binning: { strategy: "default" } }],
-            ["field", ORDERS.SUBTOTAL, { binning: { strategy: "default" } }],
+            [
+              "field",
+              ORDERS.SUBTOTAL,
+              { binning: { strategy: "default" }, "join-alias": "Orders" },
+            ],
           ],
         },
         display: undefined,
