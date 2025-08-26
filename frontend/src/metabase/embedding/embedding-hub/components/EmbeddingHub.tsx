@@ -32,7 +32,7 @@ export const EmbeddingHub = () => {
 
         <Text mb="xl" c="text-medium">
           {c("{0} is the link to the selected embedding type.")
-            .jt`Get started with ${(<ExternalLink href={embedJsDocsUrl?.url} className={cx(CS.textBold, CS.link)}>{t`Embedded Analytics JS`}</ExternalLink>)}.`}
+            .jt`Get started with ${(<ExternalLink href={embedJsDocsUrl?.url} className={cx(CS.textBold, CS.link)} key="embedded-analytics-js-link">{t`Embedded Analytics JS`}</ExternalLink>)}.`}
         </Text>
 
         <EmbeddingHubChecklist
