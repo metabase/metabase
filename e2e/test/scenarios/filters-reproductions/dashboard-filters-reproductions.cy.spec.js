@@ -3854,13 +3854,13 @@ describe("issue 48524", () => {
     H.assertTableRowsCount(1);
 
     cy.log(
-      "open the dashboard again to make sure the last used values are applied",
+      "open the dashboard again and verify that the last used values are applied",
     );
     H.visitDashboard("@dashboardId");
     H.assertTableRowsCount(1);
 
     cy.log(
-      "open the dashboard with only 1 parameter value to verify that the last used values are not applied in this case",
+      "open the dashboard with only 1 parameter value and verify that the last used values are not applied in this case",
     );
     H.visitDashboard("@dashboardId", {
       params: {
