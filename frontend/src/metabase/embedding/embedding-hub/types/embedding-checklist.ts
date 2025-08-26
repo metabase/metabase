@@ -22,7 +22,8 @@ export interface EmbeddingHubStep {
 
 export type EmbeddingHubModalToTrigger =
   | { type: "add-data"; initialTab: AddDataTab }
-  | { type: "new-dashboard" };
+  | { type: "new-dashboard" }
+  | { type: "xray-dashboard" };
 
 interface EmbeddingHubAction {
   label: string;

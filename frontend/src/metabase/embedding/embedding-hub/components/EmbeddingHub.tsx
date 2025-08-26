@@ -14,6 +14,7 @@ import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
 import { getEmbeddingHubSteps } from "../utils";
 
 import { EmbeddingHubChecklist } from "./EmbeddingHubChecklist";
+import { EmbeddingHubXrayPickerModal } from "./EmbeddingHubXrayPickerModal";
 
 export const EmbeddingHub = () => {
   const embeddingSteps = useMemo(() => getEmbeddingHubSteps(), []);
@@ -61,6 +62,11 @@ export const EmbeddingHub = () => {
 
         <CreateDashboardModal
           opened={openModal?.type === "new-dashboard"}
+          onClose={closeModal}
+        />
+
+        <EmbeddingHubXrayPickerModal
+          opened={openModal?.type === "xray-dashboard"}
           onClose={closeModal}
         />
       </Box>
