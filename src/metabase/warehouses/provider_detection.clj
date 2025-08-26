@@ -28,22 +28,25 @@
         (get details "host"))))
 
 (defn- detect-provider
-  "Detect database provider from host using regex patterns.
+  "Detect database provider from host and engine using regex patterns.
    Returns provider name string or nil if no match found."
-  [host]
-  (when (and host (string? host) (not (str/blank? host)))
-    (let [host (str/trim host)]
+  [host engine]
+  (when (and host (string? host) (not (str/blank? host)) engine)
+    (let [host (str/trim host)
+          engine-keyword (keyword engine)]
       (->> providers
            (filter #(re-find (:pattern %) host))
+           (filter #(some #{engine-keyword} (:engines %)))
            first
            :name))))
 
 (defn detect-provider-from-database
-  "Detect provider from a database entity by examining its details."
+  "Detect provider from a database entity by examining its details and engine."
   [database]
   (when-let [details (:details database)]
     (when-let [host (extract-host-from-details details)]
-      (detect-provider host))))
+      (when-let [engine (:engine database)]
+        (detect-provider host engine)))))
 
 (defn providers-for-engine
   "Return providers data formatted for API consumption for a specific engine."
