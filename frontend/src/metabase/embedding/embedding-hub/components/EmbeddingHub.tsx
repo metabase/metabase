@@ -1,13 +1,16 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
+import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
 import { Box, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
+import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
 import { getEmbeddingHubSteps } from "../utils";
 
 import { EmbeddingHubChecklist } from "./EmbeddingHubChecklist";
@@ -16,13 +19,19 @@ export const EmbeddingHub = () => {
   const embeddingSteps = useMemo(() => getEmbeddingHubSteps(), []);
   const completedSteps = useCompletedEmbeddingHubSteps();
 
+  const [openModal, setOpenModal] = useState<EmbeddingHubModalToTrigger | null>(
+    null,
+  );
+
   // Find the first unchecked step to open by default.
   // This is undefined when every step has been completed.
   const firstUncompletedStep = embeddingSteps.find(
     (step) => !completedSteps[step.id],
   );
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This link only shows for admins.
+  const closeModal = () => setOpenModal(null);
+
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
   const embedJsDocsUrl = useDocsUrl("embedding/embedded-analytics-js");
 
   return (
@@ -39,6 +48,20 @@ export const EmbeddingHub = () => {
           steps={embeddingSteps}
           completedSteps={completedSteps}
           defaultOpenStep={firstUncompletedStep?.id}
+          onModalAction={setOpenModal}
+        />
+
+        <AddDataModal
+          opened={openModal?.type === "add-data"}
+          onClose={closeModal}
+          initialTab={
+            openModal?.type === "add-data" ? openModal?.initialTab : undefined
+          }
+        />
+
+        <CreateDashboardModal
+          opened={openModal?.type === "new-dashboard"}
+          onClose={closeModal}
         />
       </Box>
     </Box>

@@ -1,3 +1,4 @@
+import type { AddDataTab } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/utils";
 import type { IconName } from "metabase/ui";
 
 export type EmbeddingHubStepId =
@@ -19,6 +20,10 @@ export interface EmbeddingHubStep {
   actions?: EmbeddingHubAction[];
 }
 
+export type EmbeddingHubModalToTrigger =
+  | { type: "add-data"; initialTab: AddDataTab }
+  | { type: "new-dashboard" };
+
 interface EmbeddingHubAction {
   label: string;
 
@@ -30,6 +35,9 @@ interface EmbeddingHubAction {
 
   /** CTA button variant. */
   variant?: "outline" | "subtle" | "filled";
+
+  /** Which modal to trigger? */
+  modal?: EmbeddingHubModalToTrigger;
 }
 
 interface EmbeddingHubImage {
