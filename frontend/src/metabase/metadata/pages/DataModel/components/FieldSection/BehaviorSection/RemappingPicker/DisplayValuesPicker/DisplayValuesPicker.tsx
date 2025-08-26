@@ -81,6 +81,7 @@ export const DisplayValuesPicker = ({
         );
       }}
       value={value}
+      searchable
       onChange={handleChange}
       {...props}
     />
