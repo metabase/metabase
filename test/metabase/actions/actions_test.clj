@@ -18,10 +18,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (org.apache.sshd.server SshServer)
-   (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

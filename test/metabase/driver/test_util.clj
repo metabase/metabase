@@ -7,6 +7,8 @@
    (org.apache.sshd.server SshServer)
    (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
 
+(set! *warn-on-reflection* true)
+
 (defn -notify-all-databases-updated! []
   (mb.hawk.parallel/assert-test-is-not-parallel `-notify-all-databases-updated!)
   ;; It makes sense to notify databases only if app db is initialized.
