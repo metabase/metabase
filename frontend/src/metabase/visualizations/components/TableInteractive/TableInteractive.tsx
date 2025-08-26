@@ -64,6 +64,7 @@ import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   RowValue,
   RowValues,
@@ -78,6 +79,15 @@ import {
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+
+const shouldWrap = (
+  settings: VisualizationSettings,
+  columnSettings: ColumnSettings = {},
+) => {
+  return (
+    !settings["table.pagination"] && Boolean(columnSettings["text_wrapping"])
+  );
+};
 
 const getBodyCellVariant = (column: DatasetColumn): BodyCellVariant => {
   const isPill = isPK(column) || isFK(column);
@@ -245,6 +255,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return cols.map((col) => {
       const columnSettings = settings.column?.(col);
       const columnIndex = cols.findIndex((c) => c.name === col.name);
+      const wrap = shouldWrap(settings, columnSettings);
 
       const rich: CellFormatter<RowValue> = memoize(
         (untranslatedValue, rowIndex) => {
@@ -258,6 +269,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             jsx: true,
             rich: true,
             clicked,
+            collapseNewlines: !wrap,
           });
         },
       );
@@ -470,9 +482,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return cols.map((col, columnIndex) => {
       const columnSettings = settings.column?.(col) ?? {};
 
-      const wrap =
-        !settings["table.pagination"] &&
-        Boolean(columnSettings["text_wrapping"]);
+      const wrap = shouldWrap(settings, columnSettings);
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
       const isImage = columnSettings["view_as"] === "image";
