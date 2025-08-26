@@ -52,7 +52,9 @@ export const ScalarValue = ({
       unit: "rem",
       step: 0.2,
       min: 1,
-      max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
+      max: gridSize
+        ? getMaxFontSize(gridSize.width, totalNumGridCols, width)
+        : 4,
     });
   }, [
     fontFamily,
