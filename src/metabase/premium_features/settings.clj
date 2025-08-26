@@ -255,6 +255,10 @@
   "Should we enable Embedded Analytics JS?"
   :embedding-simple)
 
+(define-premium-feature ^{:added "0.57.0"} enable-embedding-hub?
+  "Should we enable the embedding hub?"
+  :embedding-hub)
+
 (define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
   "Should Metabase do AI analysis on entities?"
   :ai-entity-analysis)
