@@ -37,7 +37,6 @@ export const updateUrl = createThunkAction(
       queryBuilderMode,
       datasetEditorTab,
       objectId,
-      locationState,
     } = {},
   ) =>
     (dispatch, getState) => {
@@ -80,7 +79,6 @@ export const updateUrl = createThunkAction(
 
       const card = isAdHocModelOrMetric ? getCard(getState()) : question.card();
       const newState = {
-        ...locationState,
         card,
         cardId: question.id(),
         objectId,

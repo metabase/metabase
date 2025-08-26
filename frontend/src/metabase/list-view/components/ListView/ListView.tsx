@@ -6,9 +6,7 @@ import { Icon, Stack, Text } from "metabase/ui";
 import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  Card,
   DatasetColumn,
   DatasetData,
   ListViewColumns,
@@ -24,8 +22,6 @@ export interface ListViewProps {
   sortingDirection?: "asc" | "desc";
   onSortClick: (column: DatasetColumn) => void;
   entityType?: string;
-  card: Card;
-  metadata?: Metadata;
   isInteractive?: boolean;
 }
 
@@ -36,8 +32,6 @@ export function ListView({
   sortingDirection,
   onSortClick,
   entityType,
-  card,
-  metadata,
   isInteractive,
 }: ListViewProps) {
   const { cols, rows } = data;
@@ -54,7 +48,7 @@ export function ListView({
   const { titleColumn, subtitleColumn, imageColumn, rightColumns } =
     useListColumns(cols, settings?.["list.columns"]);
 
-  const openObjectDetail = useObjectDetail(data, card, metadata);
+  const openObjectDetail = useObjectDetail(data);
 
   // Get the appropriate icon based on entity type
   const entityIcon =

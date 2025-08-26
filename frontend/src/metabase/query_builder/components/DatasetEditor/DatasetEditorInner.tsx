@@ -289,6 +289,15 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     [resultsMetadata, visualizationSettings],
   );
 
+  /**
+   * tempModelSettings and tempRawSeries are introduced as a workaround to support new "list" display type for models.
+   * - `tempModelSettings` stores local state for currently selected display and allows to switch between 'Columns'/'Settings' tabs
+   * without triggering question changes detection, because otherwise updating `display` property would open LeaveConfirmationModal.
+   * 'Columns' tab works only for "table" display type, so when user opens 'Settings' for Model saved with "list" display type,
+   *  and wants to see 'Columns' tab, we need to update `display` property to "table".
+   * - `tempRawSeries` is introduced for the same reason. It patches `rawSeries` property inside nested `VisualizationResult` component,
+   *  so that it renders correct visualization for 'Columns' tab.
+   */
   const [tempModelSettings, setTempModelSettings] = useState<ModelSettings>(
     () => {
       return {
@@ -489,11 +498,9 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       await updateQuestion(questionWithMetadata, {
         rerunQuery: false,
       });
-      // setTempModelSettings(questionWithMetadata.settings());
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
       await onSave(questionWithMetadata, { rerunQuery: true });
-      // setTempModelSettings(questionWithMetadata.settings());
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {
@@ -635,8 +642,6 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
         setIsDirty(true);
         if (settings.display) {
           setTempModelSettings({ display: settings.display });
-          // const nextQuestion = question.setDisplay(settings.display);
-          // updateQuestion(nextQuestion);
         }
       },
       modelSettings: tempModelSettings,
@@ -700,7 +705,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
              * @see https://github.com/metabase/metabase/pull/31142/files#r1211352364
              */}
             {isEditingQuery && editorHeight > 0 && (
-              // @ts-expect-error Fix types in DatasetQueryEditor
+              // @ts-expect-error TODO: Fix types in DatasetQueryEditor
               <DatasetQueryEditor
                 {...props}
                 isActive={isEditingQuery}

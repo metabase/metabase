@@ -21,7 +21,6 @@ export const setDatasetEditorTab =
       setQueryBuilderMode("dataset", {
         datasetEditorTab,
         replaceState: false,
-        shouldUpdateUrl: true,
       }),
     );
     dispatch(runDirtyQuestionQuery());

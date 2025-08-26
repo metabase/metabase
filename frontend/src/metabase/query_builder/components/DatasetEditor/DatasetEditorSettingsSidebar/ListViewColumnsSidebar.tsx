@@ -13,9 +13,9 @@ export type ListViewColumnsSidebarProps = {
 };
 
 /**
- * Renders a list of currently unused columns for the List view with drag handles.
+ * Renders a list of currently unused columns for ListViewConfiguration.
  * Items are draggable and set dataTransfer text/plain as the column "name",
- * so they can be dropped into ReorderableTagsInput inside ListViewConfiguration.
+ * so they can be dropped into ReorderableTagsInput fields.
  */
 export function ListViewColumnsSidebar({
   cols = [],

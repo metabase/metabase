@@ -241,8 +241,6 @@ export const ListViz = ({
   data,
   settings,
   onVisualizationClick,
-  card,
-  metadata,
   queryBuilderMode,
 }: VisualizationProps) => {
   const dispatch = useDispatch();
@@ -330,8 +328,6 @@ export const ListViz = ({
           sortingDirection={sortingDirection}
           onSortClick={handleSort}
           entityType={entityType}
-          card={card}
-          metadata={metadata}
           isInteractive={queryBuilderMode !== "dataset"}
         />
       )}
