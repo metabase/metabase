@@ -265,10 +265,6 @@
 (defmethod routed-dataset-details :redshift [driver]
   {:db (tx/db-test-env-var-or-throw driver :db-routing)})
 
-(defmethod routed-dataset-details :athena [driver]
-  {:region (tx/db-test-env-var-or-throw driver :region-routing)
-   :s3_staging_dir (tx/db-test-env-var-or-throw :athena :s3-staging-dir-routing)})
-
 (defmethod routed-dataset-details :databricks [driver]
   {:catalog (tx/db-test-env-var-or-throw driver :catalog-routing)
    :multi-level-schema false
