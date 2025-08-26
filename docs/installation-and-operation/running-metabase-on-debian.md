@@ -1,12 +1,14 @@
 ---
-title: Running Metabase on Debian as a systemd service with Nginx
+title: Running Metabase as a systemd service
 redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-debian
 ---
 
-# Running Metabase on Debian as a systemd service with Nginx
+# Running Metabase as a systemd service
 
-For those people who don't (or can't) use Docker in their infrastructure, there's still a need to easily setup and deploy Metabase in production. On Debian-based systems, this means registering Metabase as a [systemd](https://wiki.debian.org/systemd) service that can be started/stopped/uninstalled.
+For those people who don't (or can't) use Docker in their infrastructure, there's still a need to easily setup and deploy Metabase in production. On most modern Linux distributions, this means registering Metabase as a [systemd](https://wiki.debian.org/systemd) service that can be started/stopped/uninstalled.
+
+We'll use Debian as an example in this guide, but the steps should apply to most Linux distributions that use systemd.
 
 **Note:** This is a _bare-bones recipe_ to get you started. Anyone can take it from here to do what they need to do on their systems, and should follow best practices for setting up and securing the rest of their server.
 
