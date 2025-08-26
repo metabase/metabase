@@ -18,10 +18,10 @@
                               "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")
           result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
                                                {:code transform-code})]
-      (is (= {:output "name,age\nAlice,25\nBob,30\n"
-              :stdout "Successfully saved 2 rows to CSV\n"
-              :stderr ""}
-             result)))))
+      (is (=? {:output "name,age\nAlice,25\nBob,30\n"
+               :stdout "Successfully saved 2 rows to CSV\n"
+               :stderr ""}
+              result)))))
 
 (deftest ^:parallel transform-function-missing-test
   (testing "handles missing transform function"
@@ -55,7 +55,7 @@
               :exit-code 1
               :stderr    (str "ERROR: Transform function failed: Something went wrong\n"
                               "Traceback (most recent call last):\n"
-                              "  File \"/sandbox/transform_runner.py\", line 107, in main\n"
+                              "  File \"/sandbox/transform_runner.py\", line 128, in main\n"
                               "    result = script.transform()\n"
                               "             ^^^^^^^^^^^^^^^^^^\n"
                               "  File \"/sandbox/script.py\", line 2, in transform\n"
@@ -73,10 +73,10 @@
                               "    return pd.DataFrame(data)")
           result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
                                                {:code transform-code})]
-      (is (= {:output "x,y,z\n1,10,a\n2,20,b\n3,30,c\n"
-              :stdout "Successfully saved 3 rows to CSV\n"
-              :stderr ""}
-             result)))))
+      (is (=? {:output "x,y,z\n1,10,a\n2,20,b\n3,30,c\n"
+               :stdout "Successfully saved 3 rows to CSV\n"
+               :stderr ""}
+              result)))))
 
 (deftest ^:parallel transform-function-with-db-parameter-test
   (testing "transform function can accept db parameter for forward compatibility"
@@ -88,10 +88,10 @@
                               "    return pd.DataFrame(data)")
           result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
                                                {:code transform-code})]
-      (is (= {:output "name,score\nCharlie,85\nDana,92\n"
-              :stdout "Successfully saved 2 rows to CSV\n"
-              :stderr ""}
-             result)))))
+      (is (=? {:output "name,score\nCharlie,85\nDana,92\n"
+               :stdout "Successfully saved 2 rows to CSV\n"
+               :stderr ""}
+              result)))))
 
 (deftest ^:parallel transform-function-db-object-structure-test
   (testing "db object provides expected interface structure"
@@ -108,10 +108,10 @@
                               "    return pd.DataFrame(data)")
           result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
                                                {:code transform-code})]
-      (is (= {:output "test_result\ndb_object_has_read_table_method\n"
-              :stdout "Successfully saved 1 rows to CSV\n"
-              :stderr ""}
-             result)))))
+      (is (=? {:output "test_result\ndb_object_has_read_table_method\n"
+               :stdout "Successfully saved 1 rows to CSV\n"
+               :stderr ""}
+              result)))))
 
 (deftest transform-function-with-working-database-test
   (testing "transform function successfully connects to PostgreSQL database and reads data"
@@ -142,10 +142,10 @@
               result               (mt/user-http-request :crowberto :post 200 "python-runner/execute"
                                                          {:code transform-code})]
 
-          (is (= {:output "student_count,average_score\n4,88.75\n"
-                  :stdout "Successfully saved 1 rows to CSV\n"
-                  :stderr ""}
-                 result)))))))
+          (is (=? {:output "student_count,average_score\n4,88.75\n"
+                   :stdout "Successfully saved 1 rows to CSV\n"
+                   :stderr ""}
+                  result)))))))
 
 (deftest get-table-data-test
   (testing "can retrieve table data"
