@@ -16,7 +16,6 @@ import {
   useUserSetting,
 } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
-import CS from "metabase/css/core/index.css";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -27,7 +26,6 @@ import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import {
   ActionIcon,
-  Box,
   Flex,
   Icon,
   type IconName,
@@ -163,15 +161,7 @@ export function MainNavbarView({
             {isEmbeddingHubFeatureEnabled && isAdmin && (
               <PaddedSidebarLink
                 isSelected={nonEntityItem?.url === "/embedding-hub"}
-                icon={
-                  <Box
-                    w="10px"
-                    h="10px"
-                    bg="brand"
-                    mx="7px"
-                    className={CS.rounded}
-                  />
-                }
+                icon="code_block"
                 onClick={onItemSelect}
                 url="/embedding-hub"
               >
