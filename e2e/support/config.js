@@ -4,7 +4,6 @@ import path from "node:path";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import * as ciTasks from "./ci_tasks";
-import { collectFailingTests } from "./collectFailedTests";
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -150,8 +149,14 @@ const defaultConfig = {
     require("@cypress/grep/src/plugin")(config);
 
     if (isCI) {
+      console.log("🔧 cypress-split: Initializing plugin in CI mode");
       cypressSplit(on, config, getSplittableSpecs);
-      collectFailingTests(on, config);
+      console.log("🔧 cypress-split: Plugin initialized successfully");
+      // Temporarily disabled to test if it interferes with cypress-split
+      // collectFailingTests(on, config);
+      console.log(
+        "🔧 cypress-split: collectFailingTests temporarily disabled for debugging",
+      );
     }
 
     // this is an official workaround to keep recordings of the failed specs only
