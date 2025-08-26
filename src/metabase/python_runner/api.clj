@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
+   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.query-processor :as qp]
@@ -62,11 +63,11 @@
                     stdout-file ["python_stdout_" ".txt"]
                     stderr-file ["python_stderr_" ".txt"]]
     (spit code-file code)
-
     (let [script-args ["/bin/bash" "python-runner/run-sandbox.sh"
                        code-file output-file stdout-file stderr-file
                        ;; TODO
-                       "http://localhost:3000"]
+                       (transforms.settings/python-runner-base-url)
+                       (transforms.settings/python-runner-api-key)]
           result (apply shell/sh (conj script-args :dir (io/file ".")))]
       (if (zero? (:exit result))
         {:output      (slurp output-file)

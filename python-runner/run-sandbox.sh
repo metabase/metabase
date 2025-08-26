@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Check if arguments are provided
-if [ $# -ne 5 ]; then
-    echo "Usage: $0 <code_file> <output_file> <stdout_file> <stderr_file> <metabase_url>"
+if [ $# -ne 6 ]; then
+    echo "Usage: $0 <code_file> <output_file> <stdout_file> <stderr_file> <metabase_url> <api_key>"
     exit 1
 fi
 
@@ -11,6 +11,7 @@ OUTPUT_FILE="$2"
 STDOUT_FILE="$3"
 STDERR_FILE="$4"
 METABASE_URL="$5"
+API_KEY="$6"
 
 # Create output directory if it doesn't exist
 OUTPUT_DIR="$(dirname "$OUTPUT_FILE")"
@@ -41,6 +42,13 @@ if [ -n "$METABASE_URL" ]; then
 
   DOCKER_ENV_VARS+=(-e "METABASE_URL=$TRANSFORMED_METABASE_URL")
 fi
+
+# Pass API key (required)
+if [ -z "$API_KEY" ]; then
+  echo "ERROR: API key is required but not provided"
+  exit 1
+fi
+DOCKER_ENV_VARS+=(-e "X_API_KEY=$API_KEY")
 
 # Run Python code in Docker sandboxed environment with transform runner
 docker run --rm \

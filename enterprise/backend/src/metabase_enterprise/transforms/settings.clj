@@ -15,3 +15,25 @@
   :export?    false
   :encryption :no
   :audit      :getter)
+
+(setting/defsetting python-runner-base-url
+  (deferred-tru "The base URL for the Python runner service. When Python runner is deployed as a separate service, update this URL.")
+  :type       :string
+  :visibility :internal
+  :default    "http://localhost:3000"
+  :feature    :transforms
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-runner-api-key
+  (deferred-tru "API key for authenticating with the Python runner service.")
+  :type       :string
+  :visibility :internal
+  :default    nil
+  :feature    :transforms
+  :doc        false
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :never)

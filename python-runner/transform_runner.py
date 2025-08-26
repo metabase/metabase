@@ -24,17 +24,19 @@ except ImportError:
 class MetabaseAPIConnection:
     """Metabase API connection wrapper that provides read_table functionality."""
 
-    def __init__(self, metabase_url=None):
+    def __init__(self, metabase_url=None, api_key=None):
         """
         Initialize connection to Metabase API.
 
         Args:
             metabase_url: Base URL for Metabase API (e.g., http://127.0.0.1:3000)
+            api_key: Optional API key for authentication
         """
         self.metabase_url = metabase_url
         self.session = requests.Session()
-        # For now, we rely on the fact that this runs in a secure environment
-        # where the Metabase instance trusts the python-runner service
+        # Set API key header if provided
+        if api_key:
+            self.session.headers['x-api-key'] = api_key
 
     def read_table(self, table_id, limit=None):
         """
@@ -96,9 +98,10 @@ def main():
 
         # Get Metabase API configuration from environment variables
         metabase_url = os.environ.get('METABASE_URL')
+        api_key = os.environ.get('X_API_KEY')
 
         # Create Metabase API connection object
-        db = MetabaseAPIConnection(metabase_url)
+        db = MetabaseAPIConnection(metabase_url, api_key)
 
         # Import the user's script
         sys.path.insert(0, '/sandbox')

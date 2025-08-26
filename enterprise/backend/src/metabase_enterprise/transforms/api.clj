@@ -220,8 +220,8 @@
     (if (transforms.util/python-transform? transform)
       ;; Handle Python transform execution
       (try
-        (let [{:keys [result run-id]} #p (transforms.execute/execute-python-transform! transform {:run_method :manual})]
-          (log/info "Python transform succeeded" result)
+        (let [{:keys [result run-id]} (transforms.execute/execute-python-transform! transform {:run_method :manual})]
+          (log/info "Python transform succeeded" (dissoc result :output))
           (-> (response/response {:message (deferred-tru "Python transform executed successfully")
                                   :run_id run-id
                                   :result result})

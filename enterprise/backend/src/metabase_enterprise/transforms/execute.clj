@@ -1,5 +1,7 @@
 (ns metabase-enterprise.transforms.execute
   (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -122,6 +124,28 @@
          (deliver start-promise t))
        (throw t)))))
 
+(defn- call-python-runner-api!
+  "Call the Python runner API endpoint to execute Python code.
+   Returns the result map or throws on error."
+  [code]
+  ;; TODO: Add connection-str parameter once the API supports it
+  (let [base-url (transforms.settings/python-runner-base-url)
+        api-key  (transforms.settings/python-runner-api-key)
+        headers  (cond-> {}
+                   api-key (assoc "X-API-Key" api-key))
+        response (http/post (str base-url "/api/python-runner/execute")
+                            {:content-type :json
+                             :accept :json
+                             :as :json
+                             :body (json/generate-string {:code code})
+                             :headers headers
+                             :throw-exceptions? false})]
+    (if (= 200 (:status response))
+      (:body response)
+      (throw (ex-info "Python runner API call failed"
+                      {:status (:status response)
+                       :body (:body response)})))))
+
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner."
   [transform {:keys [run_method]}]
@@ -136,9 +160,13 @@
       (try
 
         (with-transform-lifecycle [run-id [(:id transform) {:run_method run_method}]]
-          (let [{:keys [body] :as result} (python-runner.api/execute-python-code body)]
-            (if (:error body)
-              (throw (ex-info (str/join "\n"
+          ;; TODO: Pass connection-str to API once it supports it
+          ;; For now, the connection string needs to be embedded in the Python code
+          (let [result (call-python-runner-api! body)]
+            (if (or (:error result)
+                    (get-in result [:body :error]))
+              (let [error-data (or (:body result) result)]
+                (throw (ex-info (str/join "\n"
                                       [(format "exit code %d" (:exit-code body))
                                        "======"
                                        "stdout"
@@ -147,10 +175,10 @@
                                        "stderr"
                                        "======"
                                        (:stderr body)])
-                              {:status-code 400
-                               :error       (:stderr body)
-                               :stdout      (:stdout body)
-                               :stderr      (:stderr body)}))
+                                {:status-code 400
+                                 :error       (or (:stderr error-data) (:error error-data))
+                                 :stdout      (:stdout error-data)
+                                 :stderr      (:stderr error-data)})))
               (try
                 ;; TODO would be nice if we have create or replace in upload
                 (when-let [table (t2/select-one :model/Table
