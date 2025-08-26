@@ -52,7 +52,7 @@ export function removeNewLines<T>(value: T) {
   if (typeof value === "string") {
     // Replace all common newline sequences with a single space
     // Handles: \r\n (Windows), \r (old Mac), \n (Unix), and Unicode line/paragraph separators
-    return value.replace(/\r\n|\r|\n|\u2028|\u2029/g, " ");
+    return value.replace(/\r\n|\r|\n|\u0085|\u2028|\u2029/g, " ");
   }
   return value;
 }
