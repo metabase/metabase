@@ -33,7 +33,7 @@ DOCKER_ENV_VARS=(
 
 # Pass through Metabase API configuration from environment
 if [ -n "$METABASE_URL" ]; then
-  DOCKER_NETWORK_ARGS+=(--add-host=host.docker.internal:host-gateway)
+  DOCKER_NETWORK_ARGS+=(--network=host)
 
   # Transform localhost connections to host.docker.internal for cross-platform compatibility
   TRANSFORMED_METABASE_URL="${METABASE_URL//localhost/host.docker.internal}"
