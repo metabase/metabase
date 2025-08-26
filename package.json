@@ -259,7 +259,7 @@
     "cypress": "^14.5.3",
     "cypress-multi-reporters": "^1.6.4",
     "cypress-real-events": "^1.14.0",
-    "cypress-split": "^1.24.14",
+    "cypress-split": "^1.24.20",
     "cypress-terminal-report": "^6.1.2",
     "esbuild": "^0.25.0",
     "eslint": "7.32.0",

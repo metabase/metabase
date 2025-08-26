@@ -1,7 +1,7 @@
 {
   "durations": [
     {
-      "duration": 45000,
+      "duration": 5000,
       "spec": "../test/scenarios/actions/actions-in-object-detail-view.cy.spec.js"
     },
     {
