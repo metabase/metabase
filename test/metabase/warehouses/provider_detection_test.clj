@@ -4,14 +4,14 @@
    [metabase.warehouses.provider-detection :as provider-detection]))
 
 (deftest detect-provider-test
-  (testing "Other providers"
+  (testing "Providers"
     (is (= "Aiven" (#'provider-detection/detect-provider "mydb-project.aivencloud.com")))
     (is (= "Amazon RDS" (#'provider-detection/detect-provider "czrs8kj4isg7.us-east-1.rds.amazonaws.com")))
     (is (= "Azure" (#'provider-detection/detect-provider "production-flexible-server.postgres.database.azure.com")))
     (is (= "Crunchy Data" (#'provider-detection/detect-provider "p.vbjrfujv5beutaoelw725gvi3i.db.postgresbridge.com")))
     (is (= "DigitalOcean" (#'provider-detection/detect-provider "cluster-do-user-1234567-0.db.ondigitalocean.com")))
     (is (= "Fly.io" (#'provider-detection/detect-provider "db.fly.dev")))
-    (is (= "Neon" (#'provider-detection/detect-provider "ep-autumn-frost-alwlmval-pooler.ap-southeast-1 .aws.neon.tech")))
+    (is (= "Neon" (#'provider-detection/detect-provider "ep-autumn-frost-alwlmval-pooler.ap-southeast-1.aws.neon.tech")))
     (is (= "PlanetScale" (#'provider-detection/detect-provider "my-db.horizon.psdb.cloud")))
     (is (= "Railway" (#'provider-detection/detect-provider "nodejs-copy-production-7aa4.up.railway.app")))
     (is (= "Render" (#'provider-detection/detect-provider "your_host_name.your_region-postgres.render.com")))
