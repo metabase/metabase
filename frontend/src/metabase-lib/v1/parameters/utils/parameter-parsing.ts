@@ -28,14 +28,22 @@ export function getParameterValueFromQueryParams(
   lastUsedParametersValues = lastUsedParametersValues || {};
 
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
+  const hasQueryParams = Object.keys(queryParams).length > 0;
 
   // don't use the default with "param=" because it indicates an unset/cleared parameter value
   if (maybeParameterValue === "") {
     return null;
   } else if (maybeParameterValue == null) {
-    // first try to use last used parameter value then try to use the default if
-    // the parameter is not present in the query params
-    return lastUsedParametersValues[parameter.id] ?? parameter.default ?? null;
+    // If there is a parameter with a value set in the URL, do not use last used
+    // parameter values (metabase#48524). This avoids a case where some
+    // parameters are set via the URL and some have values from the last run.
+    if (hasQueryParams) {
+      return parameter.default ?? null;
+    } else {
+      return (
+        lastUsedParametersValues[parameter.id] ?? parameter.default ?? null
+      );
+    }
   }
 
   const parsedValue = parseParameterValue(maybeParameterValue, parameter);
