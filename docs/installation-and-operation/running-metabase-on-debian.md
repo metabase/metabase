@@ -76,7 +76,7 @@ EOF
 
 ## Create a Metabase service
 
-Every service needs a configuration file that tells systemd how to manage it, and what capabilities it supports. System-wide services are typically registered at `/etc/systemd/system/<servicename>`. So, a Metabase service should live at `/etc/systemd/system/metabase.service`.
+Every service needs a configuration file that tells systemd how to manage it and what capabilities it supports. System-wide services are typically registered at `/etc/systemd/system/<servicename>`. So, a Metabase service should live at `/etc/systemd/system/metabase.service`.
 
 ### The Metabase service file
 
