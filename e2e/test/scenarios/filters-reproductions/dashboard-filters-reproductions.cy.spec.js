@@ -4986,3 +4986,49 @@ describe("Issue 46767", () => {
     });
   });
 });
+
+describe("issue 49319", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should ignore parameters that not exist in the saved dashboard in edit mode (metabase#49319)", () => {
+    cy.log("open an existing dashboard");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+    cy.log("add a parameter and save the dashboard");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Vendor");
+    H.saveDashboard();
+
+    cy.log("add another parameter to the dashboard with a default value");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Category");
+    H.dashboardParameterSidebar().findByText("No default").click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.dashboardParameterSidebar().button("Done").click();
+
+    cy.log("change the value for the saved parameter");
+    cy.findByTestId("fixed-width-filters").findByText("Text").click();
+    H.dashboardParameterSidebar().findByText("No default").click();
+    H.popover().within(() => {
+      cy.findByText("Americo Sipes and Sons").click();
+      cy.findByText("Barrows-Johns").click();
+      cy.button("Add filter").click();
+    });
+    H.dashboardParameterSidebar().button("Done").click();
+
+    cy.log("the unsaved parameter should be ignored in edit mode");
+    H.assertTableRowsCount(179);
+
+    cy.log("both parameters should be applied when the dashboard is saved");
+    H.saveDashboard();
+    H.assertTableRowsCount(82);
+  });
+});
