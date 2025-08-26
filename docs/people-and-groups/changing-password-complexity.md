@@ -26,9 +26,14 @@ By default, Metabase also prevents users from setting passwords that are in a li
 
 ## Metabase Cloud passwords
 
-If your instance is hosted on Metabase Cloud, the follwing password compexity rules apply:
-- passwords need to be at least 12 characters long
-- passwords must contain at least 2 lowercase, 2 uppercase, 1 digit, and 1 special character
+If your instance is hosted on Metabase Cloud, passwords must:
+
+- Be at least 12 characters long
+- Contain at least: 
+  - 2 lowercase
+  - 2 uppercase
+  - 1 digit
+  - 1 special character
 
 ## Disabling password logins
 
