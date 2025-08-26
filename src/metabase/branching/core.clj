@@ -1,6 +1,7 @@
 (ns metabase.branching.core
   "Middleware that handles setting the current branch."
   (:require
+   [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
 
@@ -15,6 +16,11 @@
   into related groups of changes -- called a 'branch' -- that transparently replace the
   original model when the branch is activated."
   (delay nil))
+
+(def ^:dynamic *enable-branch-hook*
+  "Controls whether the toucan pipeline hook is enabled, this exists so we can disable it
+   while running code like custom migrations that we do not want it enabled for."
+  true)
 
 (defn do-with-current-branch-var
   "Impl for with-current-branch-var"
