@@ -41,8 +41,8 @@
          (finally
            ;; TODO: we need these files for uploading csv, should we delete it here still?
            ;; or should we dump csv content to file when upload
-           #_(doseq [^File file# temp-files#]
-               (try (.delete file#) (catch Exception _#))))))))
+           (doseq [^File file# temp-files#]
+             (try (.delete file#) (catch Exception _#))))))))
 
 (defn- safe-slurp
   "Safely slurp a file, returning empty string on error."

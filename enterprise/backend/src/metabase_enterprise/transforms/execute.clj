@@ -132,19 +132,14 @@
   (let [base-url (transforms.settings/python-runner-base-url)
         api-key  (transforms.settings/python-runner-api-key)
         headers  (cond-> {}
-                   api-key (assoc "X-API-Key" api-key))
-        response (http/post (str base-url "/api/python-runner/execute")
-                            {:content-type :json
-                             :accept :json
-                             :as :json
-                             :body (json/generate-string {:code code})
-                             :headers headers
-                             :throw-exceptions? false})]
-    (if (= 200 (:status response))
-      (:body response)
-      (throw (ex-info "Python runner API call failed"
-                      {:status (:status response)
-                       :body (:body response)})))))
+                   api-key (assoc "X-API-Key" api-key))]
+    (http/post (str base-url "/api/python-runner/execute")
+               {:content-type :json
+                :accept :json
+                :as :json
+                :body (json/generate-string {:code code})
+                :headers headers
+                :throw-exceptions? false})))
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner."
@@ -157,16 +152,12 @@
           {:keys [schema name]}   target
           db                      (t2/select-one :model/Database target-database)
           driver                  (:engine db)]
-      (try
-
-        (with-transform-lifecycle [run-id [(:id transform) {:run_method run_method}]]
-          ;; TODO: Pass connection-str to API once it supports it
-          ;; For now, the connection string needs to be embedded in the Python code
-          (let [result (call-python-runner-api! body)]
-            (if (or (:error result)
-                    (get-in result [:body :error]))
-              (let [error-data (or (:body result) result)]
-                (throw (ex-info (str/join "\n"
+      (with-transform-lifecycle [run-id [(:id transform) {:run_method run_method}]]
+        ;; TODO: Pass connection-str to API once it supports it
+        ;; For now, the connection string needs to be embedded in the Python code
+        (let [{:keys [body status] :as result}  (call-python-runner-api! body)]
+          (if (not= 200 status)
+            (throw (ex-info (str/join "\n"
                                       [(format "exit code %d" (:exit-code body))
                                        "======"
                                        "stdout"
@@ -175,29 +166,35 @@
                                        "stderr"
                                        "======"
                                        (:stderr body)])
-                                {:status-code 400
-                                 :error       (or (:stderr error-data) (:error error-data))
-                                 :stdout      (:stdout error-data)
-                                 :stderr      (:stderr error-data)})))
-              (try
-                ;; TODO would be nice if we have create or replace in upload
-                (when-let [table (t2/select-one :model/Table
-                                                :name (ddl.i/format-name driver name)
-                                                :schema (ddl.i/format-name driver schema)
-                                                :db_id (:id db))]
-                  (upload/delete-upload! table)
-                  ;; TODO shouldn't this be handled in upload?
-                  (t2/delete! :model/Table (:id table)))
-                (upload/create-from-csv-and-sync! {:db         db
-                                                   :filename   (.getName (File. ^String (:output-file result)))
-                                                   :file       (File. ^String (:output-file result))
-                                                   :schema     schema
-                                                   :table-name name})
-                {:run_id run-id
-                 :result result}
-                (finally
-                  (python-runner.api/cleanup-output-files! result))))))
-        (catch Exception e
-          (log/error e "Failed to execute transform")
-          (throw (ex-info "Failed to execute Python transform"
-                          {:error (.getMessage e)})))))))
+                            {:status-code 400
+                             :error       (or (:stderr body) (:error body))
+                             :stdout      (:stdout body)
+                             :stderr      (:stderr body)}))
+            (try
+              ;; TODO would be nice if we have create or replace in upload
+              (when-let [table (t2/select-one :model/Table
+                                              :name (ddl.i/format-name driver name)
+                                              :schema (ddl.i/format-name driver schema)
+                                              :db_id (:id db))]
+                (upload/delete-upload! table)
+                ;; TODO shouldn't this be handled in upload?
+                (t2/delete! :model/Table (:id table)))
+              ;; Create temporary CSV file from output data
+              (let [temp-file (File/createTempFile "transform-output-" ".csv")
+                    csv-data  (:output body)]
+                (try
+                  (with-open [writer (io/writer temp-file)]
+                    (.write writer csv-data))
+                  (upload/create-from-csv-and-sync! {:db         db
+                                                     :filename   (.getName temp-file)
+                                                     :file       temp-file
+                                                     :schema     schema
+                                                     :table-name name})
+                  (finally
+                    ;; Clean up temp file
+                    (.delete temp-file))))
+              {:run_id run-id
+               :result result}
+              (catch Exception e
+                (throw (ex-info "Failed to create the resulting table"
+                                {:error (.getMessage e)}))))))))))
