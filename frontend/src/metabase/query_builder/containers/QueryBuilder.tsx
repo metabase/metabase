@@ -232,7 +232,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
-    runQuestionOrSelectedQuery,
+    runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -442,7 +442,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const handleCmdEnter = () => {
     if (queryBuilderMode !== "notebook") {
-      runQuestionOrSelectedQuery();
+      runOrCancelQuestionOrSelectedQuery();
     }
   };
 

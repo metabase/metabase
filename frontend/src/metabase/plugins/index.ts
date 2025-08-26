@@ -724,8 +724,8 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
-  adminNavItem: [] as AdminPath[],
-  AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
+  getAdminPaths: () => [] as AdminPath[],
+  getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null as React.ReactElement | null,
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
@@ -811,7 +811,6 @@ export const PLUGIN_SMTP_OVERRIDE: {
 export const PLUGIN_DOCUMENTS = {
   getRoutes: () => null as React.ReactElement | null,
   shouldShowDocumentInNewItemMenu: () => false,
-  DocumentBackButton: PluginPlaceholder as React.ComponentType<any>,
   getCurrentDocument: (_state: any) => null as Document | null,
 };
 
