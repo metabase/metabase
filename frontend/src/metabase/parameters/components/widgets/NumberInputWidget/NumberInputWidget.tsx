@@ -50,7 +50,7 @@ export function NumberInputWidget({
   const [unsavedArrayValue, setUnsavedArrayValue] =
     useState<NumberFilterValue[]>(arrayValue);
 
-  const allValuesUnset = !unsavedArrayValue.some(isNotNull);
+  const allValuesUnset = unsavedArrayValue.every((value) => value == null);
   const isEmpty = unsavedArrayValue.length === 0 || allValuesUnset;
   const isRequired = parameter?.required;
 
