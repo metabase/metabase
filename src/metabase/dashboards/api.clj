@@ -155,9 +155,7 @@
 (defn- hide-unreadable-card
   "If CARD is unreadable, replace it with an object containing only its `:id`."
   [card]
-  (prn "CARD" card)
   (when card
-    (prn "RESD?" (mi/can-read? card))
     (if (mi/can-read? card)
       card
       (select-keys card [:id]))))

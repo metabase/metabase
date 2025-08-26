@@ -8,6 +8,5 @@
   "Get the current branch from the X-Metabase-Branch header."
   :feature :none
   [request]
-  (prn "HERE" (:headers request))
   (or (get-in request [:headers "X-Metabase-Branch"])
       (get-in request [:headers "x-metabase-branch"])))

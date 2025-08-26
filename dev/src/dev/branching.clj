@@ -64,7 +64,7 @@
                   (for [[original copied] (map vector cards-to-copy copied-cards)]
                     (t2/insert-returning-instance! :model/BranchModelMapping
                                                    {:branch_id (:id branch)
-                                                    :model_type "card"
+                                                    :model_type "report_card"
                                                     :original_id (:id original)
                                                     :branched_model_id (:id copied)})))
 

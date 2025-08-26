@@ -4,11 +4,12 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [medley.core :as medley]
+   [medley.core :as m]
+   [metabase.app-db.core :as mdb]
    [metabase.branching.core :as branching]
    [metabase.models.resolution :as models.resolution]
    [metabase.util :as u]
-   [methodical.core :as m]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as pipeline]))
 
@@ -19,27 +20,27 @@
                    (isa? k :hook/branchable) (assoc (t2/table-name k) (map :column_name
                                                                            (t2/query {:select [:column_name]
                                                                                       :from [[:information_schema.columns]]
-                                                                                      :where [:and [:= :table_name "report_card"]
-                                                                                              [:= :table_schema "public"]]})))))
+                                                                                      :where [:and [:= :table_name (case (mdb/db-type)
+                                                                                                                     :h2 (u/upper-case-en (name (t2/table-name k)))
+                                                                                                                     (name (t2/table-name k)))]]})))))
                {}
                models.resolution/model->namespace)))
 
 (defn- branched-cte
   [table]
   (let [current-branch-id (:id @branching/*current-branch*)]
-    (prn current-branch-id)
     {:select (into [[[:coalesce :bm.original_id :branched.id] :id]]
                    (for [col-name (table @branchables)
-                         :when (not= col-name "id")]
+                         :when (not (contains? #{"id" "ID"} col-name))]
                      (keyword (str "branched." col-name))))
      :from [[table :branched]]
      :left-join [[:branch_model_mapping :bm]
                  [:and
                   [:= :bm.branched_model_id :branched.id]
-                  [:= :bm.model_type [:inline (name table)]]
-                  [:= :bm.branch_id current-branch-id]]]
+                  [:= :bm.model_type [:inline (name table)]]]]
      :where [:or
-             [:is-not :bm.branched_model_id nil]
+             [:and [:is-not :bm.branched_model_id nil]
+              [:= :bm.branch_id current-branch-id]]
              [:and
               [:is :bm.branched_model_id nil]
               [:not-exists
@@ -50,13 +51,14 @@
                         [:= :bm2.original_id :branched.id]
                         [:= :bm2.model_type [:inline (name table)]]]}]]]}))
 
-(m/defmethod pipeline/build [#_query-type     :default
-                             #_model          :default
-                             #_resolved-query :default]
+(methodical/defmethod pipeline/build [#_query-type     :default
+                                      #_model          :default
+                                      #_resolved-query :default]
   [query-type model parsed-args resolved-query]
   (let [built (next-method query-type model parsed-args resolved-query)
-        with (some->> built :with (medley/index-by first))]
-    (if (and (map? built)
+        with (some->> built :with (m/index-by first))]
+    (if (and branching/*enable-branch-hook*
+             (map? built)
              (not= model :model/Branch)
              (or (contains? built :select) (contains? built :union) (contains? built :union-all))
              (not= (:from built) [[:information_schema.columns]]))
