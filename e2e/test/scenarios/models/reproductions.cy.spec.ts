@@ -861,9 +861,9 @@ describe("issue 33844", () => {
     H.tableInteractive().findByText("ID").should("not.exist");
     H.openObjectDetail(0);
     H.modal().within(() => {
-      cy.findByText("Order").should("be.visible");
-      cy.findByText("ID").should("be.visible");
-      cy.findByTestId("object-detail-close-button").click();
+      cy.findByText("Quantity").should("be.visible");
+      cy.findByRole("heading", { name: "1" }).should("be.visible");
+      cy.findByLabelText("Close").click();
     });
 
     cy.log("make the column visible in table views");
@@ -2019,5 +2019,41 @@ describe.skip("issue 45919", () => {
     H.tableInteractive().should("be.visible");
     H.tableInteractiveHeader().findByText("Password").should("not.exist");
     H.tableInteractiveHeader().findByText("Email").should("be.visible");
+  });
+});
+
+describe("issue 50915", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should use the model for the data source for drills after the model is created (metabase#50915)", () => {
+    cy.log("create a model via the UI");
+    cy.visit("/model/new");
+    H.main().findByText("Use the notebook editor").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("People").click();
+    });
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
+    H.queryBuilderHeader().should("be.visible");
+
+    cy.log("immediately after saving, drill-thru");
+    H.tableHeaderClick("Discount ($)");
+    H.popover().findByText("Distinct values").click();
+    H.assertTableData({ columns: ["Distinct values of Discount"] });
+
+    cy.log("assert that the model is used for the data source");
+    H.openNotebook();
+    H.getNotebookStep("data")
+      .findByText("Orders + People")
+      .should("be.visible");
   });
 });

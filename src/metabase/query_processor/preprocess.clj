@@ -21,6 +21,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
+   [metabase.query-processor.middleware.drop-fields-in-summaries :as drop-fields-in-summaries]
    [metabase.query-processor.middleware.ensure-joins-use-source-query :as ensure-joins-use-source-query]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.expand-aggregations :as expand-aggregations]
@@ -33,7 +34,6 @@
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.persistence :as qp.persistence]
-   [metabase.query-processor.middleware.pre-alias-aggregations :as qp.pre-alias-aggregations]
    [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
    [metabase.query-processor.middleware.remove-inactive-field-refs :as qp.remove-inactive-field-refs]
    [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
@@ -132,6 +132,7 @@
    (ensure-mbql5 #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-mbql5 #'validate/validate-query)
    (ensure-mbql5 #'fetch-source-query/resolve-source-cards)
+   (ensure-mbql5 #'drop-fields-in-summaries/drop-fields-in-summaries)
    (ensure-mbql5 #'expand-aggregations/expand-aggregations)
    (ensure-mbql5 #'metrics/adjust)
    (ensure-mbql5 #'expand-macros/expand-macros)
@@ -163,7 +164,6 @@
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
-   (ensure-legacy #'qp.pre-alias-aggregations/pre-alias-aggregations)
    (ensure-legacy #'qp.wrap-value-literals/wrap-value-literals)
    (ensure-mbql5-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)

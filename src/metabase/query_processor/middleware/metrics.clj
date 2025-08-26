@@ -138,7 +138,7 @@
       (assoc-in query [:stages stage-number :aggregation]
                 (lib.util.match/replace aggregations
                   [:metric _ metric-id]
-                  (if-let [{replacement :aggregation metric-name :name} (get lookup metric-id)]
+                  (if-let [{replacement :aggregation} (get lookup metric-id)]
                     ;; We have to replace references from the source-metric with references appropriate for
                     ;; this stage (expression/aggregation -> field, field-id to string)
                     (let [replacement (lib.util.match/replace replacement
@@ -151,7 +151,7 @@
                               1
                               #(merge
                                 %
-                                {:name metric-name}
+                                {:name (lib/column-name query stage-number replacement)}
                                 (select-keys % [:name :display-name])
                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
@@ -355,8 +355,8 @@
       (let [new-stages (update-metric-transition-stages query path expanded-stages idx metric-metadata)]
         (recur (assoc-in query (conj path :stages) new-stages) path new-stages))
 
-      (or (:source-table first-stage)
-          (and (:native first-stage)
+      (or (= (:lib/type first-stage) :mbql.stage/mbql)
+          (and (= (:lib/type first-stage) :mbql.stage/native)
                (:qp/stage-is-from-source-card first-stage)))
       (splice-compatible-metrics query path expanded-stages)
 
