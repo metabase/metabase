@@ -320,7 +320,6 @@
    :embedding                      (hide-embed-branding?)
    :embedding_sdk                  (enable-embedding-sdk-origins?)
    :embedding_simple               (enable-embedding-simple-feature?)
-   :embedding_hub                  (enable-embedding-hub?)
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)

@@ -7,7 +7,7 @@ describe("nav > containers > MainNavbar (EE with token) > Getting Started sectio
   it("shows embedding hub if feature is present", async () => {
     await setup({
       hasEnterprisePlugins: true,
-      hasEmbeddingHubFeature: true,
+      hasEmbeddingFeature: true,
       user: createMockUser({ is_superuser: true }),
     });
 
@@ -19,7 +19,7 @@ describe("nav > containers > MainNavbar (EE with token) > Getting Started sectio
   it("hides embedding hub if feature is not present", async () => {
     await setup({
       hasEnterprisePlugins: true,
-      hasEmbeddingHubFeature: false,
+      hasEmbeddingFeature: false,
       user: createMockUser({ is_superuser: true }),
     });
 
@@ -31,7 +31,7 @@ describe("nav > containers > MainNavbar (EE with token) > Getting Started sectio
   it("hides embedding hub if user is not admin", async () => {
     await setup({
       hasEnterprisePlugins: true,
-      hasEmbeddingHubFeature: true,
+      hasEmbeddingFeature: true,
       user: createMockUser({ is_superuser: false }),
     });
 

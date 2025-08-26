@@ -142,7 +142,7 @@ export function MainNavbarView({
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
 
-  const isEmbeddingHubFeatureEnabled = useHasTokenFeature("embedding_hub");
+  const isEmbeddingHubFeatureEnabled = useHasTokenFeature("embedding");
 
   return (
     <ErrorBoundary>
