@@ -4,7 +4,7 @@ export type EmbeddingHubStepId =
   | "create-test-embed"
   | "add-data"
   | "create-dashboard"
-  | "configure-sandboxing"
+  | "configure-row-column-security"
   | "secure-embeds"
   | "embed-production";
 
