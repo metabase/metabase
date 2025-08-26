@@ -13,7 +13,6 @@ import { DatabaseReplicationError } from "./DatabaseReplicationError";
 import {
   DatabaseReplicationForm,
   type DatabaseReplicationFormFields,
-  handleFieldError as handleDWHReplicationFieldError,
 } from "./DatabaseReplicationForm";
 import { DatabaseReplicationSettingUp } from "./DatabaseReplicationSettingUp";
 import { DatabaseReplicationSuccess } from "./DatabaseReplicationSuccess";
@@ -46,6 +45,12 @@ export const DatabaseReplicationModal = ({
     "form" | "setting-up" | "success" | "error"
   >("form");
   const [error, setError] = useState<string>();
+  const handleError = (error: unknown) => {
+    setSetupStep("error");
+    isRTKQueryError(error) &&
+      typeof error.data === "string" &&
+      setError(error.data);
+  };
 
   const [createDatabaseReplication] = useCreateDatabaseReplicationMutation();
   const [previewDatabaseReplication] = usePreviewDatabaseReplicationMutation();
@@ -56,7 +61,6 @@ export const DatabaseReplicationModal = ({
         schemaFiltersPatterns,
       }: DatabaseReplicationFormFields,
       handleResponse: (response: PreviewDatabaseReplicationResponse) => void,
-      handleError: (error: unknown) => void,
     ) => {
       previewDatabaseReplication({
         databaseId: database.id,
@@ -67,10 +71,7 @@ export const DatabaseReplicationModal = ({
       })
         .unwrap()
         .then(handleResponse)
-        .catch((error: unknown) => {
-          isRTKQueryError(error) && handleDWHReplicationFieldError(error.data);
-          handleError(error);
-        });
+        .catch(handleError);
     },
     [previewDatabaseReplication, database.id],
   );
@@ -90,12 +91,7 @@ export const DatabaseReplicationModal = ({
       })
         .unwrap()
         .then(() => setSetupStep("success"))
-        .catch((error: unknown) => {
-          setSetupStep("error");
-          isRTKQueryError(error) &&
-            typeof error.data === "string" &&
-            setError(error.data);
-        });
+        .catch(handleError);
     },
     [createDatabaseReplication, database.id, setSetupStep],
   );

@@ -2,9 +2,20 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { PreviewDatabaseReplicationResponse } from "metabase-enterprise/api/database-replication";
+import {
+  useCreateDatabaseReplicationMutation,
+  usePreviewDatabaseReplicationMutation,
+} from "metabase-enterprise/api/database-replication";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { DatabaseReplicationForm } from "./DatabaseReplicationForm";
+import { DatabaseReplicationModal } from "./DatabaseReplicationModal";
+
+// Mock the API hooks for modal tests
+jest.mock("metabase-enterprise/api/database-replication", () => ({
+  useCreateDatabaseReplicationMutation: jest.fn(),
+  usePreviewDatabaseReplicationMutation: jest.fn(),
+}));
 
 const mockPreviewResponse: PreviewDatabaseReplicationResponse = {
   allQuotas: [],
@@ -196,5 +207,88 @@ describe("DatabaseReplicationForm", () => {
 
     // Should call preview function at least once
     expect(mockPreview).toHaveBeenCalled();
+  });
+
+  describe("DatabaseReplicationModal error handling", () => {
+    const mockDatabase = createMockDatabase({ id: 1, name: "Test Database" });
+
+    const setupModal = ({
+      previewMutationResult = {
+        unwrap: () => Promise.resolve(mockPreviewResponse),
+      },
+      createMutationResult = { unwrap: () => Promise.resolve({}) },
+    } = {}) => {
+      const mockPreviewMutation = jest.fn(() => previewMutationResult);
+      const mockCreateMutation = jest.fn(() => createMutationResult);
+
+      (usePreviewDatabaseReplicationMutation as jest.Mock).mockReturnValue([
+        mockPreviewMutation,
+      ]);
+      (useCreateDatabaseReplicationMutation as jest.Mock).mockReturnValue([
+        mockCreateMutation,
+      ]);
+
+      const mockOnClose = jest.fn();
+
+      return {
+        user: userEvent.setup(),
+        mockOnClose,
+        ...renderWithProviders(
+          <DatabaseReplicationModal
+            opened={true}
+            onClose={mockOnClose}
+            database={mockDatabase}
+          />,
+        ),
+      };
+    };
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("renders DatabaseReplicationError when preview fails", async () => {
+      const previewMutationResult = {
+        unwrap: () => Promise.reject({ status: 500 }),
+      };
+
+      setupModal({ previewMutationResult });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Couldn't replicate database"),
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("Unknown error")).toBeInTheDocument();
+    });
+
+    it("renders DatabaseReplicationError when submit fails", async () => {
+      const createMutationResult = {
+        unwrap: () =>
+          Promise.reject({ status: 400, data: "Replication setup failed" }),
+      };
+
+      const { user } = setupModal({ createMutationResult });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Start replication" }),
+        ).toBeInTheDocument();
+      });
+
+      const submitButton = screen.getByRole("button", {
+        name: "Start replication",
+      });
+      await user.click(submitButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Couldn't replicate database"),
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("Replication setup failed")).toBeInTheDocument();
+    });
   });
 });

@@ -46,36 +46,6 @@ const validationSchema = Yup.object({
   schemaFiltersPatterns: Yup.string(),
 });
 
-type IFieldError =
-  | string
-  | {
-      message: string;
-    }
-  | {
-      errors: { [key: string]: any };
-    };
-
-const isFieldError = (error: unknown): error is IFieldError =>
-  typeof error === "string" ||
-  (error instanceof Object &&
-    (("message" in error && typeof error.message === "string") ||
-      ("errors" in error &&
-        error.errors instanceof Object &&
-        "schemas" in error.errors &&
-        typeof error.errors.schemas === "string")));
-
-export const handleFieldError = (error: unknown) => {
-  if (isFieldError(error)) {
-    if (typeof error === "string") {
-      throw { data: { errors: { schemas: error } } };
-    } else if ("message" in error) {
-      throw { data: { errors: { schemas: error.message } } };
-    } else if ("errors" in error) {
-      throw { data: error };
-    }
-  }
-};
-
 const compactEnglishNumberFormat = new Intl.NumberFormat("en", {
   notation: "compact",
   maximumFractionDigits: 1,
