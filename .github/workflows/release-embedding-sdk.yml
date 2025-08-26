@@ -195,6 +195,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const branch = "${{ inputs.branch }}";
+
             const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
             const [currentVersionWithoutSuffix, suffix] = currentVersion.split("-");
             const versionParts = currentVersionWithoutSuffix.split(".");
