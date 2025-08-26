@@ -612,7 +612,7 @@
   (check-if-card-can-be-saved dataset_query type)
   (when-some [query (dataset-query->query dataset_query)]
     (try
-      (lib/check-overwrite id query)
+      (lib/check-card-overwrite id query)
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)

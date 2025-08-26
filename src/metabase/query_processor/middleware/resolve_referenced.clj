@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.resolve-referenced
   (:require
+   [clojure.set :as set]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -27,6 +28,31 @@
     (qp.resolve-source-table/resolve-source-tables resolved-query)
     (qp.resolve-fields/resolve-fields resolved-query)))
 
+(mu/defn- expand-snippets-to-card-ids
+  "Recursively expand snippets to find all card IDs they reference.
+   Returns a set of card IDs found within the snippets and their nested snippets."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   query]
+  (if-let [snippet-ids (lib/native-query-snippet-ids query)]
+    (loop [to-process snippet-ids
+           visited #{}
+           card-ids #{}]
+      (if-let [snippet-id (first to-process)]
+        (if (visited snippet-id)
+          ;; Skip already processed snippet
+          (recur (rest to-process) visited card-ids)
+          ;; Process this snippet
+          (let [snippet (lib.metadata/native-query-snippet metadata-providerable snippet-id)
+                snippet-template-tags (:template-tags snippet)
+                snippet-card-ids (lib/template-tags->card-ids snippet-template-tags)
+                nested-snippet-ids (lib/template-tags->snippet-ids snippet-template-tags)]
+            (recur (into (rest to-process) nested-snippet-ids)
+                   (conj visited snippet-id)
+                   (into card-ids snippet-card-ids))))
+        ;; Nothing left in to-process:
+        card-ids))
+    #{}))
+
 (mu/defn- card-subquery-graph
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    graph                 :- :map
@@ -35,22 +61,26 @@
                             (throw (ex-info (tru "Card {0} does not exist, or is from a different Database." (pr-str card-id))
                                             {:type qp.error-type/invalid-query, :card-id card-id})))
                         (qp.fetch-source-query/normalize-card-query metadata-providerable)
-                        :dataset-query)]
+                        :dataset-query)
+        card-ids (set/union
+                  (lib/native-query-card-ids card-query)
+                  (expand-snippets-to-card-ids metadata-providerable card-query))]
     (reduce
      (fn [g sub-card-id]
        (card-subquery-graph metadata-providerable
                             (dep/depend g card-id sub-card-id)
                             sub-card-id))
      graph
-     (lib/template-tag-card-ids card-query))))
+     card-ids)))
 
 (mu/defn- circular-ref-error :- ::lib.schema.common/non-blank-string
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    from-card             :- ::lib.schema.id/card
    to-card               :- ::lib.schema.id/card]
-  (let [cards     (into {}
-                        (map (juxt :id :name))
-                        (lib.metadata/bulk-metadata metadata-providerable :metadata/card #{from-card to-card}))
+  (let [card-ids (conj #{from-card} to-card) ; card could point to itself, via snippets
+        cards (into {}
+                    (map (juxt :id :name))
+                    (lib.metadata/bulk-metadata metadata-providerable :metadata/card card-ids))
         from-name (or (get cards from-card)
                       (throw (ex-info (tru "Referenced query is from a different database")
                                       {:type qp.error-type/invalid-query, :card-id from-card})))
@@ -67,7 +97,7 @@
   (try
     (reduce (partial card-subquery-graph query)
             (dep/graph)
-            (lib/template-tag-card-ids query))
+            (lib/native-query-card-ids query))
     (catch ExceptionInfo e
       (let [{:keys [reason node dependency]} (ex-data e)]
         (if (= reason :weavejester.dependency/circular-dependency)
