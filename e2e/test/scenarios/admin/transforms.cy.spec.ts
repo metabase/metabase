@@ -625,7 +625,11 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       cy.log("Summarize step should be read-only");
       H.getNotebookStep("summarize").findByText("Count").click();
-      assertNoModals();
+      H.CustomExpressionEditor.value().should("equal", "Count()");
+      H.CustomExpressionEditor.nameInput()
+        .should("have.value", "Count")
+        .should("have.attr", "readonly");
+      H.popover().button("Done").click();
 
       H.getNotebookStep("summarize").findByText("Foobar").click();
       H.CustomExpressionEditor.value().should("equal", "Count() + 1");

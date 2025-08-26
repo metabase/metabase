@@ -95,7 +95,13 @@ export function AggregationPicker({
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
   ] = useToggle(
-    isExpressionEditorInitiallyOpen(query, stageIndex, clause, operators),
+    isExpressionEditorInitiallyOpen({
+      query,
+      stageIndex,
+      clause,
+      operators,
+      readOnly,
+    }),
   );
   const [initialExpressionClause, setInitialExpressionClause] =
     useState<DefinedClauseName | null>(null);
@@ -443,12 +449,23 @@ function getInitialOperator(
   return operator ?? null;
 }
 
-export function isExpressionEditorInitiallyOpen(
-  query: Lib.Query,
-  stageIndex: number,
-  clause: Lib.AggregationClause | undefined,
-  operators: Lib.AggregationOperator[],
-): boolean {
+function isExpressionEditorInitiallyOpen({
+  query,
+  stageIndex,
+  clause,
+  operators,
+  readOnly,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  clause: Lib.AggregationClause | undefined;
+  operators: Lib.AggregationOperator[];
+  readOnly?: boolean;
+}): boolean {
+  if (readOnly) {
+    return true;
+  }
+
   if (!clause) {
     return false;
   }
