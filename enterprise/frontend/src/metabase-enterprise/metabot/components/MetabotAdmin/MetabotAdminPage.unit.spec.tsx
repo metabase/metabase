@@ -16,6 +16,7 @@ import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
 } from "metabase-enterprise/metabot/constants";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { MetabotId, RecentItem } from "metabase-types/api";
 import {
   createMockCollection,
@@ -24,6 +25,11 @@ import {
 
 import { MetabotAdminPage } from "./MetabotAdminPage";
 import * as hooks from "./utils";
+
+jest.mock("metabase-enterprise/settings");
+const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
+  typeof hasPremiumFeature
+>;
 
 const mockPathParam = (id: MetabotId) => {
   jest.spyOn(hooks, "useMetabotIdPath").mockReturnValue(id);
@@ -206,5 +212,71 @@ describe("MetabotAdminPage", () => {
     expect(
       await screen.findByText("Error fetching Metabots"),
     ).toBeInTheDocument();
+  });
+
+  describe("MetabotVerifiedContentConfigurationPane", () => {
+    const mockContentVerificationEnabled = (enabled: boolean) => {
+      mockHasPremiumFeature.mockImplementation((feature) => {
+        if (feature === "content_verification") {
+          return enabled;
+        }
+        return true; // Mock other features as enabled by default
+      });
+    };
+
+    it("should not show verification switch without content_verification feature", async () => {
+      mockContentVerificationEnabled(false);
+
+      await setup();
+
+      // First ensure the page has loaded
+      await screen.findByText(/Configure Metabot/);
+
+      expect(screen.queryByText("Verified content")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Only use Verified content"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show verification switch with content_verification feature", async () => {
+      mockContentVerificationEnabled(true);
+
+      await setup();
+
+      expect(await screen.findByText("Verified content")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Only use Verified content"),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByRole("switch", {
+          name: "Only use Verified content",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("should allow enabling/disabling verified switch affecting use_verified_content", async () => {
+      mockContentVerificationEnabled(true);
+
+      await setup();
+
+      const verifiedSwitch = await screen.findByRole("switch", {
+        name: "Only use Verified content",
+      });
+
+      // Verify switch is initially unchecked (default metabot has use_verified_content: false)
+      expect(verifiedSwitch).not.toBeChecked();
+
+      // Click to enable
+      await userEvent.click(verifiedSwitch);
+
+      // Verify API call was made with correct payload
+      await waitFor(async () => {
+        const putRequests = await findRequests("PUT");
+        expect(putRequests.length).toBe(1);
+      });
+
+      const putRequests = await findRequests("PUT");
+      expect(putRequests[0].body).toEqual({ use_verified_content: true });
+    });
   });
 });
