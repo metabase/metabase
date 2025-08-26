@@ -107,7 +107,7 @@ EOF
 
 The best part of setting up Metabase as a systemd service is that it will start up at every system boot, and get restarted automatically if it crashes. We only have a few more quick steps to finish registering our service and having Metabase up and running.
 
-### Ensure your database is ready
+## Ensure your database is ready
 
 If you're running a PostgreSQL application database, make sure you've created a database for Metabase, as well as a user that can access that database. These values should match what you've set in your Metabase config for the `MB_DB_TYPE`, `MB_DB_DBNAME`, `MB_DB_USER`, and `MB_DB_PASS` environment variables. If you don't have your database properly configured, Metabase won't be able to start.
 
