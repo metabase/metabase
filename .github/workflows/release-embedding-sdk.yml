@@ -204,6 +204,10 @@ jobs:
                 throw new Error("Expected pre-release suffix on master branch, got: " + currentVersion);
               }
 
+              // When the `currentVersion` is `0.57.0-alpha.1`
+              // The `suffix` is `alpha.1`
+              // The `preReleaseLabel is `alpha`
+              // The `preReleaseVersion` is `1`
               const suffixParts = suffix ? suffix.split(".") : [];
 
               const preReleaseLabel = suffixParts[0] ?? "";
@@ -217,6 +221,8 @@ jobs:
               };
             }
 
+            // 0.57.0 => 0.57.1
+            // 0.57.0-alpha -> 0.57.1-alpha
             versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
             const newVersion = versionParts.join(".");
 
