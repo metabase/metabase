@@ -65,14 +65,14 @@ sudo -u metabase cat << EOF > /home/metabase/.env
 MB_JETTY_HOST=127.0.0.1
 MB_JETTY_PORT=3000
 
-# Update the variables below to connect to your Postgres application database
+# Uncomment and update the variables below to connect to your Postgres application database
 # If not set, Metabase will use a built-in database (not suitable for production)
-MB_DB_TYPE=postgres
-MB_DB_HOST=your_metabase_db_hostname
-MB_DB_PORT=5432
-MB_DB_DBNAME=your_metabase_db_name
-MB_DB_USER=your_metabase_db_user
-MB_DB_PASS=your_metabase_db_password
+# MB_DB_TYPE=postgres
+# MB_DB_HOST=your_metabase_db_hostname
+# MB_DB_PORT=5432
+# MB_DB_DBNAME=your_metabase_db_name
+# MB_DB_USER=your_metabase_db_user
+# MB_DB_PASS=your_metabase_db_password
 EOF
 ```
 
