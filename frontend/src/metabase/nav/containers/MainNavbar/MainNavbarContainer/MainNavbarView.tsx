@@ -10,8 +10,13 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
-import { useSetting, useUserSetting } from "metabase/common/hooks";
+import {
+  useHasTokenFeature,
+  useSetting,
+  useUserSetting,
+} from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
+import CS from "metabase/css/core/index.css";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -22,6 +27,7 @@ import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import {
   ActionIcon,
+  Box,
   Flex,
   Icon,
   type IconName,
@@ -138,6 +144,8 @@ export function MainNavbarView({
   const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
   const showOtherUsersCollections = isAdmin && areThereOtherUsers;
 
+  const isEmbeddingHubFeatureEnabled = useHasTokenFeature("embedding_hub");
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -151,6 +159,25 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
+
+            {isEmbeddingHubFeatureEnabled && isAdmin && (
+              <PaddedSidebarLink
+                isSelected={nonEntityItem?.url === "/embedding-hub"}
+                icon={
+                  <Box
+                    w="10px"
+                    h="10px"
+                    bg="brand"
+                    mx="7px"
+                    className={CS.rounded}
+                  />
+                }
+                onClick={onItemSelect}
+                url="/embedding-hub"
+              >
+                {t`Embedding hub`}
+              </PaddedSidebarLink>
+            )}
           </SidebarSection>
 
           {shouldDisplayGettingStarted && (

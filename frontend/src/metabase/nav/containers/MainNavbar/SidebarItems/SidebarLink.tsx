@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent, ReactElement, ReactNode } from "react";
 import { isValidElement, useCallback, useMemo } from "react";
 import _ from "underscore";
 
@@ -19,7 +19,7 @@ import {
 interface SidebarLinkProps {
   children: string;
   url?: string;
-  icon?: IconName | IconProps;
+  icon?: IconName | IconProps | ReactElement;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
   left?: ReactNode;
@@ -31,8 +31,10 @@ type ContentProps = {
   children: ReactNode;
 };
 
-function isIconPropsObject(icon: string | IconProps): icon is IconProps {
-  return _.isObject(icon);
+function isIconPropsObject(
+  icon: IconName | IconProps | ReactElement,
+): icon is IconProps {
+  return _.isObject(icon) && !isValidElement(icon);
 }
 
 function disableImageDragging(e: MouseEvent) {
@@ -61,7 +63,9 @@ function SidebarLink({
     if (isValidElement(icon)) {
       return icon;
     }
-    const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
+    const iconProps = isIconPropsObject(icon)
+      ? icon
+      : { name: icon as IconName };
     return (
       <TreeNode.IconContainer transparent={false}>
         <SidebarIcon {...iconProps} isSelected={isSelected} />
