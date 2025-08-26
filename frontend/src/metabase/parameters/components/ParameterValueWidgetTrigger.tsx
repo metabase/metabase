@@ -23,13 +23,15 @@ function ParameterValueWidgetTriggerInner(
     className?: string;
     mimicMantine?: boolean;
   },
-  ref: Ref<HTMLDivElement>,
+  ref: Ref<HTMLButtonElement>,
 ) {
   if (mimicMantine) {
     return (
       <Flex
         align="center"
         pos="relative"
+        component="button"
+        type="button"
         w="100%"
         className={cx(S.TriggerContainer, {
           [S.hasValue]: hasValue,
@@ -43,15 +45,15 @@ function ParameterValueWidgetTriggerInner(
   }
 
   return (
-    <div
+    <button
       ref={ref}
+      type="button"
       className={cx(S.parameter, className, {
         [S.selected]: hasValue,
       })}
-      role="button"
       aria-label={ariaLabel}
     >
       {children}
-    </div>
+    </button>
   );
 }
