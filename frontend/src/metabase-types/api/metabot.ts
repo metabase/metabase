@@ -225,3 +225,9 @@ export type MetabotEntity = {
 export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
   model_id: MetabotEntity["id"];
 };
+
+/* Metabot v3 - Add-on Purchase Types */
+
+export interface PurchaseMetabotAddOnRequest {
+  terms_of_service: boolean;
+}
