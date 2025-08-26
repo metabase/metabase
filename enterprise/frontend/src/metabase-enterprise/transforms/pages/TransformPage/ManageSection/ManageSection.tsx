@@ -46,7 +46,7 @@ export function ManageSection({ transform }: ManageSectionProps) {
                 <strong>{t`Table ID`}:</strong> {transform.source.table}
               </p>
             )}
-            <pre>{transform.source.body}</pre>
+            <pre>{transform.source.script}</pre>
           </div>
         )}
       </Card>
