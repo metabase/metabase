@@ -381,6 +381,7 @@ export const ListViewConfiguration = ({
             <ListViewItem
               row={firstRow}
               cols={cols}
+              settings={settings as ComputedVisualizationSettings}
               entityIcon={selectedEntityIcon}
               imageColumn={undefined}
               titleColumn={selectedTitleColumn}

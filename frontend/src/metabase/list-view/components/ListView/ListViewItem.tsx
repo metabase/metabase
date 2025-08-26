@@ -13,7 +13,7 @@ export interface ListViewItemProps {
   className?: string;
   row: DatasetData["rows"][number];
   cols: DatasetColumn[];
-  settings?: ComputedVisualizationSettings;
+  settings: ComputedVisualizationSettings;
   entityIcon: string;
   imageColumn?: DatasetColumn | null;
   titleColumn?: DatasetColumn | null;
@@ -26,7 +26,7 @@ export interface ListViewItemProps {
 export function ListViewItem({
   row,
   cols,
-  settings = {},
+  settings,
   entityIcon,
   imageColumn,
   titleColumn,
