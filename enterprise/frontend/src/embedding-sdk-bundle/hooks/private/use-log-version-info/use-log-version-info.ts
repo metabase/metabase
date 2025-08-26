@@ -2,9 +2,9 @@ import { useEffect } from "react";
 
 import { getEmbeddingSdkPackageBuildData } from "embedding-sdk-bundle/lib/get-embedding-sdk-package-build-data";
 import { isSdkPackageCompatibleWithSdkBundle } from "embedding-sdk-bundle/lib/version-utils";
-import { useLazySelector } from "embedding-sdk-bundle/sdk-shared/hooks/use-lazy-selector";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/hooks/use-metabase-provider-props-store";
 import { getMetabaseInstanceVersion } from "embedding-sdk-bundle/store/selectors";
+import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 
 export const useLogVersionInfo = () => {
   const {
