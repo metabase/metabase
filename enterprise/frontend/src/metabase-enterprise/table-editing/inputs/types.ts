@@ -18,6 +18,8 @@ type InputProps = {
   placeholder?: string;
   disabled?: boolean;
   error?: TextInputProps["error"];
+  leftSection?: TextInputProps["leftSection"];
+  leftSectionPointerEvents?: TextInputProps["leftSectionPointerEvents"];
   rightSection?: TextInputProps["rightSection"];
   rightSectionPointerEvents?: TextInputProps["rightSectionPointerEvents"];
   "data-testid"?: string;

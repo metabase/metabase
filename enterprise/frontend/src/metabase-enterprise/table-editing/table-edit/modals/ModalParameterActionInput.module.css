@@ -1,17 +1,19 @@
-.textInputElement {
+.inputWrapper,
+.inputWrapperText {
   width: 100%;
 }
 
-.numberInputElement {
+.inputWrapperDate {
+  width: 15rem;
+}
+
+.inputWrapperBoolean,
+.inputWrapperNumber {
   width: 10rem;
 }
 
-.selectTextInputElement {
-  width: auto;
+.inputWrapperDropdown {
+  width: max-content;
   min-width: 10rem;
-}
-
-.dateTextInputElement {
-  width: auto;
-  min-width: 10rem;
+  max-width: 20rem;
 }

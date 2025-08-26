@@ -1,5 +1,8 @@
 import { t } from "ttag";
 
+import { Combobox, Icon } from "metabase/ui";
+import { TableActionFormInputType } from "metabase-enterprise/table-editing/api/types";
+
 import {
   ParameterActionInput,
   type ParameterActionInputProps,
@@ -25,16 +28,45 @@ export function ModalParameterActionInput(props: ParameterActionInputProps) {
     "data-testid": `${parameter.display_name}-field-input`,
   };
 
+  let wrapperClassName = S.inputWrapper;
+  let hideControls;
+
+  switch (parameter.input_type) {
+    case TableActionFormInputType.Text:
+      wrapperClassName = S.inputWrapperText;
+      break;
+
+    case TableActionFormInputType.Integer:
+      hideControls = false;
+      wrapperClassName = S.inputWrapperNumber;
+      break;
+
+    case TableActionFormInputType.Float:
+      wrapperClassName = S.inputWrapperNumber;
+      break;
+
+    case TableActionFormInputType.Date:
+    case TableActionFormInputType.DateTime:
+      wrapperClassName = S.inputWrapperDate;
+      inputProps.leftSection = <Icon name="calendar" />;
+      inputProps.leftSectionPointerEvents = "none";
+      break;
+
+    case TableActionFormInputType.Boolean:
+    case TableActionFormInputType.Dropdown:
+      inputProps.rightSection = <Combobox.Chevron />;
+      inputProps.rightSectionPointerEvents = "none";
+      wrapperClassName = S.inputWrapperDropdown;
+  }
+
   return (
     <ParameterActionInput
       {...rest}
       inputProps={inputProps}
       parameter={parameter}
+      hideControls={hideControls}
       classNames={{
-        textInputElement: S.textInputElement,
-        numberInputElement: S.numberInputElement,
-        selectTextInputElement: S.selectTextInputElement,
-        dateTextInputElement: S.dateTextInputElement,
+        wrapper: wrapperClassName,
       }}
     />
   );
