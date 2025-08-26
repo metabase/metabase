@@ -185,7 +185,7 @@ jobs:
           ref: ${{ inputs.branch }}
 
       - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+        run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
 
       - name: Get current SDK version
         id: current-sdk-version
