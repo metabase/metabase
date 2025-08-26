@@ -95,7 +95,7 @@ const AppBarLarge = ({
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
-          <Group gap="xs" miw={400} display="flex" align="center" wrap="nowrap">
+          <Group gap="sm" display="flex" align="center" wrap="nowrap">
             {gitSyncConfigured && <PLUGIN_GIT_SYNC.SelectBranch />}
             {gitSyncConfigured && <PLUGIN_GIT_SYNC.ViewChangesButton />}
           </Group>
