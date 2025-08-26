@@ -42,7 +42,7 @@ describe("useCompletedEmbeddingHubSteps", () => {
       ],
       [{ jwtEnabled: true, samlEnabled: true }, false],
       [{}, false],
-    ])("should be %p with config %j", (config, expected) => {
+    ])("config %j should return %p", (config, expected) => {
       const { result } = setup(config);
 
       expect(result.current["secure-embeds"]).toBe(expected);
