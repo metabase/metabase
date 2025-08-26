@@ -226,10 +226,7 @@
                  (log/info (u/format-color :blue "Provider detection: updating %s {:id %d} from '%s' to '%s'"
                                            (:name database) (:id database)
                                            (:provider_name database) provider-to-set))
-                 ;; Use direct query to avoid triggering search index updates
-                 (t2/query {:update :metabase_database
-                            :set {:provider_name provider-to-set}
-                            :where [:= :id (:id database)]}))
+                 (t2/update! :model/Database (:id database) {:provider_name provider-to-set}))
                (catch Throwable provider-e
                  (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))
 
