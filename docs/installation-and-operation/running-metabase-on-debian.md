@@ -142,6 +142,12 @@ sudo systemctl start metabase.service
 sudo systemctl status metabase.service
 ```
 
+To print the live Metabase service logs, you can run:
+
+```
+journalctl -fxeu metabase.service
+```
+
 Once we are OK here, enable the service to start up during boot:
 
 ```
