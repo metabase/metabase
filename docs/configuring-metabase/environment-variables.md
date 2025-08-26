@@ -1987,6 +1987,13 @@ Maximum number of leaf fields synced per collection of document database. Curren
 
 Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.
 
+### `MB_TOMBSTONE_RETENTION_HOURS`
+
+- Type: integer
+- Default: `24`
+
+Number of hours to retain tombstone records in the gate table before cleanup.
+
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 
 - Type: integer
