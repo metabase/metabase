@@ -2,7 +2,6 @@ import type { AnyExtension } from "@tiptap/core";
 import { Blockquote } from "@tiptap/extension-blockquote";
 import { Bold } from "@tiptap/extension-bold";
 import { StarterKit, type StarterKitOptions } from "@tiptap/starter-kit";
-import { omit } from "underscore";
 
 const CustomBlockquote = Blockquote.extend({
   addKeyboardShortcuts() {
@@ -14,7 +13,9 @@ const CustomBold = Bold.extend({
   addKeyboardShortcuts() {
     // "Mod-b" (sans shift key) is fine, "Mod-B" (with shift key) should not be hijacked
     // https://github.com/ueberdosis/tiptap/blob/v3.3.0/packages/extension-bold/src/bold.tsx#L116
-    return omit(this.parent?.(), "Mod-B");
+    return {
+      "Mod-b": () => this.editor.commands.toggleBold(),
+    };
   },
 });
 
