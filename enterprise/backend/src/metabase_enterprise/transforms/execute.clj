@@ -118,7 +118,7 @@
       (try
         ;; Dynamically load and call the python runner using requiring-resolve
         (let [{run-id :id} (transform-run/start-run! (:id transform) {:run_method run_method})
-              {:keys [body] :as result} (python-runner.api/execute-python-code body (transforms.util/db-connect-str target-database))]
+              {:keys [body] :as result} (python-runner.api/execute-python-code body)]
           (if (:error body)
             (do
               (transform-run/fail-started-run! run-id {})

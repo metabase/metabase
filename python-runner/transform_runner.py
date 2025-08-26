@@ -31,7 +31,7 @@ class MetabaseAPIConnection:
         Args:
             metabase_url: Base URL for Metabase API (e.g., http://127.0.0.1:3000)
         """
-        self.metabase_url = metabase_url or "http://127.0.0.1:3000"
+        self.metabase_url = metabase_url
         self.session = requests.Session()
         # For now, we rely on the fact that this runs in a secure environment
         # where the Metabase instance trusts the python-runner service
@@ -95,7 +95,7 @@ def main():
             sys.exit(1)
 
         # Get Metabase API configuration from environment variables
-        metabase_url = os.environ.get('METABASE_URL', 'http://127.0.0.1:3000')
+        metabase_url = os.environ.get('METABASE_URL')
 
         # Create Metabase API connection object
         db = MetabaseAPIConnection(metabase_url)

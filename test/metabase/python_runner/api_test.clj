@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -92,21 +93,6 @@
               :stderr ""}
              result)))))
 
-(deftest ^:parallel transform-function-db-error-handling-test
-  (testing "transform function fails clearly on database connection errors"
-    (let [transform-code (str "import pandas as pd\n"
-                              "\n"
-                              "def transform(db):\n"
-                              "    # Try to read a table with invalid connection - should fail clearly\n"
-                              "    result = db.read_table('nonexistent_table')\n"
-                              "    return result")
-          result         (mt/user-http-request :crowberto :post 500 "python-runner/execute"
-                                               {:code                 transform-code
-                                                :db-connection-string "invalid://connection/string"})]
-      (is (contains? result :exit-code))
-      (is (= 1 (:exit-code result)))
-      (is (str/includes? (:stderr result) "ERROR: Transform function failed:")))))
-
 (deftest ^:parallel transform-function-db-object-structure-test
   (testing "db object provides expected interface structure"
     (let [transform-code (str "import pandas as pd\n"
@@ -138,13 +124,13 @@
               _                    (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
               _                    (jdbc/execute! db-spec ["INSERT INTO students (id, name, score) VALUES (1, 'Alice', 85), (2, 'Bob', 92), (3, 'Charlie', 88), (4, 'Dana', 90)"])
 
-              pg-connection-string (transforms.util/db-connect-str (:id (mt/db)))
+              _       (sync/sync-database! (mt/db))
 
               transform-code       (str "import pandas as pd\n"
                                         "\n"
                                         "def transform(db):\n"
                                         "    # Read the students table\n"
-                                        "    students = db.read_table('students')\n"
+                                        "    students = db.read_table('" (mt/id :students) "')\n"
                                         "    # Calculate average score\n"
                                         "    avg_score = students['score'].mean()\n"
                                         "    result = pd.DataFrame({\n"
@@ -153,8 +139,7 @@
                                         "    })\n"
                                         "    return result")
               result               (mt/user-http-request :crowberto :post 200 "python-runner/execute"
-                                                         {:code                 transform-code
-                                                          :db-connection-string pg-connection-string})]
+                                                         {:code transform-code})]
 
           (is (= {:output "student_count,average_score\n4,88.75\n"
                   :stdout "Successfully saved 1 rows to CSV\n"
