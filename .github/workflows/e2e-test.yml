@@ -266,13 +266,34 @@ jobs:
           echo "Finding all timing-related files:"
           find . -name "*timing*" -o -name "*Timing*" 2>/dev/null || echo "No timing files found"
 
+      - name: Check timing file before upload
+        if: always()
+        shell: bash
+        run: |
+          echo "=== TIMING FILE UPLOAD CHECK ==="
+          echo "Checking if timing file exists at ./e2e/support/newTimings.json:"
+          if [ -f "./e2e/support/newTimings.json" ]; then
+            echo "✅ File exists"
+            echo "File size: $(stat -c%s ./e2e/support/newTimings.json 2>/dev/null || stat -f%z ./e2e/support/newTimings.json) bytes"
+            echo "File contents:"
+            cat ./e2e/support/newTimings.json
+            echo ""
+            echo "File info:"
+            ls -la ./e2e/support/newTimings.json
+          else
+            echo "❌ File does not exist"
+            echo "Contents of ./e2e/support/ directory:"
+            ls -la ./e2e/support/ || echo "Directory does not exist"
+          fi
+          echo "============================="
+
       - name: Upload Timing Data
         uses: actions/upload-artifact@v4
         if: always()
         continue-on-error: true
         with:
           name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
-          path: newTimings.json
+          path: ./e2e/support/newTimings.json
           retention-days: 7
 
       - name: Publish Summary
