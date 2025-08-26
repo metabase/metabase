@@ -1,4 +1,3 @@
-import type { NumberValue } from "metabase/lib/number";
 import type * as Lib from "metabase-lib";
 
 import type {
@@ -115,5 +114,3 @@ export type DateFilterDisplayOpts = {
 };
 
 export type BooleanFilterValue = "true" | "false" | "is-null" | "not-null";
-
-export type NumberFilterValue = NumberValue | null;

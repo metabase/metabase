@@ -4,9 +4,10 @@ import _ from "underscore";
 
 import NumericInput from "metabase/common/components/NumericInput";
 import CS from "metabase/css/core/index.css";
-import { type NumberValue, parseNumber } from "metabase/lib/number";
+import { parseNumber } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
+import type { NumberFilterValue } from "metabase/querying/parameters/types";
 import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
@@ -47,7 +48,7 @@ export function NumberInputWidget({
 }: NumberInputWidgetProps) {
   const arrayValue = deserializeNumberParameterValue(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
-    useState<(NumberValue | null)[]>(arrayValue);
+    useState<NumberFilterValue[]>(arrayValue);
 
   const isValid = getIsValid(unsavedArrayValue, arity);
   const allValuesUnset = !unsavedArrayValue.some(isNotNull);
@@ -178,7 +179,7 @@ function getValue(option: string | number | ParameterValue) {
   return String(option);
 }
 
-function getIsValid(value: (NumberValue | null)[], arity: number | "n") {
+function getIsValid(value: NumberFilterValue[], arity: number | "n") {
   if (arity === 1) {
     return value.length === 1 && value.every(isNotNull);
   }

@@ -168,7 +168,10 @@ function getNumberParameterFilterClause(
       ({ values }) => Lib.numberFilterClause({ operator, column, values }),
     )
     .with(
-      { operator: "between", values: [P.nonNullable, P.nullish] },
+      {
+        operator: "between",
+        values: P.union([P.nonNullable], [P.nonNullable, P.nullish]),
+      },
       ({ values: [minValue] }) =>
         Lib.numberFilterClause({ operator: ">=", column, values: [minValue] }),
     )

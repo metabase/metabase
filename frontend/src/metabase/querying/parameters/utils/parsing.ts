@@ -1,13 +1,12 @@
 import dayjs from "dayjs";
 
 import { parseNumber } from "metabase/lib/number";
-import type {
-  DateFilterValue,
-  NumberFilterValue,
-} from "metabase/querying/filters/types";
+import type { DateFilterValue } from "metabase/querying/filters/types";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import type { ParameterValueOrArray, TemporalUnit } from "metabase-types/api";
+
+import type { NumberFilterValue } from "../types";
 
 function normalizeArray(value: ParameterValueOrArray | null | undefined) {
   if (value == null) {
@@ -56,7 +55,7 @@ export function deserializeNumberParameterValue(
         values.push(number);
       }
     }
-    if (item === null && normalizedValue.length > 1) {
+    if (item === null && normalizedValue.length === 2) {
       values.push(null);
     }
     return values;
