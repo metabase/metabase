@@ -73,6 +73,7 @@ export const FieldVisibilityPicker = ({
         );
       }}
       value={value}
+      searchable
       onChange={handleChange}
       {...props}
     />

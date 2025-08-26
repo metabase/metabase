@@ -41,6 +41,7 @@ export const FieldValuesTypePicker = ({
       data={data}
       placeholder={t`Select field filtering`}
       value={value}
+      searchable
       onChange={handleChange}
       {...props}
     />
