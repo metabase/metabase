@@ -36,7 +36,6 @@ export const engineKeys = [
   "bigquery-cloud-sdk",
   "clickhouse",
   "databricks",
-  "databricks",
   "druid-jdbc",
   "druid",
   "mysql",
