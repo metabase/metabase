@@ -250,16 +250,15 @@
     (taoensso.nippy/extend-freeze)
     (taoensso.nippy/extend-thaw)]}
 
+  ;; TODO (Cam 8/22/25) -- what's the point of marking stuff deprecated if we don't have Kondo enforce it? We should
+  ;; remove all of these and add individual ignores as needed.
   :deprecated-var
   {:exclude
-   {metabase.cmd.core/dump                                                       {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
-    metabase.cmd.core/load                                                       {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
-    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
-    metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
-    metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
-    metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}}}
+   {metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql   {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.execute/set-time-zone-if-supported! {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver/current-db-time                              {:namespaces ["metabase.*"]}
+    metabase.driver/supports?                                    {:namespaces ["metabase.*"]}
+    metabase.query-processor.util/normalize-token                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
   {clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}

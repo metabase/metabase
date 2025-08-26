@@ -74,6 +74,8 @@
 (mu/defn- format-scalar-value
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
+    ;; legacy usage -- do not use going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (types/temporal-field? col)
     ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 

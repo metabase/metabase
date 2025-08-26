@@ -140,6 +140,7 @@
                                     ;; desugars to [:or [:= 'field 1] ...].
                                     #_{:clj-kondo/ignore [:deprecated-var]}
                                     driver-api/desugar-filter-clause
+                                    #_{:clj-kondo/ignore [:deprecated-var]}
                                     driver-api/wrap-value-literals-in-mbql
                                     mongo.qp/compile-filter
                                     json/encode)]

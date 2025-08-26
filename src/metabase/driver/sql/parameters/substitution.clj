@@ -319,6 +319,7 @@
            params.ops/to-clause
            #_{:clj-kondo/ignore [:deprecated-var]}
            driver-api/desugar-filter-clause
+           #_{:clj-kondo/ignore [:deprecated-var]}
            driver-api/wrap-value-literals-in-mbql
            ->honeysql
            (honeysql->replacement-snippet-info driver))
@@ -328,6 +329,7 @@
         (->> (params.dates/date-string->filter value field-clause)
              #_{:clj-kondo/ignore [:deprecated-var]}
              driver-api/desugar-filter-clause
+             #_{:clj-kondo/ignore [:deprecated-var]}
              driver-api/wrap-value-literals-in-mbql
              ->honeysql
              (honeysql->replacement-snippet-info driver)))

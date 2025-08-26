@@ -138,7 +138,7 @@
                                                  {:base-type base_type})
                                                (when-not (= this-field-table-id source-table-id)
                                                  {:join-alias (joined-table-alias this-field-table-id)}))])]
-    (if (and (types/temporal-field? field-metadata)
+    (if (and #_{:clj-kondo/ignore [:deprecated-var]} (types/temporal-field? field-metadata) ; legacy usage -- do not use going forward
              (string? value))
       (u/ignore-exceptions
         (params.dates/date-string->filter value field-id))

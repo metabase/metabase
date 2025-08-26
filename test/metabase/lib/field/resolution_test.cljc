@@ -386,7 +386,7 @@
                               :strategy     :left-join
                               :fk-field-id  %category-id}]}))
           col   (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1)))]
-      (is (=? {:lib/original-ref [:field {:join-alias "Category"} pos-int?]}
+      (is (=? {:lib/original-ref-for-result-metadata-purposes-only [:field {:join-alias "Category"} pos-int?]}
               col))
       (is (=? [:field
                {:lib/uuid       string?
@@ -1325,7 +1325,7 @@
                    query
                    -1
                    [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)])
-                  (dissoc :lib/original-ref :lib/original-display-name))
+                  (dissoc :lib/original-ref-for-result-metadata-purposes-only :lib/original-display-name))
               (lib.field.resolution/resolve-field-ref
                query
                -1

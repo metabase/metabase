@@ -772,7 +772,6 @@
                     :lib/desired-column-alias  "CREATED_AT"
                     :lib/original-display-name "Created At"
                     :lib/original-name         "CREATED_AT"
-                    :lib/original-ref          [:field {:base-type :type/DateTime, :temporal-unit :year, :lib/uuid "aa4324c7-12d2-46fe-ba8d-8f1fe54b61af", :effective-type :type/DateTime} 39]
                     :lib/source                :source/previous-stage
                     :lib/source-column-alias   "CREATED_AT"
                     :lib/source-uuid           "aa4324c7-12d2-46fe-ba8d-8f1fe54b61af"
@@ -793,7 +792,6 @@
                     :lib/desired-column-alias  "CREATED_AT_2"
                     :lib/original-display-name "Created At"
                     :lib/original-name         "CREATED_AT"
-                    :lib/original-ref          [:field {:base-type :type/DateTime, :temporal-unit :month, :lib/uuid "1f16a57a-2afd-4c92-8d6c-b41062235a49", :effective-type :type/DateTime} 39]
                     :lib/source                :source/previous-stage
                     :lib/source-column-alias   "CREATED_AT_2"
                     :lib/source-uuid           "1f16a57a-2afd-4c92-8d6c-b41062235a49"

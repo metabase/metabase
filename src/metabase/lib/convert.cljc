@@ -472,8 +472,13 @@
          ;; Removing the namespaces from a few
          true (perf/update-keys #(get options-preserved-in-legacy % %)))
        (into {} (comp (disqualify)
-                      (remove (fn [[k _v]]
-                                (#{:effective-type :ident} k)))))
+                      ;; remove `:effective-type` if `:base-type` is not present OR if it's the same as `:base-type`.
+                      (remove (let [keys-to-remove (if (or (nil? (:base-type m))
+                                                           (= (:effective-type m) (:base-type m)))
+                                                     #{:effective-type :ident}
+                                                     #{:ident})]
+                                (fn [[k _v]]
+                                  (keys-to-remove k))))))
        not-empty))
 
 (defmulti ^:private aggregation->legacy-MBQL
@@ -520,7 +525,7 @@
                                                                             [(cond-> k
                                                                                (simple-keyword? k) u/->snake_case_en)
                                                                              v]))
-                                                                     options))
+                                                                     (options->legacy-MBQL options)))
           ::mbql.s/options-style.last-unless-empty      (let [options (options->legacy-MBQL options)]
                                                           (cond-> (into [tag] args)
                                                             (seq options)
@@ -633,13 +638,6 @@
                     [opts id]
                     [id opts])]
     (clause-with-options->legacy-MBQL [:field opts id])))
-
-(defmethod ->legacy-MBQL :value
-  [[_tag opts value]]
-  (let [opts (-> opts
-                 ;; remove effective type since it's not used/allowed in legacy MBQL
-                 (dissoc :effective-type))]
-    (clause-with-options->legacy-MBQL [:value opts value])))
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]
