@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
-    "hash": "43d2b9ac84fd10353a4feb4c1921fb2260cd9ae1"
+    "hash": "f0448ada69b130b3ead9adcf30589b2a436b3df1"
   },
   "upstream": {
     "branch": "emb-738-setup-sidebar-and-onboarding-page-for-embedding-hub"
