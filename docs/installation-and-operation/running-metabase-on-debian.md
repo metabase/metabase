@@ -6,7 +6,7 @@ redirect_from:
 
 # Running Metabase as a systemd service
 
-For those people who don't (or can't) use Docker in their infrastructure, there's still a need to easily setup and deploy Metabase in production. On most modern Linux distributions, this means registering Metabase as a [systemd](https://wiki.debian.org/systemd) service that can be started/stopped/uninstalled.
+For those people who don't (or can't) use Docker in their infrastructure, you can register Metabase as a [systemd](https://wiki.debian.org/systemd) service that can be started/stopped/uninstalled.
 
 We'll use Debian as an example in this guide, but the steps should apply to most Linux distributions that use systemd.
 
