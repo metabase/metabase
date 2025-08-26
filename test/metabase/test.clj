@@ -101,7 +101,7 @@
   u.random/keep-me)
 
 ;; Add more stuff here as needed
-#_{:clj-kondo/ignore [:discouraged-var]}
+#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
 (p/import-vars
  [actions.test-util
   with-actions

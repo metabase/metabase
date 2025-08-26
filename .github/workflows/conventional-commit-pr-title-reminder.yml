@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - enterprise/frontend/src/embedding-sdk/**
+      - enterprise/frontend/src/embedding-sdk-bundle/**
 
 jobs:
   pr-title-reminder:

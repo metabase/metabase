@@ -2,10 +2,10 @@
   "Query processor generative tests."
   (:require
    [clojure.test :refer [is testing]]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.generators :as lib.tu.gen]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -27,7 +27,7 @@
        ((every-pred :name :base_type :display_name) maybe-col)))
 
 (gt/defgentest basic-query-execution-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+  (let [mp (mt/metadata-provider)]
     (gt/iterate
      #_{:gentest.default-limit/seconds 5}
      {:gentest.default-limit/iterations 1}
@@ -35,20 +35,20 @@
       limit (inc (tu.rng/rand-int lib.tu.gen/sane-iterations-limit))]
      (doseq [query (lib.tu.gen/random-queries-from base-query limit)]
        (gt/testing ["query" query]
-         (mt/with-temp
-           [:model/Card
-            {id :id}
-            {:dataset_query (lib.convert/->legacy-MBQL query)}]
-           (let [result (qp/process-query (lib/query mp (lib.metadata/card mp id)))]
-             (testing "Successful query execution"
-               (is (= :completed
-                      (:status result))))
-             (testing "At least one column returned"
-               (is (<= 1 (count (mt/cols result))))
-               (is (every? valid-col? (mt/cols result)))))))))))
+         (let [mp (lib.tu/mock-metadata-provider
+                   mp
+                   {:cards [{:id            1
+                             :dataset-query query}]})
+               result (qp/process-query (lib/query mp (lib.metadata/card mp 1)))]
+           (testing "Successful query execution"
+             (is (= :completed
+                    (:status result))))
+           (testing "At least one column returned"
+             (is (<= 1 (count (mt/cols result))))
+             (is (every? valid-col? (mt/cols result))))))))))
 
 (gt/defgentest execution-with-cards-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+  (let [mp (mt/metadata-provider)]
     ;; TODO: What is the reasonable amount of cards to use in context? Hardcoding 8 for now as 8 tables are avail in
     ;;       mp's test-data.
     (tu.gen.jvm/with-random-cards mp 8
@@ -59,14 +59,14 @@
         limit      (inc (tu.rng/rand-int lib.tu.gen/sane-iterations-limit))]
        (doseq [query (lib.tu.gen/random-queries-from base-query limit)]
          (gt/testing ["query" query]
-           (mt/with-temp
-             [:model/Card
-              {id :id}
-              {:dataset_query (lib.convert/->legacy-MBQL query)}]
-             (let [result (qp/process-query (lib/query mp (lib.metadata/card mp id)))]
-               (testing "Successful query execution"
-                 (is (= :completed
-                        (:status result))))
-               (testing "At least one column returned"
-                 (is (<= 1 (count (mt/cols result))))
-                 (is (every? valid-col? (mt/cols result))))))))))))
+           (let [mp     (lib.tu/mock-metadata-provider
+                         mp
+                         {:cards [{:id            1
+                                   :dataset-query (lib.convert/->legacy-MBQL query)}]})
+                 result (qp/process-query (lib/query mp (lib.metadata/card mp 1)))]
+             (testing "Successful query execution"
+               (is (= :completed
+                      (:status result))))
+             (testing "At least one column returned"
+               (is (<= 1 (count (mt/cols result))))
+               (is (every? valid-col? (mt/cols result)))))))))))

@@ -182,28 +182,31 @@
   (cond-> inner-query
     (seq join-fields) (update :fields append-join-fields join-fields)))
 
-(defn- nest-source [inner-query]
+(mu/defn- nest-source :- ::mbql.s/SourceQuery
+  [inner-query :- ::mbql.s/SourceQuery]
   (let [filter-clause (:filter inner-query)
         keep-filter? (and filter-clause
                           (nil? (lib.util.match/match-one filter-clause :expression)))
-        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
-                 ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in the
-                 ;; first place we already had to do perms checks to make sure the query we're transforming is itself
-                 ;; ok, so we don't need to run another check.
-                 ;; (Not using mw.session/as-admin due to cyclic dependency.)
-                 (binding [api/*is-superuser?* true]
-                   ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-                    {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
-                     :type     :query
-                     :query    source}))
-                 (add-all-fields source)
-                 (add/add-alias-info source)
-                 (:query source)
-                 (dissoc source :limit)
-                 (append-join-fields-to-fields source (joined-fields inner-query))
-                 (remove-unused-fields inner-query source)
-                 (cond-> source
-                   keep-filter? (assoc :filter filter-clause)))]
+        source (-> inner-query
+                   (select-keys [:source-table :source-query :source-metadata :joins :expressions])
+                   ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in
+                   ;; the first place we already had to do perms checks to make sure the query we're transforming is
+                   ;; itself ok, so we don't need to run another check.
+                   ;; (Not using mw.session/as-admin due to cyclic dependency.)
+                   (as-> $source (binding [api/*is-superuser?* true]
+                                   ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
+                                    {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+                                     :type     :query
+                                     :query    $source})))
+                   lib/->legacy-MBQL
+                   add-all-fields
+                   add/add-alias-info
+                   :query
+                   (dissoc :limit)
+                   (append-join-fields-to-fields (joined-fields inner-query))
+                   (->> (remove-unused-fields inner-query))
+                   (cond-> keep-filter?
+                     (assoc :filter filter-clause)))]
     (-> inner-query
         (dissoc :source-table :source-metadata :joins)
         (assoc :source-query source)

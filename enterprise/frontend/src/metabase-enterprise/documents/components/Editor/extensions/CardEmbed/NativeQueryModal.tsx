@@ -383,12 +383,15 @@ export const NativeQueryModal = ({
                   <Loader size="lg" />
                 </Flex>
               ) : failedDataset || queryError ? (
-                <ErrorMessage
-                  type="serverError"
-                  title={t`Query execution failed`}
-                  message={getErrorMessage(failedDataset, queryError)}
-                  action={null}
-                />
+                <Flex h="100%" className={S.errorContainer}>
+                  <ErrorMessage
+                    type="serverError"
+                    title={t`Query execution failed`}
+                    message={getErrorMessage(failedDataset, queryError)}
+                    action={null}
+                    className={S.errorMessage}
+                  />
+                </Flex>
               ) : hasEmptyResults(datasetToUse) ? (
                 <QueryExecutionEmptyState hasInitialData={!!datasetToUse} />
               ) : rawSeries ? (

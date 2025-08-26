@@ -2032,3 +2032,50 @@ function slowDownCardQuery() {
     });
   });
 }
+
+describe("issue 62170", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should only refresh card data, not reload entire dashboard when auto-refresh is enabled", () => {
+    const REFRESH_PERIOD = 3;
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Orders Count",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.visit(`/dashboard/${dashboard_id}#refresh=${REFRESH_PERIOD}`);
+
+      cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(
+        "dashboardLoad",
+      );
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "cardDataRefresh",
+      );
+    });
+
+    // Wait for initial dashboard load
+    cy.wait("@dashboardLoad");
+    cy.wait("@cardDataRefresh");
+
+    // Verify dashboard is loaded
+    H.getDashboardCard().within(() => {
+      cy.findByText("Orders Count").should("be.visible");
+    });
+
+    cy.wait(REFRESH_PERIOD * 1000);
+
+    // Verify card data was refreshed
+    cy.wait("@cardDataRefresh");
+
+    // Verify dashboard itself was NOT reloaded
+    cy.get("@dashboardLoad.all").should("have.length", 1);
+  });
+});

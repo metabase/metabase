@@ -45,18 +45,18 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres driver-api/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
-  (or (when-let [[_match _table _constraint _ref-table column _value _ref-table-2]
+  (or (when-let [[_match _table _constraint ref-table column _value _ref-table-2]
                  (re-find #"update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is still referenced from table \"([^\"]+)\"" error-message)]
         (merge {:type error-type}
                (case action-type
                  (:table.row/delete :model.row/delete)
-                 {:message (tru "Other tables rely on this row so it cannot be deleted.")
-                  :errors  {}}
+                 {:message (tru "Other rows refer to this row so it cannot be deleted.")
+                  :errors  {column (tru "Referenced in table \"{0}\"." ref-table)}}
 
                  (:table.row/update :model.row/update)
-                 {:message (tru "Unable to update the record.")
-                  :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
-      (when-let [[_match _table _constraint column _value _ref-table]
+                 {:message (tru "Other rows refer to this value so it cannot be changed.")
+                  :errors  {column (tru "Referenced in table \"{0}\"." ref-table)}})))
+      (when-let [[_match _table _constraint column _value ref-table]
                  (re-find #"insert or update on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is not present in table \"([^\"]+)\"" error-message)]
         {:type    error-type
          :message (case action-type
@@ -65,7 +65,7 @@
 
                     (:table.row/update :model.row/update)
                     (tru "Unable to update the record."))
-         :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
+         :errors  {column (tru "This value does not exist in table \"{0}\"." ref-table)}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres driver-api/incorrect-value-type]
   [_driver error-type _database _action-type error-message]

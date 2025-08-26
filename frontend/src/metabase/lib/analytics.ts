@@ -28,7 +28,7 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   invite: "1-0-1",
   model: "1-0-0",
   question: "1-0-6",
-  search: "1-1-0",
+  search: "1-2-0",
   serialization: "1-0-1",
   settings: "1-0-2",
   setup: "1-0-3",

@@ -9,8 +9,8 @@ import { Form, FormProvider } from "metabase/forms";
 import { FormErrorMessage } from "metabase/forms/components/FormErrorMessage";
 import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
 import { useSelector } from "metabase/lib/redux";
-import { Button, Flex, Text } from "metabase/ui";
-import type { DatabaseData, Engine } from "metabase-types/api";
+import { Box, Button, Flex, Text } from "metabase/ui";
+import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 
 import { getEngines } from "../../selectors";
 import { getDefaultEngineKey } from "../../utils/engine";
@@ -116,7 +116,8 @@ export const DatabaseForm = ({
     >
       <DatabaseFormBody
         engine={engine}
-        engineKey={engineKey}
+        // casting won't be needed after migrating all usages of engineKey
+        engineKey={engineKey as EngineKey}
         engines={engines}
         engineFieldState={engineFieldState}
         autofocusFieldName={autofocusFieldName}
@@ -135,7 +136,7 @@ export const DatabaseForm = ({
 
 interface DatabaseFormBodyProps {
   engine: Engine | undefined;
-  engineKey: string | undefined;
+  engineKey: EngineKey | undefined;
   engines: Record<string, Engine>;
   engineFieldState?: "default" | "hidden" | "disabled";
   autofocusFieldName?: string;
@@ -175,44 +176,52 @@ const DatabaseFormBody = ({
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form data-testid="database-form" className="database-form">
-      {engineFieldState !== "hidden" && (
-        <>
-          <DatabaseEngineField
-            engineKey={engineKey}
-            engines={engines}
-            isAdvanced={isAdvanced}
-            onChange={onEngineChange}
-            disabled={engineFieldState === "disabled"}
-            showSampleDatabase={showSampleDatabase}
-          />
-          <DatabaseEngineWarning
-            engineKey={engineKey}
-            engines={engines}
-            onChange={onEngineChange}
-          />
-        </>
-      )}
-      <DatabaseConnectionStringField
-        engineKey={engineKey}
-        location={location}
-        setValues={setValues}
-      />
-      {engine && (
-        <DatabaseNameField
-          engine={engine}
-          config={config}
-          autoFocus={autofocusFieldName === "name"}
+    <Form data-testid="database-form" pt="md">
+      <Box
+        mah="calc(100vh - 20rem)"
+        style={{ overflowY: "auto" }}
+        px={location === "setup" ? "sm" : "xl"}
+        mb="md"
+      >
+        {engineFieldState !== "hidden" && (
+          <>
+            <DatabaseEngineField
+              engineKey={engineKey}
+              engines={engines}
+              isAdvanced={isAdvanced}
+              onChange={onEngineChange}
+              disabled={engineFieldState === "disabled"}
+              showSampleDatabase={showSampleDatabase}
+            />
+            <DatabaseEngineWarning
+              engineKey={engineKey}
+              engines={engines}
+              onChange={onEngineChange}
+            />
+          </>
+        )}
+        <DatabaseConnectionStringField
+          engineKey={engineKey}
+          location={location}
+          setValues={setValues}
         />
-      )}
-      {fields.map((field) => (
-        <DatabaseDetailField
-          key={field.name}
-          field={field}
-          autoFocus={autofocusFieldName === field.name}
-          data-kek={field.name}
-        />
-      ))}
+        {engine && (
+          <DatabaseNameField
+            engine={engine}
+            config={config}
+            autoFocus={autofocusFieldName === "name"}
+          />
+        )}
+        {fields.map((field) => (
+          <DatabaseDetailField
+            key={field.name}
+            field={field}
+            autoFocus={autofocusFieldName === field.name}
+            data-kek={field.name}
+            engineKey={engineKey}
+          />
+        ))}
+      </Box>
       <DatabaseFormFooter
         isDirty={dirty}
         isAdvanced={isAdvanced}
@@ -247,11 +256,9 @@ const DatabaseFormFooter = ({
 
   const hasSampleDatabase = useSetting("has-sample-database?");
 
-  const className = "database-form-footer";
-
   if (isAdvanced) {
     return (
-      <FormFooter data-testid="form-footer" className={className}>
+      <FormFooter data-testid="form-footer" px="xl">
         <FormErrorMessage />
         <Flex justify="space-between" align="center" w="100%">
           {isNew ? (
@@ -281,7 +288,7 @@ const DatabaseFormFooter = ({
 
   if (values.engine) {
     return (
-      <FormFooter className={className}>
+      <FormFooter>
         <FormErrorMessage inline />
         <Button onClick={onCancel}>{t`Skip`}</Button>
         <FormSubmitButton variant="filled" label={t`Connect database`} />

@@ -393,7 +393,7 @@
 (deftest ^:parallel actions-maybe-parse-sql-error-test-4
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
-            :message "Other tables rely on this row so it cannot be deleted.",
+            :message "Other rows refer to this row so it cannot be deleted.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/delete
@@ -403,7 +403,7 @@
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to create a new record.",
-            :errors {"GROUP-ID" "This Group-id does not exist."}}
+            :errors {"GROUP-ID" "This value does not exist in table \"group\"."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/create
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
@@ -412,7 +412,7 @@
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to update the record.",
-            :errors {"GROUP-ID" "This Group-id does not exist."}}
+            :errors {"GROUP-ID" "This value does not exist in table \"group\"."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/update
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))

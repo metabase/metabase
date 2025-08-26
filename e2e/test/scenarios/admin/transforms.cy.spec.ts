@@ -398,6 +398,46 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.findByText("hourly").should("not.exist");
       });
     });
+
+    it("should update tags on all transforms when deleting them from another transform", () => {
+      createMbqlTransform({ name: "Transform B" });
+      createMbqlTransform({
+        name: "Transform A",
+        visitTransform: true,
+      });
+
+      cy.log("Add new tag to transform A");
+      getTagsInput().type("New tag");
+      H.popover().findByText("New tag").click();
+      cy.wait("@createTag");
+      H.popover().findByText("New tag").should("be.visible");
+
+      cy.log("Navigate to transform B");
+      getNavSidebar().findByText("Transforms").click();
+      getTransformListPage().findByText("Transform B").click();
+
+      cy.log("Remove the new tag from transform B");
+      getTagsInput().click();
+      H.popover()
+        .findByRole("option", { name: "New tag" })
+        .findByLabelText("Delete tag")
+        .click({ force: true });
+      H.modal().within(() => {
+        cy.button("Delete tag").click();
+        cy.wait("@deleteTag");
+      });
+
+      cy.log("Navigate to transform A");
+      cy.findByTestId("admin-layout-sidebar").findByText("Transforms").click();
+      getTransformListPage().findByText("Transform A").click();
+
+      cy.log("The tag should be gone");
+      getTagsInput()
+        .parent()
+        // Select the tag pill
+        .get("[data-with-remove=true]")
+        .should("not.exist");
+    });
   });
 
   describe("targets", () => {
@@ -601,6 +641,154 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   });
 
   describe("queries", () => {
+    it("should render a readOnly preview of the MBQL query", () => {
+      cy.log("create a new transform that has all the steps");
+      createMbqlTransform({ visitTransform: true });
+      H.getTableId({ name: "Animals" }).then((tableId) => {
+        H.getFieldId({ tableId, name: "score" }).then((ANIMAL_SCORE) => {
+          H.getFieldId({ tableId, name: "name" }).then((ANIMAL_NAME) => {
+            H.createTransform(
+              {
+                name: "MBQL transform",
+                source: {
+                  type: "query",
+                  query: {
+                    database: WRITABLE_DB_ID,
+                    type: "query",
+                    query: {
+                      "source-table": tableId,
+                      filter: [">", ["field", ANIMAL_SCORE, {}], 10],
+                      aggregation: [
+                        ["count"],
+                        [
+                          "aggregation-options",
+                          ["+", ["count"], 1],
+                          { name: "Foobar", "display-name": "Foobar" },
+                        ],
+                      ],
+                      expressions: {
+                        ScorePlusOne: ["+", ["field", ANIMAL_SCORE, {}], 1],
+                      },
+                      breakout: [
+                        [
+                          "field",
+                          ANIMAL_SCORE,
+                          { binning: { strategy: "num-bins", "num-bins": 10 } },
+                        ],
+                      ],
+                      joins: [
+                        {
+                          "source-table": tableId,
+                          condition: [
+                            "=",
+                            ["field", ANIMAL_SCORE, {}],
+                            ["field", ANIMAL_SCORE, {}],
+                          ],
+                          alias: "animal_score",
+                        },
+                      ],
+                      limit: 10,
+                      "order-by": [["asc", ["field", ANIMAL_NAME, {}]]],
+                    },
+                  },
+                },
+                target: {
+                  type: "table",
+                  name: TARGET_TABLE,
+                  schema: TARGET_SCHEMA,
+                },
+                tag_ids: [],
+              },
+              { visitTransform: true },
+            );
+          });
+        });
+      });
+
+      cy.log("Data step should be read-only");
+      H.getNotebookStep("data")
+        .findByRole("button")
+        .should("contain", "Animals")
+        .should("be.disabled");
+
+      cy.log("Join step should be read-only");
+      H.getNotebookStep("join")
+        .findAllByText("Animals")
+        .should("have.length", 4)
+        .eq(1)
+        .should("have.css", "pointer-events", "none");
+
+      cy.findByLabelText("Change join type").should("be.disabled");
+
+      H.getNotebookStep("join")
+        .findAllByText("Score")
+        .should("have.length", 2)
+        .first()
+        .click();
+      assertNoModals();
+
+      H.getNotebookStep("join")
+        .findAllByText("Score")
+        .should("have.length", 2)
+        .eq(1)
+        .click();
+      assertNoModals();
+
+      cy.log("Expression step should be read-only, but render editor");
+      H.getNotebookStep("expression").findByText("ScorePlusOne").click();
+      H.CustomExpressionEditor.value().should("equal", "[Score] + 1");
+      H.CustomExpressionEditor.nameInput()
+        .should("have.value", "ScorePlusOne")
+        .should("have.attr", "readonly");
+      H.popover().button("Done").click();
+
+      cy.log("Expression step should be read-only, but render popover");
+      H.getNotebookStep("filter")
+        .findByText("Score is greater than 10")
+        .click();
+      H.popover().within(() => {
+        cy.findByText("Score").should("be.visible");
+        cy.findByText("Greater than").should("be.visible");
+        cy.findByPlaceholderText("Enter a number")
+          .should("be.visible")
+          .should("have.value", 10);
+      });
+      H.main().click();
+
+      cy.log("Summarize step should be read-only");
+      H.getNotebookStep("summarize").findByText("Count").click();
+      H.CustomExpressionEditor.value().should("equal", "Count()");
+      H.CustomExpressionEditor.nameInput()
+        .should("have.value", "Count")
+        .should("have.attr", "readonly");
+      H.popover().button("Done").click();
+
+      H.getNotebookStep("summarize").findByText("Foobar").click();
+      H.CustomExpressionEditor.value().should("equal", "Count() + 1");
+      H.CustomExpressionEditor.nameInput()
+        .should("have.value", "Foobar")
+        .should("have.attr", "readonly");
+      H.popover().button("Done").click();
+
+      H.getNotebookStep("summarize").findByText("Score: 10 bins").click();
+      assertNoModals();
+
+      cy.log("Sort step should be read-only");
+      H.getNotebookStep("sort").findByText("Name").click();
+      assertNoModals();
+
+      cy.log("Limit step should be read-only");
+      H.getNotebookStep("limit")
+        .findByPlaceholderText("Enter a limit")
+        .should("have.value", 10)
+        .should("have.attr", "readonly");
+
+      function assertNoModals() {
+        H.entityPickerModal().should("not.exist");
+        H.popover({ skipVisibilityCheck: true }).should("not.exist");
+      }
+    });
+
     it("should be able to update a MBQL query", () => {
       cy.log("create a new transform");
       createMbqlTransform({ visitTransform: true });
@@ -1281,18 +1469,20 @@ function createMbqlTransform({
   targetTable = TARGET_TABLE,
   targetSchema = TARGET_SCHEMA,
   tagIds,
+  name = "MBQL transform",
   visitTransform,
 }: {
   sourceTable?: string;
   targetTable?: string;
   targetSchema?: string;
   tagIds?: TransformTagId[];
+  name?: string;
   visitTransform?: boolean;
 } = {}) {
-  H.getTableId({ name: sourceTable }).then((tableId) => {
-    H.createTransform(
+  return H.getTableId({ name: sourceTable }).then((tableId) => {
+    return H.createTransform(
       {
-        name: "MBQL transform",
+        name,
         source: {
           type: "query",
           query: {

@@ -3,17 +3,17 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SdkBreadcrumbs } from "embedding-sdk/components/private/SdkBreadcrumbs";
-import { CollectionBrowser } from "embedding-sdk/components/public/CollectionBrowser";
-import { CreateDashboardModal } from "embedding-sdk/components/public/CreateDashboardModal";
-import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
+import { SdkBreadcrumbs } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
+import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
+import { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
+import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import {
   EditableDashboard,
   InteractiveDashboard,
-} from "embedding-sdk/components/public/dashboard";
-import { useSdkBreadcrumbs } from "embedding-sdk/hooks/private/use-sdk-breadcrumb";
-import type { SdkCollectionId } from "embedding-sdk/types";
-import type { SdkBreadcrumbItemType } from "embedding-sdk/types/breadcrumb";
+} from "embedding-sdk-bundle/components/public/dashboard";
+import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
+import type { SdkCollectionId } from "embedding-sdk-bundle/types";
+import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrumb";
 import { Box, Button, Group, Stack } from "metabase/ui";
 
 import type { SdkIframeEmbedSettings } from "../types/embed";
