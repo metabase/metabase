@@ -56,6 +56,14 @@ export const transformApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("transform", id), tag("table")]),
     }),
+    cancelCurrentTransformRun: builder.mutation<void, TransformId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/ee/transform/${id}/cancel`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("transform", id), tag("table")]),
+    }),
     createTransform: builder.mutation<Transform, CreateTransformRequest>({
       query: (body) => ({
         method: "POST",
@@ -114,6 +122,7 @@ export const {
   useGetTransformQuery,
   useLazyGetTransformQuery,
   useRunTransformMutation,
+  useCancelCurrentTransformRunMutation,
   useCreateTransformMutation,
   useUpdateTransformMutation,
   useDeleteTransformMutation,

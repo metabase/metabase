@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -39,9 +39,9 @@ export function TransformPage({ params }: TransformPageProps) {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
 
-  if (isPolling !== isPollingNeeded(transform)) {
-    setIsPolling(!isPolling);
-  }
+  useEffect(() => {
+    setIsPolling(isPollingNeeded(transform));
+  }, [transform]);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
