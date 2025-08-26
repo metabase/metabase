@@ -115,6 +115,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
  * Configuration for the row ID column
  */
 export interface RowIdColumnOptions {
+  /** Index in rows array of corresponding expanded row, if any (i.e. DetailViewSidesheet) */
+  expandedIndex: number | undefined;
+
   /** Display style of the row ID column */
   variant: RowIdVariant;
 
