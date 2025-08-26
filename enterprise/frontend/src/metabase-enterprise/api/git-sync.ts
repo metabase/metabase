@@ -44,14 +44,14 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: ["git-branch"],
     }),
 
-    getGitDiff: builder.query<GitDiff[], { branch: string; base?: string }>({
-      queryFn: async () => {
-        // TODO: Replace with real API call when backend endpoint is available
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        return { data: [] };
-      },
-      providesTags: (result, error, { branch }) =>
-        invalidateTags(error, [idTag("git-diff", branch)]),
+    getGitDiff: builder.query<GitDiff[], { branchId: number }>({
+      query: ({ branchId }) => ({
+        url: `/api/ee/branch/${branchId}/diff`,
+        method: "GET",
+      }),
+      transformResponse: (response: { data: GitDiff[] }) => response.data,
+      providesTags: (result, error, { branchId }) =>
+        invalidateTags(error, [idTag("git-diff", branchId)]),
     }),
   }),
 });

@@ -79,6 +79,9 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
       setCurrentBranch(branch.name);
       combobox.closeDropdown();
       setSearchValue("");
+      
+      // Force page reload to clear all cached data
+      window.location.reload();
     },
     [displayBranch, setCurrentBranch, combobox],
   );

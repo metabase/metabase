@@ -2,6 +2,7 @@
   "`/api/ee/branch/` routes"
   (:require
    [metabase-enterprise.branching.models.branch :as branch]
+   [metabase-enterprise.branching.models.branch-model-mapping :as mapping]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -28,6 +29,16 @@
    [:created_at ms/TemporalString]
    [:updated_at ms/TemporalString]])
 
+(def DiffResponse
+  "Schema for branch diff API responses."
+  [:map
+   [:id ms/PositiveInt]
+   [:name :string]
+   [:status [:enum "added" "modified" "deleted"]]
+   [:content_type [:enum "card" "dashboard" "collection"]]
+   [:current {:optional true} :map]
+   [:original {:optional true} :map]])
+
 ;;; ------------------------------------------------- API Endpoints -------------------------------------------------
 
 (api.macros/defendpoint :get "/"
@@ -40,6 +51,32 @@
                 (nil? parent_id) (t2/select :model/Branch)
                 (> 0 parent_id) (branch/get-children-by-id nil)
                 :else (branch/get-children-by-id parent_id)))})
+
+(api.macros/defendpoint :get "/:id/diff"
+  "Get diff of changes in a branch compared to its parent branch. Open access for authenticated users."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [branch (t2/select-one :model/Branch :id id)]
+    (when-not branch
+      (throw (ex-info (tru "Branch not found.") {:status-code 404})))
+
+    (let [mappings (t2/select :model/BranchModelMapping :branch_id id)
+          card-mappings (filter #(= (:model_type %) "report_card") mappings)
+          diff-entries (for [{:keys [original_id branched_model_id]} card-mappings]
+                         (let [is-added? (= original_id branched_model_id)
+                               status (if is-added? "added" "modified")
+                               original-card (when-not is-added?
+                                               (t2/select-one :model/Card :id original_id))
+                               branched-card (t2/select-one :model/Card :id branched_model_id)
+                               card-fields [:id :name :description :dataset_query :display :visualization_settings]]
+
+                           {:id branched_model_id
+                            :name (or (:name branched-card) (:name original-card) "Unknown")
+                            :status status
+                            :content_type "card"
+                            :current (when branched-card (select-keys branched-card card-fields))
+                            :original (when original-card (select-keys original-card card-fields))}))]
+
+      {:data diff-entries})))
 
 (api.macros/defendpoint :get "/:id"
   "Get a single branch by ID."
