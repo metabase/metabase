@@ -7,6 +7,7 @@ import type {
   TimeSeriesAxisFormatter,
   TimeSeriesXAxisModel,
 } from "../model/types";
+import { shouldPinInterval } from "../model/util";
 import {
   computeTimeseriesTicksInterval,
   getLargestInterval,
@@ -51,6 +52,7 @@ export const getTicksOptions = (
   ];
   const paddedMin = dayjs(xDomainPadded[0]);
   const paddedMax = dayjs(xDomainPadded[1]);
+  const timeRangeMs = xDomain[1] - xDomain[0];
 
   // Compute ticks interval based on the X-axis range, original interval, and the chart width.
   const computedInterval = computeTimeseriesTicksInterval(
@@ -102,6 +104,18 @@ export const getTicksOptions = (
       count: 1,
       unit: effectiveTicksUnit,
     });
+  }
+
+  if (
+    interval.unit === "month" &&
+    interval.count === 1 &&
+    computedInterval.unit === "month" &&
+    computedInterval.count === 1 &&
+    shouldPinInterval(interval, timeRangeMs, chartWidth, xAxisModel.formatter)
+  ) {
+    const dur = getTimeSeriesIntervalDuration(interval);
+    minInterval = dur;
+    maxInterval = dur;
   }
 
   if (!maxInterval) {
