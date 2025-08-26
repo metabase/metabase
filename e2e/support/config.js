@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
@@ -161,15 +160,16 @@ const defaultConfig = {
 
     // this is an official workaround to keep recordings of the failed specs only
     // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
-    on("after:spec", (spec, results) => {
-      if (results && results.video) {
-        // Do we have test failures?
-        if (results && results.video && results.stats.failures === 0) {
-          // delete the video if the spec passed
-          fs.unlinkSync(results.video);
-        }
-      }
-    });
+    // Temporarily disabled to test if it interferes with cypress-split
+    // on("after:spec", (spec, results) => {
+    //   if (results && results.video) {
+    //     // Do we have test failures?
+    //     if (results && results.video && results.stats.failures === 0) {
+    //       // delete the video if the spec passed
+    //       fs.unlinkSync(results.video);
+    //     }
+    //   }
+    // });
 
     return config;
   },

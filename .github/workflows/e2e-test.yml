@@ -128,6 +128,12 @@ jobs:
           SPEC_PATH: ${{ env.specs || inputs.specs }}
         shell: bash
         run: |
+          # Ensure e2e/support directory exists for cypress-split output
+          mkdir -p ./e2e/support
+          # Create empty newTimings.json file if it doesn't exist
+          if [ ! -f "./e2e/support/newTimings.json" ]; then
+            echo '{"durations": []}' > ./e2e/support/newTimings.json
+          fi
           echo "Running tests with specs: $SPEC_PATH"
           echo "=== BEFORE TEST EXECUTION ==="
           echo "Cypress split environment variables:"
