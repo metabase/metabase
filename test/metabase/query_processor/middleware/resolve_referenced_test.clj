@@ -110,6 +110,7 @@
                                        :name "snippet-a"
                                        :content "WHERE id IN (SELECT id FROM {{#1}})"
                                        :template-tags {"#1" {:name "#1"
+                                                             :display-name "Card 1"
                                                              :type :card
                                                              :card-id 1}}}]})
 
@@ -163,6 +164,7 @@
                                        :content "WHERE x IN ({{snippet: snippet-2}})"
                                        :template-tags {"snippet: snippet-2"
                                                        {:name "snippet: snippet-2"
+                                                        :display-name "Snippet 2"
                                                         :type :snippet
                                                         :snippet-name "snippet-2"
                                                         :snippet-id 102}}}
@@ -172,6 +174,7 @@
                                        :content "SELECT y FROM {{#2}}"
                                        :template-tags {"#2"
                                                        {:name "#2"
+                                                        :display-name "Card B"
                                                         :type :card
                                                         :card-id 2}}}
                                       ;; Snippet 3 references Card A (id 1), completing the cycle
@@ -180,6 +183,7 @@
                                        :content "SELECT z FROM {{#1}}"
                                        :template-tags {"#1"
                                                        {:name "#1"
+                                                        :display-name "Card A"
                                                         :type :card
                                                         :card-id 1}}}]})
 
