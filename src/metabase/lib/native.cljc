@@ -13,6 +13,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.util :as lib.util]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -272,10 +273,10 @@
   [query :- ::lib.schema/query]
   (:template-tags (lib.util/query-stage query 0)))
 
-(mu/defn template-tag-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
+(mu/defn native-query-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
   "Returns the card IDs from the template tags of the native query of `query`."
   [query :- ::lib.schema/query]
-  (not-empty (into #{} (keep (fn [[_k m]] (:card-id m))) (template-tags query))))
+  (lib.template-tags/template-tags->card-ids (template-tags query)))
 
 (mu/defn template-tags-referenced-cards :- [:maybe [:sequential ::lib.schema.metadata/card]]
   "Returns Card instances referenced by the given native `query`."
@@ -283,7 +284,12 @@
   (mapv
    (fn [card-id]
      (lib.metadata/card query card-id))
-   (template-tag-card-ids query)))
+   (native-query-card-ids query)))
+
+(mu/defn native-query-snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/native-query-snippet]]
+  "Returns the card IDs from the template tags of the native query of `query`."
+  [query :- ::lib.schema/query]
+  (lib.template-tags/template-tags->snippet-ids (template-tags query)))
 
 (mu/defn has-template-tag-variables? :- :boolean
   "Tests whether `query` has any template-tag variables.

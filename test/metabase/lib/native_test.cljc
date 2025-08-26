@@ -342,7 +342,7 @@
 (deftest ^:parallel engine-test
   (is (= :h2 (lib/engine (lib.tu/native-query)))))
 
-(deftest ^:parallel template-tag-card-ids-test
+(deftest ^:parallel native-query-card-ids-test
   (let [query (lib/query (lib.tu/metadata-provider-with-mock-cards)
                          {:database (meta/id)
                           :type     :native
@@ -354,7 +354,7 @@
                                                                                 :display-name "Y"
                                                                                 :card-id      2}}}})]
     (is (= #{1 2}
-           (lib/template-tag-card-ids query)))))
+           (lib/native-query-card-ids query)))))
 
 (deftest ^:parallel template-tags-referenced-cards-test
   (testing "returns Card instances from raw query"

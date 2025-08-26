@@ -1,14 +1,11 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
-   [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
