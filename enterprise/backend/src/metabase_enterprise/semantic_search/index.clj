@@ -1,5 +1,6 @@
 (ns metabase-enterprise.semantic-search.index
   (:require
+   [buddy.core.codecs :as buddy-codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
@@ -223,7 +224,7 @@
   [identifier]
   (if (<= (count identifier) 63)
     identifier
-    (let [hashed-name (str "index_" (u/encode-base64-bytes (buddy-hash/sha1 identifier)))]
+    (let [hashed-name (str "index_" (buddy-codecs/bytes->hex (buddy-hash/sha1 identifier)))]
       (log/warnf "Using hashed name for index table %s as original table name %s exceeded the maximum table name length" hashed-name identifier)
       hashed-name)))
 
@@ -233,8 +234,7 @@
   (mod (.toEpochSecond (t/offset-date-time)) 10000000))
 
 (defn model-table-name
-  "Returns a table name for a model. If the unique-suffix option is true, a time-based suffix will be appended. For now this is used
-  to avoid collisions (number of tables per-model is 0 or 1 in practice)."
+  "Returns a default table name for a model. If the table name would exceed the 63 byte postgres limit, a hashed name is preferred."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
