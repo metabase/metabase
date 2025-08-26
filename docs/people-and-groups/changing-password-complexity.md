@@ -30,10 +30,10 @@ If your instance is hosted on Metabase Cloud, passwords must:
 
 - Be at least 12 characters long
 - Contain at least: 
-  - 2 lowercase
-  - 2 uppercase
+  - 2 lowercase letters
+  - 2 uppercase letters
   - 1 digit
-  - 1 special character
+  - 1 special character (!,$,%, etc.)
 
 ## Disabling password logins
 
