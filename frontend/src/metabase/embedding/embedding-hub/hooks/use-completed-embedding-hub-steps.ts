@@ -16,7 +16,7 @@ export const useCompletedEmbeddingHubSteps = (): Record<
       "create-test-embed": true,
       "add-data": false,
       "create-dashboard": false,
-      "configure-sandboxing": false,
+      "configure-row-column-security": false,
       "secure-embeds": false,
       "embed-production": false,
     };

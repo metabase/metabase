@@ -22,7 +22,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     title: t`Add your data`,
     icon: "add_data",
     // eslint-disable-next-line no-literal-metabase-strings -- only shown to admins.
-    description: t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor. Metabase connects to more than 15 popular databases.`,
+    description: t`You can connect databases or upload CSVs, and query them directly with the query builder or the Native/SQL editor. Metabase connects to more than 15 popular databases.`,
     image: {
       src: "app/assets/img/onboarding_data_diagram.png",
       srcSet: "app/assets/img/onboarding_data_diagram@2x.png 2x",
@@ -41,7 +41,8 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     id: "create-dashboard",
     title: t`Create a dashboard`,
     icon: "dashboard",
-    description: t`Automatically generate a dashboard from your data using x-rays or build one manually.`,
+    // eslint-disable-next-line no-literal-metabase-strings -- only shown to admins.
+    description: t`Metabase X-rays let you select a table to automatically generate a dashboard populated with charts. Alternatively, you can create a dashboard manually.`,
     actions: [
       {
         label: t`Generate dashboard`,
@@ -52,15 +53,15 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     ],
   };
 
-  const CONFIGURE_SANDBOXING: EmbeddingHubStep = {
-    id: "configure-sandboxing",
-    title: t`Configure sandboxing`,
+  const CONFIGURE_ROW_COLUMN_SECURITY: EmbeddingHubStep = {
+    id: "configure-row-column-security",
+    title: t`Configure row and column security`,
     icon: "permissions_limited",
     description: t`Manage permissions to limit what data your users can access.`,
     actions: [
       {
-        label: t`Configure permissions`,
-        docsPath: "permissions/embedding",
+        label: t`Read the docs`,
+        docsPath: "permissions/row-and-column-security",
         variant: "outline",
       },
     ],
@@ -98,7 +99,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     TEST_EMBED,
     ADD_DATA,
     CREATE_DASHBOARD,
-    CONFIGURE_SANDBOXING,
+    CONFIGURE_ROW_COLUMN_SECURITY,
     SECURE_EMBEDS,
     EMBED_PRODUCTION,
   ];
