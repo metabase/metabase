@@ -1,4 +1,5 @@
 import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
+import type { Table } from "metabase-types/api";
 import type { CollectionId } from "metabase-types/api/collection";
 
 export interface AppErrorDescriptor {
@@ -29,7 +30,14 @@ export type TempStorageKey = keyof TempStorage;
 export type TempStorageValue<Key extends TempStorageKey = TempStorageKey> =
   TempStorage[Key];
 
+export interface DetailViewState {
+  rowName: string;
+  table: Table;
+  collectionId: CollectionId | null;
+}
+
 export interface AppState {
+  detailView: DetailViewState | null;
   errorPage: AppErrorDescriptor | null;
   isNavbarOpen: boolean;
   isDndAvailable: boolean;

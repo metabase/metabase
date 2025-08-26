@@ -282,11 +282,13 @@ config:
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
     ssh-heartbeat-interval-sec: 180
+    stale-index-retention-hours: 24
     start-of-week: sunday
     subscription-allowed-domains: null
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
+    tombstone-retention-hours: 24
     unaggregated-query-row-limit: null
     uploads-settings: null
     use-tenants: false

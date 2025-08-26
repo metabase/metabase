@@ -353,6 +353,7 @@
          ;; optimize the filters in this inner-query form.
          (let [optimized (optimize-temporal-filters* form)]
            ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
+           #_{:clj-kondo/ignore [:deprecated-var]}
            (cond-> optimized
              (not= optimized form) (update :filter mbql.u/combine-filter-clauses)))))
      query)))

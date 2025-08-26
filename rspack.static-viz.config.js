@@ -12,7 +12,8 @@ const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_BUNDLE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 
@@ -118,7 +119,7 @@ module.exports = (env) => {
         "metabase-lib": LIB_SRC_PATH,
         "metabase-types": TYPES_SRC_PATH,
         embedding: EMBEDDING_SRC_PATH,
-        "embedding-sdk": SDK_SRC_PATH,
+        "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
         "process/browser": require.resolve("process/browser"),
         "ee-overrides":
           process.env.MB_EDITION === "ee"

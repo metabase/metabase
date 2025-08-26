@@ -105,18 +105,22 @@
 
 (deftest ^:parallel template-tag-generation-test
   (testing "Generating template tags produces correct types for running process-query (#31252)"
-    (mt/with-temp
-      [:model/Card {card-id :id} {:type          :model
-                                  :dataset_query (mt/native-query {:query "select * from checkins"})}]
-      (let [q   (str "SELECT * FROM {{#" card-id "}} LIMIT 2")
-            tt  (lib-native/extract-template-tags q)
-            res (qp/process-query
-                 {:database (mt/id)
-                  :type     :native
-                  :native   {:query         q
-                             :template-tags tt}})]
-        (is (=? {:status :completed}
-                res))))))
+    (let [mp  (lib.tu/mock-metadata-provider
+               (mt/metadata-provider)
+               {:cards [{:id            1
+                         :type          :model
+                         :dataset-query (mt/native-query {:query "select * from checkins"})}]})
+          q   "SELECT * FROM {{#1}} LIMIT 2"
+          tt  (lib-native/extract-template-tags q)
+          res (qp/process-query
+               (lib/query
+                mp
+                {:database (mt/id)
+                 :type     :native
+                 :native   {:query         q
+                            :template-tags tt}}))]
+      (is (=? {:status :completed}
+              res)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Field Filter Params                                               |
@@ -518,38 +522,42 @@
 
 (deftest ^:parallel date-parameter-for-native-query-with-nested-mbql-query-test
   (testing "Should be able to have a native query with a nested MBQL query and a date parameter (#21246)"
-    (mt/dataset test-data
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products)}]
-        (let [param-name (format "#%d" card-id)
-              query      (mt/native-query
-                           {:query         (str/join \newline
-                                                     [(format "WITH exclude_products AS {{%s}}" param-name)
-                                                      "SELECT count(*)"
-                                                      "FROM orders"
-                                                      "[[WHERE {{created_at}}]]"])
-                            :template-tags {param-name   {:type         :card
-                                                          :card-id      card-id
-                                                          :display-name param-name
-                                                          :id           "__source__"
-                                                          :name         param-name}
-                                            "created_at" {:type         :dimension
-                                                          :default      nil
-                                                          :dimension    [:field (mt/id :orders :created_at) nil]
-                                                          :display-name "Created At"
-                                                          :id           "__created_at__"
-                                                          :name         "created_at"
-                                                          :widget-type  :date/all-options}}})]
-          (testing "With no parameters"
-            (mt/with-native-query-testing-context query
-              (is (= [[18760]]
-                     (mt/rows (qp/process-query query))))))
-          (testing "With parameters (#21246)"
-            (let [query (assoc query :parameters [{:type   :date/all-options
-                                                   :value  "2022-04-20"
-                                                   :target [:dimension [:template-tag "created_at"]]}])]
-              (mt/with-native-query-testing-context query
-                (is (= [[0]]
-                       (mt/rows (qp/process-query query))))))))))))
+    (let [mp         (lib.tu/mock-metadata-provider
+                      (mt/metadata-provider)
+                      {:cards [{:id            1
+                                :dataset-query (mt/mbql-query products)}]})
+          param-name "#1"
+          query      (lib/query
+                      mp
+                      (mt/native-query
+                        {:query         (str/join \newline
+                                                  [(format "WITH exclude_products AS {{%s}}" param-name)
+                                                   "SELECT count(*)"
+                                                   "FROM orders"
+                                                   "[[WHERE {{created_at}}]]"])
+                         :template-tags {param-name   {:type         :card
+                                                       :card-id      1
+                                                       :display-name param-name
+                                                       :id           "__source__"
+                                                       :name         param-name}
+                                         "created_at" {:type         :dimension
+                                                       :default      nil
+                                                       :dimension    [:field (mt/id :orders :created_at) nil]
+                                                       :display-name "Created At"
+                                                       :id           "__created_at__"
+                                                       :name         "created_at"
+                                                       :widget-type  :date/all-options}}}))]
+      (testing "With no parameters"
+        (mt/with-native-query-testing-context query
+          (is (= [[18760]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "With parameters (#21246)"
+        (let [query (assoc query :parameters [{:type   :date/all-options
+                                               :value  "2022-04-20"
+                                               :target [:dimension [:template-tag "created_at"]]}])]
+          (mt/with-native-query-testing-context query
+            (is (= [[0]]
+                   (mt/rows (qp/process-query query))))))))))
 
 (deftest ^:parallel multiple-native-query-parameters-test
   (mt/dataset test-data
@@ -636,6 +644,8 @@
   (testing "If we have full SQL perms for a DW but no Card perms we shouldn't be able to include it with a ref or template tag"
     (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries :native-parameter-card-reference)
       (mt/with-non-admin-groups-no-root-collection-perms
+        ;; allowing `with-temp` here since we need it to make Collections
+        #_{:clj-kondo/ignore [:discouraged-var]}
         (mt/with-temp [:model/Collection {collection-1-id :id} {}
                        :model/Collection {collection-2-id :id} {}
 

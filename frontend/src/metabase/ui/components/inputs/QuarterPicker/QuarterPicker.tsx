@@ -40,7 +40,7 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
   }: QuarterPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [value, setValue] = useUncontrolled<DateStringValue>({
+  const [value, setValue] = useUncontrolled<DateStringValue | null>({
     value: valueProp?.toString(),
     defaultValue: defaultValue?.toString(),
     onChange,
@@ -49,7 +49,7 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
   const [date, setDate] = useUncontrolled({
     value: dateProp?.toString(),
     defaultValue: defaultDate?.toString(),
-    finalValue: value ?? new Date(),
+    finalValue: value ?? new Date().toString(),
     onChange: onDateChange,
   });
 

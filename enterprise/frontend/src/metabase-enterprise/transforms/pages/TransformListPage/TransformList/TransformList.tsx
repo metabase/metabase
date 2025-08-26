@@ -65,12 +65,12 @@ export function TransformList() {
           >
             <td>{transform.name}</td>
             <td>{transform.target.name}</td>
-            <td>
+            <td className={S.nowrap}>
               {transform.last_run?.end_time
                 ? parseLocalTimestamp(transform.last_run.end_time).format("lll")
                 : null}
             </td>
-            <td>
+            <td className={S.nowrap}>
               {transform.last_run != null ? (
                 <RunStatusInfo
                   status={transform.last_run.status}

@@ -1263,7 +1263,7 @@ describe("issue 58061", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
   it("should allow to pass a field filter value for a date column in the URL when the column has a broken semantic type (metabase#58061)", () => {
@@ -1290,7 +1290,7 @@ describe("issue 58061", () => {
         url: `/question/${card.id}`,
         qs: { filter: "2024-09-08" },
       });
-      cy.wait("@dataset");
+      cy.wait("@cardQuery");
       H.assertQueryBuilderRowCount(1);
     });
   });

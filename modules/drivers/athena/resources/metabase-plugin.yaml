@@ -41,6 +41,10 @@ driver:
       placeholder: "athena.us-east-1.amazonaws.com"
       helper-text: "Specify a hostname"
       required: false
+    - name: dbname
+      display-name: Specific database
+      helper-text: Specify a single database to enable features like DB routing
+      required: false
     - advanced-options-start
     - merge:
         - additional-options
