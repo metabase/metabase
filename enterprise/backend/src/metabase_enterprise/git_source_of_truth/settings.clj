@@ -19,21 +19,13 @@
   :encryption :no
   :export?    false)
 
-(defsetting git-sync-branch
-  (deferred-tru "The main branch of your git repository, e.g. `main`")
-  :type :string
-  :visibility :admin
+(defsetting git-sync-default-branch
+  (deferred-tru "The default branch for git sync.")
+  :type       :string
+  :visibility :authenticated
+  :export?    false
   :encryption :no
-  :export? false
-  :default "main")
-
-(defsetting git-sync-path
-  (deferred-tru "The path within the repo where your metabase files are located, e.g. `metabase/`")
-  :type :string
-  :visibility :admin
-  :encryption :no
-  :export? false
-  :default ".")
+  :default    nil)
 
 ;; TODO: flip this to true if we have successfully pulled from the repo
 (defsetting git-sync-configured

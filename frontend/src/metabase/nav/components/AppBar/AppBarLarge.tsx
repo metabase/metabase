@@ -2,7 +2,9 @@ import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_GIT_SYNC, PLUGIN_METABOT } from "metabase/plugins";
+import { Group } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 import type { DetailViewState } from "metabase-types/store";
 
@@ -58,7 +60,7 @@ const AppBarLarge = ({
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
-
+  const gitSyncConfigured = useSelector((_state) => true);
   return (
     <AppBarRoot
       hasSidebarOpen={
@@ -93,6 +95,10 @@ const AppBarLarge = ({
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
+          <Group gap="xs" miw={300} display="flex" align="center" wrap="nowrap">
+            {gitSyncConfigured && <PLUGIN_GIT_SYNC.SelectBranch />}
+            {gitSyncConfigured && <PLUGIN_GIT_SYNC.ViewChangesButton />}
+          </Group>
           {isSearchVisible &&
             (isEmbeddingIframe ? (
               <SearchBar />
