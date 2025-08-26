@@ -6,6 +6,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
+import { ReadOnlyNotice } from "metabase-enterprise/git_sync/ReadOnlyNotice";
+import { useIsInLibrary } from "metabase-enterprise/git_sync/useIsInLibrary";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../../constants";
@@ -39,6 +41,8 @@ export function TransformPage({ params }: TransformPageProps) {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
 
+  const isInLibrary = useIsInLibrary("transform");
+
   if (isPolling !== isPollingNeeded(transform)) {
     setIsPolling(!isPolling);
   }
@@ -56,6 +60,7 @@ export function TransformPage({ params }: TransformPageProps) {
       <Stack gap="lg">
         <HeaderSection transform={transform} />
         <NameSection transform={transform} />
+        {isInLibrary && <ReadOnlyNotice />}
       </Stack>
       <RunSection transform={transform} />
       <TargetSection transform={transform} />

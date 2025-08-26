@@ -14,6 +14,7 @@ import {
   Loader,
   Text,
 } from "metabase/ui";
+import { useIsInLibrary } from "metabase-enterprise/git_sync/useIsInLibrary";
 import type { Transform } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
@@ -31,6 +32,7 @@ type TargetSectionProps = {
 };
 
 export function TargetSection({ transform }: TargetSectionProps) {
+  const readOnly = useIsInLibrary("transform");
   return (
     <SplitSection
       label={t`Transform target`}
@@ -41,7 +43,7 @@ export function TargetSection({ transform }: TargetSectionProps) {
       </Group>
       <Divider />
       <Group p="lg">
-        <EditTargetButton transform={transform} />
+        <EditTargetButton transform={transform} disabled={readOnly} />
         <EditMetadataButton transform={transform} />
       </Group>
     </SplitSection>
@@ -134,9 +136,10 @@ function TargetItemDivider() {
 
 type EditTargetButtonProps = {
   transform: Transform;
+  disabled?: boolean;
 };
 
-function EditTargetButton({ transform }: EditTargetButtonProps) {
+function EditTargetButton({ transform, disabled }: EditTargetButtonProps) {
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const { sendSuccessToast } = useMetadataToasts();
@@ -151,6 +154,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
       <Button
         leftSection={<Icon name="pencil_lines" aria-hidden />}
         onClick={openModal}
+        disabled={disabled}
       >
         {t`Change target`}
       </Button>

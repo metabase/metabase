@@ -1,4 +1,6 @@
 import { Stack } from "metabase/ui";
+import { ReadOnlyNotice } from "metabase-enterprise/git_sync/ReadOnlyNotice";
+import { useIsInLibrary } from "metabase-enterprise/git_sync/useIsInLibrary";
 import type { TransformTagId } from "metabase-types/api";
 
 import { HeaderSection } from "./HeaderSection";
@@ -24,6 +26,11 @@ export function JobView({
   onScheduleChange,
   onTagListChange,
 }: JobPageProps) {
+  const isInLibrary = useIsInLibrary("transform");
+  const isNewJob = job.id == null;
+
+  const readOnly = isInLibrary && !isNewJob;
+
   return (
     <Stack gap="3.5rem" data-testid="job-view">
       <Stack gap="lg">
@@ -33,11 +40,12 @@ export function JobView({
           onNameChange={onNameChange}
           onDescriptionChange={onDescriptionChange}
         />
+        {readOnly && <ReadOnlyNotice />}
       </Stack>
-      <ScheduleSection job={job} onScheduleChange={onScheduleChange} />
-      <TagSection job={job} onTagsChange={onTagListChange} />
-      {job.id != null && <ManageSection job={job} />}
-      {job.id == null && <SaveSection job={job} />}
+      <ScheduleSection job={job} onScheduleChange={onScheduleChange} disabled={readOnly} />
+      <TagSection job={job} onTagsChange={onTagListChange} disabled={readOnly} />
+      {!isNewJob && !readOnly && <ManageSection job={job} />}
+      {isNewJob && <SaveSection job={job} />}
     </Stack>
   );
 }

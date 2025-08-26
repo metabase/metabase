@@ -23,6 +23,7 @@ type CronExpressionInputProps = Omit<FlexProps, "onChange"> & {
   onChange: (value: string) => void;
   onBlurChange: (value: string) => void;
   getExplainMessage?: (cronExplanation: string) => string;
+  disabled?: boolean;
 };
 
 export function CronExpressionInput({
@@ -30,6 +31,7 @@ export function CronExpressionInput({
   onBlurChange,
   value,
   getExplainMessage,
+  disabled,
   ...flexProps
 }: CronExpressionInputProps) {
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +73,7 @@ export function CronExpressionInput({
         onChange={(event) => handleChange(event.target.value)}
         onBlur={(event) => handleBlur(event.target.value)}
         rightSection={<CronFormatTooltip />}
+        disabled={disabled}
       />
 
       {getExplainMessage && value && !error && (

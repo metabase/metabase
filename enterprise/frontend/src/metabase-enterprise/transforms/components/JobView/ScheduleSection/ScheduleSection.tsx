@@ -12,6 +12,7 @@ import {
   useLazyGetTransformJobQuery,
   useRunTransformJobMutation,
 } from "metabase-enterprise/api";
+import { useIsInLibrary } from "metabase-enterprise/git_sync/useIsInLibrary";
 import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 
 import { RunButton } from "../../../components/RunButton";
@@ -21,11 +22,13 @@ import type { TransformJobInfo } from "../types";
 type ScheduleSectionProps = {
   job: TransformJobInfo;
   onScheduleChange: (schedule: string) => void;
+  disabled?: boolean;
 };
 
 export function ScheduleSection({
   job,
   onScheduleChange,
+  disabled,
 }: ScheduleSectionProps) {
   const [schedule, setSchedule] = useState(() =>
     formatCronExpressionForUI(job.schedule),
@@ -40,6 +43,7 @@ export function ScheduleSection({
       <Box px="xl" py="lg">
         <CronSection
           schedule={schedule}
+          disabled={disabled}
           onChangeSchedule={setSchedule}
           onChangeSubmit={onScheduleChange}
         />
@@ -66,15 +70,18 @@ type CronSectionProps = {
   schedule: string;
   onChangeSchedule: (schedule: string) => void;
   onChangeSubmit: (schedule: string) => void;
+  disabled?: boolean;
 };
 
 function CronSection({
   schedule,
   onChangeSchedule,
   onChangeSubmit,
+  disabled,
 }: CronSectionProps) {
   return (
     <CronExpressionInput
+      disabled={disabled}
       value={schedule}
       onChange={onChangeSchedule}
       onBlurChange={onChangeSubmit}
@@ -92,6 +99,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
   const { sendErrorToast } = useMetadataToasts();
   const isSaved = job.id != null;
   const hasTags = job.tag_ids?.length !== 0;
+  const readOnly = useIsInLibrary("transform");
 
   const handleRun = async () => {
     if (job.id == null) {
@@ -118,7 +126,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
       <RunButton
         run={job.last_run}
         isLoading={isFetching || isRunning}
-        isDisabled={!isSaved || !hasTags}
+        isDisabled={!isSaved || !hasTags || readOnly}
         onRun={handleRun}
       />
     </Tooltip>
