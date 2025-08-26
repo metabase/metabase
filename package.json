@@ -368,6 +368,7 @@
     "@types/react": "^18.2.42",
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "ansi-regex": "5.0.1",
+    "cipher-base": "^1.0.5",
     "cookie": "^0.7.0",
     "cross-spawn": "^7.0.5",
     "d3-color": "^3.1.0",
