@@ -6,16 +6,20 @@ export interface GitCommit {
 }
 
 export interface GitBranch {
+  id: number;
   name: string;
-  sha: string;
-  protected: boolean;
-  isDefault: boolean;
-  lastCommit: GitCommit;
+  slug: string;
+  description?: string;
+  creator_id: number;
+  parent_branch_id?: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateBranchRequest {
   name: string;
-  sourceBranch?: string;
+  description?: string;
+  parent_branch_id?: number;
 }
 
 export interface SwitchBranchRequest {
