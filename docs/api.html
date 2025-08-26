@@ -20941,7 +20941,7 @@ redirect_from:
     "/api/setup/" : {
       "post" : {
         "summary" : "POST /api/setup/",
-        "description" : "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and\n  returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or\n  set specific settings from the setup flow.",
+        "description" : "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and\n  returns a session ID. This endpoint can also be used to set specific settings from the setup flow.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -20960,23 +20960,6 @@ redirect_from:
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "invite" : {
-                    "type" : "object",
-                    "properties" : {
-                      "email" : {
-                        "description" : "value must be a valid email address.",
-                        "type" : "string"
-                      },
-                      "first_name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      },
-                      "last_name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      }
-                    }
-                  },
                   "prefs" : {
                     "type" : "object",
                     "properties" : {
@@ -22801,6 +22784,11 @@ redirect_from:
                     "description" : "login attribute keys must be a keyword or string",
                     "type" : "object",
                     "additionalProperties" : { }
+                  },
+                  "source" : {
+                    "type" : "string",
+                    "minLength" : 1,
+                    "default" : "admin"
                   },
                   "user_group_memberships" : {
                     "type" : "array",
