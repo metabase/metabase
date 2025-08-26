@@ -15,6 +15,11 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         variant: "outline",
       },
     ],
+    image: {
+      src: "app/assets/img/embedding_hub_create_test_embed.png",
+      srcSet: "app/assets/img/embedding_hub_create_test_embed@2x.png 2x",
+      alt: t`Screenshot of creating a test embed`,
+    },
   };
 
   const ADD_DATA: EmbeddingHubStep = {
@@ -30,7 +35,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     },
     actions: [
       {
-        label: t`Add Database`,
+        label: t`Add data`,
         to: "/admin/databases/create",
         variant: "outline",
       },
