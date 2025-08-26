@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-743-mark-create-an-embed-step-as-done-when-get-code-is-clicked"
+    }
+  ]
 }
