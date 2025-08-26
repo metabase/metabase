@@ -3839,7 +3839,7 @@ describe("issue 48524", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should not apply last used parameters when some parameters have values set in the URL (metabase#48524)", () => {
+  it("should not apply last used parameter values when some parameters have values set in the URL (metabase#48524)", () => {
     createDashboard();
 
     cy.log(
