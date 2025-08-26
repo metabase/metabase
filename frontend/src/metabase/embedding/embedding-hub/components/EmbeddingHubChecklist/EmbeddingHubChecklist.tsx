@@ -15,6 +15,7 @@ interface EmbeddingHubChecklistProps {
 
   defaultOpenStep?: EmbeddingHubStepId;
   completedSteps?: Partial<Record<EmbeddingHubStepId, boolean>>;
+  onModalAction?: (modalType: "add-data" | "new-dashboard") => void;
 }
 
 export const EmbeddingHubChecklist = ({
@@ -22,6 +23,7 @@ export const EmbeddingHubChecklist = ({
 
   defaultOpenStep,
   completedSteps = {},
+  onModalAction,
 }: EmbeddingHubChecklistProps) => {
   const stepIds = useMemo(() => steps.map((step) => step.id), [steps]);
 
@@ -84,7 +86,10 @@ export const EmbeddingHubChecklist = ({
 
                 <Text>{step.description}</Text>
 
-                <EmbeddingHubStepActions step={step} />
+                <EmbeddingHubStepActions
+                  step={step}
+                  onModalAction={onModalAction}
+                />
               </Stack>
             </Accordion.Panel>
           </Accordion.Item>
