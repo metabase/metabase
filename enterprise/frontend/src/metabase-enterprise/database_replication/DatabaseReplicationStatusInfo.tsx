@@ -28,7 +28,7 @@ export const DatabaseReplicationStatusInfo = memo(
         <Tooltip label={message}>
           <Badge size="12" circle bg={color} style={{ flexShrink: 0 }} />
         </Tooltip>
-        <Text lh="1.4">{message}</Text>
+        <Text lh="1.25rem">{message}</Text>
       </Flex>
     );
   },

@@ -131,20 +131,17 @@ describe("DatabaseReplicationForm", () => {
     await user.type(textarea, "public");
 
     // Should call preview with new parameters after debounce
-    await waitFor(
-      () => {
-        expect(mockPreview).toHaveBeenCalledWith(
-          {
-            databaseId: 1,
-            schemaFiltersType: "include",
-            schemaFiltersPatterns: "public",
-          },
-          expect.any(Function),
-          expect.any(Function),
-        );
-      },
-      { timeout: 2000 },
-    );
+    await waitFor(() => {
+      expect(mockPreview).toHaveBeenCalledWith(
+        {
+          databaseId: 1,
+          schemaFiltersType: "include",
+          schemaFiltersPatterns: "public",
+        },
+        expect.any(Function),
+        expect.any(Function),
+      );
+    });
   });
 
   it("disables submit when insufficient storage", () => {

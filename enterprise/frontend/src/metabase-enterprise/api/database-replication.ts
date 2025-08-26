@@ -53,8 +53,6 @@ export const DatabaseReplicationApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/database-replication/connection/${databaseId}/preview`,
         body,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("session-properties")]),
     }),
     createDatabaseReplication: builder.mutation<
       void,

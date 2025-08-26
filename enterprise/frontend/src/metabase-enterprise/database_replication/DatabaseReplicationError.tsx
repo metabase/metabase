@@ -16,7 +16,7 @@ export const DatabaseReplicationError = ({
 
   return (
     <Stack gap="xl" mt="xl">
-      <Text c="text-secondary" fz="md" lh={1.43}>
+      <Text c="text-secondary" fz="md" lh="1.25rem">
         {error ?? "Unknown error"}
       </Text>
 

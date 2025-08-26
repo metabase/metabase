@@ -7,15 +7,15 @@ import {
   useCreateDatabaseReplicationMutation,
   usePreviewDatabaseReplicationMutation,
 } from "metabase-enterprise/api/database-replication";
-import { DatabaseReplicationError } from "metabase-enterprise/database_replication/DatabaseReplicationError";
-import { DatabaseReplicationSettingUp } from "metabase-enterprise/database_replication/DatabaseReplicationSettingUp";
 import type { Database } from "metabase-types/api";
 
+import { DatabaseReplicationError } from "./DatabaseReplicationError";
 import {
   DatabaseReplicationForm,
   type DatabaseReplicationFormFields,
   handleFieldError as handleDWHReplicationFieldError,
 } from "./DatabaseReplicationForm";
+import { DatabaseReplicationSettingUp } from "./DatabaseReplicationSettingUp";
 import { DatabaseReplicationSuccess } from "./DatabaseReplicationSuccess";
 
 interface IRTKQueryError {
