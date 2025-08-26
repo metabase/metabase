@@ -52,9 +52,9 @@ export function CreatePythonTransformModal({
     try {
       const transformedSource: PythonTransformApiSource = {
         type: "python",
-        body: source.script,
-        "target-database": source.database,
-        "source-database": source.database,
+        body: source.body,
+        "target-database": source["source-database"], // for now the same
+        "source-database": source["source-database"],
       };
 
       const transform = await createTransform({

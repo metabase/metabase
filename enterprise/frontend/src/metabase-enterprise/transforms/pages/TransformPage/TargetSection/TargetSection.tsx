@@ -58,7 +58,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
     source.type === "query"
       ? source.query.database
       : source.type === "python"
-        ? source.database
+        ? source["source-database"]
         : undefined;
   const { data, isLoading } = useGetDatabaseQuery(
     table == null && databaseId != null ? { id: databaseId } : skipToken,

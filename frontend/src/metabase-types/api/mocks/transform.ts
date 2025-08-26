@@ -19,9 +19,8 @@ export function createMockTransformSource(): TransformSource {
 export function createMockPythonTransformSource(): TransformSource {
   return {
     type: "python",
-    script: "# Python script\nprint('Hello, world!')",
-    database: 1,
-    table: 1,
+    body: "# Python script\nprint('Hello, world!')",
+    "source-database": 1,
   };
 }
 

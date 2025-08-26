@@ -10,7 +10,12 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type { DatasetQuery, Transform } from "metabase-types/api";
+import { PythonTransformEditor } from "metabase-enterprise/transforms/components/PythonTransformEditor";
+import type {
+  DatasetQuery,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
@@ -53,14 +58,7 @@ export function TransformQueryPageBody({
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  if (transform.source.type === "python") {
-    // For Python transforms, redirect to the main transform page
-    // where they can edit the script
-    dispatch(push(getTransformUrl(transform.id)));
-    return null;
-  }
-
-  const handleSave = async (query: DatasetQuery) => {
+  const handleDatasetSave = async (query: DatasetQuery) => {
     const { error } = await updateTransform({
       id: transform.id,
       source: {
@@ -77,16 +75,43 @@ export function TransformQueryPageBody({
     }
   };
 
+  const handlePythonSave = async (
+    source: TransformSource & { type: "python" },
+  ) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      source: source,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform query`);
+    } else {
+      sendSuccessToast(t`Transform query updated`);
+      dispatch(push(getTransformUrl(transform.id)));
+    }
+  };
+
   const handleCancel = () => {
     dispatch(push(getTransformUrl(transform.id)));
   };
 
+  if (transform.source.type === "python") {
+    return (
+      <PythonTransformEditor
+        initialSource={transform.source}
+        isNew={false}
+        isSaving={isLoading}
+        onSave={handlePythonSave}
+        onCancel={handleCancel}
+      />
+    );
+  }
   return (
     <QueryEditor
       initialQuery={transform.source.query}
       isNew={false}
       isSaving={isLoading}
-      onSave={handleSave}
+      onSave={handleDatasetSave}
       onCancel={handleCancel}
     />
   );

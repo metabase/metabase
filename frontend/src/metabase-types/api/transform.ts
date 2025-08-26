@@ -29,9 +29,8 @@ export type TransformSource =
     }
   | {
       type: "python";
-      script: string;
-      database: number;
-      table?: number;
+      body: string;
+      "source-database": number;
     };
 
 export type TransformTargetType = "table";

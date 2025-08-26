@@ -12,18 +12,17 @@ import { CreatePythonTransformModal } from "./CreatePythonTransformModal";
 
 const DEFAULT_PYTHON_SOURCE: TransformSource & { type: "python" } = {
   type: "python",
-  database: 1, // Default to first database, will be updated by user
-  table: undefined,
-  script: `# Write your Python transformation script here
+  "source-database": 1, // Default to first database, will be updated by user
+  body: `# Write your Python transformation script here
 import pandas as pd
 
 def transform(data):
     """
     Your transformation function.
-    
+
     Args:
         data: Input data (to be defined based on implementation)
-    
+
     Returns:
         Transformed data
     """
