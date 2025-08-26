@@ -1,48 +1,30 @@
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 
-import { createMockMetadata } from "__support__/metadata";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { zoomInRow } from "metabase/query_builder/actions";
-import { getRowIndexToPKMap } from "metabase/query_builder/selectors";
-import { closeNavbar } from "metabase/redux/app";
+import { resetRowZoom, zoomInRow } from "metabase/query_builder/actions";
+import {
+  getRowIndexToPKMap,
+  getZoomedObjectId,
+} from "metabase/query_builder/selectors";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { Card, DatasetData } from "metabase-types/api";
+import type { DatasetData } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-export const useObjectDetail = (
-  { rows, cols }: DatasetData,
-  card: Card,
-  metadata: Metadata | undefined,
-) => {
+const getZoomedObjectIdSafe = (state: State) => {
+  return state.qb ? getZoomedObjectId(state) : undefined;
+};
+
+export const useObjectDetail = ({ rows, cols }: DatasetData) => {
   const dispatch = useDispatch();
-
-  const query = useMemo(() => {
-    const metadataProvider = Lib.metadataProvider(
-      card.dataset_query.database,
-      metadata ?? createMockMetadata(),
-    );
-    const query = Lib.fromLegacyQuery(
-      card.dataset_query.database,
-      metadataProvider,
-      card.dataset_query,
-    );
-
-    return query;
-  }, [card.dataset_query, metadata]);
-
+  const zoomedObjectId = useSelector(getZoomedObjectIdSafe);
   const rowIndexToPkMap: Record<number, ObjectId> = useSelector((state) =>
     state.qb != null ? getRowIndexToPKMap(state) : {},
   );
-  const tableId = useMemo(() => Lib.sourceTableOrCardId(query), [query]);
 
   const primaryKeyColumn: ColumnDescriptor | null = useMemo(() => {
-    const primaryKeyColumns = cols.filter(
-      (column) => column.table_id === tableId && isPK(column),
-    );
+    const primaryKeyColumns = cols.filter(isPK);
 
     if (primaryKeyColumns.length !== 1) {
       return null;
@@ -53,12 +35,10 @@ export const useObjectDetail = (
       column: primaryKeyColumn,
       index: cols.indexOf(primaryKeyColumn),
     };
-  }, [cols, tableId]);
+  }, [cols]);
 
   const onOpenObjectDetail = useCallback(
     (rowIndex: number) => {
-      const isRawTable = typeof tableId === "number";
-
       let objectId: number | string;
 
       if (primaryKeyColumn) {
@@ -71,19 +51,13 @@ export const useObjectDetail = (
         objectId = rowIndexToPkMap?.[rowIndex] ?? rowIndex;
       }
 
-      if (!isRawTable || !primaryKeyColumn) {
-        dispatch(zoomInRow({ objectId }));
+      if (objectId === zoomedObjectId) {
+        dispatch(resetRowZoom());
       } else {
-        dispatch(closeNavbar());
-        dispatch(
-          push({
-            pathname: `/table/${tableId}/detail/${objectId}`,
-            state: { card, rowIndex },
-          }),
-        );
+        dispatch(zoomInRow({ objectId }));
       }
     },
-    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, tableId, card],
+    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, zoomedObjectId],
   );
 
   return onOpenObjectDetail;

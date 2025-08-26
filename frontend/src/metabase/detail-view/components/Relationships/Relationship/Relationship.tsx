@@ -2,6 +2,7 @@ import cx from "classnames";
 import { inflect } from "inflection";
 import { useMemo } from "react";
 import { Link } from "react-router";
+import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { Loader, Stack, Text, rem } from "metabase/ui";
@@ -15,14 +16,19 @@ interface Props {
   href: string | undefined;
   rowId: string | number;
   table: Table;
+  onClick?: () => void;
 }
 
-export const Relationship = ({ fk, href, rowId, table }: Props) => {
+export const Relationship = ({ fk, href, rowId, table, onClick }: Props) => {
   const pk = (table.fields ?? []).find(isPK);
   const fkOriginId =
     fk.origin && typeof fk.origin.id == "number" ? fk.origin.id : undefined;
 
-  const { data: dataset, isFetching } = useGetAdhocQueryQuery(
+  const {
+    data: dataset,
+    error,
+    isFetching,
+  } = useGetAdhocQueryQuery(
     fk.origin != null && fkOriginId != null
       ? {
           type: "query",
@@ -62,9 +68,9 @@ export const Relationship = ({ fk, href, rowId, table }: Props) => {
         [S.clickable]: clickable,
       })}
       gap={rem(12)}
-      {...(clickable ? { component: Link, to: href } : undefined)}
+      {...(clickable ? { component: Link, to: href, onClick } : undefined)}
     >
-      {isFetching && <Loader size="md" />}
+      {isFetching && <Loader data-testid="loading-indicator" size="md" />}
 
       {!isFetching && (
         <Text
@@ -74,7 +80,7 @@ export const Relationship = ({ fk, href, rowId, table }: Props) => {
           fz={rem(24)}
           lh={1}
         >
-          {String(count)}
+          {error ? t`Unknown` : String(count)}
         </Text>
       )}
 

@@ -2,17 +2,23 @@
   overflow-wrap: break-word;
   word-break: break-word;
 
-  a,
-  a:hover {
+  a {
     color: var(--mb-color-text-primary);
-    text-decoration: underline solid #92999e 1px;
+    text-decoration: underline solid var(--mb-base-color-gray-40) 1px;
+
+    &:hover {
+      color: var(--mb-color-brand);
+    }
   }
 }
 
 .fk {
-  background-color: #fafafb;
   border-radius: 12px;
-  border: 1px solid #d8dadd;
+  border: 1px solid var(--mb-color-border);
+
+  &:hover {
+    color: var(--mb-color-brand) !important;
+  }
 }
 
 .imageFrame {

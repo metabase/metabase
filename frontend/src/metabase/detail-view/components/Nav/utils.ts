@@ -1,20 +1,9 @@
-import { createMockMetadata } from "__support__/metadata";
-import * as ML_Urls from "metabase-lib/v1/urls";
-import type { Card, Table } from "metabase-types/api";
+import { isRootCollection } from "metabase/collections/utils";
+import type { Collection } from "metabase-types/api";
 
-export function getExploreTableUrl(table: Table, card?: Card): string {
-  const metadata = createMockMetadata({
-    tables: table ? [table] : [],
-  });
-  const metadataTable = metadata?.table(table.id);
-  let question = metadataTable?.newQuestion();
-  if (card) {
-    question = question?.setCard(card);
-  }
-
-  if (!question) {
-    throw new Error("Unable to create question");
-  }
-
-  return ML_Urls.getUrl(question);
-}
+export const getCollectionList = (collection: Collection | undefined) => {
+  const ancestors = collection?.effective_ancestors || [];
+  const hasRoot = ancestors[0] && isRootCollection(ancestors[0]);
+  const [_root, ...crumbsWithoutRoot] = ancestors;
+  return hasRoot ? crumbsWithoutRoot : ancestors;
+};

@@ -22,14 +22,20 @@ const IMAGE_SIZE = FRAME_SIZE - 2 * 16;
 export const Value = ({ children, column, field, value }: Props) => {
   const isEmptyValue = value == null || value === "";
   const newTableId = field?.target?.table_id;
+  const isValidLink = Boolean(
+    column.settings?.view_as === "link" &&
+      column.settings.link_text &&
+      column.settings.link_url,
+  );
 
   if (isEmptyValue) {
     return <Text c="text-light">{t`empty`}</Text>;
   }
 
-  if (isFK(column) && newTableId != null) {
+  if (isFK(column) && newTableId != null && !isValidLink) {
     return (
       <Text
+        bg="var(--mb-color-bg-light)"
         c="text-primary"
         className={S.fk}
         component={Link}
@@ -72,12 +78,7 @@ export const Value = ({ children, column, field, value }: Props) => {
   }
 
   return (
-    <Text
-      c="text-primary"
-      className={cx(S.value, S.maxHeight)}
-      flex="1"
-      fw="bold"
-    >
+    <Text c="text-primary" className={cx(S.value, S.maxHeight)} fw="bold">
       {children}
     </Text>
   );

@@ -24,7 +24,7 @@ import {
 import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarSmallProps {
-  detailView: DetailViewState;
+  detailView: DetailViewState | null;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
@@ -113,15 +113,15 @@ const AppBarSmall = ({
       )}
       {isSubheaderVisible && (
         <AppBarSubheader isNavBarOpen={isNavBarVisible}>
-          {isQuestionLineageVisible ? (
-            <QuestionLineage />
-          ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs />
-          ) : detailView ? (
+          {detailView ? (
             <DetailViewNav
               rowName={detailView.rowName}
               table={detailView.table}
             />
+          ) : isQuestionLineageVisible ? (
+            <QuestionLineage />
+          ) : isCollectionPathVisible ? (
+            <CollectionBreadcrumbs />
           ) : null}
         </AppBarSubheader>
       )}

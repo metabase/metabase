@@ -7,7 +7,8 @@ import {
   renderValue,
 } from "metabase/detail-view/utils";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Group, Stack, Text, rem } from "metabase/ui";
+import type { OptionsType } from "metabase/lib/formatting/types";
+import { Flex, Group, Stack, Text, rem } from "metabase/ui";
 import type { DatasetColumn, RowValues, Table } from "metabase-types/api";
 
 import S from "./DetailsGroup.module.css";
@@ -15,34 +16,57 @@ import { Value } from "./Value";
 
 interface Props {
   columns: DatasetColumn[];
+  columnsSettings?: (OptionsType | undefined)[];
+  responsive?: boolean;
   row: RowValues;
-  table: Table;
+  table: Table | undefined;
 }
 
-export const DetailsGroup = ({ columns, row, table }: Props) => {
+export const DetailsGroup = ({
+  columns,
+  columnsSettings,
+  responsive,
+  row,
+  table,
+}: Props) => {
   const tc = useTranslateContent();
   const bodyColumns = useMemo(() => getBodyColumns(columns), [columns]);
+  const columnIndexMap = useMemo(
+    () => new Map(columns.map((column, index) => [column, index])),
+    [columns],
+  );
 
   return (
-    <Stack gap="lg">
+    <Stack data-testid="object-details" gap="lg">
       {bodyColumns.map((column, index) => {
-        const field = table.fields?.find((f) => f.id === column.id);
+        const field = table?.fields?.find((field) => field.id === column.id);
         const value = getRowValue(columns, column, row);
+        const realIndex = columnIndexMap.get(column) ?? -1;
+        const columnSettings = columnsSettings?.[realIndex] ?? {};
 
         return (
-          <Group align="flex-start" gap="xl" key={index} wrap="nowrap">
+          <Group
+            align="flex-start"
+            data-testid="object-details-row"
+            gap="xl"
+            key={index}
+            wrap="nowrap"
+          >
             <Text
               c="text-secondary"
               className={S.name}
-              flex="0 0 auto"
-              w={rem(224)}
+              data-testid="column-name"
+              flex={responsive ? "0 1 50%" : "0 0 auto"}
+              w={responsive ? undefined : rem(224)}
             >
-              {getColumnTitle(column)}
+              {getColumnTitle(column, columnSettings)}
             </Text>
 
-            <Value column={column} field={field} value={value}>
-              {renderValue(tc, value, column)}
-            </Value>
+            <Flex data-testid="value" flex={responsive ? "0 1 50%" : "1"}>
+              <Value column={column} field={field} value={value}>
+                {renderValue(tc, value, column, columnSettings)}
+              </Value>
+            </Flex>
           </Group>
         );
       })}

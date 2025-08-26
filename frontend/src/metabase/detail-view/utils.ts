@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { type OptionsType, formatValue } from "metabase/lib/formatting";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
@@ -7,6 +8,7 @@ import {
   getTitleForColumn,
 } from "metabase/visualizations/lib/settings/column";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import * as Lib from "metabase-lib";
 import {
   isAvatarURL,
   isEntityName,
@@ -14,7 +16,7 @@ import {
   isPK,
   isTitle,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type { DatasetColumn, Field, RowValue, Table } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 export function renderValue(
@@ -51,6 +53,7 @@ export function renderValue(
   const formattedValue = formatValue(tc(value), {
     ...column.settings,
     ...finalSettings,
+    ...optionsOverride,
     column,
     type: "cell",
     jsx: true,
@@ -67,7 +70,6 @@ export function renderValue(
         },
       ],
     },
-    ...optionsOverride,
   });
 
   return formattedValue != null && formattedValue !== ""
@@ -147,8 +149,87 @@ export function getRowValue(
   return value;
 }
 
-export const getColumnTitle = (column: DatasetColumn) => {
+export const getColumnTitle = (
+  column: DatasetColumn,
+  settings: OptionsType,
+) => {
   const series = [{ data: { cols: [column] }, card: createMockCard() }];
-  const settings = getComputedSettingsForSeries(series);
-  return getTitleForColumn(column, series, settings);
+
+  return getTitleForColumn(column, series, {
+    ...getComputedSettingsForSeries(series),
+    ...settings,
+  });
 };
+
+export const getEntityIcon = (entityType?: Table["entity_type"]) => {
+  switch (entityType) {
+    case "entity/UserTable":
+      return "person";
+    case "entity/CompanyTable":
+      return "globe";
+    case "entity/TransactionTable":
+      return "index";
+    case "entity/SubscriptionTable":
+      return "sync";
+    case "entity/ProductTable":
+    case "entity/EventTable":
+    case "entity/GenericTable":
+    default:
+      return "document";
+  }
+};
+
+export function getTableQuery(table: Table | undefined): Lib.Query | undefined {
+  if (!table) {
+    return undefined;
+  }
+
+  const metadata = createMockMetadata({
+    tables: [table],
+  });
+
+  const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
+
+  return Lib.fromLegacyQuery(table.db_id, metadataProvider, {
+    type: "query",
+    database: table.db_id,
+    query: {
+      "source-table": table.id,
+    },
+  });
+}
+
+export function filterByPk(
+  query: Lib.Query,
+  columns: (DatasetColumn | Field)[],
+  rowId: string | number | undefined,
+) {
+  if (typeof rowId === "undefined") {
+    return undefined;
+  }
+
+  const pks = columns.filter(isPK);
+
+  if (pks.length !== 1) {
+    return undefined;
+  }
+
+  const [pk] = pks;
+  const stageIndex = -1;
+  const column = Lib.fromLegacyColumn(query, stageIndex, pk);
+  const filterClause =
+    typeof rowId === "number"
+      ? Lib.numberFilterClause({
+          operator: "=",
+          column,
+          values: [rowId],
+        })
+      : Lib.stringFilterClause({
+          operator: "=",
+          column,
+          values: [rowId],
+          options: {},
+        });
+
+  return Lib.filter(query, stageIndex, filterClause);
+}
