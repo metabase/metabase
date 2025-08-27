@@ -54,6 +54,20 @@
    [:title :string]
    [:parameters [:sequential ::describe-param]]])
 
+(defn- field-input-type-ignoring-semantics [create? field field-values]
+  (condp #(isa? %2 %1) (:base_type field)
+    :type/Boolean    :input/boolean
+    :type/Integer    :input/integer
+    :type/BigInteger :input/integer
+    :type/Float      :input/float
+    :type/Decimal    :input/float
+    :type/Date       :input/date
+    :type/DateTime   :input/datetime
+    :type/Time       :input/time
+    (if (and (not create?) (#{:list :auto-list :search} (:type field-values)))
+      :input/dropdown
+      :input/text)))
+
 (defn- field-input-type
   [create? field field-values]
   (condp #(isa? %2 %1) (:semantic_type field)
@@ -63,24 +77,12 @@
     :type/Description :input/textarea
     :type/Category    :input/dropdown
     :type/FK          :input/dropdown
-    ;; TODO this recursion is quite crude, the structure of this logic could be improved.
     :type/PK (if create?
                ;; Unless it's a compound PK, we need to provide a unique value for the column, so use the base_type
-               (field-input-type false (dissoc field :semantic_type) field-values)
+               (field-input-type-ignoring-semantics create? field field-values)
                ;; For updating and deleting, we must pick an existing row
                :input/dropdown)
-    (condp #(isa? %2 %1) (:base_type field)
-      :type/Boolean    :input/boolean
-      :type/Integer    :input/integer
-      :type/BigInteger :input/integer
-      :type/Float      :input/float
-      :type/Decimal    :input/float
-      :type/Date       :input/date
-      :type/DateTime   :input/datetime
-      :type/Time       :input/time
-      (if (and (not create?) (#{:list :auto-list :search} (:type field-values)))
-        :input/dropdown
-        :input/text))))
+    (field-input-type-ignoring-semantics create? field field-values)))
 
 (defn- describe-table-action
   [{:keys [action-kw
