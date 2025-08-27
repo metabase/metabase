@@ -92,3 +92,10 @@
   background: var(--mb-color-bg-white);
   padding: var(--mantine-spacing-md);
 }
+
+.listEntityIcon {
+  color: var(--mb-color-text-light);
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

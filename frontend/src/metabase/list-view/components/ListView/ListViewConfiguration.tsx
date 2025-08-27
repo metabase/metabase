@@ -304,7 +304,7 @@ export const ListViewConfiguration = ({
                     tooltip="Entity icon"
                     name={selectedEntityIcon as IconName}
                     size={16}
-                    c="text-light"
+                    className={S.listEntityIcon}
                   />
                 </ActionIcon>
               </Menu.Target>
