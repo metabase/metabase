@@ -285,6 +285,7 @@ export const ListViewConfiguration = ({
             <Menu shadow="md" width={200}>
               <Menu.Target>
                 <ActionIcon
+                  data-testid="list-view-icon"
                   variant="subtle"
                   p={0}
                   w={32}
@@ -375,6 +376,7 @@ export const ListViewConfiguration = ({
           flex={1}
           justify="center"
           className={S.listContainer}
+          data-testid="list-view-preview"
         >
           <Text fw="bold">{t`Preview`}</Text>
           {firstRow ? (
