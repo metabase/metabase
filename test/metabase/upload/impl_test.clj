@@ -587,7 +587,7 @@
                            (sort-by :database_position)
                            (map (juxt (comp u/lower-case-en :name) identity))))))
             (testing "Check that table can be written via data-editing"
-              (= true (t2/select-one-fn :is_writable [:model/Table :is_writable] (:id table))))
+              (true? (t2/select-one-fn :is_writable [:model/Table :is_writable] (:id table))))
             (testing "Check the data was uploaded into the table"
               (is (= 2
                      (count (rows-for-table table)))))))))))
