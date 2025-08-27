@@ -13,7 +13,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
-import { METABOT_RESULTS_MESSAGE } from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import {
   cancelInflightAgentRequests,
@@ -24,17 +23,9 @@ import Styles from "./MetabotChatEmbedding.module.css";
 
 const MIN_INPUT_HEIGHT = 42;
 
-interface MetabotChatEmbeddingProps {
-  onRedirectUrl: (result: string) => void;
-  onMessages: (messages: string[]) => void;
-}
-
 const EMBEDDING_METABOT_ID = "c61bf5f5-1025-47b6-9298-bf1827105bb6";
 
-export const MetabotChatEmbedding = ({
-  onRedirectUrl,
-  onMessages,
-}: MetabotChatEmbeddingProps) => {
+export const MetabotChatEmbedding = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [input, setMessage] = useState("");
@@ -51,6 +42,7 @@ export const MetabotChatEmbedding = ({
     if (!trimmedInput.length || metabot.isDoingScience) {
       return;
     }
+
     setMessage("");
     const metabotRequestPromise = metabot.submitInput(
       trimmedInput,
@@ -58,15 +50,6 @@ export const MetabotChatEmbedding = ({
     );
 
     metabotRequestPromise
-      .then((result) => {
-        const redirectUrl = (result.payload as any)?.data?.reactions?.find(
-          (reaction: { type: string; url: string }) =>
-            reaction.type === "metabot.reaction/redirect",
-        )?.url;
-        if (redirectUrl) {
-          onRedirectUrl(redirectUrl);
-        }
-      })
       .catch((err) => console.error(err))
       .finally(() => textareaRef.current?.focus());
   };
@@ -100,16 +83,10 @@ export const MetabotChatEmbedding = ({
   }
 
   const dispatch = useSdkDispatch();
+
   useEffect(() => {
     dispatch(resetConversationId());
   }, [dispatch]);
-
-  useEffect(() => {
-    const normalizedMessages = metabot.lastAgentMessages.filter(
-      (message) => message !== METABOT_RESULTS_MESSAGE,
-    );
-    onMessages(normalizedMessages);
-  }, [metabot.lastAgentMessages, onMessages]);
 
   return (
     <Box className={Styles.container} data-testid="metabot-chat">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -8,8 +8,9 @@ import {
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { Flex, Icon, Paper, Stack, Text } from "metabase/ui";
-import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
+import { Flex, Paper, Stack, Text } from "metabase/ui";
+import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 import { QuestionDetails } from "./QuestionDetails";
@@ -18,7 +19,6 @@ import { QuestionTitle } from "./QuestionTitle";
 const MetabotQuestionInner = () => {
   const { isLocaleLoading } = useLocale();
   const [redirectUrl, setRedirectUrl] = useState<string>("");
-  const [messages, setMessages] = useState<string[]>([]);
 
   if (isLocaleLoading) {
     return <SdkLoader />;
@@ -26,13 +26,10 @@ const MetabotQuestionInner = () => {
 
   return (
     <Flex direction="column" align="center" gap="md">
-      <MetabotChatEmbedding
-        onRedirectUrl={setRedirectUrl}
-        onMessages={setMessages}
-      />
-      {messages.map((message, index) => (
-        <Message key={index} message={message} />
-      ))}
+      <MetabotMessages handleQueryLink={setRedirectUrl} />
+
+      <MetabotChatEmbedding />
+
       {redirectUrl && (
         <SdkAdHocQuestion
           questionPath={redirectUrl}
@@ -55,23 +52,65 @@ const MetabotQuestionInner = () => {
   );
 };
 
-interface MessageProps {
-  message: string;
+function parseInternalMarkdownLink(markdown: string): string | null {
+  const match = markdown.match(/\[.*?\]\((\/[^\)]+)\)/);
+  return match ? match[1] : null;
 }
-function Message({ message }: MessageProps) {
-  const isErrorMessage = message === METABOT_ERR_MSG.agentOffline;
-  if (isErrorMessage) {
-    return (
-      <Paper shadow="sm" p="lg" w="100%" maw="41.5rem" radius="lg" ta="center">
-        <Icon name="info_filled" c="var(--mb-color-text-tertiary)" size={32} />
-        <Text mt="sm">{message}</Text>
-      </Paper>
-    );
+
+interface MessageProps {
+  handleQueryLink: (queryLink: string) => void;
+}
+
+function MetabotMessages({ handleQueryLink }: MessageProps) {
+  const metabot = useMetabotAgent();
+  const { messages, errorMessages } = metabot;
+
+  const messagesWithAutoHandledQueryLinksRef = useRef(new Set());
+
+  const lastAgentMessage = useMemo(() => {
+    return [...messages].reverse().find((m) => m.role === "agent") ?? null;
+  }, [messages]);
+
+  const lastQueryLink = useMemo(
+    () =>
+      lastAgentMessage
+        ? parseInternalMarkdownLink(lastAgentMessage.message)
+        : null,
+    [lastAgentMessage],
+  );
+
+  useEffect(
+    function autoHandleQueryLink() {
+      if (!lastQueryLink || !lastAgentMessage) {
+        return;
+      }
+
+      if (
+        messagesWithAutoHandledQueryLinksRef.current.has(lastAgentMessage.id)
+      ) {
+        return;
+      }
+
+      handleQueryLink(lastQueryLink);
+      messagesWithAutoHandledQueryLinksRef.current.add(lastAgentMessage.id);
+    },
+    [lastAgentMessage, lastQueryLink, handleQueryLink],
+  );
+
+  if (!messages.length && !errorMessages.length) {
+    return null;
   }
 
   return (
     <Paper shadow="sm" p="lg" w="100%" maw="41.5rem" radius="lg">
-      <Text>{message}</Text>
+      <Flex direction="column">
+        <Messages
+          messages={messages}
+          errorMessages={errorMessages}
+          isDoingScience={metabot.isDoingScience}
+          onInternalLinkClick={handleQueryLink}
+        />
+      </Flex>
     </Paper>
   );
 }

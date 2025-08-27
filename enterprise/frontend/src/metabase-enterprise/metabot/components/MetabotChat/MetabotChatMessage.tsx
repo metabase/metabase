@@ -105,10 +105,11 @@ const FeedbackButton = ({
 );
 
 interface AgentMessageProps extends BaseMessageProps {
-  onRetry: (messageId: string) => void;
+  onRetry?: (messageId: string) => void;
   onCopy: (messageId: string) => void;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
+  onInternalLinkClick?: (link: string) => void;
 }
 
 export const AgentMessage = ({
@@ -118,11 +119,18 @@ export const AgentMessage = ({
   onRetry,
   setFeedbackMessage,
   submittedFeedback,
+  onInternalLinkClick,
   hideActions,
   ...props
 }: AgentMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
-    <AIMarkdown className={Styles.message}>{message.message}</AIMarkdown>
+    <AIMarkdown
+      className={Styles.message}
+      onInternalLinkClick={onInternalLinkClick}
+    >
+      {message.message}
+    </AIMarkdown>
+
     <Flex className={Styles.messageActions}>
       {!hideActions && (
         <>
@@ -161,13 +169,16 @@ export const AgentMessage = ({
               />
             </>
           )}
-          <ActionIcon
-            onClick={() => onRetry(message.id)}
-            h="sm"
-            data-testid="metabot-chat-message-retry"
-          >
-            <Icon name="revert" size="1rem" />
-          </ActionIcon>
+
+          {onRetry && (
+            <ActionIcon
+              onClick={() => onRetry(message.id)}
+              h="sm"
+              data-testid="metabot-chat-message-retry"
+            >
+              <Icon name="revert" size="1rem" />
+            </ActionIcon>
+          )}
         </>
       )}
     </Flex>
@@ -228,11 +239,13 @@ export const Messages = ({
   errorMessages,
   onRetryMessage,
   isDoingScience,
+  onInternalLinkClick,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
-  onRetryMessage: (messageId: string) => void;
+  onRetryMessage?: (messageId: string) => void;
   isDoingScience: boolean;
+  onInternalLinkClick?: (link: string) => void;
 }) => {
   const clipboard = useClipboard();
   const [sendToast] = useToast();
@@ -288,6 +301,7 @@ export const Messages = ({
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={messages[index + 1]?.role === "agent"}
+            onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
           <UserMessage

@@ -17,9 +17,6 @@ export const METABOT_ERR_MSG = {
   },
 };
 
-// We don't need to translate this yet, as it's from ai-service which isn't translated
-export const METABOT_RESULTS_MESSAGE = "Here are the results";
-
 export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get construct_notebook_query() {
     return t`Creating a query`;
