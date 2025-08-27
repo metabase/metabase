@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms.util
   (:require
-   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]

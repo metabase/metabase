@@ -129,9 +129,7 @@
 
 (deftest transform-function-with-working-database-test
   (testing "transform function successfully connects to PostgreSQL database and reads data"
-    (println "Starting transform-function-with-working-database-test")
     (mt/test-drivers [:postgres]
-      (println "Inside mt/test-drivers with postgres")
       (mt/with-empty-db
         (let [db-spec              (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               _                    (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
@@ -154,7 +152,6 @@
                                                          {:code     transform-code
                                                           :tables {"students" (mt/id :students)}})]
 
-          (println (:stderr result))
           (is (=? {:output "student_count,average_score\n4,88.75\n"
                    :stdout "Successfully saved 1 rows to CSV\n"
                    :stderr ""}
