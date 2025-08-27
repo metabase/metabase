@@ -57,7 +57,7 @@
               :exit-code 1
               :stderr    (str "ERROR: Transform function failed: Something went wrong\n"
                               "Traceback (most recent call last):\n"
-                              "  File \"/sandbox/transform_runner.py\", line 128, in main\n"
+                              "  File \"/sandbox/transform_runner.py\", line 137, in main\n"
                               "    result = script.transform()\n"
                               "             ^^^^^^^^^^^^^^^^^^\n"
                               "  File \"/sandbox/script.py\", line 2, in transform\n"
@@ -75,27 +75,28 @@
                               "    return pd.DataFrame(data)")
           result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
                                                {:code transform-code
-                                                :table-id (mt/id :students)})]
+                                                :table-id 1})]
       (is (=? {:output "x,y,z\n1,10,a\n2,20,b\n3,30,c\n"
                :stdout "Successfully saved 3 rows to CSV\n"
                :stderr ""}
               result)))))
 
 (deftest ^:parallel transform-function-with-db-parameter-test
-  (testing "transform function can accept db parameter for forward compatibility"
-    (let [transform-code (str "import pandas as pd\n"
-                              "\n"
-                              "def transform(df):\n"
-                              "    # Test that db object is passed but we don't use it in this test\n"
-                              "    data = {'name': ['Charlie', 'Dana'], 'score': [85, 92]}\n"
-                              "    return pd.DataFrame(data)")
-          result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
-                                               {:code transform-code
-                                                :table-id (mt/id :students)})]
-      (is (=? {:output "name,score\nCharlie,85\nDana,92\n"
-               :stdout "Successfully saved 2 rows to CSV\n"
-               :stderr ""}
-              result)))))
+  (mt/test-driver [:postgres]
+    (testing "transform function can accept db parameter for forward compatibility"
+      (let [transform-code (str "import pandas as pd\n"
+                                "\n"
+                                "def transform(df):\n"
+                                "    # Test that db object is passed but we don't use it in this test\n"
+                                "    data = {'name': ['Charlie', 'Dana'], 'score': [85, 92]}\n"
+                                "    return pd.DataFrame(data)")
+            result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
+                                                 {:code     transform-code
+                                                  :table-id (mt/id :user)})]
+        (is (=? {:output "name,score\nCharlie,85\nDana,92\n"
+                 :stdout "Successfully saved 2 rows to CSV\n"
+                 :stderr ""}
+                result))))))
 
 (deftest transform-function-with-working-database-test
   (testing "transform function successfully connects to PostgreSQL database and reads data"
@@ -108,7 +109,7 @@
               _                    (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
               _                    (jdbc/execute! db-spec ["INSERT INTO students (id, name, score) VALUES (1, 'Alice', 85), (2, 'Bob', 92), (3, 'Charlie', 88), (4, 'Dana', 90)"])
 
-              _       (sync/sync-database! (mt/db))
+              _                    (sync/sync-database! (mt/db))
 
               transform-code       (str "import pandas as pd\n"
                                         "\n"

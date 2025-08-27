@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Check if arguments are provided
-if [ $# -ne 6 ]; then
-    echo "Usage: $0 <code_file> <output_file> <stdout_file> <stderr_file> <metabase_url> <api_key>"
+if [ $# -ne 7 ]; then
+    echo "Usage: $0 <code_file> <output_file> <stdout_file> <stderr_file> <metabase_url> <api_key> <table_id>"
     exit 1
 fi
 
@@ -50,6 +50,11 @@ if [ -z "$API_KEY" ]; then
   exit 1
 fi
 DOCKER_ENV_VARS+=(-e "X_API_KEY=$API_KEY")
+
+# Pass table ID
+if [ -n "$TABLE_ID" ]; then
+  DOCKER_ENV_VARS+=(-e "TABLE_ID=$TABLE_ID")
+fi
 
 # Run Python code in Docker sandboxed environment with transform runner
 docker run --rm \
