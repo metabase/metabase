@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { useUpdateSettingMutation } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { useSetting } from "metabase/common/hooks";
-import { useMarkEmbeddingHubStepCompletion } from "metabase/embedding/embedding-hub";
 import {
   Button,
   Card,
@@ -21,6 +21,7 @@ import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet"
 
 export const GetCodeStep = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+  const [updateInstanceSetting] = useUpdateSettingMutation();
 
   const isJwtEnabled = useSetting("jwt-enabled");
   const isSamlEnabled = useSetting("saml-enabled");
@@ -33,9 +34,6 @@ export const GetCodeStep = () => {
   const snippet = useSdkIframeEmbedSnippet();
 
   const authType = settings.useExistingUserSession ? "user-session" : "sso";
-
-  const { markEmbeddingHubStepAsComplete } =
-    useMarkEmbeddingHubStepCompletion();
 
   return (
     <Stack gap="md">
@@ -121,11 +119,12 @@ export const GetCodeStep = () => {
                   copy();
                   trackEmbedWizardCodeCopied();
 
-                  markEmbeddingHubStepAsComplete(
-                    authType === "user-session"
-                      ? "create-test-embed"
-                      : "embed-production",
-                  );
+                  // Embedding Hub: track step completion
+                  const settingKey = settings.useExistingUserSession
+                    ? "embedding-hub-test-embed-snippet-created"
+                    : "embedding-hub-production-embed-snippet-created";
+
+                  updateInstanceSetting({ key: settingKey, value: true });
                 }}
               >
                 {copied ? t`Copied!` : t`Copy Code`}
