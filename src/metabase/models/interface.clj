@@ -17,6 +17,7 @@
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
@@ -57,6 +58,11 @@
   "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
   deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
   on a future deserialization."
+  false)
+
+(def ^:dynamic *syncing-source-of-truth?*
+  "This is dynamically bound to true when syncing the source of truth. For models where it's enabled we'll set
+  `synced_to_source_of_truth` to true."
   false)
 
 (def ^:dynamic *allow-sync-protected-writes?*
@@ -597,7 +603,15 @@
 
 (t2/define-before-insert :hook/git-sync-protected
   [instance]
-  (prevent-sync-protected-writes instance))
+  (prevent-sync-protected-writes instance)
+  (cond-> instance
+    (and *syncing-source-of-truth?*
+         (contains? (->> (setting/get :git-sync-entities)
+                         (filter val)
+                         (map key)
+                         (into #{}))
+                    (name (t2/model instance))))
+    (assoc :synced_to_source_of_truth true)))
 
 (t2/define-before-update :hook/git-sync-protected
   [instance]

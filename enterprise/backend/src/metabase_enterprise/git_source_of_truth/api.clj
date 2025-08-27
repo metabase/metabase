@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -51,15 +52,16 @@
     (with-temp-directory dir
       (log/info "Reloading Metabase configuration from source")
       (try
-        (serdes/with-cache
-          (serdes.load/load-selective!
-           (serdes.ingest/ingest-yaml (sources/load-source! source (.toString dir)))
-           (->> (settings/git-sync-entities)
-                (filter val)
-                (map key)
-                (map name)
-                (map u/capitalize-first-char)
-                (into #{}))))
+        (binding [mi/*syncing-source-of-truth?* true]
+          (serdes/with-cache
+            (serdes.load/load-selective!
+             (serdes.ingest/ingest-yaml (sources/load-source! source (.toString dir)))
+             (->> (settings/git-sync-entities)
+                  (filter val)
+                  (map key)
+                  (map name)
+                  (map u/capitalize-first-char)
+                  (into #{})))))
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
          :message "Successfully reloaded from git repository"}

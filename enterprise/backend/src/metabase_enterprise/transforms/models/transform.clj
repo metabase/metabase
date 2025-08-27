@@ -210,9 +210,3 @@
   ;; Include the junction table records that link this transform to its tags
   (into {} (for [junction-id (t2/select-pks-set :model/TransformTransformTag :transform_id id)]
              {["TransformTransformTag" junction-id] {"Transform" id}})))
-
-(defmethod serdes/load-one! "Transform"
-  [ingested maybe-local]
-  ;; Set synced_to_source_of_truth to true for all transforms loaded from source
-  (let [adjusted-ingested (assoc ingested :synced_to_source_of_truth true)]
-    (serdes/default-load-one! adjusted-ingested maybe-local)))
