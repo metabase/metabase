@@ -13,6 +13,7 @@ interface Props {
 
 /**
  * TODO: implement me
+ * This component should not fetch any data (except version history) but it should use mutations.
  */
 export const Discussion = ({ thread }: Props) => {
   const [newComment, setNewComment] = useState<DocumentContent>();
