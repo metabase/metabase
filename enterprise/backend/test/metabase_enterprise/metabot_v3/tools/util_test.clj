@@ -3,6 +3,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.util]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]))
 
@@ -64,3 +67,47 @@
                                [mb-coll-entity-id mb-model-entity-id mb-metric-entity-id]))]
             (is (= {mb-metric2 mb-coll-entity-id}
                    user-result))))))))
+
+(deftest add-table-reference-test
+  (testing "add-table-reference function adds table-reference for FK fields"
+    (mt/dataset test-data
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [test-db-id (mt/id)
+              mp (lib.metadata.jvm/application-database-metadata-provider test-db-id)
+              orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              columns (lib/visible-columns orders-query)]
+
+          (testing "adds table-reference for implicitly joined columns"
+            (let [processed-columns (map #(metabot-v3.tools.util/add-table-reference orders-query %) columns)
+                  user-name-column (first (filter #(and (= "NAME" (:name %))
+                                                        (:fk-field-id %)) processed-columns))]
+              (is (some? user-name-column) "Expected to find implicitly joined User NAME column")
+              (is (contains? user-name-column :table-reference))
+              (is (string? (:table-reference user-name-column)))
+              (is (seq (:table-reference user-name-column)))
+              (is (= "User" (:table-reference user-name-column)))))
+
+          (testing "does not add table-reference for direct table columns"
+            (let [processed-columns (map #(metabot-v3.tools.util/add-table-reference orders-query %) columns)
+                  id-column (first (filter #(and (= "ID" (:name %))
+                                                 (not (:fk-field-id %))) processed-columns))]
+              (is (some? id-column) "Expected to find direct ORDERS ID column")
+              (is (not (contains? id-column :table-reference)))))
+
+          (testing "handles columns without fk-field-id or table-id gracefully"
+            (let [mock-column {:name "test-column" :type :string}
+                  result (metabot-v3.tools.util/add-table-reference orders-query mock-column)]
+              (is (= mock-column result))
+              (is (not (contains? result :table-reference)))))
+
+          (testing "handles columns with fk-field-id but no table-id"
+            (let [mock-column {:name "test-fk" :fk-field-id 123}
+                  result (metabot-v3.tools.util/add-table-reference orders-query mock-column)]
+              (is (= mock-column result))
+              (is (not (contains? result :table-reference)))))
+
+          (testing "handles columns with table-id but no fk-field-id"
+            (let [mock-column {:name "test-field" :table-id (mt/id :orders)}
+                  result (metabot-v3.tools.util/add-table-reference orders-query mock-column)]
+              (is (= mock-column result))
+              (is (not (contains? result :table-reference))))))))))

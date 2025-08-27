@@ -268,9 +268,10 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
                    :model/Table    {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
-                   :model/Field    {} {:table_id table1-id, :name "id", :database_type "INTEGER", :base_type :type/Integer}
+                   :model/Field    {user-id-field :id} {:table_id table1-id, :name "id", :database_type "INTEGER", :base_type :type/Integer, :semantic_type :type/PK}
                    :model/Field    {} {:table_id table1-id, :name "name", :database_type "VARCHAR", :base_type :type/Text}
-                   :model/Field    {} {:table_id table2-id, :name "id", :database_type "INTEGER", :base_type :type/Integer}
+                   :model/Field    {} {:table_id table2-id, :name "id", :database_type "INTEGER", :base_type :type/Integer, :semantic_type :type/PK}
+                   :model/Field    {} {:table_id table2-id, :name "user_id", :database_type "INTEGER", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id user-id-field}
                    :model/Field    {} {:table_id table2-id, :name "total", :database_type "DECIMAL", :base_type :type/Decimal}]
 
       (testing "returns tables with new enhanced formatting"
@@ -287,6 +288,21 @@
             (is (every? #(every? (fn [field] (contains? field :name)) (:fields %)) tables))
             (is (every? #(every? (fn [field] (contains? field :type)) (:fields %)) tables))
             (is (every? #(contains? % :metrics) tables)))))
+
+      (testing "includes table-reference for implicitly joined fields"
+        (mt/dataset test-data
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [test-db-id (mt/id)
+                  tables (table-utils/enhanced-database-tables test-db-id)
+                  orders-table (first (filter #(= "ORDERS" (:name %)) tables))
+                  all-fields (:fields orders-table)
+                  user-fields (filter #(= "User" (:table-reference %)) all-fields)
+                  product-fields (filter #(= "Product" (:table-reference %)) all-fields)]
+              (is (some? orders-table) "Expected to find ORDERS table")
+              (is (seq user-fields) "Expected to find fields with table-reference 'User' from implicit join")
+              (is (some #(= "NAME" (:name %)) user-fields) "Expected to find User NAME field from implicit join")
+              (is (seq product-fields) "Expected to find fields with table-reference 'Product' from implicit join")
+              (is (some #(= "TITLE" (:name %)) product-fields) "Expected to find Product TITLE field from implicit join")))))
 
       (testing "enhanced format respects all-tables-limit option"
         (mt/with-current-user (mt/user->id :crowberto)
