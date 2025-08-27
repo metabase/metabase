@@ -1190,6 +1190,9 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmethod create-schema-if-needed! :default [_driver _details _schema]
+  nil)
+
 (defmulti connection-details
   "Get connection details for a given driver and db object"
   {:added "0.57.0", :arglists '([driver db])}
