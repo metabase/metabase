@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "84763ca40d2a7c39317f4d5d5b6db3b8c84aba79"
+    "hash": "e4e3f15eff7148f13815d2a40050488f0c29172c"
   },
   "upstream": {
     "branch": "emb-752-integration-branch-for-embedding-hub"
