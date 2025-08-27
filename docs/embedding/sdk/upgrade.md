@@ -69,8 +69,8 @@ If everything is working in staging, you're ready to deploy to production.
 
 Be sure to deploy your application changes and upgrade your Metabase in parallel so that the SDK version and the Metabase version stay in sync.
 
-### If your instance is on Metabase Cloud, you'll need to request an upgrade
+### If your instance is pinned on Metabase Cloud, you'll need to request an upgrade
 
-If you're on Metabase Cloud, your instance version is pinned, so you'll need to request an upgrade by [contacting support](https://www.metabase.com/help-premium).
+If you're on Metabase Cloud, and you've [pinned the version of your Metabase](./version.md#you-can-pin-instances-to-a-version-on-metabase-cloud), you'll need to request an upgrade by [contacting support](https://www.metabase.com/help-premium).
 
 We'll coordinate with you so that your instance is upgraded when you deploy the changes to your application.

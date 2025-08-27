@@ -194,7 +194,7 @@
   (let [col-and-row-indexes (into (vec col-indexes) row-indexes)]
     (reduce
      (fn [acc row]
-       (let [value-key  (ensure-consistent-type (select-indexes row col-and-row-indexes))
+       (let [value-key  (perf/mapv ensure-consistent-type (select-indexes row col-and-row-indexes))
              values     (select-indexes row val-indexes)
              data       (into []
                               (map-indexed

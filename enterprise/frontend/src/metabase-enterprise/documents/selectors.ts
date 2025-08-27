@@ -19,6 +19,9 @@ export const getSelectedQuestionId = createSelector(
   },
 );
 
+export const getSidebarOpen = (state: DocumentsStoreState) =>
+  state.plugins?.documents?.selectedEmbedIndex !== null;
+
 export const getCardEmbeds = createSelector(
   getDocumentsState,
   (documents) => documents?.cardEmbeds ?? [],
@@ -32,11 +35,6 @@ export const getSelectedEmbedIndex = createSelector(
 export const getCurrentDocument = createSelector(
   getDocumentsState,
   (documents) => documents?.currentDocument || null,
-);
-
-export const getShowNavigateBackToDocumentButton = createSelector(
-  getDocumentsState,
-  (documents) => documents?.showNavigateBackToDocumentButton ?? false,
 );
 
 // Get all draft cards

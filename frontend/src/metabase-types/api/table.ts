@@ -1,7 +1,7 @@
 import type { Card, CardType } from "./card";
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
-import type { Field, FieldDimensionOption, FieldId } from "./field";
+import type { Field, FieldId } from "./field";
 import type { Segment } from "./segment";
 
 export type ConcreteTableId = number;
@@ -27,6 +27,7 @@ export type Table = {
   name: string;
   display_name: string;
   description: string | null;
+  entity_type?: string | null;
 
   db_id: DatabaseId;
   db?: Database;
@@ -37,7 +38,6 @@ export type Table = {
   fields?: Field[];
   segments?: Segment[];
   metrics?: Card[];
-  dimension_options?: Record<string, FieldDimensionOption>;
   field_order: TableFieldOrder;
 
   active: boolean;
