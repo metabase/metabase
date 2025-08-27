@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
-    "hash": "df21926ff7e90a45402a906cbea68ce02f2f949c"
+    "hash": "8c1ab9f40d9ddc8644fbba90f2fb3403a7ca149e"
   },
   "upstream": {
     "branch": "emb-741-add-a-wizard-to-select-a-table-to-x-ray-in-embedding-hub"
