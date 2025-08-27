@@ -55,13 +55,14 @@ export const SdkIframeEmbedSetupProvider = ({
   const defaultSettings = useMemo(() => {
     const searchParams = new URLSearchParams(location.search);
     const authMethod = searchParams.get("auth_method");
+    const useExistingUserSession = !authMethod || authMethod === "user_session";
 
     return {
       ...getDefaultSdkIframeEmbedSettings(
         "dashboard",
         recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
       ),
-      useExistingUserSession: !authMethod || authMethod === "user_session",
+      useExistingUserSession,
     };
   }, [recentDashboards, location.search]);
 
