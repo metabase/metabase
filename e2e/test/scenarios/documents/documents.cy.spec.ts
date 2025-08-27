@@ -227,6 +227,34 @@ H.describeWithSnowplowEE("documents", () => {
           });
         });
       });
+
+      it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
+        const isMac = Cypress.platform === "darwin";
+        const metaKey = isMac ? "Meta" : "Control";
+        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.getDocumentCard("Orders").should("exist");
+        H.documentContent().within(() => {
+          const originalText = "Lorem Ipsum and some more words";
+          const originalExact = new RegExp(`^${originalText}$`);
+          cy.contains(originalExact).click();
+          cy.realPress([metaKey, "z"]);
+          cy.contains(originalExact);
+
+          const modification = " etc.";
+          const modifiedExact = new RegExp(`^${originalText}${modification}$`);
+          H.addToDocument(modification, false);
+          cy.contains(modifiedExact);
+          cy.realPress([metaKey, "z"]);
+          cy.contains(originalExact);
+          cy.realPress(["Shift", metaKey, "z"]);
+          cy.contains(modifiedExact);
+          cy.realPress([metaKey, "z"]); // revert to prevent "unsaved changes" dialog
+        });
+        H.newButton("Document").click();
+        H.documentContent().should("have.text", "");
+        cy.realPress([metaKey, "z"]);
+        H.documentContent().should("have.text", "");
+      });
     });
   });
 
