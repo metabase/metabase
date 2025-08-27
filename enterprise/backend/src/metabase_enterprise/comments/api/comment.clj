@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.models.interface :as mi]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -16,6 +17,25 @@
                  (api/read-check (t2/select-one :model/Document :id target-id))
                  true
                  (catch Exception _ false))
+    false))
+
+(defn- can-write-entity?
+  "Check if current user can write to the entity being commented on"
+  [target-type target-id]
+  (case target-type
+    "document" (try
+                 (let [entity (t2/select-one :model/Document :id target-id)]
+                   (api/read-check entity)
+                   (mi/can-write? entity))
+                 (catch Exception _ false))
+    false))
+
+(defn- entity-archived?
+  "Check if the target entity is archived"
+  [target-type target-id]
+  (case target-type
+    "document" (let [entity (t2/select-one :model/Document :id target-id)]
+                 (:archived entity))
     false))
 
 (defn- process-deleted-comments
@@ -59,6 +79,8 @@
    _query-params
    {:keys [target_type target_id child_target_id parent_comment_id content]} :- m.comment/CreateComment]
   (api/check-403 (can-read-entity? target_type target_id))
+  (api/check-400 (not (entity-archived? target_type target_id))
+                 "Cannot comment on archived entities")
 
   ;; If this is a reply, validate the parent comment exists and belongs to same entity
   (when parent_comment_id
@@ -84,12 +106,23 @@
    _query-params
    {:keys [content is_resolved]} :- m.comment/UpdateComment]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
-    ;; Only creator or admin can edit comments
-    (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
-                       (:is_superuser @api/*current-user*)))
+    ;; Check if target entity is archived - makes comments read-only
+    (api/check-400 (not (entity-archived? (:target_type comment) (:target_id comment)))
+                   "Cannot edit comments on archived entities")
 
     (api/check-400 (not (:is_deleted comment))
                    "Cannot edit a deleted comment")
+
+    ;; Check permissions based on what's being updated
+    (when content
+      ;; Only creator or admin can edit comment content
+      (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
+                          (:is_superuser @api/*current-user*))))
+
+    (when (some? is_resolved)
+      ;; Anyone with write permission to target entity can resolve/unresolve
+      (api/check-403 (or (can-write-entity? (:target_type comment) (:target_id comment))
+                          (:is_superuser @api/*current-user*))))
 
     (let [updates (cond-> {}
                     content (assoc :content content)
@@ -104,6 +137,10 @@
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
+    ;; Check if target entity is archived - makes comments read-only
+    (api/check-400 (not (entity-archived? (:target_type comment) (:target_id comment)))
+                   "Cannot delete comments on archived entities")
+
     ;; Only creator or admin can delete comments
     (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
                        (:is_superuser @api/*current-user*)))
