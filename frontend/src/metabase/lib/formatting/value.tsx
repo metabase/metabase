@@ -30,6 +30,7 @@ import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";
 import { formatImage } from "./image";
 import { formatNumber } from "./numbers";
+import { removeNewLines } from "./strings";
 import { formatTime } from "./time";
 import type { OptionsType } from "./types";
 import { formatUrl } from "./url";
@@ -125,6 +126,9 @@ function formatStringFallback(value: any, options: OptionsType = {}) {
       value = formatImage(value, options);
     }
   }
+  if (typeof value === "string" && options.collapseNewlines) {
+    value = removeNewLines(value);
+  }
   return value;
 }
 
@@ -206,7 +210,7 @@ export function formatValueRaw(
       return formatImage(value, options);
     }
     if (column?.semantic_type) {
-      return value;
+      return options.collapseNewlines ? removeNewLines(value) : value;
     }
     return formatStringFallback(value, options);
   } else if (typeof value === "number" && isCoordinate(column)) {
@@ -231,7 +235,8 @@ export function formatValueRaw(
     // no extra whitespace for table cells
     return JSON.stringify(value);
   } else {
-    return String(value);
+    const strValue = String(value);
+    return options.collapseNewlines ? removeNewLines(strValue) : strValue;
   }
 }
 

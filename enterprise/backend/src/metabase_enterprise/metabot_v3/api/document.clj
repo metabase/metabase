@@ -56,7 +56,7 @@
                         last
                         Integer/parseInt)
               db (warehouses/get-database db-id)
-              schema-ddl (table-utils/schema-sample query)
+              schema-ddl (table-utils/schema-full db-id)
               error (atom error)
               final-sql (atom (get-in query [:native :query]))
               retrier (retry/make (assoc (retry/retry-configuration)
