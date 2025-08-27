@@ -1,8 +1,12 @@
 import type { DocumentContent } from "./document";
 import type { BaseUser } from "./user";
 
+export type CommentId = number;
+
+export type CommentsThreadId = number;
+
 export interface CommentsThread {
-  id: number;
+  id: CommentsThreadId;
 
   entity_type: "document-node";
   entity_id: string | number;
@@ -19,7 +23,7 @@ export interface CommentsThread {
 }
 
 export interface Comment {
-  id: number;
+  id: CommentId;
 
   document: DocumentContent;
   creator: BaseUser;
