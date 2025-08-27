@@ -18,6 +18,24 @@
                  (catch Exception _ false))
     false))
 
+(defn- process-deleted-comments
+  "Process comments to handle soft-deleted ones with threading logic.
+   - Remove deleted comments that have no replies
+   - Replace deleted comments that have replies with placeholder content"
+  [comments]
+  (let [comment-map (into {} (map #(vector (:id %) %) comments))
+        has-replies? #(some (fn [c] (= (:parent_comment_id c) %)) (vals comment-map))]
+    (->> comments
+         (map (fn [comment]
+                (if (and (:is_deleted comment) (has-replies? (:id comment)))
+                  ;; Replace deleted comment with placeholder if it has replies
+                  (assoc comment
+                         :content "[deleted]"
+                         :creator nil)
+                  comment)))
+         ;; Remove deleted comments that have no replies
+         (remove #(and (:is_deleted %) (not (has-replies? (:id %))))))))
+
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params
@@ -26,14 +44,14 @@
                                       [:target_id ms/PositiveInt]]]
   (api/check-403 (can-read-entity? target_type target_id))
 
-  {:comments (t2/hydrate
-              (t2/select :model/Comment
-                        {:where [:and
-                                [:= :target_type target_type]
-                                [:= :target_id target_id]
-                                [:= :is_deleted false]]
-                         :order-by [[:created_at :asc]]})
-              :creator)})
+  (let [all-comments (t2/hydrate
+                      (t2/select :model/Comment
+                                {:where [:and
+                                        [:= :target_type target_type]
+                                        [:= :target_id target_id]]
+                                 :order-by [[:created_at :asc]]})
+                      :creator)]
+    {:comments (process-deleted-comments all-comments)}))
 
 (api.macros/defendpoint :post "/"
   "Create a new comment"
@@ -47,7 +65,9 @@
     (let [parent (api/check-404 (t2/select-one :model/Comment :id parent_comment_id))]
       (api/check-400 (and (= (:target_type parent) target_type)
                           (= (:target_id parent) target_id))
-                     "Parent comment doesn't belong to the same entity")))
+                     "Parent comment doesn't belong to the same entity")
+      (api/check-400 (not (:is_deleted parent))
+                     "Cannot reply to a deleted comment")))
 
   (let [comment-id (t2/insert-returning-pk! :model/Comment
                                            {:target_type target_type
@@ -78,6 +98,26 @@
         (t2/update! :model/Comment comment-id updates)))
 
     (t2/hydrate (t2/select-one :model/Comment :id comment-id) :creator)))
+
+(api.macros/defendpoint :delete "/:comment-id"
+  "Soft delete a comment"
+  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
+   _query-params]
+  (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
+    ;; Only creator or admin can delete comments
+    (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
+                       (:is_superuser @api/*current-user*)))
+
+    (when (:is_deleted comment)
+      (api/check-400 false "Comment is already deleted"))
+
+    ;; Soft delete the comment
+    (t2/update! :model/Comment comment-id {:is_deleted true})
+
+    ;; Return 204 No Content
+    api/generic-204-no-content))
+
+
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/comment/` routes."
