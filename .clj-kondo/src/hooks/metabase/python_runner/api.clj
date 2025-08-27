@@ -5,13 +5,13 @@
 
 (defn with-temp-files
   "Hook for the `with-temp-files` macro. Transforms:
-   
+
    (with-temp-files [code-file [\"python_code_\" \".py\"]
                      output-file [\"python_output_\" \".txt\"]]
      (do-something-with code-file output-file))
-   
+
    =>
-   
+
    (let [code-file nil
          output-file nil]
      (do-something-with code-file output-file))"
