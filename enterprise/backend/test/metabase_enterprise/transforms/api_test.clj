@@ -365,27 +365,66 @@
                             (= (:id transform) (:transform_id %)))
                       (:data response)))))))))
 
+(defn- transform-runs
+  [our-pred & filters]
+  (let [response (apply mt/user-http-request :crowberto :get 200 "ee/transform/run" filters)]
+    (filter our-pred (:data response))))
+
 (deftest get-runs-filter-by-multiple-statuses-test
   (testing "GET /api/ee/transform/run - filter by multiple statuses"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform {:name   "Transform with multiple runs"
-                                                 :source {:type  "query"
-                                                          :query {:database (mt/id)
-                                                                  :type     "native"
-                                                                  :native   {:query         "SELECT 1"
-                                                                             :template-tags {}}}}
-                                                 :target {:type "table"
-                                                          :name (str "test_table_" (u/generate-nano-id))}}
-                     :model/TransformRun _run1 {:transform_id (:id transform) :status "succeeded"}
-                     :model/TransformRun _run2 {:transform_id (:id transform) :status "succeeded"}
-                     :model/TransformRun _run3 {:transform_id (:id transform) :status "failed"}
-                     :model/TransformRun _run4 {:transform_id (:id transform) :status "timeout"}]
-        (testing "Filter by 'succeeded' and 'failed' returns both types"
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
-                                               :statuses ["succeeded" "failed"])
-                our-runs (filter #(= (:id transform) (:transform_id %)) (:data response))]
-            (is (>= (count our-runs) 3))
-            (is (every? #(contains? #{"succeeded" "failed"} (:status %)) our-runs))))))))
+      (mt/with-temp [:model/Transform {t0-id :id} {}
+                     :model/Transform {t1-id :id} {}
+                     :model/TransformRun {r0-id  :id} {:transform_id t0-id :status "timeout" :run_method "cron"
+                                                       :start_time "2025-08-25T10:12:11Z" :end_time "2025-08-26T10:52:17Z"}
+                     :model/TransformRun {r1-id  :id} {:transform_id t0-id :status "succeeded" :run_method "manual"
+                                                       :start_time "2025-08-26T10:12:11Z" :end_time "2025-08-27T10:52:17Z"}
+                     :model/TransformRun {_r2-id :id} {:transform_id t1-id :status "succeeded" :run_method "cron"
+                                                       :start_time "2025-08-22T10:12:11Z" :end_time "2025-08-22T10:12:17Z"}
+                     :model/TransformRun {_r3-id :id} {:transform_id t1-id :status "succeeded" :run_method "manual"
+                                                       :start_time "2025-08-22T23:57:34Z" :end_time "2025-08-23T00:17:41Z"}
+                     :model/TransformRun {_r4-id :id} {:transform_id t1-id :status "failed" :run_method "cron"
+                                                       :start_time "2025-08-25T15:22:18Z" :end_time "2025-08-25T19:12:17Z"}
+                     :model/TransformRun {_r5-id :id} {:transform_id t1-id :status "timeout" :run_method "manual"
+                                                       :start_time "2025-08-25T20:29:58Z" :end_time "2025-08-25T22:12:17Z"}
+                     :model/TransformRun {_r6-id :id} {:transform_id t1-id :status "started" :run_method "cron"
+                                                       :start_time "2025-08-25T23:56:04Z" :end_time nil :is_active true}]
+        (let [our-run-pred (comp #{t0-id t1-id} :transform_id)
+              t0-runs [{:id r1-id
+                        :start_time "2025-08-26T10:12:11Z"
+                        :end_time "2025-08-27T10:52:17Z"
+                        :run_method "manual"
+                        :status "succeeded"
+                        :transform {:id t0-id}
+                        :transform_id t0-id}
+                       {:id r0-id
+                        :start_time "2025-08-25T10:12:11Z"
+                        :end_time "2025-08-26T10:52:17Z"
+                        :run_method "cron"
+                        :status "timeout"
+                        :transform {:id t0-id}
+                        :transform_id t0-id}]]
+          (testing "Filter by 'succeeded' and 'failed' returns both types"
+            (let [statuses #{"succeeded" "failed" "started"}
+                  our-runs (transform-runs our-run-pred :statuses (vec statuses))]
+              (is (= 5 (count our-runs)))
+              (is (every? #(contains? statuses (:status %)) our-runs))))
+          (testing "Filter by 'last_run_start_time'"
+            (is (=? t0-runs
+                    (transform-runs our-run-pred :last_run_start_time "2025-08-26~")))
+            (let [our-runs (transform-runs our-run-pred :last_run_start_time "~2025-08-25")]
+              (is (= 5 (count our-runs)))
+              (is (every? (comp #{t1-id} :transform_id) our-runs))))
+          (testing "Filter by 'last_run_end_time'"
+            (is (=? t0-runs
+                    (transform-runs our-run-pred :last_run_end_time "2025-08-24~")))
+            (is (empty? (transform-runs our-run-pred :last_run_end_time "~2025-08-26"))))
+          (testing "Filter by 'last_run_method"
+            (is (=? t0-runs
+                    (transform-runs our-run-pred :last_run_method "manual")))
+            (let [our-runs (transform-runs our-run-pred :last_run_method "cron")]
+              (is (= 5 (count our-runs)))
+              (is (every? (comp #{t1-id} :transform_id) our-runs)))))))))
 
 (deftest get-runs-filter-by-single-tag-test
   (testing "GET /api/ee/transform/run - filter by single tag"

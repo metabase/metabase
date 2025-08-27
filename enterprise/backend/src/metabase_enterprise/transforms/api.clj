@@ -119,22 +119,21 @@
 (api.macros/defendpoint :get "/run"
   "Get transform runs based on a set of filter params."
   [_route-params
-   {:keys [sort_column sort_direction transform_ids statuses transform_tag_ids]} :-
+   query-params :-
    [:map
     [:sort_column    {:optional true} [:enum "started_at" "ended_at"]]
     [:sort_direction {:optional true} [:enum "asc" "desc"]]
     [:transform_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:last_run_end_time {:optional true} [:maybe ms/NonBlankString]]
+    [:last_run_method {:optional true} [:maybe [:enum "manual" "cron"]]]]]
   (log/info "get runs")
   (api/check-superuser)
-  (transform-run/paged-runs {:transform_ids       transform_ids
-                             :transform_tag_ids   transform_tag_ids
-                             :statuses            statuses
-                             :sort_column         sort_column
-                             :sort_direction      sort_direction
-                             :offset              (request/offset)
-                             :limit               (request/limit)}))
+  (transform-run/paged-runs (assoc query-params
+                                   :offset (request/offset)
+                                   :limit  (request/limit))))
 
 (api.macros/defendpoint :put "/:id"
   "Update a transform."
