@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { useSetting } from "metabase/common/hooks";
+import { useMarkEmbeddingHubStepCompletion } from "metabase/embedding/embedding-hub";
 import {
   Button,
   Card,
@@ -32,6 +33,9 @@ export const GetCodeStep = () => {
   const snippet = useSdkIframeEmbedSnippet();
 
   const authType = settings.useExistingUserSession ? "user-session" : "sso";
+
+  const { markEmbeddingHubStepAsComplete } =
+    useMarkEmbeddingHubStepCompletion();
 
   return (
     <Stack gap="md">
@@ -116,6 +120,12 @@ export const GetCodeStep = () => {
                 onClick={() => {
                   copy();
                   trackEmbedWizardCodeCopied();
+
+                  markEmbeddingHubStepAsComplete(
+                    authType === "user-session"
+                      ? "create-test-embed"
+                      : "embed-production",
+                  );
                 }}
               >
                 {copied ? t`Copied!` : t`Copy Code`}
