@@ -618,7 +618,7 @@
                                                :action create-id}))))
 
               (testing "update"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "integer"  :optional false :readonly true}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown" :optional false :readonly true}
                                       {:id "text"      :display_name "Text"       :input_type "text"     :optional true  :readonly false}
                                       {:id "int"       :display_name "Int"        :input_type "integer"  :optional true  :readonly false}
                                       {:id "bool"      :display_name "Bool"       :input_type "boolean"  :optional true  :readonly false}
@@ -669,7 +669,7 @@
                                                :action create-id}))))
 
               (testing "update"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "integer", :optional false, :readonly true}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown", :optional false, :readonly true}
                                       {:id "text"      :display_name "Text"       :input_type "text",     :optional true, :readonly false}
                                       {:id "int"       :display_name "Int"        :input_type "integer",  :optional true, :readonly false}
                                       {:id "bool"      :display_name "Bool"       :input_type "boolean",  :optional true, :readonly false}

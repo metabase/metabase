@@ -55,7 +55,7 @@
    [:parameters [:sequential ::describe-param]]])
 
 (defn- field-input-type
-  [delete? field field-values]
+  [create? field field-values]
   (condp #(isa? %2 %1) (:semantic_type field)
     :type/Name        :input/text
     :type/Title       :input/text
@@ -64,11 +64,11 @@
     :type/Category    :input/dropdown
     :type/FK          :input/dropdown
     ;; TODO this recursion is quite crude, the structure of this logic could be improved.
-    :type/PK (if delete?
-               ;; When we are deleting a record, we must pick an existing PK.
-               :input/dropdown
-               ;; Otherwise, we should use the appropriate type for the base_type.
-               (field-input-type false (dissoc field :semantic_type) field-values))
+    :type/PK (if create?
+               ;; Unless it's a compound PK, we need to provide a unique value for the column, so use the base_type
+               (field-input-type false (dissoc field :semantic_type) field-values)
+               ;; For updating and deleting, we must pick an existing row
+               :input/dropdown)
     (condp #(isa? %2 %1) (:base_type field)
       :type/Boolean    :input/boolean
       :type/Integer    :input/integer
@@ -78,7 +78,7 @@
       :type/Date       :input/date
       :type/DateTime   :input/datetime
       :type/Time       :input/time
-      (if (and (not delete?) (#{:list :auto-list :search} (:type field-values)))
+      (if (and (not create?) (#{:list :auto-list :search} (:type field-values)))
         :input/dropdown
         :input/text))))
 
@@ -113,7 +113,7 @@
                                   ;; TODO get this from action configuration, when we add it, or inherit from table conf
                                   column-settings        nil
                                   auto-inc?              (:database_is_auto_increment field pk?)
-                                  delete?                (contains? #{:table.row/delete :data-grid.row/delete} action-kw)]
+                                  create?                (contains? #{:table.row/create :data-grid.row/create} action-kw)]
                             :when (case action-kw
                                     ;; create does not take pk cols if auto increment, todo generated cols?
                                     (:table.row/create :data-grid.row/create) (not auto-inc?)
@@ -134,7 +134,7 @@
                           :display_name            (:display_name field)
                           :semantic_type           (:semantic_type field)
                           ;; TODO we are manually removing the namespace due to an issue with encoder/api not running
-                          :input_type              (strip-namespace-hack (field-input-type delete? field field-values))
+                          :input_type              (strip-namespace-hack (field-input-type create? field field-values))
                           :field_id                (:id field)
                           :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
                           :optional                (not required)
