@@ -56,43 +56,40 @@ export const DataStep = ({
     [query, stageIndex],
   );
 
-  const handleToggle = (
+  const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
+    const nextQuery = isSelected
+      ? Lib.addField(query, stageIndex, column)
+      : Lib.removeField(query, stageIndex, column);
+
+    updateQuery(nextQuery);
+  };
+
+  const handleToggleSome = (
     columnsToSelectOrDeselect: Lib.ColumnMetadata[],
     isSelected: boolean,
   ) => {
-    const isSingleColumn = columnsToSelectOrDeselect.length === 1;
+    const selectedColumns = columns.filter((column) => {
+      const displayInfo = Lib.displayInfo(query, stageIndex, column);
+
+      return displayInfo.selected;
+    });
 
     let nextQuery: Lib.Query;
-    if (isSingleColumn) {
-      const [column] = columnsToSelectOrDeselect;
-      nextQuery = isSelected
-        ? Lib.addField(query, stageIndex, column)
-        : Lib.removeField(query, stageIndex, column);
+    if (isSelected) {
+      const uniqueSelectedColumns = [
+        ...new Set([...selectedColumns, ...columnsToSelectOrDeselect]),
+      ];
+
+      nextQuery = Lib.withFields(query, stageIndex, uniqueSelectedColumns);
     } else {
-      const selectedColumns = columns.filter((column) => {
-        const displayInfo = Lib.displayInfo(query, stageIndex, column);
+      const columnsWithoutDeselected = selectedColumns.filter(
+        (column) => !columnsToSelectOrDeselect.includes(column),
+      );
 
-        return displayInfo.selected;
-      });
-
-      if (isSelected) {
-        const uniqueSelectedColumns = [
-          ...new Set([...selectedColumns, ...columnsToSelectOrDeselect]),
-        ];
-
-        nextQuery = Lib.withFields(query, stageIndex, uniqueSelectedColumns);
-      } else {
-        const columnsWithoutDeselected = selectedColumns.filter(
-          (column) => !columnsToSelectOrDeselect.includes(column),
-        );
-
-        nextQuery = Lib.withFields(query, stageIndex, columnsWithoutDeselected);
-      }
+      nextQuery = Lib.withFields(query, stageIndex, columnsWithoutDeselected);
     }
 
-    if (nextQuery) {
-      updateQuery(nextQuery);
-    }
+    updateQuery(nextQuery);
   };
 
   const handleSelectAll = () => {
@@ -157,6 +154,7 @@ export const DataStep = ({
           columns={columns}
           title={t`Pick columns`}
           onToggle={handleToggle}
+          onToggleSome={handleToggleSome}
           onSelectAll={handleSelectAll}
           onSelectNone={handleSelectNone}
           data-testid="data-step-column-picker"

@@ -2,54 +2,52 @@ import { DndContext, type DragEndEvent, closestCenter } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   SortableContext,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { forwardRef, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  HoverParent,
-  QueryColumnInfoIcon,
-} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { HoverParent } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import type { FieldPickerItem } from "metabase/querying/notebook/components/FieldPicker";
 import {
   ActionIcon,
   Box,
   Checkbox,
-  Flex,
   Icon,
   Stack,
   Text,
   TextInput,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import { ColumnPickerItem } from "./ColumnPickerItem";
 import S from "./ColumnPickerSidebar.module.css";
+import { SortableColumnPickerItem } from "./SortableColumnPickerItem";
 
 interface ColumnPickerSidebarProps {
-  question?: Question;
   query: Lib.Query;
   stageIndex: number;
   title?: string;
   isOpen: boolean;
   onClose: () => void;
   columns: Lib.ColumnMetadata[];
-  onToggle?: (columns: Lib.ColumnMetadata[], isSelected: boolean) => void;
+  onToggle?: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
+  onToggleSome?: (columns: Lib.ColumnMetadata[], isSelected: boolean) => void;
   onSelectAll?: () => void;
   onSelectNone?: () => void;
   isColumnSelected?: (item: FieldPickerItem) => boolean;
   isDraggable?: boolean;
   onReorderColumns?: (oldIndex: number, newIndex: number) => void;
-  vizSettings?: VisualizationSettings["table.columns"];
+  onColumnDisplayNameChange?: (
+    column: Lib.ColumnMetadata,
+    displayName: string,
+  ) => void;
+  visualizationSettings?: VisualizationSettings;
 }
 
 export function ColumnPickerSidebar({
-  // question,
   query,
   stageIndex,
   isOpen,
@@ -57,13 +55,40 @@ export function ColumnPickerSidebar({
   columns,
   onClose,
   onToggle,
+  onToggleSome,
   onSelectAll,
   onSelectNone,
   isColumnSelected = _isColumnSelected,
   isDraggable = false,
   onReorderColumns,
+  onColumnDisplayNameChange,
+  visualizationSettings,
 }: ColumnPickerSidebarProps) {
   const [searchText, setSearchText] = useState("");
+  const [columnDisplayNames, setColumnDisplayNames] = useState<
+    Map<string, string>
+  >(new Map());
+
+  useEffect(() => {
+    if (!visualizationSettings) {
+      return;
+    }
+
+    const settings = visualizationSettings["column_settings"] ?? {};
+    const nameTylpes = Object.keys(settings);
+
+    if (nameTylpes.length > 0) {
+      const names = nameTylpes.map((entry) => {
+        const [, name] = JSON.parse(entry);
+
+        return [name, (settings[entry] ?? {}).column_title];
+      });
+
+      setColumnDisplayNames(
+        new Map(names.map(([name, value]) => [name, value])),
+      );
+    }
+  }, [visualizationSettings, columns]);
 
   const items = useMemo(() => {
     const items = columns.map((column) => ({
@@ -84,7 +109,9 @@ export function ColumnPickerSidebar({
     }
     const searchLower = searchText.toLowerCase();
     return items.filter((item) => {
-      const displayName = item.columnInfo.displayName.toLowerCase();
+      const displayName =
+        columnDisplayNames.get(item.columnInfo.name) ??
+        item.columnInfo.displayName.toLowerCase();
       const longDisplayName = item.columnInfo.longDisplayName.toLowerCase();
 
       return (
@@ -92,7 +119,7 @@ export function ColumnPickerSidebar({
         longDisplayName.includes(searchLower)
       );
     });
-  }, [items, searchText]);
+  }, [columnDisplayNames, items, searchText]);
 
   const isAll = filteredItems.every((item) => item.isSelected);
   const isNone = filteredItems.every((item) => !item.isSelected);
@@ -102,7 +129,7 @@ export function ColumnPickerSidebar({
 
     if (isAll) {
       if (isFiltered) {
-        onToggle?.(
+        onToggleSome?.(
           filteredItems.map((item) => item.column),
           false,
         );
@@ -111,7 +138,7 @@ export function ColumnPickerSidebar({
       }
     } else {
       if (isFiltered) {
-        onToggle?.(
+        onToggleSome?.(
           filteredItems.map((item) => item.column),
           true,
         );
@@ -139,6 +166,27 @@ export function ColumnPickerSidebar({
       }
     }
   };
+
+  const handleDisplayNameChange = useCallback(
+    (column: Lib.ColumnMetadata, newDisplayName: string) => {
+      const columnInfo = Lib.displayInfo(query, stageIndex, column);
+      setColumnDisplayNames(
+        (prev) => new Map(prev.set(columnInfo.name, newDisplayName)),
+      );
+      onColumnDisplayNameChange?.(column, newDisplayName);
+    },
+    [onColumnDisplayNameChange, query, stageIndex],
+  );
+
+  const getDisplayName = useCallback(
+    (item: FieldPickerItem) => {
+      return (
+        columnDisplayNames.get(item.columnInfo.name) ??
+        item.columnInfo.longDisplayName
+      );
+    },
+    [columnDisplayNames],
+  );
 
   const ItemComponent =
     isDraggable && columns.length > 1 && !searchText.trim()
@@ -197,18 +245,22 @@ export function ColumnPickerSidebar({
               modifiers={[restrictToVerticalAxis]}
             >
               <SortableContext
-                items={filteredItems.map((item) => item.columnInfo.displayName)}
+                items={filteredItems.map(
+                  (item) => item.columnInfo.longDisplayName,
+                )}
                 strategy={verticalListSortingStrategy}
               >
                 {filteredItems.map((item) => {
                   return (
                     <ItemComponent
-                      key={item.columnInfo.displayName}
+                      key={item.columnInfo.longDisplayName}
                       item={item}
                       query={query}
                       stageIndex={stageIndex}
                       onToggle={onToggle}
                       isDraggable={isDraggable}
+                      displayName={getDisplayName(item)}
+                      onDisplayNameChange={handleDisplayNameChange}
                     />
                   );
                 })}
@@ -224,118 +276,6 @@ export function ColumnPickerSidebar({
         </Box>
       </Stack>
     </Sidesheet>
-  );
-}
-
-interface ColumnPickerItemProps {
-  query: Lib.Query;
-  stageIndex: number;
-  item: FieldPickerItem & { isSelected: boolean; isDisabled: boolean };
-  onToggle?: (columns: Lib.ColumnMetadata[], isSelected: boolean) => void;
-  isDraggable: boolean;
-  handle?: React.ReactNode;
-  style?: React.CSSProperties;
-}
-
-const ColumnPickerItem = forwardRef<HTMLLIElement, ColumnPickerItemProps>(
-  function ColumnPickerItem(
-    { query, stageIndex, item, onToggle, isDraggable, handle, ...rest },
-    ref,
-  ) {
-    const [editingName, setEditingName] = useState(
-      item.columnInfo.longDisplayName,
-    );
-
-    return (
-      <li key={item.columnInfo.displayName} ref={ref} {...rest}>
-        <HoverParent className={S.Label} as="label">
-          <Flex align="center" gap="xs" w="100%">
-            {isDraggable && handle}
-            {!isDraggable && (
-              <Checkbox
-                checked={item.isSelected}
-                disabled={item.isDisabled}
-                onChange={(event) =>
-                  onToggle?.([item.column], event.target.checked)
-                }
-              />
-            )}
-            {!isDraggable && (
-              <QueryColumnInfoIcon
-                className={S.ItemIcon}
-                query={query}
-                stageIndex={stageIndex}
-                column={item.column}
-                position="top-start"
-                size={16}
-              />
-            )}
-            <Box flex={1}>
-              {isDraggable ? (
-                <TextInput
-                  value={editingName}
-                  onChange={(event) =>
-                    setEditingName(event.currentTarget.value)
-                  }
-                  size="md"
-                  autoFocus
-                  onFocus={(e) => e.target.select()}
-                />
-              ) : (
-                <Text title={t`Click to edit display name`}>
-                  {item.columnInfo.longDisplayName}
-                </Text>
-              )}
-            </Box>
-          </Flex>
-        </HoverParent>
-      </li>
-    );
-  },
-);
-
-function SortableColumnPickerItem(
-  props: Omit<ColumnPickerItemProps, "handle" | "style">,
-) {
-  const { item } = props;
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: item.columnInfo.displayName,
-    disabled: !item.isSelected,
-  });
-
-  const Handle = () => {
-    return (
-      <ActionIcon
-        size="sm"
-        variant="subtle"
-        {...listeners}
-        style={{ cursor: isDragging ? "grabbing" : "grab" }}
-        aria-label={t`Drag to reorder`}
-      >
-        <Icon name="grabber" />
-      </ActionIcon>
-    );
-  };
-
-  return (
-    <ColumnPickerItem
-      {...props}
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-      }}
-      {...attributes}
-      handle={<Handle />}
-    />
   );
 }
 

@@ -7,6 +7,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
 import { ColumnPickerSidebar } from "metabase/query_builder/components/ColumnPickerSidebar/ColumnPickerSidebar";
 import { Box, Button, Flex } from "metabase/ui";
+import { updateSettings } from "metabase/visualizations/lib/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -120,7 +121,7 @@ function CustomizeColumnsButton({ question }: CustomizeColumnsButtonProps) {
 
   const handleReorderColumns = (oldIndex: number, newIndex: number) => {
     const settings = question.settings();
-    let newSettings = settings;
+    let newSettings: VisualizationSettings = settings;
     const tableColumns = settings["table.columns"] ?? [];
 
     if (tableColumns.length === 0) {
@@ -149,12 +150,34 @@ function CustomizeColumnsButton({ question }: CustomizeColumnsButtonProps) {
     dispatch(updateQuestion(newQuestion));
   };
 
+  const handleColumnDisplayNameChange = (
+    column: Lib.ColumnMetadata,
+    newDisplayName: string,
+  ) => {
+    const columnInfo = Lib.displayInfo(query, -1, column);
+    const columnKey = columnInfo.name;
+    const currentSettings = question.card().visualization_settings || {};
+
+    const diff = {
+      column_settings: {
+        ...currentSettings.column_settings,
+        [JSON.stringify(["name", columnKey])]: {
+          column_title: newDisplayName,
+        },
+      },
+    };
+
+    const newSettings = updateSettings(currentSettings, diff);
+    const updatedQuestion = question.updateSettings(newSettings);
+
+    dispatch(updateQuestion(updatedQuestion));
+  };
+
   return (
     <>
       <Button onClick={handleClick}>{t`Customize Columns`}</Button>
       {isSidebarOpen && (
         <ColumnPickerSidebar
-          // question={question}
           title={t`Reorder and rename columns`}
           isOpen={isSidebarOpen}
           query={question.query()}
@@ -163,7 +186,8 @@ function CustomizeColumnsButton({ question }: CustomizeColumnsButtonProps) {
           columns={items}
           isDraggable
           onReorderColumns={handleReorderColumns}
-          vizSettings={question.settings()["table.columns"]}
+          onColumnDisplayNameChange={handleColumnDisplayNameChange}
+          visualizationSettings={question.settings()}
         />
       )}
     </>
