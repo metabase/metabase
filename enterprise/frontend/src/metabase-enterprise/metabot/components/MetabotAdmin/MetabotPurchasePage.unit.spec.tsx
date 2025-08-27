@@ -29,7 +29,7 @@ const setupRefreshableProperties = ({
       valid: true,
       features: has_metabot_v3 ? ["metabot-v3"] : [],
       "store-users": current_user_matches_store_user
-        ? [{ email: "user@example.com" }]
+        ? [{ email: "USER@example.com" }]
         : [],
     },
     "token-features": createMockTokenFeatures({ metabot_v3: has_metabot_v3 }),
