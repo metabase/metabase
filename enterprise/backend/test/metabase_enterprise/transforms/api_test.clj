@@ -376,19 +376,19 @@
       (mt/with-temp [:model/Transform {t0-id :id} {}
                      :model/Transform {t1-id :id} {}
                      :model/TransformRun {r0-id  :id} {:transform_id t0-id :status "timeout" :run_method "cron"
-                                                       :start_time "2025-08-25T10:12:11Z" :end_time "2025-08-26T10:52:17Z"}
+                                                       :start_time #t "2025-08-25T10:12:11Z" :end_time #t "2025-08-26T10:52:17Z"}
                      :model/TransformRun {r1-id  :id} {:transform_id t0-id :status "succeeded" :run_method "manual"
-                                                       :start_time "2025-08-26T10:12:11Z" :end_time "2025-08-27T10:52:17Z"}
+                                                       :start_time #t "2025-08-26T10:12:11Z" :end_time #t "2025-08-27T10:52:17Z"}
                      :model/TransformRun {_r2-id :id} {:transform_id t1-id :status "succeeded" :run_method "cron"
-                                                       :start_time "2025-08-22T10:12:11Z" :end_time "2025-08-22T10:12:17Z"}
+                                                       :start_time #t "2025-08-22T10:12:11Z" :end_time #t "2025-08-22T10:12:17Z"}
                      :model/TransformRun {r3-id :id} {:transform_id t1-id :status "succeeded" :run_method "manual"
-                                                      :start_time "2025-08-22T23:57:34Z" :end_time "2025-08-23T00:17:41Z"}
+                                                      :start_time #t "2025-08-22T23:57:34Z" :end_time #t "2025-08-23T00:17:41Z"}
                      :model/TransformRun {_r4-id :id} {:transform_id t1-id :status "failed" :run_method "cron"
-                                                       :start_time "2025-08-25T15:22:18Z" :end_time "2025-08-25T19:12:17Z"}
+                                                       :start_time #t "2025-08-25T15:22:18Z" :end_time #t "2025-08-25T19:12:17Z"}
                      :model/TransformRun {_r5-id :id} {:transform_id t1-id :status "timeout" :run_method "manual"
-                                                       :start_time "2025-08-25T20:29:58Z" :end_time "2025-08-25T22:12:17Z"}
+                                                       :start_time #t "2025-08-25T20:29:58Z" :end_time #t "2025-08-25T22:12:17Z"}
                      :model/TransformRun {_r6-id :id} {:transform_id t1-id :status "started" :run_method "cron"
-                                                       :start_time "2025-08-25T23:56:04Z" :end_time nil :is_active true}]
+                                                       :start_time #t "2025-08-25T23:56:04Z" :end_time nil :is_active true}]
         (let [our-run-pred (comp #{t0-id t1-id} :transform_id)
               t0-runs [{:id r1-id
                         :start_time "2025-08-26T10:12:11Z"
