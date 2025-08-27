@@ -11,8 +11,8 @@
 
 (defn template->regex
   "Convert a template string with $var$ placeholders to a regex pattern.
-   Example: template->regex 'File $path$/script.py, line $line$'
-   becomes #'File .+/script\\.py, line \\d+'"
+   Example: template->regex 'File ___PATH___/script.py, line ___LINE___'
+   will match 'File /tmp/unique-path/script.py, line 123'"
   [template]
   (-> template
       (str/replace "\\" "\\\\")
