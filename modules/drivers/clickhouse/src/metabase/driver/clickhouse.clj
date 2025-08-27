@@ -295,7 +295,9 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
   [_ ^SQLException e]
   ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message
-  (str/starts-with? (.getMessage e) "Code: 60."))
+  (let [msg (.getMessage e)]
+    (or (str/starts-with? msg "Code: 60")
+        (str/starts-with? msg "Code: 81"))))
 
 (defmethod driver/compile-transform :clickhouse
   [driver {:keys [query output-table]}]
@@ -308,3 +310,9 @@
         query (str/join " " (map first pieces))
         params (reduce into [] (map rest pieces))]
     (into [query] params)))
+
+(defmethod driver/create-schema-if-needed! :clickhouse
+  [driver details schema]
+  (let [schema (driver.sql/normalize-name driver schema)
+        sql [[(format "CREATE DATABASE IF NOT EXISTS %s;" schema)]]]
+    (driver/execute-raw-queries! driver details sql)))
