@@ -56,11 +56,43 @@ export const DataStep = ({
     [query, stageIndex],
   );
 
-  const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
-    const nextQuery = isSelected
-      ? Lib.addField(query, stageIndex, column)
-      : Lib.removeField(query, stageIndex, column);
-    updateQuery(nextQuery);
+  const handleToggle = (
+    columnsToSelectOrDeselect: Lib.ColumnMetadata[],
+    isSelected: boolean,
+  ) => {
+    const isSingleColumn = columnsToSelectOrDeselect.length === 1;
+
+    let nextQuery: Lib.Query;
+    if (isSingleColumn) {
+      const [column] = columnsToSelectOrDeselect;
+      nextQuery = isSelected
+        ? Lib.addField(query, stageIndex, column)
+        : Lib.removeField(query, stageIndex, column);
+    } else {
+      const selectedColumns = columns.filter((column) => {
+        const displayInfo = Lib.displayInfo(query, stageIndex, column);
+
+        return displayInfo.selected;
+      });
+
+      if (isSelected) {
+        const uniqueSelectedColumns = [
+          ...new Set([...selectedColumns, ...columnsToSelectOrDeselect]),
+        ];
+
+        nextQuery = Lib.withFields(query, stageIndex, uniqueSelectedColumns);
+      } else {
+        const columnsWithoutDeselected = selectedColumns.filter(
+          (column) => !columnsToSelectOrDeselect.includes(column),
+        );
+
+        nextQuery = Lib.withFields(query, stageIndex, columnsWithoutDeselected);
+      }
+    }
+
+    if (nextQuery) {
+      updateQuery(nextQuery);
+    }
   };
 
   const handleSelectAll = () => {

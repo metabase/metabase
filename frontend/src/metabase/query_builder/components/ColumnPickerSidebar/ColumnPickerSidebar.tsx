@@ -39,10 +39,10 @@ interface ColumnPickerSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   columns: Lib.ColumnMetadata[];
-  onToggle?: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
+  onToggle?: (columns: Lib.ColumnMetadata[], isSelected: boolean) => void;
   onSelectAll?: () => void;
   onSelectNone?: () => void;
-  isColumnSelected?: (column: FieldPickerItem) => boolean;
+  isColumnSelected?: (item: FieldPickerItem) => boolean;
   isDraggable?: boolean;
   onReorderColumns?: (oldIndex: number, newIndex: number) => void;
   vizSettings?: VisualizationSettings["table.columns"];
@@ -98,10 +98,26 @@ export function ColumnPickerSidebar({
   const isNone = filteredItems.every((item) => !item.isSelected);
 
   const handleAllToggle = () => {
+    const isFiltered = searchText.trim();
+
     if (isAll) {
-      onSelectNone?.();
+      if (isFiltered) {
+        onToggle?.(
+          filteredItems.map((item) => item.column),
+          false,
+        );
+      } else {
+        onSelectNone?.();
+      }
     } else {
-      onSelectAll?.();
+      if (isFiltered) {
+        onToggle?.(
+          filteredItems.map((item) => item.column),
+          true,
+        );
+      } else {
+        onSelectAll?.();
+      }
     }
   };
 
@@ -214,7 +230,7 @@ interface ColumnPickerItemProps {
   query: Lib.Query;
   stageIndex: number;
   item: FieldPickerItem & { isSelected: boolean; isDisabled: boolean };
-  onToggle?: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
+  onToggle?: (columns: Lib.ColumnMetadata[], isSelected: boolean) => void;
   isDraggable: boolean;
   handle?: React.ReactNode;
   style?: React.CSSProperties;
@@ -239,7 +255,7 @@ const ColumnPickerItem = forwardRef<HTMLLIElement, ColumnPickerItemProps>(
                 checked={item.isSelected}
                 disabled={item.isDisabled}
                 onChange={(event) =>
-                  onToggle?.(item.column, event.target.checked)
+                  onToggle?.([item.column], event.target.checked)
                 }
               />
             )}
@@ -322,8 +338,8 @@ function SortableColumnPickerItem(
   );
 }
 
-function _isColumnSelected({ columnInfo }: FieldPickerItem) {
-  return Boolean(columnInfo.selected);
+function _isColumnSelected(item: FieldPickerItem) {
+  return Boolean(item.columnInfo.selected);
 }
 
 function isColumnDisabled(item: FieldPickerItem, items: FieldPickerItem[]) {
