@@ -20,6 +20,7 @@ import type {
   Dashboard,
   ParameterId,
   ParameterValueOrArray,
+  ParameterValuesMap,
   Revision,
 } from "metabase-types/api";
 import type {
@@ -252,7 +253,7 @@ export const parameterValues = createReducer(
       string,
       {
         type: string;
-        payload: Record<ParameterId, ParameterValueOrArray>;
+        payload: ParameterValuesMap;
       }
     >(SET_PARAMETER_VALUES, (_state, { payload }) => {
       return payload;
