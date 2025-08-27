@@ -59,14 +59,14 @@ describe("EmbeddingChecklist", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows docs links on call-to-action buttons", async () => {
+  it("shows docs links with utm on call-to-action buttons", async () => {
     setup({ defaultOpenStep: "configure-row-column-security" });
 
     const link = screen.getByRole("link", { name: /Read the docs/ });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute(
       "href",
-      expect.stringContaining("permissions/row-and-column-security"),
+      "https://www.metabase.com/docs/latest/permissions/row-and-column-security.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-hub&utm_content=configure-row-column-security&source_plan=oss",
     );
   });
 
