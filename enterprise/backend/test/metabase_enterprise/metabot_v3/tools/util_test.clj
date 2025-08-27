@@ -124,43 +124,44 @@
 (deftest metabot-verified-content-test
   (testing "metabot-scope-query with verified content filtering"
     (mt/dataset test-data
-      (mt/with-temp [:model/Collection metabot-coll {:name "mb coll"}
-                     :model/Card verified-model {:type :model, :collection_id (:id metabot-coll)}
-                     :model/Card unverified-model {:type :model, :collection_id (:id metabot-coll)}
-                     :model/Card verified-metric {:type :metric, :collection_id (:id metabot-coll)}
-                     :model/Card unverified-metric {:type :metric, :collection_id (:id metabot-coll)}
-                     :model/Metabot verified-metabot {:name "verified metabot"
-                                                      :collection_id (:id metabot-coll)
-                                                      :use_verified_content true}
-                     :model/Metabot unverified-metabot {:name "unverified metabot"
+      (mt/with-premium-features #{:content-verification}
+        (mt/with-temp [:model/Collection metabot-coll {:name "mb coll"}
+                       :model/Card verified-model {:type :model, :collection_id (:id metabot-coll)}
+                       :model/Card unverified-model {:type :model, :collection_id (:id metabot-coll)}
+                       :model/Card verified-metric {:type :metric, :collection_id (:id metabot-coll)}
+                       :model/Card unverified-metric {:type :metric, :collection_id (:id metabot-coll)}
+                       :model/Metabot verified-metabot {:name "verified metabot"
                                                         :collection_id (:id metabot-coll)
-                                                        :use_verified_content false}]
+                                                        :use_verified_content true}
+                       :model/Metabot unverified-metabot {:name "unverified metabot"
+                                                          :collection_id (:id metabot-coll)
+                                                          :use_verified_content false}]
         ;; Mark some content as verified
-        (moderation/create-review! {:moderated_item_id (:id verified-model)
-                                    :moderated_item_type "card"
-                                    :moderator_id (mt/user->id :crowberto)
-                                    :status "verified"
-                                    :text "This is verified"})
-        (moderation/create-review! {:moderated_item_id (:id verified-metric)
-                                    :moderated_item_type "card"
-                                    :moderator_id (mt/user->id :crowberto)
-                                    :status "verified"
-                                    :text "This is verified"})
+          (moderation/create-review! {:moderated_item_id (:id verified-model)
+                                      :moderated_item_type "card"
+                                      :moderator_id (mt/user->id :crowberto)
+                                      :status "verified"
+                                      :text "This is verified"})
+          (moderation/create-review! {:moderated_item_id (:id verified-metric)
+                                      :moderated_item_type "card"
+                                      :moderator_id (mt/user->id :crowberto)
+                                      :status "verified"
+                                      :text "This is verified"})
 
-        (testing "metabot with use_verified_content=true sees only verified content"
-          (let [result (mt/with-test-user :crowberto
-                         (metabot-v3.tools.util/get-metrics-and-models (:id verified-metabot)))
-                card-ids (set (map :id result))]
-            (is (contains? card-ids (:id verified-model)))
-            (is (contains? card-ids (:id verified-metric)))
-            (is (not (contains? card-ids (:id unverified-model))))
-            (is (not (contains? card-ids (:id unverified-metric))))))
+          (testing "metabot with use_verified_content=true sees only verified content"
+            (let [result (mt/with-test-user :crowberto
+                           (metabot-v3.tools.util/get-metrics-and-models (:id verified-metabot)))
+                  card-ids (set (map :id result))]
+              (is (contains? card-ids (:id verified-model)))
+              (is (contains? card-ids (:id verified-metric)))
+              (is (not (contains? card-ids (:id unverified-model))))
+              (is (not (contains? card-ids (:id unverified-metric))))))
 
-        (testing "metabot with use_verified_content=false sees all content"
-          (let [result (mt/with-test-user :crowberto
-                         (metabot-v3.tools.util/get-metrics-and-models (:id unverified-metabot)))
-                card-ids (set (map :id result))]
-            (is (contains? card-ids (:id verified-model)))
-            (is (contains? card-ids (:id verified-metric)))
-            (is (contains? card-ids (:id unverified-model)))
-            (is (contains? card-ids (:id unverified-metric)))))))))
+          (testing "metabot with use_verified_content=false sees all content"
+            (let [result (mt/with-test-user :crowberto
+                           (metabot-v3.tools.util/get-metrics-and-models (:id unverified-metabot)))
+                  card-ids (set (map :id result))]
+              (is (contains? card-ids (:id verified-model)))
+              (is (contains? card-ids (:id verified-metric)))
+              (is (contains? card-ids (:id unverified-model)))
+              (is (contains? card-ids (:id unverified-metric))))))))))

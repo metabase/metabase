@@ -11,7 +11,9 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (defn- column-input
@@ -95,6 +97,10 @@
                (= (:entity_id old-metabot)
                   (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id :entity-id])))
       (api/check-400 false "Cannot update collection_id for the primary metabot instance."))
+    ;; Prevent enabling verified content without the premium feature
+    (when (and (contains? metabot-updates :use_verified_content)
+               (:use_verified_content metabot-updates))
+      (premium-features/assert-has-feature :content-verification (tru "Content verification")))
     (let [verified-content-changed? (and (contains? metabot-updates :use_verified_content)
                                          (not= (:use_verified_content old-metabot)
                                                (:use_verified_content metabot-updates)))

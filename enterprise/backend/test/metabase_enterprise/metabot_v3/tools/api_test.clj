@@ -403,8 +403,7 @@
                      :model/Card _ignored        metric-data
                      :model/Card _ignored        model-data
                      :model/Card {model-id :id}  (assoc model-data  :collection_id collection-id)
-                     :model/Metabot {metabot-id  :id
-                                     metabot-eid :entity_id} {:name "Test Metabot"
+                     :model/Metabot {metabot-eid :entity_id} {:name "Test Metabot"
                                                               :collection_id collection-id}]
         (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
           (let [model-metric-base-query (lib/query mp (lib.metadata/card mp model-id))
