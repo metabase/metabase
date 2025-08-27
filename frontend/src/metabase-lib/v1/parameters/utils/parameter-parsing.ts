@@ -22,12 +22,9 @@ import type {
 
 export function getParameterValueFromQueryParams(
   parameter: Parameter,
-  queryParams: Query,
-  lastUsedParametersValues?: Record<ParameterId, unknown>,
+  queryParams: Query = {},
+  lastUsedParametersValues: Record<ParameterId, unknown> = {},
 ) {
-  queryParams = queryParams || {};
-  lastUsedParametersValues = lastUsedParametersValues || {};
-
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
   const hasQueryParams = Object.keys(queryParams).length > 0;
 
@@ -155,15 +152,14 @@ export function getParameterValuesByIdFromQueryParams(
   parameters: Parameter[],
   queryParams: Query,
   lastUsedParametersValues?: Record<ParameterId, unknown>,
-) {
-  return Object.fromEntries(
-    parameters.map((parameter) => [
-      parameter.id,
-      getParameterValueFromQueryParams(
-        parameter,
-        queryParams,
-        lastUsedParametersValues,
-      ),
-    ]),
-  );
+): Record<ParameterId, ParameterValueOrArray | null> {
+  const result: Record<ParameterId, ParameterValueOrArray | null> = {};
+  for (const parameter of parameters) {
+    result[parameter.id] = getParameterValueFromQueryParams(
+      parameter,
+      queryParams,
+      lastUsedParametersValues,
+    );
+  }
+  return result;
 }

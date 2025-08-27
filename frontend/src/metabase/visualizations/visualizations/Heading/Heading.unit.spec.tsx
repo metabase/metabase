@@ -337,8 +337,8 @@ function mapParameterToVariable({
     },
   ];
   const parameters: Parameter[] = [parameter];
-  const parameterValues: Record<ParameterId, ParameterValueOrArray> = {
-    [parameter.id]: parameter.value,
+  const parameterValues = {
+    [parameter.id]: parameter.value ?? "",
   };
 
   return { parameters, parameterValues, parameter_mappings };

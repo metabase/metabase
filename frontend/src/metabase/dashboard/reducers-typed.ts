@@ -238,7 +238,7 @@ export const parameterValues = createReducer(
         type: string;
         payload: {
           id: ParameterId;
-          value: ParameterValueOrArray;
+          value: ParameterValueOrArray | undefined | null;
           isDraft: boolean;
         };
       }
