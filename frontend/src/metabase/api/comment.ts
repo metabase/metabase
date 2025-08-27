@@ -1,6 +1,5 @@
 import type {
   Comment,
-  CommentHistory,
   CommentId,
   CreateCommentRequest,
   ListCommentsRequest,
@@ -42,7 +41,7 @@ export const commentApi = Api.injectEndpoints({
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
     }),
 
-    getCommentHistory: builder.query<CommentHistory, CommentId>({
+    getCommentHistory: builder.query<Comment[], CommentId>({
       query: (commentId) => ({
         method: "GET",
         url: `/api/comments/${commentId}/history`,

@@ -27,8 +27,6 @@ export interface Comment {
   version: number;
 }
 
-export type CommentHistory = Comment[];
-
 /** request types below */
 
 export interface ListCommentsRequest {
