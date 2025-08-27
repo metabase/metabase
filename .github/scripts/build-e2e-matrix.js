@@ -78,15 +78,6 @@ function buildMatrix(options, inputSpecs, inputChunks) {
     ...options,
   }));
 
-  console.log(`Matrix builder debug:`);
-  console.log(`  inputSpecs: "${inputSpecs}"`);
-  console.log(`  inputChunks: ${inputChunks}`);
-  console.log(`  isDefaultSpecPattern: ${isDefaultSpecPattern}`);
-  console.log(`  regularChunks: ${regularChunks}`);
-  console.log(`  regularTests length: ${regularTests.length}`);
-  console.log(`  config length: ${config.length}`);
-  console.log(`  First few config items:`, config.slice(0, 3));
-
   return { config, regularChunks, isDefaultSpecPattern };
 }
 
