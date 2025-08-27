@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
 
-import { setup } from "./test-setup";
+import { setup, waitForUpdateSetting } from "./test-setup";
 
 describe("Embed flow > initial setup", () => {
   it("shows the embed experience step as the first step", () => {

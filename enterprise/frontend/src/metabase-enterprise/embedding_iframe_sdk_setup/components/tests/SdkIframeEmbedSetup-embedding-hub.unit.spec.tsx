@@ -9,7 +9,7 @@ const mockLocation = (search: string) =>
 
 describe("Embed flow > embedding hub step completion tracking", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
 
   it.each([
