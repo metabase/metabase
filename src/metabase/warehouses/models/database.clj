@@ -214,7 +214,7 @@
            (analytics/inc! :metabase-database/status {:driver engine :healthy true})
 
            ;; Detect and update provider name
-           (when-let [provider (provider-detection/detect-provider-from-database database)]
+           (let [provider (provider-detection/detect-provider-from-database database)]
              (when (not= provider (:provider_name database))
                (try
                  (log/info (u/format-color :blue "Provider detection: updating %s {:id %d} from '%s' to '%s'"

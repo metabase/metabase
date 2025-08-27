@@ -33,8 +33,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.warehouses.core :as warehouses])
+   [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
    (java.sql
@@ -1221,11 +1220,11 @@
                {:name "Azure" :pattern "\\.postgres\\.database\\.azure\\.com$"}
                {:name "Crunchy Data" :pattern "\\.db\\.postgresbridge\\.com$"}
                {:name "DigitalOcean" :pattern "db\\.ondigitalocean\\.com$"}
-               {:name "Fly.io" :pattern "\\.fly\\.dev$" :engines [:postgres]}
-               {:name "Neon" :pattern "\\.neon\\.tech$" :engines [:postgres]}
+               {:name "Fly.io" :pattern "\\.fly\\.dev$"}
+               {:name "Neon" :pattern "\\.neon\\.tech$"}
                {:name "PlanetScale" :pattern "\\.psdb\\.cloud$"}
-               {:name "Railway" :pattern "\\.railway\\.app$" :engines [:postgres]}
-               {:name "Render" :pattern "\\.render\\.com$" :engines [:postgres]}
-               {:name "Scaleway" :pattern "\\.scw\\.cloud$" :engines [:postgres]}
+               {:name "Railway" :pattern "\\.railway\\.app$"}
+               {:name "Render" :pattern "\\.render\\.com$"}
+               {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
                {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
                {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})
