@@ -86,7 +86,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     },
     infoAlert: {
       type: "always",
-      message: t`To set up row and column security, first log in with SSO to create a user with attributes.`,
+      message: t`Log in using SSO to create a user with attributes before setting up \n row and column security.`,
     },
   };
 

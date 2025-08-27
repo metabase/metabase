@@ -1,9 +1,11 @@
 import cx from "classnames";
 import { useMemo } from "react";
 
+import CS from "metabase/css/core/index.css";
 import {
   Accordion,
   Alert,
+  Flex,
   Group,
   Icon,
   type IconName,
@@ -114,7 +116,7 @@ export const EmbeddingHubChecklist = ({
                 <Text>{step.description}</Text>
 
                 {step.infoAlert?.type === "always" && (
-                  <InfoAlert message={step.infoAlert.message} />
+                  <InfoAlert icon="info" message={step.infoAlert.message} />
                 )}
 
                 {isLocked && step.infoAlert?.type === "locked" && (
@@ -152,10 +154,12 @@ const InfoAlert = ({ message, icon }: { message: string; icon?: IconName }) => (
     bg="var(--mb-color-bg-light)"
     bd="1px solid var(--mb-color-border)"
   >
-    <Group gap="xs">
-      {icon && <Icon name={icon} c="var(--mb-color-text-secondary)" />}
+    <Flex gap="sm" align="flex-start">
+      {icon && <Icon name={icon} c="var(--mb-color-text-secondary)" mt={4} />}
 
-      <Text c="var(--mb-color-text-secondary)">{message}</Text>
-    </Group>
+      <Text c="var(--mb-color-text-secondary)" className={CS.textPreWrap}>
+        {message}
+      </Text>
+    </Flex>
   </Alert>
 );
