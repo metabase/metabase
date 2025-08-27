@@ -37,20 +37,13 @@ const SdkIframeEmbedSetupContent = () => {
   const acceptSimpleEmbedTerms = () =>
     updateSettings({ "show-simple-embed-terms": false });
 
-  function trackSnippetCreated() {}
-
-  function handleGetCode() {
+  function handleEmbedDone() {
     markEmbeddingHubStepAsComplete(
       settings.useExistingUserSession
         ? "create-test-embed"
         : "embed-production",
     );
 
-    handleNext();
-  }
-
-  function handleEmbedDone() {
-    trackSnippetCreated();
     window.history.back();
   }
 
@@ -76,7 +69,7 @@ const SdkIframeEmbedSetupContent = () => {
       </Button>
     ))
     .with("select-embed-options", () => (
-      <Button variant="filled" onClick={handleGetCode}>
+      <Button variant="filled" onClick={handleNext}>
         {t`Get Code`}
       </Button>
     ))
