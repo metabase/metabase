@@ -39,7 +39,7 @@ export function JobView({
       <TagSection job={job} onTagsChange={onTagListChange} />
       {job.id != null && <ManageSection job={job} />}
       {job.id == null && <SaveSection job={job} />}
-      <DependenciesSection job={job} />
+      {job.id != null && <DependenciesSection jobId={job.id} />}
     </Stack>
   );
 }
