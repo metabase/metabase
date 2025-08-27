@@ -249,11 +249,17 @@ jobs:
           cp averaged-timings.json e2e/support/timings.json
           echo "✅ Updated e2e/support/timings.json with averaged timing data"
 
+      - name: Set branch name
+        run: |
+          BRANCH_NAME="update-e2e-timings-$(date +%Y%m%d-%H%M%S)"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          echo "Branch name will be: $BRANCH_NAME"
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: update-e2e-timings-$(date +%Y%m%d-%H%M%S)
+          branch: ${{ env.BRANCH_NAME }}
           base: master
           commit-message: |
             Update E2E test timings with averaged data
