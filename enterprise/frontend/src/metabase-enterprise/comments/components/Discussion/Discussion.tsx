@@ -2,20 +2,19 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Stack } from "metabase/ui";
-import type { DocumentContent } from "metabase-types/api";
-import type { CommentThread } from "metabase-types/api/comments";
+import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
 
 interface Props {
-  thread: CommentThread;
+  comments: Comment[];
 }
 
 /**
  * TODO: implement me
  * This component should not fetch any data (except version history) but it should use mutations.
  */
-export const Discussion = ({ thread }: Props) => {
+export const Discussion = ({ comments }: Props) => {
   const [newComment, setNewComment] = useState<DocumentContent>();
 
   const handleSubmit = () => {
@@ -24,7 +23,7 @@ export const Discussion = ({ thread }: Props) => {
 
   return (
     <Stack>
-      {thread.comments.map((comment) => (
+      {comments.map((comment) => (
         <CommentEditor
           key={comment.id}
           disabled

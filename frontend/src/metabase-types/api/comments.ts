@@ -3,36 +3,23 @@ import type { BaseUser } from "./user";
 
 export type CommentId = number;
 
-export type CommentThreadId = number;
-
-export type CommentEntityType = "document-node";
+export type CommentEntityType = "document";
 
 export type EntityId = string | number;
 
-export interface CommentThread {
-  id: CommentThreadId;
+export interface Comment {
+  id: CommentId;
+  parent_comment_id: CommentId | null;
 
   entity_type: CommentEntityType;
   entity_id: EntityId;
-  parent_entity_id: EntityId | null;
+  child_entity_id: EntityId | null;
 
   creator: BaseUser;
-  comments: Comment[];
+  document: DocumentContent;
 
   is_deleted: boolean;
   is_resolved: boolean;
-
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Comment {
-  id: CommentId;
-
-  document: DocumentContent;
-  creator: BaseUser;
-
-  is_deleted: boolean;
 
   created_at: string;
   updated_at: string;
@@ -47,28 +34,19 @@ export type CommentHistory = Comment[];
 export interface ListCommentsRequest {
   entity_type: CommentEntityType;
   entity_id: EntityId;
-  parent_entity_id?: EntityId;
-}
-
-export interface CreateCommentThreadRequest {
-  entity_id: EntityId;
-  entity_type: CommentEntityType;
-  parent_entity_id?: EntityId;
-  document: DocumentContent;
 }
 
 export interface CreateCommentRequest {
-  thread_id: CommentThreadId;
+  entity_id: EntityId;
+  entity_type: CommentEntityType;
+  child_entity_id: EntityId | null;
+  parent_comment_id: CommentId | null;
   document: DocumentContent;
 }
 
 export interface UpdateCommentRequest {
-  thread_id: CommentThreadId;
-  comment_id: CommentId;
-  document: DocumentContent;
-}
-
-export interface GetCommentHistoryRequest {
-  thread_id: CommentThreadId;
-  comment_id: CommentId;
+  id: CommentId;
+  document?: DocumentContent;
+  is_deleted?: boolean;
+  is_resolved?: boolean;
 }
