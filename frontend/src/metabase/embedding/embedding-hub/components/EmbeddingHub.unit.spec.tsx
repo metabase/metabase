@@ -1,11 +1,29 @@
 import userEvent from "@testing-library/user-event";
+import { push } from "react-router-redux";
 
+import {
+  setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockRecentTableDatabaseInfo,
+  createMockRecentTableItem,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
+jest.mock("react-router-redux", () => ({
+  push: jest.fn(() => ({
+    type: "@@router/CALL_HISTORY_METHOD",
+    payload: { method: "push" },
+  })),
+}));
+
 import { EmbeddingHub } from "./EmbeddingHub";
+
+const mockPush = push as jest.MockedFunction<typeof push>;
 
 const setup = ({ isAdmin = true } = {}) => {
   const state = createMockState({
@@ -15,11 +33,31 @@ const setup = ({ isAdmin = true } = {}) => {
     }),
   });
 
+  setupRecentViewsAndSelectionsEndpoints(
+    [
+      createMockRecentTableItem({
+        id: 10,
+        name: "foobar",
+        display_name: "Foo Bar Table",
+        database: createMockRecentTableDatabaseInfo({
+          id: 1,
+        }),
+      }),
+    ],
+    ["selections"],
+  );
+
+  setupSearchEndpoints([]);
+
   return renderWithProviders(<EmbeddingHub />, { storeInitialState: state });
 };
 
 describe("EmbeddingHub", () => {
-  it("opens AddDataModal when 'Add data' button is clicked", async () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+  });
+
+  it("opens AddDataModal when 'Add data' is clicked", async () => {
     setup();
 
     await userEvent.click(screen.getByText("Add your data"));
@@ -32,7 +70,7 @@ describe("EmbeddingHub", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens CreateDashboardModal when 'Build your own' button is clicked", async () => {
+  it("opens CreateDashboardModal when 'Build your own' is clicked", async () => {
     setup();
 
     await userEvent.click(screen.getByText("Create a dashboard"));
@@ -43,5 +81,27 @@ describe("EmbeddingHub", () => {
     expect(
       dialog.getByRole("heading", { name: "New dashboard" }),
     ).toBeInTheDocument();
+  });
+
+  it("opens DataPickerModal when 'Generate automatic dashboard' is clicked", async () => {
+    setup();
+
+    await userEvent.click(screen.getByText("Create a dashboard"));
+    await userEvent.click(screen.getByText("Generate automatic dashboard"));
+
+    const dialog = await screen.findByTestId("entity-picker-modal");
+    expect(dialog).toBeInTheDocument();
+
+    expect(
+      await within(dialog).findByText("Choose a table to generate a dashboard"),
+    ).toBeInTheDocument();
+
+    expect(
+      await within(dialog).findByText("Foo Bar Table"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByText("Foo Bar Table"));
+
+    expect(mockPush).toHaveBeenCalledWith("/auto/dashboard/table/10");
   });
 });
