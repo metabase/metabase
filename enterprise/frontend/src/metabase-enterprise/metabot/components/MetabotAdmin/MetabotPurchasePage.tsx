@@ -76,8 +76,10 @@ export const MetabotPurchasePage = () => {
   const currentUser = useSelector(getCurrentUser);
   const tokenStatus = useSetting("token-status");
   const storeUserEmails =
-    tokenStatus?.["store-users"]?.map(({ email }) => email) ?? [];
-  const isStoreUser = storeUserEmails.includes(currentUser?.email);
+    tokenStatus?.["store-users"]?.map(({ email }) => email.toLowerCase()) ?? [];
+  const isStoreUser = storeUserEmails.includes(
+    currentUser?.email.toLowerCase(),
+  );
   const anyStoreUserEmailAddress =
     storeUserEmails.length > 0 ? storeUserEmails[0] : undefined;
 
