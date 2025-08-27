@@ -6,7 +6,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const TEST_EMBED: EmbeddingHubStep = {
     id: "create-test-embed",
     title: t`Create a test embed`,
-    icon: "play",
+    icon: "test_tube",
     description: t`Test out the capabilities of Embedded Analytics JS by embedding a sample dashboard.`,
     actions: [
       {
@@ -108,7 +108,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const EMBED_PRODUCTION: EmbeddingHubStep = {
     id: "embed-production",
     title: t`Embed in production`,
-    icon: "bolt",
+    icon: "code_block",
     description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
     actions: [
       {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ResizableBox } from "react-resizable";
+import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import "react-resizable/css/styles.css";
@@ -20,13 +21,14 @@ const SdkIframeEmbedSetupContent = () => {
   const {
     currentStep,
     settings,
-    // updateSettings: updateEmbedSettings,
+    updateSettings: updateEmbedSettings,
   } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
   const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
   const [updateSettings] = useUpdateSettingsMutation();
   const [sendToast] = useToast();
+  const location = useLocation();
 
   const {
     handleNext,
@@ -56,7 +58,9 @@ const SdkIframeEmbedSetupContent = () => {
     handleNext();
   };
 
-  const handleDone = () => {};
+  const handleDone = () => {
+    window.history.back();
+  };
 
   // Automatically enable embedding if it's not already enabled.
   useEffect(() => {
@@ -70,14 +74,17 @@ const SdkIframeEmbedSetupContent = () => {
   }, [isSimpleEmbeddingEnabled, sendToast, updateSettings]);
 
   // Set initial auth method based on URL parameter
-  // useEffect(() => {
-  //   const authMethod = searchParams.get("auth_method");
-  //   if (authMethod === "sso") {
-  //     updateEmbedSettings({ useExistingUserSession: false });
-  //   } else if (authMethod === "user_session") {
-  //     updateEmbedSettings({ useExistingUserSession: true });
-  //   }
-  // }, [searchParams, updateEmbedSettings]);
+  useEffect(() => {
+    if (location?.search) {
+      const searchParams = new URLSearchParams(location.search);
+      const authMethod = searchParams.get("auth_method");
+      if (authMethod === "sso") {
+        updateEmbedSettings({ useExistingUserSession: false });
+      } else if (authMethod === "user_session") {
+        updateEmbedSettings({ useExistingUserSession: true });
+      }
+    }
+  }, [location, updateEmbedSettings]);
 
   return (
     <Box className={S.Container}>
