@@ -1806,3 +1806,19 @@
             (finally
               (jdbc/execute! conn "DROP SCHEMA IF EXISTS sync_test_schema CASCADE")
               (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user"))))))))
+
+(deftest ^:parallel null-array-query-test
+  (testing "queries with nulls in arrays should be returned in a readable format"
+    (mt/test-driver :postgres
+      (is (= [[[nil]
+               [nil nil]
+               [1 nil 3]
+               [[nil]]
+               [[nil] [nil]]
+               [[1 nil] [nil 2]]]]
+             (->> (mt/native-query {:query "select array[null], array[null, null],
+                                            array[1, null, 3], array[array[null]],
+                                            array[array[null], array[null]],
+                                            array[array[1, null], array[null, 2]]"})
+                  mt/process-query
+                  mt/rows))))))
