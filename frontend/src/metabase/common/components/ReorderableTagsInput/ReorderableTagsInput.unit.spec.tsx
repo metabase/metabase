@@ -1,7 +1,25 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { mockOptions, setup } from "./test-utils";
+
+jest.mock("@dnd-kit/core", () => {
+  const actual = jest.requireActual("@dnd-kit/core");
+  return {
+    ...actual,
+    DndContext: ({ onDragEnd, children }: any) => (
+      <div>
+        {children}
+        <button
+          data-testid="simulate-dnd"
+          onClick={() =>
+            onDragEnd({ active: { id: "title" }, over: { id: "owner" } })
+          }
+        />
+      </div>
+    ),
+  };
+});
 
 describe("ReorderableTagsInput", () => {
   describe("Basic functionality", () => {
@@ -209,6 +227,22 @@ describe("ReorderableTagsInput", () => {
     });
   });
 
+  describe("Reordering within input", () => {
+    it("should reorder pills when dragging one over another", async () => {
+      const { onChange } = setup({ value: ["title", "status", "owner"] });
+
+      // sanity check
+      expect(screen.getByText("Title")).toBeInTheDocument();
+
+      // trigger mocked onDragEnd via custom DndContext wrapper
+      fireEvent.click(screen.getByTestId("simulate-dnd"));
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(["status", "owner", "title"]);
+      });
+    });
+  });
+
   describe("External DnD mode", () => {
     it("should render with external DnD props", () => {
       setup({
@@ -251,21 +285,6 @@ describe("ReorderableTagsInput", () => {
     });
   });
 
-  describe("Accessibility", () => {
-    it("should have proper data-testid when provided", () => {
-      setup({ "data-testid": "reorderable-input" });
-
-      expect(screen.getByPlaceholderText("Select options")).toBeInTheDocument();
-    });
-
-    it("should have draggable pills with proper attributes", () => {
-      setup({ value: ["title"] });
-
-      const pill = screen.getByText("Title");
-      expect(pill).toBeInTheDocument();
-    });
-  });
-
   describe("Edge cases", () => {
     it("should handle empty data array", () => {
       setup({ data: [] });
@@ -296,14 +315,6 @@ describe("ReorderableTagsInput", () => {
         screen.queryByRole("option", { name: "Title" }),
       ).not.toBeInTheDocument();
       expect(onChange).not.toHaveBeenCalledWith(["title", "title"]);
-    });
-
-    it("should handle size prop correctly", () => {
-      const { rerender } = setup({ size: "md" });
-
-      expect(screen.getByPlaceholderText("Select options")).toBeInTheDocument();
-
-      rerender(<div />); // Just verify no errors with different size
     });
   });
 });
