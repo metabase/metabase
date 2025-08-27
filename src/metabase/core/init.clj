@@ -41,6 +41,7 @@
    [metabase.product-feedback.init]
    [metabase.public-sharing.init]
    [metabase.pulse.init]
+   [metabase.python-runner.init]
    [metabase.queries.init]
    [metabase.query-processor.init]
    [metabase.request.init]

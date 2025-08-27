@@ -837,19 +837,6 @@
            task
            util}}
 
-  python-runner
-  {:team "Workflows"
-   :api  #{metabase.python-runner.api
-           metabase.python-runner.core
-           metabase.python-runner.init}
-   :uses #{api
-           driver
-           models
-           query-processor
-           request
-           util
-           enterprise/transforms}}
-
   public-sharing
   {:team "UX West"
    :api  #{metabase.public-sharing.api
@@ -896,6 +883,19 @@
            util
            enterprise/advanced-permissions
            enterprise/sandbox}}
+
+  python-runner
+  {:team "Workflows"
+   :api  #{metabase.python-runner.api
+           metabase.python-runner.core
+           metabase.python-runner.init}
+   :uses #{api
+           driver
+           models
+           query-processor
+           request
+           util
+           enterprise/transforms}}
 
   queries
   {:team "Querying"
