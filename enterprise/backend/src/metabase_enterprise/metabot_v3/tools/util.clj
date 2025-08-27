@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -29,6 +30,15 @@
       (isa? (:effective-type column) :type/DateTime) :datetime
       (isa? (:effective-type column) :type/Time)     :time
       (lib.types.isa/temporal? column)               :date)))
+
+(defn add-table-reference
+  "Add table-reference to columns that have FK relationships."
+  [query col]
+  (cond-> col
+    (and (:fk-field-id col)
+         (:table-id col))
+    (assoc :table-reference (-> (lib/display-name query (lib.metadata/field query (:fk-field-id col)))
+                                lib.util/strip-id))))
 
 (defn table-field-id-prefix
   "Return the field ID prefix for `table-id`."

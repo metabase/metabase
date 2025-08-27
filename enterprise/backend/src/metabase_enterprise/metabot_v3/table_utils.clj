@@ -106,7 +106,8 @@
              _ (lib.metadata/bulk-metadata mp :metadata/table table-ids)]
          (mapv (fn [{:keys [id name schema description]}]
                  (let [table-query (lib/query mp (lib.metadata/table mp id))
-                       cols (lib/visible-columns table-query)
+                       cols (->> (lib/visible-columns table-query)
+                                 (map #(metabot-v3.tools.u/add-table-reference table-query %)))
                        field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
                    {:id id
                     :type :table
