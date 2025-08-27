@@ -49,7 +49,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
       H.restore("with-translations" as any);
     });
 
-    it("should work", () => {
+    it("should translate pivot table measure names", () => {
       const pivotQuestionDetails: StructuredQuestionDetails = {
         name: "Pivot Table Test",
         query: {
