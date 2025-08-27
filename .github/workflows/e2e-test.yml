@@ -220,6 +220,57 @@ jobs:
           head -20 ./e2e/support/timings.json 2>/dev/null || echo "Could not read timing file"
           echo "==================================="
 
+      - name: Extract chunk-specific timings
+        if: env.SPLIT && env.SPLIT_INDEX
+        continue-on-error: true
+        shell: bash
+        run: |
+          echo "=== EXTRACTING CHUNK-SPECIFIC TIMINGS ==="
+          
+          # Extract the JSON timing data that cypress-split outputs for this chunk
+          echo "Looking for cypress-split timing output in logs..."
+          
+          if ! grep -q "cypress-split: here are passing spec timings" cypress-output.log; then
+            echo "⚠️  WARNING: cypress-split timing output not found in logs"
+            echo "This may indicate no tests ran or cypress-split didn't execute"
+            echo "Creating empty timing file..."
+            echo '{"durations": []}' > chunkTimings.json
+            exit 0
+          fi
+          
+          echo "✅ Found cypress-split timing output"
+          
+          # Extract the JSON block that follows "cypress-split: here are passing spec timings"
+          CHUNK_TIMING_JSON=$(sed -n '/cypress-split: here are passing spec timings/,/^}/p' cypress-output.log | tail -n +2)
+          
+          if [ -z "$CHUNK_TIMING_JSON" ]; then
+            echo "⚠️  WARNING: Could not extract timing JSON from cypress-split output"
+            echo "Expected JSON block after 'cypress-split: here are passing spec timings' message"
+            echo "Creating empty timing file..."
+            echo '{"durations": []}' > chunkTimings.json
+            exit 0
+          fi
+          
+          echo "✅ Successfully extracted chunk timing data"
+          echo "$CHUNK_TIMING_JSON" > chunkTimings.json
+          
+          # Validate the JSON is well-formed
+          if ! jq empty chunkTimings.json 2>/dev/null; then
+            echo "⚠️  WARNING: Extracted timing data is not valid JSON"
+            echo "Content:"
+            cat chunkTimings.json
+            echo "Creating empty timing file instead..."
+            echo '{"durations": []}' > chunkTimings.json
+          fi
+          
+          echo "✅ Chunk timing data is valid JSON"
+          echo "Chunk timing data for this run:"
+          cat chunkTimings.json
+          
+          SPEC_COUNT=$(jq '.durations | length' chunkTimings.json)
+          echo "✅ Extracted timing data for $SPEC_COUNT specs in this chunk"
+          echo "============================="
+
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -267,33 +318,43 @@ jobs:
           find . -name "*timing*" -o -name "*Timing*" 2>/dev/null || echo "No timing files found"
 
       - name: Check timing file before upload
-        if: always()
+        if: always() && env.SPLIT && env.SPLIT_INDEX
+        continue-on-error: true
         shell: bash
         run: |
           echo "=== TIMING FILE UPLOAD CHECK ==="
-          echo "Checking if timing file exists at ./e2e/support/newTimings.json:"
-          if [ -f "./e2e/support/newTimings.json" ]; then
-            echo "✅ File exists"
-            echo "File size: $(stat -c%s ./e2e/support/newTimings.json 2>/dev/null || stat -f%z ./e2e/support/newTimings.json) bytes"
-            echo "File contents:"
-            cat ./e2e/support/newTimings.json
+          echo "Checking if chunk timing file exists at chunkTimings.json:"
+          if [ -f "chunkTimings.json" ]; then
+            echo "✅ Chunk timing file exists"
+            echo "File size: $(stat -c%s chunkTimings.json 2>/dev/null || stat -f%z chunkTimings.json) bytes"
+            echo "Chunk-specific timing file contents:"
+            cat chunkTimings.json
             echo ""
             echo "File info:"
-            ls -la ./e2e/support/newTimings.json
+            ls -la chunkTimings.json
           else
-            echo "❌ File does not exist"
-            echo "Contents of ./e2e/support/ directory:"
-            ls -la ./e2e/support/ || echo "Directory does not exist"
+            echo "❌ Chunk timing file does not exist"
+            echo "Contents of current directory:"
+            ls -la *timing*.json 2>/dev/null || echo "No timing files found"
+          fi
+          
+          echo "Also checking full timing file at newTimings.json for comparison:"
+          if [ -f "newTimings.json" ]; then
+            echo "✅ Full timing file exists"
+            echo "Full timing file size: $(stat -c%s newTimings.json 2>/dev/null || stat -f%z newTimings.json) bytes"
+            echo "Number of specs in full file: $(jq '.durations | length' newTimings.json 2>/dev/null || echo 'unknown')"
+          else
+            echo "❌ Full timing file does not exist"
           fi
           echo "============================="
 
       - name: Upload Timing Data
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && env.SPLIT && env.SPLIT_INDEX
         continue-on-error: true
         with:
           name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
-          path: ./e2e/support/newTimings.json
+          path: chunkTimings.json
           retention-days: 7
 
       - name: Publish Summary
