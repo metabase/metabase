@@ -6,13 +6,21 @@
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
+   [metabase.server.streaming-response :as streaming]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
+   [ring.util.response :as response]
    [toucan2.core :as t2])
   (:import
-   (java.io File)
+   (com.fasterxml.jackson.core JsonGenerator)
+   (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.io File ByteArrayOutputStream)
+   (java.nio.charset StandardCharsets)
    (java.nio.file Files)
    (java.nio.file.attribute FileAttribute)))
 
@@ -93,23 +101,62 @@
   (api/check-superuser)
   (execute-python-code code table-id))
 
+(defn- execute-mbql-query
+  [driver db-id query respond]
+  (driver/with-driver driver
+    (qp.store/with-metadata-provider db-id
+      (let [native (driver/mbql->native driver (qp.preprocess/preprocess {:type :query, :database db-id :query query}))
+
+            query {:database db-id
+                   :type :native
+                   :native native}]
+        (driver/execute-reducible-query driver query {} respond)))))
+
+(defn- write-to-stream! [^OutputStream os col-names reducible-rows]
+  (let [^JsonGenerator jgen (-> os
+                                (OutputStreamWriter. StandardCharsets/UTF_8)
+                                (BufferedWriter.)
+                                json/create-generator)]
+
+    (.writeStartArray jgen)
+
+    (run! (fn [row]
+            (def yo [col-names row])
+            (let [row-map (zipmap col-names row)]
+              (json/generate jgen row-map json/default-date-format nil nil)))
+          reducible-rows)
+
+    (doto jgen
+      (.writeEndArray)
+      (.flush)
+      (.close))))
+
+(defn- respond-os [{cols-meta :cols} reducible-rows]
+  (let [os (ByteArrayOutputStream.)]
+    (write-to-stream! os (mapv :name cols-meta) reducible-rows)
+    (String. (.toByteArray os) "UTF-8"))
+  #_(streaming/streaming-response {:content-type "application/json; charset=utf-8"} [os _canceled-chan]
+      (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
+
 (api.macros/defendpoint :get "/table/:id/data"
   "Fetch table data for Python transforms."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  ;; (api/check-superuser)
-  (let [db-id (api/check-404 (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id))
-        ;; _ (api/read-check :model/Database db-id)
-        ;; _ (api/read-check :model/Table id)
+                    [:id ms/PositiveInt]]
+   _ _ _ respond raise]
+  (try
+    (let [db-id (api/check-404 (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id))
 
-        ;; TODO
-        row-limit (or (request/limit) 10000)
+         ;; TODO
+          row-limit (or (request/limit) 10000)
 
-        query {:database db-id
-               :type :query
-               :query {:source-table id
-                       :limit row-limit}}]
+          driver (t2/select-one-fn :engine :model/Database db-id)
 
-    ;; TODO: jsonl
-    (qp.streaming/streaming-response [rff :json]
-      (qp/process-query query rff))))
+          query {:source-table id, :limit row-limit}
+
+          respond (fn [cols-meta reducible-rows]
+                    (respond (-> (response/response (respond-os cols-meta reducible-rows))
+                                 (response/content-type "application/json"))))]
+
+      (execute-mbql-query driver db-id query respond))
+    (catch Throwable e
+      (raise e))))

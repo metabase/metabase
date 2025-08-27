@@ -115,8 +115,7 @@
                                         "\n"
                                         "def transform(students):\n"
                                         "    # Calculate average score\n"
-                                        "    students['Score'] = pd.to_numeric(students['Score'], errors='coerce')\n"
-                                        "    avg_score = students['Score'].mean()\n"
+                                        "    avg_score = students['score'].mean()\n"
                                         "    result = pd.DataFrame({\n"
                                         "        'student_count': [len(students)],\n"
                                         "        'average_score': [round(avg_score, 2)]\n"
@@ -138,4 +137,4 @@
       (let [result (mt/user-http-request :crowberto :get 200
                                          (format "python-runner/table/%d/data" (mt/id :orders))
                                          :limit "2")]
-        (is (= ["1" "2"] (map :ID result)))))))
+        (is (= [1 2] (map :ID result)))))))
