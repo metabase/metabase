@@ -1075,6 +1075,132 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v57.2025-08-24T10:00:00
+      author: kulyk
+      comment: Create comment table for documents feature
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: comment
+      changes:
+        - createTable:
+            tableName: comment
+            remarks: Comments on various entities (documents, dashboards, etc.)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: parent_comment_id
+                  type: int
+                  remarks: ID of the parent comment for threading (null for root comments)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_type
+                  type: varchar(50)
+                  remarks: Type of entity being commented on
+                  defaultValue: 'document'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_id
+                  type: int
+                  remarks: ID of the entity being commented on
+                  constraints:
+                    nullable: false
+              - column:
+                  name: child_target_id
+                  type: ${text.type}
+                  remarks: Sub-entity ID (e.g., document block node ID)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who created this comment
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: ${text.type}
+                  remarks: The comment content
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_deleted
+                  type: ${boolean.type}
+                  remarks: Soft delete flag
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_resolved
+                  type: ${boolean.type}
+                  remarks: Whether this comment thread is resolved
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+        - addForeignKeyConstraint:
+            baseTableName: comment
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_comment_creator_id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: comment
+            baseColumnNames: parent_comment_id
+            referencedTableName: comment
+            referencedColumnNames: id
+            constraintName: fk_comment_parent_comment_id
+            onDelete: CASCADE
+        - createIndex:
+            tableName: comment
+            indexName: idx_comment_entity
+            columns:
+              - column:
+                  name: target_type
+              - column:
+                  name: target_id
+        - createIndex:
+            tableName: comment
+            indexName: idx_comment_creator_id
+            columns:
+              - column:
+                  name: creator_id
+        - createIndex:
+            tableName: comment
+            indexName: idx_comment_parent_comment_id
+            columns:
+              - column:
+                  name: parent_comment_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
