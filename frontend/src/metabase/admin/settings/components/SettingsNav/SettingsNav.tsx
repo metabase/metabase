@@ -62,7 +62,7 @@ export function SettingsNav() {
       />
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
-        path="whitelabel"
+        path={!hasWhitelabel ? "whitelabel" : undefined}
         folderPattern="whitelabel"
         label={
           <Flex gap="sm" align="center">
