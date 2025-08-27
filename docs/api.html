@@ -12100,6 +12100,48 @@ redirect_from:
         "tags" : [ "/api/ee/billing" ]
       }
     },
+    "/api/ee/cloud-add-ons/{product-type}" : {
+      "post" : {
+        "summary" : "POST /api/ee/cloud-add-ons/{product-type}",
+        "description" : "Purchase an add-on.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "product-type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "metabase-ai" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "terms_of_service" : {
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ "terms_of_service" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      }
+    },
     "/api/ee/content-translation/csv" : {
       "get" : {
         "summary" : "GET /api/ee/content-translation/csv",
