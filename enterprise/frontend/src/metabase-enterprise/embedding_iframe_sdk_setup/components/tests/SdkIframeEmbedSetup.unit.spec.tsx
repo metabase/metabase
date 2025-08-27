@@ -1,39 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  findRequests,
-  setupDashboardEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupUpdateSettingEndpoint,
-  setupUpdateSettingsEndpoint,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockDashboard } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { screen } from "__support__/ui";
 
-import { SdkIframeEmbedSetup } from "./SdkIframeEmbedSetup";
-
-const setup = (options?: {
-  showSimpleEmbedTerms?: boolean;
-  simpleEmbeddingEnabled?: boolean;
-}) => {
-  setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
-  setupDashboardEndpoints(createMockDashboard());
-  setupUpdateSettingsEndpoint();
-  setupUpdateSettingEndpoint();
-
-  renderWithProviders(<SdkIframeEmbedSetup />, {
-    storeInitialState: createMockState({
-      settings: createMockSettingsState({
-        "show-simple-embed-terms": options?.showSimpleEmbedTerms ?? true,
-        "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
-      }),
-    }),
-  });
-};
+import { setup } from "./test-setup";
 
 describe("Embed flow > initial setup", () => {
   it("shows the embed experience step as the first step", () => {
@@ -175,34 +144,3 @@ describe("Embed flow > usage terms card", () => {
     expect(matchingRequest).toBeDefined();
   });
 });
-
-async function waitForPutRequests() {
-  return waitFor(async () => {
-    const puts = await findRequests("PUT");
-    expect(puts.length).toBeGreaterThan(0);
-    return puts;
-  });
-}
-
-async function waitForUpdateSetting(
-  settingName: string,
-  expectedValue?: unknown,
-) {
-  return waitForPutRequests().then((putRequests) => {
-    const settingRequests = putRequests.filter((req) =>
-      req.url.includes("/api/setting"),
-    );
-
-    const matchingRequest = settingRequests.find((req) => {
-      const body =
-        typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-
-      return (
-        settingName in body &&
-        (expectedValue === undefined || body[settingName] === expectedValue)
-      );
-    });
-
-    return matchingRequest;
-  });
-}

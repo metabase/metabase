@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useUpdateSettingMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { useSetting } from "metabase/common/hooks";
 import {
@@ -14,6 +14,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import type { SettingKey } from "metabase-types/api";
 
 import { trackEmbedWizardCodeCopied } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -21,7 +22,7 @@ import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet"
 
 export const GetCodeStep = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
-  const [updateInstanceSetting] = useUpdateSettingMutation();
+  const [updateInstanceSettings] = useUpdateSettingsMutation();
 
   const isJwtEnabled = useSetting("jwt-enabled");
   const isSamlEnabled = useSetting("saml-enabled");
@@ -120,11 +121,11 @@ export const GetCodeStep = () => {
                   trackEmbedWizardCodeCopied();
 
                   // Embedding Hub: track step completion
-                  const settingKey = settings.useExistingUserSession
+                  const settingKey: SettingKey = settings.useExistingUserSession
                     ? "embedding-hub-test-embed-snippet-created"
                     : "embedding-hub-production-embed-snippet-created";
 
-                  updateInstanceSetting({ key: settingKey, value: true });
+                  updateInstanceSettings({ [settingKey]: true });
                 }}
               >
                 {copied ? t`Copied!` : t`Copy Code`}

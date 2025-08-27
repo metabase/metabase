@@ -5,6 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useLocation } from "react-use";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -34,6 +35,7 @@ interface SdkIframeEmbedSetupProviderProps {
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
+  const location = useLocation();
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
@@ -61,7 +63,7 @@ export const SdkIframeEmbedSetupProvider = ({
       ),
       useExistingUserSession: !authMethod || authMethod === "user_session",
     };
-  }, [recentDashboards]);
+  }, [recentDashboards, location.search]);
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
