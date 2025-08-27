@@ -89,74 +89,59 @@
    "test_config"
    "test_resources"])
 
-(defn- load-ci-config-json
-  "Load and parse ci-test-config.json from the filesystem.
-   Returns nil if file doesn't exist or parsing fails."
-  [file-path]
-  (try
-    (when (.exists (io/file file-path))
-      (-> file-path slurp (json/parse-string true)))
-    (catch Exception e
-      (log/warn e "Failed to load CI config from" file-path)
-      nil)))
-
 (defn- json-config->edn-ignored
-  "Convert JSON config to hawk's EDN ignored format."
+  "Convert JSON config to hawk's EDN ignored format. Right now we only support individually ignored vars. In the future
+  will extend to namespaces, drivers. Ideally e2e tests as well. Example config:
+     {
+       \"ignore\": {
+         \"vars\": [
+           \"metabase.util.queue-test/bounded-transfer-queue-test\",
+           \"metabase.util.queue-test/take-batch-test\"
+         ]
+       }
+     }"
   [json-config]
-  (let [backend (get json-config :backend {})]
+  (let [{:keys [ignored] :as _config} (json/parse-string (slurp json-config) true)]
     (cond-> {}
-      (seq (get backend :ignored_vars []))
-      (assoc :vars (set (get backend :ignored_vars [])))
-
-      (seq (get backend :ignored_namespaces []))
-      (assoc :namespaces (set (get backend :ignored_namespaces [])))
-
-      (seq (get backend :ignored_drivers []))
-      (assoc :drivers (set (get backend :ignored_drivers []))))))
-
-(defn- merge-ignored-configs
-  "Merge CI config ignores with CLI ignores and apply run-ignored-vars overrides."
-  [ci-config cli-ignored run-ignored-vars]
-  (let [edn-ci-config (json-config->edn-ignored ci-config)
-        merged-ignored (merge-with set/union cli-ignored edn-ci-config)]
-    ;; Remove any vars specified in run-ignored-vars
-    (if (seq run-ignored-vars)
-      (update merged-ignored :vars
-              #(set/difference (set %) (set run-ignored-vars)))
-      merged-ignored)))
+      (seq (:vars ignored))
+      (assoc :vars (-> ignored :vars set)))))
 
 (defn- default-options
   "Default options for test runner, with optional CI config integration."
   ([]
    (default-options {}))
-  ([{:keys [ci-config-file ignore-ci-config run-ignored-vars ignored]
+  ([{:keys [ci-config-file]
      :or {ci-config-file "ci-test-config.json"}}]
    (let [base-options {:namespace-pattern #"^(?:(?:metabase.*)|(?:hooks\..*))" ; anything starting with `metabase*` (including `metabase-enterprise`) or `hooks.*`
                        :exclude-directories excluded-directories
                        :test-warn-time 3000}]
-     (if ignore-ci-config
-       base-options
-       (let [ci-config (load-ci-config-json ci-config-file)]
-         (if ci-config
-           (do
-             (log/info "Loaded CI test config from" ci-config-file)
-             (assoc base-options :ignored
-                    (merge-ignored-configs ci-config (or ignored {}) run-ignored-vars)))
-           base-options))))))
+     (if ci-config-file
+       (do
+         (when (not (.exists (io/file ci-config-file)))
+           (throw (ex-info "Ignore config file provided but does not exist" {:file ci-config-file})))
+         (log/info "Loaded CI test config from" ci-config-file)
+         (assoc base-options :ignored (json-config->edn-ignored ci-config-file)))
+       base-options))))
+
+(defn- build-final-options
+  "Build final options by merging defaults, CI config, and runtime options.
+   This centralizes all the option merging logic in one place."
+  [runtime-options]
+  (let [default-opts (default-options runtime-options)
+        runtime-ignored (:ignored runtime-options)
+        ;; Simple merge: if both have :ignored, merge them; otherwise use whichever exists
+        final-ignored (if (and (:ignored default-opts) runtime-ignored)
+                        (merge-with set/union (:ignored default-opts) runtime-ignored)
+                        (or runtime-ignored (:ignored default-opts)))]
+    (-> (merge default-opts runtime-options)
+        (cond-> (seq final-ignored) (assoc :ignored final-ignored)))))
 
 (defn find-tests
   "Find all tests, in case you wish to run them yourself."
   ([]
    (find-tests {}))
   ([options]
-   (let [default-opts (default-options options)
-         ;; Special handling for :ignored to merge rather than replace
-         final-ignored (if (and (:ignored default-opts) (:ignored options))
-                         (merge-with set/union (:ignored default-opts) (:ignored options))
-                         (or (:ignored options) (:ignored default-opts)))
-         merged-options (-> (merge default-opts options)
-                            (assoc :ignored final-ignored))]
-     (hawk/find-tests-with-options merged-options))))
+   (hawk/find-tests-with-options (build-final-options options))))
 
 (defn- initialize-all-fixtures []
   (let [steps (initialize/all-components)]
@@ -169,24 +154,10 @@
   "Find and run tests from the REPL."
   [options]
   (initialize-all-fixtures)
-  (let [default-opts (default-options options)
-        ;; Special handling for :ignored to merge rather than replace
-        final-ignored (if (and (:ignored default-opts) (:ignored options))
-                        (merge-with set/union (:ignored default-opts) (:ignored options))
-                        (or (:ignored options) (:ignored default-opts)))
-        merged-options (-> (merge default-opts options)
-                           (assoc :ignored final-ignored))]
-    (hawk/find-and-run-tests-repl merged-options)))
+  (hawk/find-and-run-tests-repl (build-final-options options)))
 
 (defn find-and-run-tests-cli
   "Entrypoint for `clojure -X:test`."
   [options]
   (initialize-all-fixtures)
-  (let [default-opts (default-options options)
-        ;; Special handling for :ignored to merge rather than replace
-        final-ignored (if (and (:ignored default-opts) (:ignored options))
-                        (merge-with set/union (:ignored default-opts) (:ignored options))
-                        (or (:ignored options) (:ignored default-opts)))
-        merged-options (-> (merge default-opts options)
-                           (assoc :ignored final-ignored))]
-    (hawk/find-and-run-tests-cli merged-options)))
+  (hawk/find-and-run-tests-cli (build-final-options options)))
