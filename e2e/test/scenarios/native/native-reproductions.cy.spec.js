@@ -645,7 +645,7 @@ describe("issue 30680", () => {
 
     H.runNativeQuery();
     cy.findByTestId("editor-tabs-metadata").should("not.be.disabled");
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns-name").click();
 
     cy.findByTestId("sidebar-content").should("exist");
     cy.findByTestId("native-query-editor-action-buttons").should("not.exist");

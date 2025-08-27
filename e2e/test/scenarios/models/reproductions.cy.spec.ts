@@ -1169,7 +1169,7 @@ describe("issue 36161", () => {
     H.popover().button("Done").click();
     H.runButtonOverlay().click();
     cy.wait("@dataset");
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns-name").click();
     H.openColumnOptions("ID2");
     H.renameColumn("ID2", "ID2 custom");
     H.openColumnOptions("ID3");
@@ -1228,7 +1228,7 @@ describe("issue 34514", () => {
     cy.wait("@dataset");
     assertQueryTabState();
 
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns-name").click();
     assertMetadataTabState();
 
     // Close the TabHinToast component.
