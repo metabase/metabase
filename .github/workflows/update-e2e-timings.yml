@@ -46,10 +46,33 @@ jobs:
           mkdir -p timing-artifacts
           echo "Querying GitHub API for merged timing artifacts..."
 
-          # Query for merged timing artifacts
-          gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq "[.artifacts[] | select(.name | startswith(\"merged-e2e-timings-\")) | select(.created_at > \"$CUTOFF_DATE\") | select(.expired == false) | {name, created_at, archive_download_url}]" \
-            > timing-artifacts/artifact-list.json
+          # Query workflow runs from master and generate-new-test-timings branches
+          echo "Searching workflow runs from master and generate-new-test-timings branches..."
+          
+          # Get workflow runs from both branches and extract merged timing artifacts
+          {
+            gh api repos/${{ github.repository }}/actions/workflows/e2e-tests.yml/runs \
+              --jq "[.workflow_runs[] | select(.head_branch == \"master\" or .head_branch == \"generate-new-test-timings\") | select(.created_at > \"$CUTOFF_DATE\") | .id]" \
+              --paginate | jq -s 'flatten'
+          } > timing-artifacts/run-ids.json
+
+          echo "Found workflow run IDs:"
+          cat timing-artifacts/run-ids.json
+
+          # Get artifacts from these runs
+          echo "[]" > timing-artifacts/artifact-list.json
+          while read -r run_id; do
+            if [ -n "$run_id" ] && [ "$run_id" != "null" ]; then
+              echo "Checking artifacts for run $run_id..."
+              gh api repos/${{ github.repository }}/actions/runs/$run_id/artifacts \
+                --jq "[.artifacts[] | select(.name | startswith(\"merged-e2e-timings-\")) | select(.expired == false) | {name, created_at, archive_download_url}]" \
+                >> timing-artifacts/temp-artifacts.json || true
+            fi
+          done < <(jq -r '.[]' timing-artifacts/run-ids.json)
+          
+          # Combine all artifacts and remove duplicates
+          jq -s 'flatten | unique_by(.name)' timing-artifacts/temp-artifacts.json > timing-artifacts/artifact-list.json || echo "[]" > timing-artifacts/artifact-list.json
+          rm -f timing-artifacts/temp-artifacts.json timing-artifacts/run-ids.json
             
           echo "Found artifacts:"
           cat timing-artifacts/artifact-list.json
