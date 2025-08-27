@@ -39,8 +39,8 @@ export function PythonTransformEditor({
   const handleDataChange = (database: number, table?: number) => {
     const newSource = {
       ...source,
-      database,
-      table,
+      "source-database": database,
+      "source-table": table,
     };
     setSource(newSource);
     setIsSourceDirty(true);
@@ -72,7 +72,9 @@ export function PythonTransformEditor({
 
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
-  const canSave = Boolean(source.body.trim() && source["source-database"]);
+  const canSave = Boolean(
+    source.body.trim() && source["source-database"] && source["source-table"],
+  );
 
   return (
     <Flex
@@ -92,6 +94,7 @@ export function PythonTransformEditor({
       <Flex direction="column" style={{ flex: 1 }} p="md">
         <PythonDataPicker
           database={source["source-database"]}
+          table={source["source-table"]}
           onChange={handleDataChange}
         />
 

@@ -31,6 +31,7 @@ export type TransformSource =
       type: "python";
       body: string;
       "source-database": number;
+      "source-table"?: number;
     };
 
 export type TransformTargetType = "table";
