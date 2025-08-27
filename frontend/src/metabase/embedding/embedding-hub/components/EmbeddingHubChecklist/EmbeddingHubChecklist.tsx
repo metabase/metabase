@@ -113,11 +113,12 @@ export const EmbeddingHubChecklist = ({
 
                 <Text>{step.description}</Text>
 
-                {step.infoAlert && (
-                  <InfoAlert
-                    message={step.infoAlert.message}
-                    icon={step.infoAlert.type === "locked" ? "lock" : undefined}
-                  />
+                {step.infoAlert?.type === "always" && (
+                  <InfoAlert message={step.infoAlert.message} />
+                )}
+
+                {isLocked && step.infoAlert?.type === "locked" && (
+                  <InfoAlert icon="lock" message={step.infoAlert.message} />
                 )}
 
                 <EmbeddingHubStepActions
