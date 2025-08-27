@@ -28,28 +28,28 @@ export const useCompletedEmbeddingHubSteps = (): Record<
     [permissionsGraph],
   );
 
-  const testEmbedSnippetCreated = useSetting(
+  const isTestEmbedCreated = useSetting(
     "embedding-hub-test-embed-snippet-created",
   );
 
-  const productionEmbedSnippetCreated = useSetting(
+  const isProductionEmbedCreated = useSetting(
     "embedding-hub-production-embed-snippet-created",
   );
 
   return useMemo(() => {
     return {
-      "create-test-embed": testEmbedSnippetCreated ?? false,
+      "create-test-embed": isTestEmbedCreated ?? false,
       "add-data": false,
       "create-dashboard": false,
       "configure-row-column-security": hasConfiguredSandboxes,
       "secure-embeds": isSsoReady,
-      "embed-production": productionEmbedSnippetCreated ?? false,
+      "embed-production": isProductionEmbedCreated ?? false,
     };
   }, [
-    testEmbedSnippetCreated,
+    isTestEmbedCreated,
     hasConfiguredSandboxes,
     isSsoReady,
-    productionEmbedSnippetCreated,
+    isProductionEmbedCreated,
   ]);
 };
 

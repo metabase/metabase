@@ -7,8 +7,8 @@ import "react-resizable/css/styles.css";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useSetting, useToast } from "metabase/common/hooks";
+import { useMarkEmbeddingHubStepCompletion } from "metabase/embedding/embedding-hub";
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
-import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedNavigation } from "../hooks";
@@ -26,6 +26,9 @@ const SdkIframeEmbedSetupContent = () => {
   const [updateSettings] = useUpdateSettingsMutation();
   const [sendToast] = useToast();
 
+  const { markEmbeddingHubStepAsComplete } =
+    useMarkEmbeddingHubStepCompletion();
+
   const { handleNext, handleBack, canGoBack, StepContent } =
     useSdkIframeEmbedNavigation();
 
@@ -34,17 +37,15 @@ const SdkIframeEmbedSetupContent = () => {
   const acceptSimpleEmbedTerms = () =>
     updateSettings({ "show-simple-embed-terms": false });
 
-  function trackSnippetCreated() {
-    // Embedding Hub: track test and production embed snippets separately.
-    const settingKey: SettingKey = settings.useExistingUserSession
-      ? "embedding-hub-test-embed-snippet-created"
-      : "embedding-hub-production-embed-snippet-created";
-
-    updateSettings({ [settingKey]: true });
-  }
+  function trackSnippetCreated() {}
 
   function handleGetCode() {
-    trackSnippetCreated();
+    markEmbeddingHubStepAsComplete(
+      settings.useExistingUserSession
+        ? "create-test-embed"
+        : "embed-production",
+    );
+
     handleNext();
   }
 
