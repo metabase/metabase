@@ -361,3 +361,16 @@
       (is (= ["CREATE TABLE `PRODUCTS_COPY` ORDER BY () AS SELECT * FROM products"]
              (driver/compile-transform :clickhouse {:query "SELECT * FROM products"
                                                     :output-table "PRODUCTS_COPY"}))))))
+
+(deftest ^:parallel clickhouse-db-supports-schemas-test
+  (doseq [[schemas-supported? details] [[false? {}]
+                                        [false? {:enable-multiple-db nil}]
+                                        [false? {:enable-multiple-db false}]
+                                        [true? {:enable-multiple-db true}]]]
+    (is (schemas-supported? (driver/database-supports? :clickhouse :schemas {:details details})))))
+
+(deftest ^:parallel humanize-connection-error-message-test
+  (is (= "random message" (driver/humanize-connection-error-message :clickhouse ["random message"])))
+  (is (= :username-or-password-incorrect (driver/humanize-connection-error-message :clickhouse ["Failed to create connection"
+                                                                                                "Failed to get server info"
+                                                                                                "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))

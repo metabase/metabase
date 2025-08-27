@@ -19,6 +19,9 @@ title: Driver interface changelog
 
 - Added the driver multi-method `driver/create-schema-if-needed!` which should be implemented by drivers that support `:schemas` and `:transforms/table`.
 
+- `driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
+  instead of just the top-level message as a string.
+
 ## Metabase 0.56.3
 
 - Added the driver multi-method `driver/describe-database*` that drivers should now implement instead of `driver/describe-database`.

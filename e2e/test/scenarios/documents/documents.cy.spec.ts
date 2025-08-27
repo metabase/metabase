@@ -8,6 +8,7 @@ import {
   PRODUCTS_AVERAGE_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
 } from "e2e/support/test-visualizer-data";
+import type { Document } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -20,6 +21,10 @@ H.describeWithSnowplowEE("documents", () => {
   });
 
   it("should allow you to create a new document from the new button and save", () => {
+    const getDocumentStub = cy.stub();
+
+    cy.intercept("GET", "/api/ee/document/1", getDocumentStub);
+
     cy.visit("/");
 
     H.newButton("Document").click();
@@ -41,9 +46,13 @@ H.describeWithSnowplowEE("documents", () => {
     );
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+
+    // We should not show a loading state in between creating a document and viewing the created document.
+    cy.location("pathname").should("eq", "/document/1");
     cy.title().should("eq", "Test Document · Metabase");
 
     H.expectUnstructuredSnowplowEvent({ event: "document_created" });
+    cy.wrap(getDocumentStub).should("not.have.been.called");
 
     H.appBar()
       .findByRole("link", { name: /First collection/ })
@@ -150,8 +159,19 @@ H.describeWithSnowplowEE("documents", () => {
             type: "doc",
           },
           collection_id: null,
-          alias: "documentId",
+          alias: "document",
+          idAlias: "documentId",
         });
+      });
+
+      it("renders a 'not found' message if the copied card has been permanently deleted", () => {
+        cy.get<Document>("@document").then(({ id, document: { content } }) => {
+          const cardEmbed = content?.find((n) => n.type === "cardEmbed");
+          const clonedCardId = cardEmbed?.attrs?.id;
+          cy.request("DELETE", `/api/card/${clonedCardId}`);
+          cy.visit(`/document/${id}`);
+        });
+        H.getDocumentCard("Couldn't find this chart.").should("exist");
       });
 
       it("read only access", () => {
@@ -219,10 +239,12 @@ H.describeWithSnowplowEE("documents", () => {
           type: "doc",
         },
         collection_id: null,
-        alias: "documentId",
+        alias: "document",
+        idAlias: "documentId",
       });
 
       cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.addPostgresDatabase();
     });
 
     it("should support typing with a markdown syntax", () => {
@@ -379,6 +401,66 @@ H.describeWithSnowplowEE("documents", () => {
             dashboard_id: id,
           });
         });
+      });
+
+      it("should support keyboard and mouse selection in suggestions without double highlight", () => {
+        H.documentContent().click();
+        H.addToDocument("/", false);
+
+        assertOnlyOneOptionActive(/Ask Metabot/);
+
+        cy.realPress("{downarrow}");
+        cy.realPress("{downarrow}");
+
+        //Link should be active
+        assertOnlyOneOptionActive("Link");
+
+        // Hover over Quote
+        H.commandSuggestionItem(/Quote/).realHover();
+
+        assertOnlyOneOptionActive(/Quote/);
+
+        H.addToDocument("pro", false);
+
+        assertOnlyOneOptionActive(/Products by Category/);
+
+        cy.realPress("{downarrow}");
+        assertOnlyOneOptionActive(/Products average/);
+
+        H.commandSuggestionItem(/Products by Category/).realHover();
+
+        assertOnlyOneOptionActive(/Products by Category/);
+
+        cy.realPress("Escape");
+
+        H.clearDocumentContent();
+
+        H.addToDocument("@ord", false);
+
+        cy.realPress("{downarrow}");
+        cy.realPress("{downarrow}");
+
+        assertOnlyOneOptionActive(/Orders, Count$/, "mention");
+
+        H.documentSuggestionDialog()
+          .findByRole("option", { name: /Browse all/ })
+          .realHover();
+
+        assertOnlyOneOptionActive(/Browse all/, "mention");
+
+        cy.realPress("Escape");
+        H.clearDocumentContent();
+        H.addToDocument("/", false);
+
+        H.commandSuggestionItem(/Ask Metabot/).click();
+        H.addToDocument("@", false);
+
+        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
+        cy.realPress("{downarrow}");
+        assertOnlyOneOptionActive(/Sample/, "metabot");
+
+        H.documentMetabotSuggestionItem(/QA Postgres/).realHover();
+        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
       });
 
       it("should support adding cards and updating viz settings", () => {
@@ -608,3 +690,24 @@ H.describeWithSnowplowEE("documents", () => {
     });
   });
 });
+
+const assertOnlyOneOptionActive = (
+  name: string | RegExp,
+  dialog: "command" | "mention" | "metabot" = "command",
+) => {
+  const dialogContainer =
+    dialog === "command"
+      ? H.commandSuggestionDialog
+      : dialog === "mention"
+        ? H.documentSuggestionDialog
+        : H.documentMetabotDialog;
+
+  dialogContainer()
+    .findByRole("option", { name })
+    .should("have.attr", "aria-selected", "true");
+
+  dialogContainer()
+    .findAllByRole("option")
+    .filter("[aria-selected=true]")
+    .should("have.length", 1);
+};

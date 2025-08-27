@@ -50,6 +50,12 @@
   },
   "overrides": [
     {
+      "files": ["./app.js"],
+      "rules": {
+        "import/no-duplicates": 0,
+      },
+    },
+    {
       "files": ["**/*.stories.tsx"],
       "rules": {
         "import/no-default-export": 0,

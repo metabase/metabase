@@ -1,7 +1,3 @@
-import type {
-  CreateDashboardValues,
-  MetabaseDashboard,
-} from "embedding-sdk-bundle";
 import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
@@ -15,6 +11,10 @@ import type { StaticDashboard } from "embedding-sdk-bundle/components/public/das
 import type { SdkDebugInfo } from "embedding-sdk-bundle/components/public/debug/SdkDebugInfo";
 import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import type {
+  CreateDashboardValues,
+  MetabaseDashboard,
+} from "embedding-sdk-package";
 import type { User } from "metabase-types/api";
 
 type InternalHook = () => void;

@@ -113,18 +113,30 @@
   [table]
   (not (str/starts-with? (:table_name table) ".inner")))
 
-(defn- get-all-tables
+(defn- get-all-tables-in-all-dbs
   [driver db]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver db nil
-   (fn [^Connection conn]
-     (->> (get-tables-from-metadata (.getMetaData conn) "%")
-          jdbc/metadata-result
-          vec
-          (filter #(and
-                    (not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem %)))
-                    (not-inner-mv-table? %)))
-          tables-set))))
+  (let [db-filters-patterns (set (map (comp #(ddl.i/format-name driver %) str/trim)
+                                      (remove empty? (str/split (or (get-in db [:details :db-filters-patterns]) "") #","))))
+        db-filters-type     (get-in db [:details :db-filters-type])]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver db nil
+     (fn [^Connection conn]
+       (->> (get-tables-from-metadata (.getMetaData conn) "%")
+            jdbc/metadata-result
+            vec
+            (filter not-inner-mv-table?)
+            (filter (fn [table]
+                      (cond
+                        (= db-filters-type "inclusion")
+                        (contains? db-filters-patterns (:table_schem table))
+
+                        (= db-filters-type "exclusion")
+                        (and (not (contains? db-filters-patterns (:table_schem table)))
+                             (not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem table))))
+
+                        :else
+                        (not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem table))))))
+            tables-set)))))
 
 ;; Strangely enough, the tests only work with :db keyword,
 ;; but the actual sync from the UI uses :dbname
@@ -133,29 +145,27 @@
   (or (get-in db [:details :dbname])
       (get-in db [:details :db])))
 
-(defn- get-tables-in-dbs
-  [driver db-or-dbs]
-  (->> (for [db (as-> (or (get-db-name db-or-dbs) "default") dbs
-                  (str/split dbs #" ")
-                  (remove empty? dbs)
-                  (map (comp #(ddl.i/format-name driver %) str/trim) dbs))]
+(defn- get-tables-in-db
+  [driver db]
+  (->> (let [db-name (ddl.i/format-name driver (or (get-db-name db) "default"))]
          (sql-jdbc.execute/do-with-connection-with-options
-          driver db-or-dbs nil
+          driver db nil
           (fn [^Connection conn]
             (-> (.getMetaData conn)
-                (get-tables-from-metadata db)
+                (get-tables-from-metadata db-name)
                 jdbc/metadata-result))))
-       (apply concat)
        (filter not-inner-mv-table?)
-       (tables-set)))
+       (tables-set)
+       (map #(assoc % :schema nil))
+       (set)))
 
 (defmethod driver/describe-database* :clickhouse
-  [driver {{:keys [scan-all-databases]}
+  [driver {{:keys [enable-multiple-db]}
            :details :as db}]
   {:tables
-   (if (boolean scan-all-databases)
-     (get-all-tables driver db)
-     (get-tables-in-dbs driver db))})
+   (if (boolean enable-multiple-db)
+     (get-all-tables-in-all-dbs driver db)
+     (get-tables-in-db driver db))})
 
 (defn- ^:private is-db-required?
   [field]
