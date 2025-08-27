@@ -67,13 +67,13 @@ function _CartesianChart(props: VisualizationProps) {
 
   const settings = useMemo(() => {
     const settings = getGridSizeAdjustedSettings(originalSettings, gridSize);
-    if (
-      isDashboard &&
-      (outerWidth <= HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD ||
-        outerHeight <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD)
-    ) {
-      settings["graph.x_axis.labels_enabled"] = false;
-      settings["graph.y_axis.labels_enabled"] = false;
+    if (isDashboard) {
+      if (outerWidth <= HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD) {
+        settings["graph.y_axis.labels_enabled"] = false;
+      }
+      if (outerHeight <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD) {
+        settings["graph.x_axis.labels_enabled"] = false;
+      }
     }
     return settings;
   }, [originalSettings, gridSize, isDashboard, outerWidth, outerHeight]);
