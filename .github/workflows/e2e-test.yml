@@ -117,12 +117,13 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
+        if: ${{ !inputs.specs }}
         env:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
           SPLIT_OUTPUT_FILE: "newTimings.json"
-          SPLIT_TIME_THRESHOLD: 0.01
+          SPLIT_TIME_THRESHOLD: 0.01 # 1% threshold for changes
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
@@ -133,62 +134,19 @@ jobs:
             echo '{"durations": []}' > newTimings.json
           fi
           echo "Running tests with specs: $SPEC_PATH"
-          echo "=== BEFORE TEST EXECUTION ==="
-          echo "Cypress split environment variables:"
-          echo "  SPLIT: $SPLIT"
-          echo "  SPLIT_INDEX: $SPLIT_INDEX" 
-          echo "  SPLIT_FILE: $SPLIT_FILE"
-          echo "  SPLIT_OUTPUT_FILE: $SPLIT_OUTPUT_FILE"
-          echo "  SPLIT_TIME_THRESHOLD: $SPLIT_TIME_THRESHOLD"
-          echo "  CYPRESS_CI: $CYPRESS_CI"
-          echo "Current directory: $(pwd)"
-          echo "Files before test:"
-          ls -la . | grep -i timing || echo "No timing files found before test"
-          ls -la newTimes.json 2>/dev/null || echo "newTimes.json does not exist before test"
-          echo "================================"
 
-          # Capture both stdout and stderr, and save cypress logs
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }} 2>&1 | tee cypress-output.log
 
-          echo "=== CYPRESS OUTPUT ANALYSIS ==="
-          echo "Looking for cypress-split messages in the output:"
-          grep -i "cypress-split\|timing\|newTimes" cypress-output.log || echo "No cypress-split timing messages found"
-          echo "Last 20 lines of cypress output:"
-          tail -20 cypress-output.log
-
-          CYPRESS_EXIT_CODE=$?
-          echo "=== AFTER TEST EXECUTION ==="
-          echo "Exit code from cypress run: $CYPRESS_EXIT_CODE"
-          echo "Current directory: $(pwd)"
-          echo "Environment variables that might affect cypress-split:"
-          echo "  SPLIT_OUTPUT_FILE: $SPLIT_OUTPUT_FILE"
-          echo "  SPLIT_TIME_THRESHOLD: $SPLIT_TIME_THRESHOLD"
-          echo "All files in current directory (including hidden):"
-          ls -la
-          echo "Looking for any timing-related files recursively:"
-          find . -maxdepth 2 -name "*timing*" 2>/dev/null
-          echo "Checking if cypress-split updated the timing file:"
-          ls -la ./e2e/support/timings.json 2>/dev/null || echo "e2e/support/timings.json does not exist"
-          echo "Content of timing file if it exists:"
-          head -20 ./e2e/support/timings.json 2>/dev/null || echo "Could not read timing file"
-          echo "Checking if there are any cypress temp or output directories:"
-          ls -la cypress/ 2>/dev/null || echo "No cypress directory found"
-          echo "==============================="
-
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
         shell: bash
         env:
-          SPLIT: ${{ inputs.total_chunks || 1 }}
-          SPLIT_INDEX: ${{ inputs.split_index || 0 }}
-          SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_OUTPUT_FILE: "newTimings.json"
-          SPLIT_TIME_THRESHOLD: 0.01
           SPEC_PATH: ${{ env.specs || inputs.specs }}
         run: |
+          echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
           --env grepTags="${{inputs.tags}}+-@skip",grepOmitFiltered=true \
           --spec "$SPEC_PATH" \
@@ -274,37 +232,6 @@ jobs:
         with:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
           path: ./cypress/test-results
-
-      - name: Check timing file before upload
-        if: always() && inputs.split_index >= 0
-        continue-on-error: true
-        shell: bash
-        run: |
-          echo "=== TIMING FILE UPLOAD CHECK ==="
-          echo "Checking if chunk timing file exists at chunkTimings.json:"
-          if [ -f "chunkTimings.json" ]; then
-            echo "✅ Chunk timing file exists"
-            echo "File size: $(stat -c%s chunkTimings.json 2>/dev/null || stat -f%z chunkTimings.json) bytes"
-            echo "Chunk-specific timing file contents:"
-            cat chunkTimings.json
-            echo ""
-            echo "File info:"
-            ls -la chunkTimings.json
-          else
-            echo "❌ Chunk timing file does not exist"
-            echo "Contents of current directory:"
-            ls -la *timing*.json 2>/dev/null || echo "No timing files found"
-          fi
-
-          echo "Also checking full timing file at newTimings.json for comparison:"
-          if [ -f "newTimings.json" ]; then
-            echo "✅ Full timing file exists"
-            echo "Full timing file size: $(stat -c%s newTimings.json 2>/dev/null || stat -f%z newTimings.json) bytes"
-            echo "Number of specs in full file: $(jq '.durations | length' newTimings.json 2>/dev/null || echo 'unknown')"
-          else
-            echo "❌ Full timing file does not exist"
-          fi
-          echo "============================="
 
       - name: Upload Timing Data
         uses: actions/upload-artifact@v4

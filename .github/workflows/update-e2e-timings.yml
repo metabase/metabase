@@ -55,10 +55,10 @@ jobs:
           } | jq -s 'flatten | unique' > timing-artifacts/recent-run-ids.json
 
           echo "Checking for merged timing artifacts in recent runs..."
-          
+
           # Initialize empty artifact list
           echo "[]" > timing-artifacts/artifact-list.json
-          
+
           # Check each run for its specific merged timing artifact (with increased per_page to get all artifacts)
           for run_id in $(jq -r '.[]' timing-artifacts/recent-run-ids.json 2>/dev/null || echo ""); do
             if [ -n "$run_id" ] && [ "$run_id" != "null" ]; then
@@ -71,7 +71,7 @@ jobs:
                 >> timing-artifacts/temp-artifacts.json 2>/dev/null || echo "[]" >> timing-artifacts/temp-artifacts.json
             fi
           done
-          
+
           # Combine all found artifacts
           if [ -f timing-artifacts/temp-artifacts.json ] && [ -s timing-artifacts/temp-artifacts.json ]; then
             jq -s 'flatten | unique_by(.name)' timing-artifacts/temp-artifacts.json > timing-artifacts/artifact-list.json 2>/dev/null || echo "[]" > timing-artifacts/artifact-list.json
@@ -79,7 +79,7 @@ jobs:
           else
             echo "[]" > timing-artifacts/artifact-list.json
           fi
-          
+
           rm -f timing-artifacts/recent-run-ids.json
             
           echo "Found artifacts:"
@@ -88,10 +88,6 @@ jobs:
           # Check if we have any artifacts
           if [ ! -s timing-artifacts/artifact-list.json ]; then
             echo "❌ No timing artifacts found in the specified time range"
-            echo "This might be because:"
-            echo "  - No e2e test runs have completed in the last $DAYS_BACK days"
-            echo "  - No merged timing artifacts were generated"
-            echo "  - The artifacts have expired (GitHub expires artifacts after 90 days by default)"
             exit 1
           fi
 
