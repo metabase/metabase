@@ -16,7 +16,7 @@
                               "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")
           result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
                                                {:code     transform-code
-                                                :table-id 1})]
+                                                :tables {}})]
       (is (=? {:output "name,age\nAlice,25\nBob,30\n"
                :stdout "Successfully saved 2 rows to CSV\n"
                :stderr ""}
@@ -28,7 +28,7 @@
                                        {:code (str "import pandas as pd\n"
                                                    "\n"
                                                    "# No transform function defined")
-                                        :table-id 1})]
+                                        :tables {}})]
       (is (= {:error     "Execution failed: "
               :exit-code 1
               :stderr    "ERROR: User script must define a 'transform()' function\n"
@@ -40,7 +40,7 @@
     (let [result (mt/user-http-request :crowberto :post 500 "python-runner/execute"
                                        {:code (str "def transform():\n"
                                                    "    return 'not a dataframe'")
-                                        :table-id 1})]
+                                        :tables {}})]
       (is (= {:error     "Execution failed: "
               :exit-code 1
               :stderr    "ERROR: Transform function must return a pandas DataFrame, got <class 'str'>\n"
@@ -52,12 +52,12 @@
     (let [result (mt/user-http-request :crowberto :post 500 "python-runner/execute"
                                        {:code (str "def transform():\n"
                                                    "    raise ValueError('Something went wrong')")
-                                        :table-id 1})]
+                                        :tables {}})]
       (is (= {:error     "Execution failed: "
               :exit-code 1
               :stderr    (str "ERROR: Transform function failed: Something went wrong\n"
                               "Traceback (most recent call last):\n"
-                              "  File \"/sandbox/transform_runner.py\", line 137, in main\n"
+                              "  File \"/sandbox/transform_runner.py\", line 143, in main\n"
                               "    result = script.transform()\n"
                               "             ^^^^^^^^^^^^^^^^^^\n"
                               "  File \"/sandbox/script.py\", line 2, in transform\n"
@@ -75,7 +75,7 @@
                               "    return pd.DataFrame(data)")
           result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
                                                {:code transform-code
-                                                :table-id 1})]
+                                                :tables {}})]
       (is (=? {:output "x,y,z\n1,10,a\n2,20,b\n3,30,c\n"
                :stdout "Successfully saved 3 rows to CSV\n"
                :stderr ""}
@@ -92,7 +92,7 @@
                                 "    return pd.DataFrame(data)")
             result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
                                                  {:code     transform-code
-                                                  :table-id (mt/id :user)})]
+                                                  :tables {}})]
         (is (=? {:output "name,score\nCharlie,85\nDana,92\n"
                  :stdout "Successfully saved 2 rows to CSV\n"
                  :stderr ""}
@@ -123,7 +123,7 @@
                                         "    return result")
               result               (mt/user-http-request :crowberto :post 200 "python-runner/execute"
                                                          {:code     transform-code
-                                                          :table-id (mt/id :students)})]
+                                                          :tables {"students" (mt/id :students)}})]
 
           (is (=? {:output "student_count,average_score\n4,88.75\n"
                    :stdout "Successfully saved 1 rows to CSV\n"

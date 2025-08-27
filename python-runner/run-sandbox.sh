@@ -12,7 +12,7 @@ STDOUT_FILE="$3"
 STDERR_FILE="$4"
 METABASE_URL="$5"
 API_KEY="$6"
-TABLE_ID="$7"
+TABLE_ID_MAPPING="$7"
 
 # Create output directory if it doesn't exist
 OUTPUT_DIR="$(dirname "$OUTPUT_FILE")"
@@ -51,9 +51,9 @@ if [ -z "$API_KEY" ]; then
 fi
 DOCKER_ENV_VARS+=(-e "X_API_KEY=$API_KEY")
 
-# Pass table ID
-if [ -n "$TABLE_ID" ]; then
-  DOCKER_ENV_VARS+=(-e "TABLE_ID=$TABLE_ID")
+# Pass table ID mapping
+if [ -n "$TABLE_ID_MAPPING" ]; then
+  DOCKER_ENV_VARS+=(-e "TABLE_ID_MAPPING=$TABLE_ID_MAPPING")
 fi
 
 # Run Python code in Docker sandboxed environment with transform runner

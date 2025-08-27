@@ -100,8 +100,10 @@ def main():
         metabase_url = os.environ.get('METABASE_URL')
         api_key = os.environ.get('X_API_KEY')
 
-        # for now we assume a single table dependency
-        table_id = os.environ.get('TABLE_ID')
+        # Get table ID mapping from environment
+        import json
+        table_id_mapping_json = os.environ.get('TABLE_ID_MAPPING', '{}')
+        table_id_mapping = json.loads(table_id_mapping_json)
 
         # Create Metabase API connection object
         db = MetabaseAPIConnection(metabase_url, api_key)
@@ -121,19 +123,23 @@ def main():
             print("ERROR: User script must define a 'transform()' function", file=sys.stderr)
             sys.exit(1)
 
-        # Call the transform function with db parameter
+        # Call the transform function with named table parameters
         try:
-            # Check function signature to determine if it accepts db parameter
+            # Check function signature to determine parameters
             import inspect
             sig = inspect.signature(script.transform)
             if len(sig.parameters) > 0:
-                # Function accepts parameters, pass db
-                # result = script.transform(db)
-
-                # for now we assume a single data dependency, and pass just that one file
-                result = script.transform(db.read_table(table_id))
+                # Build kwargs with DataFrames for each named table
+                kwargs = {}
+                for param_name in sig.parameters:
+                    if param_name in table_id_mapping:
+                        table_id = table_id_mapping[param_name]
+                        kwargs[param_name] = db.read_table(table_id)
+                
+                # Call transform with named arguments
+                result = script.transform(**kwargs)
             else:
-                # Function takes no parameters, call without db for backward compatibility
+                # Function takes no parameters, call without arguments for backward compatibility
                 result = script.transform()
         except Exception as e:
             print(f"ERROR: Transform function failed: {e}", file=sys.stderr)

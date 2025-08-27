@@ -7,7 +7,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
@@ -19,7 +18,7 @@
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
-   (java.io File ByteArrayOutputStream)
+   (java.io ByteArrayOutputStream File)
    (java.nio.charset StandardCharsets)
    (java.nio.file Files)
    (java.nio.file.attribute FileAttribute)))
@@ -65,17 +64,18 @@
 
 (defn execute-python-code
   "Execute Python code in a sandboxed environment using the run-sandbox.sh script."
-  [code table-id]
+  [code table-name->id]
   (with-temp-files [code-file ["python_code_" ".py"]
                     output-file ["python_output_" ".txt"]
                     stdout-file ["python_stdout_" ".txt"]
                     stderr-file ["python_stderr_" ".txt"]]
     (spit code-file code)
-    (let [script-args ["/bin/bash" "python-runner/run-sandbox.sh"
+    (let [tables-json (json/encode table-name->id)
+          script-args ["/bin/bash" "python-runner/run-sandbox.sh"
                        code-file output-file stdout-file stderr-file
                        (transforms.settings/python-runner-base-url)
                        (transforms.settings/python-runner-api-key)
-                       (str table-id)]
+                       tables-json]
           result (apply shell/sh (conj script-args :dir (io/file ".")))]
       (if (zero? (:exit result))
         {:output      (slurp output-file)
@@ -95,11 +95,11 @@
   "Execute Python code in a sandboxed environment and return the output."
   [_route-params
    _query-params
-   {:keys [code table-id]} :- [:map
-                               [:code ms/NonBlankString]
-                               [:table-id ms/PositiveInt]]]
+   {:keys [code table-name->id]} :- [:map
+                                     [:code ms/NonBlankString]
+                                     [:tables [:map-of :string ms/PositiveInt]]]]
   (api/check-superuser)
-  (execute-python-code code table-id))
+  (execute-python-code code table-name->id))
 
 (defn- execute-mbql-query
   [driver db-id query respond]
