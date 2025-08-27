@@ -69,7 +69,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
 
   const CONFIGURE_ROW_COLUMN_SECURITY: EmbeddingHubStep = {
     id: "configure-row-column-security",
-    title: t`Configure row and column security`,
+    title: t`Configure row and column security (optional)`,
     icon: "permissions_limited",
     description: t`Manage permissions to limit what data your users can access.`,
     actions: [
@@ -83,6 +83,10 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       src: "app/assets/img/embedding_hub_row_column_security.png",
       srcSet: "app/assets/img/embedding_hub_row_column_security@2x.png 2x",
       alt: t`Screenshot of configuring row and column security`,
+    },
+    infoAlert: {
+      type: "always",
+      message: t`To set up row and column security, first log in with SSO to create a user with attributes.`,
     },
   };
 
@@ -121,6 +125,10 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       src: "app/assets/img/embedding_hub_create_embed.png",
       srcSet: "app/assets/img/embedding_hub_create_embed@2x.png 2x",
       alt: t`Screenshot of creating an embed`,
+    },
+    infoAlert: {
+      type: "locked",
+      message: t`Configure SSO authentication to unlock this step.`,
     },
   };
 

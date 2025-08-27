@@ -1,7 +1,15 @@
 import cx from "classnames";
 import { useMemo } from "react";
 
-import { Accordion, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  Accordion,
+  Alert,
+  Group,
+  Icon,
+  type IconName,
+  Stack,
+  Text,
+} from "metabase/ui";
 
 import { useScrollListItemIntoView } from "../../hooks/use-scroll-list-item-into-view";
 import type {
@@ -72,7 +80,6 @@ export const EmbeddingHubChecklist = ({
                 isCompleted && S.completedControl,
                 isLocked && S.lockedControl,
               )}
-              disabled={isLocked}
             >
               <Group gap="sm" c="var(--mb-color-text-medium)">
                 <span>{step.title}</span>
@@ -106,6 +113,13 @@ export const EmbeddingHubChecklist = ({
 
                 <Text>{step.description}</Text>
 
+                {step.infoAlert && (
+                  <InfoAlert
+                    message={step.infoAlert.message}
+                    icon={step.infoAlert.type === "locked" ? "lock" : undefined}
+                  />
+                )}
+
                 <EmbeddingHubStepActions
                   step={step}
                   onModalAction={onModalAction}
@@ -127,3 +141,19 @@ const accordionClassNames = {
   item: AccordionS.item,
   label: AccordionS.label,
 };
+
+const InfoAlert = ({ message, icon }: { message: string; icon?: IconName }) => (
+  <Alert
+    variant="info"
+    px="md"
+    py="sm"
+    bg="var(--mb-color-bg-light)"
+    bd="1px solid var(--mb-color-border)"
+  >
+    <Group gap="xs">
+      {icon && <Icon name={icon} c="var(--mb-color-text-secondary)" />}
+
+      <Text c="var(--mb-color-text-secondary)">{message}</Text>
+    </Group>
+  </Alert>
+);

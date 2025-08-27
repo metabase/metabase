@@ -17,6 +17,10 @@ export interface EmbeddingHubStep {
 
   image?: EmbeddingHubImage;
   video?: EmbeddingHubVideo;
+
+  /** Information */
+  infoAlert?: EmbeddingInfoAlert;
+
   actions?: EmbeddingHubAction[];
 }
 
@@ -24,6 +28,10 @@ export type EmbeddingHubModalToTrigger =
   | { type: "add-data"; initialTab: AddDataTab }
   | { type: "new-dashboard" }
   | { type: "xray-dashboard" };
+
+export type EmbeddingInfoAlert =
+  | { type: "locked"; message: string }
+  | { type: "always"; message: string };
 
 interface EmbeddingHubAction {
   label: string;
