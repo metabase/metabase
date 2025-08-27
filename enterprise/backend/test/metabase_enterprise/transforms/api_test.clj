@@ -381,8 +381,8 @@
                                                        :start_time "2025-08-26T10:12:11Z" :end_time "2025-08-27T10:52:17Z"}
                      :model/TransformRun {_r2-id :id} {:transform_id t1-id :status "succeeded" :run_method "cron"
                                                        :start_time "2025-08-22T10:12:11Z" :end_time "2025-08-22T10:12:17Z"}
-                     :model/TransformRun {_r3-id :id} {:transform_id t1-id :status "succeeded" :run_method "manual"
-                                                       :start_time "2025-08-22T23:57:34Z" :end_time "2025-08-23T00:17:41Z"}
+                     :model/TransformRun {r3-id :id} {:transform_id t1-id :status "succeeded" :run_method "manual"
+                                                      :start_time "2025-08-22T23:57:34Z" :end_time "2025-08-23T00:17:41Z"}
                      :model/TransformRun {_r4-id :id} {:transform_id t1-id :status "failed" :run_method "cron"
                                                        :start_time "2025-08-25T15:22:18Z" :end_time "2025-08-25T19:12:17Z"}
                      :model/TransformRun {_r5-id :id} {:transform_id t1-id :status "timeout" :run_method "manual"
@@ -409,22 +409,38 @@
                   our-runs (transform-runs our-run-pred :statuses (vec statuses))]
               (is (= 5 (count our-runs)))
               (is (every? #(contains? statuses (:status %)) our-runs))))
-          (testing "Filter by 'last_run_start_time'"
+          (testing "Filter by 'start_time'"
+            (is (=? [{:id r1-id
+                      :start_time "2025-08-26T10:12:11Z"
+                      :end_time "2025-08-27T10:52:17Z"
+                      :run_method "manual"
+                      :status "succeeded"
+                      :transform {:id t0-id}
+                      :transform_id t0-id}]
+                    (transform-runs our-run-pred :start_time "2025-08-26~")))
+            (let [our-runs (transform-runs our-run-pred :start_time "~2025-08-25")]
+              (is (= 6 (count our-runs)))
+              (is (every? (comp neg-int? #(compare % "2025-08-26") :start_time) our-runs))))
+          (testing "Filter by 'end_time'"
             (is (=? t0-runs
-                    (transform-runs our-run-pred :last_run_start_time "2025-08-26~")))
-            (let [our-runs (transform-runs our-run-pred :last_run_start_time "~2025-08-25")]
-              (is (= 5 (count our-runs)))
-              (is (every? (comp #{t1-id} :transform_id) our-runs))))
-          (testing "Filter by 'last_run_end_time'"
-            (is (=? t0-runs
-                    (transform-runs our-run-pred :last_run_end_time "2025-08-24~")))
-            (is (empty? (transform-runs our-run-pred :last_run_end_time "~2025-08-26"))))
-          (testing "Filter by 'last_run_method"
-            (is (=? t0-runs
-                    (transform-runs our-run-pred :last_run_method "manual")))
-            (let [our-runs (transform-runs our-run-pred :last_run_method "cron")]
-              (is (= 5 (count our-runs)))
-              (is (every? (comp #{t1-id} :transform_id) our-runs)))))))))
+                    (transform-runs our-run-pred :end_time "2025-08-26~")))
+            (is (empty? (transform-runs our-run-pred :end_time "~2025-08-21"))))
+          (testing "Filter by 'run_method'"
+            (let [our-runs (transform-runs our-run-pred :run_method "manual")]
+              (is (= 3 (count our-runs)))
+              (is (every? (comp #{"manual"} :run_method) our-runs)))
+            (let [our-runs (transform-runs our-run-pred :run_method "cron")]
+              (is (= 4 (count our-runs)))
+              (is (every? (comp #{"cron"} :run_method) our-runs))))
+          (testing "Filter by a combination"
+            (is (=? [{:id r3-id
+                      :status "succeeded"
+                      :run_method "manual"
+                      :start_time "2025-08-22T23:57:34Z"
+                      :end_time "2025-08-23T00:17:41Z"
+                      :transform {:id t1-id}
+                      :transform_id t1-id}]
+                    (transform-runs our-run-pred :run_method "manual" :start_time "~2025-08-25" :end_time "2025-08-23")))))))))
 
 (deftest get-runs-filter-by-single-tag-test
   (testing "GET /api/ee/transform/run - filter by single tag"

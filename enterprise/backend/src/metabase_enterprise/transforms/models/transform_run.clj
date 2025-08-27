@@ -177,9 +177,9 @@
   Follows the conventions used by the FE."
   [{:keys [offset
            limit
-           last_run_start_time
-           last_run_end_time
-           last_run_method
+           start_time
+           end_time
+           run_method
            sort_column
            sort_direction
            transform_ids
@@ -197,11 +197,16 @@
                            :ended_at   [[sort-column sort-direction nulls-sort]]
                            [[:start_time sort-direction]
                             [:end_time   sort-direction nulls-sort]])
-        latest-run-cond  (cond-> []
-                           (some? last_run_start_time) (conj (timestamp-constraint :start_time last_run_start_time))
-                           (some? last_run_end_time)   (conj (timestamp-constraint :end_time last_run_end_time))
-                           (some? last_run_method)     (conj [:= :run_method last_run_method]))
         where-cond       (cond-> []
+                           (some? start_time)
+                           (conj (timestamp-constraint :start_time start_time))
+
+                           (some? end_time)
+                           (conj (timestamp-constraint :end_time end_time))
+
+                           (some? run_method)
+                           (conj [:= :run_method run_method])
+
                            (seq transform_ids)
                            (conj [:in :transform_id transform_ids])
 
@@ -216,18 +221,10 @@
                            ;; optimization: is_active condition for started status
                            (and (= (first statuses) "started")
                                 (nil? (next statuses)))
-                           (conj [:= :is_active true])
-
-                           (seq latest-run-cond)
-                           (conj [:in :transform_id
-                                  {:select [:transform_id]
-                                   :from   [:latest_runs]
-                                   :where  (into [:and [:= :rn 1]] latest-run-cond)}]))
+                           (conj [:= :is_active true]))
         where-clause     (when (seq where-cond)
                            (into [:and] where-cond))
-        count-options    (cond-> {}
-                           (seq latest-run-cond) (assoc :with (latest-run-cte))
-                           where-clause                (assoc :where where-clause))
+        count-options    (m/assoc-some {} :where where-clause)
         query-options    (merge {:order-by order-by :offset offset :limit limit}
                                 count-options)
         runs             (t2/select :model/TransformRun query-options)]

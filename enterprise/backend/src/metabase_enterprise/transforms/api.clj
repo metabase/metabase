@@ -126,9 +126,9 @@
     [:transform_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
-    [:last_run_end_time {:optional true} [:maybe ms/NonBlankString]]
-    [:last_run_method {:optional true} [:maybe [:enum "manual" "cron"]]]]]
+    [:start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:end_time {:optional true} [:maybe ms/NonBlankString]]
+    [:run_method {:optional true} [:maybe [:enum "manual" "cron"]]]]]
   (log/info "get runs")
   (api/check-superuser)
   (transform-run/paged-runs (assoc query-params
