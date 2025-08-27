@@ -46,43 +46,13 @@ jobs:
           mkdir -p timing-artifacts
           echo "Querying GitHub API for merged timing artifacts..."
 
-          # Query for merged timing artifacts from all branches (simplified approach)
-          echo "Searching for merged timing artifacts from all branches..."
+          # Query for merged timing artifacts directly from all artifacts (simplest approach)
+          echo "Searching for merged timing artifacts directly..."
           
-          # Get recent workflow runs and their artifacts directly
-          # Try both run-tests.yml and e2e-tests.yml workflows
-          {
-            gh api repos/${{ github.repository }}/actions/workflows/run-tests.yml/runs \
-              --jq "[.workflow_runs[] | select(.created_at > \"$CUTOFF_DATE\") | .id][0:10]"
-            gh api repos/${{ github.repository }}/actions/workflows/e2e-tests.yml/runs \
-              --jq "[.workflow_runs[] | select(.created_at > \"$CUTOFF_DATE\") | .id][0:10]"
-          } | jq -s 'flatten | unique' > timing-artifacts/recent-run-ids.json
-
-          echo "Found recent run IDs from target branches:"
-          cat timing-artifacts/recent-run-ids.json
-
-          # Get artifacts from recent runs
-          echo "[]" > timing-artifacts/artifact-list.json
-          
-          for run_id in $(jq -r '.[]' timing-artifacts/recent-run-ids.json 2>/dev/null || echo ""); do
-            if [ -n "$run_id" ] && [ "$run_id" != "null" ]; then
-              echo "Checking artifacts for run $run_id..."
-              # Get artifacts and append to temp file
-              gh api repos/${{ github.repository }}/actions/runs/$run_id/artifacts \
-                --jq "[.artifacts[] | select(.name | startswith(\"merged-e2e-timings-\")) | select(.expired == false) | {name, created_at, archive_download_url}]" \
-                >> timing-artifacts/temp-artifacts.json 2>/dev/null || echo "[]" >> timing-artifacts/temp-artifacts.json
-            fi
-          done
-          
-          # Combine all artifact arrays into one, handling empty files
-          if [ -f timing-artifacts/temp-artifacts.json ] && [ -s timing-artifacts/temp-artifacts.json ]; then
-            jq -s 'flatten | unique_by(.name)' timing-artifacts/temp-artifacts.json > timing-artifacts/artifact-list.json 2>/dev/null || echo "[]" > timing-artifacts/artifact-list.json
-            rm -f timing-artifacts/temp-artifacts.json
-          else
-            echo "[]" > timing-artifacts/artifact-list.json
-          fi
-          
-          rm -f timing-artifacts/recent-run-ids.json
+          # Just get all merged timing artifacts that match our criteria
+          gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq "[.artifacts[] | select(.name | startswith(\"merged-e2e-timings-\")) | select(.created_at > \"$CUTOFF_DATE\") | select(.expired == false) | {name, created_at, archive_download_url}]" \
+            > timing-artifacts/artifact-list.json
             
           echo "Found artifacts:"
           cat timing-artifacts/artifact-list.json
