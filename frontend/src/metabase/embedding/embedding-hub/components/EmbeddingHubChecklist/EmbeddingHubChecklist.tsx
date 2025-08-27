@@ -1,6 +1,7 @@
+import cx from "classnames";
 import { useMemo } from "react";
 
-import { Accordion, Icon, Stack, Text } from "metabase/ui";
+import { Accordion, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { useScrollListItemIntoView } from "../../hooks/use-scroll-list-item-into-view";
 import type {
@@ -16,18 +17,20 @@ import { EmbeddingHubVideo } from "./VideoTutorial";
 
 interface EmbeddingHubChecklistProps {
   steps: EmbeddingHubStep[];
+  onModalAction?: (modal: EmbeddingHubModalToTrigger) => void;
 
   defaultOpenStep?: EmbeddingHubStepId;
   completedSteps?: Partial<Record<EmbeddingHubStepId, boolean>>;
-  onModalAction?: (modal: EmbeddingHubModalToTrigger) => void;
+  lockedSteps?: Partial<Record<EmbeddingHubStepId, boolean>>;
 }
 
 export const EmbeddingHubChecklist = ({
   steps,
+  onModalAction,
 
   defaultOpenStep,
   completedSteps = {},
-  onModalAction,
+  lockedSteps = {},
 }: EmbeddingHubChecklistProps) => {
   const stepIds = useMemo(() => steps.map((step) => step.id), [steps]);
 
@@ -35,10 +38,12 @@ export const EmbeddingHubChecklist = ({
     useScrollListItemIntoView(stepIds);
 
   const renderStepIcon = (step: EmbeddingHubStep) => {
-    const isCompleted = completedSteps[step.id];
-
-    if (isCompleted) {
+    if (completedSteps[step.id]) {
       return <Icon name="check" c="var(--mb-color-success)" />;
+    }
+
+    if (lockedSteps[step.id]) {
+      return <Icon name={step.icon} c="var(--mb-color-text-light)" />;
     }
 
     return <Icon name={step.icon} />;
@@ -52,6 +57,7 @@ export const EmbeddingHubChecklist = ({
     >
       {steps.map((step) => {
         const isCompleted = completedSteps[step.id] ?? false;
+        const isLocked = lockedSteps[step.id] ?? false;
 
         return (
           <Accordion.Item
@@ -62,9 +68,19 @@ export const EmbeddingHubChecklist = ({
           >
             <Accordion.Control
               icon={renderStepIcon(step)}
-              className={isCompleted ? S.completedControl : undefined}
+              className={cx(
+                isCompleted && S.completedControl,
+                isLocked && S.lockedControl,
+              )}
+              disabled={isLocked}
             >
-              {step.title}
+              <Group gap="sm" c="var(--mb-color-text-medium)">
+                <span>{step.title}</span>
+
+                {isLocked && (
+                  <Icon name="lock" c="var(--mb-color-text-light)" size={14} />
+                )}
+              </Group>
             </Accordion.Control>
 
             <Accordion.Panel>

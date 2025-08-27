@@ -51,10 +51,16 @@ export const SdkIframeEmbedSetupProvider = ({
   } = useRecentItems();
 
   const defaultSettings = useMemo(() => {
-    return getDefaultSdkIframeEmbedSettings(
-      "dashboard",
-      recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
-    );
+    const searchParams = new URLSearchParams(location.search);
+    const authMethod = searchParams.get("auth_method");
+
+    return {
+      ...getDefaultSdkIframeEmbedSettings(
+        "dashboard",
+        recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+      ),
+      useExistingUserSession: !authMethod || authMethod === "user_session",
+    };
   }, [recentDashboards]);
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(

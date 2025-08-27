@@ -7,6 +7,16 @@
   ) !important;
 }
 
+/* Override styles for locked steps */
+.lockedControl:not([data-css-specificity-hack="🪗"]) {
+  background: linear-gradient(
+    to right,
+    var(--mb-color-bg-light) 3rem,
+    transparent 3rem
+  ) !important;
+  opacity: 1 !important;
+}
+
 .video {
   aspect-ratio: 16 / 9;
   border: 1px solid var(--mb-color-border);
