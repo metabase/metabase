@@ -9,7 +9,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -64,14 +63,6 @@
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 
-(defn- add-table-reference
-  [query col]
-  (cond-> col
-    (and (:fk-field-id col)
-         (:table-id col))
-    (assoc :table-reference (-> (lib/display-name query (lib.metadata/field query (:fk-field-id col)))
-                                lib.util/strip-id))))
-
 (defn metric-details
   "Get metric details as returned by tools."
   ([id] (metric-details id nil))
@@ -92,7 +83,7 @@
                       (lib/remove-all-breakouts metric-query))
          visible-cols (when query-needed?
                         (->> (lib/visible-columns base-query)
-                             (map #(add-table-reference base-query %))))
+                             (map #(metabot-v3.tools.u/add-table-reference base-query %))))
          col->index (when query-needed?
                       (into {} (map-indexed (fn [i col] [col i])) visible-cols))
          col-index (when query-needed?
@@ -116,7 +107,7 @@
               :verified (verified-review? id "card")}
        with-queryable-dimensions?
        (assoc :queryable-dimensions (into []
-                                          (comp (map #(add-table-reference base-query %))
+                                          (comp (map #(metabot-v3.tools.u/add-table-reference base-query %))
                                                 (map #(metabot-v3.tools.u/->result-column
                                                        metric-query % (col-index %) field-id-prefix)))
                                           (->> (lib/filterable-columns base-query)
@@ -155,7 +146,7 @@
            cols (when with-fields?
                   (->> (lib/visible-columns table-query)
                        field-values-fn
-                       (map #(add-table-reference table-query %))))
+                       (map #(metabot-v3.tools.u/add-table-reference table-query %))))
            field-id-prefix (when with-fields?
                              (metabot-v3.tools.u/table-field-id-prefix id))]
        (-> {:id id
@@ -200,7 +191,7 @@
          cols (when with-fields?
                 (->> (lib/visible-columns card-query)
                      field-values-fn
-                     (map #(add-table-reference card-query %))))
+                     (map #(metabot-v3.tools.u/add-table-reference card-query %))))
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
           :type card-type
@@ -258,7 +249,7 @@
                                   :with-metrics?                   true
                                   :with-default-temporal-breakout? false
                                   :with-queryable-dimensions?      false})
-          (tap> (queries)))))
+                 (tap> (queries)))))
   -)
 
 (defn get-table-details
