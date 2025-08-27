@@ -140,7 +140,6 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [fetchTransform, { isFetching }] = useLazyGetTransformQuery();
   const [runTransform, { isLoading: isRunning }] = useRunTransformMutation();
   const { sendErrorToast } = useMetadataToasts();
-  const readOnly = useIsInLibrary("transform");
 
   const handleRun = async () => {
     trackTranformTriggerManualRun({
@@ -163,7 +162,6 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
       run={transform.last_run}
       isLoading={isFetching || isRunning}
       onRun={handleRun}
-      isDisabled={readOnly}
     />
   );
 }
@@ -212,4 +210,3 @@ function TagSection({ transform }: TagSectionProps) {
     </Box>
   );
 }
-

@@ -12,7 +12,6 @@ import {
   useLazyGetTransformJobQuery,
   useRunTransformJobMutation,
 } from "metabase-enterprise/api";
-import { useIsInLibrary } from "metabase-enterprise/git_sync/useIsInLibrary";
 import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 
 import { RunButton } from "../../../components/RunButton";
@@ -99,7 +98,6 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
   const { sendErrorToast } = useMetadataToasts();
   const isSaved = job.id != null;
   const hasTags = job.tag_ids?.length !== 0;
-  const readOnly = useIsInLibrary("transform");
 
   const handleRun = async () => {
     if (job.id == null) {
@@ -126,7 +124,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
       <RunButton
         run={job.last_run}
         isLoading={isFetching || isRunning}
-        isDisabled={!isSaved || !hasTags || readOnly}
+        isDisabled={!isSaved || !hasTags}
         onRun={handleRun}
       />
     </Tooltip>
