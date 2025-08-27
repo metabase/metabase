@@ -32,7 +32,7 @@ const getComponents = ({
       // A custom handler for internal links (use by Embedding SDK)
       if (onInternalLinkClick) {
         return (
-          <a onClick={() => onInternalLinkClick(href)} {...rest}>
+          <a {...rest} onClick={() => onInternalLinkClick(href)}>
             {children}
           </a>
         );
