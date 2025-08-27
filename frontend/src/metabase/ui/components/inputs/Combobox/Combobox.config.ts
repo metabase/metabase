@@ -11,7 +11,7 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
     defaultProps: {
       size: "md",
       /**
-       * The default value was changed in v8.2.3 from `false` to `true`. The
+       * The default value was changed in v8.2.3 from `true` to `false`. The
        * problem is, however, that there is an infinite loop in the Popover
        * that keeps flipping the `placement` if the component is unmounted.
        * That's why we need to keep it `true` to avoid a regression. At the time
