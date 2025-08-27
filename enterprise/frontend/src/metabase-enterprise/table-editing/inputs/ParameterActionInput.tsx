@@ -55,7 +55,7 @@ export function ParameterActionInput(props: ParameterActionInputProps) {
 
     case TableActionFormInputType.Boolean:
       return (
-        <TableActionInputBoolean {...rest} isNullable={parameter.optional} />
+        <TableActionInputBoolean {...rest} isNullable={parameter.nullable} />
       );
 
     case TableActionFormInputType.Integer:

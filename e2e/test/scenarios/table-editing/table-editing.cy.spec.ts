@@ -366,17 +366,22 @@ describe("scenarios > table-editing", () => {
       });
 
       it("should handle errors", () => {
+        cy.visit(
+          `/browse/databases/${SAMPLE_DB_ID}/tables/${PRODUCTS_ID}/edit`,
+        );
+
         cy.findByTestId("table-root")
           .findAllByRole("row")
           .eq(1)
           .within(() => {
-            cy.get("[data-column-id='TAX']")
+            cy.get("[data-column-id='EAN']")
               .as("targetCell")
               .click({
                 scrollBehavior: false,
               })
               .find("input")
-              .type("{selectAll}{backspace}aaa", {
+              // Should be more than 13 characters to trigger the error
+              .type("{selectAll}{backspace}aaaaaaaaaaaaaaaaaaaaaaaaa", {
                 scrollBehavior: false,
               }) // Enter the new value
               .blur(); // Trigger the save action by blurring the input

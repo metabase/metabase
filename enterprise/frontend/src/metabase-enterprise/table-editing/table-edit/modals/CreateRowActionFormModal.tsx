@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import Animation from "metabase/css/core/animation.module.css";
-import { Button, Center, Flex, Loader, Modal } from "metabase/ui";
+import { Box, Button, Center, Flex, Loader, Modal } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import type {
@@ -118,28 +118,31 @@ export function CreateRowActionFormModal({
               <Modal.Title>{t`Create a new record`}</Modal.Title>
             </Modal.Header>
             <Modal.Body px="xl" py="lg" className={cx(S.modalBody)}>
-              {!description ? (
-                <Center className={S.modalBodyLoader}>
-                  <Loader />
-                </Center>
-              ) : (
-                description.parameters.map((parameter) => {
-                  return (
-                    <TableActionFormModalParameter
-                      key={parameter.id}
-                      parameter={parameter}
-                    >
-                      <ModalFormInput
-                        initialValue={
-                          values[parameter.id] ?? initialValues?.[parameter.id]
-                        }
+              <Box className={S.modalBodyGrid}>
+                {!description ? (
+                  <Center className={S.modalBodyLoader}>
+                    <Loader />
+                  </Center>
+                ) : (
+                  description.parameters.map((parameter) => {
+                    return (
+                      <TableActionFormModalParameter
+                        key={parameter.id}
                         parameter={parameter}
-                        onChange={setFieldValue}
-                      />
-                    </TableActionFormModalParameter>
-                  );
-                })
-              )}
+                      >
+                        <ModalFormInput
+                          initialValue={
+                            values[parameter.id] ??
+                            initialValues?.[parameter.id]
+                          }
+                          parameter={parameter}
+                          onChange={setFieldValue}
+                        />
+                      </TableActionFormModalParameter>
+                    );
+                  })
+                )}
+              </Box>
             </Modal.Body>
             <Flex px="xl" className={S.modalFooter} gap="lg" justify="flex-end">
               <Button variant="subtle" onClick={handleClose}>
