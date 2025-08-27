@@ -25,7 +25,7 @@ import type {
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { MetabotAdminPage } from "./MetabotAdminPage";
+import { MetabotAgentSettingsPage } from "./MetabotAgentSettingsPage";
 import * as hooks from "./utils";
 
 const mockPathParam = (id: MetabotId) => {
@@ -125,7 +125,7 @@ const setup = async (
   );
 
   renderWithProviders(
-    <Route path="/admin/metabot*" component={MetabotAdminPage} />,
+    <Route path="/admin/metabot*" component={MetabotAgentSettingsPage} />,
     {
       withRouter: true,
       initialRoute: `/admin/metabot/${initialPathParam}`,
@@ -137,7 +137,7 @@ const setup = async (
   }
 };
 
-describe("MetabotAdminPage", () => {
+describe("MetabotAgentSettingsPage", () => {
   it("should render the page", async () => {
     await setup();
     expect(screen.getByText(/Configure Metabot/)).toBeInTheDocument();

@@ -730,7 +730,6 @@ export const PLUGIN_METABOT = {
   getAdminPaths: () => [] as AdminPath[],
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null as React.ReactElement | null,
-  MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
 };

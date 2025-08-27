@@ -11,7 +11,8 @@ import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/Meta
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
-import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { MetabotAgentSettingsPage } from "./components/MetabotAdmin/MetabotAgentSettingsPage";
+import { MetabotGeneralSettingsPage } from "./components/MetabotAdmin/MetabotGeneralSettingsPage";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
@@ -37,8 +38,9 @@ if (hasPremiumFeature("metabot_v3")) {
       path="metabot"
       component={createAdminRouteGuard("metabot")}
     >
-      <IndexRoute component={MetabotAdminPage} />
-      <Route path=":metabotId" component={MetabotAdminPage} />
+      <IndexRoute component={MetabotGeneralSettingsPage} />
+      <Route path="general" component={MetabotGeneralSettingsPage} />
+      <Route path=":metabotId" component={MetabotAgentSettingsPage} />
     </Route>
   );
 

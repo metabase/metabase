@@ -452,6 +452,7 @@ interface AdminSettings {
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
+  "metabot-feature-enabled": boolean;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;

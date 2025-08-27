@@ -32,6 +32,15 @@
   :export?    true
   :audit      :never)
 
+(defsetting metabot-feature-enabled
+  (deferred-tru "Enable or disable the Metabot feature entirely.")
+  :type       :boolean
+  :visibility :admin
+  :default    true
+  :feature    :metabot-v3
+  :doc        false
+  :export?    true)
+
 (defsetting metabot-id
   (deferred-tru "Override Metabot ID for agent streaming requests.")
   :type       :string
