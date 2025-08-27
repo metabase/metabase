@@ -386,19 +386,14 @@ describe("scenarios [EE] > public > dashboard", () => {
     );
   });
 
-  it("should handle 302 redirects (metabase#62501)", () => {
+  it("should handle /api/session/properties incorrect response (metabase#62501)", () => {
     cy.intercept("/api/session/properties", {
-      statusCode: 302,
-      headers: {
-        Location: "/?redirect_url=%2Fapi%2Fsession%2Fproperties",
-      },
+      statusCode: 200,
+      headers: {},
+      body: "<html><body><h1>Those aren't the droids you're looking for</h1></body></html>",
     });
 
-    cy.get("@dashboardId").then((id) => {
-      H.visitPublicDashboard(id, {
-        hash: { background: "false" },
-      });
-    });
+    cy.get("@dashboardId").then(H.visitPublicDashboard);
 
     cy.findByTestId("embed-frame").should("exist");
   });
