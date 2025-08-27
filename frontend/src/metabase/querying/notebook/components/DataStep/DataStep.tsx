@@ -116,7 +116,7 @@ export const DataStep = ({
         </NotebookCellItem>
       </NotebookCell>
 
-      {canSelectTableColumns && (
+      {canSelectTableColumns && isColumnPickerOpen && (
         <ColumnPickerSidebar
           isOpen={isColumnPickerOpen}
           onClose={() => setIsColumnPickerOpen(false)}
@@ -127,7 +127,6 @@ export const DataStep = ({
           onToggle={handleToggle}
           onSelectAll={handleSelectAll}
           onSelectNone={handleSelectNone}
-          // onReorderColumns={handleReorderColumns}
           data-testid="data-step-column-picker"
         />
       )}

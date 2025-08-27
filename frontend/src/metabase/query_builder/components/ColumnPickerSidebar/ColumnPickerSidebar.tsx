@@ -6,7 +6,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { forwardRef, useEffect, useMemo, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -26,10 +26,13 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import S from "./ColumnPickerSidebar.module.css";
 
 interface ColumnPickerSidebarProps {
+  question?: Question;
   query: Lib.Query;
   stageIndex: number;
   title?: string;
@@ -42,9 +45,11 @@ interface ColumnPickerSidebarProps {
   isColumnSelected?: (column: FieldPickerItem) => boolean;
   isDraggable?: boolean;
   onReorderColumns?: (oldIndex: number, newIndex: number) => void;
+  vizSettings?: VisualizationSettings["table.columns"];
 }
 
 export function ColumnPickerSidebar({
+  // question,
   query,
   stageIndex,
   isOpen,
@@ -58,15 +63,10 @@ export function ColumnPickerSidebar({
   isDraggable = false,
   onReorderColumns,
 }: ColumnPickerSidebarProps) {
-  const [localColumns, setLocalColumns] = useState<Lib.ColumnMetadata[]>([]);
   const [searchText, setSearchText] = useState("");
 
-  useEffect(() => {
-    setLocalColumns(columns);
-  }, [columns]);
-
   const items = useMemo(() => {
-    const items = localColumns.map((column) => ({
+    const items = columns.map((column) => ({
       column,
       columnInfo: Lib.displayInfo(query, stageIndex, column),
     }));
@@ -76,7 +76,7 @@ export function ColumnPickerSidebar({
       isSelected: isColumnSelected(item),
       isDisabled: isColumnDisabled?.(item, items) ?? false,
     }));
-  }, [localColumns, query, stageIndex, isColumnSelected]);
+  }, [columns, query, stageIndex, isColumnSelected]);
 
   const filteredItems = useMemo(() => {
     if (!searchText.trim()) {
@@ -109,17 +109,16 @@ export function ColumnPickerSidebar({
     const { active, over } = event;
 
     if (active.id !== over?.id && onReorderColumns) {
-      const oldIndex = localColumns.findIndex((column) => {
+      const oldIndex = columns.findIndex((column) => {
         const info = Lib.displayInfo(query, stageIndex, column);
         return info.longDisplayName === active.id;
       });
-      const newIndex = localColumns.findIndex((column) => {
+      const newIndex = columns.findIndex((column) => {
         const info = Lib.displayInfo(query, stageIndex, column);
         return info.longDisplayName === over?.id;
       });
 
       if (oldIndex !== -1 && newIndex !== -1) {
-        // reorder columns in viz settings
         onReorderColumns(oldIndex, newIndex);
       }
     }

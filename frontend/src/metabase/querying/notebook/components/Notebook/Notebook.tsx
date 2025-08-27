@@ -1,5 +1,5 @@
 import { arrayMove } from "@dnd-kit/sortable";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
@@ -93,26 +93,55 @@ function CustomizeColumnsButton({ question }: CustomizeColumnsButtonProps) {
 
   const columns = Lib.returnedColumns(query, -1);
 
+  const items = useMemo<Lib.ColumnMetadata[]>(() => {
+    const settings = question.settings();
+    const tableColumns = settings["table.columns"] ?? [];
+
+    if (tableColumns.length === 0) {
+      return columns;
+    }
+
+    return tableColumns.map((settings) => {
+      const column = columns.find(
+        (c) => Lib.displayInfo(query, -1, c).name === settings.name,
+      );
+
+      if (!column) {
+        throw new Error(`column not found ${settings.name}`);
+      }
+
+      return column;
+    });
+  }, [columns, query, question]);
+
   const handleClick = () => {
     setIsSidebarOpen(true);
   };
 
   const handleReorderColumns = (oldIndex: number, newIndex: number) => {
     const settings = question.settings();
-    const columnsSettings = settings["table.columns"] ?? [];
-    let newSettings;
+    let newSettings = settings;
+    const tableColumns = settings["table.columns"] ?? [];
 
-    if (columnsSettings.length === 0) {
+    if (tableColumns.length === 0) {
       newSettings = {
         ...settings,
         "table.columns": columns.map((c) => {
           const displayInfo = Lib.displayInfo(query, -1, c);
-          return { name: displayInfo.displayName, enabled: true };
+          return { name: displayInfo.name, enabled: true };
         }),
       };
-
-      arrayMove(newSettings["table.columns"], oldIndex, newIndex);
     }
+
+    const newTableColumns = arrayMove(
+      newSettings["table.columns"] ?? [],
+      oldIndex,
+      newIndex,
+    );
+    newSettings = {
+      ...newSettings,
+      "table.columns": newTableColumns,
+    };
 
     const newQuestion = question.setSettings(
       newSettings as VisualizationSettings,
@@ -125,14 +154,16 @@ function CustomizeColumnsButton({ question }: CustomizeColumnsButtonProps) {
       <Button onClick={handleClick}>{t`Customize Columns`}</Button>
       {isSidebarOpen && (
         <ColumnPickerSidebar
+          // question={question}
           title={t`Reorder and rename columns`}
           isOpen={isSidebarOpen}
           query={question.query()}
           stageIndex={-1}
           onClose={() => setIsSidebarOpen(false)}
-          columns={columns}
+          columns={items}
           isDraggable
           onReorderColumns={handleReorderColumns}
+          vizSettings={question.settings()["table.columns"]}
         />
       )}
     </>
