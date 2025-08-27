@@ -177,7 +177,7 @@
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (init-status/set-progress! 0.95)
   (setting/migrate-encrypted-settings!)
-  (database/check-health!)
+  #_(database/check-health!)
   (startup/run-startup-logic!)
   (task/start-scheduler!)
   (queue/start-listeners!)
