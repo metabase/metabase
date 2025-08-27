@@ -133,13 +133,12 @@
         (log/infof "Found gate updates: %d updates, %d deletes" (count updates) (count deletes)))
 
       (cond
-        ;; nothing to do, very unlikely to happen in practice
-        ;; (e.g. in principle when we GC gate tombstones, we could race with deletes)
+        ;; nothing to do
         (empty? gate-docs)
         (do
           (clear-stall-if-needed)
           (move-to-next-watermark poll-result)
-          (log/debugf "No gate documents to process for index %s" (:table-name index)))
+          (log/tracef "No gate documents to process for index %s" (:table-name index)))
 
         ;; NORMAL MODE: Not stalled, or still within grace period
         ;; This is the default behavior when the indexer is healthy. Any failures
