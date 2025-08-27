@@ -67,9 +67,13 @@ function setup({
 }
 
 describe("FkTargetPicker", () => {
-  it("should show empty state when there are no idFields", () => {
+  it("should show empty state when there are no idFields", async () => {
     setup({ idFields: [] });
-    expect(screen.getByPlaceholderText("No key available")).toBeInTheDocument();
+
+    const select = screen.getByPlaceholderText("No key available");
+    await userEvent.click(select);
+
+    expect(screen.getByText("Didn't find any results")).toBeInTheDocument();
   });
 
   it("should render options with label, description, and icon", async () => {

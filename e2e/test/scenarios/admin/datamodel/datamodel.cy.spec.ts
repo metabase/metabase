@@ -3206,8 +3206,8 @@ describe("scenarios > admin > datamodel", () => {
         FieldSection.getSemanticTypeInput().click();
         H.popover().should("be.visible");
 
-        cy.get("body").type("{esc}");
-        H.popover({ skipVisibilityCheck: true }).should("not.exist");
+        cy.realPress("Escape");
+        H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
         PreviewSection.get().should("be.visible");
       });
 

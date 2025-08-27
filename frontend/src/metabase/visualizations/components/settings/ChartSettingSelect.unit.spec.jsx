@@ -92,7 +92,7 @@ describe("ChartSettingSelect", () => {
         onChange={jest.fn()}
       />,
     );
-    expect(screen.getByDisplayValue("No value")).toBeInTheDocument();
+    expect(screen.getByText("No value")).toBeInTheDocument();
 
     rerender(
       <ChartSettingSelect
@@ -101,7 +101,7 @@ describe("ChartSettingSelect", () => {
         onChange={jest.fn()}
       />,
     );
-    expect(screen.getByDisplayValue("Boolean True")).toBeInTheDocument();
+    expect(screen.getByText("Boolean True")).toBeInTheDocument();
 
     rerender(
       <ChartSettingSelect
@@ -110,7 +110,7 @@ describe("ChartSettingSelect", () => {
         onChange={jest.fn()}
       />,
     );
-    expect(screen.getByDisplayValue("Boolean False")).toBeInTheDocument();
+    expect(screen.getByText("Boolean False")).toBeInTheDocument();
   });
 
   it("should disable select when there are no options", () => {

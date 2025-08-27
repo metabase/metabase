@@ -109,7 +109,7 @@ describe("ChartSettingsTableFormatting", () => {
       await screen.findByText("Which columns should be affected?"),
     );
 
-    expect(await screen.findByDisplayValue("is equal to")).toBeInTheDocument();
+    expect(await screen.findByText("is equal to")).toBeInTheDocument();
 
     await userEvent.type(
       await screen.findByTestId("conditional-formatting-value-input"),

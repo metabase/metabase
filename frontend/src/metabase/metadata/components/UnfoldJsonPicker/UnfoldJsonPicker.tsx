@@ -35,7 +35,6 @@ export const UnfoldJsonPicker = ({
       data={data}
       placeholder={t`Select whether to unfold JSON`}
       value={String(value)}
-      searchable
       onChange={handleChange}
       {...props}
     />

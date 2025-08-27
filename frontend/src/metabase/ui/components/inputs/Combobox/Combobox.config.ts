@@ -10,6 +10,7 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
   Combobox: Combobox.extend({
     defaultProps: {
       size: "md",
+      keepMounted: true, // the default value was changed in v8.2.3
     },
     classNames: {
       options: S.options,

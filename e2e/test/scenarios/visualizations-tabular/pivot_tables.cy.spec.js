@@ -924,7 +924,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findAllByText(/Totals for .*/i).should("have.length", 0);
   });
 
-  it.skip("should apply conditional formatting", () => {
+  it("should apply conditional formatting", () => {
     H.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -955,16 +955,16 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     H.openVizSettingsSidebar();
-    H.leftSidebar().findByText("Conditional Formatting").click();
-    H.leftSidebar().findByText("Add a rule").click();
-    H.leftSidebar()
-      .findByTestId("conditional-formatting-value-input")
-      .type("70")
-      .blur();
-    H.leftSidebar()
-      .findByTestId("conditional-formatting-value-operator-button")
-      .click({ force: true });
-    H.popover().findByText("is less than or equal to").click({ force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Conditional Formatting").click();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Add a rule").click();
+    cy.findByTestId("conditional-formatting-value-input").type("70").blur();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("is equal to").click({ force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("is less than or equal to").click({ force: true });
 
     cy.contains("[data-testid=pivot-table-cell]", "65.09").should(
       "have.css",
@@ -1297,10 +1297,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
               [
                 "field",
                 PRODUCTS.CATEGORY,
-                {
-                  "base-type": "type/Text",
-                  "source-field": ORDERS.PRODUCT_ID,
-                },
+                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
               ],
             ],
           },

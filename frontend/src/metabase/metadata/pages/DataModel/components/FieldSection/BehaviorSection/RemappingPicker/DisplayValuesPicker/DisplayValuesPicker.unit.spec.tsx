@@ -71,7 +71,7 @@ describe("DisplayValuesPicker", () => {
   it("shows current value as selected", () => {
     setup({ value: "custom" });
 
-    expect(screen.getByDisplayValue("Custom mapping")).toBeInTheDocument();
+    expect(screen.getByText("Custom mapping")).toBeInTheDocument();
   });
 
   it("calls onChange when selecting a new value", async () => {
@@ -105,7 +105,7 @@ describe("DisplayValuesPicker", () => {
       value: "custom",
     });
 
-    expect(screen.getByDisplayValue("Custom mapping")).toBeInTheDocument();
+    expect(screen.getByText("Custom mapping")).toBeInTheDocument();
 
     await userEvent.click(screen.getByPlaceholderText("Pick a value"));
 
