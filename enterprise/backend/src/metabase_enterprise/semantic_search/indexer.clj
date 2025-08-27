@@ -266,9 +266,11 @@
            ^Instant last-seen-change
            ^Duration exit-early-cold-duration]}
    ^Instant now]
-  (and start-time
-       last-seen-change
-       (.isAfter now (.plus last-seen-change exit-early-cold-duration))))
+  (or (and last-seen-change
+           (.isAfter now (.plus last-seen-change exit-early-cold-duration)))
+      (and (nil? last-seen-change)
+           start-time
+           (.isAfter now (.plus start-time exit-early-cold-duration)))))
 
 (def ^Duration dlq-max-run-duration
   "Maximum time the DLQ retry loop will run before yielding back to the main indexer.
