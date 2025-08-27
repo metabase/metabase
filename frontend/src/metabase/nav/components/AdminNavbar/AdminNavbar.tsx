@@ -11,7 +11,6 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon } from "metabase/ui";
-import type { User } from "metabase-types/api";
 import type { AdminPath } from "metabase-types/store";
 
 import StoreLink from "../StoreLink";
@@ -33,7 +32,6 @@ import {
 
 interface AdminNavbarProps {
   path: string;
-  user: User;
   adminPaths: AdminPath[];
 }
 
