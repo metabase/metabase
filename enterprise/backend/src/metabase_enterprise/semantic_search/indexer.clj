@@ -424,7 +424,7 @@
                 ;; Seeding this value with the watermark solves a problem where the very last document
                 ;; will be re-indexed every time the indexer is rescheduled
                 :last-seen-candidates     (if last-seen #{last-seen} #{})
-                :last-novel-count       0
+                :last-novel-count         0
                 :last-poll-count          0
                 :max-run-duration         max-run-duration
                 :exit-early-cold-duration exit-early-cold-duration
