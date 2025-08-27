@@ -955,13 +955,11 @@ export const setOrUnsetParameterValues =
   (parameterIdValuePairs: any[][]) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameterValues = getParameterValues(getState());
+    const areAllSet = parameterIdValuePairs.every(([id, value]) =>
+      _.isEqual(value, parameterValues[id]),
+    );
     parameterIdValuePairs
-      .map(([id, value]) =>
-        setParameterValue(
-          id,
-          _.isEqual(value, parameterValues[id]) ? null : value,
-        ),
-      )
+      .map(([id, value]) => setParameterValue(id, areAllSet ? null : value))
       .forEach(dispatch);
   };
 
