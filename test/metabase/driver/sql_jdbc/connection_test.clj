@@ -150,7 +150,8 @@
             ;; to [[driver.u/supports?]].
             original-supports?       driver.u/supports?
             supports?-fn             (fn [driver feature database]
-                                       (if (and (= driver :clickhouse)
+                                       (if (and #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+                                            (= driver :clickhouse)
                                                 (= feature :connection-impersonation))
                                          true
                                          (original-supports? driver feature database)))]
