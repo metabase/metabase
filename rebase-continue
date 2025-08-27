@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-766-add-utm-tags-to-links-in-the-embedding-hub"
+    }
+  ]
 }
