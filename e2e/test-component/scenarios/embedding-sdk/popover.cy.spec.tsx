@@ -125,7 +125,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
 
           // Clicking outside of the multiselect popover to be sure that the click closes it
           cy.findByText("Additional tooltip columns").click();
-          cy.get('[data-element-id="mantine-popover"]').should("be.hidden");
+          cy.get('[data-element-id="mantine-popover"]').should("not.exist");
         },
       );
     });
