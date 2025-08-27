@@ -156,7 +156,7 @@
       (with-transform-lifecycle [run-id [(:id transform) {:run_method run-method}]]
         ;; TODO: Pass connection-str to API once it supports it
         ;; For now, the connection string needs to be embedded in the Python code
-        (let [{:keys [body status] :as result}  (call-python-runner-api! body {"source" source-table})]
+        (let [{:keys [body status] :as result}  (call-python-runner-api! body {"df" source-table})]
           (if (not= 200 status)
             (throw (ex-info (str/join "\n"
                                       [(format "exit code %d" (:exit-code body))
