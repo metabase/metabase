@@ -14,6 +14,7 @@ import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { RunSection } from "./RunSection";
+import { SourceSection } from "./SourceSection";
 import { TargetSection } from "./TargetSection";
 
 type TransformPageParams = {
@@ -58,6 +59,7 @@ export function TransformPage({ params }: TransformPageProps) {
         <NameSection transform={transform} />
       </Stack>
       <RunSection transform={transform} />
+      <SourceSection transform={transform} />
       <TargetSection transform={transform} />
       <ManageSection transform={transform} />
     </Stack>
