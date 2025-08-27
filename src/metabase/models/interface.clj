@@ -32,6 +32,7 @@
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.tools.identity-query :as t2.identity-query]
    [toucan2.util :as t2.u])
@@ -605,6 +606,10 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/entity-id :hook/git-sync-protected)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/git-sync-protected)
+(methodical/prefer-method! #'t2.before-update/before-update :hook/entity-id :hook/git-sync-protected)
+(methodical/prefer-method! #'t2.before-update/before-update :hook/timestamped? :hook/git-sync-protected)
 
 ;; --- helper fns
 (defn changes-with-pk
