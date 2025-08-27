@@ -16,7 +16,7 @@ export const getDefaultSdkIframeEmbedSettings = (
   type: SdkIframeEmbedSetupExperience,
   defaultResourceId: string | number,
 ): SdkIframeEmbedSetupSettings => {
-  return match(type)
+  const templateDefaults = match(type)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
@@ -55,4 +55,9 @@ export const getDefaultSdkIframeEmbedSettings = (
       }),
     )
     .exhaustive();
+
+  return {
+    ...templateDefaults,
+    useExistingUserSession: true,
+  };
 };
