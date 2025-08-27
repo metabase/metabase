@@ -576,6 +576,11 @@ export type ZoomTimeseriesDrillThruInfo =
     displayName?: string;
   };
 
+export type ZoomGeographicDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/zoom-in.geographic"> & {
+    displayName: string;
+  };
+
 export type DrillThruDisplayInfo =
   | ColumnExtractDrillThruInfo
   | CombineColumnsDrillThruInfo
@@ -591,7 +596,8 @@ export type DrillThruDisplayInfo =
   | SummarizeColumnByTimeDrillThruInfo
   | ColumnFilterDrillThruInfo
   | UnderlyingRecordsDrillThruInfo
-  | ZoomTimeseriesDrillThruInfo;
+  | ZoomTimeseriesDrillThruInfo
+  | ZoomGeographicDrillThruInfo;
 
 export type FilterDrillDetails = {
   query: Query;
@@ -604,15 +610,6 @@ export type PivotType = "category" | "location" | "time";
 export type PivotDrillDetails = {
   pivotTypes: PivotType[];
   stageIndex: number;
-};
-
-export type ZoomInGeographicDrillType =
-  | "binned-lat-lon->binned-lat-lon"
-  | "country-city-state->binned-lat-lon";
-
-export type ZoomInGeographicDrillDetails = {
-  subtype: ZoomInGeographicDrillType;
-  columnType?: string;
 };
 
 export interface ClickObjectDimension {

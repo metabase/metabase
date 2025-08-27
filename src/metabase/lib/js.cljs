@@ -2341,14 +2341,6 @@
   [a-drill-thru pivot-type]
   (to-array (lib.core/pivot-columns-for-type a-drill-thru (keyword pivot-type))))
 
-(defn ^:export zoom-in-geographic-drill-details
-  "Returns a JS object with the details needed to calculate the title of a `geographic` drill.
-
-  > **Code health:** Single Use.  This is only here to supporr the context menu uI and should not be reused."
-  [{:keys [column subtype]}]
-  #js {"subtype" (name subtype)
-       "columnType" (some-> column :semantic-type name)})
-
 (defn ^:export with-different-table
   "Changes an existing `a-query` to use a different source table or card.
 

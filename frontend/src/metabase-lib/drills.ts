@@ -10,7 +10,6 @@ import type {
   PivotDrillDetails,
   PivotType,
   Query,
-  ZoomInGeographicDrillDetails,
 } from "./types";
 
 // NOTE: value might be null or undefined, and they mean different things!
@@ -65,10 +64,4 @@ export function pivotColumnsForType(
   pivotType: PivotType,
 ): ColumnMetadata[] {
   return ML.pivot_columns_for_type(drillThru, pivotType);
-}
-
-export function zoomInGeographicDrillDetails(
-  drillThru: DrillThru,
-): ZoomInGeographicDrillDetails {
-  return ML.zoom_in_geographic_drill_details(drillThru);
 }
