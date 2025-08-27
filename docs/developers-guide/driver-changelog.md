@@ -17,6 +17,8 @@ title: Driver interface changelog
   metabase.driver/connection-details, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
   metabase.driver.sql/default-schema, and metabase.driver.sql/find-table to implement sql transforms.
 
+- Added the driver multi-method `driver/create-schema-if-needed!` which should be implemented by drivers that support `:schemas` and `:transforms/table`.
+
 ## Metabase 0.56.3
 
 - Added the driver multi-method `driver/describe-database*` that drivers should now implement instead of `driver/describe-database`.

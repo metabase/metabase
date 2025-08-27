@@ -1214,6 +1214,5 @@
 
 (defmethod driver/create-schema-if-needed! :postgres
   [driver details schema]
-  (let [schema (driver.sql/normalize-name driver schema)
-        sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" schema)]]]
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
     (driver/execute-raw-queries! driver details sql)))

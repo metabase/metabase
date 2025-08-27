@@ -313,6 +313,5 @@
 
 (defmethod driver/create-schema-if-needed! :clickhouse
   [driver details schema]
-  (let [schema (driver.sql/normalize-name driver schema)
-        sql [[(format "CREATE DATABASE IF NOT EXISTS %s;" schema)]]]
+  (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]
     (driver/execute-raw-queries! driver details sql)))
