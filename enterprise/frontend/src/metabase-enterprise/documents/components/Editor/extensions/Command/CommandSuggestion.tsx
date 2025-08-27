@@ -1,5 +1,6 @@
 import type { Editor, Range } from "@tiptap/core";
 import {
+  type DOMAttributes,
   forwardRef,
   useCallback,
   useEffect,
@@ -10,6 +11,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   Box,
@@ -21,6 +23,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import type { SearchResult } from "metabase-types/api";
 
 import {
@@ -36,26 +39,28 @@ import { EntitySearchSection } from "../shared/EntitySearchSection";
 import { EMBED_SEARCH_MODELS, LINK_SEARCH_MODELS } from "../shared/constants";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
+import type { CommandProps } from "./CommandExtension";
 import CommandS from "./CommandSuggestion.module.css";
 
 export interface CommandSuggestionProps {
   items: SearchResult[];
-  command: (item: CommandItem) => void;
+  command: (item: CommandProps) => void;
   editor: Editor;
   range: Range;
   query: string;
 }
 
-interface CommandItem {
-  command?: string;
-  clearQuery?: boolean;
-  switchToLinkMode?: boolean;
-  switchToEmbedMode?: boolean;
-  selectItem?: boolean;
-  embedItem?: boolean;
-  entityId?: number | string;
-  model?: string;
-}
+// interface CommandItem {
+//   command?: string;
+//   clearQuery?: boolean;
+//   switchToLinkMode?: boolean;
+//   switchToEmbedMode?: boolean;
+//   selectItem?: boolean;
+//   embedItem?: boolean;
+//   entityId?: number | string;
+//   model?: string;
+//   document?: Document | null;
+// }
 
 interface SuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
@@ -79,8 +84,8 @@ const CommandMenuItem = forwardRef<
     option: CommandOption;
     isSelected?: boolean;
     onClick?: () => void;
-  }
->(function CommandMenuItem({ option, isSelected, onClick }, ref) {
+  } & DOMAttributes<HTMLButtonElement>
+>(function CommandMenuItem({ option, isSelected, onClick, ...rest }, ref) {
   return (
     <UnstyledButton
       ref={ref}
@@ -89,6 +94,7 @@ const CommandMenuItem = forwardRef<
       role="option"
       aria-selected={isSelected}
       aria-label={option.label}
+      {...rest}
     >
       <Group gap="sm" wrap="nowrap" align="center">
         {option.icon ? (
@@ -114,6 +120,7 @@ export const CommandSuggestion = forwardRef<
   SuggestionRef,
   CommandSuggestionProps
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
+  const document = useSelector(getCurrentDocument);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showLinkSearch, setShowLinkSearch] = useState(false);
   const [showEmbedSearch, setShowEmbedSearch] = useState(false);
@@ -216,16 +223,18 @@ export const CommandSuggestion = forwardRef<
           selectItem: true,
           entityId: item.id,
           model: item.model,
+          document,
         });
       } else {
         command({
           embedItem: true,
           entityId: item.id,
           model: item.model,
+          document,
         });
       }
     },
-    [command, showLinkSearch],
+    [command, showLinkSearch, document],
   );
 
   const executeCommand = (commandName: string) => {
@@ -250,6 +259,7 @@ export const CommandSuggestion = forwardRef<
     if (commandName === "metabot") {
       command({
         command: "metabot",
+        document,
       });
       return;
     }
@@ -389,6 +399,7 @@ export const CommandSuggestion = forwardRef<
           menuItems={searchMenuItems}
           selectedIndex={entitySelectedIndex}
           onItemSelect={entityHandlers.selectItem}
+          onItemHover={entityHandlers.hoverHandler}
           onFooterClick={entityHandlers.openModal}
           query={query}
           searchResults={searchResults}
@@ -410,6 +421,7 @@ export const CommandSuggestion = forwardRef<
                       item={item}
                       isSelected={selectedIndex === index}
                       onClick={() => selectItem(index)}
+                      onMouseEnter={() => setSelectedIndex(index)}
                     />
                   ))}
                   {searchMenuItems.length > 0 && commandOptions.length > 0 && (
@@ -424,6 +436,7 @@ export const CommandSuggestion = forwardRef<
                         option={option}
                         isSelected={selectedIndex === index}
                         onClick={() => selectItem(index)}
+                        onMouseEnter={() => setSelectedIndex(index)}
                       />
                     );
                   })}
@@ -463,6 +476,7 @@ export const CommandSuggestion = forwardRef<
                             option={option}
                             isSelected={selectedIndex === index}
                             onClick={() => selectItem(index)}
+                            onMouseEnter={() => setSelectedIndex(index)}
                           />
                         );
                       })}

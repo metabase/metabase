@@ -393,3 +393,47 @@
                        first
                        (zipmap units))))]
           (qp-test.date-time-zone-functions-test/run-datetime-diff-time-zone-tests! diffs))))))
+
+(deftest ^:parallel database-supports-schemas-test
+  (doseq [[schemas-supported? details] [[true? {}]
+                                        [true? {:dbname nil}]
+                                        [true? {:dbname ""}]
+                                        [false? {:dbname "db_name"}]]]
+    (is (schemas-supported? (driver/database-supports? :athena :schemas {:details details})))))
+
+(deftest ^:parallel athena-describe-database
+  (mt/test-driver :athena
+    (testing "when the dbname is specified describe-database only returns tables from that database and does not include the schema"
+      (is (= {:tables #{{:name "users", :schema nil, :description nil}
+                        {:name "venues", :schema nil, :description nil}
+                        {:name "categories", :schema nil, :description nil}
+                        {:name "checkins", :schema nil, :description nil}
+                        {:name "orders", :schema nil, :description nil}
+                        {:name "people", :schema nil, :description nil}
+                        {:name "products", :schema nil, :description nil}
+                        {:name "reviews", :schema nil, :description nil}}}
+             (driver/describe-database driver/*driver* (mt/db)))))
+    (testing "when the dbname is not specified describe-database returns tables from all databases and does include the schema"
+      (mt/with-temp [:model/Database db {:engine :athena,
+                                         :details (dissoc (:details (mt/db)) :dbname)}]
+        (let [tables (driver/describe-database driver/*driver* db)
+              ;; athena CI has many (possibly changing) databases so we'll just filter for a few
+              filter-dbs #{"v3_test_data" "airports" "db_router_data" "db_routed_data" "diff_time_zones_athena_cases"}
+              filtered-tables {:tables (set (filter (comp filter-dbs :schema) (:tables tables)))}]
+          (is (= {:tables #{{:name "venues", :schema "v3_test_data", :description nil}
+                            {:name "users", :schema "v3_test_data", :description nil}
+                            {:name "categories", :schema "v3_test_data", :description nil}
+                            {:name "people", :schema "v3_test_data", :description nil}
+                            {:name "reviews", :schema "v3_test_data", :description nil}
+                            {:name "checkins", :schema "v3_test_data", :description nil}
+                            {:name "products", :schema "v3_test_data", :description nil}
+                            {:name "orders", :schema "v3_test_data", :description nil}
+                            {:name "continent", :schema "airports", :description nil}
+                            {:name "country", :schema "airports", :description nil}
+                            {:name "region", :schema "airports", :description nil}
+                            {:name "airport", :schema "airports", :description nil}
+                            {:name "municipality", :schema "airports", :description nil}
+                            {:name "t", :schema "db_routed_data", :description nil}
+                            {:name "t", :schema "db_router_data", :description nil}
+                            {:name "times", :schema "diff_time_zones_athena_cases", :description nil}}}
+                 filtered-tables)))))))

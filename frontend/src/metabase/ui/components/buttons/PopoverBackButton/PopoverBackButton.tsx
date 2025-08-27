@@ -6,10 +6,11 @@ import { Icon } from "metabase/ui";
 import type { BoxProps } from "../../utils";
 import { Button } from "../Button";
 
-export type PopoverBackButtonProps = BoxProps &
+export type PopoverBackButtonProps = { withArrow?: boolean } & BoxProps &
   ButtonHTMLAttributes<HTMLButtonElement>;
 
 export function PopoverBackButton(props: PopoverBackButtonProps) {
+  const { withArrow = true, ...rest } = props;
   return (
     <Button
       p={0}
@@ -17,9 +18,9 @@ export function PopoverBackButton(props: PopoverBackButtonProps) {
       c="var(--mb-color-text-primary)"
       fz="1rem"
       lh="1.25rem"
-      {...props}
+      {...rest}
       variant="subtle"
-      leftSection={<Icon name="chevronleft" />}
+      leftSection={withArrow && <Icon name="chevronleft" />}
     />
   );
 }
