@@ -31,7 +31,7 @@
   (deferred-tru "API key for authenticating with the Python runner service.")
   :type       :string
   :visibility :internal
-  :default    nil
+  :default    ""
   :feature    :transforms
   :doc        false
   :export?    false
