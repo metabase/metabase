@@ -122,8 +122,8 @@ jobs:
             unzip -q "timing-artifacts/${NAME}.zip" -d "timing-artifacts/${NAME}/"
             
             # Check if timing file exists
-            if [ -f "timing-artifacts/${NAME}/e2e/support/mergedTimings.json" ]; then
-              cp "timing-artifacts/${NAME}/e2e/support/mergedTimings.json" "timing-artifacts/${NAME}-timings.json"
+            if [ -f "timing-artifacts/${NAME}/mergedTimings.json" ]; then
+              cp "timing-artifacts/${NAME}/mergedTimings.json" "timing-artifacts/${NAME}-timings.json"
               ARTIFACT_COUNT=$((ARTIFACT_COUNT + 1))
               echo "✓ Extracted timing data from $NAME"
             else
@@ -149,8 +149,8 @@ jobs:
                 unzip -q "timing-artifacts/${NAME}.zip" -d "timing-artifacts/${NAME}/"
                 
                 # Check if timing file exists
-                if [ -f "timing-artifacts/${NAME}/e2e/support/mergedTimings.json" ]; then
-                  cp "timing-artifacts/${NAME}/e2e/support/mergedTimings.json" "timing-artifacts/${NAME}-timings.json"
+                if [ -f "timing-artifacts/${NAME}/mergedTimings.json" ]; then
+                  cp "timing-artifacts/${NAME}/mergedTimings.json" "timing-artifacts/${NAME}-timings.json"
                   ARTIFACT_COUNT=$((ARTIFACT_COUNT + 1))
                   echo "✓ Extracted timing data from $NAME"
                 else
