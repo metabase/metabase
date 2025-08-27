@@ -8,8 +8,9 @@ import LogoIcon from "metabase/common/components/LogoIcon";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { PLUGIN_GIT_SYNC } from "metabase/plugins";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { Button, Flex, Icon } from "metabase/ui";
+import { Button, Flex, Group, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
 import type { AdminPath } from "metabase-types/store";
 
@@ -42,6 +43,7 @@ export const AdminNavbar = ({
 }: AdminNavbarProps) => {
   const isPaidPlan = useSelector(getIsPaidPlan);
   const dispatch = useDispatch();
+  const gitSyncConfigured = useSelector((_state) => true);
 
   useRegisterShortcut(
     [
@@ -92,6 +94,10 @@ export const AdminNavbar = ({
         </AdminNavbarItems>
 
         <Flex ml="auto" align="center" gap="md">
+          <Group ml="auto" gap="sm" display="flex" align="center" wrap="nowrap">
+            {gitSyncConfigured && <PLUGIN_GIT_SYNC.SelectBranch />}
+            {gitSyncConfigured && <PLUGIN_GIT_SYNC.ViewChangesButton />}
+          </Group>
           {!isPaidPlan && <StoreLink />}
           <AdminExitLink
             to="/"
@@ -110,7 +116,6 @@ interface AdminMobileNavbarProps {
 
 const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
   const ref = useClickOutside(() => setMobileNavOpen(false));
 
   return (
