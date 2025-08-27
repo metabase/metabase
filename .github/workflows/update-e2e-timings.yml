@@ -48,10 +48,10 @@ jobs:
 
           # Get recent workflow runs from generate-new-test-timings branch (for testing)
           {
-            gh api repos/${{ github.repository }}/actions/workflows/run-tests.yml/runs \
-              --jq "[.workflow_runs[] | select(.created_at > \"$CUTOFF_DATE\") | select(.head_branch == \"generate-new-test-timings\") | .id][0:20]"
-            gh api repos/${{ github.repository }}/actions/workflows/e2e-tests.yml/runs \
-              --jq "[.workflow_runs[] | select(.created_at > \"$CUTOFF_DATE\") | select(.head_branch == \"generate-new-test-timings\") | .id][0:20]"
+            gh api "repos/${{ github.repository }}/actions/workflows/run-tests.yml/runs?branch=generate-new-test-timings&per_page=100" \
+              --jq "[.workflow_runs[] | select(.created_at > \"$CUTOFF_DATE\") | .id][0:20]"
+            gh api "repos/${{ github.repository }}/actions/workflows/e2e-tests.yml/runs?branch=generate-new-test-timings&per_page=100" \
+              --jq "[.workflow_runs[] | select(.created_at > \"$CUTOFF_DATE\") | .id][0:20]"
           } | jq -s 'flatten | unique' > timing-artifacts/recent-run-ids.json
 
           echo "Checking for merged timing artifacts in recent runs..."
