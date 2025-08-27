@@ -14,7 +14,6 @@
     var(--mb-color-bg-light) 3rem,
     transparent 3rem
   ) !important;
-  opacity: 1 !important;
 }
 
 .video {
