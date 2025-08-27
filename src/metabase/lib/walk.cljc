@@ -280,10 +280,7 @@
 (mu/defmethod walk-subclauses-method ::case
   [[tag opts if-then-pairs default :as clause] f]
   (let [if-then-pairs' (mapv (fn [[if-expr then-expr]]
-                               (println "if-expr:" if-expr)     ; NOCOMMIT
-                               (println "then-expr:" then-expr) ; NOCOMMIT
-                               [(walk-clause* if-expr f)
-                                (walk-clause* then-expr f)])
+                               [(walk-clause* if-expr f) (walk-clause* then-expr f)])
                              if-then-pairs)]
     (case (count clause)
       ;; no default value

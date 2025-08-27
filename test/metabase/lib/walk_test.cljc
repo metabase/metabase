@@ -242,7 +242,7 @@
                                                        "2018-09-01"
                                                        "2018-09-30")
                                                       false]]
-                                                    false))))]
+                                            false))))]
     (testing "No changes should return the original query (same object)"
       (is (identical? query
                       (lib.walk/walk-clauses query (constantly nil)))))
@@ -295,4 +295,4 @@
                     "2018-09-30"]
                    false]]
                  false]]]
-              @calls)))))<
+              @calls)))))
