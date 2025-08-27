@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { type ReactNode, type Ref, forwardRef } from "react";
 
-import { Flex } from "metabase/ui";
+import { Flex, UnstyledButton } from "metabase/ui";
 
 import S from "./ParameterValueWidget.module.css";
 
@@ -45,7 +45,7 @@ function ParameterValueWidgetTriggerInner(
   }
 
   return (
-    <button
+    <UnstyledButton
       ref={ref}
       type="button"
       className={cx(S.parameter, className, {
@@ -54,6 +54,6 @@ function ParameterValueWidgetTriggerInner(
       aria-label={ariaLabel}
     >
       {children}
-    </button>
+    </UnstyledButton>
   );
 }
