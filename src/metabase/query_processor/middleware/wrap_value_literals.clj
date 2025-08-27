@@ -269,7 +269,8 @@
     _              &match))
 
 (defn- type-info-no-query
-  "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]] function."
+  "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]]
+  function."
   {:deprecated "0.57.0"}
   [clause]
   (let [expr-type (lib.schema.expression/type-of clause)]
@@ -279,6 +280,8 @@
        (let [[_tag _opts id-or-name] clause]
          (when (pos-int? id-or-name)
            (type-info-from-col (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
+     (when-let [unit (lib/raw-temporal-bucket clause)]
+       {:unit unit})
      {:base-type      expr-type
       :effective-type expr-type})))
 

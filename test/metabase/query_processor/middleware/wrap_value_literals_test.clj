@@ -353,3 +353,13 @@
                 qp.preprocess/preprocess
                 lib/->legacy-MBQL
                 wrap-value-literals)))))
+
+(deftest ^:parallel wrap-value-literals-in-mbql-test
+  (is (= [:!=
+          [:field 1 {:base-type :type/Date, :temporal-unit :month-of-year}]
+          [:absolute-datetime #t "2016-01-01" :month-of-year]]
+         #_{:clj-kondo/ignore [:deprecated-var]}
+         (#'qp.wrap-value-literals/wrap-value-literals-in-mbql
+          [:!=
+           [:field 1 {:base-type :type/Date, :temporal-unit :month-of-year}]
+           "2016-01-01"]))))

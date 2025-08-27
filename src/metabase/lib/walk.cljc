@@ -262,7 +262,7 @@
   have `query` for some
   reason (e.g. [[metabase.query-processor.middleware.wrap-value-literals/wrap-value-literals-in-mbql]]).
 
-  Walks `clause` in a depth-first manner and calls
+  Walks `clause` in a depth-first postorder manner and calls
 
     (f clause)
 
