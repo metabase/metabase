@@ -1,12 +1,14 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import { getIsListViewConfigurationShown } from "metabase/query_builder/selectors";
+import {
+  getIsListViewConfigurationShown,
+  getTransformedSeries,
+} from "metabase/query_builder/selectors";
 import { Button, Group, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { CardDisplayType, RawSeries } from "metabase-types/api";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { ListViewColumnsSidebar } from "./ListViewColumnsSidebar";
 
@@ -16,20 +18,19 @@ export type ModelSettings = {
 type DatasetEditorSettingsSidebarProps = {
   onUpdateModelSettings: (settings: ModelSettings) => void;
   visualizationSettings: ComputedVisualizationSettings;
-  rawSeries: RawSeries;
   display: CardDisplayType;
 };
 export const DatasetEditorSettingsSidebar = ({
   onUpdateModelSettings: onUpdateSettings,
   visualizationSettings = {},
-  rawSeries,
   display,
 }: DatasetEditorSettingsSidebarProps) => {
   const dispatch = useDispatch();
   const isShowingListViewConfiguration = useSelector(
     getIsListViewConfigurationShown,
   );
-  const cols = useMemo(() => rawSeries[0]?.data?.cols, [rawSeries]);
+  const series = useSelector(getTransformedSeries);
+  const cols = series?.[0]?.data?.cols ?? [];
 
   if (display === "list" && isShowingListViewConfiguration) {
     return (

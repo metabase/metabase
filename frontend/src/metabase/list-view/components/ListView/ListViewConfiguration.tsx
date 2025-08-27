@@ -122,7 +122,7 @@ export const ListViewConfiguration = ({
   const selectedSubtitleColumn = findColByName(leftValues[1]) ?? null;
   const selectedRightColumns = rightValues
     .slice(0, 5)
-    .map((n) => findColByName(n))
+    .map(findColByName)
     .filter(Boolean) as DatasetColumn[];
 
   const firstRow = data.rows?.[0];

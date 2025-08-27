@@ -206,7 +206,6 @@ function getSidebar(
       <DatasetEditorSettingsSidebar
         display={modelSettings.display}
         visualizationSettings={question.settings()}
-        rawSeries={props.rawSeries}
         onUpdateModelSettings={onUpdateModelSettings}
       />
     );
