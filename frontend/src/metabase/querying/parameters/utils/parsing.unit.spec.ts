@@ -52,11 +52,17 @@ describe("number parameters", () => {
     { value: "1.5", expectedValue: [1.5] },
     { value: [1, 2, 3], expectedValue: [1, 2, 3] },
     { value: ["1", "2", "3"], expectedValue: [1, 2, 3] },
+    {
+      value: ["9007199254740993", "9007199254740995"],
+      expectedValue: [9007199254740993n, 9007199254740995n],
+    },
     { value: [10, "9007199254740993"], expectedValue: [10, 9007199254740993n] },
     { value: [null, null], expectedValue: [] },
     { value: [10, 20], expectedValue: [10, 20] },
     { value: [10, null], expectedValue: [10, null] },
     { value: [null, 20], expectedValue: [null, 20] },
+    { value: [10, "abc"], expectedValue: [10] },
+    { value: ["abc", 20], expectedValue: [20] },
   ])("should deserialize $value", ({ value, expectedValue }) => {
     expect(deserializeNumberParameterValue(value)).toEqual(expectedValue);
   });

@@ -45,19 +45,25 @@ export function serializeNumberParameterValue(
 export function deserializeNumberParameterValue(
   value: ParameterValueOrArray | null | undefined,
 ): NumberFilterValue[] {
-  const parsedValue = normalizeArray(value).map((item) => {
-    if (typeof item === "number" && Number.isFinite(item)) {
-      return item;
-    }
-    if (typeof item === "string") {
-      const number = parseNumber(item);
-      if (number != null) {
-        return number;
+  const parsedValue = normalizeArray(value).reduce(
+    (values: NumberFilterValue[], item) => {
+      if (typeof item === "number" && Number.isFinite(item)) {
+        values.push(item);
+      } else if (typeof item === "string") {
+        const number = parseNumber(item);
+        if (number != null) {
+          values.push(number);
+        }
+      } else if (item === null) {
+        values.push(null);
       }
-    }
-    return null;
-  });
+      return values;
+    },
+    [],
+  );
 
+  // allow "between" values without min or max, e.g. `[1, null]` and `[null, 2]`
+  // only when an explicit `null` is passed
   return parsedValue.length === 2 && parsedValue.some(isNotNull)
     ? parsedValue
     : parsedValue.filter(isNotNull);
