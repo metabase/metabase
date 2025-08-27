@@ -78,8 +78,11 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform-job/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("transform-job", id)]),
+      invalidatesTags: (_, error, { id, tag_ids = [] }) =>
+        invalidateTags(error, [
+          idTag("transform-job", id),
+          ...tag_ids.map((tagId) => idTag("transform-job-via-tag", tagId)),
+        ]),
       onQueryStarted: async (
         { id, ...patch },
         { dispatch, queryFulfilled },
