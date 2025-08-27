@@ -11,6 +11,8 @@ import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
+  Comment,
+  CommentThread,
   Dashboard,
   DashboardQueryMetadata,
   DashboardSubscription,
@@ -662,4 +664,38 @@ export function provideUserKeyValueTags({
   key,
 }: GetUserKeyValueRequest) {
   return [{ type: "user-key-value" as const, id: `${namespace}#${key}` }];
+}
+
+export function provideCommentThreadListTags(
+  threads: CommentThread[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("comment-thread"),
+    ...threads.flatMap(provideCommentThreadTags),
+  ];
+}
+
+export function provideCommentThreadTags(
+  thread: CommentThread,
+): TagDescription<TagType>[] {
+  return [
+    idTag("comment-thread", thread.id),
+    ...(thread.creator ? provideUserTags(thread.creator) : []),
+    ...provideCommentListTags(thread.comments),
+  ];
+}
+
+export function provideCommentListTags(
+  comments: Comment[],
+): TagDescription<TagType>[] {
+  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
+}
+
+export function provideCommentTags(
+  comment: Comment,
+): TagDescription<TagType>[] {
+  return [
+    idTag("comment", comment.id),
+    ...(comment.creator ? provideUserTags(comment.creator) : []),
+  ];
 }

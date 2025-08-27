@@ -5,12 +5,16 @@ export type CommentId = number;
 
 export type CommentThreadId = number;
 
+export type CommentEntityType = "document-node";
+
+export type EntityId = string | number;
+
 export interface CommentThread {
   id: CommentThreadId;
 
-  entity_type: "document-node";
-  entity_id: string | number;
-  parent_entity_id: string | number | null;
+  entity_type: CommentEntityType;
+  entity_id: EntityId;
+  parent_entity_id: EntityId | null;
 
   creator: BaseUser;
   comments: Comment[];
@@ -37,3 +41,34 @@ export interface Comment {
 }
 
 export type CommentHistory = Comment[];
+
+/** request types below */
+
+export interface ListCommentsRequest {
+  entity_type: CommentEntityType;
+  entity_id: EntityId;
+  parent_entity_id?: EntityId;
+}
+
+export interface CreateCommentThreadRequest {
+  entity_id: EntityId;
+  entity_type: CommentEntityType;
+  parent_entity_id?: EntityId;
+  document: DocumentContent;
+}
+
+export interface CreateCommentRequest {
+  thread_id: CommentThreadId;
+  document: DocumentContent;
+}
+
+export interface UpdateCommentRequest {
+  thread_id: CommentThreadId;
+  comment_id: CommentId;
+  document: DocumentContent;
+}
+
+export interface GetCommentHistoryRequest {
+  thread_id: CommentThreadId;
+  comment_id: CommentId;
+}
