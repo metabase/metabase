@@ -914,3 +914,9 @@
                {:schema (first parts) :table (second parts)}))
        (keep #(driver.sql/find-table driver %))
        set))
+
+(defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
+  [driver details schema]
+  (let [schema (driver.sql/normalize-name driver schema)
+        sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" schema)]]]
+    (driver/execute-raw-queries! driver details sql)))
