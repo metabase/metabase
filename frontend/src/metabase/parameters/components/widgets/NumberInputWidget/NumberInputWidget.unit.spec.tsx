@@ -9,7 +9,7 @@ import {
   type NumberInputWidgetProps,
 } from "./NumberInputWidget";
 
-type SetupOpts = Omit<NumberInputWidgetProps, "setValue"> & {
+type SetupOpts = Omit<NumberInputWidgetProps, "parameter" | "setValue"> & {
   parameter?: Parameter;
 };
 
