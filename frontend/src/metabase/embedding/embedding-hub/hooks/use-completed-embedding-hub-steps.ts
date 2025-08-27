@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import { useGetPermissionsGraphQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 
 import type { EmbeddingHubStepId } from "../types";
 
@@ -14,11 +15,19 @@ export const useCompletedEmbeddingHubSteps = (): Record<
   EmbeddingHubStepId,
   boolean
 > => {
-  const { data } = useGetPermissionsGraphQuery();
+  const isJwtEnabled = useSetting("jwt-enabled");
+  const isSamlEnabled = useSetting("saml-enabled");
+  const isJwtConfigured = useSetting("jwt-configured");
+  const isSamlConfigured = useSetting("saml-configured");
+
+  const isSsoReady =
+    (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
+
+  const { data: permissionsGraph } = useGetPermissionsGraphQuery();
 
   const hasConfiguredSandboxes = useMemo(
-    () => getValuesFlat(data).includes("sandboxed"),
-    [data],
+    () => getValuesFlat(permissionsGraph).includes("sandboxed"),
+    [permissionsGraph],
   );
 
   return useMemo(() => {
@@ -27,10 +36,10 @@ export const useCompletedEmbeddingHubSteps = (): Record<
       "add-data": false,
       "create-dashboard": false,
       "configure-row-column-security": hasConfiguredSandboxes,
-      "secure-embeds": false,
+      "secure-embeds": isSsoReady,
       "embed-production": false,
     };
-  }, [hasConfiguredSandboxes]);
+  }, [isSsoReady, hasConfiguredSandboxes]);
 };
 
 /**
