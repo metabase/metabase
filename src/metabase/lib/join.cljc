@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [inflections.core :as inflections]
    [medley.core :as m]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -339,24 +340,31 @@
    stage-number
    {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join} :- ::lib.schema.join/join
    options                                                                  :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (when-not (= fields :none)
+  (when (and (not= fields :none)
+             (not (:qp/is-implicit-join join)))
     (let [cols  (join-returned-columns-relative-to-parent-stage query stage-number join options)
           cols' (if (= fields :all)
                   cols
-                  (for [field-ref fields
-                        :let      [match (or (lib.equality/find-matching-column field-ref cols)
-                                             (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
-                                                        (pr-str join-alias)
-                                                        (pr-str field-ref)
-                                                        (pr-str (map (juxt :id :lib/source-column-alias) cols))))]
-                        :when     match]
-                    (-> match
-                        (assoc :lib/source-uuid (lib.options/uuid field-ref))
-                        ;; if the ref in join `:fields` is bucketed then we need to propagate this, since the
-                        ;; bucketing will actually take place in the parent stage. Note that this unit can differ
-                        ;; from bucketing done in the last stage of the join --
-                        ;; see [[metabase.lib.join-test/do-not-incorrectly-propagate-temporal-unit-in-returned-columns-test-2]]
-                        (m/assoc-some :metabase.lib.field/temporal-unit (lib.temporal-bucket/raw-temporal-bucket field-ref)))))
+                  (let [join-query (assoc query :stages (conj (vec (:stages join))
+                                                              {:lib/type :mbql.stage/mbql
+                                                               :fields   (mapv (fn [field-ref]
+                                                                                 (-> field-ref
+                                                                                     (with-join-alias nil)
+                                                                                     (lib.temporal-bucket/with-temporal-bucket nil)
+                                                                                     (lib.binning/with-binning nil)))
+                                                                               (:fields join))}))
+                        cols (lib.metadata.calculation/returned-columns join-query -1 (lib.util/query-stage join-query -1) options)]
+                    (mapv (fn [field-ref col]
+                            (-> col
+                                (assoc :lib/source-uuid (lib.options/uuid field-ref))
+                                ;; if the ref in join `:fields` is bucketed then we need to propagate this, since the
+                                ;; bucketing will actually take place in the parent stage. Note that this unit can
+                                ;; differ from bucketing done in the last stage of the join --
+                                ;; see [[metabase.lib.join-test/do-not-incorrectly-propagate-temporal-unit-in-returned-columns-test-2]]
+                                (m/assoc-some :metabase.lib.field/temporal-unit (lib.temporal-bucket/raw-temporal-bucket field-ref)
+                                              :metabase.lib.field/binning       (lib.binning/binning field-ref))))
+                          (:fields join)
+                          cols)))
           ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`
           ;; instead. That can happen if a model gets reworked and an old join clause remembers the old fields.
           cols' (if (empty? cols') cols cols')
