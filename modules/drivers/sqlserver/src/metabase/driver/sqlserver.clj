@@ -958,3 +958,9 @@
            db-name nil]
        (with-open [rs (.getTables metadata db-name schema-name table-name (into-array String ["TABLE"]))]
          (.next rs))))))
+
+(defmethod driver/create-schema-if-needed! :sqlserver
+  [driver details schema]
+  (let [schema (driver.sql/normalize-name driver schema)
+        sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s;');" schema schema)]]]
+    (driver/execute-raw-queries! driver details sql)))
