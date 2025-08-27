@@ -39,7 +39,7 @@
               (cond
                 (nil? parent_id) (t2/select :model/Branch)
                 (> 0 parent_id) (branch/get-children-by-id nil)
-                :else (branch/get-children-by-id #p parent_id)))})
+                :else (branch/get-children-by-id parent_id)))})
 
 (api.macros/defendpoint :get "/:id"
   "Get a single branch by ID."
