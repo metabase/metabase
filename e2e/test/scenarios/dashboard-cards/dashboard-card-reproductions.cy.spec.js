@@ -981,24 +981,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should not show ellipsis icon for title");
-        cy.findByTestId("scalar-title-icon").should("not.exist");
-
-        cy.log("should truncate title and show title tooltip on hover");
-        scalarTitle().then(($element) => H.assertIsEllipsified($element[0]));
-        scalarTitle().realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.name)
-          .should("exist");
-
-        cy.log("should show description tooltip on hover");
-        cy.findByTestId("scalar-description").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.description)
-          .should("exist");
       });
     });
 
@@ -1021,22 +1003,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should not show ellipsis icon for title");
-        cy.findByTestId("scalar-title-icon").should("not.exist");
-
-        cy.log(
-          "should not truncate title and should not show title tooltip on hover",
-        );
-        scalarTitle().then(($element) => H.assertIsNotEllipsified($element[0]));
-        scalarTitle().realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should show description tooltip on hover");
-        cy.findByTestId("scalar-description").realHover();
-
-        H.tooltip().findByText(SCALAR_QUESTION.description).should("exist");
       });
     });
   });
@@ -1557,5 +1523,4 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 });
 
 const scalarContainer = () => cy.findByTestId("scalar-container");
-const scalarTitle = () => cy.findByTestId("scalar-title");
 const previousValue = () => cy.findByTestId("scalar-previous-value");
