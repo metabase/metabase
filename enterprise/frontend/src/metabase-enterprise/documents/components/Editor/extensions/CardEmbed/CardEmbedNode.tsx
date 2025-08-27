@@ -14,6 +14,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import { navigateToCardFromDocument } from "metabase-enterprise/documents/actions";
@@ -300,11 +301,24 @@ export const CardEmbedComponent = memo(
 
     if (error) {
       return (
-        <NodeViewWrapper className={styles.embedWrapper}>
+        <NodeViewWrapper
+          className={styles.embedWrapper}
+          data-testid="document-card-embed"
+        >
           <Box
-            className={cx(styles.errorContainer, EDITOR_STYLE_BOUNDARY_CLASS)}
+            className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
+              [styles.selected]: selected,
+            })}
           >
-            <Text color="error">{t`Failed to load question`}</Text>
+            <Flex className={styles.questionResults}>
+              <ErrorView
+                error={
+                  error === "not found"
+                    ? t`Couldn't find this chart.`
+                    : t`Failed to load question.`
+                }
+              />
+            </Flex>
           </Box>
         </NodeViewWrapper>
       );
