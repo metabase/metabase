@@ -674,8 +674,5 @@ export function provideCommentListTags(
 export function provideCommentTags(
   comment: Comment,
 ): TagDescription<TagType>[] {
-  return [
-    idTag("comment", comment.id),
-    ...(comment.creator ? provideUserTags(comment.creator) : []),
-  ];
+  return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
 }
