@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -8,6 +8,7 @@ import {
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
+import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Flex, Paper, Stack, Text } from "metabase/ui";
 import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
@@ -93,4 +94,22 @@ function Disclaimer() {
   );
 }
 
-export const MetabotQuestion = withPublicComponentWrapper(MetabotQuestionInner);
+const MetabotQuestionWrapped = () => {
+  const ensureSingleInstanceId = useId();
+
+  return (
+    <EnsureSingleInstance
+      groupId="metabot-question"
+      instanceId={ensureSingleInstanceId}
+      multipleRegisteredInstancesWarningMessage={
+        "Multiple instances of MetabotQuestion detected. Ensure only one instance of MetabotQuestion is rendered at a time."
+      }
+    >
+      <MetabotQuestionInner />
+    </EnsureSingleInstance>
+  );
+};
+
+export const MetabotQuestion = withPublicComponentWrapper(
+  MetabotQuestionWrapped,
+);
