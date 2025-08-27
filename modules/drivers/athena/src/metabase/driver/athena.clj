@@ -68,7 +68,6 @@
     :else ".amazonaws.com"))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
-  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog hostname], :as details}]
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
   (-> (merge
        {:classname      "com.amazon.athena.jdbc.AthenaDriver"
