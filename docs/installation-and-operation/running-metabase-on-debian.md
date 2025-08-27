@@ -20,7 +20,7 @@ The core assumptions in this guide:
 - You will use environment variables to configure your Metabase instance
 - You have root access on your server
 
-For production setups, you must set up a [PostgreSQL or MySQL/MariaDB application database](/../installation-and-operation/configuring-application-database) as Metabase's application database.
+For production setups, you must set up a [PostgreSQL or MySQL/MariaDB application database](../installation-and-operation/configuring-application-database) as Metabase's application database.
 
 ## Create an unprivileged user to run Metabase
 
