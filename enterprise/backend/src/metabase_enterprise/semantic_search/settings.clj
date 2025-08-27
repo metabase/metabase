@@ -114,7 +114,7 @@
 (defsetting ee-search-indexer-exit-early-cold-duration
   "Number of seconds indexer should wait to see new data before yielding back to quartz."
   :type :integer
-  :default 30
+  :default 5
   :export? false
   :visibility :internal)
 
