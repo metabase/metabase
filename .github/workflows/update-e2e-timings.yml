@@ -10,7 +10,7 @@ on:
   push:
     branches:
       - master
-      - generate-new-test-timings
+      # - generate-new-test-timings
     paths:
       - ".github/workflows/update-e2e-timings.yml"
   schedule:
