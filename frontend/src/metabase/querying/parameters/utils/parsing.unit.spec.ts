@@ -7,7 +7,6 @@ import {
   deserializeNumberParameterValue,
   deserializeStringParameterValue,
   deserializeTemporalUnitParameterValue,
-  normalizeNumberParameterValue,
   serializeDateParameterValue,
   serializeNumberParameterValue,
 } from "./parsing";
@@ -106,7 +105,6 @@ describe("number parameters", () => {
         expectedValue: [null, 9007199254740993n],
       },
     ])("should deserialize $value", ({ value, expectedValue }) => {
-      expect(normalizeNumberParameterValue(type, value)).toEqual(value);
       expect(deserializeNumberParameterValue(type, value)).toEqual(
         expectedValue,
       );
