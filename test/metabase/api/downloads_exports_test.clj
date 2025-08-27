@@ -1712,3 +1712,26 @@
             (let [result (card-download card {:export-format :csv :format-rows true :pivot true})]
               (is (= expected (take (count expected) result))
                   (str "Failed for condense_duplicate_totals=" condense?)))))))))
+
+(deftest ^:parallel pivot-bigint-bigdecimal-normalization-test
+  (testing "Ensure key normalization for values-by-key handles BigInts and BigDecimals properly (#62724)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["ID"]
+                                                :columns ["RATING"]
+                                                :values  ["avg"]}}
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:avg $price]]
+                                                 ;; Explicitly bin the rating field to ensure we get BigDecimal values
+                                                 ;; from the QP
+                                                 :breakout    [$id [:field $rating {:binning {:strategy :default}}]]
+                                                 :limit       3})}]
+        (let [result (card-download card {:export-format :csv :format-rows false :pivot true})]
+          ;; Verify we get some actual results, not all empty cells for the pivot values
+          (is (= [["1" "29.46" "" "" "29.46"]
+                  ["2" "" "70.08" "" "70.08"]
+                  ["3" "" "" "35.39" "35.39"]
+                  ["Grand totals" "" "" "" "55.7464"]]
+                 (rest result))))))))

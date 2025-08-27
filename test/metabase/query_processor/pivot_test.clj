@@ -1,10 +1,10 @@
 (ns ^:mb/driver-tests metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
   (:require
-   [clj-time.core :as time]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -130,7 +130,7 @@
               :filter       [:and
                              [:= $user_id->people.source "Facebook" "Google"]
                              [:= $product_id->products.category "Doohickey" "Gizmo"]
-                             [:time-interval $created_at (- 2019 (.getYear (time/now))) :year {}]]})
+                             [:time-interval $created_at (- 2019 (t/as (t/local-date) :year)) :year {}]]})
            {:pivot-rows [0 1 2]
             :pivot-cols []})))
 

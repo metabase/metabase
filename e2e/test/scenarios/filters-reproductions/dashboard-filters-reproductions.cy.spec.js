@@ -1,6 +1,7 @@
+const { H } = cy;
+
 import dayjs from "dayjs";
 
-const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -4395,6 +4396,90 @@ describe("issue 48824", { tags: "@skip" }, () => {
   });
 });
 
+describe("issue 62627", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  function toggleLinkedFilter(parameterName) {
+    cy.button(parameterName)
+      .parent()
+      .findByRole("switch")
+      .click({ force: true });
+  }
+
+  it("should properly link inline parameters (metabase#62627)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+
+    cy.log("add a top-level filter");
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Vendor");
+    H.setDashboardParameterName("Vendor");
+    H.dashboardParameterSidebar().button("Done").click();
+
+    cy.log("add an inline card filter");
+    H.showDashboardCardActions();
+    H.findDashCardAction(H.getDashboardCard(), "Add a filter").click();
+    H.popover().findByText("Text or Category").click();
+    H.selectDashboardFilter(H.getDashboardCard(), "Category");
+    H.setDashboardParameterName("Category");
+    H.dashboardParameterSidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      toggleLinkedFilter("Vendor");
+    });
+    H.saveDashboard();
+
+    cy.log(
+      "verify that the inline parameter is linked to the top-level parameter",
+    );
+    H.dashboardParametersContainer().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Balistreri-Muller").click();
+      cy.button("Add filter").click();
+    });
+    H.getDashboardCard().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Widget").should("be.visible");
+      cy.findByText("Gadget").should("not.exist");
+    });
+
+    cy.log("make the top-level parameter be linked to the inline parameter");
+    H.editDashboard();
+    H.getDashboardCard().findByTestId("editing-parameter-widget").click();
+    H.dashboardParameterSidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      toggleLinkedFilter("Vendor");
+    });
+    H.editingDashboardParametersContainer()
+      .findByTestId("editing-parameter-widget")
+      .click();
+    H.dashboardParameterSidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      toggleLinkedFilter("Category");
+    });
+    H.saveDashboard();
+
+    cy.log(
+      "verify that the top-level parameter is linked to the inline parameter",
+    );
+    H.dashboardParametersContainer().within(() =>
+      H.filterWidget().icon("close").click(),
+    );
+    H.getDashboardCard().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.dashboardParametersContainer().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Barrows-Johns").should("be.visible");
+      cy.findByText("Americo Sipes and Sons").should("not.exist");
+    });
+  });
+});
+
 describe("issue 55678", () => {
   const parameterDetails = {
     name: "date",
@@ -4988,5 +5073,83 @@ describe("Issue 46767", () => {
       cy.findByText("Products").should("be.visible");
       cy.findByText("User").should("not.exist");
     });
+  });
+});
+
+describe("issue 46372", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show a scrollbar when auto-connecting a dashcard filter (metabase#46372)", () => {
+    H.createDashboardWithQuestions({
+      questions: [
+        { name: "Question A", query: { "source-table": PRODUCTS_ID } },
+        { name: "Question B", query: { "source-table": PRODUCTS_ID } },
+      ],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
+      H.editDashboard(dashboard.id);
+
+      H.setFilter("Text or Category", "Is");
+      H.selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Title");
+      H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
+
+      H.main().findByText("Auto-connected").should("be.visible");
+      H.main()
+        .findByText("Auto-connected")
+        .parent()
+        .parent()
+        .then(($body) => {
+          cy.wrap($body[0].scrollHeight).should("eq", $body[0].offsetHeight);
+        });
+    });
+  });
+});
+
+describe("issue 49319", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should ignore parameters that not exist in the saved dashboard in edit mode (metabase#49319)", () => {
+    cy.log("open an existing dashboard");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+    cy.log("add a parameter and save the dashboard");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Vendor");
+    H.saveDashboard();
+
+    cy.log("add another parameter to the dashboard with a default value");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Category");
+    H.dashboardParameterSidebar().findByText("No default").click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.dashboardParameterSidebar().button("Done").click();
+
+    cy.log("change the value for the saved parameter");
+    cy.findByTestId("fixed-width-filters").findByText("Text").click();
+    H.dashboardParameterSidebar().findByText("No default").click();
+    H.popover().within(() => {
+      cy.findByText("Americo Sipes and Sons").click();
+      cy.findByText("Barrows-Johns").click();
+      cy.button("Add filter").click();
+    });
+    H.dashboardParameterSidebar().button("Done").click();
+
+    cy.log("the unsaved parameter should be ignored in edit mode");
+    H.assertTableRowsCount(179);
+
+    cy.log("both parameters should be applied when the dashboard is saved");
+    H.saveDashboard();
+    H.assertTableRowsCount(82);
   });
 });
