@@ -122,6 +122,7 @@ export const EmbeddingHubChecklist = ({
 
                 <EmbeddingHubStepActions
                   step={step}
+                  isLocked={isLocked}
                   onModalAction={onModalAction}
                 />
               </Stack>
