@@ -39,9 +39,10 @@
 
 (defn run-transform!
   "Run a compiled transform"
-  [run-id driver transform-details opts]
+  [run-id driver {:keys [connection-details target] :as transform-details} opts]
   ;; local run is responsible for status
   (try
+    (driver/create-schema-if-needed! driver connection-details (:schema target))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
       (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
