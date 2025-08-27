@@ -30,7 +30,7 @@ import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
 import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
-import { NodeIds } from "./extensions/NodeIds";
+import { Paragraph } from "./extensions/Paragraph";
 import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
@@ -96,8 +96,11 @@ export const Editor: React.FC<EditorProps> = ({
 
   const extensions = useMemo(
     () => [
-      StarterKit,
-      NodeIds,
+      // NodeIds,
+      Paragraph,
+      StarterKit.configure({
+        paragraph: false,
+      }),
       Image.configure({
         inline: false,
         HTMLAttributes: {
