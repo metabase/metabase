@@ -843,7 +843,12 @@
            metabase.python-runner.core
            metabase.python-runner.init}
    :uses #{api
-           util}}
+           driver
+           models
+           query-processor
+           request
+           util
+           enterprise/transforms}}
 
   public-sharing
   {:team "UX West"
@@ -1933,7 +1938,9 @@
   {:team "Querying"
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
-           metabase-enterprise.transforms.init}
+           metabase-enterprise.transforms.init
+           ;; TODO: Remove this from API once we remove the python-runner callback to metabase
+           metabase-enterprise.transforms.settings}
    :uses #{api
            app-db
            config
@@ -1950,6 +1957,8 @@
            sync
            task
            task-history
+           ;; TODO: Remove this once we're using a better file format than CSV
+           upload
            util}}
 
   enterprise/upload-management
