@@ -140,9 +140,10 @@ export function ColumnPickerSidebar({
     }
   };
 
-  const ItemComponent = isDraggable
-    ? SortableColumnPickerItem
-    : ColumnPickerItem;
+  const ItemComponent =
+    isDraggable && columns.length > 1 && !searchText.trim()
+      ? SortableColumnPickerItem
+      : ColumnPickerItem;
 
   return (
     <Sidesheet
