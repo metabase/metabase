@@ -237,13 +237,14 @@
                 (is (= collection-id-2 (:collection_id updated-metabot)))))))
 
         (testing "should update collection_id to null"
-          (let [response (mt/user-http-request :crowberto :put 200
-                                               (format "ee/metabot-v3/metabot/%d" metabot-id)
-                                               {:collection_id nil})]
-            (is (= nil (:collection_id response)))
-            ;; Verify in database
-            (let [updated-metabot (t2/select-one :model/Metabot :id metabot-id)]
-              (is (= nil (:collection_id updated-metabot))))))
+          (with-redefs [metabot-v3.api.metabot/generate-sample-prompts (constantly nil)]
+            (let [response (mt/user-http-request :crowberto :put 200
+                                                 (format "ee/metabot-v3/metabot/%d" metabot-id)
+                                                 {:collection_id nil})]
+              (is (= nil (:collection_id response)))
+              ;; Verify in database
+              (let [updated-metabot (t2/select-one :model/Metabot :id metabot-id)]
+                (is (= nil (:collection_id updated-metabot)))))))
 
         (testing "should update all fields simultaneously"
           (with-redefs [metabot-v3.api.metabot/generate-sample-prompts (constantly nil)]
