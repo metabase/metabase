@@ -795,7 +795,7 @@ describe("metabot-streaming", () => {
       ).toEqual({
         capabilities: [
           "frontend:navigate_user_v1",
-          "frontend:write_notebook_query_v1",
+          "permission:save_questions",
         ],
       });
     });

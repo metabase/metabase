@@ -47,17 +47,17 @@
 ;; Backend Metabot tool capabilities
 (def backend-metabot-capabilities
   "Set of backend capabilities available to the AI service. Those are determined by the endpoints available to ai-service. When an endpoint would change in a non-backward compatible way, we should create a new version of this capability."
-  #{"backend:query_model_v1"
-    "backend:query_metric_v1"
-    "backend:dashboard_details_v1"
-    "backend:metric_details_v1"
-    "backend:report_details_v1"
-    "backend:table_details_v1"
-    "backend:get_tables_v1"
-    "backend:query_details_v1"
-    "backend:answer_sources_v1"
-    "backend:field_values_v1"
-    "backend:generate_insights_v1"})
+  #{"backend:/api/ee/metabot-tools/query-model"
+    "backend:/api/ee/metabot-tools/query-metric"
+    "backend:/api/ee/metabot-tools/get-dashboard-details"
+    "backend:/api/ee/metabot-tools/get-metric-details"
+    "backend:/api/ee/metabot-tools/get-report-details"
+    "backend:/api/ee/metabot-tools/get-table-details"
+    "backend:/api/ee/metabot-tools/get-tables"
+    "backend:/api/ee/metabot-tools/get-query-details"
+    "backend:/api/ee/metabot-tools/answer-sources"
+    "backend:/api/ee/metabot-tools/field-values"
+    "backend:/api/ee/metabot-tools/generate-insights"})
 
 (def ^:private max-database-tables
   "If the number of tables in the database doesn't exceed this number, we send them all to the agent."
