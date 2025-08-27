@@ -121,7 +121,6 @@
     (.writeStartArray jgen)
 
     (run! (fn [row]
-            (def yo [col-names row])
             (let [row-map (zipmap col-names row)]
               (json/generate jgen row-map json/default-date-format nil nil)))
           reducible-rows)
