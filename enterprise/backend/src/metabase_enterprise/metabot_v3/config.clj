@@ -45,20 +45,6 @@
       (metabot-v3.settings/metabot-id)
       internal-metabot-id))
 
-(defn validate-profile-id-against-whitelist
-  "Validates a profile-id against the configured whitelist.
-   Returns the normalized profile-id if it's in the whitelist, nil otherwise."
-  [profile-id]
-  (when profile-id
-    (when-let [whitelist-str (metabot-v3.settings/ai-service-profile-id-whitelist)]
-      (let [whitelist (->> (str/split whitelist-str #",")
-                           (map str/trim)
-                           (map u/lower-case-en)
-                           set)
-            normalized-id (u/lower-case-en (str/trim profile-id))]
-        (when (contains? whitelist normalized-id)
-          normalized-id)))))
-
 (defn resolve-dynamic-profile-id
   "Resolve the ultimate ai-service profile ID with logical fall backs
    Precedence: explicit profile_id > env profile_id > metabot-id->profile-id > default (embedded)"
@@ -69,3 +55,17 @@
        (metabot-v3.settings/ai-service-profile-id)
        (metabot-id->profile-id metabot-id)
        "default")))
+
+(defn validate-id-against-whitelist
+  "Validates an ID against a configured whitelist comma delimited string.
+   Returns the original ID if it's in the whitelist, nil otherwise."
+  [id whitelist-str]
+  (when id
+    (when (and whitelist-str (not (str/blank? whitelist-str)))
+      (let [whitelist (->> (str/split whitelist-str #",")
+                           (map str/trim)
+                           (map u/lower-case-en)
+                           set)
+            normalized-id (u/lower-case-en (str/trim id))]
+        (when (contains? whitelist normalized-id)
+          normalized-id)))))

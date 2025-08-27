@@ -10,6 +10,7 @@
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -30,8 +31,9 @@
   [{:keys [metabot_id profile_id message context history conversation_id state]}]
   (let [initial-message (metabot-v3.envelope/user-message message)
         history         (conj (vec history) initial-message)
-        metabot-id      (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        validated-profile-id (metabot-v3.config/validate-profile-id-against-whitelist profile_id)
+        validated-metabot-id (metabot-v3.config/validate-id-against-whitelist metabot_id (metabot-v3.settings/metabot-id-whitelist))
+        metabot-id      (metabot-v3.config/resolve-dynamic-metabot-id validated-metabot-id)
+        validated-profile-id (metabot-v3.config/validate-id-against-whitelist profile_id (metabot-v3.settings/ai-service-profile-id-whitelist))
         profile-id      (metabot-v3.config/resolve-dynamic-profile-id validated-profile-id metabot-id)
         env             (metabot-v3.tools.api/handle-envelope
                          {:context         (metabot-v3.context/create-context context)
@@ -68,9 +70,10 @@
   [{:keys [metabot_id profile_id message context history conversation_id state]}]
   (let [initial-message (metabot-v3.envelope/user-message message)
         history         (conj (vec history) initial-message)
-        metabot-id      (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        profile-id      (metabot-v3.config/resolve-dynamic-profile-id (metabot-v3.config/validate-profile-id-against-whitelist profile_id)
-                                                                      metabot-id)]
+        validated-metabot-id (metabot-v3.config/validate-id-against-whitelist metabot_id (metabot-v3.settings/metabot-id-whitelist))
+        metabot-id      (metabot-v3.config/resolve-dynamic-metabot-id validated-metabot-id)
+        validated-profile-id (metabot-v3.config/validate-id-against-whitelist profile_id (metabot-v3.settings/ai-service-profile-id-whitelist))
+        profile-id      (metabot-v3.config/resolve-dynamic-profile-id validated-profile-id metabot-id)]
     (metabot-v3.tools.api/streaming-handle-envelope
      {:context         (metabot-v3.context/create-context context)
       :metabot-id      metabot-id
