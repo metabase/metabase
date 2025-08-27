@@ -1,7 +1,7 @@
 (ns metabase.driver.databricks
   (:refer-clojure :exclude [not-empty])
   (:require
-   [clojure.java.jdbc :as jdbc]
+;;    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -66,16 +66,16 @@
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
 
-(defn- catalog-present?
-  [jdbc-spec catalog]
-  (let [sql "select 0 from `system`.`information_schema`.`catalogs` where catalog_name = ?"]
-    (= 1 (count (jdbc/query jdbc-spec [sql catalog])))))
-
-(defmethod driver/can-connect? :databricks
-  [driver details]
-  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-    (and (catalog-present? jdbc-spec (:catalog details))
-         (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))
+;; (defn- catalog-present?
+;;   [jdbc-spec catalog]
+;;   (let [sql "select 0 from `system`.`information_schema`.`catalogs` where catalog_name = ?"]
+;;     (= 1 (count (jdbc/query jdbc-spec [sql catalog])))))
+;;
+;; (defmethod driver/can-connect? :databricks
+;;   [driver details]
+;;   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+;;     (and (catalog-present? jdbc-spec (:catalog details))
+;;          (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))
 
 (defmethod driver/adjust-schema-qualification :databricks
   [_driver database schema]

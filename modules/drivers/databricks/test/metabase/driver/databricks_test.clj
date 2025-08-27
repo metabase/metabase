@@ -466,13 +466,13 @@
       (is (= [["[1,2,3]"]]
              (mt/rows (qp/process-query query)))))))
 
-(deftest can-connect-test
-  (mt/test-driver
-    :databricks
-    (testing "Can connect returns true for catalog that is present on the instance"
-      (is (true? (driver/can-connect? :databricks (:details (mt/db))))))
-    (testing "Can connect returns false for catalog that is NOT present on the instance (#49444)"
-      (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))))
+;; (deftest can-connect-test
+;;   (mt/test-driver
+;;     :databricks
+;;     (testing "Can connect returns true for catalog that is present on the instance"
+;;       (is (true? (driver/can-connect? :databricks (:details (mt/db))))))
+;;     (testing "Can connect returns false for catalog that is NOT present on the instance (#49444)"
+;;       (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))))
 
 (deftest can-connect-using-m2m-test
   (mt/test-driver
