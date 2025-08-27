@@ -33,7 +33,14 @@ export const EmbeddingHubStepActions = ({
 
         if (action.docsPath) {
           return (
-            <DocsLink key={index} docsPath={action.docsPath}>
+            <DocsLink
+              key={index}
+              docsPath={action.docsPath}
+              utm={{
+                utm_campaign: "embedding-hub",
+                utm_content: step.id,
+              }}
+            >
               {action.label}
             </DocsLink>
           );
