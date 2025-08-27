@@ -69,7 +69,6 @@
      In other words, this bin adds a filter for the selected bin and then divides the bin width in the breakout binning
      options by 10."
   (:require
-   [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
