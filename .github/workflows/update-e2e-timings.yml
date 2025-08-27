@@ -59,14 +59,24 @@ jobs:
 
           # Get artifacts from recent runs
           echo "[]" > timing-artifacts/artifact-list.json
+          
           for run_id in $(jq -r '.[]' timing-artifacts/recent-run-ids.json 2>/dev/null || echo ""); do
             if [ -n "$run_id" ] && [ "$run_id" != "null" ]; then
               echo "Checking artifacts for run $run_id..."
+              # Get artifacts and append to temp file
               gh api repos/${{ github.repository }}/actions/runs/$run_id/artifacts \
-                --jq "[.artifacts[] | select(.name | startswith(\"merged-e2e-timings-\")) | select(.expired == false)]" \
-                2>/dev/null || echo "[]"
+                --jq "[.artifacts[] | select(.name | startswith(\"merged-e2e-timings-\")) | select(.expired == false) | {name, created_at, archive_download_url}]" \
+                >> timing-artifacts/temp-artifacts.json 2>/dev/null || echo "[]" >> timing-artifacts/temp-artifacts.json
             fi
-          done | jq -s 'flatten | unique_by(.name) | map({name, created_at, archive_download_url})' > timing-artifacts/artifact-list.json
+          done
+          
+          # Combine all artifact arrays into one, handling empty files
+          if [ -f timing-artifacts/temp-artifacts.json ] && [ -s timing-artifacts/temp-artifacts.json ]; then
+            jq -s 'flatten | unique_by(.name)' timing-artifacts/temp-artifacts.json > timing-artifacts/artifact-list.json 2>/dev/null || echo "[]" > timing-artifacts/artifact-list.json
+            rm -f timing-artifacts/temp-artifacts.json
+          else
+            echo "[]" > timing-artifacts/artifact-list.json
+          fi
           
           rm -f timing-artifacts/recent-run-ids.json
             
