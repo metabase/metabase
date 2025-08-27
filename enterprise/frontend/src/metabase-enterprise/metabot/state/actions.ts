@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 
 import { createAsyncThunk } from "metabase/lib/redux";
+import { getIsEmbedding } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import { EnterpriseApi } from "metabase-enterprise/api";
 import {
@@ -29,7 +30,6 @@ import {
   getIsProcessing,
   getLastMessage,
   getMetabotConversationId,
-  getNavigateToHandler,
   getUserPromptForMessageId,
 } from "./selectors";
 import { createMessageId } from "./utils";
@@ -39,9 +39,9 @@ export const {
   addAgentMessage,
   addAgentErrorMessage,
   addUserMessage,
-  addNavigateToHandler,
   resetConversationId,
   setIsProcessing,
+  setNavigateToPath,
   toolCallStart,
   toolCallEnd,
 } = metabot.actions;
@@ -166,7 +166,7 @@ export const sendAgentRequest = createAsyncThunk<
     req,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const navigateTo = getNavigateToHandler(getState() as any);
+    const isEmbedding = getIsEmbedding(getState() as any);
 
     // TODO: make enterprise store
     let sessionId = getMetabotConversationId(getState() as any);
@@ -199,10 +199,9 @@ export const sendAgentRequest = createAsyncThunk<
               // only update the convo state if the request is successful
               .with({ type: "state" }, (part) => (state = part.value))
               .with({ type: "navigate_to" }, (part) => {
-                if (navigateTo) {
-                  // Used by Embedding SDK
-                  navigateTo(part.value);
-                } else {
+                dispatch(setNavigateToPath(part.value));
+
+                if (!isEmbedding) {
                   dispatch(push(part.value) as UnknownAction);
                 }
               })

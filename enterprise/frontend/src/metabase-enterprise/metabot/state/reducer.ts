@@ -37,7 +37,7 @@ export interface MetabotState {
   history: MetabotHistory;
   state: any;
   toolCalls: MetabotToolCall[];
-  navigateToHandler: ((url: string) => void) | null;
+  navigateToPath: string | null;
 }
 
 export const getMetabotInitialState = (): MetabotState => ({
@@ -49,7 +49,7 @@ export const getMetabotInitialState = (): MetabotState => ({
   history: [],
   state: {},
   toolCalls: [],
-  navigateToHandler: null,
+  navigateToPath: null,
 });
 
 export const metabot = createSlice({
@@ -100,12 +100,6 @@ export const metabot = createSlice({
 
       state.toolCalls = hasToolCalls ? [] : state.toolCalls;
     },
-    addNavigateToHandler: (
-      state,
-      action: PayloadAction<(url: string) => void>,
-    ) => {
-      state.navigateToHandler = action.payload;
-    },
     toolCallStart: (
       state,
       action: PayloadAction<{ toolCallId: string; toolName: string }>,
@@ -154,6 +148,9 @@ export const metabot = createSlice({
     },
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
+    },
+    setNavigateToPath: (state, action: PayloadAction<string>) => {
+      state.navigateToPath = action.payload;
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;

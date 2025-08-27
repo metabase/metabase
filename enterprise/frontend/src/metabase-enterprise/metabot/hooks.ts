@@ -14,9 +14,11 @@ import {
   getMetabotId,
   getMetabotRequestId,
   getMetabotVisible,
+  getNavigateToPath,
   getToolCalls,
   resetConversation as resetConversationAction,
   retryPrompt,
+  setNavigateToPath as setNavigateToPathAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
 } from "./state";
@@ -47,6 +49,10 @@ export const useMetabotAgent = () => {
   const metabotRequestId = useSelector(
     getMetabotRequestId as any,
   ) as ReturnType<typeof getMetabotRequestId>;
+
+  const navigateToPath = useSelector(getNavigateToPath as any) as ReturnType<
+    typeof getNavigateToPath
+  >;
 
   const setVisible = useCallback(
     (isVisible: boolean) => dispatch(setVisibleAction(isVisible)),
@@ -121,6 +127,13 @@ export const useMetabotAgent = () => {
     [submitInput, resetConversation, setVisible, promptInputRef],
   );
 
+  const setNavigateToPath = useCallback(
+    async (navigateToPath: string) => {
+      dispatch(setNavigateToPathAction(navigateToPath));
+    },
+    [dispatch],
+  );
+
   return {
     prompt,
     setPrompt,
@@ -130,6 +143,7 @@ export const useMetabotAgent = () => {
     visible,
     messages,
     errorMessages,
+    navigateToPath,
     lastAgentMessages: useSelector(
       getLastAgentMessagesByType as any,
     ) as ReturnType<typeof getLastAgentMessagesByType>,
@@ -137,6 +151,7 @@ export const useMetabotAgent = () => {
       getIsLongMetabotConversation as any,
     ) as ReturnType<typeof getIsLongMetabotConversation>,
     resetConversation,
+    setNavigateToPath,
     setVisible,
     startNewConversation,
     submitInput,

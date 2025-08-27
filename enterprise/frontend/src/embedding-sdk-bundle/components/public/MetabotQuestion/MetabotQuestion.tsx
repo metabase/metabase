@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useId } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,13 +7,11 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
-import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Flex, Paper, Stack, Text } from "metabase/ui";
 import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
-import { addNavigateToHandler } from "metabase-enterprise/metabot/state";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 import { QuestionDetails } from "./QuestionDetails";
@@ -21,12 +19,7 @@ import { QuestionTitle } from "./QuestionTitle";
 
 const MetabotQuestionInner = () => {
   const { isLocaleLoading } = useLocale();
-  const [adHocQuestionUrl, setAdHocQuestionUrl] = useState<string>("");
-  const dispatch = useSdkDispatch();
-
-  useEffect(() => {
-    dispatch(addNavigateToHandler(setAdHocQuestionUrl));
-  }, [dispatch]);
+  const metabot = useMetabotAgent();
 
   if (isLocaleLoading) {
     return <SdkLoader />;
@@ -34,13 +27,13 @@ const MetabotQuestionInner = () => {
 
   return (
     <Flex direction="column" align="center" gap="md">
-      <MetabotMessages handleAdHocQuestionLink={setAdHocQuestionUrl} />
+      <MetabotMessages />
 
       <MetabotChatEmbedding />
 
-      {adHocQuestionUrl && (
+      {!!metabot.navigateToPath && (
         <SdkAdHocQuestion
-          questionPath={adHocQuestionUrl}
+          questionPath={metabot.navigateToPath}
           title={false}
           isSaveEnabled={false}
         >
@@ -61,11 +54,7 @@ const MetabotQuestionInner = () => {
   );
 };
 
-interface MessageProps {
-  handleAdHocQuestionLink: (queryLink: string) => void;
-}
-
-function MetabotMessages({ handleAdHocQuestionLink }: MessageProps) {
+function MetabotMessages() {
   const metabot = useMetabotAgent();
   const { messages, errorMessages } = metabot;
 
@@ -81,7 +70,6 @@ function MetabotMessages({ handleAdHocQuestionLink }: MessageProps) {
           errorMessages={errorMessages}
           isDoingScience={metabot.isDoingScience}
           showFeedbackButtons={false}
-          onInternalLinkClick={handleAdHocQuestionLink}
         />
       </Flex>
     </Paper>

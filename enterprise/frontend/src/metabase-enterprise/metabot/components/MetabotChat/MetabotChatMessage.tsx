@@ -240,15 +240,15 @@ export const Messages = ({
   errorMessages,
   isDoingScience,
   showFeedbackButtons,
-  onInternalLinkClick,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
   isDoingScience: boolean;
   showFeedbackButtons: boolean;
-  onInternalLinkClick?: (link: string) => void;
 }) => {
   const metabot = useMetabotAgent();
+  const { setNavigateToPath } = metabot;
+
   const clipboard = useClipboard();
   const [sendToast] = useToast();
 
@@ -320,7 +320,7 @@ export const Messages = ({
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={messages[index + 1]?.role === "agent"}
-            onInternalLinkClick={onInternalLinkClick}
+            onInternalLinkClick={setNavigateToPath}
           />
         ) : (
           <UserMessage

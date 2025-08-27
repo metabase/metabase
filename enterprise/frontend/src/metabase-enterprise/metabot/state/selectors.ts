@@ -122,7 +122,7 @@ export const getAgentRequestMetadata = createSelector(
   }),
 );
 
-export const getNavigateToHandler = createSelector(
+export const getNavigateToPath = createSelector(
   getMetabot,
-  (state) => state.navigateToHandler,
+  (state) => state.navigateToPath,
 );
