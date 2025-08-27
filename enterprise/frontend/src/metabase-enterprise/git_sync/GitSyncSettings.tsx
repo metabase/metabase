@@ -6,6 +6,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
+import ActionButton from "metabase/common/components/ActionButton";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import {
@@ -14,12 +15,31 @@ import {
   FormSubmitButton,
   FormSwitch,
 } from "metabase/forms";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
+import { useReloadGitMutation } from "metabase-enterprise/api";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export const GitSyncSettings = () => {
+  const [reload] = useReloadGitMutation();
+
   return (
     <SettingsPageWrapper title={t`Git sync settings`}>
+      <ActionButton
+        primary
+        actionFn={() => {
+          reload({}).unwrap();
+        }}
+        variant="filled"
+        leftSection={<Icon name="refresh" />}
+        failedText={t`Sync failed`}
+        activeText={t`Syncing...`}
+        useLoadingSpinner
+      >
+        <Group align="center" gap="sm">
+          <Icon name="refresh" />
+          {t`Import changes`}
+        </Group>
+      </ActionButton>
       <SettingsSection
         title={t`Configure git`}
         description={

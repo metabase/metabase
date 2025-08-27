@@ -6,6 +6,7 @@ export * from "./billing-info";
 export * from "./content-translation";
 export * from "./db-routing";
 export * from "./gdrive";
+export * from "./git-sync";
 export * from "./metabot";
 export * from "./document";
 export * from "./saml";
