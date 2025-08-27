@@ -50,7 +50,7 @@ jobs:
           echo "Searching for merged timing artifacts from all branches..."
           
           # Get recent workflow runs and their artifacts directly
-          gh api repos/${{ github.repository }}/actions/workflows/e2e-tests.yml/runs \
+          gh api repos/${{ github.repository }}/actions/workflows/run-tests.yml/runs \
             --jq "[.workflow_runs[] | select(.created_at > \"$CUTOFF_DATE\") | select(.head_branch == \"master\" or .head_branch == \"generate-new-test-timings\") | .id][0:20]" \
             > timing-artifacts/recent-run-ids.json
 
