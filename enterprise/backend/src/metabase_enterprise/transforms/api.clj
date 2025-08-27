@@ -35,7 +35,8 @@
      [:query [:map [:database :int]]]]]
    [:python
     [:map {:closed true}
-     [:source-database :int]
+     [:source-database {:optional true} :int]
+     [:source-table  :int]
      [:target-database :int]
      [:type [:= "python"]]
      [:body :string]]]])

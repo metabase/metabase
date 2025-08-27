@@ -1,23 +1,28 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Select, Stack, Text } from "metabase/ui";
-import type { Database } from "metabase-types/api";
+import type { Database, Table } from "metabase-types/api";
 
 type PythonDataPickerProps = {
   database?: number;
+  table?: number;
   onChange: (database: number, table?: number) => void;
 };
 
 export function PythonDataPicker({
   database,
+  table,
   onChange,
 }: PythonDataPickerProps) {
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<
     number | undefined
   >(database);
+  const [selectedTableId, setSelectedTableId] = useState<number | undefined>(
+    table,
+  );
 
   const {
     data: databasesResponse,
@@ -25,8 +30,25 @@ export function PythonDataPicker({
     error: databaseError,
   } = useListDatabasesQuery();
 
-  if (databaseError) {
-    return <LoadingAndErrorWrapper error={databaseError} />;
+  const {
+    data: tables,
+    isLoading: isLoadingTables,
+    error: tablesError,
+  } = useListTablesQuery(
+    selectedDatabaseId
+      ? {
+          dbId: selectedDatabaseId,
+          include_hidden: false,
+          include_editable_data_model: true,
+        }
+      : undefined,
+    {
+      skip: !selectedDatabaseId,
+    },
+  );
+
+  if (databaseError || tablesError) {
+    return <LoadingAndErrorWrapper error={databaseError || tablesError} />;
   }
 
   if (isLoadingDatabases) {
@@ -39,11 +61,27 @@ export function PythonDataPicker({
     label: db.name,
   }));
 
+  const tableOptions = (tables || [])
+    .filter((tbl: Table) => tbl.db_id === selectedDatabaseId && tbl.active)
+    .map((tbl: Table) => ({
+      value: tbl.id.toString(),
+      label: tbl.display_name || tbl.name,
+    }));
+
   const handleDatabaseChange = (value: string | null) => {
     const dbId = value ? parseInt(value) : undefined;
     setSelectedDatabaseId(dbId);
+    setSelectedTableId(undefined);
     if (dbId) {
-      onChange(dbId, undefined); // Clear table selection when database changes
+      onChange(dbId, undefined);
+    }
+  };
+
+  const handleTableChange = (value: string | null) => {
+    const tblId = value ? parseInt(value) : undefined;
+    setSelectedTableId(tblId);
+    if (selectedDatabaseId) {
+      onChange(selectedDatabaseId, tblId);
     }
   };
 
@@ -64,6 +102,24 @@ export function PythonDataPicker({
           clearable
         />
       </Box>
+      {selectedDatabaseId && (
+        <Box>
+          <Text size="sm" fw="bold" mb="xs">
+            {t`Source Table`}
+          </Text>
+          <Text size="xs" c="dimmed" mb="sm">
+            {t`Select the table to use as the data source`}
+          </Text>
+          <Select
+            data={tableOptions}
+            value={selectedTableId?.toString() || null}
+            onChange={handleTableChange}
+            placeholder={t`Select a table`}
+            clearable
+            disabled={isLoadingTables}
+          />
+        </Box>
+      )}
     </Stack>
   );
 }
