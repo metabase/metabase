@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
@@ -14,6 +15,12 @@
 
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/git-sync-protected]]
   (derive :model/Transform trait))
+
+(defmethod mi/can-write? :model/Transform
+  ([instance] (and api/*is-superuser?*
+                   (not (:synced_to_source_of_truth instance))))
+  ([_model id]
+   (not (t2/select-one-fn :synced_to_source_of_truth :model/Transform id))))
 
 (t2/deftransforms :model/Transform
   {:source      mi/transform-json

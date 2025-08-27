@@ -4,11 +4,13 @@
    [clojure.string :as str]
    [metabase-enterprise.git-source-of-truth.settings :as settings]
    [metabase-enterprise.git-source-of-truth.sources :as sources]
-
-   [metabase-enterprise.serialization.cmd :as serdes-cmd]
+   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
+   [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import (java.io File)
            (java.nio.file Files)
@@ -49,10 +51,15 @@
     (with-temp-directory dir
       (log/info "Reloading Metabase configuration from source")
       (try
-        (serdes-cmd/v2-load-internal! (sources/load-source! source (.toString dir))
-                                      {}
-                                      :require-initialized-db? false)
-
+        (serdes/with-cache
+          (serdes.load/load-selective!
+           (serdes.ingest/ingest-yaml (sources/load-source! source (.toString dir)))
+           (->> (settings/git-sync-entities)
+                (filter val)
+                (map key)
+                (map name)
+                (map u/capitalize-first-char)
+                (into #{}))))
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
          :message "Successfully reloaded from git repository"}
