@@ -43,7 +43,7 @@ export function PythonRunnerSettingsPage() {
         <AdminSettingInput
           name="python-runner-api-key"
           title={t`API Key`}
-          description={t`API key for authenticating with the Python runner service. Leave empty for local development.`}
+          description={t`API key for authenticating with the Python runner service. You can create one in Authentication -> API Keys`}
           placeholder={t`Enter API key`}
           inputType="password"
         />

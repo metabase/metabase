@@ -56,20 +56,30 @@
 
   The result is a map of transform id -> #{transform ids the transform depends on}. Dependencies are limited to just
   the transforms in the original list -- if a transform depends on some transform not in the list, the 'extra'
-  dependency is ignored."
+  dependency is ignored. Python transforms have no dependencies and run sequentially."
   [transforms]
-  (let [transforms-by-db (->> transforms
-                              (map (fn [transform]
-                                     {(get-in transform [:source :query :database]) [transform]}))
-                              (apply merge-with into))
+  (let [{python-transforms true
+         sql-transforms false} (group-by transforms.util/python-transform? transforms)
 
-        {:keys [output-tables dependencies]} (->> transforms-by-db
+        ;; Python transforms have no dependencies - they run one by one
+        python-deps (into {} (map (fn [transform] [(:id transform) #{}])) python-transforms)
+
+        ;; SQL transforms maintain their normal dependency ordering
+        sql-transforms-by-db (->> sql-transforms
+                                  (map (fn [transform]
+                                         {(get-in transform [:source :query :database]) [transform]}))
+                                  (apply merge-with into))
+
+        {:keys [output-tables dependencies]} (->> sql-transforms-by-db
                                                   (map (fn [[db-id db-transforms]]
                                                          (qp.store/with-metadata-provider db-id
                                                            {:output-tables (output-table-map db-transforms)
                                                             :dependencies (dependency-map db-transforms)})))
-                                                  (apply merge-with merge))]
-    (update-vals dependencies #(into #{} (keep output-tables) %))))
+                                                  (apply merge-with merge))
+
+        sql-deps (update-vals dependencies #(into #{} (keep output-tables) %))]
+    ;; Merge Python and SQL dependencies
+    (merge python-deps sql-deps)))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.

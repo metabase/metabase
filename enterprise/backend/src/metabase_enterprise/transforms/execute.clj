@@ -143,7 +143,7 @@
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner."
-  [transform {:keys [run_method]}]
+  [transform {:keys [run-method]}]
   (when (transforms.util/python-transform? transform)
     (let [{:keys [source
                   target]}        transform
@@ -152,7 +152,7 @@
           {:keys [schema name]}   target
           db                      (t2/select-one :model/Database target-database)
           driver                  (:engine db)]
-      (with-transform-lifecycle [run-id [(:id transform) {:run_method run_method}]]
+      (with-transform-lifecycle [run-id [(:id transform) {:run_method run-method}]]
         ;; TODO: Pass connection-str to API once it supports it
         ;; For now, the connection string needs to be embedded in the Python code
         (let [{:keys [body status] :as result}  (call-python-runner-api! body)]

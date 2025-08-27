@@ -9,6 +9,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.settings :as transforms.settings]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -27,6 +28,7 @@
 
 (defn- get-plan [transform-ids]
   (let [all-transforms  (t2/select :model/Transform)
+        ;; TODO python transforms have ordering too!
         global-ordering (transforms.ordering/transform-ordering all-transforms)
         relevant-ids    (get-deps global-ordering transform-ids)
         ordering        (select-keys global-ordering relevant-ids)]
@@ -73,7 +75,9 @@
           :else
           (do
             (log/info "Executing job transform" (pr-str transform-id))
-            (transforms.execute/run-mbql-transform! current-transform {:run-method run-method})
+            (if (transforms.util/python-transform? current-transform)
+              (transforms.execute/execute-python-transform! current-transform {:run-method run-method})
+              (transforms.execute/run-mbql-transform! current-transform {:run-method run-method}))
             (transforms.job-run/add-run-activity! run-id)
             (recur (conj complete (:id current-transform)) nil)))))))
 
