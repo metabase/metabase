@@ -1,3 +1,3 @@
 (ns metabase-enterprise.branching.init
   (:require
-   [metabase-enterprise.branching.hook]))
+   [metabase-enterprise.branching.models.hook]))

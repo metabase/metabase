@@ -1,15 +1,8 @@
 (ns metabase.branching.core
   "Middleware that handles setting the current branch."
   (:require
-   [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
-
-(def ^:dynamic *current-branch-name*
-  "The current 'branch' for a request in Metabase. Some models support forking changes
-  into related groups of changes -- called a 'branch' -- that transparently replace the
-  original model when the branch is activated."
-  nil)
 
 (def ^:dynamic *current-branch*
   "The current 'branch' for a request in Metabase. Some models support forking changes
@@ -25,8 +18,7 @@
 (defn do-with-current-branch-var
   "Impl for with-current-branch-var"
   [branch-name thunk]
-  (binding [*current-branch-name* branch-name
-            *current-branch* (when branch-name (delay (t2/select-one :model/Branch :name branch-name)))]
+  (binding [*current-branch* (when branch-name (delay (t2/select-one :model/Branch :name branch-name)))]
     (thunk)))
 
 (defmacro with-current-branch-var
@@ -35,7 +27,7 @@
 
 (defenterprise get-current-branch
   "Extract the current branch from the X-Metabase-Branch header used to extract
-   branched models from the commong pk depending on the branch set.
+   branched models from the common pk depending on the branch set.
 
   In OSS this does not set the branch."
   metabase-enterprise.branching.core

@@ -562,7 +562,6 @@
                            :dashboard_count
                            [:dashboard :moderation_status]]
                     include-can-run-adhoc-query (conj :can_run_adhoc_query))]
-    (prn (map :name rows))
     (lib.metadata.jvm/with-metadata-provider-cache
       (as-> (map post-process-card-row rows) $
         (apply t2/hydrate $ hydration)
@@ -812,7 +811,6 @@
   "Post process any data. Have a chance to process all of the same type at once using
   `post-process-collection-children`. Must respect the order passed in."
   [options collection rows]
-  (prn (map :name rows))
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
        (group-by :model)
        (into []

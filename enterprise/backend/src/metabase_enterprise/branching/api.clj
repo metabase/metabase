@@ -6,7 +6,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -16,7 +15,6 @@
   "Schema for creating a new branch."
   [:map
    [:name ms/NonBlankString]
-   [:description {:optional true} [:maybe :string]]
    [:parent_branch_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def BranchResponse
@@ -25,7 +23,6 @@
    [:id ms/PositiveInt]
    [:name :string]
    [:slug :string]
-   [:description [:maybe :string]]
    [:creator_id ms/PositiveInt]
    [:parent_branch_id [:maybe ms/PositiveInt]]
    [:created_at ms/TemporalString]
@@ -34,27 +31,28 @@
 ;;; ------------------------------------------------- API Endpoints -------------------------------------------------
 
 (api.macros/defendpoint :get "/"
-  "Get all branches. Open access for authenticated users."
+  "Get all branches. If parent_id is specified, filter to branches with that parent. Set parent_id to -1 to get root-level branches."
   [_route-params
    {:keys [parent_id]} :- [:map
-                           [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
-  {:data (map #(select-keys % [:id :name :slug :description :creator_id :parent_branch_id :created_at :updated_at])
-              (if parent_id
-                (branch/branches-by-parent-id parent_id)
-                (t2/select :model/Branch)))})
+                           [:parent_id {:optional true} [:maybe ms/Int]]]]
+  {:data (map #(select-keys % [:id :name :slug :creator_id :parent_branch_id :created_at :updated_at])
+              (cond
+                (nil? parent_id) (t2/select :model/Branch)
+                (> 0 parent_id) (branch/get-children-by-id nil)
+                :else (branch/get-children-by-id #p parent_id)))})
 
 (api.macros/defendpoint :get "/:id"
-  "Get a single branch by ID. Open access for authenticated users."
+  "Get a single branch by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (or (some-> (t2/select-one :model/Branch :id id)
-              (select-keys [:id :name :slug :description :creator_id :parent_branch_id :created_at :updated_at]))
+              (select-keys [:id :name :slug :creator_id :parent_branch_id :created_at :updated_at]))
       (throw (ex-info (tru "Branch not found.") {:status-code 404}))))
 
 (api.macros/defendpoint :post "/"
-  "Create a new branch. Open access for authenticated users."
+  "Create a new branch."
   [_route-params
    _query-params
-   {:keys [name description parent_branch_id]} :- BranchCreateRequest]
+   {:keys [name parent_branch_id]} :- BranchCreateRequest]
   (when parent_branch_id
     ;; Validate parent branch exists
     (when-not (t2/exists? :model/Branch :id parent_branch_id)
@@ -63,11 +61,10 @@
   ;; Create the branch
   (let [branch-data (cond-> {:name name
                              :creator_id api/*current-user-id*}
-                      description (assoc :description description)
                       parent_branch_id (assoc :parent_branch_id parent_branch_id))
         new-id (t2/insert-returning-pk! :model/Branch branch-data)]
     (-> (t2/select-one :model/Branch :id new-id)
-        (select-keys [:id :name :slug :description :creator_id :parent_branch_id :created_at :updated_at]))))
+        (select-keys [:id :name :slug :creator_id :parent_branch_id :created_at :updated_at]))))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a branch by ID. Open access for authenticated users."

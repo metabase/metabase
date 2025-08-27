@@ -26,21 +26,21 @@
   (when-let [parent-id (:parent_branch_id branch)]
     (t2/select-one :model/Branch :id parent-id)))
 
+(mu/defn get-children-by-id :- [:set (ms/InstanceOf :model/Branch)]
+  "Get all branches with the specified parent_branch_id. If parent-id is nil,
+   returns root-level branches (those with no parent)."
+  [parent-id :- [:maybe ms/PositiveInt]]
+  (set (t2/select :model/Branch :parent_branch_id parent-id)))
+
 (mu/defn get-children :- [:set (ms/InstanceOf :model/Branch)]
   "Get all direct child branches of the given branch."
   [branch :- (ms/InstanceOf :model/Branch)]
-  (set (t2/select :model/Branch :parent_branch_id (:id branch))))
+  (get-children-by-id (:id branch)))
 
 (mu/defn get-has-children? :- :boolean
   "Check if the given branch has any child branches."
   [branch :- (ms/InstanceOf :model/Branch)]
   (t2/exists? :model/Branch :parent_branch_id (:id branch)))
-
-(mu/defn branches-by-parent-id :- [:set (ms/InstanceOf :model/Branch)]
-  "Get all branches with the specified parent_branch_id. If parent-id is nil, 
-   returns root-level branches (those with no parent)."
-  [parent-id :- [:maybe ms/PositiveInt]]
-  (set (t2/select :model/Branch :parent_branch_id parent-id)))
 
 ;;; ------------------------------------------------- Hydration Methods -------------------------------------------------
 

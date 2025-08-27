@@ -1,5 +1,6 @@
-(ns metabase-enterprise.branching.impl
-  "Implementation for creating the branching CTE and updating and query to use it."
+(ns metabase-enterprise.branching.models.hook
+  "Defines a toucan pipeline step hook that substitutes out tables that can be branched
+  with CTEs that reflect their current state when branched."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -8,9 +9,11 @@
    [metabase.branching.core :as branching]
    [metabase.models.resolution :as models.resolution]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]))
 
-(def branchables
+(def ^:private branchables
   "Map of tables derving from :hook/branchable -> their columns."
   (delay
     (reduce-kv (fn [acc k _]
@@ -49,7 +52,7 @@
                         [:= :bm2.original_id :branched.id]
                         [:= :bm2.model_type [:inline (name table)]]]}]]]}))
 
-(defn replace
+(defn- substitute-ctes
   "Substitute out branchable tables in a query with their replacements."
   [query tables]
   (let [with (some->> query :with (m/index-by first))
@@ -79,3 +82,17 @@
                     (update query* :with conj [(table tables->cte-refs) (branched-cte table)]))
                   walked
                   @replaced))))))
+
+(methodical/defmethod t2.pipeline/build [#_query-type  :default
+                                         #_model          :default
+                                         #_resolved-query :default]
+  [query-type model parsed-args resolved-query]
+  (let [built (next-method query-type model parsed-args resolved-query)]
+    (if (and branching/*enable-branch-hook*
+             (not= query-type :toucan2.tools.before-update/select-for-before-update)
+             (map? built)
+             (not= model :model/Branch)
+             (or (contains? built :select) (contains? built :union) (contains? built :union-all))
+             (not= (:from built) [[:information_schema.columns]]))
+      (substitute-ctes built (keys @branchables))
+      built)))

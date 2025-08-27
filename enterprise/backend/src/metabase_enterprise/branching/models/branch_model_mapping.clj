@@ -6,7 +6,7 @@
 (methodical/defmethod t2/table-name :model/BranchModelMapping
   [_model] :branch_model_mapping)
 
-(doto :model/Branch
+(doto :model/BranchModelMapping
   (derive :metabase/model)
   (derive :hook/timestamped?))
 

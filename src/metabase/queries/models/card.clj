@@ -11,7 +11,6 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
-   [metabase.branching.core :as branching]
    [metabase.cache.core :as cache]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]

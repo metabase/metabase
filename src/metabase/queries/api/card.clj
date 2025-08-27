@@ -610,12 +610,12 @@
 
 (defn- on-current-branch?
   [{:keys [id]}]
-  (and branching/*current-branch-name*
+  (and branching/*current-branch*
        (t2/exists? :model/BranchModelMapping :original_id id :branch_id (:id @branching/*current-branch*) :model_type "report_card")))
 
 (defn- maybe-get-branched-id
   [{:keys [id]}]
-  (when branching/*current-branch-name*
+  (when branching/*current-branch*
     (t2/select-one-fn :branched_model_id :model/BranchModelMapping
                       :original_id id :branch_id (:id @branching/*current-branch*) :model_type "report_card")))
 
