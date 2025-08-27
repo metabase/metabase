@@ -5072,6 +5072,38 @@ describe("Issue 46767", () => {
   });
 });
 
+describe("issue 46372", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show a scrollbar when auto-connecting a dashcard filter (metabase#46372)", () => {
+    H.createDashboardWithQuestions({
+      questions: [
+        { name: "Question A", query: { "source-table": PRODUCTS_ID } },
+        { name: "Question B", query: { "source-table": PRODUCTS_ID } },
+      ],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
+      H.editDashboard(dashboard.id);
+
+      H.setFilter("Text or Category", "Is");
+      H.selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Title");
+      H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
+
+      H.main().findByText("Auto-connected").should("be.visible");
+      H.main()
+        .findByText("Auto-connected")
+        .parent()
+        .parent()
+        .then(($body) => {
+          cy.wrap($body[0].scrollHeight).should("eq", $body[0].offsetHeight);
+        });
+    });
+  });
+});
+
 describe("issue 49319", () => {
   beforeEach(() => {
     H.restore();
