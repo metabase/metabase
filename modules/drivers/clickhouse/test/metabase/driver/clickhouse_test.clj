@@ -355,6 +355,13 @@
                               :value  "2"}]
                 :middleware {:format-rows? false}})))))))
 
+(deftest ^:parallel clickhouse-db-supports-schemas-test
+  (doseq [[schemas-supported? details] [[false? {}]
+                                        [false? {:enable-multiple-db nil}]
+                                        [false? {:enable-multiple-db false}]
+                                        [true? {:enable-multiple-db true}]]]
+    (is (schemas-supported? (driver/database-supports? :clickhouse :schemas {:details details})))))
+
 (deftest ^:parallel humanize-connection-error-message-test
   (is (= "random message" (driver/humanize-connection-error-message :clickhouse ["random message"])))
   (is (= :username-or-password-incorrect (driver/humanize-connection-error-message :clickhouse ["Failed to create connection"
