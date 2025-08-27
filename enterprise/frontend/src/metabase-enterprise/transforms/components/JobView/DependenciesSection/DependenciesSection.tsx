@@ -2,8 +2,9 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
+import EmptyState from "metabase/common/components/EmptyState";
 import { useDispatch } from "metabase/lib/redux";
-import { Card, Center, Loader } from "metabase/ui";
+import { Box, Card, Center, Loader } from "metabase/ui";
 import { useListTransformJobTransformsQuery } from "metabase-enterprise/api";
 import type { Transform, TransformJob } from "metabase-types/api";
 
@@ -18,16 +19,15 @@ export function DependenciesSection({ job }: { job: TransformJob }) {
   );
   const dispatch = useDispatch();
 
-  if (!isLoading && transforms?.length === 0) {
-    return null;
-  }
-
   const handleRowClick = (transform: Transform) => {
     dispatch(push(getTransformUrl(transform.id)));
   };
 
   return (
-    <TitleSection label={t`Transforms will be run in this order`}>
+    <TitleSection
+      label={t`Transforms`}
+      description={t`Transforms will be run in this order.`}
+    >
       <Card p={0} shadow="none" withBorder>
         {isLoading ? (
           <Center>
@@ -35,16 +35,28 @@ export function DependenciesSection({ job }: { job: TransformJob }) {
           </Center>
         ) : (
           <AdminContentTable columnTitles={[t`Transform`, t`Target`]}>
-            {transforms?.map((transform) => (
-              <tr
-                key={transform.id}
-                className={S.row}
-                onClick={() => handleRowClick(transform)}
-              >
-                <th>{transform.name}</th>
-                <td>{transform.target.name}</td>
+            {!transforms || transforms?.length === 0 ? (
+              <tr>
+                <td colSpan={2}>
+                  <Box p="md">
+                    <EmptyState
+                      message={t`There are no transforms for this job.`}
+                    />
+                  </Box>
+                </td>
               </tr>
-            ))}
+            ) : (
+              transforms?.map((transform) => (
+                <tr
+                  key={transform.id}
+                  className={S.row}
+                  onClick={() => handleRowClick(transform)}
+                >
+                  <td>{transform.name}</td>
+                  <td>{transform.target.name}</td>
+                </tr>
+              ))
+            )}
           </AdminContentTable>
         )}
       </Card>
