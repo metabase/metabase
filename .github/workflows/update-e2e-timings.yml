@@ -7,10 +7,6 @@ on:
         description: "Number of days to look back for timing artifacts"
         type: number
         default: 7
-      min_samples:
-        description: "Minimum number of timing samples required per test"
-        type: number
-        default: 3
   push:
     branches:
       - master
@@ -48,22 +44,9 @@ jobs:
 
           # Find all merged timing artifacts
           mkdir -p timing-artifacts
-          echo "Querying GitHub API for artifacts..."
-          
-          # First, let's see what artifacts are actually available
-          echo "=== DEBUG: All recent artifacts ==="
-          gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq ".artifacts[] | select(.created_at > \"$CUTOFF_DATE\") | select(.expired == false) | {name, created_at}" | head -20
-          
-          echo "=== DEBUG: All artifacts containing 'timing' ==="
-          gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq ".artifacts[] | select(.name | contains(\"timing\")) | select(.expired == false) | {name, created_at}" | head -10
-          
-          echo "=== DEBUG: All artifacts starting with 'merged' ==="
-          gh api repos/${{ github.repository }}/actions/artifacts \
-            --jq ".artifacts[] | select(.name | startswith(\"merged\")) | select(.expired == false) | {name, created_at}" | head -10
-          
-          # Now try our actual query
+          echo "Querying GitHub API for merged timing artifacts..."
+
+          # Query for merged timing artifacts
           gh api repos/${{ github.repository }}/actions/artifacts \
             --jq "[.artifacts[] | select(.name | startswith(\"merged-e2e-timings-\")) | select(.created_at > \"$CUTOFF_DATE\") | select(.expired == false) | {name, created_at, archive_download_url}]" \
             > timing-artifacts/artifact-list.json
@@ -80,19 +63,19 @@ jobs:
             echo "  - The artifacts have expired (GitHub expires artifacts after 90 days by default)"
             exit 1
           fi
-          
+
           # Try to count artifacts, handling both array and single object cases
           TOTAL_ARTIFACTS=$(jq -r 'if type == "array" then length else 1 end' timing-artifacts/artifact-list.json 2>/dev/null || echo "0")
           echo "Found $TOTAL_ARTIFACTS artifact(s) to process"
-          
+
           if [ "$TOTAL_ARTIFACTS" -eq "0" ]; then
             echo "❌ No valid timing artifacts found"
             exit 1
           fi
-          
+
           # Download each artifact
           ARTIFACT_COUNT=0
-          
+
           # Handle both single object and array cases
           if [ "$TOTAL_ARTIFACTS" -eq "1" ]; then
             # Single artifact - read directly
@@ -172,8 +155,8 @@ jobs:
             process.exit(1);
           }
 
-          // Collect all timing data
-          const allTimings = {};
+          // Collect all timing data per spec
+          const specTimings = {};
           let totalFiles = 0;
 
           timingFiles.forEach(file => {
@@ -185,10 +168,10 @@ jobs:
                 totalFiles++;
                 data.durations.forEach(item => {
                   if (item.spec && typeof item.duration === 'number') {
-                    if (!allTimings[item.spec]) {
-                      allTimings[item.spec] = [];
+                    if (!specTimings[item.spec]) {
+                      specTimings[item.spec] = [];
                     }
-                    allTimings[item.spec].push(item.duration);
+                    specTimings[item.spec].push(item.duration);
                   }
                 });
               }
@@ -198,41 +181,23 @@ jobs:
           });
 
           console.log(\`\nProcessed \${totalFiles} timing files\`);
-          console.log(\`Found timing data for \${Object.keys(allTimings).length} unique tests\`);
+          console.log(\`Found timing data for \${Object.keys(specTimings).length} unique specs\`);
 
-          const minSamples = parseInt(process.env.MIN_SAMPLES || '3');
-          console.log(\`Minimum samples required per test: \${minSamples}\`);
-
-          // Calculate averages
+          // Calculate simple averages per spec
           const averagedTimings = { durations: [] };
-          let includedTests = 0;
-          let excludedTests = 0;
 
-          Object.entries(allTimings).forEach(([spec, durations]) => {
-            if (durations.length >= minSamples) {
-              // Calculate average, excluding outliers (remove top/bottom 10% if we have enough samples)
-              let sortedDurations = [...durations].sort((a, b) => a - b);
-              
-              if (sortedDurations.length >= 10) {
-                const removeCount = Math.floor(sortedDurations.length * 0.1);
-                sortedDurations = sortedDurations.slice(removeCount, -removeCount);
-              }
-              
-              const average = sortedDurations.reduce((sum, d) => sum + d, 0) / sortedDurations.length;
-              averagedTimings.durations.push({
-                spec: spec,
-                duration: Math.round(average)
-              });
-              includedTests++;
-            } else {
-              excludedTests++;
-              console.log(\`⚠ Excluding \${spec} (only \${durations.length} samples, need \${minSamples})\`);
-            }
+          Object.entries(specTimings).forEach(([spec, durations]) => {
+            // Simple average - include all specs regardless of sample count
+            const average = durations.reduce((sum, d) => sum + d, 0) / durations.length;
+            averagedTimings.durations.push({
+              spec: spec,
+              duration: Math.round(average)
+            });
+            console.log(\`✓ \${spec}: \${durations.length} samples, avg \${Math.round(average)}ms\`);
           });
 
           console.log(\`\n📊 Results:\`);
-          console.log(\`  ✓ Included tests: \${includedTests}\`);
-          console.log(\`  ⚠ Excluded tests: \${excludedTests}\`);
+          console.log(\`  ✓ Processed \${Object.keys(specTimings).length} specs\`);
 
           // Sort by spec name for consistency
           averagedTimings.durations.sort((a, b) => a.spec.localeCompare(b.spec));
@@ -241,156 +206,46 @@ jobs:
           fs.writeFileSync('averaged-timings.json', JSON.stringify(averagedTimings, null, 2));
           console.log('✅ Averaged timings written to averaged-timings.json');
           "
-        env:
-          MIN_SAMPLES: ${{ inputs.min_samples || 3 }}
 
-      - name: Compare with existing timings
-        id: compare
+      - name: Set up git configuration
         run: |
-          echo "🔍 Comparing averaged timings with current timings.json..."
-
-          if [ ! -f "e2e/support/timings.json" ]; then
-            echo "⚠ No existing timings.json found, will create new file"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "changes_summary=Creating new timings.json with $(jq '.durations | length' averaged-timings.json) tests" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Use our existing comparison script
-          cp averaged-timings.json e2e/support/timings-new.json
-          node -e "
-          const fs = require('fs');
-
-          function loadTimingFile(filePath) {
-            try {
-              const content = fs.readFileSync(filePath, 'utf8');
-              const data = JSON.parse(content);
-              const timings = {};
-              if (data.durations && Array.isArray(data.durations)) {
-                data.durations.forEach(item => {
-                  if (item.spec && typeof item.duration === 'number') {
-                    timings[item.spec] = item.duration;
-                  }
-                });
-              }
-              return timings;
-            } catch (error) {
-              console.error(\`Error loading \${filePath}: \${error.message}\`);
-              return {};
-            }
-          }
-
-          const oldTimings = loadTimingFile('e2e/support/timings.json');
-          const newTimings = loadTimingFile('e2e/support/timings-new.json');
-
-          const oldCount = Object.keys(oldTimings).length;
-          const newCount = Object.keys(newTimings).length;
-
-          console.log(\`Comparison: \${oldCount} old tests vs \${newCount} new tests\`);
-
-          const allSpecs = new Set([...Object.keys(oldTimings), ...Object.keys(newTimings)]);
-          let significantChanges = 0;
-          let totalChanges = 0;
-          const threshold = 0.1; // 10% change threshold
-
-          for (const spec of allSpecs) {
-            const oldTime = oldTimings[spec];
-            const newTime = newTimings[spec];
-            
-            if (oldTime !== newTime) {
-              totalChanges++;
-              if (oldTime && newTime && oldTime > 0) {
-                const pctChange = Math.abs(newTime - oldTime) / oldTime;
-                if (pctChange > threshold) {
-                  significantChanges++;
-                }
-              } else {
-                significantChanges++; // New or removed tests are significant
-              }
-            }
-          }
-
-          console.log(\`Found \${totalChanges} total changes, \${significantChanges} significant (>10%)\`);
-
-          const hasChanges = significantChanges > 0;
-          console.log(\`Has significant changes: \${hasChanges}\`);
-
-          // Write results for GitHub Actions
-          const summary = hasChanges 
-            ? \`Found \${significantChanges} significant timing changes (>\${Math.round(threshold*100)}% difference) out of \${allSpecs.size} tests\`
-            : 'No significant timing changes detected';
-            
-          fs.writeFileSync('comparison-result.txt', hasChanges ? 'true' : 'false');
-          fs.writeFileSync('comparison-summary.txt', summary);
-          "
-
-          HAS_CHANGES=$(cat comparison-result.txt)
-          SUMMARY=$(cat comparison-summary.txt)
-
-          echo "has_changes=$HAS_CHANGES" >> $GITHUB_OUTPUT
-          echo "changes_summary=$SUMMARY" >> $GITHUB_OUTPUT
-
-          echo "Result: has_changes=$HAS_CHANGES"
-          echo "Summary: $SUMMARY"
-
-      - name: Create Pull Request
-        if: steps.compare.outputs.has_changes == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "📝 Creating pull request with timing updates..."
-
-          # Create a new branch
-          BRANCH_NAME="update-e2e-timings-$(date +%Y%m%d-%H%M%S)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git checkout -b "$BRANCH_NAME"
-
-          # Replace the timing file
-          cp averaged-timings.json e2e/support/timings.json
-
-          # Add and commit changes
-          git add e2e/support/timings.json
-          git commit -m "Update E2E test timings with averaged data
-
-          ${{ steps.compare.outputs.changes_summary }}
-
-          Collected timing data from ${{ inputs.days_back || 7 }} days of test runs.
-          Only tests with at least ${{ inputs.min_samples || 3 }} timing samples were included.
-
-          🤖 Generated automatically by update-e2e-timings workflow"
-
-          # Push branch
-          git push origin "$BRANCH_NAME"
-
-          # Create pull request
-          gh pr create \
-            --title "📊 Update E2E test timings with recent data" \
-            --body "$(cat <<EOF
-          ## Summary
-          This PR updates the E2E test timing data with averaged values from recent test runs.
-
-          **Changes:** ${{ steps.compare.outputs.changes_summary }}
-
-          ## Details
-          - 📅 Collected data from the last **${{ inputs.days_back || 7 }} days** of test runs
-          - 📊 Required minimum **${{ inputs.min_samples || 3 }} samples** per test for inclusion
-          - 🧮 Used average of sample times, excluding outliers for tests with 10+ samples
-          - ⚡ This will improve test parallelization and reduce overall CI time
-
-          ## Generated automatically
-          🤖 This PR was created automatically by the \`update-e2e-timings\` workflow.
-          The timing data helps cypress-split optimize test distribution across parallel jobs.
-          EOF
-          )" \
-            --head "$BRANCH_NAME" \
-            --base master
-
-          echo "✅ Pull request created successfully"
-
-      - name: No changes needed
-        if: steps.compare.outputs.has_changes != 'true'
+      - name: Update timing file
         run: |
-          echo "✅ No significant timing changes detected - no PR needed"
-          echo "${{ steps.compare.outputs.changes_summary }}"
+          # Replace the timing file with averaged data
+          cp averaged-timings.json e2e/support/timings.json
+          echo "✅ Updated e2e/support/timings.json with averaged timing data"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: update-e2e-timings-$(date +%Y%m%d-%H%M%S)
+          base: master
+          commit-message: |
+            Update E2E test timings with averaged data
+
+            Collected timing data from ${{ inputs.days_back || 7 }} days of test runs.
+            All specs with timing data were included (simple averages).
+
+            🤖 Generated automatically by update-e2e-timings workflow
+
+            Co-Authored-By: GitHub Actions <actions@github.com>
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          title: "📊 Update E2E test timings with recent data"
+          body: |
+            ## Summary
+            This PR updates the E2E test timing data with averaged values from recent test runs.
+
+            ## Details
+            - 📅 Collected data from the last **${{ inputs.days_back || 7 }} days** of test runs
+
+            ## Generated automatically
+            🤖 This PR was created automatically by the `update-e2e-timings` workflow.
+            The timing data helps cypress-split optimize test distribution across parallel jobs.
+
+            Co-Authored-By: GitHub Actions <actions@github.com>
+          add-paths: e2e/support/timings.json
