@@ -5,7 +5,11 @@ import { isNotNull } from "metabase/lib/types";
 import type { DateFilterValue } from "metabase/querying/filters/types";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
-import type { ParameterValueOrArray, TemporalUnit } from "metabase-types/api";
+import type {
+  ParameterType,
+  ParameterValueOrArray,
+  TemporalUnit,
+} from "metabase-types/api";
 
 import type { NumberFilterValue } from "../types";
 
@@ -43,36 +47,34 @@ export function serializeNumberParameterValue(
 }
 
 export function deserializeNumberParameterValue(
+  type: ParameterType,
   value: ParameterValueOrArray | null | undefined,
 ): NumberFilterValue[] {
-  const parsedValue = normalizeArray(value).reduce(
-    (values: NumberFilterValue[], item) => {
-      if (typeof item === "number" && Number.isFinite(item)) {
-        values.push(item);
-      } else if (typeof item === "string") {
-        const number = parseNumber(item);
-        if (number != null) {
-          values.push(number);
-        }
-      } else if (item === null) {
-        values.push(null);
-      }
-      return values;
-    },
-    [],
-  );
+  const values = normalizeArray(value).map((item) => {
+    if (typeof item === "number" && Number.isFinite(item)) {
+      return item;
+    }
+    if (typeof item === "string") {
+      return parseNumber(item);
+    }
+    return null;
+  }, []);
 
-  // allow "between" values without min or max, e.g. `[1, null]` and `[null, 2]`
-  // only when an explicit `null` is passed
-  return parsedValue.length === 2 && parsedValue.some(isNotNull)
-    ? parsedValue
-    : parsedValue.filter(isNotNull);
+  // allow "between" values without min or max, e.g. `[1, null]` or `[null, 2]`
+  return type === "number/between" &&
+    values.length === 2 &&
+    values.some(isNotNull)
+    ? values
+    : values.filter(isNotNull);
 }
 
 export function normalizeNumberParameterValue(
+  type: ParameterType,
   value: ParameterValueOrArray | null | undefined,
 ): ParameterValueOrArray {
-  return serializeNumberParameterValue(deserializeNumberParameterValue(value));
+  return serializeNumberParameterValue(
+    deserializeNumberParameterValue(type, value),
+  );
 }
 
 export function deserializeBooleanParameterValue(

@@ -154,7 +154,7 @@ function getNumberParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const values = deserializeNumberParameterValue(value);
+  const values = deserializeNumberParameterValue(type, value);
   if (values.length === 0) {
     return;
   }

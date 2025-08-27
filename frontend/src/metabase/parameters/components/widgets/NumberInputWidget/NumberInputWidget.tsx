@@ -32,7 +32,7 @@ export type NumberInputWidgetProps = {
   autoFocus?: boolean;
   placeholder?: string;
   label?: string;
-  parameter?: Parameter;
+  parameter: Parameter;
 };
 
 export function NumberInputWidget({
@@ -46,7 +46,7 @@ export function NumberInputWidget({
   label,
   parameter,
 }: NumberInputWidgetProps) {
-  const arrayValue = deserializeNumberParameterValue(value);
+  const arrayValue = deserializeNumberParameterValue(parameter.type, value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
     useState<NumberFilterValue[]>(arrayValue);
 
