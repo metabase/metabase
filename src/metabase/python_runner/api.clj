@@ -70,7 +70,7 @@
                     stdout-file ["python_stdout_" ".txt"]
                     stderr-file ["python_stderr_" ".txt"]]
     (spit code-file code)
-    (let [tables-json (json/encode table-name->id)
+    (let [tables-json (json/encode (or table-name->id {}))
           script-args ["/bin/bash" "python-runner/run-sandbox.sh"
                        code-file output-file stdout-file stderr-file
                        (transforms.settings/python-runner-base-url)
@@ -95,11 +95,11 @@
   "Execute Python code in a sandboxed environment and return the output."
   [_route-params
    _query-params
-   {:keys [code table-name->id]} :- [:map
-                                     [:code ms/NonBlankString]
-                                     [:tables [:map-of :string ms/PositiveInt]]]]
+   {:keys [code tables]} :- [:map
+                             [:code ms/NonBlankString]
+                             [:tables [:map-of :string ms/PositiveInt]]]]
   (api/check-superuser)
-  (execute-python-code code table-name->id))
+  (execute-python-code code tables))
 
 (defn- execute-mbql-query
   [driver db-id query respond]
