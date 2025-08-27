@@ -46,9 +46,6 @@ jobs:
           mkdir -p timing-artifacts
           echo "Querying GitHub API for merged timing artifacts..."
 
-          # Get recent workflow runs first, then check for specific merged timing artifacts
-          echo "Getting recent workflow runs and checking for merged timing artifacts..."
-          
           # Get recent workflow runs from generate-new-test-timings branch (for testing)
           {
             gh api repos/${{ github.repository }}/actions/workflows/run-tests.yml/runs \
@@ -62,14 +59,14 @@ jobs:
           # Initialize empty artifact list
           echo "[]" > timing-artifacts/artifact-list.json
           
-          # Check each run for its specific merged timing artifact
+          # Check each run for its specific merged timing artifact (with increased per_page to get all artifacts)
           for run_id in $(jq -r '.[]' timing-artifacts/recent-run-ids.json 2>/dev/null || echo ""); do
             if [ -n "$run_id" ] && [ "$run_id" != "null" ]; then
               expected_name="merged-e2e-timings-$run_id"
               echo "Checking for artifact: $expected_name in run $run_id..."
               
-              # Look for the specific expected artifact name in this run
-              gh api repos/${{ github.repository }}/actions/runs/$run_id/artifacts \
+              # Look for the specific expected artifact name in this run (with per_page=100 to get all artifacts)
+              gh api "repos/${{ github.repository }}/actions/runs/$run_id/artifacts?per_page=100" \
                 --jq "[.artifacts[] | select(.name == \"$expected_name\") | select(.expired == false) | {name, created_at, archive_download_url}]" \
                 >> timing-artifacts/temp-artifacts.json 2>/dev/null || echo "[]" >> timing-artifacts/temp-artifacts.json
             fi
