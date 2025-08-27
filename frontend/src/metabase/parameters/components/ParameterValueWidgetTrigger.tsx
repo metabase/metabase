@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { type ReactNode, type Ref, forwardRef } from "react";
 
-import { Flex, UnstyledButton } from "metabase/ui";
+import { Box, Flex, UnstyledButton } from "metabase/ui";
 
 import S from "./ParameterValueWidget.module.css";
 
@@ -29,7 +29,11 @@ function ParameterValueWidgetTriggerInner(
 ) {
   const attributes = hasPopover
     ? {
-        component: "button" as const,
+        // HACK: This is a hack to make typescript think we're rendering a button.
+        // UnstyledButton's styles are widened somewhere down the stack so that they
+        // are not compatible with Ref<HTMLButtonElement> and we need to cast it to "button"
+        // to sidestep this issue.
+        component: UnstyledButton<"button"> as unknown as "button",
         ref: ref as Ref<HTMLButtonElement>,
         type: "button" as const,
       }
@@ -56,7 +60,7 @@ function ParameterValueWidgetTriggerInner(
   }
 
   return (
-    <UnstyledButton
+    <Box
       className={cx(S.parameter, className, {
         [S.selected]: hasValue,
       })}
@@ -64,6 +68,6 @@ function ParameterValueWidgetTriggerInner(
       {...attributes}
     >
       {children}
-    </UnstyledButton>
+    </Box>
   );
 }
