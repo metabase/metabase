@@ -52,19 +52,17 @@ export const SdkIframeEmbedSetupProvider = ({
     isRecentsLoading,
   } = useRecentItems();
 
-  const defaultSettings = useMemo(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const authMethod = searchParams.get("auth_method");
-    const useExistingUserSession = !authMethod || authMethod === "user_session";
+  // Embedding Hub: pre-specifies the auth method to use
+  const authMethodOverride = useMemo(() => {
+    return new URLSearchParams(location.search).get("auth_method");
+  }, [location.search]);
 
-    return {
-      ...getDefaultSdkIframeEmbedSettings(
-        "dashboard",
-        recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
-      ),
-      useExistingUserSession,
-    };
-  }, [recentDashboards, location.search]);
+  const defaultSettings = useMemo(() => {
+    return getDefaultSdkIframeEmbedSettings(
+      "dashboard",
+      recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+    );
+  }, [recentDashboards]);
 
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
@@ -146,11 +144,26 @@ export const SdkIframeEmbedSetupProvider = ({
   // If they are, set them as the current settings.
   useEffect(() => {
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
-      setRawSettings({ ...settings, ...persistedSettings });
+      setRawSettings({
+        ...settings,
+        ...persistedSettings,
+
+        // Override the persisted settings if `auth_method` is specified.
+        // This is used for Embedding Hub.
+        ...(authMethodOverride !== null && {
+          useExistingUserSession: authMethodOverride === "user_session",
+        }),
+      });
 
       setEmbedSettingsLoaded(true);
     }
-  }, [persistedSettings, isEmbedSettingsLoaded, settings, isRecentsLoading]);
+  }, [
+    persistedSettings,
+    isEmbedSettingsLoaded,
+    settings,
+    isRecentsLoading,
+    authMethodOverride,
+  ]);
 
   return (
     <SdkIframeEmbedSetupContext.Provider value={value}>

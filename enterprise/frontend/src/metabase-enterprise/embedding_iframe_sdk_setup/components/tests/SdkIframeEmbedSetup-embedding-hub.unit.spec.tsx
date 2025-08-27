@@ -18,7 +18,7 @@ describe("Embed flow > embedding hub step completion tracking", () => {
     { authMethod: "user_session", trigger: "done" },
     { authMethod: "sso", trigger: "done" },
   ])(
-    "updates setting when $trigger with $authMethod",
+    "updates setting on $trigger with $authMethod",
     async ({ authMethod, trigger }) => {
       mockLocation(`auth_method=${authMethod}`);
       setup({ jwtReady: authMethod === "sso" });
