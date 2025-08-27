@@ -36,7 +36,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     actions: [
       {
         label: t`Add data`,
-        to: "/admin/databases/create",
+        modal: { type: "add-data", initialTab: "db" },
         variant: "outline",
       },
     ],
@@ -59,6 +59,11 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         // TODO(EMB-741): use a wizard
         to: "/auto/dashboard/table/1",
         variant: "outline",
+      },
+      {
+        label: t`Build your own`,
+        modal: { type: "new-dashboard" },
+        variant: "subtle",
       },
     ],
   };
