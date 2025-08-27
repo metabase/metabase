@@ -459,6 +459,7 @@
     "prettier": "prettier --write '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
     "remove-webpack-cache": "rm -rf ./node_modules/.cache",
     "storybook": "yarn build:cljs && storybook dev -p 6006",
+    "storybook-pure": "storybook dev -p 6006",
     "storybook-embedding-sdk": "yarn build:cljs && IS_EMBEDDING_SDK=true storybook dev -c .storybook-sdk -p 6006",
     "test": "yarn test-unit && yarn test-timezones && yarn test-cypress",
     "test-cljs": "yarn && shadow-cljs compile test && node target/node-tests.js",
