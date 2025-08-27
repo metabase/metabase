@@ -354,3 +354,9 @@
                               :target [:variable [:template-tag "category_id_2"]]
                               :value  "2"}]
                 :middleware {:format-rows? false}})))))))
+
+(deftest ^:parallel humanize-connection-error-message-test
+  (is (= "random message" (driver/humanize-connection-error-message :clickhouse ["random message"])))
+  (is (= :username-or-password-incorrect (driver/humanize-connection-error-message :clickhouse ["Failed to create connection"
+                                                                                                "Failed to get server info"
+                                                                                                "Code: 516. DB::Exception: asdf: Authentication failed: password is incorrect, or there is no user with such name. (AUTHENTICATION_FAILED) (version 25.7.4.11 (official build))"]))))

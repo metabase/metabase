@@ -368,6 +368,7 @@
     "@types/react": "^18.2.42",
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "ansi-regex": "5.0.1",
+    "cipher-base": "^1.0.5",
     "cookie": "^0.7.0",
     "cross-spawn": "^7.0.5",
     "d3-color": "^3.1.0",
@@ -409,7 +410,7 @@
     "build-static-viz:watch-wait": "yarn wait:cljs; yarn build-static-viz:watch",
     "build-stats": "yarn && rspack --json > stats.json",
     "build-storybook": "NODE_OPTIONS=--max-old-space-size=8192 storybook build",
-    "build-storybook-embedding-sdk": "NODE_OPTIONS=--max-old-space-size=8192 IS_EMBEDDING_SDK=true storybook build -c .storybook-sdk --quiet",
+    "build-storybook-embedding-sdk": "NODE_OPTIONS=--max-old-space-size=8192 IS_EMBEDDING_SDK=true storybook build -c enterprise/frontend/src/embedding-sdk-shared/.storybook --quiet",
     "build-watch": "yarn concurrently -n 'cljs,js' 'yarn build-watch:cljs' 'yarn build-watch:js'",
     "build-watch:cljs": "yarn && shadow-cljs watch app",
     "build-watch:js": "yarn && NODE_OPTIONS=--max-old-space-size=8192 rspack serve --watch",
@@ -437,7 +438,7 @@
     "embedding-sdk:generate-changelog": "yarn conventional-changelog --config enterprise/frontend/src/embedding-sdk-bundle/conventional-changelog-config.js",
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
     "embedding-sdk:generate-nextjs-compat": "tsx enterprise/frontend/src/embedding-sdk-package/bin/generate-nextjs-compat.ts",
-    "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk-{package,bundle,shared}/",
+    "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk-package/ enterprise/frontend/src/embedding-sdk-bundle/ enterprise/frontend/src/embedding-sdk-shared/",
     "embedding-sdk:dts:generate": "yarn embedding-sdk:clean:tsbuildinfo && yarn tsc --project tsconfig.sdk.json || true && yarn embedding-sdk:dts:fixup",
     "embedding-sdk:dts:fixup": "node ./bin/embedding-sdk/fixup-types-after-compilation.js",
     "embedding-sdk:docs:generate:pure": "typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options ./.typedoc/typedoc.markdown.config.js",
@@ -468,7 +469,8 @@
     "remove-webpack-cache": "rm -rf ./node_modules/.cache",
     "serve-resources": "http-server resources/frontend_client -p 3100 -c-1",
     "storybook": "yarn build:cljs && storybook dev -p 6006",
-    "storybook-embedding-sdk": "IS_EMBEDDING_SDK=true storybook dev -c .storybook-sdk -p 6006",
+    "storybook-pure": "storybook dev -p 6006",
+    "storybook-embedding-sdk": "IS_EMBEDDING_SDK=true storybook dev -c enterprise/frontend/src/embedding-sdk-shared/.storybook -p 6006",
     "test": "yarn test-unit && yarn test-timezones && yarn test-cypress",
     "test-cljs": "yarn && shadow-cljs compile test && node target/node-tests.js",
     "test-cypress": "tsx ./e2e/runner/run_cypress_local.ts",
@@ -517,7 +519,7 @@
     "enterprise/frontend/src/embedding-sdk-package/README.md": [
       "prettier --write"
     ],
-    "+(.storybook|.storybook-sdk)/**/*.{js,jsx,ts,tsx,css}": [
+    "+(.storybook|enterprise/frontend/src/embedding-sdk-shared/.storybook)/**/*.{js,jsx,ts,tsx,css}": [
       "prettier --write"
     ],
     "**/*": [
