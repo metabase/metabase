@@ -83,7 +83,7 @@ describe("EmbeddingChecklist", () => {
     expect(screen.getByText("Add data")).toBeInTheDocument();
   });
 
-  it("should disable the button when a step is locked", async () => {
+  it("should disable the button and show the info alert when a step is locked", async () => {
     setup({ lockedSteps: { "embed-production": true } });
 
     await userEvent.click(screen.getByText("Embed in production"));
@@ -101,5 +101,24 @@ describe("EmbeddingChecklist", () => {
         hidden: true,
       }),
     ).toBeDisabled();
+  });
+
+  it("should enable the button and hide the info alert when a step is unlocked", async () => {
+    setup({ lockedSteps: { "embed-production": false } });
+
+    await userEvent.click(screen.getByText("Embed in production"));
+
+    expect(
+      screen.queryByText("Configure SSO authentication to unlock this step."),
+    ).not.toBeInTheDocument();
+
+    const panel = screen.getByTestId("embed-production-item");
+
+    expect(
+      within(panel).getByRole("button", {
+        name: "Create an embed",
+        hidden: true,
+      }),
+    ).toBeEnabled();
   });
 });
