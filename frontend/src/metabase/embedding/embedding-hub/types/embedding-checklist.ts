@@ -38,15 +38,7 @@ interface EmbeddingHubAction {
   variant?: "outline" | "subtle" | "filled";
 
   /** Which modal to trigger? */
-<<<<<<< HEAD
-<<<<<<< HEAD
   modal?: EmbeddingHubModalToTrigger;
-=======
-  modal?: "add-data" | "new-dashboard";
->>>>>>> 314a26cf6bd (step updates)
-=======
-  modal?: EmbeddingHubModalToTrigger;
->>>>>>> eb746b7e00c (allow choosing between database or csv)
 }
 
 interface EmbeddingHubImage {

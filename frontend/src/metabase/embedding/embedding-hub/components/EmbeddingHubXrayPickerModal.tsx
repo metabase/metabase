@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -17,13 +16,9 @@ export const EmbeddingHubXrayPickerModal = ({
 }: EmbeddingHubXrayPickerModalProps) => {
   const dispatch = useDispatch();
 
-  const handleTableSelect = useCallback(
-    (tableId: TableId) => {
-      const url = `/auto/dashboard/table/${tableId}`;
-      dispatch(push(url));
-    },
-    [dispatch],
-  );
+  function handleTableSelect(tableId: TableId) {
+    dispatch(push(`/auto/dashboard/table/${tableId}`));
+  }
 
   if (!opened) {
     return null;
