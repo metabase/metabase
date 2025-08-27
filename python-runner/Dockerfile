@@ -1,33 +1,26 @@
 FROM python:3.11-slim
 
-# Install pandas and HTTP client dependencies
+WORKDIR /app
+
+# Install Flask and dependencies
 RUN pip install --no-cache-dir \
+    flask==2.3.3 \
     pandas==2.1.4 \
     requests==2.31.0
 
 # Create non-root user for security
-RUN useradd -m -u 1000 -s /bin/bash sandboxuser && \
-    mkdir -p /sandbox/output && \
-    chown -R sandboxuser:sandboxuser /sandbox
+RUN groupadd -r pyexec && \
+    useradd -r -g pyexec pyexec && \
+    mkdir -p /tmp/executions && \
+    chown -R pyexec:pyexec /app /tmp/executions
 
-# Set working directory
-WORKDIR /sandbox
+COPY server.py transform_runner.py ./
+RUN chown -R pyexec:pyexec /app
 
-# Switch to non-root user
-USER sandboxuser
+USER pyexec
 
-# Copy and set the entrypoint script
-COPY --chown=sandboxuser:sandboxuser entrypoint.sh /sandbox/entrypoint.sh
-RUN chmod +x /sandbox/entrypoint.sh
-
-# Default environment variables
-ENV OUTPUT_FILE=/sandbox/output/result.txt
-ENV SCRIPT_FILE=/sandbox/script.py
 ENV PYTHONUNBUFFERED=1
 
-# Disable network access at runtime (must be enforced with --network none when running)
-# Document this requirement
-LABEL network="none"
-LABEL security="Run with: docker run --network none --read-only --tmpfs /tmp --tmpfs /sandbox/output"
+EXPOSE 5000
 
-ENTRYPOINT ["/sandbox/entrypoint.sh"]
+CMD ["python", "server.py"]

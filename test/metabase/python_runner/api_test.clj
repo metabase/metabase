@@ -1,12 +1,37 @@
 (ns ^:mb/driver-tests metabase.python-runner.api-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
+
+(defn template->regex
+  "Convert a template string with $var$ placeholders to a regex pattern.
+   Example: template->regex 'File $path$/script.py, line $line$'
+   becomes #'File .+/script\\.py, line \\d+'"
+  [template]
+  (-> template
+      (str/replace "\\" "\\\\")
+      (str/replace "." "\\.")
+      (str/replace "*" "\\*")
+      (str/replace "+" "\\+")
+      (str/replace "?" "\\?")
+      (str/replace "^" "\\^")
+      (str/replace "$" "\\$")
+      (str/replace "{" "\\{")
+      (str/replace "}" "\\}")
+      (str/replace "(" "\\(")
+      (str/replace ")" "\\)")
+      (str/replace "|" "\\|")
+      (str/replace "[" "\\[")
+      (str/replace "]" "\\]")
+      (str/replace #"___PATH___" "(/[\\\\w-]+)+")
+      (str/replace #"___LINE___" "\\\\d+")
+      re-pattern))
 
 (deftest ^:parallel transform-function-basic-test
   (testing "executes transform function and returns CSV output"
@@ -29,11 +54,11 @@
                                                    "\n"
                                                    "# No transform function defined")
                                         :tables {}})]
-      (is (= {:error     "Execution failed: "
-              :exit-code 1
-              :stderr    "ERROR: User script must define a 'transform()' function\n"
-              :stdout    ""}
-             result)))))
+      (is (=? {:error     "Execution failed"
+               :exit-code 1
+               :stderr    "ERROR: User script must define a 'transform()' function\n"
+               :stdout    ""}
+              result)))))
 
 (deftest ^:parallel transform-function-wrong-return-type-test
   (testing "handles transform function returning non-DataFrame"
@@ -41,30 +66,34 @@
                                        {:code (str "def transform():\n"
                                                    "    return 'not a dataframe'")
                                         :tables {}})]
-      (is (= {:error     "Execution failed: "
-              :exit-code 1
-              :stderr    "ERROR: Transform function must return a pandas DataFrame, got <class 'str'>\n"
-              :stdout    ""}
-             result)))))
+      (is (=? {:error     "Execution failed"
+               :exit-code 1
+               :stderr    "ERROR: Transform function must return a pandas DataFrame, got <class 'str'>\n"
+               :stdout    ""}
+              result)))))
 
 (deftest ^:parallel transform-function-error-test
   (testing "handles transform function with error"
     (let [result (mt/user-http-request :crowberto :post 500 "python-runner/execute"
                                        {:code (str "def transform():\n"
                                                    "    raise ValueError('Something went wrong')")
-                                        :tables {}})]
-      (is (= {:error     "Execution failed: "
-              :exit-code 1
-              :stderr    (str "ERROR: Transform function failed: Something went wrong\n"
-                              "Traceback (most recent call last):\n"
-                              "  File \"/sandbox/transform_runner.py\", line 143, in main\n"
-                              "    result = script.transform()\n"
-                              "             ^^^^^^^^^^^^^^^^^^\n"
-                              "  File \"/sandbox/script.py\", line 2, in transform\n"
-                              "    raise ValueError('Something went wrong')\n"
-                              "ValueError: Something went wrong\n")
-              :stdout    ""}
-             result)))))
+                                        :tables {}})
+          expected-template (str "ERROR: Transform function failed: Something went wrong\n"
+                                 "Traceback (most recent call last):\n"
+                                 "  File \"/app/transform_runner.py\", line ___LINE___, in main\n"
+                                 "    result = script.transform()\n"
+                                 "             ^^^^^^^^^^^^^^^^^^\n"
+                                 "  File \"___PATH___/script.py\", line 2, in transform\n"
+                                 "    raise ValueError('Something went wrong')\n"
+                                 "ValueError: Something went wrong\n")
+          stderr-pattern (template->regex expected-template)]
+
+      (is (=? {:error     "Execution failed"
+               :exit-code 1
+               :stderr    #(re-matches stderr-pattern %)
+               :stdout    ""
+               :timeout   false}
+              result)))))
 
 (deftest ^:parallel transform-function-complex-dataframe-test
   (testing "can create complex DataFrames with transform"
@@ -125,6 +154,7 @@
                                                          {:code     transform-code
                                                           :tables {"students" (mt/id :students)}})]
 
+          (println (:stderr result))
           (is (=? {:output "student_count,average_score\n4,88.75\n"
                    :stdout "Successfully saved 1 rows to CSV\n"
                    :stderr ""}

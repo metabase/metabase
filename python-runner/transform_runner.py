@@ -108,8 +108,8 @@ def main():
         # Create Metabase API connection object
         db = MetabaseAPIConnection(metabase_url, api_key)
 
-        # Import the user's script
-        sys.path.insert(0, '/sandbox')
+        # Import the user's script from current directory
+        sys.path.insert(0, '.')
 
         # Import and execute the user's code
         try:
