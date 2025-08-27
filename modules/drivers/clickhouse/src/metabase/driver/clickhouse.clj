@@ -188,6 +188,14 @@
   (when table-or-field-name
     (str/replace table-or-field-name #"-" "_")))
 
+(defmethod driver/humanize-connection-error-message :clickhouse
+  [_ messages]
+  (condp re-matches (str/join " -> " messages)
+    #".*AUTHENTICATION_FAILED.*"
+    :username-or-password-incorrect
+
+    (first messages)))
+
 ;;; ------------------------------------------ Connection Impersonation ------------------------------------------
 
 (defmethod driver/upload-type->database-type :clickhouse
