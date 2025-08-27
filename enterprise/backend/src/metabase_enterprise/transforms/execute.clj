@@ -127,7 +127,7 @@
 (defn- call-python-runner-api!
   "Call the Python runner API endpoint to execute Python code.
    Returns the result map or throws on error."
-  [code]
+  [code table-id]
   ;; TODO: Add connection-str parameter once the API supports it
   (let [base-url (transforms.settings/python-runner-base-url)
         api-key  (transforms.settings/python-runner-api-key)
@@ -137,7 +137,7 @@
                {:content-type :json
                 :accept :json
                 :as :json
-                :body (json/generate-string {:code code})
+                :body (json/generate-string {:code code, :table-id table-id})
                 :headers headers
                 :throw-exceptions? false})))
 
@@ -148,6 +148,7 @@
     (let [{:keys [source
                   target]}        transform
           {:keys [target-database
+                  source-table
                   body]}          source
           {:keys [schema name]}   target
           db                      (t2/select-one :model/Database target-database)
@@ -155,7 +156,7 @@
       (with-transform-lifecycle [run-id [(:id transform) {:run_method run-method}]]
         ;; TODO: Pass connection-str to API once it supports it
         ;; For now, the connection string needs to be embedded in the Python code
-        (let [{:keys [body status] :as result}  (call-python-runner-api! body)]
+        (let [{:keys [body status] :as result}  (call-python-runner-api! body source-table)]
           (if (not= 200 status)
             (throw (ex-info (str/join "\n"
                                       [(format "exit code %d" (:exit-code body))
@@ -184,7 +185,7 @@
                     csv-data  (:output body)]
                 (try
                   (with-open [writer (io/writer temp-file)]
-                    (.write writer csv-data))
+                    (.write writer ^String csv-data))
                   (upload/create-from-csv-and-sync! {:db         db
                                                      :filename   (.getName temp-file)
                                                      :file       temp-file

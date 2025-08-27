@@ -1,9 +1,7 @@
 (ns ^:mb/driver-tests metabase.python-runner.api-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]))
@@ -17,7 +15,8 @@
                               "def transform():\n"
                               "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")
           result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
-                                               {:code transform-code})]
+                                               {:code     transform-code
+                                                :table-id 1})]
       (is (=? {:output "name,age\nAlice,25\nBob,30\n"
                :stdout "Successfully saved 2 rows to CSV\n"
                :stderr ""}
@@ -28,7 +27,8 @@
     (let [result (mt/user-http-request :crowberto :post 500 "python-runner/execute"
                                        {:code (str "import pandas as pd\n"
                                                    "\n"
-                                                   "# No transform function defined")})]
+                                                   "# No transform function defined")
+                                        :table-id 1})]
       (is (= {:error     "Execution failed: "
               :exit-code 1
               :stderr    "ERROR: User script must define a 'transform()' function\n"
@@ -39,7 +39,8 @@
   (testing "handles transform function returning non-DataFrame"
     (let [result (mt/user-http-request :crowberto :post 500 "python-runner/execute"
                                        {:code (str "def transform():\n"
-                                                   "    return 'not a dataframe'")})]
+                                                   "    return 'not a dataframe'")
+                                        :table-id 1})]
       (is (= {:error     "Execution failed: "
               :exit-code 1
               :stderr    "ERROR: Transform function must return a pandas DataFrame, got <class 'str'>\n"
@@ -50,7 +51,8 @@
   (testing "handles transform function with error"
     (let [result (mt/user-http-request :crowberto :post 500 "python-runner/execute"
                                        {:code (str "def transform():\n"
-                                                   "    raise ValueError('Something went wrong')")})]
+                                                   "    raise ValueError('Something went wrong')")
+                                        :table-id 1})]
       (is (= {:error     "Execution failed: "
               :exit-code 1
               :stderr    (str "ERROR: Transform function failed: Something went wrong\n"
@@ -72,7 +74,8 @@
                               "    data = {'x': [1, 2, 3], 'y': [10, 20, 30], 'z': ['a', 'b', 'c']}\n"
                               "    return pd.DataFrame(data)")
           result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
-                                               {:code transform-code})]
+                                               {:code transform-code
+                                                :table-id (mt/id :students)})]
       (is (=? {:output "x,y,z\n1,10,a\n2,20,b\n3,30,c\n"
                :stdout "Successfully saved 3 rows to CSV\n"
                :stderr ""}
@@ -82,34 +85,15 @@
   (testing "transform function can accept db parameter for forward compatibility"
     (let [transform-code (str "import pandas as pd\n"
                               "\n"
-                              "def transform(db):\n"
+                              "def transform(df):\n"
                               "    # Test that db object is passed but we don't use it in this test\n"
                               "    data = {'name': ['Charlie', 'Dana'], 'score': [85, 92]}\n"
                               "    return pd.DataFrame(data)")
           result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
-                                               {:code transform-code})]
+                                               {:code transform-code
+                                                :table-id (mt/id :students)})]
       (is (=? {:output "name,score\nCharlie,85\nDana,92\n"
                :stdout "Successfully saved 2 rows to CSV\n"
-               :stderr ""}
-              result)))))
-
-(deftest ^:parallel transform-function-db-object-structure-test
-  (testing "db object provides expected interface structure"
-    (let [transform-code (str "import pandas as pd\n"
-                              "\n"
-                              "def transform(db):\n"
-                              "    # Test that db object has expected attributes and methods\n"
-                              "    if not hasattr(db, 'read_table'):\n"
-                              "        raise ValueError('db object missing read_table method')\n"
-                              "    \n"
-                              "    # Test that we can call the method (will fail without real connection)\n"
-                              "    # but shows the expected interface\n"
-                              "    data = {'test_result': ['db_object_has_read_table_method']}\n"
-                              "    return pd.DataFrame(data)")
-          result         (mt/user-http-request :crowberto :post 200 "python-runner/execute"
-                                               {:code transform-code})]
-      (is (=? {:output "test_result\ndb_object_has_read_table_method\n"
-               :stdout "Successfully saved 1 rows to CSV\n"
                :stderr ""}
               result)))))
 
@@ -128,9 +112,7 @@
 
               transform-code       (str "import pandas as pd\n"
                                         "\n"
-                                        "def transform(db):\n"
-                                        "    # Read the students table\n"
-                                        "    students = db.read_table('" (mt/id :students) "')\n"
+                                        "def transform(students):\n"
                                         "    # Calculate average score\n"
                                         "    students['Score'] = pd.to_numeric(students['Score'], errors='coerce')\n"
                                         "    avg_score = students['Score'].mean()\n"
@@ -140,7 +122,8 @@
                                         "    })\n"
                                         "    return result")
               result               (mt/user-http-request :crowberto :post 200 "python-runner/execute"
-                                                         {:code transform-code})]
+                                                         {:code     transform-code
+                                                          :table-id (mt/id :students)})]
 
           (is (=? {:output "student_count,average_score\n4,88.75\n"
                    :stdout "Successfully saved 1 rows to CSV\n"

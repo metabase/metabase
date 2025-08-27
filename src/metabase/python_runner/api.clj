@@ -57,7 +57,7 @@
 
 (defn execute-python-code
   "Execute Python code in a sandboxed environment using the run-sandbox.sh script."
-  [code]
+  [code table-id]
   (with-temp-files [code-file ["python_code_" ".py"]
                     output-file ["python_output_" ".txt"]
                     stdout-file ["python_stdout_" ".txt"]
@@ -65,9 +65,9 @@
     (spit code-file code)
     (let [script-args ["/bin/bash" "python-runner/run-sandbox.sh"
                        code-file output-file stdout-file stderr-file
-                       ;; TODO
                        (transforms.settings/python-runner-base-url)
-                       (transforms.settings/python-runner-api-key)]
+                       (transforms.settings/python-runner-api-key)
+                       (str table-id)]
           result (apply shell/sh (conj script-args :dir (io/file ".")))]
       (if (zero? (:exit result))
         {:output      (slurp output-file)
@@ -87,9 +87,11 @@
   "Execute Python code in a sandboxed environment and return the output."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+   {:keys [code table-id]} :- [:map
+                               [:code ms/NonBlankString]
+                               [:table-id ms/PositiveInt]]]
   (api/check-superuser)
-  (execute-python-code code))
+  (execute-python-code code table-id))
 
 (api.macros/defendpoint :get "/table/:id/data"
   "Fetch table data for Python transforms."

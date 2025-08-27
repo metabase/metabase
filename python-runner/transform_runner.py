@@ -100,6 +100,9 @@ def main():
         metabase_url = os.environ.get('METABASE_URL')
         api_key = os.environ.get('X_API_KEY')
 
+        # for now we assume a single table dependency
+        table_id = os.environ.get('TABLE_ID')
+
         # Create Metabase API connection object
         db = MetabaseAPIConnection(metabase_url, api_key)
 
@@ -125,7 +128,10 @@ def main():
             sig = inspect.signature(script.transform)
             if len(sig.parameters) > 0:
                 # Function accepts parameters, pass db
-                result = script.transform(db)
+                # result = script.transform(db)
+
+                # for now we assume a single data dependency, and pass just that one file
+                result = script.transform(db.read_table(table_id))
             else:
                 # Function takes no parameters, call without db for backward compatibility
                 result = script.transform()

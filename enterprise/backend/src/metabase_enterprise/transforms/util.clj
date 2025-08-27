@@ -26,18 +26,6 @@
   [transform]
   (= :python (-> transform :source :type keyword)))
 
-(defn db-connect-str
-  "This should be replaced by a proxy url"
-  [db-id]
-  (let [db-details (t2/select-one-fn :details :model/Database db-id)]
-    (format "postgresql://%s:%s@%s:%s/%s"
-            (or (:user db-details) "christruter")
-            (or (:password db-details) "")
-            ;; important quirk while we're testing
-            (str/replace (or (:host db-details) "127.0.0.1") #"localhost" "127.0.0.1")
-            (or (:port db-details) 5432)
-            (or (:db db-details) (:dbname db-details)))))
-
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
   [{:keys [source target] :as transform}]

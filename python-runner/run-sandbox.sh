@@ -12,6 +12,7 @@ STDOUT_FILE="$3"
 STDERR_FILE="$4"
 METABASE_URL="$5"
 API_KEY="$6"
+TABLE_ID="$7"
 
 # Create output directory if it doesn't exist
 OUTPUT_DIR="$(dirname "$OUTPUT_FILE")"
