@@ -2,7 +2,11 @@ import { Node, mergeAttributes } from "@tiptap/core";
 
 import { uuid } from "metabase/lib/uuid";
 
-import { ID_ATTRIBUTE_NAME } from "../NodeIds";
+import {
+  ID_ATTRIBUTE_NAME,
+  createIdAttribute,
+  createProseMirrorPlugin,
+} from "../NodeIds";
 
 export interface ParagraphOptions {
   /**
@@ -46,14 +50,7 @@ export const Paragraph = Node.create<ParagraphOptions>({
 
   addAttributes() {
     return {
-      [ID_ATTRIBUTE_NAME]: {
-        default: null,
-        parseHTML: (el) => el.getAttribute(ID_ATTRIBUTE_NAME) || null,
-        renderHTML: (attrs) =>
-          attrs[ID_ATTRIBUTE_NAME]
-            ? { [ID_ATTRIBUTE_NAME]: attrs[ID_ATTRIBUTE_NAME] }
-            : {},
-      },
+      ...createIdAttribute(),
     };
   },
 
@@ -67,6 +64,10 @@ export const Paragraph = Node.create<ParagraphOptions>({
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
       0,
     ];
+  },
+
+  addProseMirrorPlugins() {
+    return [createProseMirrorPlugin("paragraph")];
   },
 
   addCommands() {
