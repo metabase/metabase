@@ -4,6 +4,9 @@ on:
   issues:
     types:
       - labeled
+  pull_request_review:
+    types:
+      - submitted
   workflow_dispatch:
     inputs:
       issue_number:
@@ -25,12 +28,15 @@ jobs:
       issues: read
     if: |
       (github.event_name == 'issues' && github.event.label.name == 'Claude Bug Fix' && github.event.issue.state == 'open') ||
-      (github.event_name == 'workflow_dispatch')
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested' && startsWith(github.event.pull_request.head.ref, 'claude-fix/'))
     outputs:
       is_employee: ${{ steps.check_employee.outputs.is_employee }}
       issue_number: ${{ steps.get_issue.outputs.issue_number }}
       issue_data: ${{ steps.get_issue.outputs.issue_data }}
       issue_comments: ${{ steps.get_issue.outputs.issue_comments }}
+      pr_reviews: ${{ steps.get_issue.outputs.pr_reviews }}
+      trigger_type: ${{ steps.get_issue.outputs.trigger_type }}
     steps:
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -45,7 +51,8 @@ jobs:
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
-            let issueNumber, issueData;
+            let issueNumber, issueData, prReviews = [];
+            const triggerType = context.eventName;
 
             if (context.eventName === 'issues') {
               // Original issue label event
@@ -60,6 +67,77 @@ jobs:
                 issue_number: issueNumber
               });
               issueData = data;
+            } else if (context.eventName === 'pull_request_review') {
+              // Pull request review trigger - extract issue number from branch or PR body
+              const prNumber = context.payload.pull_request.number;
+              const branchName = context.payload.pull_request.head.ref;
+              
+              // Extract issue number from branch name (format: claude-fix/issue-{number}-{title})
+              const branchMatch = branchName.match(/claude-fix\/issue-(\d+)-/);
+              if (branchMatch) {
+                issueNumber = parseInt(branchMatch[1]);
+              } else {
+                // Fallback: extract from PR body
+                const { data: prData } = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber
+                });
+                const bodyMatch = prData.body.match(/#(\d+)/);
+                if (bodyMatch) {
+                  issueNumber = parseInt(bodyMatch[1]);
+                } else {
+                  core.setFailed('Could not extract issue number from branch name or PR body');
+                  return;
+                }
+              }
+              
+              // Get the original issue data
+              const { data } = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber
+              });
+              issueData = data;
+              
+              // Get PR reviews
+              const { data: reviews } = await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              });
+              
+              // Filter to reviews that request changes by Metabase employees
+              const membershipCache = new Map();
+              for (const review of reviews) {
+                if (review.state === 'CHANGES_REQUESTED') {
+                  const username = review.user.login;
+                  
+                  // Check if reviewer is employee
+                  let isEmployee = false;
+                  if (membershipCache.has(username)) {
+                    isEmployee = membershipCache.get(username);
+                  } else {
+                    try {
+                      const { data: membership } = await github.rest.orgs.getMembershipForUser({
+                        org: 'metabase',
+                        username: username
+                      });
+                      isEmployee = membership.state === 'active';
+                      membershipCache.set(username, isEmployee);
+                    } catch (error) {
+                      if (error.status === 404) {
+                        membershipCache.set(username, false);
+                      }
+                    }
+                  }
+                  
+                  if (isEmployee) {
+                    prReviews.push(review);
+                    console.log(`Including review with changes requested by employee: ${username}`);
+                  }
+                }
+              }
             }
 
             // Fetch issue comments
@@ -72,7 +150,7 @@ jobs:
             // Filter comments to only include those by Metabase employees
             const employeeComments = [];
             const membershipCache = new Map(); // Cache to avoid duplicate API calls
-            
+
             for (const comment of comments) {
               const username = comment.user.login;
               
@@ -123,10 +201,16 @@ jobs:
             core.setOutput('issue_number', issueNumber);
             core.setOutput('issue_data', JSON.stringify(issueData));
             core.setOutput('issue_comments', JSON.stringify(employeeComments));
+            core.setOutput('pr_reviews', JSON.stringify(prReviews));
+            core.setOutput('trigger_type', triggerType);
 
+            console.log(`Trigger type: ${triggerType}`);
             console.log(`Issue #${issueNumber}: ${issueData.title}`);
             console.log(`Issue author: ${issueData.user.login}`);
             console.log(`Issue has ${comments.length} total comments, ${employeeComments.length} from employees`);
+            if (prReviews.length > 0) {
+              console.log(`Found ${prReviews.length} reviews requesting changes from employees`);
+            }
 
       - name: Check if issue creator is a Metabase employee
         id: check_employee
@@ -198,10 +282,14 @@ jobs:
         env:
           ISSUE_DATA: ${{ needs.check-employee-and-issue.outputs.issue_data }}
           ISSUE_COMMENTS: ${{ needs.check-employee-and-issue.outputs.issue_comments }}
+          PR_REVIEWS: ${{ needs.check-employee-and-issue.outputs.pr_reviews }}
+          TRIGGER_TYPE: ${{ needs.check-employee-and-issue.outputs.trigger_type }}
         with:
           script: |
             const issueData = JSON.parse(process.env.ISSUE_DATA);
             const issueComments = JSON.parse(process.env.ISSUE_COMMENTS);
+            const prReviews = JSON.parse(process.env.PR_REVIEWS);
+            const triggerType = process.env.TRIGGER_TYPE;
             const issueNumber = '${{ needs.check-employee-and-issue.outputs.issue_number }}';
 
             // Convert issue title to kebab case
@@ -223,6 +311,7 @@ jobs:
             core.exportVariable('ISSUE_AUTHOR', issueData.user.login);
             core.exportVariable('ISSUE_CREATED', issueData.created_at);
             core.exportVariable('ISSUE_BODY', issueData.body || 'No description provided');
+            core.exportVariable('TRIGGER_TYPE', triggerType);
 
             // Format comments for the prompt
             let commentsText = '';
@@ -232,6 +321,15 @@ jobs:
               ).join('\n\n---\n\n');
             }
             core.exportVariable('ISSUE_COMMENTS_FORMATTED', commentsText);
+
+            // Format PR reviews for the prompt
+            let reviewsText = '';
+            if (prReviews.length > 0) {
+              reviewsText = prReviews.map(review => 
+                `**Review by @${review.user.login} on ${review.submitted_at} (Changes Requested):**\n${review.body || 'No review comment provided'}`
+              ).join('\n\n---\n\n');
+            }
+            core.exportVariable('PR_REVIEWS_FORMATTED', reviewsText);
 
       - name: Determine branch strategy
         run: |
@@ -255,54 +353,100 @@ jobs:
       - name: Prepare bug fix prompt
         id: prepare_prompt
         run: |
-          # Prepare the prompt for Claude
-          cat << 'EOF' >> $GITHUB_ENV
-          BUG_FIX_PROMPT<<PROMPT_END
-          You are helping to automatically fix a bug reported in GitHub issue #${{ env.ISSUE_NUMBER }}.
+          # Prepare the prompt for Claude based on trigger type
+          if [ "${{ env.TRIGGER_TYPE }}" = "pull_request_review" ]; then
+            # Review-triggered prompt
+            cat << 'EOF' >> $GITHUB_ENV
+            BUG_FIX_PROMPT<<PROMPT_END
+            You are helping to improve an automated bug fix based on reviewer feedback for GitHub issue #${{ env.ISSUE_NUMBER }}.
 
-          ## Bug Report Details
-          **Title:** ${{ env.ISSUE_TITLE }}
-          **Reporter:** ${{ env.ISSUE_AUTHOR }}
-          **Created:** ${{ env.ISSUE_CREATED }}
+            ## Original Bug Report
+            **Title:** ${{ env.ISSUE_TITLE }}
+            **Reporter:** ${{ env.ISSUE_AUTHOR }}
+            **Created:** ${{ env.ISSUE_CREATED }}
 
-          **Description:**
-          ${{ env.ISSUE_BODY }}
+            **Description:**
+            ${{ env.ISSUE_BODY }}
 
-          **Comments:**
-          ${{ env.ISSUE_COMMENTS_FORMATTED }}
+            **Comments:**
+            ${{ env.ISSUE_COMMENTS_FORMATTED }}
 
-          ## Instructions
-          1. **Analyze the issue description and comments** - Understand what the issue is describing
-            a. Pay particular attention to reproduction steps and if there's an agreed upon fix. 
-          2. **Search the codebase** - Use Grep and Glob tools to find relevant files
-          3. **Implement a fix** - Follow existing code patterns and conventions
-          4. **Test the fix** - Run appropriate tests using the commands in CLAUDE.md:
-             - JavaScript/TypeScript: `yarn test-unit path/to/file.unit.spec.js`
-             - Clojure: `clojure -X:dev:test :only namespace/test-name`
-             - Lint: `yarn lint-eslint-pure` for JS/TS, `./bin/mage kondo <file>` for Clojure
-          5. **Verify the fix** - Ensure tests pass and code follows conventions
+            ## Previous Fix Attempt - NEEDS IMPROVEMENT
+            A previous automated fix was attempted for this issue, but reviewers have requested changes.
 
-          ## Important Guidelines
-          - Follow the development patterns in CLAUDE.md
-          - Write failing tests first, then fix them
-          - Work in small, testable increments
-          - Don't commit changes - leave that for the workflow
-          - IMPORTANT: Focus only on fixing the reported bug, don't make unrelated changes
+            ## Reviewer Feedback (MUST ADDRESS)
+            ${{ env.PR_REVIEWS_FORMATTED }}
 
-          ## Scratchpad Directory
-          A `.claude-scratchpad/` directory has been created for your temporary files:
-          - Use this directory for ALL temporary verification files. However, prefer using production test files rather than adhoc ones.
-          - Only modify actual production code in the main repository directories
-          - The scratchpad will be cleaned up automatically - nothing from it will be committed
+            ## Instructions
+            1. **Review the current PR branch** - Examine the existing fix attempt on branch `${{ env.BRANCH_NAME }}`
+            2. **Understand reviewer feedback** - Carefully read all review comments above
+            3. **Address specific concerns** - Modify the existing fix to address reviewer feedback
+            4. **Test thoroughly** - Run tests using commands in CLAUDE.md:
+               - JavaScript/TypeScript: `yarn test-unit path/to/file.unit.spec.js`
+               - Clojure: `clojure -X:dev:test :only namespace/test-name`
+               - Lint: `yarn lint-eslint-pure` for JS/TS, `./bin/mage kondo <file>` for Clojure
 
-          ## If You Cannot Fix The Bug
-          If you determine that you cannot create a definitive fix, create a file called `FAILED_FIX_ANALYSIS.md` with:
-          1. **Why No Fix** - Specific reason why you couldn't implement a fix
-          2. **Tool Limitations** - If you needed additional tools/access that weren't available
+            ## Important Guidelines
+            - **PRIORITY**: Address reviewer feedback first and foremost
+            - Follow the development patterns in CLAUDE.md
+            - Keep changes minimal and focused on reviewer concerns
+            - Don't commit changes - leave that for the workflow
+            - The existing PR will be updated with your improvements
 
-          Start by understanding the bug and then systematically work toward a solution.
-          PROMPT_END
-          EOF
+            ## Scratchpad Directory
+            A `.claude-scratchpad/` directory has been created for your temporary files:
+            - Use this directory for ALL temporary verification files
+            - Only modify actual production code in the main repository directories
+            - The scratchpad will be cleaned up automatically
+
+            Start by examining the current fix and understanding exactly what reviewers want changed.
+            PROMPT_END
+            EOF
+          else
+            # Original issue-triggered prompt
+            cat << 'EOF' >> $GITHUB_ENV
+            BUG_FIX_PROMPT<<PROMPT_END
+            You are helping to automatically fix a bug reported in GitHub issue #${{ env.ISSUE_NUMBER }}.
+
+            ## Bug Report Details
+            **Title:** ${{ env.ISSUE_TITLE }}
+            **Reporter:** ${{ env.ISSUE_AUTHOR }}
+            **Created:** ${{ env.ISSUE_CREATED }}
+
+            **Description:**
+            ${{ env.ISSUE_BODY }}
+
+            **Comments:**
+            ${{ env.ISSUE_COMMENTS_FORMATTED }}
+
+            ## Instructions
+            1. **Analyze the issue description and comments** - Understand what the issue is describing
+              a. Pay particular attention to reproduction steps and if there's an agreed upon fix. 
+            2. **Search the codebase** - Use Grep and Glob tools to find relevant files
+            3. **Implement a fix** - Follow existing code patterns and conventions
+            4. **Test the fix** - Run appropriate tests using the commands in CLAUDE.md:
+               - JavaScript/TypeScript: `yarn test-unit path/to/file.unit.spec.js`
+               - Clojure: `clojure -X:dev:test :only namespace/test-name`
+               - Lint: `yarn lint-eslint-pure` for JS/TS, `./bin/mage kondo <file>` for Clojure
+            5. **Verify the fix** - Ensure tests pass and code follows conventions
+
+            ## Important Guidelines
+            - Follow the development patterns in CLAUDE.md
+            - Write failing tests first, then fix them
+            - Work in small, testable increments
+            - Don't commit changes - leave that for the workflow
+            - IMPORTANT: Focus only on fixing the reported bug, don't make unrelated changes
+
+            ## Scratchpad Directory
+            A `.claude-scratchpad/` directory has been created for your temporary files:
+            - Use this directory for ALL temporary verification files. However, prefer using production test files rather than adhoc ones.
+            - Only modify actual production code in the main repository directories
+            - The scratchpad will be cleaned up automatically - nothing from it will be committed
+
+            Start by understanding the bug and then systematically work toward a solution.
+            PROMPT_END
+            EOF
+          fi
 
       - name: Create scratchpad directory for Claude
         run: |
@@ -339,20 +483,6 @@ jobs:
       - name: Check for changes and analysis
         id: check_changes
         run: |
-          # Check if Claude created an analysis file first and store its content
-          if [ -f "FAILED_FIX_ANALYSIS.md" ]; then
-            echo "has_analysis=true" >> $GITHUB_OUTPUT
-            echo "Analysis file found"
-            # Store analysis content in a GitHub output (base64 encoded to handle multiline)
-            ANALYSIS_CONTENT=$(base64 -w 0 FAILED_FIX_ANALYSIS.md)
-            echo "analysis_content=$ANALYSIS_CONTENT" >> $GITHUB_OUTPUT
-            # Remove analysis file so it doesn't count as a code change
-            rm -f FAILED_FIX_ANALYSIS.md
-          else
-            echo "has_analysis=false" >> $GITHUB_OUTPUT
-            echo "No analysis file found"
-          fi
-
           # Now check for actual code changes (excluding analysis file)
           if [ -n "$(git status --porcelain)" ]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
@@ -453,25 +583,3 @@ jobs:
         with:
           script: |
             console.log('🤖 No code changes were made by Claude.');
-
-            // Check if Claude provided a detailed analysis
-            if ('${{ steps.check_changes.outputs.has_analysis }}' === 'true') {
-              try {
-                // Decode the base64-encoded analysis content
-                const analysisBase64 = '${{ steps.check_changes.outputs.analysis_content }}';
-                const analysisContent = Buffer.from(analysisBase64, 'base64').toString('utf8');
-                console.log('📋 Claude provided detailed analysis:');
-                console.log('='.repeat(50));
-                console.log(analysisContent);
-                console.log('='.repeat(50));
-              } catch (error) {
-                console.log('❌ Could not decode analysis content:', error);
-              }
-            } else {
-              console.log('ℹ️  No detailed analysis file was created by Claude.');
-              console.log('This could be because:');
-              console.log('- The issue requires more context or clarification');
-              console.log('- The fix is complex and requires human judgment');
-              console.log('- The issue is not a straightforward code bug');
-              console.log('- Claude couldn\'t locate the relevant code to modify');
-            }
