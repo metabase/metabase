@@ -1,13 +1,13 @@
 import { getNextId } from "__support__/utils";
 
-import type { Comment, CommentsThread } from "../comments";
+import type { Comment, CommentThread } from "../comments";
 
 import { createMockDocument } from "./document";
 import { createMockUser } from "./user";
 
-export function createMockCommentsThread(
-  thread: Partial<CommentsThread>,
-): CommentsThread {
+export function createMockCommentThread(
+  thread: Partial<CommentThread>,
+): CommentThread {
   return {
     ...thread,
 

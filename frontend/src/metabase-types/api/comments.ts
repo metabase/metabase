@@ -3,10 +3,10 @@ import type { BaseUser } from "./user";
 
 export type CommentId = number;
 
-export type CommentsThreadId = number;
+export type CommentThreadId = number;
 
-export interface CommentsThread {
-  id: CommentsThreadId;
+export interface CommentThread {
+  id: CommentThreadId;
 
   entity_type: "document-node";
   entity_id: string | number;
