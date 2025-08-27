@@ -144,14 +144,20 @@
             hash-change-fn           (fn [db-id]
                                        (is (= (u/the-id db) db-id))
                                        (swap! hash-change-called-times inc)
-                                       nil)]
+                                       nil)
+            ;; HACK: The ClickHouse driver also calls `db->pooled-connection-spec` to answer
+            ;; `driver-supports? :connection-impersonation`. That perturbs the call count, so add a special case
+            ;; to [[driver.u/supports?]].
+            original-supports?       driver.u/supports?
+            supports?-fn             (fn [driver feature database]
+                                       (if (and (= driver :clickhouse)
+                                                (= feature :connection-impersonation))
+                                         true
+                                         (original-supports? driver feature database)))]
         (try
           (sql-jdbc.conn/invalidate-pool-for-db! db)
-          ;; HACK: The ClickHouse driver also calls `db->pooled-connection-spec` to answer
-          ;; `driver-supports? :connection-impersonation`. That perturbs the call count below, so we check it once
-          ;; up front before we start counting.
-          (driver/database-supports? driver/*driver* :connection-impersonation db)
-          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn]
+          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
+                        driver.u/supports?                           supports?-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
                   db-hash-1   (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]
               (testing "hash value calculated correctly for new pooled conn"
