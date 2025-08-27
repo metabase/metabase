@@ -20,11 +20,11 @@ import { QuestionTitle } from "./QuestionTitle";
 
 const MetabotQuestionInner = () => {
   const { isLocaleLoading } = useLocale();
-  const [redirectUrl, setRedirectUrl] = useState<string>("");
+  const [adHocQuestionUrl, setAdHocQuestionUrl] = useState<string>("");
   const dispatch = useSdkDispatch();
 
   useEffect(() => {
-    dispatch(addNavigateToHandler(setRedirectUrl));
+    dispatch(addNavigateToHandler(setAdHocQuestionUrl));
   }, [dispatch]);
 
   if (isLocaleLoading) {
@@ -33,15 +33,13 @@ const MetabotQuestionInner = () => {
 
   return (
     <Flex direction="column" align="center" gap="md">
-      <MetabotMessages handleQueryLink={setRedirectUrl} />
+      <MetabotMessages handleAdHocQuestionLink={setAdHocQuestionUrl} />
 
       <MetabotChatEmbedding />
 
-      <Disclaimer />
-
-      {redirectUrl && (
+      {adHocQuestionUrl && (
         <SdkAdHocQuestion
-          questionPath={redirectUrl}
+          questionPath={adHocQuestionUrl}
           title={false}
           isSaveEnabled={false}
         >
@@ -56,15 +54,17 @@ const MetabotQuestionInner = () => {
           />
         </SdkAdHocQuestion>
       )}
+
+      <Disclaimer />
     </Flex>
   );
 };
 
 interface MessageProps {
-  handleQueryLink: (queryLink: string) => void;
+  handleAdHocQuestionLink: (queryLink: string) => void;
 }
 
-function MetabotMessages({ handleQueryLink }: MessageProps) {
+function MetabotMessages({ handleAdHocQuestionLink }: MessageProps) {
   const metabot = useMetabotAgent();
   const { messages, errorMessages } = metabot;
 
@@ -80,7 +80,7 @@ function MetabotMessages({ handleQueryLink }: MessageProps) {
           errorMessages={errorMessages}
           isDoingScience={metabot.isDoingScience}
           showFeedbackButtons={false}
-          onInternalLinkClick={handleQueryLink}
+          onInternalLinkClick={handleAdHocQuestionLink}
         />
       </Flex>
     </Paper>
