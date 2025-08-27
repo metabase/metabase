@@ -41,7 +41,7 @@ const databaseTestCases = [
     expectedFields: [
       { label: "Host", value: "localhost" },
       { label: "Port", value: "8443" },
-      { label: "Databases", value: "testdb" },
+      { label: "Default database", value: "testdb" },
       { label: "Display name", value: "testdb" },
       { label: "Username", value: "testuser" },
       { label: "Additional JDBC connection string options", value: "ssl=true" },
