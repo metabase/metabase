@@ -395,6 +395,8 @@ describe("scenarios [EE] > public > dashboard", () => {
 
     cy.get("@dashboardId").then(H.visitPublicDashboard);
 
-    cy.findByTestId("embed-frame").should("exist");
+    cy.findByTestId("embed-frame").within(() => {
+      cy.findByText("Test Dashboard").should("exist");
+    });
   });
 });
