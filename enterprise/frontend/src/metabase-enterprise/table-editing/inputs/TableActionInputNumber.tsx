@@ -60,6 +60,7 @@ export const TableActionInputNumber = ({
       defaultValue={(initialValue ?? "").toString()}
       autoFocus={autoFocus}
       onKeyUp={handleKeyUp}
+      // Somehow onChange triggers on the first blur, so we rely on onValueChange instead
       onChange={handleChange}
       onValueChange={handleChangeValue}
       onBlur={handleBlur}
@@ -73,5 +74,9 @@ export const TableActionInputNumber = ({
 };
 
 function numberToRawValue(value: string | number) {
-  return typeof value === "number" ? value.toString() : value;
+  if (value === "") {
+    return null;
+  }
+
+  return value.toString();
 }
