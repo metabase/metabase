@@ -6,12 +6,14 @@ import { getIsEmbedding } from "metabase/selectors/embed";
 import {
   FIXED_METABOT_IDS,
   LONG_CONVO_MSG_LENGTH_THRESHOLD,
+  METABOT_REQUEST_IDS,
 } from "../constants";
 
 import type { MetabotStoreState } from "./types";
 
-export const getMetabot = (state: MetabotStoreState) =>
-  state.plugins.metabotPlugin;
+export const getMetabot = (state: MetabotStoreState) => {
+  return state.plugins.metabotPlugin;
+};
 
 export const getMetabotVisible = createSelector(
   getMetabot,
@@ -103,6 +105,11 @@ export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
   isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
 );
 
+export const getMetabotRequestId = createSelector(
+  getIsEmbedding,
+  (isEmbedding) => (isEmbedding ? METABOT_REQUEST_IDS.EMBEDDED : undefined),
+);
+
 export const getAgentRequestMetadata = createSelector(
   getHistory,
   getMetabotState,
@@ -113,4 +120,9 @@ export const getAgentRequestMetadata = createSelector(
       h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,
     ),
   }),
+);
+
+export const getNavigateToHandler = createSelector(
+  getMetabot,
+  (state) => state.navigateToHandler,
 );

@@ -8,6 +8,10 @@ export const FIXED_METABOT_IDS = {
   EMBEDDED: 2 as const,
 };
 
+export const METABOT_REQUEST_IDS = {
+  EMBEDDED: "c61bf5f5-1025-47b6-9298-bf1827105bb6",
+};
+
 export const METABOT_ERR_MSG = {
   get default() {
     return t`Sorry, I ran into an error. Could you please try that again?`;

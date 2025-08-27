@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,10 +7,12 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
+import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Flex, Paper, Stack, Text } from "metabase/ui";
 import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { addNavigateToHandler } from "metabase-enterprise/metabot/state";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 import { QuestionDetails } from "./QuestionDetails";
@@ -19,6 +21,11 @@ import { QuestionTitle } from "./QuestionTitle";
 const MetabotQuestionInner = () => {
   const { isLocaleLoading } = useLocale();
   const [redirectUrl, setRedirectUrl] = useState<string>("");
+  const dispatch = useSdkDispatch();
+
+  useEffect(() => {
+    dispatch(addNavigateToHandler(setRedirectUrl));
+  }, [dispatch]);
 
   if (isLocaleLoading) {
     return <SdkLoader />;
@@ -29,6 +36,8 @@ const MetabotQuestionInner = () => {
       <MetabotMessages handleQueryLink={setRedirectUrl} />
 
       <MetabotChatEmbedding />
+
+      <Disclaimer />
 
       {redirectUrl && (
         <SdkAdHocQuestion
@@ -47,15 +56,9 @@ const MetabotQuestionInner = () => {
           />
         </SdkAdHocQuestion>
       )}
-      <Disclaimer />
     </Flex>
   );
 };
-
-function parseInternalMarkdownLink(markdown: string): string | null {
-  const match = markdown.match(/\[.*?\]\((\/[^\)]+)\)/);
-  return match ? match[1] : null;
-}
 
 interface MessageProps {
   handleQueryLink: (queryLink: string) => void;
@@ -64,38 +67,6 @@ interface MessageProps {
 function MetabotMessages({ handleQueryLink }: MessageProps) {
   const metabot = useMetabotAgent();
   const { messages, errorMessages } = metabot;
-
-  const messagesWithAutoHandledQueryLinksRef = useRef(new Set());
-
-  const lastAgentMessage = useMemo(() => {
-    return [...messages].reverse().find((m) => m.role === "agent") ?? null;
-  }, [messages]);
-
-  const lastQueryLink = useMemo(
-    () =>
-      lastAgentMessage
-        ? parseInternalMarkdownLink(lastAgentMessage.message)
-        : null,
-    [lastAgentMessage],
-  );
-
-  useEffect(
-    function autoHandleQueryLink() {
-      if (!lastQueryLink || !lastAgentMessage) {
-        return;
-      }
-
-      if (
-        messagesWithAutoHandledQueryLinksRef.current.has(lastAgentMessage.id)
-      ) {
-        return;
-      }
-
-      handleQueryLink(lastQueryLink);
-      messagesWithAutoHandledQueryLinksRef.current.add(lastAgentMessage.id);
-    },
-    [lastAgentMessage, lastQueryLink, handleQueryLink],
-  );
 
   if (!messages.length && !errorMessages.length) {
     return null;
@@ -108,6 +79,7 @@ function MetabotMessages({ handleQueryLink }: MessageProps) {
           messages={messages}
           errorMessages={errorMessages}
           isDoingScience={metabot.isDoingScience}
+          showFeedbackButtons={false}
           onInternalLinkClick={handleQueryLink}
         />
       </Flex>

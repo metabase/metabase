@@ -12,6 +12,7 @@ import {
   getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
+  getMetabotRequestId,
   getMetabotVisible,
   getToolCalls,
   resetConversation as resetConversationAction,
@@ -39,6 +40,13 @@ export const useMetabotAgent = () => {
   const visible = useSelector(getMetabotVisible as any) as ReturnType<
     typeof getMetabotVisible
   >;
+
+  const metabotId = useSelector(getMetabotId as any) as ReturnType<
+    typeof getMetabotId
+  >;
+  const metabotRequestId = useSelector(
+    getMetabotRequestId as any,
+  ) as ReturnType<typeof getMetabotRequestId>;
 
   const setVisible = useCallback(
     (isVisible: boolean) => dispatch(setVisibleAction(isVisible)),
@@ -117,9 +125,8 @@ export const useMetabotAgent = () => {
     prompt,
     setPrompt,
     promptInputRef,
-    metabotId: useSelector(getMetabotId as any) as ReturnType<
-      typeof getMetabotId
-    >,
+    metabotId,
+    metabotRequestId,
     visible,
     messages,
     errorMessages,

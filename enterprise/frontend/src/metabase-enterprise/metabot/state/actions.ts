@@ -29,6 +29,7 @@ import {
   getIsProcessing,
   getLastMessage,
   getMetabotConversationId,
+  getNavigateToHandler,
   getUserPromptForMessageId,
 } from "./selectors";
 import { createMessageId } from "./utils";
@@ -38,6 +39,7 @@ export const {
   addAgentMessage,
   addAgentErrorMessage,
   addUserMessage,
+  addNavigateToHandler,
   resetConversationId,
   setIsProcessing,
   toolCallStart,
@@ -164,6 +166,8 @@ export const sendAgentRequest = createAsyncThunk<
     req,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
+    const navigateTo = getNavigateToHandler(getState() as any);
+
     // TODO: make enterprise store
     let sessionId = getMetabotConversationId(getState() as any);
 
@@ -195,7 +199,12 @@ export const sendAgentRequest = createAsyncThunk<
               // only update the convo state if the request is successful
               .with({ type: "state" }, (part) => (state = part.value))
               .with({ type: "navigate_to" }, (part) => {
-                dispatch(push(part.value) as UnknownAction);
+                if (navigateTo) {
+                  // Used by Embedding SDK
+                  navigateTo(part.value);
+                } else {
+                  dispatch(push(part.value) as UnknownAction);
+                }
               })
               .exhaustive();
           },

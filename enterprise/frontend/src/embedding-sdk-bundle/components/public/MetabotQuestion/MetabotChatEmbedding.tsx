@@ -23,8 +23,6 @@ import Styles from "./MetabotChatEmbedding.module.css";
 
 const MIN_INPUT_HEIGHT = 42;
 
-const EMBEDDING_METABOT_ID = "c61bf5f5-1025-47b6-9298-bf1827105bb6";
-
 export const MetabotChatEmbedding = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -46,7 +44,7 @@ export const MetabotChatEmbedding = () => {
     setMessage("");
     const metabotRequestPromise = metabot.submitInput(
       trimmedInput,
-      EMBEDDING_METABOT_ID,
+      metabot.metabotRequestId,
     );
 
     metabotRequestPromise
