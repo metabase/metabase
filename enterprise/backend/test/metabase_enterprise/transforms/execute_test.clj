@@ -129,8 +129,10 @@
           (let [mp (mt/metadata-provider)
                 transforms-products (lib.metadata/table mp (mt/id :transforms_products))
                 products-category (lib.metadata/field mp (mt/id :transforms_products :category))
+                products-id (lib.metadata/field mp (mt/id :transforms_products :id))
                 query (-> (lib/query mp transforms-products)
-                          (lib/filter (lib/= products-category "Widget")))]
+                          (lib/filter (lib/= products-category "Widget"))
+                          (lib/order-by products-id :asc))]
             (mt/with-temp [:model/Transform transform {:name   "transform"
                                                        :source {:type  :query
                                                                 :query query}
@@ -139,7 +141,8 @@
               (let [table-result      (wait-for-table (:name target-table) 10000)
                     query-result (->> (lib/query mp table-result)
                                       (qp/process-query)
-                                      (mt/formatted-rows [int str str 2.0 str]))]
+                                      (mt/formatted-rows [int str str 2.0 str])
+                                      (sort-by first <))]
                 (is (= [[1 "Widget A" "Widget" 19.99 "2024-01-01T10:00:00Z"]
                         [7 "Widget B" "Widget" 24.99 "2024-01-07T10:00:00Z"]
                         [9 "Widget C" "Widget" 14.99 "2024-01-09T10:00:00Z"]

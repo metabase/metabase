@@ -166,8 +166,8 @@
                             [:= :c.column_name :pk.column_name]]]
                :where [:and
                        [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.table_schema schema-names])
-                       (when table-names [:in :c.table_name table-names])]
+                       (when schema-names [:in :c.table_schema (map u/lower-case-en schema-names)])
+                       (when table-names [:in :c.table_name (map u/lower-case-en table-names)])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
