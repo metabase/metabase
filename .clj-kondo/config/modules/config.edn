@@ -72,7 +72,9 @@
 
   activity-feed
   {:team "Admin Webapp"
-   :api  #{metabase.activity-feed.api metabase.activity-feed.init}
+   :api  #{metabase.activity-feed.api
+           metabase.activity-feed.init
+           metabase.activity-feed.models.recent-views}
    :uses #{api
            app-db
            collections
