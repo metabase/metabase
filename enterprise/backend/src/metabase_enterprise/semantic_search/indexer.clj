@@ -230,7 +230,7 @@
 
     (cond
       ;; if the next DLQ run should happen on the next iteration, we should not idle
-      (and next-dlq-run (<= (compare (.instant clock) next-dlq-run) 0))
+      (and next-dlq-run (.isAfter (.instant clock) next-dlq-run))
       nil
 
       ;; more than 25% the results are new, immediately get more
