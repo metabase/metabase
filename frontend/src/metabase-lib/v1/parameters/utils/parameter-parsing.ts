@@ -14,7 +14,6 @@ import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-typ
 import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
-  ParameterId,
   ParameterType,
   ParameterValue,
   ParameterValueOrArray,
@@ -24,7 +23,7 @@ import type {
 export function getParameterValueFromQueryParams(
   parameter: Parameter,
   queryParams: Query = {},
-  lastUsedParametersValues: Record<ParameterId, unknown> = {},
+  lastUsedParametersValues: ParameterValuesMap = {},
 ) {
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
   const hasQueryParams = Object.keys(queryParams).length > 0;
@@ -152,7 +151,7 @@ function normalizeParameterValueForWidget(
 export function getParameterValuesByIdFromQueryParams(
   parameters: Parameter[],
   queryParams: Query,
-  lastUsedParametersValues?: Record<ParameterId, unknown>,
+  lastUsedParametersValues?: ParameterValuesMap,
 ): ParameterValuesMap {
   const result: ParameterValuesMap = {};
   for (const parameter of parameters) {
