@@ -56,8 +56,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     actions: [
       {
         label: t`Generate automatic dashboard`,
-        // TODO(EMB-741): use a wizard
-        to: "/auto/dashboard/table/1",
+        modal: { type: "xray-dashboard" },
         variant: "outline",
       },
       {
