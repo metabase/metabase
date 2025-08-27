@@ -7,6 +7,7 @@ import type {
   ListUserMembershipsResponse,
   Membership,
 } from "metabase-types/api";
+import type { PermissionsGraph } from "metabase-types/api/permissions";
 
 import { Api } from "./api";
 import {
@@ -125,6 +126,12 @@ export const permissionApi = Api.injectEndpoints({
           idTag("permissions-group", id),
         ]),
     }),
+    getPermissionsGraph: builder.query<PermissionsGraph, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/permissions/graph",
+      }),
+    }),
   }),
 });
 
@@ -139,4 +146,5 @@ export const {
   useCreateMembershipMutation,
   useUpdateMembershipMutation,
   useDeleteMembershipMutation,
+  useGetPermissionsGraphQuery,
 } = permissionApi;
