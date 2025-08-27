@@ -61,10 +61,9 @@
   (let [{python-transforms true
          sql-transforms false} (group-by transforms.util/python-transform? transforms)
 
-        ;; Python transforms have no dependencies - they run one by one
+        ;; TODO: figure out python transforms deps
         python-deps (into {} (map (fn [transform] [(:id transform) #{}])) python-transforms)
 
-        ;; SQL transforms maintain their normal dependency ordering
         sql-transforms-by-db (->> sql-transforms
                                   (map (fn [transform]
                                          {(get-in transform [:source :query :database]) [transform]}))

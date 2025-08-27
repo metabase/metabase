@@ -28,7 +28,6 @@
 
 (defn- get-plan [transform-ids]
   (let [all-transforms  (t2/select :model/Transform)
-        ;; TODO python transforms have ordering too!
         global-ordering (transforms.ordering/transform-ordering all-transforms)
         relevant-ids    (get-deps global-ordering transform-ids)
         ordering        (select-keys global-ordering relevant-ids)]
