@@ -1,8 +1,9 @@
 (ns metabase.python-runner.api
   "API endpoints for executing Python code in a sandboxed environment."
   (:require
+   #_[metabase.server.streaming-response :as streaming]
+   [clj-http.client :as http]
    [clojure.java.io :as io]
-   [clojure.java.shell :as shell]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -10,7 +11,6 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
-   [metabase.server.streaming-response :as streaming]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
@@ -63,33 +63,72 @@
     (try (.delete file) (catch Exception _))))
 
 (defn execute-python-code
-  "Execute Python code in a sandboxed environment using the run-sandbox.sh script."
+  "Execute Python code using the Python execution server."
   [code table-name->id]
-  (with-temp-files [code-file ["python_code_" ".py"]
-                    output-file ["python_output_" ".txt"]
-                    stdout-file ["python_stdout_" ".txt"]
-                    stderr-file ["python_stderr_" ".txt"]]
-    (spit code-file code)
-    (let [tables-json (json/encode (or table-name->id {}))
-          script-args ["/bin/bash" "python-runner/run-sandbox.sh"
-                       code-file output-file stdout-file stderr-file
-                       (transforms.settings/python-runner-base-url)
-                       (transforms.settings/python-runner-api-key)
-                       tables-json]
-          result (apply shell/sh (conj script-args :dir (io/file ".")))]
-      (if (zero? (:exit result))
-        {:output      (slurp output-file)
-         :output-file output-file
-         :stdout      (slurp stdout-file)
-         :stdout-file stdout-file
-         :stderr      (slurp stderr-file)
-         :stderr-file stderr-file}
+  (let [mount-path (transforms.settings/python-execution-mount-path)
+        work-dir-name (str "run-" (System/currentTimeMillis) "-" (rand-int 10000))
+        work-dir (str mount-path "/" work-dir-name)
+        work-dir-file (io/file work-dir)]
+
+    ;; Ensure mount base path exists
+    (.mkdirs (io/file mount-path))
+    ;; Create working directory
+    (.mkdirs work-dir-file)
+
+    (try
+      (let [server-url (transforms.settings/python-execution-server-url)
+            api-key (transforms.settings/python-runner-api-key)
+            metabase-url (transforms.settings/python-runner-callback-base-url)
+
+            response (http/post (str server-url "/execute")
+                                {:content-type     :json
+                                 :accept           :json
+                                 :body             (json/encode {:code          code
+                                                                 :working_dir   work-dir
+                                                                 :timeout       30
+                                                                 :metabase_url  metabase-url
+                                                                 :api_key       api-key
+                                                                 :table_mapping table-name->id})
+                                 :throw-exceptions false
+                                 :as               :json})
+
+            result  (:body response)
+            ;; TODO look into why some tests return json and others strings
+            result (if (string? result) (json/decode result keyword) result)]
+
+        (try
+          (if (and (= 200 (:status response))
+                   (zero? (:exit_code result)))
+            ;; Success - read the output CSV if it exists
+            (let [output-path (:output_file result)]
+              (if (and output-path (.exists (io/file output-path)))
+                {:output (slurp output-path)
+                 :stdout (safe-slurp (:stdout_file result))
+                 :stderr (safe-slurp (:stderr_file result))}
+                {:status 500
+                 :body   {:error  "Transform did not produce output CSV"
+                          :stdout (safe-slurp (:stdout_file result))
+                          :stderr (safe-slurp (:stderr_file result))}}))
+            ;; Error from execution server
+            {:status 500
+             :body
+             {:error     (or (:error result) "Execution failed")
+              :exit-code (:exit_code result)
+              :timeout   (:timeout result)
+              :stdout    (safe-slurp (:stdout_file result))
+              :stderr    (safe-slurp (:stderr_file result))}})
+          (finally
+            ;; Clean up working directory after use
+            (try
+              (when (.exists work-dir-file)
+                ;; Delete directory and all contents
+                (doseq [file (reverse (file-seq work-dir-file))]
+                  (.delete ^File file)))
+              (catch Exception _)))))
+
+      (catch Exception e
         {:status 500
-         :body
-         {:error     (str "Execution failed: " (:err result))
-          :exit-code (:exit result)
-          :stdout    (safe-slurp stdout-file)
-          :stderr    (safe-slurp stderr-file)}}))))
+         :body {:error (str "Failed to connect to Python execution server: " (.getMessage e))}}))))
 
 (api.macros/defendpoint :post "/execute"
   "Execute Python code in a sandboxed environment and return the output."

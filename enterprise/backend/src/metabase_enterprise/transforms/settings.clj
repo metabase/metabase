@@ -27,6 +27,17 @@
   :encryption :no
   :audit      :getter)
 
+(setting/defsetting python-runner-callback-base-url
+  (deferred-tru "Where we call back to metabase from the container. DEPRECATED")
+  :type       :string
+  :visibility :internal
+  :default    "http://host.docker.internal:3000"
+  :feature    :transforms
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
 (setting/defsetting python-runner-api-key
   (deferred-tru "API key for authenticating with the Python runner service.")
   :type       :string
@@ -37,3 +48,25 @@
   :export?    false
   :encryption :when-encryption-key-set
   :audit      :never)
+
+(setting/defsetting python-execution-server-url
+  (deferred-tru "URL for the Python execution server that runs transform functions.")
+  :type       :string
+  :visibility :internal
+  :default    "http://localhost:5001"
+  :feature    :transforms
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-execution-mount-path
+  (deferred-tru "Base path for mounted directory shared between Metabase and Python execution container.")
+  :type       :string
+  :visibility :internal
+  :default    "/tmp/python-exec-work"
+  :feature    :transforms
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)

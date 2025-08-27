@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms.execute
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
@@ -13,10 +12,9 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
-   [metabase.python-runner.api :as python-runner.api]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.upload.core :as upload]
-   [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
@@ -134,11 +132,11 @@
         headers  (cond-> {}
                    api-key (assoc "X-API-Key" api-key))]
     (http/post (str base-url "/api/python-runner/execute")
-               {:content-type :json
-                :accept :json
-                :as :json
-                :body (json/generate-string {:code code, :tables table-name->id})
-                :headers headers
+               {:content-type      :json
+                :accept            :json
+                :as                :json
+                :body              (json/encode {:code code, :tables table-name->id})
+                :headers           headers
                 :throw-exceptions? false})))
 
 (defn execute-python-transform!
