@@ -221,7 +221,7 @@ jobs:
           echo "==================================="
 
       - name: Extract chunk-specific timings
-        if: inputs.split_index != null
+        if: inputs.split_index >= 0
         continue-on-error: true
         shell: bash
         run: |
@@ -318,7 +318,7 @@ jobs:
           find . -name "*timing*" -o -name "*Timing*" 2>/dev/null || echo "No timing files found"
 
       - name: Check timing file before upload
-        if: always() && inputs.split_index != null
+        if: always() && inputs.split_index >= 0
         continue-on-error: true
         shell: bash
         run: |
@@ -350,7 +350,7 @@ jobs:
 
       - name: Upload Timing Data
         uses: actions/upload-artifact@v4
-        if: always() && inputs.split_index != null
+        if: always() && inputs.split_index >= 0
         continue-on-error: true
         with:
           name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
