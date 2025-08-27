@@ -7,7 +7,7 @@ import "react-resizable/css/styles.css";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useSetting, useToast } from "metabase/common/hooks";
-import { Box, Button, Group, Stack } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedNavigation } from "../hooks";
@@ -118,7 +118,11 @@ const SdkIframeEmbedSetupContent = () => {
             )}
 
             {isLastStep && (
-              <Button variant="filled" onClick={handleDone}>
+              <Button
+                variant="filled"
+                onClick={handleDone}
+                leftSection={<Icon name="check_filled" />}
+              >
                 {t`Done`}
               </Button>
             )}
