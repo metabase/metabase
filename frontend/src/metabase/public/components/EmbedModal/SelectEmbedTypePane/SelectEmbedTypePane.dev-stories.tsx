@@ -66,11 +66,18 @@ function EnterpriseToggleDecorator(
   { parameters }: { parameters: { isEnterprise?: boolean } },
 ) {
   const { isEnterprise } = parameters;
+  const hasReloaded =
+    window.localStorage.getItem("enterprise-build-reload") === "has-reloaded";
+  window.localStorage.removeItem("enterprise-build-reload");
+
+  if (PLUGIN_IS_EE_BUILD.isEEBuild() !== isEnterprise && !hasReloaded) {
+    window.localStorage.setItem("enterprise-build-reload", "has-reloaded");
+    window.location.reload();
+    return;
+  }
+
   if (isEnterprise) {
     setupEnterprisePlugins();
-  }
-  if (PLUGIN_IS_EE_BUILD.isEEBuild() !== isEnterprise) {
-    window.location.reload();
   }
 
   return (
@@ -128,6 +135,14 @@ EmbeddingNotAvailableEE.args = {
 
 EmbeddingNotAvailableEE.parameters = {
   isEnterprise: true,
+  state: createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures({
+        embedding: false,
+      }),
+      "enable-embedding-interactive": false,
+    }),
+  }),
 };
 
 export const EmbeddingAvailableNotEnabled = Template.bind({});
@@ -149,6 +164,7 @@ EmbeddingAvailableNotEnabled.parameters = {
       "token-features": createMockTokenFeatures({
         embedding: true,
       }),
+      "enable-embedding-interactive": false,
     }),
   }),
   isEnterprise: true,
