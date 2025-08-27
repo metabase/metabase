@@ -63,6 +63,7 @@
     :type/Description :input/textarea
     :type/Category    :input/dropdown
     :type/FK          :input/dropdown
+    ;; TODO this recursion is quite crude, the structure of this logic could be improved.
     :type/PK (if create?
                (field-input-type true (dissoc field :semantic_type) field-values)
                :input/dropdown)
