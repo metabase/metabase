@@ -46,9 +46,6 @@ export const EmbeddingHub = () => {
   const lockedSteps: Partial<Record<EmbeddingHubStepId, boolean>> = {
     // Production embeds requires JWT to be configured.
     "embed-production": !completedSteps["secure-embeds"],
-
-    // Row and column security requires a user to login with JWT.
-    "configure-row-column-security": !completedSteps["secure-embeds"],
   };
 
   return (
