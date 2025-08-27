@@ -1,7 +1,9 @@
 (ns metabase-enterprise.metabot-v3.config
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (def internal-metabot-id
@@ -42,6 +44,20 @@
   (or metabot-id
       (metabot-v3.settings/metabot-id)
       internal-metabot-id))
+
+(defn validate-profile-id-against-whitelist
+  "Validates a profile-id against the configured whitelist.
+   Returns the normalized profile-id if it's in the whitelist, nil otherwise."
+  [profile-id]
+  (when profile-id
+    (when-let [whitelist-str (metabot-v3.settings/ai-service-profile-id-whitelist)]
+      (let [whitelist (->> (str/split whitelist-str #",")
+                           (map str/trim)
+                           (map u/lower-case-en)
+                           set)
+            normalized-id (u/lower-case-en (str/trim profile-id))]
+        (when (contains? whitelist normalized-id)
+          normalized-id)))))
 
 (defn resolve-dynamic-profile-id
   "Resolve the ultimate ai-service profile ID with logical fall backs

@@ -31,7 +31,8 @@
   (let [initial-message (metabot-v3.envelope/user-message message)
         history         (conj (vec history) initial-message)
         metabot-id      (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        profile-id      (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
+        validated-profile-id (metabot-v3.config/validate-profile-id-against-whitelist profile_id)
+        profile-id      (metabot-v3.config/resolve-dynamic-profile-id validated-profile-id metabot-id)
         env             (metabot-v3.tools.api/handle-envelope
                          {:context         (metabot-v3.context/create-context context)
                           :metabot-id      metabot-id
@@ -68,7 +69,8 @@
   (let [initial-message (metabot-v3.envelope/user-message message)
         history         (conj (vec history) initial-message)
         metabot-id      (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
-        profile-id      (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)]
+        profile-id      (metabot-v3.config/resolve-dynamic-profile-id (metabot-v3.config/validate-profile-id-against-whitelist profile_id)
+                                                                      metabot-id)]
     (metabot-v3.tools.api/streaming-handle-envelope
      {:context         (metabot-v3.context/create-context context)
       :metabot-id      metabot-id
