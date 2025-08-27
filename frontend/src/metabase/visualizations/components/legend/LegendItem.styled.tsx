@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { LEGEND_ITEM_DOT_SIZE } from "./LegendItemDot.styled";
-
 export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
   display: flex;
   align-items: center;
@@ -28,15 +26,19 @@ export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
 
 const LEGEND_ITEM_TITLE_MARGIN = 4;
 
-export const LegendItemTitle = styled.div<{ isInsidePopover?: boolean }>`
-  color: var(--mb-color-text-secondary);
-  font-size: 0.75rem;
+export const LegendItemTitle = styled.div<{
+  dotSize: string;
+  isInsidePopover?: boolean;
+}>`
+  color: var(--mb-color-text-primary);
+  font-size: 0.85em;
+  font-weight: 700;
   margin-left: ${LEGEND_ITEM_TITLE_MARGIN}px;
   overflow: hidden;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
-  max-width: ${(props) =>
-    props.isInsidePopover
-      ? `calc(100% - ${LEGEND_ITEM_DOT_SIZE}px - ${LEGEND_ITEM_TITLE_MARGIN}px)`
+  max-width: ${({ dotSize, isInsidePopover }) =>
+    isInsidePopover
+      ? `calc(100% - ${dotSize}px - ${LEGEND_ITEM_TITLE_MARGIN}px)`
       : "unset"};
 
   &:hover {

@@ -3,9 +3,7 @@ legend item needs to be in the scope in order to control the font size in
 fullscreen dashboard mode
 */
 .LegendItem {
-  font-weight: normal;
-  color: var(--mb-color-text-secondary);
-  font-size: 0.75rem;
+  font-weight: bold;
   transition: opacity 0.25s linear;
   opacity: 1;
 }
@@ -34,4 +32,10 @@ fullscreen dashboard mode
   flex-direction: row;
   flex-wrap: wrap;
   margin-top: 1em;
+}
+
+.DashCard.LegendItem {
+  font-weight: normal;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
 }
