@@ -16,28 +16,39 @@ function ParameterValueWidgetTriggerInner(
     ariaLabel,
     className,
     mimicMantine = false,
+    hasPopover = false,
   }: {
     children: ReactNode;
     hasValue: boolean;
     ariaLabel?: string;
     className?: string;
     mimicMantine?: boolean;
+    hasPopover?: boolean;
   },
-  ref: Ref<HTMLButtonElement>,
+  ref: Ref<HTMLButtonElement | HTMLButtonElement>,
 ) {
+  const attributes = hasPopover
+    ? {
+        component: "button" as const,
+        ref: ref as Ref<HTMLButtonElement>,
+        type: "button" as const,
+      }
+    : {
+        component: "div" as const,
+        ref: ref as Ref<HTMLDivElement>,
+      };
+
   if (mimicMantine) {
     return (
       <Flex
         align="center"
         pos="relative"
-        component="button"
-        type="button"
         w="100%"
         className={cx(S.TriggerContainer, {
           [S.hasValue]: hasValue,
         })}
         aria-label={ariaLabel}
-        ref={ref}
+        {...attributes}
       >
         {children}
       </Flex>
@@ -46,12 +57,11 @@ function ParameterValueWidgetTriggerInner(
 
   return (
     <UnstyledButton
-      ref={ref}
-      type="button"
       className={cx(S.parameter, className, {
         [S.selected]: hasValue,
       })}
       aria-label={ariaLabel}
+      {...attributes}
     >
       {children}
     </UnstyledButton>
