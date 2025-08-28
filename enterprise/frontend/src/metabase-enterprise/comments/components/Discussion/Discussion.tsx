@@ -1,10 +1,7 @@
-// TODO: move Timeline component to metabase/ui
-/* eslint-disable no-restricted-imports */
-import { Timeline } from "@mantine/core";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Stack } from "metabase/ui";
+import { Box, Button, Stack, Timeline } from "metabase/ui";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";

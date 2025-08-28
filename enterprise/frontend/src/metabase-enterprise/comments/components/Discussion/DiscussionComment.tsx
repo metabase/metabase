@@ -1,10 +1,10 @@
-// TODO: move Timeline, Spoiler, and Avatar components to metabase/ui
+// TODO: move Avatar component to metabase/ui
 /* eslint-disable no-restricted-imports */
-import { Avatar, Spoiler, Timeline } from "@mantine/core";
+import { Avatar } from "@mantine/core";
 import dayjs from "dayjs";
 import { t } from "ttag";
 
-import { Group, Text, Tooltip, rem } from "metabase/ui";
+import { Group, Spoiler, Text, Timeline, Tooltip, rem } from "metabase/ui";
 import type { Comment } from "metabase-types/api";
 
 import S from "./DiscussionComment.module.css";
@@ -29,8 +29,6 @@ export function DiscussionComment({ comment }: DiscussionCommentProps) {
   return (
     <Timeline.Item
       mt="1.25rem"
-      // TODO: fix this when migrating component to metabase/ui
-      style={{ "--item-border-color": "var(--mb-color-border)" }}
       bullet={
         <Avatar
           variant="filled"
