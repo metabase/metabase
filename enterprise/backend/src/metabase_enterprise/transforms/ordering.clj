@@ -58,12 +58,11 @@
   the transforms in the original list -- if a transform depends on some transform not in the list, the 'extra'
   dependency is ignored."
   [transforms]
-  (let [transform-ids (into #{} (map :id) transforms)
-        transforms-by-db (->> transforms
+  (let [transforms-by-db (->> transforms
                               (map (fn [transform]
                                      {(get-in transform [:source :query :database]) [transform]}))
                               (apply merge-with into))
-
+        transform-ids (into #{} (map :id) transforms)
         {:keys [output-tables dependencies]} (->> transforms-by-db
                                                   (map (fn [[db-id db-transforms]]
                                                          (qp.store/with-metadata-provider db-id
@@ -120,10 +119,12 @@
                                transforms)
         db-id (get-in to-check [:source :query :database])]
     (qp.store/with-metadata-provider db-id
-      (let [output-tables (output-table-map (filter #(= (get-in % [:source :query :database]) db-id)
-                                                    transforms))
-            ;; TODO(rileythomp, 2025-08-28): Update this to handle transform-deps similar to transform-ordering
-            node->children #(->> % transforms-by-id transform-deps (keep output-tables))
+      (let [db-transforms (filter #(= (get-in % [:source :query :database]) db-id) transforms)
+            output-tables (output-table-map db-transforms)
+            transform-ids (into #{} (map :id) db-transforms)
+            node->children #(->> % transforms-by-id transform-deps (keep (fn [{:keys [table transform]}]
+                                                                           (or (output-tables table)
+                                                                               (transform-ids transform)))))
             id->name (comp :name transforms-by-id)
             cycle (find-cycle node->children [transform-id])]
         (when cycle
