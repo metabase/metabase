@@ -46,11 +46,3 @@
   :feature    :metabot-v3
   :encryption :no
   :export?    false)
-
-(defsetting ai-service-profile-id-whitelist
-  (deferred-tru "Comma-delimited list of allowed profile IDs that can be passed from the frontend.")
-  :type       :string
-  :visibility :internal
-  :feature    :metabot-v3
-  :encryption :no
-  :export?    false)
