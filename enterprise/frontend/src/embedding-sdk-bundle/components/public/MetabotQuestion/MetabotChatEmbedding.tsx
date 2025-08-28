@@ -28,7 +28,8 @@ const MIN_INPUT_HEIGHT = 42;
 
 export const MetabotChatEmbedding = () => {
   const metabot = useMetabotAgent();
-  const { handleSubmitInput, handleResetInput } = useMetabotChat();
+  const { isDoingScience, handleSubmitInput, handleResetInput } =
+    useMetabotChat();
 
   const resetInput = useCallback(() => {
     handleResetInput();
@@ -52,9 +53,7 @@ export const MetabotChatEmbedding = () => {
   };
 
   const inputPlaceholder = t`Tell me to do something, or ask a question`;
-  const placeholder = metabot.isDoingScience
-    ? t`Doing science...`
-    : inputPlaceholder;
+  const placeholder = isDoingScience ? t`Doing science...` : inputPlaceholder;
 
   function cancelRequest() {
     dispatch(cancelInflightAgentRequests());
@@ -71,7 +70,7 @@ export const MetabotChatEmbedding = () => {
       <Flex
         className={cx(
           Styles.innerContainer,
-          metabot.isDoingScience && Styles.innerContainerLoading,
+          isDoingScience && Styles.innerContainerLoading,
           inputExpanded && Styles.innerContainerExpanded,
         )}
         gap="sm"
@@ -84,7 +83,7 @@ export const MetabotChatEmbedding = () => {
           }}
           justify="center"
         >
-          {metabot.isDoingScience ? (
+          {isDoingScience ? (
             <Loader size="sm" />
           ) : (
             <MetabotIcon isLoading={false} />
@@ -100,11 +99,11 @@ export const MetabotChatEmbedding = () => {
           ref={metabot.promptInputRef}
           autoFocus
           value={metabot.prompt}
-          disabled={metabot.isDoingScience}
+          disabled={isDoingScience}
           className={cx(
             Styles.textarea,
             inputExpanded && Styles.textareaExpanded,
-            metabot.isDoingScience && Styles.textareaLoading,
+            isDoingScience && Styles.textareaLoading,
           )}
           placeholder={placeholder}
           onChange={(e) => metabot.setPrompt(e.target.value)}
@@ -123,7 +122,7 @@ export const MetabotChatEmbedding = () => {
             }
           }}
         />
-        {metabot.isDoingScience ? (
+        {isDoingScience ? (
           <UnstyledButton
             h="1rem"
             data-testid="metabot-cancel-request"

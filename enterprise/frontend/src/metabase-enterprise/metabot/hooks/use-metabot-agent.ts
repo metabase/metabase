@@ -8,7 +8,6 @@ import {
   type MetabotPromptSubmissionResult,
   getAgentErrorMessages,
   getIsLongMetabotConversation,
-  getIsProcessing,
   getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
@@ -30,12 +29,17 @@ export const useMetabotAgent = () => {
   const messages = useSelector(getMessages as any) as ReturnType<
     typeof getMessages
   >;
+  const lastAgentMessages = useSelector(
+    getLastAgentMessagesByType as any,
+  ) as ReturnType<typeof getLastAgentMessagesByType>;
+
   const errorMessages = useSelector(getAgentErrorMessages as any) as ReturnType<
     typeof getAgentErrorMessages
   >;
-  const isProcessing = useSelector(getIsProcessing as any) as ReturnType<
-    typeof getIsProcessing
-  >;
+
+  const isLongConversation = useSelector(
+    getIsLongMetabotConversation as any,
+  ) as ReturnType<typeof getIsLongMetabotConversation>;
 
   const visible = useSelector(getMetabotVisible as any) as ReturnType<
     typeof getMetabotVisible
@@ -47,6 +51,10 @@ export const useMetabotAgent = () => {
   const metabotRequestId = useSelector(
     getMetabotRequestId as any,
   ) as ReturnType<typeof getMetabotRequestId>;
+
+  const toolCalls = useSelector(getToolCalls as any) as ReturnType<
+    typeof getToolCalls
+  >;
 
   const setVisible = useCallback(
     (isVisible: boolean) => dispatch(setVisibleAction(isVisible)),
@@ -135,21 +143,14 @@ export const useMetabotAgent = () => {
     metabotId,
     visible,
     messages,
+    lastAgentMessages,
     errorMessages,
-    lastAgentMessages: useSelector(
-      getLastAgentMessagesByType as any,
-    ) as ReturnType<typeof getLastAgentMessagesByType>,
-    isLongConversation: useSelector(
-      getIsLongMetabotConversation as any,
-    ) as ReturnType<typeof getIsLongMetabotConversation>,
+    isLongConversation,
     resetConversation,
     setVisible,
     startNewConversation,
     submitInput,
-    isDoingScience: isProcessing,
-    toolCalls: useSelector(getToolCalls as any) as ReturnType<
-      typeof getToolCalls
-    >,
     retryMessage,
+    toolCalls,
   };
 };
