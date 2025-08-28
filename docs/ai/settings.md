@@ -33,7 +33,7 @@ Metabot will use the models and metrics in that collection to help answer questi
 
 The best thing you can do to improve Metabot's performance is to prep your data like you would for onboarding a new (human) hire to your data. In practice, this means you should:
 
-- [Add models and metrics to your Metabot collection](#add-models-to-your-metabot-collection)
+- [Add models and metrics to your Metabot collection](#add-models-and-metrics-to-your-metabot-collection)
 - [Add descriptions for your data and content](#add-descriptions-for-your-data-and-content)
 - [Make sure the semantic types for each field are correct](#make-sure-the-semantic-types-for-each-field-are-correct)
 - [Curate prompt suggestions](#curate-prompt-suggestions)
