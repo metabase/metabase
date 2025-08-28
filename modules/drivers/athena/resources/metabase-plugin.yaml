@@ -39,7 +39,7 @@ driver:
     - name: hostname
       display-name: Hostname (optional)
       placeholder: "athena.us-east-1.amazonaws.com"
-      helper-text: "Option to specify a full hostname. Useful when connecting from a VPC or AWS Secret Cloud"
+      helper-text: "Specify a full hostname. Useful when connecting from a VPC or AWS Secret Cloud"
       required: false
     - name: dbname
       display-name: Specific database
