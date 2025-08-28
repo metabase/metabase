@@ -16,6 +16,7 @@ const TARGET_TABLE = "transform_table";
 const TARGET_TABLE_2 = "transform_table_2";
 const TARGET_SCHEMA = "Schema A";
 const TARGET_SCHEMA_2 = "Schema B";
+const CUSTOM_SCHEMA = "custom_schema";
 
 H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
   beforeEach(() => {
@@ -206,6 +207,37 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
           "be.visible",
         );
       });
+    });
+
+    it("should be able to create a new schema when saving a transform", () => {
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findByText(DB_NAME).click();
+        cy.findByText(SOURCE_TABLE).click();
+      });
+      getQueryEditor().button("Save").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").type("MBQL transform");
+        cy.findByLabelText("Table name").type(TARGET_TABLE);
+        cy.findByLabelText("Schema").clear().type(CUSTOM_SCHEMA);
+      });
+      H.popover().findByText("Create new schema").click();
+      H.modal().within(() => {
+        cy.button("Save").click();
+        cy.wait("@createTransform");
+      });
+
+      getTableLink().should("have.text", TARGET_TABLE);
+      getSchemaLink().should("have.text", CUSTOM_SCHEMA);
+
+      cy.log("run the transform and verify the table");
+      runTransformAndWaitForSuccess();
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(CUSTOM_SCHEMA).should("be.visible");
+      H.assertQueryBuilderRowCount(3);
     });
 
     it("should not be possible to create an mbql transform from a table from an unsupported database", () => {
@@ -465,6 +497,33 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       runTransformAndWaitForSuccess();
       getTableLink().click();
       H.queryBuilderHeader().findByText(TARGET_SCHEMA_2).should("be.visible");
+      H.assertQueryBuilderRowCount(3);
+    });
+
+    it("should be possible to create a new schema", () => {
+      cy.log("create but do not run the transform");
+      createMbqlTransform({ visitTransform: true });
+
+      cy.log("modify the transform before running");
+      getTransformPage().button("Change target").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
+        cy.findByLabelText("Schema").should("have.value", TARGET_SCHEMA);
+        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+        cy.findByLabelText("Schema").clear().type(CUSTOM_SCHEMA);
+      });
+      H.popover().findByText("Create new schema").click();
+      H.modal().within(() => {
+        cy.button("Change target").click();
+        cy.wait("@updateTransform");
+      });
+      getTableLink().should("have.text", TARGET_TABLE_2);
+      getSchemaLink().should("have.text", CUSTOM_SCHEMA);
+
+      cy.log("run the transform and verify the table");
+      runTransformAndWaitForSuccess();
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(CUSTOM_SCHEMA).should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
 
@@ -928,6 +987,55 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       visitTableQuestion();
       assertTableDoesNotExistError();
     });
+  });
+});
+
+describe("scenarios > admin > transforms > databases without :schemas", () => {
+  const DB_NAME = "QA MySQL8";
+
+  beforeEach(() => {
+    H.restore("mysql-8");
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    cy.intercept("PUT", "/api/field/*").as("updateField");
+    cy.intercept("POST", "/api/ee/transform").as("createTransform");
+    cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
+    cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
+    cy.intercept("DELETE", "/api/ee/transform/*/table").as(
+      "deleteTransformTable",
+    );
+    cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
+    cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
+    cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
+  });
+
+  it("should be not be possible to create a new schema when updating a transform target", () => {
+    createMbqlTransform({
+      databaseId: WRITABLE_DB_ID,
+      sourceTable: "ORDERS",
+      visitTransform: true,
+      targetSchema: null,
+    });
+
+    getTransformPage().button("Change target").click();
+
+    H.modal().findByLabelText("Schema").should("not.exist");
+  });
+
+  it("should be not be possible to create a new schema when the database does not support schemas", () => {
+    cy.log("create a new transform");
+    visitTransformListPage();
+    getTransformListPage().button("Create a transform").click();
+    H.popover().findByText("Query builder").click();
+
+    H.entityPickerModal().within(() => {
+      cy.findByText(DB_NAME).click();
+      cy.findByText("Orders").click();
+    });
+    getQueryEditor().button("Save").click();
+    H.modal().findByLabelText("Schema").should("not.exist");
   });
 });
 
@@ -1469,17 +1577,19 @@ function createMbqlTransform({
   targetTable = TARGET_TABLE,
   targetSchema = TARGET_SCHEMA,
   tagIds,
+  databaseId = 1,
   name = "MBQL transform",
   visitTransform,
 }: {
   sourceTable?: string;
   targetTable?: string;
-  targetSchema?: string;
+  targetSchema?: string | null;
   tagIds?: TransformTagId[];
   name?: string;
+  databaseId?: number;
   visitTransform?: boolean;
 } = {}) {
-  return H.getTableId({ name: sourceTable }).then((tableId) => {
+  return H.getTableId({ databaseId, name: sourceTable }).then((tableId) => {
     return H.createTransform(
       {
         name,
