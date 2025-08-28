@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -38,6 +39,18 @@
                  (:archived entity))
     false))
 
+(defn- decode-comment-content
+  "Decode JSON content, handling both old text format and new JSON format"
+  [content]
+  (cond
+    (nil? content) nil
+    (string? content) (try
+                        (json/decode content true)
+                        (catch Exception _
+                          ;; If it fails to parse, assume it's old plain text format
+                          {:text content}))
+    :else content))
+
 (defn- process-deleted-comments
   "Process comments to handle soft-deleted ones with threading logic.
    - Remove deleted comments that have no replies
@@ -47,12 +60,13 @@
         has-replies? #(some (fn [c] (= (:parent_comment_id c) %)) (vals comment-map))]
     (->> comments
          (map (fn [comment]
-                (if (and (:is_deleted comment) (has-replies? (:id comment)))
-                  ;; Replace deleted comment content with nil if it has replies
-                  (assoc comment
-                         :content nil
-                         :creator nil)
-                  comment)))
+                (let [decoded-comment (update comment :content decode-comment-content)]
+                  (if (and (:is_deleted comment) (has-replies? (:id comment)))
+                    ;; Replace deleted comment content with empty JSON if it has replies
+                    (assoc decoded-comment
+                           :content {}
+                           :creator nil)
+                    decoded-comment))))
          ;; Remove deleted comments that have no replies
          (remove #(and (:is_deleted %) (not (has-replies? (:id %))))))))
 
@@ -94,9 +108,10 @@
                                             :target_id target_id
                                             :child_target_id child_target_id
                                             :parent_comment_id parent_comment_id
-                                            :content content
+                                            :content (json/encode content)
                                             :creator_id api/*current-user-id*})]
-    (t2/hydrate (t2/select-one :model/Comment :id comment-id) :creator)))
+    (let [new-comment (t2/hydrate (t2/select-one :model/Comment :id comment-id) :creator)]
+      (update new-comment :content decode-comment-content))))
 
 (api.macros/defendpoint :put "/:comment-id"
   "Update a comment"
@@ -123,12 +138,13 @@
                           (:is_superuser @api/*current-user*))))
 
     (let [updates (cond-> {}
-                    content (assoc :content content)
+                    content (assoc :content (json/encode content))
                     (some? is_resolved) (assoc :is_resolved is_resolved))]
       (when (seq updates)
         (t2/update! :model/Comment comment-id updates)))
 
-    (t2/hydrate (t2/select-one :model/Comment :id comment-id) :creator)))
+    (let [updated-comment (t2/hydrate (t2/select-one :model/Comment :id comment-id) :creator)]
+      (update updated-comment :content decode-comment-content))))
 
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"

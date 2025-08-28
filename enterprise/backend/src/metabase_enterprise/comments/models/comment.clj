@@ -15,13 +15,13 @@
   (derive :hook/entity-id))
 
 (def CommentContent
-  "Validation for comment content"
+  "Validation for comment content - expects JSON"
   (mu/with-api-error-message
    [:and
-    {:error/message "Comment content must be a non-empty string"
-     :json-schema   {:type "string" :minLength 1 :maxLength 5000}}
-    [:string {:min 1 :max 5000}]]
-   (deferred-tru "Comment content must be between 1 and 5000 characters.")))
+    {:error/message "Comment content must be valid JSON"
+     :json-schema   {:type "object"}}
+    [:map]]
+   (deferred-tru "Comment content must be valid JSON.")))
 
 (def CreateComment
   "Schema for creating a new comment"
