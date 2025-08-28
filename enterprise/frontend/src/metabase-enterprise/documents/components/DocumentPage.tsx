@@ -61,6 +61,7 @@ import { DocumentHeader } from "./DocumentHeader";
 import styles from "./DocumentPage.module.css";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
+import { CommentEditor } from "metabase-enterprise/comments/components";
 
 export const DocumentPage = ({
   params: { entityId },
@@ -393,7 +394,10 @@ export const DocumentPage = ({
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
-          <Box className={styles.documentContainer}>
+          <Box
+            className={styles.documentContainer}
+            style={{ border: "1px solid red" }}
+          >
             <DocumentHeader
               document={documentData}
               documentTitle={documentTitle}

@@ -13,14 +13,30 @@ import { Flex } from "metabase/ui";
 import S from "./EditorBubbleMenu.module.css";
 import { FormatButton } from "./FormatButton";
 
+const ALLOWED_FORMATTING = {
+  bold: true,
+  italic: true,
+  strikethrough: true,
+  h1: true,
+  h2: true,
+  h3: true,
+  list: true,
+  ordered_list: true,
+  quote: true,
+  inline_code: true,
+  code_block: true,
+} as const;
+
 interface EditorBubbleMenuProps {
   editor: TiptapEditor;
   disallowedNodes: string[];
+  allowedFormatting?: Partial<typeof ALLOWED_FORMATTING>;
 }
 
 export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   editor,
   disallowedNodes,
+  allowedFormatting = ALLOWED_FORMATTING,
 }) => {
   const forceUpdate = useForceUpdate();
 
@@ -81,78 +97,100 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
         className={S.bubbleMenu}
         data-testid="document-formatting-menu"
       >
-        <FormatButton
-          isActive={editor.isActive("bold")}
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          tooltip={t`Bold`}
-          icon="text_bold"
-        />
-        <FormatButton
-          isActive={editor.isActive("italic")}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          tooltip={t`Italic`}
-          icon="text_italic"
-        />
-        <FormatButton
-          isActive={editor.isActive("strike")}
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          tooltip={t`Strikethrough`}
-          icon="text_strike"
-        />
-        <FormatButton
-          isActive={editor.isActive("code")}
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          tooltip={t`Inline code`}
-          icon="format_code"
-        />
-        <FormatButton
-          isActive={editor.isActive("heading", { level: 1 })}
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 1 }).run()
-          }
-          tooltip={t`Heading 1`}
-          text="H1"
-        />
-        <FormatButton
-          isActive={editor.isActive("heading", { level: 2 })}
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 2 }).run()
-          }
-          tooltip={t`Heading 2`}
-          text="H2"
-        />
-        <FormatButton
-          isActive={editor.isActive("heading", { level: 3 })}
-          onClick={() =>
-            editor.chain().focus().toggleHeading({ level: 3 }).run()
-          }
-          tooltip={t`Heading 3`}
-          text="H3"
-        />
-        <FormatButton
-          isActive={editor.isActive("bulletList")}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          tooltip={t`Bullet list`}
-          icon="list"
-        />
-        <FormatButton
-          isActive={editor.isActive("orderedList")}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          tooltip={t`Numbered list`}
-          icon="ordered_list"
-        />
-        <FormatButton
-          isActive={editor.isActive("blockquote")}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          tooltip={t`Quote`}
-          icon="quote"
-        />
-        <FormatButton
-          isActive={editor.isActive("codeBlock")}
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          tooltip={t`Code block`}
-          icon="code_block"
-        />
+        {allowedFormatting.bold && (
+          <FormatButton
+            isActive={editor.isActive("bold")}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            tooltip={t`Bold`}
+            icon="text_bold"
+          />
+        )}
+        {allowedFormatting.italic && (
+          <FormatButton
+            isActive={editor.isActive("italic")}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            tooltip={t`Italic`}
+            icon="text_italic"
+          />
+        )}
+        {allowedFormatting.strikethrough && (
+          <FormatButton
+            isActive={editor.isActive("strike")}
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            tooltip={t`Strikethrough`}
+            icon="text_strike"
+          />
+        )}
+        {allowedFormatting.inline_code && (
+          <FormatButton
+            isActive={editor.isActive("code")}
+            onClick={() => editor.chain().focus().toggleCode().run()}
+            tooltip={t`Inline code`}
+            icon="format_code"
+          />
+        )}
+        {allowedFormatting.h1 && (
+          <FormatButton
+            isActive={editor.isActive("heading", { level: 1 })}
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 1 }).run()
+            }
+            tooltip={t`Heading 1`}
+            text="H1"
+          />
+        )}
+        {allowedFormatting.h2 && (
+          <FormatButton
+            isActive={editor.isActive("heading", { level: 2 })}
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 2 }).run()
+            }
+            tooltip={t`Heading 2`}
+            text="H2"
+          />
+        )}
+        {allowedFormatting.h3 && (
+          <FormatButton
+            isActive={editor.isActive("heading", { level: 3 })}
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 3 }).run()
+            }
+            tooltip={t`Heading 3`}
+            text="H3"
+          />
+        )}
+        {allowedFormatting.list && (
+          <FormatButton
+            isActive={editor.isActive("bulletList")}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            tooltip={t`Bullet list`}
+            icon="list"
+          />
+        )}
+        {allowedFormatting.ordered_list && (
+          <FormatButton
+            isActive={editor.isActive("orderedList")}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            tooltip={t`Numbered list`}
+            icon="ordered_list"
+          />
+        )}
+        {allowedFormatting.quote && (
+          <FormatButton
+            isActive={editor.isActive("blockquote")}
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            tooltip={t`Quote`}
+            icon="quote"
+          />
+        )}
+        {allowedFormatting.code_block && (
+          <FormatButton
+            isActive={editor.isActive("codeBlock")}
+            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+            tooltip={t`Code block`}
+            icon="code_block"
+          />
+        )}
       </Flex>
     </BubbleMenu>
   );
