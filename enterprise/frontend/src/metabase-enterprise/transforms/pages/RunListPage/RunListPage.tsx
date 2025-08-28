@@ -44,7 +44,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     transformTagIds,
     startTime,
     endTime,
-    runMethod,
+    runMethods,
   } = params;
   const {
     data,
@@ -58,7 +58,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     transform_tag_ids: transformTagIds,
     start_time: startTime,
     end_time: endTime,
-    run_method: runMethod,
+    run_methods: runMethods,
   });
   const {
     data: transforms = [],

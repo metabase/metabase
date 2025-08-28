@@ -15,7 +15,7 @@ export function getParsedParams(location: Location): RunListParams {
     transformTagIds,
     startTime,
     endTime,
-    runMethod,
+    runMethods,
   } = location.query;
   return {
     page: parseNumber(page),
@@ -24,7 +24,7 @@ export function getParsedParams(location: Location): RunListParams {
     transformTagIds: parseList(transformTagIds, parseNumber),
     startTime: parseTime(startTime),
     endTime: parseTime(endTime),
-    runMethod: parseMethod(runMethod),
+    runMethods: parseList(runMethods, parseMethod),
   };
 }
 

@@ -12,5 +12,5 @@ export type RunListParams = {
   transformTagIds?: TransformTagId[];
   startTime?: string;
   endTime?: string;
-  runMethod?: TransformRunMethod;
+  runMethods?: TransformRunMethod[];
 };
