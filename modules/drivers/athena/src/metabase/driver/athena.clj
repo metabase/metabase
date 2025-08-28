@@ -70,9 +70,9 @@
   (-> (merge
        {:classname      "com.amazon.athena.jdbc.AthenaDriver"
         :subprotocol    "athena"
-        :subname       (if (not (str/blank? hostname))
-                         (str "//" hostname ":443")
-                         (endpoint-for-region region))
+        :subname       (if (str/blank? hostname)
+                         (endpoint-for-region region)
+                         (str "//" hostname ":443"))
         :User           access_key
         :Password       secret_key
         :OutputLocation s3_staging_dir
