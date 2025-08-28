@@ -70,22 +70,27 @@
 
 (deftest ^:parallel athena-subname-uses-hostname-test
   (mt/test-driver :athena
-    (testing "the subname uses the region when the hostname is not provided"
-      (is (= "//athena.us-east-1.amazonaws.com:443"
-             (->> {:region "us-east-1"}
-                  (sql-jdbc.conn/connection-details->spec driver/*driver*)
-                  :subname))))
-    (testing "the subname uses cn when the region is in china"
-      (is (= "//athena.cn-north-1.amazonaws.com.cn:443"
-             (->> {:region "cn-north-1"}
-                  (sql-jdbc.conn/connection-details->spec driver/*driver*)
-                  :subname))))
-    (testing "the subname uses the hostname as is when it is provided"
-      (is (= "//athena.us-east-1.amazonaws.com:443"
-             (->> {:region "us-east-1"
-                   :hostname "athena.us-east-1.amazonaws.com"}
-                  (sql-jdbc.conn/connection-details->spec driver/*driver*)
-                  :subname))))))
+    (doseq [[test-desc details exp-subname]
+            [["the subname uses the region when the hostname is missing"
+              {:region "us-east-1"}
+              "//athena.us-east-1.amazonaws.com:443"]
+             ["the subname uses the region when the hostname is nil"
+              {:region "us-east-1" :hostname nil}
+              "//athena.us-east-1.amazonaws.com:443"]
+             ["the subname uses the region when the hostname is empty"
+              {:region "us-east-1" :hostname ""}
+              "//athena.us-east-1.amazonaws.com:443"]
+             ["the subname uses the hostname as is when it is provided"
+              {:region "us-east-1" :hostname "athena.us-west-1.amazonaws.com"}
+              "//athena.us-west-1.amazonaws.com:443"]
+             ["the subname uses cn when the region is in china"
+              {:region "cn-north-1"}
+              "//athena.cn-north-1.amazonaws.com.cn:443"]]]
+      (testing test-desc
+        (is (= exp-subname
+               (->> details
+                    (sql-jdbc.conn/connection-details->spec driver/*driver*)
+                    :subname)))))))
 
 (deftest ^:parallel data-source-name-test
   (are [details expected] (= expected
