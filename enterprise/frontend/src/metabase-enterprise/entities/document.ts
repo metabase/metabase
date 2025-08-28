@@ -103,6 +103,11 @@ const Documents = createEntity({
             typeof pinned === "number" ? pinned : pinned ? 1 : null,
         },
       ),
+    copy:
+      ({ id }: Document) =>
+      async (dispatch: Dispatch) => {
+        console.log("derp");
+      },
   },
 
   objectSelectors: {
