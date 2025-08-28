@@ -16,21 +16,20 @@ const DEFAULT_PYTHON_SOURCE: TransformSource & { type: "python" } = {
   body: `# Write your Python transformation script here
 import pandas as pd
 
-def transform(data):
+def transform(table_name):
     """
     Your transformation function.
 
     Args:
-        data: Input data (to be defined based on implementation)
+        table_name: DataFrame corresponding to the source table with the matching alias
+
+        (rename to match your actual alias, add extra arguments named for each additional table)
 
     Returns:
-        Transformed data
+        DataFrame to write to the destination table
     """
     # Your transformation logic here
-    return data
-
-# Example usage:
-# result = transform(input_data)`,
+    return pd.DataFrame([{"row_count": table_name.size}])`,
 };
 
 export function NewPythonTransformPage() {
