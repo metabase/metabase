@@ -10,6 +10,7 @@ import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
+const metabot_id = "c61bf5f5-1025-47b6-9298-bf1827105bb6";
 const query = {
   "source-table": ORDERS_ID,
   aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
@@ -111,6 +112,37 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
         .last()
         .findByText(/Retry: Here is the/)
         .should("exist");
+    });
+  });
+
+  it("should set correct metabot_id both for the a new message and when retrying", () => {
+    setup(metabotResponse);
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+
+      cy.wait("@metabotAgent").then((interception) => {
+        const requestBody = interception.request.body;
+        expect(requestBody).to.have.property("metabot_id", metabot_id);
+      });
+
+      H.mockMetabotResponse({
+        statusCode: 200,
+        body: metabotRetryResponse,
+      });
+
+      cy.findAllByTestId("metabot-chat-message")
+        .should("have.length", 2)
+        .last()
+        .findByTestId("metabot-chat-message-retry")
+        .click();
+
+      cy.wait("@metabotAgent").then((interception) => {
+        const requestBody = interception.request.body;
+        expect(requestBody).to.have.property("metabot_id", metabot_id);
+      });
     });
   });
 });
