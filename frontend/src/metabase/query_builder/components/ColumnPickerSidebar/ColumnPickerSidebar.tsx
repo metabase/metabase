@@ -1,15 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { DndContext, type DragEndEvent, closestCenter } from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  HoverParent,
-  QueryColumnInfoIcon,
-} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
-import { Sidesheet } from "metabase/common/components/Sidesheet";
+import { HoverParent } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { color } from "metabase/lib/colors/palette";
 import type { FieldPickerItem } from "metabase/querying/notebook/components/FieldPicker";
 import {
   ActionIcon,
   Box,
+  Button,
   Checkbox,
   Flex,
   Icon,
@@ -18,43 +22,109 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { VisualizationSettings } from "metabase-types/api";
 
+import { ColumnPickerItem } from "./ColumnPickerItem";
 import S from "./ColumnPickerSidebar.module.css";
+import { SortableColumnPickerItem } from "./SortableColumnPickerItem";
 
 interface ColumnPickerSidebarProps {
   query: Lib.Query;
   stageIndex: number;
   title?: string;
-  isOpen: boolean;
   onClose: () => void;
   columns: Lib.ColumnMetadata[];
-  onToggle: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
-  onSelectAll: () => void;
-  onSelectNone: () => void;
-  isColumnSelected?: (column: FieldPickerItem) => boolean;
+  onToggle?: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
+  onToggleSome?: (columns: Lib.ColumnMetadata[], isSelected: boolean) => void;
+  onSelectAll?: () => void;
+  onSelectNone?: () => void;
+  isColumnSelected?: (item: FieldPickerItem) => boolean;
+  isDraggable?: boolean;
+  onReorderColumns?: (oldIndex: number, newIndex: number) => void;
+  onColumnDisplayNameChange?: (
+    column: Lib.ColumnMetadata,
+    displayName: string,
+  ) => void;
+  visualizationSettings?: VisualizationSettings;
 }
+
+const SidebarWrapper = ({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) => (
+  <Box
+    component="aside"
+    data-testid="native-query-preview-sidebar"
+    w="100%"
+    h="100%"
+    bg="bg-white"
+    display="flex"
+    style={{ flexDirection: "column" }}
+    px="md"
+  >
+    <Flex component="header" justify="space-between" align="center" py="md">
+      <Text c={color("text-dark")} fz="h4" fw="bold">
+        {title}
+      </Text>
+      <Button variant="subtle" size="sm" onClick={onClose}>
+        {t`Done`}
+      </Button>
+    </Flex>
+    <Stack gap="md" mb="lg" style={{ overflow: "hidden" }}>
+      {children}
+    </Stack>
+  </Box>
+);
 
 export function ColumnPickerSidebar({
   query,
   stageIndex,
-  isOpen,
   title,
   columns,
   onClose,
   onToggle,
+  onToggleSome,
   onSelectAll,
   onSelectNone,
   isColumnSelected = _isColumnSelected,
+  isDraggable = false,
+  onReorderColumns,
+  onColumnDisplayNameChange,
+  visualizationSettings,
 }: ColumnPickerSidebarProps) {
-  const [localColumns, setLocalColumns] = useState<Lib.ColumnMetadata[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [columnDisplayNames, setColumnDisplayNames] = useState<
+    Map<string, string>
+  >(new Map());
 
   useEffect(() => {
-    setLocalColumns(columns);
-  }, [columns]);
+    if (!visualizationSettings) {
+      return;
+    }
+
+    const settings = visualizationSettings["column_settings"] ?? {};
+    const nameTylpes = Object.keys(settings);
+
+    if (nameTylpes.length > 0) {
+      const names = nameTylpes.map((entry) => {
+        const [, name] = JSON.parse(entry);
+
+        return [name, (settings[entry] ?? {}).column_title];
+      });
+
+      setColumnDisplayNames(
+        new Map(names.map(([name, value]) => [name, value])),
+      );
+    }
+  }, [visualizationSettings, columns]);
 
   const items = useMemo(() => {
-    const items = localColumns.map((column) => ({
+    const items = columns.map((column) => ({
       column,
       columnInfo: Lib.displayInfo(query, stageIndex, column),
     }));
@@ -64,7 +134,7 @@ export function ColumnPickerSidebar({
       isSelected: isColumnSelected(item),
       isDisabled: isColumnDisabled?.(item, items) ?? false,
     }));
-  }, [localColumns, query, stageIndex, isColumnSelected]);
+  }, [columns, query, stageIndex, isColumnSelected]);
 
   const filteredItems = useMemo(() => {
     if (!searchText.trim()) {
@@ -72,7 +142,9 @@ export function ColumnPickerSidebar({
     }
     const searchLower = searchText.toLowerCase();
     return items.filter((item) => {
-      const displayName = item.columnInfo.displayName.toLowerCase();
+      const displayName =
+        columnDisplayNames.get(item.columnInfo.name) ??
+        item.columnInfo.displayName.toLowerCase();
       const longDisplayName = item.columnInfo.longDisplayName.toLowerCase();
 
       return (
@@ -80,49 +152,104 @@ export function ColumnPickerSidebar({
         longDisplayName.includes(searchLower)
       );
     });
-  }, [items, searchText]);
+  }, [columnDisplayNames, items, searchText]);
 
   const isAll = filteredItems.every((item) => item.isSelected);
   const isNone = filteredItems.every((item) => !item.isSelected);
 
   const handleAllToggle = () => {
+    const isFiltered = searchText.trim();
+
     if (isAll) {
-      onSelectNone();
+      if (isFiltered) {
+        onToggleSome?.(
+          filteredItems.map((item) => item.column),
+          false,
+        );
+      } else {
+        onSelectNone?.();
+      }
     } else {
-      onSelectAll();
+      if (isFiltered) {
+        onToggleSome?.(
+          filteredItems.map((item) => item.column),
+          true,
+        );
+      } else {
+        onSelectAll?.();
+      }
     }
   };
 
-  return (
-    <Sidesheet
-      title={title ?? t`Pick Columns`}
-      isOpen={isOpen}
-      onClose={onClose}
-      size="sm"
-      withOverlay={false}
-    >
-      <Stack gap="md">
-        <TextInput
-          placeholder={t`Search columns...`}
-          value={searchText}
-          onChange={(event) => setSearchText(event.currentTarget.value)}
-          leftSection={<Icon name="search" />}
-          rightSection={
-            searchText && (
-              <ActionIcon
-                size="xs"
-                variant="subtle"
-                onClick={() => setSearchText("")}
-                aria-label={t`Clear search`}
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            )
-          }
-        />
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
 
-        <Box className={S.ColumnsList}>
-          <ul className={S.ItemList}>
+    if (active.id !== over?.id && onReorderColumns) {
+      const oldIndex = columns.findIndex((column) => {
+        const info = Lib.displayInfo(query, stageIndex, column);
+        return info.longDisplayName === active.id;
+      });
+      const newIndex = columns.findIndex((column) => {
+        const info = Lib.displayInfo(query, stageIndex, column);
+        return info.longDisplayName === over?.id;
+      });
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        onReorderColumns(oldIndex, newIndex);
+      }
+    }
+  };
+
+  const handleDisplayNameChange = useCallback(
+    (column: Lib.ColumnMetadata, newDisplayName: string) => {
+      const columnInfo = Lib.displayInfo(query, stageIndex, column);
+      setColumnDisplayNames(
+        (prev) => new Map(prev.set(columnInfo.name, newDisplayName)),
+      );
+      onColumnDisplayNameChange?.(column, newDisplayName);
+    },
+    [onColumnDisplayNameChange, query, stageIndex],
+  );
+
+  const getDisplayName = useCallback(
+    (item: FieldPickerItem) => {
+      return (
+        columnDisplayNames.get(item.columnInfo.name) ??
+        item.columnInfo.longDisplayName
+      );
+    },
+    [columnDisplayNames],
+  );
+
+  const ItemComponent =
+    isDraggable && columns.length > 1 && !searchText.trim()
+      ? SortableColumnPickerItem
+      : ColumnPickerItem;
+
+  return (
+    <SidebarWrapper title={title ?? t`Pick Columns`} onClose={onClose}>
+      <TextInput
+        placeholder={t`Find a column...`}
+        value={searchText}
+        onChange={(event) => setSearchText(event.currentTarget.value)}
+        leftSection={<Icon name="search" />}
+        rightSection={
+          searchText && (
+            <ActionIcon
+              size="xs"
+              variant="subtle"
+              onClick={() => setSearchText("")}
+              aria-label={t`Clear search`}
+            >
+              <Icon name="close" />
+            </ActionIcon>
+          )
+        }
+      />
+
+      <Box className={S.ColumnsList}>
+        <ul className={S.ItemList}>
+          {!isDraggable && (
             <li className={S.ToggleItem}>
               <HoverParent as="label" className={S.Label}>
                 <Checkbox
@@ -136,74 +263,49 @@ export function ColumnPickerSidebar({
                 </div>
               </HoverParent>
             </li>
-
-            {filteredItems.map((item) => {
-              return (
-                <ColumnPickerItem
-                  key={item.columnInfo.displayName}
-                  item={item}
-                  query={query}
-                  stageIndex={stageIndex}
-                  onToggle={onToggle}
-                />
-              );
-            })}
-          </ul>
-
-          {filteredItems.length === 0 && searchText && (
-            <Box p="md" ta="center">
-              <Text>{t`No columns found matching "${searchText}"`}</Text>
-            </Box>
           )}
-        </Box>
-      </Stack>
-    </Sidesheet>
+
+          <DndContext
+            onDragEnd={handleDragEnd}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+          >
+            <SortableContext
+              items={filteredItems.map(
+                (item) => item.columnInfo.longDisplayName,
+              )}
+              strategy={verticalListSortingStrategy}
+            >
+              {filteredItems.map((item) => {
+                return (
+                  <ItemComponent
+                    key={item.columnInfo.longDisplayName}
+                    item={item}
+                    query={query}
+                    stageIndex={stageIndex}
+                    onToggle={onToggle}
+                    isDraggable={isDraggable}
+                    displayName={getDisplayName(item)}
+                    onDisplayNameChange={handleDisplayNameChange}
+                  />
+                );
+              })}
+            </SortableContext>
+          </DndContext>
+        </ul>
+
+        {filteredItems.length === 0 && searchText && (
+          <Box p="md" ta="center">
+            <Text>{t`No columns found matching "${searchText}"`}</Text>
+          </Box>
+        )}
+      </Box>
+    </SidebarWrapper>
   );
 }
 
-interface ColumnPickerItemProps {
-  query: Lib.Query;
-  stageIndex: number;
-  item: FieldPickerItem & { isSelected: boolean; isDisabled: boolean };
-  onToggle: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
-}
-
-function ColumnPickerItem({
-  query,
-  stageIndex,
-  item,
-  onToggle,
-}: ColumnPickerItemProps) {
-  return (
-    <li key={item.columnInfo.displayName}>
-      <HoverParent className={S.Label} as="label">
-        <Flex align="center" gap="xs" w="100%">
-          <Checkbox
-            checked={item.isSelected}
-            disabled={item.isDisabled}
-            onChange={(event) => onToggle(item.column, event.target.checked)}
-          />
-          <QueryColumnInfoIcon
-            className={S.ItemIcon}
-            query={query}
-            stageIndex={stageIndex}
-            column={item.column}
-            position="top-start"
-            size={16}
-          />
-          {/* <Box flex={1}> */}
-          <Text title={t`Click to edit display name`}>
-            {item.columnInfo.longDisplayName}
-          </Text>
-          {/* </Box> */}
-        </Flex>
-      </HoverParent>
-    </li>
-  );
-}
-
-function _isColumnSelected({ columnInfo }: FieldPickerItem) {
-  return Boolean(columnInfo.selected);
+function _isColumnSelected(item: FieldPickerItem) {
+  return Boolean(item.columnInfo.selected);
 }
 
 function isColumnDisabled(item: FieldPickerItem, items: FieldPickerItem[]) {

@@ -54,6 +54,8 @@ import {
   onCloseAIQuestionAnalysisSidebar,
   onCloseChartSettings,
   onCloseChartType,
+  onCloseColumnPickerSidebar,
+  onCloseNotebookNativePreview,
   onCloseQuestionInfo,
   onCloseQuestionSettings,
   onCloseSidebars,
@@ -63,6 +65,8 @@ import {
   onOpenAIQuestionAnalysisSidebar,
   onOpenChartSettings,
   onOpenChartType,
+  onOpenColumnPickerSidebar,
+  onOpenNotebookNativePreview,
   onOpenQuestionInfo,
   onOpenQuestionSettings,
   onOpenTimelines,
@@ -294,6 +298,28 @@ export const uiControls = handleActions(
       isShowingTimelineSidebar: true,
     }),
     [onCloseTimelines]: (state) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onOpenNotebookNativePreview]: (state) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingNotebookNativePreview: true,
+    }),
+    [onCloseNotebookNativePreview]: (state) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onOpenColumnPickerSidebar]: (
+      state,
+      { payload: { sidebarData } = {} },
+    ) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingColumnPickerSidebar: true,
+      columnPickerSidebarData: sidebarData,
+    }),
+    [onCloseColumnPickerSidebar]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),

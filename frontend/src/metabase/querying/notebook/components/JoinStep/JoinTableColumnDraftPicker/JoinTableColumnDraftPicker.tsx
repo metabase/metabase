@@ -45,7 +45,6 @@ export function JoinTableColumnDraftPicker({
 
   return (
     <ColumnPickerSidebar
-      isOpen
       onClose={onClose}
       query={query}
       stageIndex={stageIndex}

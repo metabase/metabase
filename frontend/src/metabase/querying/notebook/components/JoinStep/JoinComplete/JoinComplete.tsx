@@ -12,7 +12,6 @@ import {
 import { JoinCondition } from "../JoinCondition";
 import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
-import { JoinTableColumnPicker } from "../JoinTableColumnPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
 import S from "./JoinComplete.module.css";
@@ -124,15 +123,8 @@ export function JoinComplete({
             isReadOnly={isReadOnly}
             isOpened={isOpened}
             setIsOpened={setIsOpened}
-            columnPicker={
-              <JoinTableColumnPicker
-                onClose={() => setIsOpened(false)}
-                query={query}
-                stageIndex={stageIndex}
-                join={join}
-                onChange={onQueryChange}
-              />
-            }
+            join={join}
+            onQueryChange={onQueryChange}
             onChange={handleTableChange}
           />
         </Flex>

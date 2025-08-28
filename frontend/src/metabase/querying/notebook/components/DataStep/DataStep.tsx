@@ -1,8 +1,9 @@
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, useMemo } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import { ColumnPickerSidebar } from "metabase/query_builder/components/ColumnPickerSidebar/ColumnPickerSidebar";
+import { useDispatch } from "metabase/lib/redux";
+import { onOpenColumnPickerSidebar } from "metabase/query_builder/actions";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -22,6 +23,7 @@ export const DataStep = ({
   dataPickerOptions,
 }: NotebookStepProps) => {
   const { question, stageIndex } = step;
+  const dispatch = useDispatch();
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId
     ? (Lib.tableOrCardMetadata(query, tableId) ?? undefined)
@@ -49,28 +51,22 @@ export const DataStep = ({
       await updateQuery(newQuery);
     }
   };
-  const [isColumnPickerOpen, setIsColumnPickerOpen] = useState(false);
 
-  const columns = useMemo(
-    () => Lib.fieldableColumns(query, stageIndex),
-    [query, stageIndex],
-  );
+  const handleOpenColumnPicker = () => {
+    const tableName = table
+      ? Lib.displayInfo(query, stageIndex, table).displayName
+      : undefined;
 
-  const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
-    const nextQuery = isSelected
-      ? Lib.addField(query, stageIndex, column)
-      : Lib.removeField(query, stageIndex, column);
-    updateQuery(nextQuery);
-  };
-
-  const handleSelectAll = () => {
-    const nextQuery = Lib.withFields(query, stageIndex, []);
-    updateQuery(nextQuery);
-  };
-
-  const handleSelectNone = () => {
-    const nextQuery = Lib.withFields(query, stageIndex, [columns[0]]);
-    updateQuery(nextQuery);
+    dispatch(
+      onOpenColumnPickerSidebar({
+        sidebarData: {
+          type: "data-step",
+          title: tableName
+            ? t`Pick columns from ${tableName}`
+            : t`Pick columns`,
+        },
+      }),
+    );
   };
 
   return (
@@ -91,7 +87,7 @@ export const DataStep = ({
                   }
                   aria-label={t`Pick columns`}
                   data-testid="fields-picker"
-                  onClick={() => setIsColumnPickerOpen(true)}
+                  onClick={handleOpenColumnPicker}
                 >
                   <Icon name="notebook" />
                 </IconButtonWrapper>
@@ -115,22 +111,6 @@ export const DataStep = ({
           />
         </NotebookCellItem>
       </NotebookCell>
-
-      {canSelectTableColumns && (
-        <ColumnPickerSidebar
-          isOpen={isColumnPickerOpen}
-          onClose={() => setIsColumnPickerOpen(false)}
-          query={query}
-          stageIndex={stageIndex}
-          columns={columns}
-          title={t`Pick columns`}
-          onToggle={handleToggle}
-          onSelectAll={handleSelectAll}
-          onSelectNone={handleSelectNone}
-          // onReorderColumns={handleReorderColumns}
-          data-testid="data-step-column-picker"
-        />
-      )}
     </>
   );
 };
