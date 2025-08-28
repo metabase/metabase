@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [malli.registry]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -15,7 +16,8 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -787,8 +789,8 @@
                         :dataset-query {:type     :query
                                         :database (meta/id)
                                         :query    {:source-table "card__2"}}}]})]
-      (is (= [{:name "TAX"}
-              {:name "TOTAL"}
+      (is (= [{:name "TAX", :semantic-type nil}
+              {:name "TOTAL", :semantic-type nil}
               {:name "Tax Rate", :semantic-type :type/Percentage}]
              (map #(select-keys % [:name :semantic-type])
                   (result-metadata/returned-columns (lib/query mp (:dataset-query (lib.metadata/card mp 3)))))
@@ -814,9 +816,9 @@
                     :fields   [$title $category]
                     :order-by [[:asc $id]]
                     :limit    3}))]
-      (is (= [["TITLE"    "TITLE"         "TITLE"    "Title"]                     ; products.title
-              ["CATEGORY" "CATEGORY"      "CATEGORY" "Category"]                  ; products.category
-              ["TITLE_2"  "Orders__TITLE" "TITLE"    "Orders → Title"]            ; orders.product-id -> products.title
+      (is (= [["TITLE"    "TITLE"         "TITLE"    "Title"]          ; products.title
+              ["CATEGORY" "CATEGORY"      "CATEGORY" "Category"]       ; products.category
+              ["TITLE_2"  "Orders__TITLE" "TITLE"    "Orders → Title"] ; orders.product-id -> products.title
               ["sum"      "Orders__sum"   "sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
              (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name) (result-metadata/returned-columns query))))
       (testing "with disable-remaps option in the middleware"

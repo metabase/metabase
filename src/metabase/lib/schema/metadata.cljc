@@ -591,7 +591,10 @@
     (assoc :name (str "Card " (:id card)))
 
     (not (:collection-id card))
-    (assoc :collection-id nil)))
+    (assoc :collection-id nil)
+
+    (not (:type card))
+    (assoc :type :question)))
 
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
