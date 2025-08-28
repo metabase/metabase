@@ -200,7 +200,7 @@
                                         :last_attempted_at :excluded.last_attempted_at}
                                ;; condition: if exiting dlq entry reflects a more recent gate failure
                                ;; prefer the new attempt_at / retry_count from the gate to the prior DLQ entry.
-                               :where  [:<= (keyword (name (dlq-table-name-kw index-metadata index-id)) "error_gated_at")
+                               :where  [:<= [:. (dlq-table-name-kw index-metadata index-id) :error_gated_at]
                                         :excluded.error_gated_at]}}
           sql (sql/format dml :quoted true)
           {upsert-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)]
