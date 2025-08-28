@@ -1,7 +1,12 @@
+import { t } from "ttag";
+
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
-import { Box } from "metabase/ui";
+import {
+  onOpenColumnPickerSidebar,
+  setUIControls,
+} from "metabase/query_builder/actions";
+import { Box, Button, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import type { NotebookDataPickerOptions } from "../../types";
@@ -26,7 +31,6 @@ export type NotebookProps = {
 };
 
 export const Notebook = ({
-  updateQuestion,
   reportTimezone,
   readOnly,
   question,
@@ -34,10 +38,11 @@ export const Notebook = ({
   isRunnable,
   isResultDirty,
   hasVisualizeButton = true,
-  runQuestionQuery,
-  setQueryBuilderMode,
   modelsFilterList,
   dataPickerOptions,
+  runQuestionQuery,
+  setQueryBuilderMode,
+  updateQuestion,
 }: NotebookProps) => {
   const dispatch = useDispatch();
 
@@ -57,17 +62,38 @@ export const Notebook = ({
           dataPickerOptions={dataPickerOptions}
         />
         {hasVisualizeButton && runQuestionQuery && (
-          <VisualizeButton
-            question={question}
-            isDirty={isDirty}
-            isRunnable={isRunnable}
-            isResultDirty={isResultDirty}
-            updateQuestion={updateQuestion}
-            runQuestionQuery={runQuestionQuery}
-            setQueryBuilderMode={setQueryBuilderMode}
-          />
+          <Flex gap="md">
+            <CustomizeColumnsButton />
+            <VisualizeButton
+              question={question}
+              isDirty={isDirty}
+              isRunnable={isRunnable}
+              isResultDirty={isResultDirty}
+              updateQuestion={updateQuestion}
+              runQuestionQuery={runQuestionQuery}
+              setQueryBuilderMode={setQueryBuilderMode}
+            />
+          </Flex>
         )}
       </Box>
     </NotebookProvider>
   );
 };
+
+function CustomizeColumnsButton() {
+  const dispatch = useDispatch();
+
+  const handleClick = () => {
+    dispatch(
+      onOpenColumnPickerSidebar({
+        sidebarData: {
+          type: "custom-columns",
+          title: t`Reorder and rename columns`,
+          isDraggable: true,
+        },
+      }),
+    );
+  };
+
+  return <Button onClick={handleClick}>{t`Customize Columns`}</Button>;
+}

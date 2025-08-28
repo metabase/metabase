@@ -18,6 +18,19 @@ export type InitialChartSettingState = {
   widget?: Widget | null;
 };
 
+export type ColumnPickerSidebarType =
+  | "data-step"
+  | "join-step"
+  | "custom-columns";
+
+export type ColumnPickerSidebarData = {
+  type: ColumnPickerSidebarType;
+  title?: string;
+  isDraggable?: boolean;
+  joinIndex?: number;
+  stageIndex?: number;
+} | null;
+
 export type ForeignKeyReference = {
   status: number;
   value: number;
@@ -46,6 +59,8 @@ export interface QueryBuilderUIControls {
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
+  isShowingColumnPickerSidebar: boolean;
+  columnPickerSidebarData: ColumnPickerSidebarData;
   showSidebarTitle: boolean;
   modal: QueryModalType | null;
   modalContext: TimelineEventId | null;

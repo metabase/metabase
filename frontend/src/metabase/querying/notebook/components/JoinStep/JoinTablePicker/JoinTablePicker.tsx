@@ -1,10 +1,10 @@
-import type { CSSProperties, ReactNode } from "react";
-import { useState } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import { Icon, Popover, Tooltip } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import { useDispatch } from "metabase/lib/redux";
+import { onOpenColumnPickerSidebar } from "metabase/query_builder/actions";
+import { Icon, Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../NotebookCell";
 import { CONTAINER_PADDING } from "../../NotebookCell/constants";
@@ -18,8 +18,8 @@ interface JoinTablePickerProps {
   table: Lib.Joinable | undefined;
   color: string;
   isReadOnly: boolean;
-  columnPicker: ReactNode;
   onChange: (table: Lib.Joinable) => void;
+  join?: Lib.Join;
 }
 
 export function JoinTablePicker({
@@ -28,8 +28,8 @@ export function JoinTablePicker({
   table,
   color,
   isReadOnly,
-  columnPicker,
   onChange,
+  join,
 }: JoinTablePickerProps) {
   const isDisabled = isReadOnly;
 
@@ -41,7 +41,11 @@ export function JoinTablePicker({
       color={color}
       right={
         table != null && !isReadOnly ? (
-          <JoinTableColumnPicker columnPicker={columnPicker} />
+          <JoinTableColumnPickerWrapper
+            query={query}
+            stageIndex={stageIndex}
+            join={join}
+          />
         ) : null
       }
       containerStyle={CONTAINER_STYLE}
@@ -63,34 +67,62 @@ export function JoinTablePicker({
   );
 }
 
-interface JoinTableColumnPickerProps {
-  columnPicker: ReactNode;
+interface JoinTableColumnPickerWrapperProps {
+  query?: Lib.Query;
+  stageIndex?: number;
+  join?: Lib.Join;
 }
 
-function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
-  const [isOpened, setIsOpened] = useState(false);
+function JoinTableColumnPickerWrapper({
+  query,
+  stageIndex,
+  join,
+}: JoinTableColumnPickerWrapperProps) {
+  const dispatch = useDispatch();
+
+  const handleOpenSidebar = () => {
+    if (join && query && stageIndex !== undefined) {
+      const joins = Lib.joins(query, stageIndex);
+      const joinIndex = joins.findIndex((j) => j === join);
+
+      const joinable = Lib.joinedThing(query, join);
+      const joinTableName = Lib.displayInfo(
+        query,
+        stageIndex,
+        joinable,
+      ).displayName;
+
+      dispatch(
+        onOpenColumnPickerSidebar({
+          sidebarData: {
+            type: "join-step",
+            title: joinTableName
+              ? t`Pick columns from ${joinTableName}`
+              : t`Pick columns`,
+            stageIndex,
+            joinIndex,
+          },
+        }),
+      );
+    }
+  };
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
-      <Popover.Target>
-        <Tooltip label={t`Pick columns`}>
-          <IconButtonWrapper
-            className={S.ColumnPickerButton}
-            style={
-              {
-                "--notebook-cell-container-padding": CONTAINER_PADDING,
-              } as CSSProperties
-            }
-            onClick={() => setIsOpened(!isOpened)}
-            aria-label={t`Pick columns`}
-            data-testid="fields-picker"
-          >
-            <Icon name="chevrondown" />
-          </IconButtonWrapper>
-        </Tooltip>
-      </Popover.Target>
-      <Popover.Dropdown>{columnPicker}</Popover.Dropdown>
-    </Popover>
+    <Tooltip label={t`Pick columns`}>
+      <IconButtonWrapper
+        className={S.ColumnPickerButton}
+        style={
+          {
+            "--notebook-cell-container-padding": CONTAINER_PADDING,
+          } as React.CSSProperties
+        }
+        onClick={handleOpenSidebar}
+        aria-label={t`Pick columns`}
+        data-testid="fields-picker"
+      >
+        <Icon name="notebook" />
+      </IconButtonWrapper>
+    </Tooltip>
   );
 }
 

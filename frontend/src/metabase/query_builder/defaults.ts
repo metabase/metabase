@@ -28,6 +28,8 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingSnippetSidebar: false,
   isShowingNotebookNativePreview: false,
   notebookNativePreviewSidebarWidth: null,
+  isShowingColumnPickerSidebar: false,
+  columnPickerSidebarData: null,
   showSidebarTitle: false,
   modal: null,
   modalContext: null,
@@ -57,6 +59,8 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingTimelineSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingDataReference: false,
+  isShowingColumnPickerSidebar: false,
+  isShowingNotebookNativePreview: false,
 };
 
 // this is used to close other sidebar when one is updated

@@ -12,7 +12,6 @@ import {
 import { JoinCondition } from "../JoinCondition";
 import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
-import { JoinTableColumnPicker } from "../JoinTableColumnPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
 import S from "./JoinComplete.module.css";
@@ -100,6 +99,8 @@ export function JoinComplete({
     onJoinChange(newJoin);
   };
 
+  const [isOpened, setIsOpened] = useState(false);
+
   return (
     <Flex direction={{ base: "column", md: "row" }} gap="sm">
       <NotebookCell className={S.JoinConditionCell} color={color}>
@@ -120,14 +121,10 @@ export function JoinComplete({
             table={rhsTable}
             color={color}
             isReadOnly={isReadOnly}
-            columnPicker={
-              <JoinTableColumnPicker
-                query={query}
-                stageIndex={stageIndex}
-                join={join}
-                onChange={onQueryChange}
-              />
-            }
+            isOpened={isOpened}
+            setIsOpened={setIsOpened}
+            join={join}
+            onQueryChange={onQueryChange}
             onChange={handleTableChange}
           />
         </Flex>
