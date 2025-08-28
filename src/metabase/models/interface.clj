@@ -595,14 +595,6 @@
                      :model (model instance)})))
   instance)
 
-(defmethod can-write? :hook/git-sync-protected
-  ([instance]
-   (try (false? (requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only))
-        (catch Exception _ true)))
-  ([_model _pk]
-   (try (false? (requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only))
-        (catch Exception _ true))))
-
 (t2/define-before-insert :hook/git-sync-protected
   [instance]
   (prevent-sync-protected-writes instance))
@@ -683,6 +675,14 @@
       this)"
   {:arglists '([instance] [model pk])}
   dispatch-on-model)
+
+(defmethod can-write? :hook/git-sync-protected
+  ([instance]
+   (try (false? (requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only))
+        (catch Exception _ true)))
+  ([_model _pk]
+   (try (false? (requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only))
+        (catch Exception _ true))))
 
 #_{:clj-kondo/ignore [:unused-private-var]}
 (define-simple-hydration-method ^:private hydrate-can-write
