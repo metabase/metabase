@@ -73,7 +73,6 @@ jobs:
           title: "[chore] Update E2E test timings with recent data"
           body: |
             ## Summary
-            push
             This PR updates the E2E test timing data with averaged values from recent test runs.
 
             ## Details

@@ -34,9 +34,7 @@ const collectAndAverageTimings = async ({
       existingTimingsPath,
       JSON.stringify(averagedTimings, null, 2),
     );
-    console.log(`✅ Updated ${existingTimingsPath} with merged timing data`);
-
-    return mergedTimings;
+    console.log(`✅ Updated ${existingTimingsPath} with new timing data`);
   } catch (error) {
     console.error("❌ Error in collectAndAverageTimings:", error.message);
     throw error;
