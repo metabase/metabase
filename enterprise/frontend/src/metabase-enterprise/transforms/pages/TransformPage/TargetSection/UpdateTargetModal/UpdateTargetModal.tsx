@@ -8,7 +8,6 @@ import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormSelect,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
@@ -26,6 +25,7 @@ import {
   useDeleteTransformTargetMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 
 type UpdateTargetModalProps = {
@@ -114,7 +114,11 @@ function UpdateTargetForm({
         <Form>
           <Stack gap="lg">
             {schemas.length > 1 && (
-              <FormSelect name="schema" label={t`Schema`} data={schemas} />
+              <SchemaFormSelect
+                name="schema"
+                label={t`Schema`}
+                data={schemas}
+              />
             )}
             <FormTextInput name="name" label={t`Table name`} />
             {table != null && (
