@@ -31,36 +31,28 @@
   (let [temp-file (Files/createTempFile prefix suffix (make-array FileAttribute 0))]
     (.toFile temp-file)))
 
+(defn- safe-delete [^File f]
+  (try (.delete f) (catch Throwable _)))
+
 (defmacro with-temp-files
   "Execute body with temporary files bound to symbols, ensuring cleanup.
    file-specs: vector of [symbol [prefix suffix]] pairs
    Example: (with-temp-files [code-file [\"python_code_\" \".py\"]] ...)"
   [file-specs & body]
   (let [pairs          (partition 2 file-specs)
-        file-bindings  (mapcat (fn [[sym spec]]
-                                 [sym `(.getAbsolutePath (create-temp-file ~(first spec) ~(second spec)))])
-                               pairs)
-        temp-file-syms (mapv first pairs)]
-    `(let [~@file-bindings
-           temp-files# ~temp-file-syms]
+        gensyms        (mapv (fn [_] (gensym)) pairs)
+        file-exprs     (map (fn [[_ spec]] `(create-temp-file ~(first spec) ~(second spec))) pairs)]
+    `(let [~@(mapcat list gensyms file-exprs)
+           ~@(mapcat (fn [[sym _] g] [sym g]) pairs gensyms)]
        (try
          ~@body
          (finally
-           ;; TODO: we need these files for uploading csv, should we delete it here still?
-           ;; or should we dump csv content to file when upload
-           (doseq [^File file# temp-files#]
-             (try (.delete file#) (catch Exception _#))))))))
+           (run! safe-delete ~gensyms))))))
 
 (defn- safe-slurp
   "Safely slurp a file, returning empty string on error."
   [file]
   (try (slurp file) (catch Exception _ "")))
-
-(defn cleanup-output-files!
-  "Clean up all output files of python execution."
-  [{:keys [output-file stdout-file stderr-file code-file]}]
-  (doseq [^File file [output-file stdout-file stderr-file code-file]]
-    (try (.delete file) (catch Exception _))))
 
 (defn execute-python-code
   "Execute Python code using the Python execution server."
