@@ -5,8 +5,10 @@ import { createContext, useContext } from "react";
 import type { Comment, Document } from "metabase-types/api";
 
 export interface DocumentContextValue {
-  document: Document | undefined;
+  childTargetId: string | undefined;
   comments: Comment[] | undefined;
+  document: Document | undefined;
+  hasUnsavedChanges: boolean;
 }
 
 const DocumentContext = createContext<DocumentContextValue | undefined>(

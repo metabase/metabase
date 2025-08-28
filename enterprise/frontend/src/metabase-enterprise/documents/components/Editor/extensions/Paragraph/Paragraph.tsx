@@ -10,7 +10,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { uuid } from "metabase/lib/uuid";
-import { Box, Button, Icon } from "metabase/ui";
+import { Box, Button, Icon, rem } from "metabase/ui";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
 
@@ -107,8 +107,10 @@ export const Paragraph = Node.create<ParagraphOptions>({
 
 export const ParagraphNodeView = ({ node }: NodeViewProps) => {
   const { _id } = node.attrs;
-  const { document, comments } = useDocumentContext();
+  const { childTargetId, comments, document, hasUnsavedChanges } =
+    useDocumentContext();
 
+  const isOpen = childTargetId === _id;
   const nodeThreads = useMemo(
     () => getTargetChildCommentThreads(comments, _id),
     [comments, _id],
@@ -116,18 +118,35 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
   const hasComments = nodeThreads.length > 0;
 
   return (
-    <NodeViewWrapper className={S.paragraph} as="p">
+    <NodeViewWrapper
+      className={cx(S.paragraph, {
+        [S.open]: isOpen,
+      })}
+      as="p"
+    >
       <NodeViewContent />
 
       {document && (
         <Box
           className={cx(S.commentsMenu, {
-            [S.visible]: hasComments,
+            [S.visible]: hasComments || isOpen,
           })}
+          mt={rem(-2)}
           pr="lg"
         >
-          <Link to={`/document/${document.id}/comments/${_id}`}>
-            <Button leftSection={<Icon name="message" />} px="sm" size="xs">
+          <Link
+            to={
+              hasUnsavedChanges
+                ? undefined
+                : `/document/${document.id}/comments/${_id}`
+            }
+          >
+            <Button
+              leftSection={<Icon name="message" />}
+              px="sm"
+              size="xs"
+              variant={isOpen ? "filled" : "default"}
+            >
               {hasComments ? t`Comments (${comments?.length})` : t`Add comment`}
             </Button>
           </Link>

@@ -65,16 +65,20 @@ import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 
 export const DocumentPage = ({
-  params: { entityId },
+  params,
   route,
   location,
   children,
 }: {
-  params: { entityId?: string };
+  params: {
+    entityId?: string;
+    childTargetId?: string;
+  };
   location: Location;
   route: Route;
   children?: ReactNode;
 }) => {
+  const { entityId, childTargetId } = params;
   const previousLocationKey = usePrevious(location.key);
   const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
@@ -403,7 +407,14 @@ export const DocumentPage = ({
   const comments = data?.comments;
 
   return (
-    <DocumentProvider value={{ comments, document: documentData }}>
+    <DocumentProvider
+      value={{
+        childTargetId,
+        comments,
+        document: documentData,
+        hasUnsavedChanges: hasUnsavedChanges(),
+      }}
+    >
       <>
         <Box className={styles.documentPage}>
           <SetTitle title={documentData?.name || t`New document`} />
