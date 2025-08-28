@@ -7,6 +7,7 @@ import { getRunListUrl } from "metabase-enterprise/transforms/urls";
 import type {
   Transform,
   TransformId,
+  TransformRunMethod,
   TransformRunStatus,
   TransformTag,
   TransformTagId,
@@ -14,6 +15,7 @@ import type {
 
 import type { RunListParams } from "../../../types";
 
+import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
 import { StatusFilterWidget } from "./StatusFilterWidget";
 import { TagFilterWidget } from "./TagFilterWidget";
 import { TimeFilterWidget } from "./TimeFilterWidget";
@@ -48,6 +50,10 @@ export function FilterList({ transforms, tags, params }: FilterListProps) {
     dispatch(replace(getRunListUrl({ ...params, endTime })));
   };
 
+  const handleRunMethodsChange = (runMethods: TransformRunMethod[]) => {
+    dispatch(replace(getRunListUrl({ ...params, runMethods })));
+  };
+
   return (
     <Group>
       <TransformFilterWidget
@@ -73,6 +79,10 @@ export function FilterList({ transforms, tags, params }: FilterListProps) {
         label={t`End at`}
         value={params.endTime}
         onChange={handleEndTimeChange}
+      />
+      <RunMethodFilterWidget
+        runMethods={params.runMethods ?? []}
+        onChange={handleRunMethodsChange}
       />
     </Group>
   );
