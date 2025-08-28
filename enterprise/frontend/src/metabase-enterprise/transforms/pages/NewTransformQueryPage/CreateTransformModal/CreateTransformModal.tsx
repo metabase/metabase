@@ -15,13 +15,12 @@ import * as Errors from "metabase/lib/errors";
 import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { trackTransformCreated } from "metabase-enterprise/transforms/analytics";
+import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import type {
   CreateTransformRequest,
   DatasetQuery,
   Transform,
 } from "metabase-types/api";
-
-import { SchemaFormSelect } from "./SchemaFormSelect";
 
 type CreateTransformModalProps = {
   query: DatasetQuery;
