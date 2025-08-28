@@ -82,7 +82,6 @@ function JoinTableColumnPickerWrapper({
 
   const handleOpenSidebar = () => {
     if (join && query && stageIndex !== undefined) {
-      // Find the index of this specific join in the stage
       const joins = Lib.joins(query, stageIndex);
       const joinIndex = joins.findIndex((j) => j === join);
 
