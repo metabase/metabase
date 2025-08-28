@@ -58,7 +58,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ env.BRANCH_NAME }}
-          base: master
+          base: generate-new-test-timings
           commit-message: |
             Update E2E test timings with averaged data
 
