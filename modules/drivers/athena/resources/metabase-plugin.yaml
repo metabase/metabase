@@ -37,9 +37,9 @@ driver:
           display-name: Secret key
           helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
     - name: hostname
-      display-name: Hostname (optional)
-      placeholder: "athena.us-east-1.amazonaws.com"
-      helper-text: "Option to specify a full hostname. Useful when connecting from a VPC or AWS Secret Cloud"
+      display-name: Full hostname
+      placeholder: "Optional"
+      helper-text: "This is useful when Metabase is deployed on a VPC or AWS Secret Cloud."
       required: false
     - name: dbname
       display-name: Specific database
