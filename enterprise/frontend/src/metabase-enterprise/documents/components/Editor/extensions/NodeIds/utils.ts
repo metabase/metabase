@@ -23,7 +23,7 @@ export function createIdAttribute() {
   };
 }
 
-// needed to upgrade documents without ids
+// needed to upgrade documents without ids and to fix duplicated ids when splitting nodes
 export function createProseMirrorPlugin(nodeName: string) {
   return new Plugin({
     appendTransaction: (_trs, _old, state) => {

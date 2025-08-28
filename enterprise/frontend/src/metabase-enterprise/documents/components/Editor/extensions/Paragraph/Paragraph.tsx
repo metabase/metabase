@@ -128,7 +128,7 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
         >
           <Link to={`/document/${document.id}/comments/${_id}`}>
             <Button leftSection={<Icon name="message" />} px="sm" size="xs">
-              {hasComments ? t`Comments` : t`Add comment`}
+              {hasComments ? t`Comments (${comments?.length})` : t`Add comment`}
             </Button>
           </Link>
         </Box>
