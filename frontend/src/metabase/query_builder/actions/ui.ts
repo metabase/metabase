@@ -91,6 +91,21 @@ export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 
+// Notebook sidebar actions
+export const onOpenNotebookNativePreview = createAction(
+  "metabase/qb/OPEN_NOTEBOOK_NATIVE_PREVIEW",
+);
+export const onCloseNotebookNativePreview = createAction(
+  "metabase/qb/CLOSE_NOTEBOOK_NATIVE_PREVIEW",
+);
+
+export const onOpenColumnPickerSidebar = createAction(
+  "metabase/qb/OPEN_COLUMN_PICKER_SIDEBAR",
+);
+export const onCloseColumnPickerSidebar = createAction(
+  "metabase/qb/CLOSE_COLUMN_PICKER_SIDEBAR",
+);
+
 export const SHOW_CHART_SETTINGS = "metabase/qb/SHOW_CHART_SETTINGS";
 export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 

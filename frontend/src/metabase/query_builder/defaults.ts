@@ -60,6 +60,7 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingQuestionInfoSidebar: false,
   isShowingDataReference: false,
   isShowingColumnPickerSidebar: false,
+  isShowingNotebookNativePreview: false,
 };
 
 // this is used to close other sidebar when one is updated

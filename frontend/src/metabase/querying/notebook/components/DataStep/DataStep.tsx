@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
+import { onOpenColumnPickerSidebar } from "metabase/query_builder/actions";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -54,9 +54,8 @@ export const DataStep = ({
 
   const handleOpenColumnPicker = () => {
     dispatch(
-      setUIControls({
-        isShowingColumnPickerSidebar: true,
-        columnPickerSidebarData: {
+      onOpenColumnPickerSidebar({
+        sidebarData: {
           type: "data-step",
           title: t`Pick columns`,
         },

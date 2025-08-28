@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
+import { onOpenColumnPickerSidebar } from "metabase/query_builder/actions";
 import { Icon, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -103,9 +103,8 @@ function JoinTableColumnPickerWrapper({
   const handleOpenSidebar = () => {
     if (join && query && stageIndex !== undefined) {
       dispatch(
-        setUIControls({
-          isShowingColumnPickerSidebar: true,
-          columnPickerSidebarData: {
+        onOpenColumnPickerSidebar({
+          sidebarData: {
             type: "join-step",
             title: t`Pick columns`,
           },

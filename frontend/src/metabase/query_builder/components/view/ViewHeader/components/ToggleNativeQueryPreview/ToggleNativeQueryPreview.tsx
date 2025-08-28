@@ -3,8 +3,9 @@ import { t } from "ttag";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
+  onCloseNotebookNativePreview,
+  onOpenNotebookNativePreview,
   setNotebookNativePreviewState,
-  setUIControls,
 } from "metabase/query_builder/actions";
 import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytics";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
@@ -53,11 +54,11 @@ export const ToggleNativeQueryPreview = ({
     : BUTTON_TEXT[engineType];
 
   const handleClick = () => {
-    dispatch(
-      setUIControls({
-        isShowingNotebookNativePreview: !isShowingNotebookNativePreview,
-      }),
-    );
+    if (isShowingNotebookNativePreview) {
+      dispatch(onCloseNotebookNativePreview());
+    } else {
+      dispatch(onOpenNotebookNativePreview());
+    }
 
     // the setting is intentionally remembered only for large screens
     if (screenSize === "large") {

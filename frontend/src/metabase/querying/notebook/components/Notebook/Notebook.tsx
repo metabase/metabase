@@ -2,7 +2,10 @@ import { t } from "ttag";
 
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
+import {
+  onOpenColumnPickerSidebar,
+  setUIControls,
+} from "metabase/query_builder/actions";
 import { Box, Button, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -82,9 +85,8 @@ function CustomizeColumnsButton() {
 
   const handleClick = () => {
     dispatch(
-      setUIControls({
-        isShowingColumnPickerSidebar: true,
-        columnPickerSidebarData: {
+      onOpenColumnPickerSidebar({
+        sidebarData: {
           type: "custom-columns",
           title: t`Reorder and rename columns`,
           isDraggable: true,

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
+import { onOpenColumnPickerSidebar } from "metabase/query_builder/actions";
 import * as Lib from "metabase-lib";
 
 interface JoinTableColumnPickerProps {
@@ -30,9 +30,8 @@ export function JoinTableColumnPicker({
   // Open the sidebar using Redux instead of rendering directly
   const _openSidebar = () => {
     dispatch(
-      setUIControls({
-        isShowingColumnPickerSidebar: true,
-        columnPickerSidebarData: {
+      onOpenColumnPickerSidebar({
+        sidebarData: {
           type: "join-step",
           title: t`Pick columns`,
           query,
