@@ -267,9 +267,7 @@ export const Messages = ({
 
     metabot.setPrompt("");
     metabot.promptInputRef?.current?.focus();
-    metabot
-      .retryMessage(messageId, metabot.metabotRequestId)
-      .catch((err) => console.error(err));
+    metabot.retryMessage(messageId).catch((err) => console.error(err));
   };
 
   const submitFeedback = async (metabotFeedback: MetabotFeedback) => {

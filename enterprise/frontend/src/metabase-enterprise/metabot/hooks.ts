@@ -75,7 +75,7 @@ export const useMetabotAgent = () => {
   );
 
   const submitInput = useCallback(
-    async (prompt: string, metabotRequestId?: string) => {
+    async (prompt: string) => {
       if (!visible) {
         setVisible(true);
       }
@@ -95,11 +95,18 @@ export const useMetabotAgent = () => {
 
       return action;
     },
-    [dispatch, getChatContext, prepareRetryIfUnsuccesful, setVisible, visible],
+    [
+      dispatch,
+      getChatContext,
+      metabotRequestId,
+      prepareRetryIfUnsuccesful,
+      setVisible,
+      visible,
+    ],
   );
 
   const retryMessage = useCallback(
-    async (messageId: string, metabotRequestId?: string) => {
+    async (messageId: string) => {
       const context = await getChatContext();
       const action = await dispatch(
         retryPrompt({
@@ -112,19 +119,19 @@ export const useMetabotAgent = () => {
         prepareRetryIfUnsuccesful(action.payload);
       }
     },
-    [dispatch, getChatContext, prepareRetryIfUnsuccesful],
+    [dispatch, getChatContext, metabotRequestId, prepareRetryIfUnsuccesful],
   );
 
   const startNewConversation = useCallback(
-    async (message: string, metabotId?: string) => {
+    async (message: string) => {
       await resetConversation();
       setVisible(true);
       if (message) {
-        submitInput(message, metabotId);
+        submitInput(message);
       }
       promptInputRef?.current?.focus();
     },
-    [submitInput, resetConversation, setVisible, promptInputRef],
+    [resetConversation, setVisible, promptInputRef, submitInput],
   );
 
   const setNavigateToPath = useCallback(
@@ -139,7 +146,6 @@ export const useMetabotAgent = () => {
     setPrompt,
     promptInputRef,
     metabotId,
-    metabotRequestId,
     visible,
     messages,
     errorMessages,
