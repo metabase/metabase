@@ -36,9 +36,15 @@ driver:
         - name: secret_key
           display-name: Secret key
           helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
+    - name: hostname
+      display-name: Full hostname
+      placeholder: "Optional"
+      helper-text: "This is useful when Metabase is deployed on a VPC or AWS Secret Cloud."
+      required: false
     - name: dbname
       display-name: Specific database
       helper-text: Specify a single database to enable features like DB routing
+      required: false
     - advanced-options-start
     - merge:
         - additional-options
