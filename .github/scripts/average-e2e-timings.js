@@ -56,7 +56,7 @@ const findMergedTimingArtifacts = async ({
     owner: context.repo.owner,
     repo: context.repo.repo,
     workflow_id: "run-tests.yml",
-    branch: branch,
+    branch,
     per_page: 100,
   });
 
