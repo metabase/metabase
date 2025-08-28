@@ -1,0 +1,65 @@
+.container {
+  background: var(--mb-color-bg-white, #fff);
+  border: 1px solid var(--mb-color-border);
+  box-shadow: var(--mantine-shadow-xs);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-radius: var(--mantine-spacing-sm);
+  z-index: 1;
+  width: 20rem;
+}
+
+/* ProseMirror area */
+.content {
+  width: 100%;
+  max-width: calc(100% - 2rem);
+  height: 100%;
+}
+
+.content :global(.ProseMirror) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  outline: none;
+  width: 100%;
+  height: 100%;
+  min-height: 1.25rem;
+  max-height: 12rem;
+  line-height: 1.5;
+  overflow: auto;
+  scrollbar-width: thin;
+  color: var(--mb-color-text-dark);
+  font-size: var(--mantine-font-size-md);
+  padding-block: var(--mantine-spacing-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.content :global(.ProseMirror p) {
+  margin: 0;
+}
+
+/* Placeholder styling */
+.content :global(p.is-empty:first-child:before) {
+  color: var(--mb-color-text-light);
+  content: attr(data-placeholder);
+  height: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.submitBtn {
+  width: 2rem;
+  flex-shrink: 0;
+  margin-top: auto;
+  margin-bottom: 0.25rem;
+  transition: color ease 200ms;
+
+  &.canSubmit,
+  &.canSubmit:hover {
+    color: var(--mb-color-brand);
+  }
+}
