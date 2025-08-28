@@ -119,8 +119,8 @@ jobs:
 
           # Check if we have any timing files to merge
           if ! find timing-files -name "chunkTimings.json" -type f | head -1 | grep -q .; then
-            echo "❌ ERROR: No chunkTimings.json files found in timing-files directory"
-            exit 1
+            echo "⚠ No chunkTimings.json files found - skipping timing merge"
+            exit 0
           fi
 
           echo "✅ Found timing files, proceeding with merge..."
