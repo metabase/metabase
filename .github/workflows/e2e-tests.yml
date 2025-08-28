@@ -120,13 +120,6 @@ jobs:
           # Check if we have any timing files to merge
           if ! find timing-files -name "chunkTimings.json" -type f | head -1 | grep -q .; then
             echo "❌ ERROR: No chunkTimings.json files found in timing-files directory"
-            echo "This indicates either:"
-            echo "  - No parallel chunks generated timing data"
-            echo "  - Timing artifact uploads failed"
-            echo "  - Timing extraction didn't work properly"
-            echo ""
-            echo "Contents of timing-files directory:"
-            find timing-files -type f | head -20 || echo "Directory is empty"
             exit 1
           fi
 
@@ -142,7 +135,7 @@ jobs:
         with:
           name: merged-e2e-timings-${{ github.run_id }}
           path: e2e/support/mergedTimings.json
-          retention-days: 30
+          retention-days: 7
 
   e2e-tests-result:
     needs:

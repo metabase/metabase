@@ -122,23 +122,18 @@ jobs:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
-          SPLIT_OUTPUT_FILE: "newTimings.json"
+        SPLIT_OUTPUT_FILE: "newTimes.json"
           SPLIT_TIME_THRESHOLD: 0.01 # 1% threshold for changes
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
         shell: bash
         run: |
-          # Create empty newTimings.json file in current directory if it doesn't exist
-          if [ ! -f "newTimings.json" ]; then
-            echo '{"durations": []}' > newTimings.json
-          fi
           echo "Running tests with specs: $SPEC_PATH"
-
           node e2e/runner/run_cypress_ci.js e2e \
             --env grepTags="-@mongo+-@flaky+-@OSS+-@skip",grepOmitFiltered=true \
             --spec "$SPEC_PATH" \
-            --browser ${{ steps.cypress-prep.outputs.chrome-path }} 2>&1 | tee cypress-output.log
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
@@ -153,8 +148,8 @@ jobs:
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Extract chunk-specific timings
+        id: extract-timings
         if: inputs.split_index >= 0
-        continue-on-error: true
         shell: bash
         run: |
           echo "=== EXTRACTING CHUNK-SPECIFIC TIMINGS ==="
@@ -163,11 +158,8 @@ jobs:
           echo "Looking for cypress-split timing output in logs..."
 
           if ! grep -q "cypress-split: here are passing spec timings" cypress-output.log; then
-            echo "⚠️  WARNING: cypress-split timing output not found in logs"
-            echo "This may indicate no tests ran or cypress-split didn't execute"
-            echo "Creating empty timing file..."
-            echo '{"durations": []}' > chunkTimings.json
-            exit 0
+            echo "❌ ERROR: cypress-split timing output not found in logs"
+            exit 1
           fi
 
           echo "✅ Found cypress-split timing output"
@@ -176,11 +168,8 @@ jobs:
           CHUNK_TIMING_JSON=$(sed -n '/cypress-split: here are passing spec timings/,/^}/p' cypress-output.log | tail -n +2)
 
           if [ -z "$CHUNK_TIMING_JSON" ]; then
-            echo "⚠️  WARNING: Could not extract timing JSON from cypress-split output"
-            echo "Expected JSON block after 'cypress-split: here are passing spec timings' message"
-            echo "Creating empty timing file..."
-            echo '{"durations": []}' > chunkTimings.json
-            exit 0
+            echo "❌ ERROR: Could not extract timing JSON from cypress-split output"
+            exit 1
           fi
 
           echo "✅ Successfully extracted chunk timing data"
@@ -188,14 +177,12 @@ jobs:
 
           # Validate the JSON is well-formed
           if ! jq empty chunkTimings.json 2>/dev/null; then
-            echo "⚠️  WARNING: Extracted timing data is not valid JSON"
+            echo "❌ ERROR: Extracted timing data is not valid JSON"
             echo "Content:"
             cat chunkTimings.json
-            echo "Creating empty timing file instead..."
-            echo '{"durations": []}' > chunkTimings.json
+            exit 1
           fi
 
-          echo "✅ Chunk timing data is valid JSON"
           echo "Chunk timing data for this run:"
           cat chunkTimings.json
 
@@ -235,12 +222,11 @@ jobs:
 
       - name: Upload Timing Data
         uses: actions/upload-artifact@v4
-        if: always() && inputs.split_index >= 0
-        continue-on-error: true
+        if: steps.extract-timings.outcome == 'success'
         with:
           name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
           path: chunkTimings.json
-          retention-days: 7
+          retention-days: 1 # gets merged immediately by parent workflow
 
       - name: Publish Summary
         if: failure()
