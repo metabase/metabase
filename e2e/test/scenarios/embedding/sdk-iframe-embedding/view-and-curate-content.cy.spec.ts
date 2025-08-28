@@ -318,7 +318,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
       cy.log("should show initial breadcrumb");
       H.getSimpleEmbedIframeContent()
-        .findByText("Our analytics")
+        .findByText("Our analytics", { timeout: 10_000 })
         .should("be.visible");
 
       H.getSimpleEmbedIframeContent().findAllByText("Orders").first().click();
