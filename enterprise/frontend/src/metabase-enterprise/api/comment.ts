@@ -6,10 +6,10 @@ import type {
   UpdateCommentRequest,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { EnterpriseApi } from "./api";
 import { idTag, invalidateTags, listTag, provideCommentListTags } from "./tags";
 
-export const commentApi = Api.injectEndpoints({
+export const commentApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listComments: builder.query<Comment[], ListCommentsRequest | void>({
       query: (params) => ({

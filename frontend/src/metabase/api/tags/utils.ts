@@ -11,7 +11,6 @@ import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
-  Comment,
   Dashboard,
   DashboardQueryMetadata,
   DashboardSubscription,
@@ -663,16 +662,4 @@ export function provideUserKeyValueTags({
   key,
 }: GetUserKeyValueRequest) {
   return [{ type: "user-key-value" as const, id: `${namespace}#${key}` }];
-}
-
-export function provideCommentListTags(
-  comments: Comment[],
-): TagDescription<TagType>[] {
-  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
-}
-
-export function provideCommentTags(
-  comment: Comment,
-): TagDescription<TagType>[] {
-  return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
 }

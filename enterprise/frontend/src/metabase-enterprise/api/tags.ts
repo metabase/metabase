@@ -1,7 +1,8 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
-import { TAG_TYPES } from "metabase/api/tags";
+import { TAG_TYPES, provideUserTags } from "metabase/api/tags";
 import type {
+  Comment,
   Transform,
   TransformJob,
   TransformRun,
@@ -16,6 +17,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-prompt-suggestions",
   "gsheets-status",
   "document",
+  "comment",
   "transform",
   "transform-tag",
   "transform-job",
@@ -102,4 +104,16 @@ export function provideTransformJobListTags(
   jobs: TransformJob[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
+}
+
+export function provideCommentListTags(
+  comments: Comment[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
+}
+
+export function provideCommentTags(
+  comment: Comment,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
 }
