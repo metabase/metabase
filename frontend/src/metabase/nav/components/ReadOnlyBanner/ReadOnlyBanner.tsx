@@ -1,14 +1,33 @@
 import { t } from "ttag";
 
 import { Banner } from "metabase/common/components/Banner";
+import { useSetting } from "metabase/common/hooks";
 import { Text } from "metabase/ui";
 
 export const ReadOnlyBanner = () => {
+  const gitSyncConfigured = useSetting("git-sync-import-branch"); // should be "git-sync-configured" but using this to test
+
+  if (gitSyncConfigured) {
+    return (
+      <Banner
+        bg="brand"
+        c="white"
+        body={
+          <Text fw="bold" c="white">
+            {/* eslint-disable-next-line no-literal-metabase-strings -- correct usage */}
+            {t`Content in this Metabase instance is managed by serious people and cannot be changed here.`}
+          </Text>
+        }
+        icon="info_filled"
+      />
+    );
+  }
+
   return (
     <Banner
       bg="warning"
       body={
-        <Text fw="bold" color="text-dark">
+        <Text fw="bold" c="text-dark">
           {/* eslint-disable-next-line no-literal-metabase-strings -- correct usage */}
           {t`Metabase is under maintenance and is operating in read-only mode. It should only take up to 30 minutes.`}
         </Text>

@@ -57,6 +57,13 @@ export const GitSyncSettings = () => {
         title={t`Sync control`}
         description={t`Manually trigger a git sync to push any local changes to the remote repository and pull down any changes from the remote repository.`}
       >
+        <AdminSettingInput
+          name="read-only-mode"
+          // eslint-disable-next-line
+          description={t`Make this instance read only, preventing any changes except when pulled from git.`}
+          title={t`Read only mode`}
+          inputType="boolean"
+        />
         <Flex gap="md" align="end">
           <AdminSettingInput
             name="git-sync-import-branch"
