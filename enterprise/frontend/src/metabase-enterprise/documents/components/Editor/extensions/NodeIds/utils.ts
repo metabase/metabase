@@ -30,11 +30,15 @@ export function createProseMirrorPlugin(nodeName: string) {
       const { doc, tr } = state;
       let updated = false;
 
+      // Check if any nodes were split (have the same _id)
+      const seenIds = new Set();
+
       doc.forEach((node, pos) => {
-        if (
-          node.type.name === nodeName &&
-          node.attrs[ID_ATTRIBUTE_NAME] == null
-        ) {
+        const isRightNode = node.type.name === nodeName;
+        const hasNoId = node.attrs[ID_ATTRIBUTE_NAME] == null;
+        const isDuplicate = seenIds.has(node.attrs[ID_ATTRIBUTE_NAME]);
+
+        if (isRightNode && (hasNoId || isDuplicate)) {
           tr.setNodeAttribute(pos, ID_ATTRIBUTE_NAME, uuid());
           updated = true;
         }
