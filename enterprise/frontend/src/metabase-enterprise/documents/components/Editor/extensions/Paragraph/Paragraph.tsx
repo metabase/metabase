@@ -4,6 +4,7 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
+import cx from "classnames";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -112,6 +113,7 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
     () => getTargetChildCommentThreads(comments, _id),
     [comments, _id],
   );
+  const hasComments = nodeThreads.length > 0;
 
   return (
     <NodeViewWrapper>
@@ -120,10 +122,15 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
       </p>
 
       {document && (
-        <Box className={S.commentsMenu} pr="lg">
+        <Box
+          className={cx(S.commentsMenu, {
+            [S.visible]: hasComments,
+          })}
+          pr="lg"
+        >
           <Link to={`/document/${document.id}/comments/${_id}`}>
             <Button leftSection={<Icon name="message" />} px="sm" size="xs">
-              {nodeThreads.length > 0 ? t`Comments` : t`Add comment`}
+              {hasComments ? t`Comments` : t`Add comment`}
             </Button>
           </Link>
         </Box>
