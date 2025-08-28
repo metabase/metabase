@@ -44,7 +44,9 @@
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
-    (#'ordering/transform-deps transform)))
+    (into #{}
+          (map #(or (:table %) (:transform %)))
+          (#'ordering/transform-deps transform))))
 
 (deftest basic-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform

@@ -30,7 +30,7 @@
       :query (into #{}
                    (keep #(clojure.core.match/match %
                             [:source-table source] (when (int? source)
-                                                     source)
+                                                     {:table source})
                             _ nil))
                    (tree-seq coll? seq query)))))
 
@@ -58,7 +58,8 @@
   the transforms in the original list -- if a transform depends on some transform not in the list, the 'extra'
   dependency is ignored."
   [transforms]
-  (let [transforms-by-db (->> transforms
+  (let [transform-ids (into #{} (map :id) transforms)
+        transforms-by-db (->> transforms
                               (map (fn [transform]
                                      {(get-in transform [:source :query :database]) [transform]}))
                               (apply merge-with into))
@@ -70,14 +71,9 @@
                                                             :dependencies (dependency-map db-transforms)})))
                                                   (apply merge-with merge))]
     (update-vals dependencies #(into #{}
-                                     (keep (fn [item]
-                                             (cond
-                                               ;; If item has a match in output-tables, return it
-                                               (output-tables item) (output-tables item)
-                                               ;; If item is a map with :transform key, return the :transform value
-                                               (and (map? item) (contains? item :transform)) (:transform item)
-                                               ;; Otherwise, return nil (will be filtered out)
-                                               :else nil)))
+                                     (keep (fn [{:keys [table transform]}]
+                                             (or (output-tables table)
+                                                 (transform-ids transform))))
                                      %))))
 
 (defn find-cycle
@@ -126,6 +122,7 @@
     (qp.store/with-metadata-provider db-id
       (let [output-tables (output-table-map (filter #(= (get-in % [:source :query :database]) db-id)
                                                     transforms))
+            ;; TODO(rileythomp, 2025-08-28): Update this to handle transform-deps similar to transform-ordering
             node->children #(->> % transforms-by-id transform-deps (keep output-tables))
             id->name (comp :name transforms-by-id)
             cycle (find-cycle node->children [transform-id])]

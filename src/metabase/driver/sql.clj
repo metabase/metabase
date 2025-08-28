@@ -174,26 +174,23 @@
   :hierarchy #'driver/hierarchy)
 
 (defn find-table-or-transform
-  "Finds either a table or a transform with a matching output table"
+  "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
+   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
   [driver {:keys [table schema]}]
   (let [normalized-table (normalize-name driver table)
-        normalized-schema (if (seq schema)
-                            (normalize-name driver schema)
-                            (default-schema driver))
-        table (some (fn [{db-table :name db-schema :schema id :id}]
-                      (and (= normalized-table db-table)
-                           (= normalized-schema db-schema)
-                           id))
-                    (driver-api/tables (driver-api/metadata-provider)))
-        transform (some (fn [{target :target id :id}]
-                          (and (= normalized-table (:name target))
-                               (= normalized-schema (:schema target))
-                               id))
-                        (t2/select :model/Transform))]
-    (cond
-      table table
-      transform {:transform transform}
-      :else nil)))
+        normalized-schema (or (some->> schema (normalize-name driver))
+                              (default-schema driver))
+        matches? (fn [db-table db-schema]
+                   (and (= normalized-table db-table)
+                        (= normalized-schema db-schema)))]
+    (or (some (fn [{:keys [name schema id]}]
+                (when (matches? name schema)
+                  {:table id}))
+              (driver-api/tables (driver-api/metadata-provider)))
+        (some (fn [{:keys [id] {:keys [name schema]} :target}]
+                (when (matches? name schema)
+                  {:transform id}))
+              (t2/select :model/Transform)))))
 
 (defmethod driver/native-query-deps :sql
   [driver query]
