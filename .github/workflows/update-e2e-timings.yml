@@ -10,7 +10,7 @@ on:
   push:
     branches:
       - master
-      # - generate-new-test-timings
+      - generate-new-test-timings
     paths:
       - ".github/workflows/update-e2e-timings.yml"
   schedule:
@@ -31,222 +31,24 @@ jobs:
         with:
           node-version: 22
 
-      - name: Collect recent timing artifacts
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DAYS_BACK: ${{ inputs.days_back || 7 }}
-        run: |
-          echo "Searching for merged timing artifacts from the last $DAYS_BACK days..."
-
-          # Calculate cutoff date
-          CUTOFF_DATE=$(date -d "$DAYS_BACK days ago" -u +"%Y-%m-%dT%H:%M:%SZ")
-          echo "Looking for artifacts created after: $CUTOFF_DATE"
-
-          # Find all merged timing artifacts
-          mkdir -p timing-artifacts
-          echo "Querying GitHub API for merged timing artifacts..."
-
-          # Get recent workflow runs from generate-new-test-timings branch (for testing)
-          {
-            gh api "repos/${{ github.repository }}/actions/workflows/run-tests.yml/runs?branch=generate-new-test-timings&per_page=100" \
-              --jq "[.workflow_runs[] | select(.created_at > \"$CUTOFF_DATE\") | .id][0:20]"
-            gh api "repos/${{ github.repository }}/actions/workflows/e2e-tests.yml/runs?branch=generate-new-test-timings&per_page=100" \
-              --jq "[.workflow_runs[] | select(.created_at > \"$CUTOFF_DATE\") | .id][0:20]"
-          } | jq -s 'flatten | unique' > timing-artifacts/recent-run-ids.json
-
-          echo "Checking for merged timing artifacts in recent runs..."
-
-          # Initialize empty artifact list
-          echo "[]" > timing-artifacts/artifact-list.json
-
-          # Check each run for its specific merged timing artifact (with increased per_page to get all artifacts)
-          for run_id in $(jq -r '.[]' timing-artifacts/recent-run-ids.json 2>/dev/null || echo ""); do
-            if [ -n "$run_id" ] && [ "$run_id" != "null" ]; then
-              expected_name="merged-e2e-timings-$run_id"
-              echo "Checking for artifact: $expected_name in run $run_id..."
-              
-              # Look for the specific expected artifact name in this run (with per_page=100 to get all artifacts)
-              gh api "repos/${{ github.repository }}/actions/runs/$run_id/artifacts?per_page=100" \
-                --jq "[.artifacts[] | select(.name == \"$expected_name\") | select(.expired == false) | {name, created_at, archive_download_url}]" \
-                >> timing-artifacts/temp-artifacts.json 2>/dev/null || echo "[]" >> timing-artifacts/temp-artifacts.json
-            fi
-          done
-
-          # Combine all found artifacts
-          if [ -f timing-artifacts/temp-artifacts.json ] && [ -s timing-artifacts/temp-artifacts.json ]; then
-            jq -s 'flatten | unique_by(.name)' timing-artifacts/temp-artifacts.json > timing-artifacts/artifact-list.json 2>/dev/null || echo "[]" > timing-artifacts/artifact-list.json
-            rm -f timing-artifacts/temp-artifacts.json
-          else
-            echo "[]" > timing-artifacts/artifact-list.json
-          fi
-
-          rm -f timing-artifacts/recent-run-ids.json
-            
-          echo "Found artifacts:"
-          cat timing-artifacts/artifact-list.json
-
-          # Check if we have any artifacts
-          if [ ! -s timing-artifacts/artifact-list.json ]; then
-            echo "❌ No timing artifacts found in the specified time range"
-            exit 1
-          fi
-
-          # Try to count artifacts, handling both array and single object cases
-          TOTAL_ARTIFACTS=$(jq -r 'if type == "array" then length else 1 end' timing-artifacts/artifact-list.json 2>/dev/null || echo "0")
-          echo "Found $TOTAL_ARTIFACTS artifact(s) to process"
-
-          if [ "$TOTAL_ARTIFACTS" -eq "0" ]; then
-            echo "❌ No valid timing artifacts found"
-            exit 1
-          fi
-
-          # Download each artifact
-          ARTIFACT_COUNT=0
-
-          # Handle both single object and array cases
-          if [ "$TOTAL_ARTIFACTS" -eq "1" ]; then
-            # Single artifact - read directly
-            NAME=$(jq -r '.name' timing-artifacts/artifact-list.json)
-            URL=$(jq -r '.archive_download_url' timing-artifacts/artifact-list.json)
-            CREATED=$(jq -r '.created_at' timing-artifacts/artifact-list.json)
-            
-            echo "Downloading artifact: $NAME (created: $CREATED)"
-            curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$URL" -o "timing-artifacts/${NAME}.zip"
-            
-            # Extract the timing file
-            mkdir -p "timing-artifacts/${NAME}"
-            unzip -q "timing-artifacts/${NAME}.zip" -d "timing-artifacts/${NAME}/"
-            
-            # Check if timing file exists
-            if [ -f "timing-artifacts/${NAME}/mergedTimings.json" ]; then
-              cp "timing-artifacts/${NAME}/mergedTimings.json" "timing-artifacts/${NAME}-timings.json"
-              ARTIFACT_COUNT=$((ARTIFACT_COUNT + 1))
-              echo "✓ Extracted timing data from $NAME"
-            else
-              echo "⚠ No timing data found in $NAME"
-            fi
-            
-            # Cleanup extracted directory
-            rm -rf "timing-artifacts/${NAME}"
-            rm "timing-artifacts/${NAME}.zip"
-          else
-            # Multiple artifacts - iterate through array
-            while read -r artifact; do
-              if [ -n "$artifact" ]; then
-                NAME=$(echo "$artifact" | jq -r '.name')
-                URL=$(echo "$artifact" | jq -r '.archive_download_url')
-                CREATED=$(echo "$artifact" | jq -r '.created_at')
-                
-                echo "Downloading artifact: $NAME (created: $CREATED)"
-                curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$URL" -o "timing-artifacts/${NAME}.zip"
-                
-                # Extract the timing file
-                mkdir -p "timing-artifacts/${NAME}"
-                unzip -q "timing-artifacts/${NAME}.zip" -d "timing-artifacts/${NAME}/"
-                
-                # Check if timing file exists
-                if [ -f "timing-artifacts/${NAME}/mergedTimings.json" ]; then
-                  cp "timing-artifacts/${NAME}/mergedTimings.json" "timing-artifacts/${NAME}-timings.json"
-                  ARTIFACT_COUNT=$((ARTIFACT_COUNT + 1))
-                  echo "✓ Extracted timing data from $NAME"
-                else
-                  echo "⚠ No timing data found in $NAME"
-                fi
-                
-                # Cleanup extracted directory
-                rm -rf "timing-artifacts/${NAME}"
-                rm "timing-artifacts/${NAME}.zip"
-              fi
-            done < <(jq -c '.[]' timing-artifacts/artifact-list.json)
-          fi
-
-          echo "Successfully collected $ARTIFACT_COUNT timing artifacts"
-          ls -la timing-artifacts/
-
-      - name: Average timing data
-        run: |
-          node -e "
-          const fs = require('fs');
-          const path = require('path');
-
-          console.log('🔄 Processing timing artifacts to calculate averages...');
-
-          const artifactDir = 'timing-artifacts';
-          const timingFiles = fs.readdirSync(artifactDir).filter(f => f.endsWith('-timings.json'));
-
-          console.log(\`Found \${timingFiles.length} timing files:\`);
-          timingFiles.forEach(f => console.log(\`  - \${f}\`));
-
-          if (timingFiles.length === 0) {
-            console.log('❌ No timing files found');
-            process.exit(1);
-          }
-
-          // Collect all timing data per spec
-          const specTimings = {};
-          let totalFiles = 0;
-
-          timingFiles.forEach(file => {
-            try {
-              const content = fs.readFileSync(path.join(artifactDir, file), 'utf8');
-              const data = JSON.parse(content);
-              
-              if (data.durations && Array.isArray(data.durations)) {
-                totalFiles++;
-                data.durations.forEach(item => {
-                  if (item.spec && typeof item.duration === 'number') {
-                    if (!specTimings[item.spec]) {
-                      specTimings[item.spec] = [];
-                    }
-                    specTimings[item.spec].push(item.duration);
-                  }
-                });
-              }
-            } catch (error) {
-              console.log(\`⚠ Error reading \${file}: \${error.message}\`);
-            }
-          });
-
-          console.log(\`\nProcessed \${totalFiles} timing files\`);
-          console.log(\`Found timing data for \${Object.keys(specTimings).length} unique specs\`);
-
-          // Calculate simple averages per spec
-          const averagedTimings = { durations: [] };
-
-          Object.entries(specTimings).forEach(([spec, durations]) => {
-            // Simple average - include all specs regardless of sample count
-            const average = durations.reduce((sum, d) => sum + d, 0) / durations.length;
-            averagedTimings.durations.push({
-              spec: spec,
-              duration: Math.round(average)
+      - name: Collect and average timing data
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { collectAndAverageTimings } = require('${{ github.workspace }}/.github/scripts/average-e2e-timings.js');
+            await collectAndAverageTimings({
+              github,
+              context,
+              token: '${{ secrets.GITHUB_TOKEN }}',
+              branch: 'master',
+              daysBack: ${{ inputs.days_back || 7 }},
+              existingTimingsPath: 'e2e/support/timings.json'
             });
-            console.log(\`✓ \${spec}: \${durations.length} samples, avg \${Math.round(average)}ms\`);
-          });
-
-          console.log(\`\n📊 Results:\`);
-          console.log(\`  ✓ Processed \${Object.keys(specTimings).length} specs\`);
-
-          // Sort by spec name for consistency
-          averagedTimings.durations.sort((a, b) => a.spec.localeCompare(b.spec));
-
-          // Write averaged timings
-          fs.writeFileSync('averaged-timings.json', JSON.stringify(averagedTimings, null, 2));
-          console.log('✅ Averaged timings written to averaged-timings.json');
-          "
 
       - name: Set up git configuration
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Update timing file
-        run: |
-          # Replace the timing file with averaged data
-          cp averaged-timings.json e2e/support/timings.json
-          echo "✅ Updated e2e/support/timings.json with averaged timing data"
-
-      - name: Set branch name
-        run: |
           BRANCH_NAME="update-e2e-timings-$(date +%Y%m%d-%H%M%S)"
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
           echo "Branch name will be: $BRANCH_NAME"
@@ -268,7 +70,7 @@ jobs:
             Co-Authored-By: GitHub Actions <actions@github.com>
           committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
           author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          title: "📊 Update E2E test timings with recent data"
+          title: "[chore] Update E2E test timings with recent data"
           body: |
             ## Summary
             This PR updates the E2E test timing data with averaged values from recent test runs.
