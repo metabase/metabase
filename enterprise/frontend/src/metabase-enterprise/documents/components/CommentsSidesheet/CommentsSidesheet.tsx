@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
 import { Button, Group, Icon, Modal, Stack, Tooltip, rem } from "metabase/ui";
-import { Discussion } from "metabase-enterprise/comments/components";
+import { Discussions } from "metabase-enterprise/comments/components/Discussions";
 
 import { useDocumentContext } from "../DocumentContext";
 
@@ -70,7 +70,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
           </Group>
 
           <Stack className={S.scrollable} gap={0} h="100%" p="xl">
-            <Discussion
+            <Discussions
               childTargetId={childTargetId}
               comments={targetComments}
               targetId={document.id}

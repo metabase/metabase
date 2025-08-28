@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { t } from "ttag";
 
-import { Box, Stack, Timeline } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import { useCreateCommentMutation } from "metabase-enterprise/api";
+import { getCommentThreads } from "metabase-enterprise/comments/utils";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
-
-import S from "./Discussion.module.css";
-import { DiscussionComment } from "./DiscussionComment";
+import { Discussion } from "../Discussion";
 
 export interface DiscussionProps {
   childTargetId: Comment["child_target_id"];
@@ -20,16 +20,17 @@ export interface DiscussionProps {
  * TODO: implement me
  * This component should not fetch any data (except version history) but it should use mutations.
  */
-export const Discussion = ({
+export const Discussions = ({
   childTargetId,
   comments,
   targetId,
   targetType,
 }: DiscussionProps) => {
   const [, setNewComment] = useState<DocumentContent>();
-  const parentCommentId = comments[0].id;
 
   const [createComment] = useCreateCommentMutation();
+
+  const threads = useMemo(() => getCommentThreads(comments), [comments]);
 
   const handleSubmit = (doc: DocumentContent) => {
     createComment({
@@ -37,26 +38,29 @@ export const Discussion = ({
       target_id: targetId,
       target_type: targetType,
       content: doc,
-      parent_comment_id: parentCommentId,
+      parent_comment_id: null,
     });
   };
 
   return (
     <Stack>
-      <Timeline lineWidth={1} className={S.discussionRoot}>
-        {comments.map((comment, index) => (
-          <DiscussionComment
-            key={comment.id}
-            comment={comment}
-            actionPanelVariant={index === 0 ? "discussion" : "comment"}
-          />
-        ))}
-      </Timeline>
+      {threads.map((thread) => (
+        <Discussion
+          childTargetId={childTargetId}
+          comments={thread.comments}
+          key={thread.id}
+          targetId={targetId}
+          targetType={targetType}
+        />
+      ))}
 
-      <CommentEditor
-        onChange={(document) => setNewComment(document)}
-        onSubmit={handleSubmit}
-      />
+      <Box>
+        <Box>{t`Start new thread`}</Box>
+        <CommentEditor
+          onChange={(document) => setNewComment(document)}
+          onSubmit={handleSubmit}
+        />
+      </Box>
     </Stack>
   );
 };
