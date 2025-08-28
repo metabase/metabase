@@ -2,14 +2,12 @@
 
 ## Overview
 
-The Python execution server now uses the `transform_runner.py` framework, which provides a standardized way for users to write data transformation functions that integrate with Metabase.
+The Python execution server uses the `transform_runner.py` framework, which provides a standardized way for users to write data transformation functions that integrate with Metabase.
 
-## Key Changes
-
-### Server Updates (`server.py`)
-- Integrated `transform_runner.py` for executing user code
-- Increased memory limit to 1GB to support pandas/numpy operations
-- Added support for Metabase API parameters (url, api_key, table_mapping)
+## Server Features (`server.py`)
+- Uses `transform_runner.py` for executing user code
+- Memory limit of 1GB to support pandas/numpy operations
+- Supports table data passed as file paths via table_mapping parameter
 - Returns CSV output file path when transform succeeds
 
 ### Transform Runner Framework
@@ -20,9 +18,9 @@ The Python execution server now uses the `transform_runner.py` framework, which 
   - Metabase API integration for reading tables
   - Parameter injection for table data
 
-### API Changes
+### API Specification
 
-The `/execute` endpoint now accepts additional optional parameters:
+The `/execute` endpoint accepts the following parameters:
 ```json
 {
   "code": "Python code with transform() function",
