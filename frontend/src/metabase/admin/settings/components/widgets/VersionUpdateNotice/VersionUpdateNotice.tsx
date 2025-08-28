@@ -8,7 +8,6 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { newVersionAvailable, versionIsLatest } from "metabase/lib/utils";
-import type { VersionInfo, VersionInfoRecord } from "metabase-types/api";
 
 import S from "./VersionUpdateNotice.module.css";
 
@@ -27,7 +26,6 @@ export function VersionUpdateNotice() {
       <NewVersionAvailable
         currentVersion={displayVersion}
         latestVersion={latestVersion}
-        versionInfo={versionInfo}
       />
     );
   }
@@ -59,13 +57,11 @@ function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
 function NewVersionAvailable({
   currentVersion,
   latestVersion,
-  versionInfo,
 }: {
   currentVersion: string;
   latestVersion: string;
-  versionInfo?: VersionInfo | null;
 }) {
-  const lastestVersionInfo = versionInfo?.latest;
+  const lastestMajorVersion = getLatestMajorVersion(latestVersion);
 
   return (
     <div>
@@ -102,50 +98,16 @@ function NewVersionAvailable({
         </ExternalLink>
       </div>
 
-      {versionInfo && (
-        <div
-          className={cx(
-            CS.textMedium,
-            CS.bordered,
-            CS.rounded,
-            CS.p2,
-            CS.mt2,
-            CS.overflowYScroll,
-          )}
-          style={{ height: 330 }}
-        >
-          <h3 className={cx(CS.pb3, CS.textUppercase)}>{t`What's Changed:`}</h3>
-
-          {lastestVersionInfo && <Version version={lastestVersionInfo} />}
-
-          {versionInfo.older &&
-            versionInfo.older.map((version, index) => (
-              <Version key={index} version={version} />
-            ))}
-        </div>
-      )}
+      <iframe
+        src={`https://www.metabase.com/changelog/${lastestMajorVersion}`}
+        className={S.iframe}
+      />
     </div>
   );
 }
 
-function Version({ version }: { version: VersionInfoRecord }) {
-  if (!version) {
-    return null;
-  }
-
-  return (
-    <div className={CS.pb3}>
-      <h3 className={CS.textMedium}>{formatVersion(version.version)}</h3>
-      <ul style={{ listStyleType: "disc", listStylePosition: "inside" }}>
-        {version.highlights &&
-          version.highlights.map((highlight, index) => (
-            <li key={index} style={{ lineHeight: "1.5" }} className={CS.pl1}>
-              {highlight}
-            </li>
-          ))}
-      </ul>
-    </div>
-  );
+function getLatestMajorVersion(version: string) {
+  return version.split(".")[1];
 }
 
 function formatVersion(versionLabel = "") {
