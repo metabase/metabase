@@ -71,6 +71,9 @@
 (def ^:private ^:dynamic ^{:arglists '([driver s])} *escape-alias-fn*
   #'driver/escape-alias)
 
+(def ^:private should-have-been-an-expression-exception
+  (Exception. "This :field ref should have been an :expression ref"))
+
 (defn- prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
   columns that are the result of joins."
@@ -193,19 +196,26 @@
   We should actually rewrite this entire namespace to just use Lib in the first place for everything, but that's a
   project for another day. (See #59589)"
   [inner-query field-ref]
-  (try
-    (let [lib-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
-      (when-let [resolved (lib.field.resolution/resolve-field-ref lib-query -1 (lib/->pMBQL field-ref))]
-        (cond
-          (= (:lib/source resolved) :source/previous-stage)
-          ::source
+  (when-let [lib-query (try
+                         (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)
+                         (catch Throwable e
+                           (log/error e "Failed to convert inner query to Lib query, unable to do fallback matching" (pr-str inner-query))
+                           nil))]
+    (when-let [resolved (lib.field.resolution/resolve-field-ref lib-query -1 (lib/->pMBQL field-ref))]
+      (condp = (:lib/source resolved)
+        :source/previous-stage
+        ::source
 
-          (= (:lib/source resolved) :source/joins)
-          (when-let [join-alias (:metabase.lib.join/join-alias resolved)]
-            (get-in inner-query [::join-alias->escaped join-alias] join-alias)))))
-    (catch Throwable e
-      (log/error e "Failed to convert inner query to Lib query, unable to do fallback matching" (pr-str inner-query))
-      nil)))
+        :source/joins
+        (when-let [join-alias (:metabase.lib.join/join-alias resolved)]
+          (get-in inner-query [::join-alias->escaped join-alias] join-alias))
+
+        :source/expressions
+        (throw should-have-been-an-expression-exception)
+
+        (do
+          (log/warnf "Unhandled resolved source.\nField ref: %s\nResolved: %s" (pr-str field-ref) (pr-str resolved))
+          nil)))))
 
 (mu/defn- field-source-table-alias :- [:or
                                        ::lib.schema.common/non-blank-string
@@ -578,7 +588,13 @@
           &match
 
           #{:field :aggregation :expression}
-          (mbql.u/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match)))
+          (try
+            (mbql.u/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match))
+            (catch Throwable e
+              (if (identical? e should-have-been-an-expression-exception)
+                (let [fixed-ref (into [:expression] (rest &match))]
+                  (mbql.u/update-field-options fixed-ref merge (clause-alias-info inner-query unique-alias-fn fixed-ref)))
+                (throw e)))))
         (add-info-to-aggregation-definitions unique-alias-fn))))
 
 (defn add-alias-info

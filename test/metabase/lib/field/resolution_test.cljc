@@ -1019,9 +1019,7 @@
       (is (=? {:id                                       (meta/id :products :id)
                :name                                     "ID"
                :table-id                                 (meta/id :products)
-               ;; TODO (Cam 7/29/25) -- maybe we need to add a `:source/indetermiate` option or something. Because
-               ;; this is wrong... but nothing else is right either.
-               :lib/source                               :source/table-defaults
+               :lib/source                               :source/previous-stage
                ::lib.field.resolution/fallback-metadata? true}
               (lib.field.resolution/resolve-field-ref
                query -1
