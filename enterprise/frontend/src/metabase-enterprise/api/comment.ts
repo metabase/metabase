@@ -11,20 +11,23 @@ import { idTag, invalidateTags, listTag, provideCommentListTags } from "./tags";
 
 export const commentApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    listComments: builder.query<Comment[], ListCommentsRequest | void>({
+    listComments: builder.query<
+      { comments: Comment[] },
+      ListCommentsRequest | void
+    >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/comments",
+        url: "/api/ee/comment",
         params,
       }),
       providesTags: (response) =>
-        response ? provideCommentListTags(response) : [],
+        response ? provideCommentListTags(response.comments) : [],
     }),
 
     createComment: builder.mutation<Comment, CreateCommentRequest>({
       query: (body) => ({
         method: "POST",
-        url: `/api/ee/comments`,
+        url: `/api/ee/comment`,
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -34,7 +37,7 @@ export const commentApi = EnterpriseApi.injectEndpoints({
     updateComment: builder.mutation<Comment, UpdateCommentRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `/api/ee/comments/${id}`,
+        url: `/api/ee/comment/${id}`,
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -44,7 +47,7 @@ export const commentApi = EnterpriseApi.injectEndpoints({
     getCommentHistory: builder.query<Comment[], CommentId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/comments/${id}/history`,
+        url: `/api/ee/comment/${id}/history`,
       }),
       providesTags: (response) =>
         response && response.length > 0 ? provideCommentListTags(response) : [],

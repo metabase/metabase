@@ -33,6 +33,7 @@ import { Box } from "metabase/ui";
 import {
   useCreateDocumentMutation,
   useGetDocumentQuery,
+  useListCommentsQuery,
   useUpdateDocumentMutation,
 } from "metabase-enterprise/api";
 import type {
@@ -57,6 +58,7 @@ import {
 } from "../selectors";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
+import { DocumentProvider } from "./DocumentContext";
 import { DocumentHeader } from "./DocumentHeader";
 import styles from "./DocumentPage.module.css";
 import { Editor } from "./Editor";
@@ -387,91 +389,107 @@ export const DocumentPage = ({
     [dispatch, selectedEmbedIndex],
   );
 
-  return (
-    <Box className={styles.documentPage}>
-      <SetTitle title={documentData?.name || t`New document`} />
-      {documentData?.archived && <DocumentArchivedEntityBanner />}
-      <Box className={styles.contentArea}>
-        <Box className={styles.mainContent}>
-          <Box className={styles.documentContainer}>
-            <DocumentHeader
-              document={documentData}
-              documentTitle={documentTitle}
-              isNewDocument={isNewDocument}
-              canWrite={canWrite ?? false}
-              showSaveButton={showSaveButton ?? false}
-              isBookmarked={isBookmarked}
-              onTitleChange={setDocumentTitle}
-              onSave={() => {
-                isNewDocument ? setCollectionPickerMode("save") : handleSave();
-              }}
-              onMove={() => setCollectionPickerMode("move")}
-              onToggleBookmark={handleToggleBookmark}
-              onArchive={() => handleUpdate({ archived: true })}
-            />
-            <Editor
-              onEditorReady={setEditorInstance}
-              onCardEmbedsChange={updateCardEmbeds}
-              onQuestionSelect={handleQuestionSelect}
-              initialContent={documentContent}
-              onChange={handleChange}
-              editable={canWrite}
-              isLoading={isDocumentLoading}
-            />
-          </Box>
-        </Box>
+  const { data: comments } = useListCommentsQuery(
+    documentData
+      ? {
+          target_id: documentData.id,
+          target_type: "document",
+        }
+      : skipToken,
+  );
 
-        {selectedQuestionId &&
-          selectedEmbedIndex !== null &&
-          editorInstance && (
-            <Box className={styles.sidebar} data-testid="document-card-sidebar">
-              <EmbedQuestionSettingsSidebar
-                cardId={selectedQuestionId}
-                editorInstance={editorInstance}
+  return (
+    <DocumentProvider value={{ comments }}>
+      <Box className={styles.documentPage}>
+        <SetTitle title={documentData?.name || t`New document`} />
+        {documentData?.archived && <DocumentArchivedEntityBanner />}
+        <Box className={styles.contentArea}>
+          <Box className={styles.mainContent}>
+            <Box className={styles.documentContainer}>
+              <DocumentHeader
+                document={documentData}
+                documentTitle={documentTitle}
+                isNewDocument={isNewDocument}
+                canWrite={canWrite ?? false}
+                showSaveButton={showSaveButton ?? false}
+                isBookmarked={isBookmarked}
+                onTitleChange={setDocumentTitle}
+                onSave={() => {
+                  isNewDocument
+                    ? setCollectionPickerMode("save")
+                    : handleSave();
+                }}
+                onMove={() => setCollectionPickerMode("move")}
+                onToggleBookmark={handleToggleBookmark}
+                onArchive={() => handleUpdate({ archived: true })}
+              />
+              <Editor
+                onEditorReady={setEditorInstance}
+                onCardEmbedsChange={updateCardEmbeds}
+                onQuestionSelect={handleQuestionSelect}
+                initialContent={documentContent}
+                onChange={handleChange}
+                editable={canWrite}
+                isLoading={isDocumentLoading}
               />
             </Box>
+          </Box>
+
+          {selectedQuestionId &&
+            selectedEmbedIndex !== null &&
+            editorInstance && (
+              <Box
+                className={styles.sidebar}
+                data-testid="document-card-sidebar"
+              >
+                <EmbedQuestionSettingsSidebar
+                  cardId={selectedQuestionId}
+                  editorInstance={editorInstance}
+                />
+              </Box>
+            )}
+
+          {collectionPickerMode && (
+            <CollectionPickerModal
+              title={t`Where should we save this document?`}
+              onClose={() => setCollectionPickerMode(null)}
+              value={{ id: "root", model: "collection" }}
+              options={{
+                showPersonalCollections: true,
+                showRootCollection: true,
+              }}
+              onChange={async (collection) => {
+                if (collectionPickerMode === "save") {
+                  handleSave(canonicalCollectionId(collection.id));
+                  setCollectionPickerMode(null);
+                } else if (collectionPickerMode === "move") {
+                  handleUpdate({
+                    collection_id: canonicalCollectionId(collection.id),
+                  });
+                }
+              }}
+            />
           )}
-
-        {collectionPickerMode && (
-          <CollectionPickerModal
-            title={t`Where should we save this document?`}
-            onClose={() => setCollectionPickerMode(null)}
-            value={{ id: "root", model: "collection" }}
-            options={{
-              showPersonalCollections: true,
-              showRootCollection: true,
-            }}
-            onChange={async (collection) => {
-              if (collectionPickerMode === "save") {
-                handleSave(canonicalCollectionId(collection.id));
-                setCollectionPickerMode(null);
-              } else if (collectionPickerMode === "move") {
-                handleUpdate({
-                  collection_id: canonicalCollectionId(collection.id),
-                });
-              }
-            }}
+          <LeaveRouteConfirmModal
+            // `key` remounts this modal when navigating between different documents or to a new document.
+            // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
+            key={location.key}
+            isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
+            route={route}
           />
-        )}
-        <LeaveRouteConfirmModal
-          // `key` remounts this modal when navigating between different documents or to a new document.
-          // The `route` doesn't change in that scenario which prevents the modal from closing when you confirm you want to discard your changes.
-          key={location.key}
-          isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
-          route={route}
-        />
 
-        <LeaveConfirmModal
-          // only applies when going from /new -> /new
-          opened={
-            hasUnsavedChanges() &&
-            isNewDocument &&
-            location.key !== previousLocationKey
-          }
-          onConfirm={resetDocument}
-          onClose={() => forceUpdate()}
-        />
+          <LeaveConfirmModal
+            // only applies when going from /new -> /new
+            opened={
+              hasUnsavedChanges() &&
+              isNewDocument &&
+              location.key !== previousLocationKey
+            }
+            onConfirm={resetDocument}
+            onClose={() => forceUpdate()}
+          />
+        </Box>
       </Box>
-    </Box>
+    </DocumentProvider>
   );
 };
