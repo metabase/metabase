@@ -14,7 +14,8 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [potemkin :as p]))
+   [potemkin :as p]
+   [toucan2.core :as t2]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -172,18 +173,27 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod find-table :sql
+(defn find-table-or-transform
+  "Finds either a table or a transform with a matching output table"
   [driver {:keys [table schema]}]
   (let [normalized-table (normalize-name driver table)
         normalized-schema (if (seq schema)
                             (normalize-name driver schema)
-                            (default-schema driver))]
-    (->> (driver-api/metadata-provider)
-         driver-api/tables
-         (some (fn [{db-table :name db-schema :schema id :id}]
-                 (and (= normalized-table db-table)
-                      (= normalized-schema db-schema)
-                      id))))))
+                            (default-schema driver))
+        table (some (fn [{db-table :name db-schema :schema id :id}]
+                      (and (= normalized-table db-table)
+                           (= normalized-schema db-schema)
+                           id))
+                    (driver-api/tables (driver-api/metadata-provider)))
+        transform (some (fn [{target :target id :id}]
+                          (and (= normalized-table (:name target))
+                               (= normalized-schema (:schema target))
+                               id))
+                        (t2/select :model/Transform))]
+    (cond
+      table table
+      transform {:transform transform}
+      :else nil)))
 
 (defmethod driver/native-query-deps :sql
   [driver query]
@@ -191,7 +201,7 @@
        macaw/parsed-query
        macaw/query->components
        :tables
-       (into #{} (keep #(->> % :component (find-table driver))))))
+       (into #{} (keep #(->> % :component (find-table-or-transform driver))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

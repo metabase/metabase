@@ -69,7 +69,16 @@
                                                            {:output-tables (output-table-map db-transforms)
                                                             :dependencies (dependency-map db-transforms)})))
                                                   (apply merge-with merge))]
-    (update-vals dependencies #(into #{} (keep output-tables) %))))
+    (update-vals dependencies #(into #{}
+                                     (keep (fn [item]
+                                             (cond
+                                               ;; If item has a match in output-tables, return it
+                                               (output-tables item) (output-tables item)
+                                               ;; If item is a map with :transform key, return the :transform value
+                                               (and (map? item) (contains? item :transform)) (:transform item)
+                                               ;; Otherwise, return nil (will be filtered out)
+                                               :else nil)))
+                                     %))))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.
