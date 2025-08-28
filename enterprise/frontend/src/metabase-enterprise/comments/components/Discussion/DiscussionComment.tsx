@@ -5,20 +5,11 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { Group, Text, Tooltip, rem } from "metabase/ui";
+import type { Comment } from "metabase-types/api";
 
-import S from "./CommentThreadItem.module.css";
+import S from "./DiscussionComment.module.css";
 
-// TODO: this is a sample type, we need to replace it with the actual comment type
-export type Comment = {
-  id: string;
-  createdAt: string;
-  author: {
-    name: string;
-  };
-  content: string; // will be a rich text editor with tiptap
-};
-
-type CommentThreadItemProps = {
+type DiscussionCommentProps = {
   comment: Comment;
 };
 
@@ -34,7 +25,7 @@ const avatarColors = [
 ];
 
 const lineHeightPx = 20;
-export function CommentThreadItem({ comment }: CommentThreadItemProps) {
+export function DiscussionComment({ comment }: DiscussionCommentProps) {
   return (
     <Timeline.Item
       mt="1.25rem"
@@ -44,7 +35,7 @@ export function CommentThreadItem({ comment }: CommentThreadItemProps) {
         <Avatar
           variant="filled"
           size={rem(24)}
-          name={comment.author.name}
+          name={comment.creator.common_name}
           color="initials"
           allowedInitialsColors={avatarColors}
         />
@@ -52,16 +43,18 @@ export function CommentThreadItem({ comment }: CommentThreadItemProps) {
     >
       <Group gap="sm" align="center" mb="0.25rem" wrap="nowrap">
         <Text fw={700} lh={1.1} truncate>
-          {comment.author.name}
+          {comment.creator.common_name}
         </Text>
-        <Tooltip label={dayjs(comment.createdAt).format("MMM D, YYYY, h:mm A")}>
+        <Tooltip
+          label={dayjs(comment.created_at).format("MMM D, YYYY, h:mm A")}
+        >
           <Text
             size="xs"
             c="text-medium"
             lh={1.1}
             style={{ whiteSpace: "nowrap" }}
           >
-            {formatCommentDate(comment.createdAt)}
+            {formatCommentDate(comment.created_at)}
           </Text>
         </Tooltip>
       </Group>
@@ -83,7 +76,7 @@ export function CommentThreadItem({ comment }: CommentThreadItemProps) {
           },
         }}
       >
-        <Text lh={rem(lineHeightPx)}>{comment.content}</Text>
+        <Text lh={rem(lineHeightPx)}>{comment.content_str_stup}</Text>
       </Spoiler>
     </Timeline.Item>
   );

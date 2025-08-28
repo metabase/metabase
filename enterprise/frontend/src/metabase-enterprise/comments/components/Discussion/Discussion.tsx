@@ -1,3 +1,6 @@
+// TODO: move Timeline component to metabase/ui
+/* eslint-disable no-restricted-imports */
+import { Timeline } from "@mantine/core";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -6,7 +9,9 @@ import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
 
-interface Props {
+import { DiscussionComment } from "./DiscussionComment";
+
+export interface DiscussionProps {
   comments: Comment[];
 }
 
@@ -14,8 +19,8 @@ interface Props {
  * TODO: implement me
  * This component should not fetch any data (except version history) but it should use mutations.
  */
-export const Discussion = ({ comments }: Props) => {
-  const [newComment, setNewComment] = useState<DocumentContent>();
+export const Discussion = ({ comments }: DiscussionProps) => {
+  const [, setNewComment] = useState<DocumentContent>();
 
   const handleSubmit = () => {
     // TODO: implement me
@@ -23,13 +28,11 @@ export const Discussion = ({ comments }: Props) => {
 
   return (
     <Stack>
-      {comments.map((comment) => (
-        <CommentEditor
-          key={comment.id}
-          disabled
-          initialContent={comment.document}
-        />
-      ))}
+      <Timeline lineWidth={1}>
+        {comments.map((comment) => (
+          <DiscussionComment key={comment.id} comment={comment} />
+        ))}
+      </Timeline>
 
       <Box>
         <CommentEditor
