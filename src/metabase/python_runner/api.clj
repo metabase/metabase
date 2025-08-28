@@ -1,58 +1,66 @@
 (ns metabase.python-runner.api
   "API endpoints for executing Python code in a sandboxed environment."
   (:require
-   #_[metabase.server.streaming-response :as streaming]
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
-   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
-   [metabase.request.core :as request]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response]
    [toucan2.core :as t2])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
-   (java.io BufferedWriter OutputStream OutputStreamWriter)
-   (java.io ByteArrayOutputStream File)
-   (java.nio.charset StandardCharsets)
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)))
+   (java.io BufferedWriter OutputStream OutputStreamWriter File)
+   (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
-
-(defn- create-temp-file
-  "Create a temporary file with the given prefix and suffix."
-  ^File [prefix suffix]
-  (let [temp-file (Files/createTempFile prefix suffix (make-array FileAttribute 0))]
-    (.toFile temp-file)))
-
-(defn- safe-delete [^File f]
-  (try (.delete f) (catch Throwable _)))
-
-(defmacro with-temp-files
-  "Execute body with temporary files bound to symbols, ensuring cleanup.
-   file-specs: vector of [symbol [prefix suffix]] pairs
-   Example: (with-temp-files [code-file [\"python_code_\" \".py\"]] ...)"
-  [file-specs & body]
-  (let [pairs          (partition 2 file-specs)
-        gensyms        (mapv (fn [_] (gensym)) pairs)
-        file-exprs     (map (fn [[_ spec]] `(create-temp-file ~(first spec) ~(second spec))) pairs)]
-    `(let [~@(mapcat list gensyms file-exprs)
-           ~@(mapcat (fn [[sym _] g] [sym g]) pairs gensyms)]
-       (try
-         ~@body
-         (finally
-           (run! safe-delete ~gensyms))))))
 
 (defn- safe-slurp
   "Safely slurp a file, returning empty string on error."
   [file]
   (try (slurp file) (catch Exception _ "")))
+
+(defn- write-to-stream! [^OutputStream os col-names reducible-rows]
+  (let [writer (-> os
+                   (OutputStreamWriter. StandardCharsets/UTF_8)
+                   (BufferedWriter.))
+        ^JsonGenerator jgen (json/create-generator writer)]
+
+    (run! (fn [row]
+            (let [row-map (zipmap col-names row)]
+              (json/generate jgen row-map json/default-date-format nil nil)
+              (.writeRaw jgen "\n")
+              (.flush jgen)))
+          reducible-rows)
+
+    (doto jgen
+      (.flush)
+      (.close))))
+
+(defn- execute-mbql-query
+  [driver db-id query respond]
+  (driver/with-driver driver
+    (let [native (qp.compile/compile {:type :query, :database db-id :query query})
+
+          query {:database db-id
+                 :type :native
+                 :native native}]
+      (qp.store/with-metadata-provider db-id
+        (driver/execute-reducible-query driver query {} respond)))))
+
+(defn- write-table-data! [id file]
+  (let [db-id (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
+        driver (t2/select-one-fn :engine :model/Database db-id)
+        ;; TODO: limit
+        query {:source-table id}]
+    (execute-mbql-query driver db-id query
+                        (fn [{cols-meta :cols} reducible-rows]
+                          (with-open [os (io/output-stream file)]
+                            (write-to-stream! os (mapv :name cols-meta) reducible-rows))))))
 
 (defn execute-python-code
   "Execute Python code using the Python execution server."
@@ -69,18 +77,19 @@
 
     (try
       (let [server-url (transforms.settings/python-execution-server-url)
-            api-key (transforms.settings/python-runner-api-key)
-            metabase-url (transforms.settings/python-runner-callback-base-url)
-
+            table-name->file (into {} (map (fn [[table-name id]]
+                                             (let [file-name (gensym)
+                                                   file (io/file (str work-dir "/" file-name ".jsonl"))]
+                                               (write-table-data! id file)
+                                               [table-name (.getAbsolutePath file)])))
+                                   table-name->id)
             response (http/post (str server-url "/execute")
                                 {:content-type     :json
                                  :accept           :json
                                  :body             (json/encode {:code          code
                                                                  :working_dir   work-dir
                                                                  :timeout       30
-                                                                 :metabase_url  metabase-url
-                                                                 :api_key       api-key
-                                                                 :table_mapping table-name->id})
+                                                                 :table_mapping table-name->file})
                                  :throw-exceptions false
                                  :as               :json})
 
@@ -131,62 +140,3 @@
                              [:tables [:map-of :string ms/PositiveInt]]]]
   (api/check-superuser)
   (execute-python-code code tables))
-
-(defn- execute-mbql-query
-  [driver db-id query respond]
-  (driver/with-driver driver
-    (qp.store/with-metadata-provider db-id
-      (let [native (driver/mbql->native driver (qp.preprocess/preprocess {:type :query, :database db-id :query query}))
-
-            query {:database db-id
-                   :type :native
-                   :native native}]
-        (driver/execute-reducible-query driver query {} respond)))))
-
-(defn- write-to-stream! [^OutputStream os col-names reducible-rows]
-  (let [^JsonGenerator jgen (-> os
-                                (OutputStreamWriter. StandardCharsets/UTF_8)
-                                (BufferedWriter.)
-                                json/create-generator)]
-
-    (.writeStartArray jgen)
-
-    (run! (fn [row]
-            (let [row-map (zipmap col-names row)]
-              (json/generate jgen row-map json/default-date-format nil nil)))
-          reducible-rows)
-
-    (doto jgen
-      (.writeEndArray)
-      (.flush)
-      (.close))))
-
-(defn- respond-os [{cols-meta :cols} reducible-rows]
-  (let [os (ByteArrayOutputStream.)]
-    (write-to-stream! os (mapv :name cols-meta) reducible-rows)
-    (String. (.toByteArray os) "UTF-8"))
-  #_(streaming/streaming-response {:content-type "application/json; charset=utf-8"} [os _canceled-chan]
-      (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
-
-(api.macros/defendpoint :get "/table/:id/data"
-  "Fetch table data for Python transforms."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _ _ _ respond raise]
-  (try
-    (let [db-id (api/check-404 (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id))
-
-         ;; TODO
-          row-limit (or (request/limit) 10000)
-
-          driver (t2/select-one-fn :engine :model/Database db-id)
-
-          query {:source-table id, :limit row-limit}
-
-          respond (fn [cols-meta reducible-rows]
-                    (respond (-> (response/response (respond-os cols-meta reducible-rows))
-                                 (response/content-type "application/json"))))]
-
-      (execute-mbql-query driver db-id query respond))
-    (catch Throwable e
-      (raise e))))
