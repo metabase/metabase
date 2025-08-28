@@ -45,7 +45,7 @@ export function CreatePythonTransformModal({
   const initialValues: FormValues = {
     name: "",
     description: null,
-    targetSchema: "python_transforms",
+    targetSchema: "public",
     targetName: "",
   };
 
@@ -129,7 +129,7 @@ export function CreatePythonTransformModal({
                   <TextInput
                     {...field}
                     label={t`Schema (optional)`}
-                    placeholder={t`python_transforms`}
+                    placeholder={t`public`}
                   />
                 )}
               </Field>
