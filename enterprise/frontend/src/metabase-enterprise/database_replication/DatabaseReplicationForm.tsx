@@ -134,9 +134,9 @@ export const DatabaseReplicationForm = ({
     previewResponse?.tablesWithoutOwnerMatch?.includes(table) ?? false;
   const noSyncReason = (table: TableInfo) =>
     hasNoPk(table)
-      ? "(no primary key)"
+      ? t`(no primary key)`
       : hasOwnerMismatch(table)
-        ? "(owner mismatch)"
+        ? t`(owner mismatch)`
         : undefined;
 
   return (
