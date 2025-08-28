@@ -140,7 +140,7 @@
                         :body              (json/encode {:code code, :tables table-name->id})
                         :headers           headers
                         :throw-exceptions? false})
-            :body #(if (string? %) (json/parse-string % keyword) %))))
+            :body #(if (string? %) json/decode+kw %))))
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner."
