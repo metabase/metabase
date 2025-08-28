@@ -1,13 +1,21 @@
 // TODO: move Avatar component to metabase/ui
 /* eslint-disable no-restricted-imports */
 import { Avatar } from "@mantine/core";
+import Link from "@tiptap/extension-link";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import dayjs from "dayjs";
+import { useMemo } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import { Group, Spoiler, Text, Timeline, Tooltip, rem } from "metabase/ui";
+import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
+import { Paragraph } from "metabase-enterprise/documents/components/Editor/extensions/Paragraph";
+import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
 import type { Comment } from "metabase-types/api";
-
-import { CommentEditor } from "../CommentEditor";
 
 import S from "./Discussion.module.css";
 import {
@@ -41,6 +49,36 @@ export function DiscussionComment({
   onResolve,
   onReaction,
 }: DiscussionCommentProps) {
+  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+
+  const extensions = useMemo(
+    () => [
+      Paragraph,
+      StarterKit.configure({
+        paragraph: false,
+      }),
+      SmartLink.configure({
+        HTMLAttributes: { class: "smart-link" },
+        siteUrl,
+      }),
+      Link.configure({
+        HTMLAttributes: { class: CS.link },
+      }),
+      DisableMetabotSidebar,
+    ],
+    [siteUrl],
+  );
+
+  const editorHandle = useEditor(
+    {
+      extensions,
+      content: comment.content,
+      editable: false,
+      immediatelyRender: true,
+    },
+    [],
+  );
+
   return (
     <Timeline.Item
       className={S.commentRoot}
@@ -97,7 +135,7 @@ export function DiscussionComment({
           },
         }}
       >
-        <CommentEditor disabled initialContent={comment.content} />
+        <EditorContent disabled editor={editorHandle} />
       </Spoiler>
     </Timeline.Item>
   );
