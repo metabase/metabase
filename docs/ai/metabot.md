@@ -11,11 +11,7 @@ summary: Metabot is Metabase's AI assistant that helps you analyze data, create 
 
 ![Meet Metabot](./images/metabot.png)
 
-Metabot helps you analyze your data. You can ask it to create charts, pull up dashboards, and more.
-
-Here's Metabot in its own words:
-
-"I'm Metabot, your friendly data generalist here to help you explore and analyze data using Metabase. I can help you find existing dashboards and questions, dig into data sources and metrics, and create queries or charts to answer your questions. If you want to understand trends, get insights, or just pull some numbers, I'm your go-to. Just let me know what data you want to explore or what questions you have!"
+Metabot helps you analyze your data by creating charts from natural language, generating SQL queries, fixing query errors, and analyzing existing visualizations.
 
 > Like with all generative AI, you'll always need to double-check results.
 
@@ -41,7 +37,7 @@ There are multiple ways to start a chat with Metabot:
 - Click the Metabot icon in the search bar.
 - Type cmd+k on Mac, or ctrl+k on Windows, to open the [command palette](../exploration-and-organization/exploration.md#command-palette). Select the Metabot option to **Ask me to do something, or ask a question**.
 
-You can chat with Metabot (though, predictably, it's only interested in helping you answer questions about your data).
+You can chat with Metabot (though predictably, it's only interested in helping you answer questions about your data).
 
 Metabot will keep the context of the current question with each new prompt. Only the current conversation history is saved (you can scroll up to see it). If you start a new chat, Metabase will discard the previous conversation, so be mindful when resetting the conversation.
 

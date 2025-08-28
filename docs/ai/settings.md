@@ -15,7 +15,7 @@ This page covers admin settings for Metabase's AI assistant, Metabot.
 
 ## Configure Metabot
 
-Metabot is Metabase's AI assistant. To help Metabot focus on the data you care about most, select the collection containing the models and metrics you'd like it to work with.
+To help Metabot focus on the data you care about most, select the collection containing the models and metrics you'd like it to work with.
 
 ## Pick a collection for Metabot to have access to
 
@@ -60,7 +60,7 @@ You can even ask Metabot to write descriptions for you. But Metabot will only ha
 
 ### Make sure the semantic types for each field are correct
 
-Make sure the semantic types for each field accurately describe the fields "meaning". For example, if you have a field like `created_at`, you'd want the column type to be Creation date.
+Make sure the semantic types for each field accurately describe the field's "meaning". For example, if you have a field like `created_at`, you'd want the column type to be Creation date.
 
 Metabase will try to set semantic types automatically, but you should confirm that each field has the relevant semantic type. See [Data types and semantic types](../data-modeling/semantic-types.md). You can also set semantic types for [models](../data-modeling/models.md#add-metadata-to-columns-in-a-model).
 
@@ -84,4 +84,4 @@ Currently, Metabot will be available to everyone who uses your Metabase.
 
 Under the hood, Metabase powers Metabot with a variety of generative models. For now, you can't change which generative AI models Metabot uses, as Metabase's AI service handles their selection.
 
-To get the best results, we (the Metabase team) use internal benchmarks to determine which AI models Metabot should use for different tasks And we are constantly iterating on performance, so Metabot will continue to improve over time.
+To get the best results, we (the Metabase team) use internal benchmarks to determine which AI models Metabot should use for different tasks. And we are constantly iterating on performance, so Metabot will continue to improve over time.
