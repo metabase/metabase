@@ -131,13 +131,14 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
           className={cx(S.commentsMenu, {
             [S.visible]: hasComments || isOpen,
           })}
+          h="100%"
           mt={rem(-2)}
           pr="lg"
         >
           <Link
             to={
               hasUnsavedChanges
-                ? undefined
+                ? ""
                 : `/document/${document.id}/comments/${_id}`
             }
           >
