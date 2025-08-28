@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions";
 import { ColumnPickerSidebar } from "metabase/query_builder/components/ColumnPickerSidebar/ColumnPickerSidebar";
+import { getUiControls } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -19,9 +20,18 @@ function JoinStepColumnPickerSidebar({
 }: JoinStepColumnPickerSidebarProps) {
   const dispatch = useDispatch();
   const currentQuery = question.query();
+  const { columnPickerSidebarData } = useSelector(getUiControls);
 
-  // Find the stage that has joins (typically the last stage with joins)
+  // Use the specific join information from sidebarData if available
   const stageIndex = useMemo(() => {
+    if (
+      columnPickerSidebarData?.type === "join-step" &&
+      columnPickerSidebarData.stageIndex !== undefined
+    ) {
+      return columnPickerSidebarData.stageIndex;
+    }
+
+    // Fallback: find the stage that has joins (typically the last stage with joins)
     for (let i = Lib.stageCount(currentQuery) - 1; i >= 0; i--) {
       const joins = Lib.joins(currentQuery, i);
       if (joins.length > 0) {
@@ -30,11 +40,22 @@ function JoinStepColumnPickerSidebar({
     }
     // Fallback to last stage if no joins found
     return Lib.stageCount(currentQuery) - 1;
-  }, [currentQuery]);
+  }, [currentQuery, columnPickerSidebarData]);
 
-  // Get the joins from the current query and use the last one (most recently added)
-  const currentJoins = Lib.joins(currentQuery, stageIndex);
-  const currentJoin = currentJoins[currentJoins.length - 1];
+  // Get the specific join from sidebarData or fallback to the last one
+  const currentJoin = useMemo(() => {
+    const joins = Lib.joins(currentQuery, stageIndex);
+
+    if (
+      columnPickerSidebarData?.type === "join-step" &&
+      columnPickerSidebarData.joinIndex !== undefined
+    ) {
+      return joins[columnPickerSidebarData.joinIndex] || null;
+    }
+
+    // Fallback: use the last join (most recently added)
+    return joins[joins.length - 1] || null;
+  }, [currentQuery, stageIndex, columnPickerSidebarData]);
 
   if (!currentJoin) {
     return null; // No joins found, sidebar should close

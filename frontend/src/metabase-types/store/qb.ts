@@ -27,10 +27,8 @@ export type ColumnPickerSidebarData = {
   type: ColumnPickerSidebarType;
   title?: string;
   isDraggable?: boolean;
-  // All data will be derived from the current question state and UI context
-  // For join-step: we'll need to find another way to identify the active join
-  // For custom-columns: we'll derive everything from question.settings()
-  // For data-step: we'll derive everything from question.query()
+  joinIndex?: number;
+  stageIndex?: number;
 } | null;
 
 export type ForeignKeyReference = {
