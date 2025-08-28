@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import { useGetPermissionsGraphQuery } from "metabase/api";
+import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 import { useSetting } from "metabase/common/hooks";
 
 import type { EmbeddingHubStepId } from "../types";
@@ -13,6 +14,8 @@ export const useCompletedEmbeddingHubSteps = (): Record<
   EmbeddingHubStepId,
   boolean
 > => {
+  const { data: embeddingHubChecklist } = useGetEmbeddingHubChecklistQuery();
+
   const isJwtEnabled = useSetting("jwt-enabled");
   const isSamlEnabled = useSetting("saml-enabled");
   const isJwtConfigured = useSetting("jwt-configured");
@@ -40,13 +43,14 @@ export const useCompletedEmbeddingHubSteps = (): Record<
     return {
       "create-test-embed": isTestEmbedCreated ?? false,
       "add-data": false,
-      "create-dashboard": false,
+      "create-dashboard": embeddingHubChecklist?.["create-dashboard"] ?? false,
       "configure-row-column-security": hasConfiguredSandboxes,
       "secure-embeds": isSsoReady,
       "embed-production": isProductionEmbedCreated ?? false,
     };
   }, [
     isTestEmbedCreated,
+    embeddingHubChecklist,
     hasConfiguredSandboxes,
     isSsoReady,
     isProductionEmbedCreated,
