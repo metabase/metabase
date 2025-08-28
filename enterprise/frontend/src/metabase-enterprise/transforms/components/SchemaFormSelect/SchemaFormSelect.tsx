@@ -16,7 +16,7 @@ export function SchemaFormSelect(props: FormSelectProps & { data: string[] }) {
     ...(searchValue !== "" ? [searchValue] : []),
   ]);
 
-  const isNewValue = !data.includes(value);
+  const isNewValue = value !== "" && !data.includes(value);
 
   return (
     <FormField>
