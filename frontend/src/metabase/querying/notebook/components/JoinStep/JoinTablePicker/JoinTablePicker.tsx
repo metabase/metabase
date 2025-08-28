@@ -85,11 +85,20 @@ function JoinTableColumnPickerWrapper({
       const joins = Lib.joins(query, stageIndex);
       const joinIndex = joins.findIndex((j) => j === join);
 
+      const joinable = Lib.joinedThing(query, join);
+      const joinTableName = Lib.displayInfo(
+        query,
+        stageIndex,
+        joinable,
+      ).displayName;
+
       dispatch(
         onOpenColumnPickerSidebar({
           sidebarData: {
             type: "join-step",
-            title: t`Pick columns`,
+            title: joinTableName
+              ? t`Pick columns from ${joinTableName}`
+              : t`Pick columns`,
             stageIndex,
             joinIndex,
           },
