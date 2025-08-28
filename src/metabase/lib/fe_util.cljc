@@ -832,25 +832,25 @@
 
 (defn- query-dependents
   [metadata-providerable query-or-join]
-  (let [base-stage (first (:stages query-or-join))
+  (let [base-stage  (first (:stages query-or-join))
         database-id (or (:database query-or-join) -1)]
     (concat
      (when (pos? database-id)
        [{:type :database, :id database-id}
-        {:type :schema,   :id database-id}])
+        {:type :schema, :id database-id}])
      (when (= (:lib/type base-stage) :mbql.stage/native)
        (concat
         ;; Extract field dependencies from dimension template tags
-       (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
-             :when (and (= tag-type :dimension)
-                        (= dim-tag :field)
-                        (integer? id))]
+        (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
+              :when                                           (and (= tag-type :dimension)
+                                                                   (= dim-tag :field)
+                                                                   (integer? id))]
           {:type :field, :id id})
         ;; Extract snippet dependencies from snippet template tags (with recursion)
         (mapcat
          (fn [{tag-type :type, snippet-id :snippet-id}]
            (when (and (= tag-type :snippet)
-                         (some? snippet-id)
+                      (some? snippet-id)
                       (integer? snippet-id))
              ;; Only try to recurse if we have a real metadata provider
              (if (lib.metadata.protocols/metadata-providerable? metadata-providerable)
@@ -859,7 +859,7 @@
                [{:type :native-query-snippet, :id snippet-id}])))
          (vals (:template-tags base-stage)))))
      (when-let [card-id (:source-card base-stage)]
-       (let [card (lib.metadata/card metadata-providerable card-id)
+       (let [card       (lib.metadata/card metadata-providerable card-id)
              definition (:dataset-query card)]
          (concat [{:type :table, :id (str "card__" card-id)}]
                  (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
@@ -871,8 +871,8 @@
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable
                                             (lib.metadata/fields metadata-providerable table-id))))
-     (for [stage (:stages query-or-join)
-           join (:joins stage)
+     (for [stage     (:stages query-or-join)
+           join      (:joins stage)
            dependent (query-dependents metadata-providerable join)]
        dependent))))
 

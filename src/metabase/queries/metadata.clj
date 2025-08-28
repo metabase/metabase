@@ -58,15 +58,15 @@
   ([all-snippets snippets-to-recurse seen-ids]
    (let [->nested-snippet-ids (fn [snippet]
                                 (when snippet
-                                  (for [tag (vals (:template_tags snippet))
-                                              :when (= "snippet" (:type tag))
-                                              :let [snippet-id (:snippet-id tag)]
-                                              :when (and snippet-id
-                                                         (not (contains? seen-ids snippet-id)))]
-                                          snippet-id)))
-         nested-snippet-ids (mapcat ->nested-snippet-ids snippets-to-recurse)
-         nested-snippets (when (seq nested-snippet-ids)
-                           (t2/select :model/NativeQuerySnippet :id [:in nested-snippet-ids]))]
+                                  (for [tag   (vals (:template_tags snippet))
+                                        :when (= "snippet" (:type tag))
+                                        :let  [snippet-id (:snippet-id tag)]
+                                        :when (and snippet-id
+                                                   (not (contains? seen-ids snippet-id)))]
+                                    snippet-id)))
+         nested-snippet-ids   (mapcat ->nested-snippet-ids snippets-to-recurse)
+         nested-snippets      (when (seq nested-snippet-ids)
+                                (t2/select :model/NativeQuerySnippet :id [:in nested-snippet-ids]))]
      (if-not (seq nested-snippet-ids)
        all-snippets
        (recur (into all-snippets nested-snippets)

@@ -141,10 +141,10 @@
             ;; Create the query that starts the cycle
             entrypoint-query (lib/query
                               metadata-provider-with-snippet
-                               {:database (meta/id)
-                                :type     :native
-                                :native   {:query         "SELECT * FROM {{#1}}"
-                                           :template-tags (card-template-tags [1])}})]
+                              {:database (meta/id)
+                               :type     :native
+                               :native   {:query         "SELECT * FROM {{#1}}"
+                                          :template-tags (card-template-tags [1])}})]
 
         (testing "Should throw an exception for circular reference"
           (is (thrown-with-msg?
@@ -194,10 +194,10 @@
             ;; Create the query that starts with Card A
             entrypoint-query (lib/query
                               metadata-provider-with-snippets
-                               {:database (meta/id)
-                                :type     :native
-                                :native   {:query         "SELECT * FROM {{#1}}"
-                                           :template-tags (card-template-tags [1])}})]
+                              {:database (meta/id)
+                               :type     :native
+                               :native   {:query         "SELECT * FROM {{#1}}"
+                                          :template-tags (card-template-tags [1])}})]
 
         (testing "Should throw an exception for circular reference"
           (is (thrown-with-msg?
@@ -209,10 +209,10 @@
           ;; Starting from Card B should also detect the cycle
           (let [card-b-query (lib/query
                               metadata-provider-with-snippets
-                               {:database (meta/id)
-                                :type     :native
-                                :native   {:query         "SELECT * FROM {{#2}}"
-                                           :template-tags (card-template-tags [2])}})]
+                              {:database (meta/id)
+                               :type     :native
+                               :native   {:query         "SELECT * FROM {{#2}}"
+                                          :template-tags (card-template-tags [2])}})]
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"circular|cycle"
