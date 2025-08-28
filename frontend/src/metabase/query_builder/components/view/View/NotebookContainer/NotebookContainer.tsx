@@ -22,6 +22,7 @@ import { NotebookNativePreview } from "metabase/querying/notebook/components/Not
 import { Box, Flex, rem } from "metabase/ui";
 
 import { canShowNativePreview } from "../../ViewHeader/utils";
+import { NotebookColumnPickerSidebar } from "../NotebookColumnPickerSidebars/NotebookColumnPickerSidebar";
 
 // There must exist some transition time, no matter how short,
 // because we need to trigger the 'onTransitionEnd' in the component
@@ -51,8 +52,12 @@ export const NotebookContainer = ({
     isOpen && setShouldShowNotebook(isOpen);
   }, [isOpen]);
 
-  const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
-    useSelector(getUiControls);
+  const {
+    isShowingNotebookNativePreview,
+    notebookNativePreviewSidebarWidth,
+    isShowingColumnPickerSidebar,
+    columnPickerSidebarData,
+  } = useSelector(getUiControls);
 
   const renderNativePreview =
     isShowingNotebookNativePreview &&
@@ -196,6 +201,58 @@ export const NotebookContainer = ({
           )}
         </>
       )}
+
+      {isShowingColumnPickerSidebar &&
+        columnPickerSidebarData &&
+        screenSize && (
+          <>
+            {screenSize === "small" && (
+              <Box pos="absolute" inset={0}>
+                <NotebookColumnPickerSidebar
+                  question={question}
+                  sidebarData={columnPickerSidebarData}
+                  onClose={() =>
+                    dispatch(
+                      setUIControls({
+                        isShowingColumnPickerSidebar: false,
+                        columnPickerSidebarData: null,
+                      }),
+                    )
+                  }
+                />
+              </Box>
+            )}
+
+            {screenSize === "large" && (
+              <ResizableBox
+                width={sidebarWidth}
+                minConstraints={[minSidebarWidth, 0]}
+                maxConstraints={[maxSidebarWidth, 0]}
+                axis="x"
+                resizeHandles={["w"]}
+                handle={<Handle />}
+                onResizeStop={handleResizeStop}
+                style={{
+                  borderLeft: "1px solid var(--mb-color-border)",
+                  marginInlineStart: "0.25rem",
+                }}
+              >
+                <NotebookColumnPickerSidebar
+                  question={question}
+                  sidebarData={columnPickerSidebarData}
+                  onClose={() =>
+                    dispatch(
+                      setUIControls({
+                        isShowingColumnPickerSidebar: false,
+                        columnPickerSidebarData: null,
+                      }),
+                    )
+                  }
+                />
+              </ResizableBox>
+            )}
+          </>
+        )}
     </Flex>
   );
 };

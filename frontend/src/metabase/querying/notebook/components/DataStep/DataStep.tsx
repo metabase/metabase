@@ -1,8 +1,9 @@
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, useMemo } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import { ColumnPickerSidebar } from "metabase/query_builder/components/ColumnPickerSidebar/ColumnPickerSidebar";
+import { useDispatch } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -22,6 +23,7 @@ export const DataStep = ({
   dataPickerOptions,
 }: NotebookStepProps) => {
   const { question, stageIndex } = step;
+  const dispatch = useDispatch();
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId
     ? (Lib.tableOrCardMetadata(query, tableId) ?? undefined)
@@ -49,57 +51,17 @@ export const DataStep = ({
       await updateQuery(newQuery);
     }
   };
-  const [isColumnPickerOpen, setIsColumnPickerOpen] = useState(false);
 
-  const columns = useMemo(
-    () => Lib.fieldableColumns(query, stageIndex),
-    [query, stageIndex],
-  );
-
-  const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
-    const nextQuery = isSelected
-      ? Lib.addField(query, stageIndex, column)
-      : Lib.removeField(query, stageIndex, column);
-
-    updateQuery(nextQuery);
-  };
-
-  const handleToggleSome = (
-    columnsToSelectOrDeselect: Lib.ColumnMetadata[],
-    isSelected: boolean,
-  ) => {
-    const selectedColumns = columns.filter((column) => {
-      const displayInfo = Lib.displayInfo(query, stageIndex, column);
-
-      return displayInfo.selected;
-    });
-
-    let nextQuery: Lib.Query;
-    if (isSelected) {
-      const uniqueSelectedColumns = [
-        ...new Set([...selectedColumns, ...columnsToSelectOrDeselect]),
-      ];
-
-      nextQuery = Lib.withFields(query, stageIndex, uniqueSelectedColumns);
-    } else {
-      const columnsWithoutDeselected = selectedColumns.filter(
-        (column) => !columnsToSelectOrDeselect.includes(column),
-      );
-
-      nextQuery = Lib.withFields(query, stageIndex, columnsWithoutDeselected);
-    }
-
-    updateQuery(nextQuery);
-  };
-
-  const handleSelectAll = () => {
-    const nextQuery = Lib.withFields(query, stageIndex, []);
-    updateQuery(nextQuery);
-  };
-
-  const handleSelectNone = () => {
-    const nextQuery = Lib.withFields(query, stageIndex, [columns[0]]);
-    updateQuery(nextQuery);
+  const handleOpenColumnPicker = () => {
+    dispatch(
+      setUIControls({
+        isShowingColumnPickerSidebar: true,
+        columnPickerSidebarData: {
+          type: "data-step",
+          title: t`Pick columns`,
+        },
+      }),
+    );
   };
 
   return (
@@ -120,7 +82,7 @@ export const DataStep = ({
                   }
                   aria-label={t`Pick columns`}
                   data-testid="fields-picker"
-                  onClick={() => setIsColumnPickerOpen(true)}
+                  onClick={handleOpenColumnPicker}
                 >
                   <Icon name="notebook" />
                 </IconButtonWrapper>
@@ -144,22 +106,6 @@ export const DataStep = ({
           />
         </NotebookCellItem>
       </NotebookCell>
-
-      {canSelectTableColumns && isColumnPickerOpen && (
-        <ColumnPickerSidebar
-          isOpen={isColumnPickerOpen}
-          onClose={() => setIsColumnPickerOpen(false)}
-          query={query}
-          stageIndex={stageIndex}
-          columns={columns}
-          title={t`Pick columns`}
-          onToggle={handleToggle}
-          onToggleSome={handleToggleSome}
-          onSelectAll={handleSelectAll}
-          onSelectNone={handleSelectNone}
-          data-testid="data-step-column-picker"
-        />
-      )}
     </>
   );
 };

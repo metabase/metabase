@@ -1,7 +1,9 @@
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import { Icon, Popover, Tooltip } from "metabase/ui";
+import { useDispatch } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
+import { Icon, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../NotebookCell";
@@ -20,6 +22,8 @@ interface JoinTablePickerProps {
   onChange: (table: Lib.Joinable) => void;
   isOpened: boolean;
   setIsOpened: (isOpened: boolean) => void;
+  join?: Lib.Join; // Add join for Redux sidebar
+  onQueryChange?: (query: Lib.Query) => void; // Add query change handler
 }
 
 export function JoinTablePicker({
@@ -32,6 +36,8 @@ export function JoinTablePicker({
   onChange,
   isOpened,
   setIsOpened,
+  join,
+  onQueryChange,
 }: JoinTablePickerProps) {
   const isDisabled = isReadOnly;
 
@@ -44,6 +50,10 @@ export function JoinTablePicker({
       right={
         table != null && !isReadOnly ? (
           <JoinTableColumnPickerWrapper
+            query={query}
+            stageIndex={stageIndex}
+            join={join}
+            onQueryChange={onQueryChange}
             columnPicker={columnPicker}
             isOpened={isOpened}
             setIsOpened={setIsOpened}
@@ -69,43 +79,57 @@ export function JoinTablePicker({
   );
 }
 
-interface JoinTableColumnPickerProps {
+interface JoinTableColumnPickerWrapperProps {
+  query?: Lib.Query;
+  stageIndex?: number;
+  join?: Lib.Join;
+  onQueryChange?: (query: Lib.Query) => void;
   columnPicker: React.ReactNode;
   isOpened: boolean;
   setIsOpened: (isOpened: boolean) => void;
 }
 
 function JoinTableColumnPickerWrapper({
-  columnPicker,
-  isOpened,
-  setIsOpened,
-}: JoinTableColumnPickerProps) {
+  query,
+  stageIndex,
+  join,
+  onQueryChange: _onQueryChange,
+  columnPicker: _columnPicker,
+  isOpened: _isOpened,
+  setIsOpened: _setIsOpened,
+}: JoinTableColumnPickerWrapperProps) {
+  const dispatch = useDispatch();
+
+  const handleOpenSidebar = () => {
+    if (join && query && stageIndex !== undefined) {
+      dispatch(
+        setUIControls({
+          isShowingColumnPickerSidebar: true,
+          columnPickerSidebarData: {
+            type: "join-step",
+            title: t`Pick columns`,
+          },
+        }),
+      );
+    }
+  };
+
   return (
-    <Popover
-      opened={isOpened}
-      onChange={setIsOpened}
-      withOverlay={false}
-      closeOnClickOutside={false}
-    >
-      <Popover.Target>
-        <Tooltip label={t`Pick columns`}>
-          <IconButtonWrapper
-            className={S.ColumnPickerButton}
-            style={
-              {
-                "--notebook-cell-container-padding": CONTAINER_PADDING,
-              } as React.CSSProperties
-            }
-            onClick={() => setIsOpened(!isOpened)}
-            aria-label={t`Pick columns`}
-            data-testid="fields-picker"
-          >
-            <Icon name="notebook" />
-          </IconButtonWrapper>
-        </Tooltip>
-      </Popover.Target>
-      <Popover.Dropdown>{columnPicker}</Popover.Dropdown>
-    </Popover>
+    <Tooltip label={t`Pick columns`}>
+      <IconButtonWrapper
+        className={S.ColumnPickerButton}
+        style={
+          {
+            "--notebook-cell-container-padding": CONTAINER_PADDING,
+          } as React.CSSProperties
+        }
+        onClick={handleOpenSidebar}
+        aria-label={t`Pick columns`}
+        data-testid="fields-picker"
+      >
+        <Icon name="notebook" />
+      </IconButtonWrapper>
+    </Tooltip>
   );
 }
 

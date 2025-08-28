@@ -8,12 +8,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { HoverParent } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
-import { Sidesheet } from "metabase/common/components/Sidesheet";
+import { color } from "metabase/lib/colors/palette";
 import type { FieldPickerItem } from "metabase/querying/notebook/components/FieldPicker";
 import {
   ActionIcon,
   Box,
+  Button,
   Checkbox,
+  Flex,
   Icon,
   Stack,
   Text,
@@ -30,7 +32,6 @@ interface ColumnPickerSidebarProps {
   query: Lib.Query;
   stageIndex: number;
   title?: string;
-  isOpen: boolean;
   onClose: () => void;
   columns: Lib.ColumnMetadata[];
   onToggle?: (column: Lib.ColumnMetadata, isSelected: boolean) => void;
@@ -47,10 +48,42 @@ interface ColumnPickerSidebarProps {
   visualizationSettings?: VisualizationSettings;
 }
 
+const SidebarWrapper = ({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) => (
+  <Box
+    component="aside"
+    data-testid="native-query-preview-sidebar"
+    w="100%"
+    h="100%"
+    bg="bg-white"
+    display="flex"
+    style={{ flexDirection: "column" }}
+    px="md"
+  >
+    <Flex component="header" justify="space-between" align="center" py="md">
+      <Text c={color("text-dark")} fz="h4" fw="bold">
+        {title}
+      </Text>
+      <Button variant="subtle" size="sm" onClick={onClose}>
+        {t`Done`}
+      </Button>
+    </Flex>
+    <Stack gap="md" mb="lg" style={{ overflow: "hidden" }}>
+      {children}
+    </Stack>
+  </Box>
+);
+
 export function ColumnPickerSidebar({
   query,
   stageIndex,
-  isOpen,
   title,
   columns,
   onClose,
@@ -194,88 +227,80 @@ export function ColumnPickerSidebar({
       : ColumnPickerItem;
 
   return (
-    <Sidesheet
-      title={title ?? t`Pick Columns`}
-      isOpen={isOpen}
-      onClose={onClose}
-      size="sm"
-      withOverlay={false}
-    >
-      <Stack gap="md">
-        <TextInput
-          placeholder={t`Search columns...`}
-          value={searchText}
-          onChange={(event) => setSearchText(event.currentTarget.value)}
-          leftSection={<Icon name="search" />}
-          rightSection={
-            searchText && (
-              <ActionIcon
-                size="xs"
-                variant="subtle"
-                onClick={() => setSearchText("")}
-                aria-label={t`Clear search`}
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            )
-          }
-        />
-
-        <Box className={S.ColumnsList}>
-          <ul className={S.ItemList}>
-            {!isDraggable && (
-              <li className={S.ToggleItem}>
-                <HoverParent as="label" className={S.Label}>
-                  <Checkbox
-                    variant="stacked"
-                    checked={isAll}
-                    indeterminate={!isAll && !isNone}
-                    onChange={handleAllToggle}
-                  />
-                  <div className={S.ItemTitle}>
-                    {searchText ? t`Select these` : t`Select all`}
-                  </div>
-                </HoverParent>
-              </li>
-            )}
-
-            <DndContext
-              onDragEnd={handleDragEnd}
-              collisionDetection={closestCenter}
-              modifiers={[restrictToVerticalAxis]}
+    <SidebarWrapper title={title ?? t`Pick Columns`} onClose={onClose}>
+      <TextInput
+        placeholder={t`Find a column...`}
+        value={searchText}
+        onChange={(event) => setSearchText(event.currentTarget.value)}
+        leftSection={<Icon name="search" />}
+        rightSection={
+          searchText && (
+            <ActionIcon
+              size="xs"
+              variant="subtle"
+              onClick={() => setSearchText("")}
+              aria-label={t`Clear search`}
             >
-              <SortableContext
-                items={filteredItems.map(
-                  (item) => item.columnInfo.longDisplayName,
-                )}
-                strategy={verticalListSortingStrategy}
-              >
-                {filteredItems.map((item) => {
-                  return (
-                    <ItemComponent
-                      key={item.columnInfo.longDisplayName}
-                      item={item}
-                      query={query}
-                      stageIndex={stageIndex}
-                      onToggle={onToggle}
-                      isDraggable={isDraggable}
-                      displayName={getDisplayName(item)}
-                      onDisplayNameChange={handleDisplayNameChange}
-                    />
-                  );
-                })}
-              </SortableContext>
-            </DndContext>
-          </ul>
+              <Icon name="close" />
+            </ActionIcon>
+          )
+        }
+      />
 
-          {filteredItems.length === 0 && searchText && (
-            <Box p="md" ta="center">
-              <Text>{t`No columns found matching "${searchText}"`}</Text>
-            </Box>
+      <Box className={S.ColumnsList}>
+        <ul className={S.ItemList}>
+          {!isDraggable && (
+            <li className={S.ToggleItem}>
+              <HoverParent as="label" className={S.Label}>
+                <Checkbox
+                  variant="stacked"
+                  checked={isAll}
+                  indeterminate={!isAll && !isNone}
+                  onChange={handleAllToggle}
+                />
+                <div className={S.ItemTitle}>
+                  {searchText ? t`Select these` : t`Select all`}
+                </div>
+              </HoverParent>
+            </li>
           )}
-        </Box>
-      </Stack>
-    </Sidesheet>
+
+          <DndContext
+            onDragEnd={handleDragEnd}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+          >
+            <SortableContext
+              items={filteredItems.map(
+                (item) => item.columnInfo.longDisplayName,
+              )}
+              strategy={verticalListSortingStrategy}
+            >
+              {filteredItems.map((item) => {
+                return (
+                  <ItemComponent
+                    key={item.columnInfo.longDisplayName}
+                    item={item}
+                    query={query}
+                    stageIndex={stageIndex}
+                    onToggle={onToggle}
+                    isDraggable={isDraggable}
+                    displayName={getDisplayName(item)}
+                    onDisplayNameChange={handleDisplayNameChange}
+                  />
+                );
+              })}
+            </SortableContext>
+          </DndContext>
+        </ul>
+
+        {filteredItems.length === 0 && searchText && (
+          <Box p="md" ta="center">
+            <Text>{t`No columns found matching "${searchText}"`}</Text>
+          </Box>
+        )}
+      </Box>
+    </SidebarWrapper>
   );
 }
 

@@ -18,6 +18,21 @@ export type InitialChartSettingState = {
   widget?: Widget | null;
 };
 
+export type ColumnPickerSidebarType =
+  | "data-step"
+  | "join-step"
+  | "custom-columns";
+
+export type ColumnPickerSidebarData = {
+  type: ColumnPickerSidebarType;
+  title?: string;
+  isDraggable?: boolean;
+  // All data will be derived from the current question state and UI context
+  // For join-step: we'll need to find another way to identify the active join
+  // For custom-columns: we'll derive everything from question.settings()
+  // For data-step: we'll derive everything from question.query()
+} | null;
+
 export type ForeignKeyReference = {
   status: number;
   value: number;
@@ -46,6 +61,8 @@ export interface QueryBuilderUIControls {
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
+  isShowingColumnPickerSidebar: boolean;
+  columnPickerSidebarData: ColumnPickerSidebarData;
   showSidebarTitle: boolean;
   modal: QueryModalType | null;
   modalContext: TimelineEventId | null;

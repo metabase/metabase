@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { ColumnPickerSidebar } from "metabase/query_builder/components/ColumnPickerSidebar/ColumnPickerSidebar";
+import { useDispatch } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import * as Lib from "metabase-lib";
 
 interface JoinTableColumnPickerProps {
@@ -17,44 +18,34 @@ export function JoinTableColumnPicker({
   stageIndex,
   join,
   onChange,
-  onClose,
+  onClose: _onClose,
 }: JoinTableColumnPickerProps) {
+  const dispatch = useDispatch();
+
   const columns = useMemo(
     () => Lib.joinableColumns(query, stageIndex, join),
     [query, stageIndex, join],
   );
 
-  const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
-    const newQuery = isSelected
-      ? Lib.addField(query, stageIndex, column)
-      : Lib.removeField(query, stageIndex, column);
-    onChange(newQuery);
+  // Open the sidebar using Redux instead of rendering directly
+  const _openSidebar = () => {
+    dispatch(
+      setUIControls({
+        isShowingColumnPickerSidebar: true,
+        columnPickerSidebarData: {
+          type: "join-step",
+          title: t`Pick columns`,
+          query,
+          stageIndex,
+          columns,
+          join,
+          onChange,
+        },
+      }),
+    );
   };
 
-  const handleSelectAll = () => {
-    const newJoin = Lib.withJoinFields(join, "all");
-    const newQuery = Lib.replaceClause(query, stageIndex, join, newJoin);
-    onChange(newQuery);
-  };
-
-  const handleSelectNone = () => {
-    const newJoin = Lib.withJoinFields(join, "none");
-    const newQuery = Lib.replaceClause(query, stageIndex, join, newJoin);
-    onChange(newQuery);
-  };
-
-  return (
-    <ColumnPickerSidebar
-      isOpen
-      onClose={onClose}
-      query={query}
-      stageIndex={stageIndex}
-      columns={columns}
-      title={t`Pick columns`}
-      onToggle={handleToggle}
-      onSelectAll={handleSelectAll}
-      onSelectNone={handleSelectNone}
-      data-testid="join-columns-picker-sidebar"
-    />
-  );
+  // For backward compatibility, we'll expose this function
+  // but the actual rendering will be handled by NotebookContainer
+  return null;
 }

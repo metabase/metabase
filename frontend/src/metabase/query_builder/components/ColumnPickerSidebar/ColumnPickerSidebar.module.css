@@ -14,6 +14,7 @@
   padding: 0;
   margin: 0;
   list-style: none;
+  max-height: fit-content;
 }
 
 .Label {
@@ -31,7 +32,6 @@
 }
 
 .ToggleItem {
-  border-bottom: 1px solid var(--mb-color-border);
   margin-bottom: 0.5em;
 
   .ItemTitle {
@@ -42,9 +42,6 @@
 .ColumnsList {
   max-height: calc(100vh - 200px);
   overflow-y: auto;
-  border: 1px solid var(--mb-color-border);
-  border-radius: 8px;
-  background: var(--mb-color-bg-white);
 }
 
 .SortableItem {

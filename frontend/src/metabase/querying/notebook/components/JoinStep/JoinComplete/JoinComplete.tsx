@@ -124,6 +124,8 @@ export function JoinComplete({
             isReadOnly={isReadOnly}
             isOpened={isOpened}
             setIsOpened={setIsOpened}
+            join={join}
+            onQueryChange={onQueryChange}
             columnPicker={
               <JoinTableColumnPicker
                 onClose={() => setIsOpened(false)}
