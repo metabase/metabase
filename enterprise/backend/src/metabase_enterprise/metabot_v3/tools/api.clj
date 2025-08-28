@@ -12,7 +12,7 @@
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.reactions]
-   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings :refer [+require-metabot-enabled]]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
@@ -916,4 +916,4 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-tools` routes."
-  (api.macros/ns-handler *ns* +tool-session))
+  (api.macros/ns-handler *ns* +tool-session +require-metabot-enabled))

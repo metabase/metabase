@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.settings
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (defsetting ai-service-base-url
   (deferred-tru "URL for the a AI Service")
@@ -32,15 +32,6 @@
   :export?    true
   :audit      :never)
 
-(defsetting metabot-feature-enabled
-  (deferred-tru "Enable or disable the Metabot feature entirely.")
-  :type       :boolean
-  :visibility :admin
-  :default    true
-  :feature    :metabot-v3
-  :doc        false
-  :export?    true)
-
 (defsetting metabot-id
   (deferred-tru "Override Metabot ID for agent streaming requests.")
   :type       :string
@@ -58,3 +49,37 @@
   :encryption :no
   :export?    false
   :doc        false)
+
+(defsetting metabot-feature-enabled
+  (deferred-tru "Enable or disable the Metabot feature entirely.")
+  :type       :boolean
+  :visibility :admin
+  :default    true
+  :feature    :metabot-v3
+  :doc        false
+  :export?    true)
+
+(defn +require-metabot-enabled
+  "Middleware that ensures Metabot feature is enabled before allowing request to proceed."
+  [handler]
+  (fn [request respond raise]
+    (if (metabot-feature-enabled)
+      (handler request respond raise)
+      (respond {:status 403
+                :body   {:message (tru "Metabot is disabled.")}}))))
+
+(defn assert-metabot-enabled!
+  "Throws a 403 error if Metabot feature is disabled. Use this for inline validation."
+  []
+  (when-not (metabot-feature-enabled)
+    (throw (ex-info (tru "Metabot is disabled.")
+                    {:status-code 403}))))
+
+(defn assert-metabot-enabled-for-non-admins!
+  "Throws a 403 error if Metabot feature is disabled AND user is not an admin.
+   Admins can access even when feature is disabled."
+  [is-admin?]
+  (when (and (not (metabot-feature-enabled))
+             (not is-admin?))
+    (throw (ex-info (tru "Metabot is disabled.")
+                    {:status-code 403}))))
