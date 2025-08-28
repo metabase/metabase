@@ -8,12 +8,14 @@
    [metabase-enterprise.semantic-search.core]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
+   [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
-   [metabase.search.core :as search.core]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -169,11 +171,14 @@
      :gate-table-name       (format fmt "gate")
      :index-table-qualifier fmt}))
 
+(defn mock-table-suffix [] 123)
+
 (def mock-index
   "A mock index for testing low level indexing functions.
   Coincides with what the index-metadata system would create for the mock-embedding-model."
-  (-> (semantic.index/default-index mock-embedding-model)
-      (semantic.index-metadata/qualify-index mock-index-metadata)))
+  (with-redefs [semantic.index/model-table-suffix mock-table-suffix]
+    (-> (semantic.index/default-index mock-embedding-model)
+        (semantic.index-metadata/qualify-index mock-index-metadata))))
 
 (defmethod semantic.embedding/get-embedding        "mock" [_ text] (get-mock-embedding text))
 (defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts] (get-mock-embeddings-batch texts))
@@ -182,8 +187,8 @@
 (defn query-index [search-context]
   (:results (semantic.index/query-index db mock-index search-context)))
 
-(defn upsert-index! [documents & opts]
-  (apply semantic.index/upsert-index! db mock-index documents opts))
+(defn upsert-index! [documents & {:keys [index] :or {index mock-index} :as opts}]
+  (semantic.index/upsert-index! db index documents opts))
 
 (defn delete-from-index! [model ids]
   (semantic.index/delete-from-index! db mock-index model ids))
@@ -222,20 +227,20 @@
   [results]
   (filter #(contains? mock-embeddings (:name %)) results))
 
-(defn closeable [o close-fn]
+(defn closeable ^Closeable [o close-fn]
   (reify
     IDeref
     (deref [_] o)
     Closeable
     (close [_] (close-fn o))))
 
-(defn open-temp-index! ^Closeable []
+(defn open-temp-index! ^Closeable [& {:keys [index] :or {index mock-index}}]
   (closeable
-   (do (semantic.index/create-index-table-if-not-exists! db mock-index {:force-reset? true})
-       mock-index)
-   (fn cleanup-temp-index-table! [{:keys [table-name]}]
+   (do (semantic.index/create-index-table-if-not-exists! db index {:force-reset? true})
+       index)
+   (fn cleanup-temp-index-table! [{:keys [table-name] :as index}]
      (try
-       (semantic.index/drop-index-table! db mock-index)
+       (semantic.index/drop-index-table! db index)
        (catch Exception e
          (log/error e "Warning: failed to clean up test table" table-name))))))
 
@@ -307,7 +312,7 @@
                         :indexer_last_seen Instant/EPOCH}
         indexing-state (semantic.indexer/init-indexing-state metadata-row)
         step (fn [] (semantic.indexer/indexing-step db mock-index-metadata mock-index indexing-state))]
-    (while (do (step) (pos? (:last-indexed-count @indexing-state))))))
+    (while (do (step) (pos? (:last-novel-count @indexing-state))))))
 
 (defmacro blocking-index!
   "Execute body ensuring [[index-all!]] is invoked at the end"
@@ -321,11 +326,12 @@
   [& body]
   `(with-indexable-documents!
      (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
-                   semantic.index-metadata/default-index-metadata mock-index-metadata]
+                   semantic.index-metadata/default-index-metadata mock-index-metadata
+                   semantic.index/model-table-suffix              mock-table-suffix]
        (with-open [_# (open-temp-index-and-metadata!)]
          (binding [search.ingestion/*force-sync* true]
            (blocking-index!
-            (search.core/reindex! :search.engine/semantic {:force-reset true}))
+            (search.engine/reindex! :search.engine/semantic {:force-reset true}))
            ~@body)))))
 
 (defn table-exists-in-db?
@@ -333,10 +339,7 @@
   [table-name]
   (when table-name
     (try
-      (let [result (jdbc/execute! db
-                                  ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = ?)"
-                                   (name table-name)])]
-        (-> result first vals first))
+      (semantic.util/table-exists? db (name table-name))
       (catch Exception _ false))))
 
 (defn table-has-index?
@@ -367,10 +370,11 @@
 (defn cleanup-index-metadata!
   "A-la-carte drop everything related to the index-metdata root (including index tables themselves)"
   [pgvector index-metadata]
-  (doseq [{:keys [table_name]}
+  (doseq [{index-id :id, :keys [table_name]}
           (when (table-exists-in-db? (:metadata-table-name index-metadata))
             (get-metadata-rows pgvector index-metadata))]
-    (semantic.index/drop-index-table! pgvector {:table-name table_name}))
+    (semantic.index/drop-index-table! pgvector {:table-name table_name})
+    (semantic.dlq/drop-dlq-table-if-exists! pgvector index-metadata index-id))
   (semantic.index-metadata/drop-tables-if-exists! pgvector index-metadata)
   (semantic.db.migration/drop-migration-table! pgvector))
 
@@ -378,6 +382,20 @@
   (->> ["select table_name from information_schema.tables"]
        (jdbc/execute! pgvector)
        (mapv :tables/table_name)))
+
+(defn open-metadata!
+  "Create metadata tables and return a closeable that will clean them up when closed."
+  ^Closeable [pgvector index-metadata]
+  (closeable
+   (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
+   (fn [_] (cleanup-index-metadata! pgvector index-metadata))))
+
+(defn open-index!
+  "Create an index table and return a closeable that will drop it when closed."
+  ^Closeable [pgvector index]
+  (closeable
+   (semantic.index/create-index-table-if-not-exists! pgvector index)
+   (fn [_] (semantic.index/drop-index-table! pgvector index))))
 
 (defn- decode-column
   [row column]
@@ -398,6 +416,17 @@
   (-> row
       (unwrap-column :text_search_vector)
       (unwrap-column :text_search_with_native_query_vector)))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn index-count
+  "Count the number of documents in the index."
+  [index]
+  (let [result (jdbc/execute-one! db
+                                  (-> (sql.helpers/select [:%count.* :count])
+                                      (sql.helpers/from (keyword (:table-name index)))
+                                      semantic.index/sql-format-quoted)
+                                  {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (or (:count result) 0)))
 
 #_:clj-kondo/ignore
 (defn full-index

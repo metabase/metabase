@@ -182,6 +182,7 @@
                        (name-for-logging :model/Table field-table-id)
                        (name-for-logging :model/Field field-id)
                        clause)
+           #_{:clj-kondo/ignore [:deprecated-var]}
            (update query :filter mbql.u/combine-filter-clauses clause))
          (do
            (log/tracef "Not adding filter clause for %s %s because we did not join against its Table"

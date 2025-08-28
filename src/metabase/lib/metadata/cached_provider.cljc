@@ -6,7 +6,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -34,7 +35,7 @@
                      [:metadata/metric        ::lib.schema.metadata/metric]
                      [:metadata/segment       ::lib.schema.metadata/segment]]]
   (let [metadata (-> metadata
-                     (update-keys u/->kebab-case-en)
+                     (perf/update-keys u/->kebab-case-en)
                      (assoc :lib/type metadata-type))]
     (store-in-cache! cache [metadata-type id] metadata))
   true)

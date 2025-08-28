@@ -30,3 +30,19 @@
   :doc        false
   :export?    true
   :audit      :never)
+
+(defsetting metabot-id
+  (deferred-tru "Override Metabot ID for agent streaming requests.")
+  :type       :string
+  :visibility :internal
+  :feature    :metabot-v3
+  :encryption :no
+  :export?    false)
+
+(defsetting ai-service-profile-id
+  (deferred-tru "Override Metabot profile ID for agent streaming requests.")
+  :type       :string
+  :visibility :internal
+  :feature    :metabot-v3
+  :encryption :no
+  :export?    false)

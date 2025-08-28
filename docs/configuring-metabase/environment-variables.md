@@ -1934,6 +1934,15 @@ Fetch size for result sets. We want to ensure that the jdbc ResultSet objects ar
 
 Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).
 
+### `MB_STALE_INDEX_RETENTION_HOURS`
+
+- Type: integer
+- Default: `24`
+
+Number of hours to retain stale semantic search indexes before cleanup.
+
+Number of hours to retain stale semantic search indexes before cleanup.
+
 ### `MB_START_OF_WEEK`
 
 - Type: keyword
@@ -1977,6 +1986,13 @@ Maximum number of leaf fields synced per collection of document database. Curren
 - [Configuration file name](./config-file.md): `synchronous-batch-updates`
 
 Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.
+
+### `MB_TOMBSTONE_RETENTION_HOURS`
+
+- Type: integer
+- Default: `24`
+
+Number of hours to retain tombstone records in the gate table before cleanup.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 

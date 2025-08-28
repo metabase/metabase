@@ -1,5 +1,8 @@
 (ns metabase.query-processor.middleware.permissions-test
   "Tests for the middleware that checks whether the current user has permissions to run a given query."
+  {:clj-kondo/config '{:linters
+                       ;; allowing `with-temp` here for now since perms is mostly still app-DB based.
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]

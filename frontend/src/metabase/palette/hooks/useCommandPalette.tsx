@@ -72,6 +72,7 @@ export const useCommandPalette = ({
     currentData: searchResults,
     isFetching: isSearchLoading,
     error: searchError,
+    requestId: searchRequestId,
   } = useSearchQuery(
     {
       q: debouncedSearchText,
@@ -174,7 +175,15 @@ export const useCommandPalette = ({
             keywords: debouncedSearchText,
             icon: "link" as IconName,
             perform: () => {
-              trackSearchClick("view_more", 0, "command-palette");
+              trackSearchClick({
+                itemType: "view_more",
+                position: 0,
+                context: "command-palette",
+                searchEngine: searchResults?.engine || "unknown",
+                requestId: searchRequestId,
+                entityModel: null,
+                searchTerm: debouncedSearchText,
+              });
             },
             priority: Priority.HIGH,
             extra: {
@@ -194,7 +203,15 @@ export const useCommandPalette = ({
               keywords: debouncedSearchText,
               priority: Priority.NORMAL - index,
               perform: () => {
-                trackSearchClick("item", index, "command-palette");
+                trackSearchClick({
+                  itemType: "item",
+                  position: index,
+                  context: "command-palette",
+                  searchEngine: searchResults?.engine || "unknown",
+                  requestId: searchRequestId,
+                  entityModel: result.model,
+                  searchTerm: debouncedSearchText,
+                });
               },
               extra: {
                 moderatedStatus: result.moderated_status,
@@ -227,6 +244,7 @@ export const useCommandPalette = ({
     searchResults,
     locationQuery,
     isSearchTypeaheadEnabled,
+    searchRequestId,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);

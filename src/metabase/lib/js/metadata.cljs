@@ -185,7 +185,7 @@
 
 (defmethod excluded-keys :table
   [_object-type]
-  #{:database :fields :segments :metrics :dimension-options})
+  #{:database :fields :segments :metrics})
 
 (defmethod parse-field-fn :table
   [_object-type]
@@ -214,8 +214,6 @@
   [_object-type]
   #{:_comesFromEndpoint
     :database
-    :default-dimension-option
-    :dimension-options
     :metrics
     :table})
 
@@ -356,7 +354,6 @@
   [_object-type]
   #{:database
     :db
-    :dimension-options
     :fks
     :metadata
     :metrics

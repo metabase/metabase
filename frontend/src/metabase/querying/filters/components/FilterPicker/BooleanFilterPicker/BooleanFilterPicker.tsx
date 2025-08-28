@@ -17,6 +17,7 @@ export function BooleanFilterPicker({
   column,
   filter,
   isNew,
+  readOnly,
   withAddButton,
   withSubmitButton,
   onBack,
@@ -58,6 +59,7 @@ export function BooleanFilterPicker({
         <FilterPickerHeader
           columnName={columnInfo.longDisplayName}
           onBack={onBack}
+          readOnly={readOnly}
         />
       )}
       <BooleanPicker value={value} withEmptyOptions onChange={setValue} />

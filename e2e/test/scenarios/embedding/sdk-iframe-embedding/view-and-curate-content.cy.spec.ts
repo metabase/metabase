@@ -220,10 +220,8 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .click();
 
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByRole("dialog").within(() => {
-          cy.findByPlaceholderText("What is the name of your dashboard?").type(
-            "Foo Bar Dashboard",
-          );
+        H.modal().within(() => {
+          cy.findByText("New dashboard").should("be.visible");
 
           cy.log("open the collection picker");
           cy.findByText("Our analytics").click();
@@ -232,8 +230,9 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         cy.findByText("Collections").click();
         cy.findByText("New collection").click();
 
-        cy.findAllByRole("dialog")
-          .eq(2)
+        H.modal()
+          .contains("header", "Create a new collection", { timeout: 10_000 })
+          .parent()
           .within(() => {
             cy.findByPlaceholderText("My new collection").type(
               "Foo Collection",
@@ -243,8 +242,13 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
         cy.findByText("Select").click();
 
-        cy.log("create new dashboard");
-        cy.findByRole("dialog").within(() => {
+        H.modal().within(() => {
+          cy.findByPlaceholderText("What is the name of your dashboard?").type(
+            "Foo Bar Dashboard",
+            { delay: 0 },
+          );
+
+          cy.log("create new dashboard");
           cy.findByText("Create").click();
         });
       });
@@ -263,13 +267,13 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       cy.log("breadcrumbs show the new dashboard");
       H.getSimpleEmbedIframeContent()
         .findByTestId("sdk-breadcrumbs")
-        .findByText("Foo Bar Dashboard")
+        .findByText("Foo Bar Dashboard", { timeout: 10_000 })
         .should("be.visible");
 
       cy.log("dashboard title is visible in header");
       H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-header")
-        .findByText("Foo Bar Dashboard")
+        .findByText("Foo Bar Dashboard", { timeout: 10_000 })
         .should("be.visible");
     });
 
@@ -315,7 +319,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
       cy.log("should show initial breadcrumb");
       H.getSimpleEmbedIframeContent()
-        .findByText("Our analytics")
+        .findByText("Our analytics", { timeout: 10_000 })
         .should("be.visible");
 
       H.getSimpleEmbedIframeContent().findAllByText("Orders").first().click();

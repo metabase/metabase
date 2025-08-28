@@ -56,52 +56,56 @@ describe("issue 29943", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("selects the right column when clicking a column header (metabase#29943)", () => {
-    H.createQuestion(
-      {
-        type: "model",
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            Custom: ["+", 1, 1],
+  it(
+    "selects the right column when clicking a column header (metabase#29943)",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": ORDERS_ID,
+            expressions: {
+              Custom: ["+", 1, 1],
+            },
+            fields: [
+              ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+              ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
+              ["expression", "Custom", { "base-type": "type/Integer" }],
+            ],
+            limit: 5, // optimization
           },
-          fields: [
-            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-            ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
-            ["expression", "Custom", { "base-type": "type/Integer" }],
-          ],
-          limit: 5, // optimization
         },
-      },
-      { visitQuestion: true },
-    );
+        { visitQuestion: true },
+      );
 
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
+      H.openQuestionActions();
+      H.popover().findByText("Edit metadata").click();
+      H.waitForLoaderToBeRemoved();
 
-    reorderTotalAndCustomColumns();
-    cy.button("Save changes").click();
-    cy.wait("@dataset");
+      reorderTotalAndCustomColumns();
+      cy.button("Save changes").click();
+      cy.wait("@dataset");
 
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
+      H.openQuestionActions();
+      H.popover().findByText("Edit metadata").click();
+      H.waitForLoaderToBeRemoved();
 
-    assertColumnSelected(0, "ID");
+      assertColumnSelected(0, "ID");
 
-    getHeaderCell(1, "Custom");
-    H.tableHeaderClick("Custom");
-    assertColumnSelected(1, "Custom");
+      getHeaderCell(1, "Custom");
+      H.tableHeaderClick("Custom");
+      assertColumnSelected(1, "Custom");
 
-    getHeaderCell(2, "Total");
-    H.tableHeaderClick("Total");
-    assertColumnSelected(2, "Total");
+      getHeaderCell(2, "Total");
+      H.tableHeaderClick("Total");
+      assertColumnSelected(2, "Total");
 
-    getHeaderCell(0, "ID");
-    H.tableHeaderClick("ID");
-    assertColumnSelected(0, "ID");
-  });
+      getHeaderCell(0, "ID");
+      H.tableHeaderClick("ID");
+      assertColumnSelected(0, "ID");
+    },
+  );
 });
 
 describe("issue 35711", () => {
@@ -857,9 +861,9 @@ describe("issue 33844", () => {
     H.tableInteractive().findByText("ID").should("not.exist");
     H.openObjectDetail(0);
     H.modal().within(() => {
-      cy.findByText("Order").should("be.visible");
-      cy.findByText("ID").should("be.visible");
-      cy.findByTestId("object-detail-close-button").click();
+      cy.findByText("Quantity").should("be.visible");
+      cy.findByRole("heading", { name: "1" }).should("be.visible");
+      cy.findByLabelText("Close").click();
     });
 
     cy.log("make the column visible in table views");
@@ -1981,6 +1985,75 @@ describe("Issue 56913", () => {
     H.popover().findByText("Turn into a model").click();
     H.modal()
       .findByText("Variables in models aren't supported yet")
+      .should("be.visible");
+  });
+});
+
+describe.skip("issue 45919", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow to query a model with a hidden column", () => {
+    cy.log("create a new model with result_metadata");
+    cy.visit("/model/new");
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+    H.entityPickerModal().findByText("People").click();
+    H.runButtonOverlay().click();
+    H.tableInteractive().should("be.visible");
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.tableInteractiveHeader().findByText("Password").should("be.visible");
+
+    cy.log("hide the Password field");
+    cy.request("PUT", `/api/field/${PEOPLE.PASSWORD}`, {
+      visibility_type: "sensitive",
+    });
+
+    cy.log("the query should succeed, and the Password field should be hidden");
+    H.queryBuilderHeader().button("Refresh").click();
+    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().findByText("Password").should("not.exist");
+    H.tableInteractiveHeader().findByText("Email").should("be.visible");
+  });
+});
+
+describe("issue 50915", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should use the model for the data source for drills after the model is created (metabase#50915)", () => {
+    cy.log("create a model via the UI");
+    cy.visit("/model/new");
+    H.main().findByText("Use the notebook editor").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("People").click();
+    });
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
+    H.queryBuilderHeader().should("be.visible");
+
+    cy.log("immediately after saving, drill-thru");
+    H.tableHeaderClick("Discount ($)");
+    H.popover().findByText("Distinct values").click();
+    H.assertTableData({ columns: ["Distinct values of Discount"] });
+
+    cy.log("assert that the model is used for the data source");
+    H.openNotebook();
+    H.getNotebookStep("data")
+      .findByText("Orders + People")
       .should("be.visible");
   });
 });

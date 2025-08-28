@@ -303,6 +303,7 @@
            models
            premium-features
            settings
+           store-api
            task
            util}}
 
@@ -589,6 +590,8 @@
            metabase.lib.field
            metabase.lib.field.resolution
            metabase.lib.filter
+           metabase.lib.filter.desugar
+           metabase.lib.filter.desugar.jvm
            metabase.lib.init
            metabase.lib.join.util
            metabase.lib.metadata
@@ -604,6 +607,7 @@
            metabase.lib.schema.actions
            metabase.lib.schema.binning
            metabase.lib.schema.common
+           metabase.lib.schema.constraints
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
            metabase.lib.schema.expression.window
@@ -614,9 +618,11 @@
            metabase.lib.schema.mbql-clause
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
+           metabase.lib.schema.middleware-options
            metabase.lib.schema.order-by
            metabase.lib.schema.parameter
            metabase.lib.schema.ref
+           metabase.lib.schema.settings
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.util
@@ -783,6 +789,7 @@
            collections
            config
            events
+           lib
            models
            premium-features
            request
@@ -1185,6 +1192,14 @@
    :api  #{metabase.startup.core}
    :uses #{util}}
 
+  store-api
+  {:team "Cloud"
+   :api  #{metabase.store-api.core
+           metabase.store-api.init}
+   :uses #{config
+           settings
+           util}}
+
   sync
   {:team "Querying"
    :api  #{metabase.sync.api
@@ -1493,6 +1508,7 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
+           legacy-mbql
            lib
            permissions
            premium-features
@@ -1585,6 +1601,14 @@
            query-processor
            task
            util}}
+
+  enterprise/cloud-add-ons
+  {:team "Cloud"
+   :api  #{metabase-enterprise.cloud-add-ons.api}
+   :uses #{api
+           premium-features
+           util
+           enterprise/harbormaster}}
 
   enterprise/content-translation
   {:team "UX West"
@@ -1698,7 +1722,7 @@
   {:team "Cloud"
    :api  #{metabase-enterprise.harbormaster.client}
    :uses #{api
-           cloud-migration
+           store-api
            util}}
 
   enterprise/impersonation
@@ -1832,8 +1856,10 @@
    :api  #{metabase-enterprise.semantic-search.api
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.init}
-   :uses #{analytics
+   :uses #{activity-feed
+           analytics
            api
+           app-db
            config
            connection-pool
            models

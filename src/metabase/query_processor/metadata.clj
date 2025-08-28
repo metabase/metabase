@@ -19,7 +19,8 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]))
 
 (mu/defn- metadata-from-preprocessing :- [:maybe [:sequential :map]]
   "For MBQL queries or native queries with result metadata attached to them already we can infer the columns just by
@@ -94,7 +95,7 @@
             (infer-semantic-type-by-name [col]
               (let [legacy-col    (cond-> col
                                     (= legacy-or-mlv2 ::mlv2)
-                                    (update-keys u/->snake_case_en))
+                                    (perf/update-keys u/->snake_case_en))
                     semantic-type (analyze/infer-semantic-type-by-name legacy-col)]
                 (merge col
                        (when semantic-type
