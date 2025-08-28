@@ -1,0 +1,21 @@
+.paragraph {
+  position: relative;
+
+  &:hover {
+    .commentsMenu {
+      opacity: 1;
+    }
+  }
+}
+
+.commentsMenu {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  opacity: 0;
+
+  &:hover,
+  &:focus-within {
+    opacity: 1;
+  }
+}

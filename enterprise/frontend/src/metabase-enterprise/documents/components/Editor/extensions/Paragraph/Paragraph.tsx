@@ -1,12 +1,21 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import { Node, type NodeViewProps, mergeAttributes } from "@tiptap/core";
+import {
+  NodeViewContent,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
+import { t } from "ttag";
 
 import { uuid } from "metabase/lib/uuid";
+import { Box, Button, Icon } from "metabase/ui";
 
 import {
   ID_ATTRIBUTE_NAME,
   createIdAttribute,
   createProseMirrorPlugin,
 } from "../NodeIds";
+
+import S from "./Paragraph.module.css";
 
 export interface ParagraphOptions {
   /**
@@ -66,6 +75,10 @@ export const Paragraph = Node.create<ParagraphOptions>({
     ];
   },
 
+  addNodeView() {
+    return ReactNodeViewRenderer(ParagraphNodeView);
+  },
+
   addProseMirrorPlugins() {
     return [createProseMirrorPlugin("paragraph")];
   },
@@ -86,3 +99,25 @@ export const Paragraph = Node.create<ParagraphOptions>({
     };
   },
 });
+
+export const ParagraphNodeView = ({ node }: NodeViewProps) => {
+  const { _id } = node.attrs;
+  // const { entity, isLoading, error } = useEntityData(entityId, model);
+  const comments = [];
+
+  return (
+    <NodeViewWrapper as="p" className={S.paragraph}>
+      <NodeViewContent />
+
+      <Box className={S.commentsMenu} pl="xl">
+        <Button leftSection={<Icon name="message" />} px="sm" size="xs">
+          {comments.length === 0
+            ? t`Add comment`
+            : comments.length === 1
+              ? t`See 1 comment`
+              : t`See ${comments.length} comments`}
+        </Button>
+      </Box>
+    </NodeViewWrapper>
+  );
+};
