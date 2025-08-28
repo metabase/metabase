@@ -2945,3 +2945,120 @@
             (is (t2/exists? :model/Collection :id (u/the-id parent-collection) :archived true))
             (is (t2/exists? :model/Collection :id (u/the-id child-collection) :archived true))
             (is (t2/exists? :model/Collection :id (u/the-id grandchild-collection) :archived true))))))))
+
+(deftest collections-can-be-deleted
+  (mt/with-temp [:model/Collection {coll-a-id :id :as coll-a} {}
+                 :model/Dashboard {dash-a-id :id} {:collection_id coll-a-id}
+                 :model/Collection {coll-b-id :id :as coll-b} {:location (collection/children-location coll-a)}
+                 :model/Dashboard {dash-b-id :id} {:collection_id coll-b-id}
+                 :model/Collection {coll-c-id :id :as coll-c} {:location (collection/children-location coll-b)}
+                 :model/Dashboard {dash-c-id :id} {:collection_id coll-c-id}
+                 :model/Collection {coll-d-id :id :as _coll-d} {:location (collection/children-location coll-c)}]
+    ;; archive collection C first, then collection A
+    (mt/user-http-request :rasta :put 200 (str "/collection/" coll-c-id) {:archived true})
+    (mt/user-http-request :rasta :put 200 (str "/collection/" coll-a-id) {:archived true})
+
+    ;; now we have:
+    ;; - collection A > B > C
+    ;; - but collections A and C appear in the Trash (because they were archived separately)
+    (mt/user-http-request :crowberto :delete 200 (str "/collection/" coll-a-id))
+    (testing "B was deleted along with A, because it only appeared in the trash under A"
+      (is (not (t2/exists? :model/Collection :id coll-b-id))))
+    (testing "C was NOT deleted"
+      (is (t2/exists? :model/Collection :id coll-c-id)))
+    (testing "C was moved to the root collection (a's parent)"
+      (is (= "/" (:location (t2/select-one :model/Collection coll-c-id)))))
+    (testing "C is still archived"
+      (is (:archived (t2/select-one :model/Collection coll-c-id))))
+    (testing "Dashboards in A and B were deleted"
+      (is (not (t2/exists? :model/Dashboard dash-a-id)))
+      (is (not (t2/exists? :model/Dashboard dash-b-id))))
+    (testing "Dashboard in C was not deleted"
+      (is (t2/exists? :model/Dashboard dash-c-id)))
+    (testing "Collection D still exists in C"
+      (is (t2/exists? :model/Collection coll-d-id))
+      (is (= (str "/" coll-c-id "/")
+             (t2/select-one-fn :location :model/Collection coll-d-id))))))
+
+(deftest collection-delete-middle-hoists-survivor
+  (mt/with-temp [:model/Collection {a-id :id :as a} {}
+                 :model/Collection {b-id :id :as b} {:location (collection/children-location a)}
+                 :model/Collection {c-id :id :as _c} {:location (collection/children-location b)}]
+    ;; archive c (op1), then archive b (op2), then hard-delete b
+    (mt/user-http-request :rasta :put 200 (str "/collection/" c-id) {:archived true})
+    (mt/user-http-request :rasta :put 200 (str "/collection/" b-id) {:archived true})
+    (mt/user-http-request :crowberto :delete 200 (str "/collection/" b-id))
+    (testing "b is gone"
+      (is (not (t2/exists? :model/Collection :id b-id))))
+    (testing "c survives + is still archived"
+      (is (t2/exists? :model/Collection :id c-id))
+      (is (:archived (t2/select-one :model/Collection c-id))))
+    (testing "c hoisted under a"
+      (is (= (str "/" a-id "/")
+             (:location (t2/select-one :model/Collection c-id)))))))
+
+(deftest collection-deep-prune-multiple-ancestors
+  (mt/with-temp [:model/Collection {a-id :id :as a} {}
+                 :model/Collection {b-id :id :as b} {:location (collection/children-location a)}
+                 :model/Collection {c-id :id :as c} {:location (collection/children-location b)}
+                 :model/Collection {d-id :id :as _d} {:location (collection/children-location c)}]
+    (mt/user-http-request :rasta :put 200 (str "/collection/" c-id) {:archived true})
+    (mt/user-http-request :rasta :put 200 (str "/collection/" a-id) {:archived true})
+    (mt/user-http-request :crowberto :delete 200 (str "/collection/" a-id))
+    (testing "a and b nuked"
+      (is (not (t2/exists? :model/Collection :id a-id)))
+      (is (not (t2/exists? :model/Collection :id b-id))))
+    (testing "c at root"
+      (is (= "/" (:location (t2/select-one :model/Collection c-id)))))
+    (testing "d still under c"
+      (is (= (str "/" c-id "/") (:location (t2/select-one :model/Collection d-id)))))))
+
+(deftest collection-multiple-survivor-subtrees-hoist
+  (mt/with-temp
+    [:model/Collection {a-id :id :as a} {}
+     :model/Collection {b1-id :id :as b1} {:location (collection/children-location a)}
+     :model/Collection {b2-id :id :as b2} {:location (collection/children-location a)}
+     :model/Collection {c1-id :id} {:location (collection/children-location b1)}
+     :model/Collection {c2-id :id} {:location (collection/children-location b2)}]
+    (mt/user-http-request :rasta :put 200 (str "/collection/" c1-id) {:archived true})
+    (mt/user-http-request :rasta :put 200 (str "/collection/" c2-id) {:archived true})
+    (mt/user-http-request :rasta :put 200 (str "/collection/" a-id) {:archived true})
+    (mt/user-http-request :crowberto :delete 200 (str "/collection/" a-id))
+    (testing "b branches deleted"
+      (is (not (t2/exists? :model/Collection :id b1-id)))
+      (is (not (t2/exists? :model/Collection :id b2-id))))
+    (testing "c leaves survive, both at root and still archived"
+      (doseq [cid [c1-id c2-id]]
+        (is (t2/exists? :model/Collection :id cid))
+        (is (= "/" (:location (t2/select-one :model/Collection cid))))
+        (is (:archived (t2/select-one :model/Collection cid)))))))
+
+(deftest collection-deletion-path-normalization-and-dashboard-cascade
+  (mt/with-temp
+    [:model/Collection {a-id :id :as a} {}
+     :model/Dashboard {da-id :id} {:collection_id a-id}
+     :model/Collection {b-id :id :as b} {:location (collection/children-location a)}
+     :model/Dashboard {db-id :id} {:collection_id b-id}
+     :model/Collection {c-id :id} {:location (collection/children-location b)}
+     :model/Dashboard {dc-id :id} {:collection_id c-id}]
+    ;; archive c separately so it should survive; archive a; delete a
+    (mt/user-http-request :rasta :put 200 (str "/collection/" c-id) {:archived true})
+    (mt/user-http-request :rasta :put 200 (str "/collection/" a-id) {:archived true})
+    (mt/user-http-request :crowberto :delete 200 (str "/collection/" a-id))
+    (testing "no double slashes; root is exactly '/'"
+      (is (= "/" (:location (t2/select-one :model/Collection c-id)))))
+    (testing "dashboards in deleted nodes gone; dashboard in survivor intact"
+      (is (not (t2/exists? :model/Dashboard da-id)))
+      (is (not (t2/exists? :model/Dashboard db-id)))
+      (is (t2/exists? :model/Dashboard dc-id)))))
+
+(deftest collection-deletion-prohibitions
+  (mt/with-temp [:model/Collection {a-id :id} {}]
+    (is (= "Collection must be trashed before deletion."
+           (mt/user-http-request :crowberto :delete 400 (str "/collection/" a-id)))))
+  (mt/with-temp [:model/Collection {a-id :id} {:namespace "flippity" :archived true}]
+    (is (= "Collections in non-nil namespaces cannot be deleted."
+           (mt/user-http-request :crowberto :delete 400 (str "/collection/" a-id)))))
+  (mt/with-temp [:model/Collection {a-id :id} {:archived true}]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :delete 403 (str "/collection/" a-id))))))

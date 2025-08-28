@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -160,7 +159,7 @@
 (deftest ^:parallel field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:fields [{:id       (mt/id :venues :price)
                                                  :settings {:is_priceless false}}]})
       (let [results (mt/run-mbql-query venues
@@ -173,7 +172,7 @@
 (deftest ^:parallel semantic-type-for-aggregate-fields-test
   (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:fields [{:id            (mt/id :venues :price)
                                                  :semantic-type :type/Currency}]})
       (let [price [:field (mt/id :venues :price) nil]]
@@ -289,6 +288,34 @@
                               (lib/aggregate (lib/sum (lib/case [[(lib/between date-field "2018-09-01" "2018-09-30") count-field]] 0))))]
           (is (= [[39]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+(deftest ^:parallel aggregation-and-fields-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "adding an aggregation to a query with fields works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [[100]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :venues :name)))])
+                   (lib/aggregate (lib/count))
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [int])))))))))
+
+(deftest ^:parallel aggregation-and-join-fields-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (testing "adding an aggregation to a query with fields from joins works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [[18760]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :orders :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :orders :total)))])
+                   (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                              [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                      (-> (lib.metadata/field mp (mt/id :products :id))
+                                                          (lib/with-join-alias "Products")))]))
+                   (lib/aggregate (lib/count))
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [int])))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !

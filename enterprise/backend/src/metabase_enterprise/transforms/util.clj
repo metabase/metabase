@@ -41,13 +41,12 @@
      (sync/sync-table! table)
      table)))
 
-(defn activate-table!
+(defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
   [database target]
   (when-let [table (sync-table! database target {:create? true})]
-    ;; TODO this should probably be a function in the sync module
-    (when (not (:active table))
-      (t2/update! :model/Table (:id table) {:active true}))))
+    (when (or (not (:active table)) (not (= (:data_authority table) :computed)))
+      (t2/update! :model/Table (:id table) {:active true, :data_authority :computed}))))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."

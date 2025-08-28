@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
+import { DASHBOARD_NAME_MAX_LENGTH } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDashboardTitle } from "metabase/dashboard/hooks/use-dashboard-title";
 
@@ -21,7 +22,7 @@ export const DashboardTitle = ({ className }: { className?: string }) => {
       isDisabled={!dashboard?.can_write}
       data-testid="dashboard-name-heading"
       onChange={setTitle}
-      maxLength={100}
+      maxLength={DASHBOARD_NAME_MAX_LENGTH}
     />
   );
 };

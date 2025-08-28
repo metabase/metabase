@@ -14,7 +14,6 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -251,6 +250,9 @@
                                                                                    :filter        [:in (mt/$ids $orders.product_id) 1 2]}}))]
                                  (zipmap (map first result) (map second result))))]
 
+          ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+          (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
           (testing "sanity check that we have children rows"
             (is (= {1 93
                     2 98}
@@ -258,12 +260,12 @@
           (testing "delete without delete-children param will return errors with children count"
             (is (=? {:errors [{:index       0
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {}
                                :status-code 400}
                               {:index       1,
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {},
                                :status-code 400}]}
                     (mt/user-http-request :crowberto :post 400 execute-bulk-url
@@ -312,10 +314,13 @@
           (is (= 1 (children-count 2)))
           (is (= 1 (children-count 3))))
 
+        ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+        (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
         (testing "delete parent with self-referential children should return error without delete-children param"
           (is (=? {:errors [{:index       0
                              :type        "metabase.actions.error/violate-foreign-key-constraint",
-                             :message     "Other tables rely on this row so it cannot be deleted.",
+                             :message     "Other rows refer to this row so it cannot be deleted.",
                              :errors      {}
                              :status-code 400}]}
                   (mt/user-http-request :crowberto :post 400 execute-bulk-url body))))
@@ -361,7 +366,10 @@
                                           {:table-name "user"}
                                           {:fk :team :field-name "team_id"})
                        {:transaction? false})
-        (sync/sync-database! (mt/db))
+
+        ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+        (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
         (let [users-table-id (mt/id :user)
               #_teams-table-id #_(mt/id :team)
               delete-user-body {:action "data-grid.row/delete"
@@ -371,7 +379,7 @@
           (testing "delete user involved in mutual recursion should return error without delete-children param"
             (is (=? {:errors [{:index       0
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {}
                                :status-code 400}]}
                     (mt/user-http-request :crowberto :post 400 execute-bulk-url delete-user-body))))
@@ -597,7 +605,7 @@
                   scope               {:table-id table-id}]
 
               (testing "create"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown" :optional false :readonly false}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "integer"  :optional false :readonly false}
                                       {:id "text"      :display_name "Text"       :input_type "text"     :optional true  :readonly false}
                                       {:id "int"       :display_name "Int"        :input_type "integer"  :optional true  :readonly false}
                                       {:id "bool"      :display_name "Bool"       :input_type "boolean"  :optional true  :readonly false}

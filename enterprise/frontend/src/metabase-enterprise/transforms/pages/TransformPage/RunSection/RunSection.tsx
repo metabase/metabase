@@ -8,6 +8,7 @@ import {
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
@@ -140,6 +141,11 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   const { sendErrorToast } = useMetadataToasts();
 
   const handleRun = async () => {
+    trackTranformTriggerManualRun({
+      transformId: transform.id,
+      triggeredFrom: "transform-page",
+    });
+
     const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);
@@ -168,7 +174,10 @@ function TagSection({ transform }: TagSectionProps) {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
-  const handleTagListChange = async (tagIds: TransformTagId[]) => {
+  const handleTagListChange = async (
+    tagIds: TransformTagId[],
+    undoable: boolean = false,
+  ) => {
     const { error } = await updateTransform({
       id: transform.id,
       tag_ids: tagIds,
@@ -177,13 +186,15 @@ function TagSection({ transform }: TagSectionProps) {
     if (error) {
       sendErrorToast(t`Failed to update transform tags`);
     } else {
-      sendSuccessToast(t`Transform tags updated`, async () => {
+      const undo = async () => {
         const { error } = await updateTransform({
           id: transform.id,
           tag_ids: transform.tag_ids,
         });
         sendUndoToast(error);
-      });
+      };
+
+      sendSuccessToast(t`Transform tags updated`, undoable ? undo : undefined);
     }
   };
 

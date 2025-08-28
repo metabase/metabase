@@ -14,11 +14,11 @@ See a [sample Next.js app that uses the SDK](https://github.com/metabase/metabas
 
 ## SDK components with Server Side Rendering (SSR) or React Server Components
 
-The SDK components render only on the client side and not on the server side.
+As of Embedding Analytics SDK v57, SDK components automatically skip server-side rendering (SSR) and render only on the client.
 
-### Compatibility layer for server-side rendering (SSR) (DEPRECATED)
+### Compatibility layer for Server Side Rendering (SSR) (DEPRECATED)
 
-_Note_: Compatibility layer for server-side rendering (SSR) is no more needed and was deprecated. If you use it, change your imports from `@metabase/embedding-sdk-react/next` to `@metabase/embedding-sdk-react`.
+As of Embedding analytics SDK 57, the compatibility layer for server-side rendering (SSR) is deprecated and no longer required. If you use the compatibility layer, change your imports from `@metabase/embedding-sdk-react/next` to `@metabase/embedding-sdk-react`.
 
 ## Handling authentication
 

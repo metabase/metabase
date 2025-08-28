@@ -24,7 +24,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1328,7 +1327,7 @@
 (deftest ^:parallel time-interval-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (mt/dataset checkins:1-per-day
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders (lib.metadata/table metadata-provider (mt/id :checkins))
             query (lib/query metadata-provider orders)
             timestamp-col (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns query))
@@ -1726,7 +1725,7 @@
   (testing "Datetime expressions can filter to a date range (#33528)"
     (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (mt/dataset checkins:1-per-day
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [mp (mt/metadata-provider)
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                       (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns $q)))
                       (lib/filter $q (lib/time-interval (lib/expression-ref $q "customdate") :current :week)))
@@ -1748,7 +1747,7 @@
     (mt/test-drivers
       (mt/normal-drivers-with-feature :date-arithmetics :test/dynamic-dataset-loading)
       (mt/dataset checkins:1-per-day:60
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [mp (mt/metadata-provider)
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                       (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id)
                                                                     (lib/visible-columns $q)))

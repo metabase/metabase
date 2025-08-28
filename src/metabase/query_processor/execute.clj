@@ -1,5 +1,6 @@
 (ns metabase.query-processor.execute
   (:require
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -11,11 +12,13 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(defn- add-native-form-to-result-metadata [qp]
+(mu/defn- add-native-form-to-result-metadata :- ::qp.schema/qp
+  [qp :- ::qp.schema/qp]
   (fn [query rff]
     (letfn [(rff* [metadata]
               {:pre [(map? metadata)]}
@@ -24,7 +27,8 @@
                      (assoc :native_form ((some-fn :qp/compiled-inline :qp/compiled :native) query)))))]
       (qp query rff*))))
 
-(defn- add-preprocessed-query-to-result-metadata-for-userland-query [qp]
+(mu/defn- add-preprocessed-query-to-result-metadata-for-userland-query :- ::qp.schema/qp
+  [qp :- ::qp.schema/qp]
   (fn [query rff]
     (letfn [(rff* [metadata]
               {:pre [(map? metadata)]}
@@ -63,14 +67,17 @@
                 (not (:native query)) (assoc :native (:qp/compiled query)))]
     (qp.pipeline/*run* query rff)))
 
+(mu/defn- execute-fn :- ::qp.schema/qp
+  []
+  (reduce
+   (fn [qp middleware-fn]
+     (u/prog1 (middleware-fn qp)
+       (assert (ifn? <>) (format "%s did not return a valid function" middleware-fn))))
+   run
+   middleware))
+
 (defn- rebuild-execute-fn! []
-  (alter-var-root #'execute* (constantly
-                              (reduce
-                               (fn [qp middleware-fn]
-                                 (u/prog1 (middleware-fn qp)
-                                   (assert (ifn? <>) (format "%s did not return a valid function" middleware-fn))))
-                               run
-                               middleware))))
+  (alter-var-root #'execute* (constantly (execute-fn))))
 
 (rebuild-execute-fn!)
 
@@ -79,7 +86,7 @@
                              (log/infof "%s changed, rebuilding %s" varr `execute*)
                              (rebuild-execute-fn!))))
 
-(def ^:private CompiledQuery
+(mr/def ::compiled-query
   [:and
    [:map
     [:database ::lib.schema.id/database]]
@@ -90,7 +97,9 @@
 ;;; TODO -- consider whether this should return an `IReduceInit` that we can reduce as a separate step.
 (mu/defn execute :- some?
   "Execute a compiled query, then reduce the results."
-  [compiled-query :- CompiledQuery
+  [compiled-query :- ::compiled-query
    rff            :- ::qp.schema/rff]
   (qp.setup/with-qp-setup [compiled-query compiled-query]
-    (execute* compiled-query rff)))
+    ;; TODO (Cam 8/20/25) -- all `execute` middleware currently expects legacy MBQL. We need to start updating them to
+    ;; expect MBQL 5
+    (execute* (lib/->legacy-MBQL compiled-query) rff)))

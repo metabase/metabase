@@ -81,7 +81,7 @@
 (defmethod driver/database-supports? [::toucanery :nested-fields] [_driver _feature _database] true)
 (defmethod driver/database-supports? [::toucanery :schemas] [_driver _feature _database] false)
 
-(defmethod driver/describe-database ::toucanery
+(defmethod driver/describe-database* ::toucanery
   [_ {:keys [exclude-tables]}]
   (let [tables (for [table (vals toucanery-tables)
                      :when (not (contains? exclude-tables (:name table)))]

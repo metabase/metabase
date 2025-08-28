@@ -139,6 +139,11 @@
         emails  (get @inbox address)]
     (boolean (some #(re-find regex %) (map :subject emails)))))
 
+(defn email-subjects
+  [user-or-email]
+  (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))]
+    (into #{} (map :subject) (get @inbox address))))
+
 (defn received-email-body?
   "Indicate whether a user received an email whose body matches the `regex`. First argument should be a keyword
   like :rasta, or an email address string."

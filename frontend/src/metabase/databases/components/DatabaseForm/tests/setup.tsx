@@ -1,10 +1,12 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { Engine, Settings } from "metabase-types/api";
+import type { DatabaseData, Engine, Settings } from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabaseForm } from "../DatabaseForm";
+
+import { postgresFormConfig } from "./postgres-form-config.mock";
 
 export const TEST_ENGINES: Record<string, Engine> = {
   h2: {
@@ -87,18 +89,21 @@ export const TEST_ENGINES: Record<string, Engine> = {
     "superseded-by": null,
     "extra-info": null,
   },
+  postgres: postgresFormConfig,
 };
 
 export interface SetupOpts {
   settings?: Settings;
   hasEnterprisePlugins?: boolean;
   engines?: Record<string, Engine>;
+  initialValues?: Partial<DatabaseData>;
 }
 
 export const setup = ({
   settings,
   hasEnterprisePlugins,
   engines = TEST_ENGINES,
+  initialValues = {},
 }: SetupOpts = {}) => {
   const state = createMockState({
     settings: mockSettings({ ...settings, engines }),
@@ -111,6 +116,10 @@ export const setup = ({
   const onSubmit = jest.fn();
   renderWithProviders(
     <DatabaseForm
+      initialValues={{
+        engine: "h2",
+        ...initialValues,
+      }}
       config={{ isAdvanced: true }}
       onSubmit={onSubmit}
       location="admin"

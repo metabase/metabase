@@ -57,12 +57,21 @@
       padding: 0;
     }
 
+    :global(.node-metabot),
     :global(.node-cardEmbed) {
       break-inside: avoid;
     }
 
     [data-hide-on-print] {
       visibility: hidden;
+    }
+  }
+}
+
+@media not print {
+  .documentContainer {
+    [data-show-on-print] {
+      display: none;
     }
   }
 }
@@ -107,17 +116,4 @@
   align-items: center;
   gap: 0.25rem;
   color: var(--mb-color-text-secondary);
-}
-
-.hidable {
-  visibility: hidden;
-  width: 0;
-  opacity: 0;
-  transition: opacity 200ms;
-
-  &.visible {
-    visibility: visible;
-    width: auto;
-    opacity: 1;
-  }
 }

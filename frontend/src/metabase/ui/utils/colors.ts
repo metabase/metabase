@@ -51,7 +51,9 @@ const CUSTOM_COLORS = [
   "text-secondary-inverse",
   "text-tertiary",
   "background",
+  "background-hover",
   "background-disabled",
+  "background-light",
   "accent-gray",
   "accent-gray-light",
 ] as const;
