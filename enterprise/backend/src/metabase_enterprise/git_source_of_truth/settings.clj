@@ -3,6 +3,15 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
+(defsetting git-sync-token
+  (deferred-tru "A GH token")
+  :type :string
+  :visibility :admin
+  :doc true
+  :export? false
+  :encryption :when-encryption-key-set
+  :audit :getter)
+
 (defsetting git-sync-key
   (deferred-tru "An RSA key with write permissions to the git repository.")
   :type       :string

@@ -8,7 +8,7 @@
   (:import
    (java.io File)
    (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)))
+   (java.nio.file.attribute FileAttribute PosixFilePermissions)))
 
 (defprotocol ISource
   (load-source! [this dir]
@@ -32,7 +32,7 @@
 
 (defn clone-repository!
   "Clone git repository to a temporary directory. Returns the path to the cloned repository."
-  [url branch dir _key]
+  [url branch dir _token]
   (let [result (execute-git-command dir "clone" "--single-branch" "--branch" branch url ".")]
     (if (zero? (:exit result))
       (log/infof "Successfully cloned repository to %s" dir)
@@ -58,15 +58,25 @@
 
     full-path))
 
-(defrecord GitSource [url source-branch key dest-branch]
+(defn- write-0600! [content suffix]
+  (let [f (Files/createTempFile "git-demo-" (str "." suffix)
+                                (make-array java.nio.file.attribute.FileAttribute 0))]
+    (spit (.toFile f) content)
+    (try (Files/setPosixFilePermissions f (PosixFilePermissions/fromString "rw-------"))
+         (catch UnsupportedOperationException _))
+    (str f)))
+
+(defrecord GitSource [url source-branch token dest-branch]
   ISource
   (load-source! [_this dir]
-    (clone-repository! url source-branch dir key)
+    (clone-repository! url source-branch dir token)
     dir)
 
   IDestination
   (push-branch! [_this source-dir]
-    (let [branch (str (random-uuid))]
+    (let [branch (str (random-uuid))
+          askpass (write-0600! "#!/usr/bin/env sh\nprintf \"%s\" \"$GIT_TOKEN\"\n" "askpass.sh")]
+      (.setExecutable (io/file askpass) true true)
       (execute-git-command source-dir "init")
       (execute-git-command source-dir "remote" "add" "origin" url)
       (execute-git-command source-dir "fetch" "origin")
@@ -75,7 +85,11 @@
            (catch Exception _ nil))
       (execute-git-command source-dir "add" "-A")
       (execute-git-command source-dir "commit" "-m" "Update content")
-      (execute-git-command source-dir "push" "-u" "origin" (str branch ":" dest-branch)))))
+      (execute-git-command source-dir "-c" "credential.username=x-access-token"
+                           "push" "-u" "origin" (str branch ":" dest-branch)
+                           :env {"GIT_ASKPASS" askpass
+                                 "GIT_TOKEN" token
+                                 "GIT_TERMINAL_PROMPT" "0"}))))
 
 (defn get-source
   "Returns the source that we should actually use. A source implements the `ISource` protocol."
@@ -83,5 +97,5 @@
   (when (settings/git-sync-url)
     (->GitSource (settings/git-sync-url)
                  (settings/git-sync-import-branch)
-                 (settings/git-sync-key)
+                 (settings/git-sync-token)
                  (settings/git-sync-export-branch))))

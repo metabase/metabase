@@ -587,7 +587,7 @@
 (defn- prevent-sync-protected-writes
   "Prevents writes to entities that are synced to source of truth, unless explicitly allowed."
   [instance]
-  (when (and (try (requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only)
+  (when (and (try ((requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only))
                   (catch Exception _ false))
              (not *deserializing?*))
     (throw (ex-info "Cannot modify entities synced to source of truth"
@@ -678,10 +678,10 @@
 
 (defmethod can-write? :hook/git-sync-protected
   ([instance]
-   (try (false? (requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only))
+   (try (false? ((requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only)))
         (catch Exception _ true)))
   ([_model _pk]
-   (try (false? (requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only))
+   (try (false? ((requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only)))
         (catch Exception _ true))))
 
 #_{:clj-kondo/ignore [:unused-private-var]}
