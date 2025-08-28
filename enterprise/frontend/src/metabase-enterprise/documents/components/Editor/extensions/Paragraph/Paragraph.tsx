@@ -116,10 +116,8 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
   const hasComments = nodeThreads.length > 0;
 
   return (
-    <NodeViewWrapper>
-      <p className={S.paragraph}>
-        <NodeViewContent />
-      </p>
+    <NodeViewWrapper className={S.paragraph} as="p">
+      <NodeViewContent />
 
       {document && (
         <Box
