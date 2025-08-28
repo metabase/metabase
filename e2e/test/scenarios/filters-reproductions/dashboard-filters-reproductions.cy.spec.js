@@ -3777,6 +3777,100 @@ describe("issue 35852", () => {
   }
 });
 
+describe("issue 48524", () => {
+  const questionDetails = {
+    name: "15119",
+    query: { "source-table": REVIEWS_ID },
+  };
+
+  const ratingFilter = {
+    id: "5dfco74e",
+    slug: "rating",
+    name: "Rating",
+    type: "string/=",
+    sectionId: "string",
+  };
+
+  const reviewerFilter = {
+    id: "ad1c877e",
+    name: "Reviewer",
+    slug: "reviewer",
+    type: "string/=",
+    sectionId: "string",
+  };
+
+  const dashboardDetails = { parameters: [reviewerFilter, ratingFilter] };
+
+  function createDashboard() {
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: ratingFilter.id,
+                  card_id,
+                  target: ["dimension", ["field", REVIEWS.RATING, null]],
+                },
+                {
+                  parameter_id: reviewerFilter.id,
+                  card_id,
+                  target: ["dimension", ["field", REVIEWS.REVIEWER, null]],
+                },
+              ],
+            },
+          ],
+        });
+        cy.wrap(dashboard_id).as("dashboardId");
+      },
+    );
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not apply last used parameter values when some parameters have values set in the URL (metabase#48524)", () => {
+    createDashboard();
+
+    cy.log(
+      "open the dashboard with 2 parameters to populate their last used values",
+    );
+    H.visitDashboard("@dashboardId", {
+      params: {
+        [reviewerFilter.slug]: ["abbey-heidenreich"],
+        [ratingFilter.slug]: 4,
+      },
+    });
+    H.assertTableRowsCount(1);
+
+    cy.log(
+      "open the dashboard again and verify that the last used values are applied",
+    );
+    H.visitDashboard("@dashboardId");
+    H.assertTableRowsCount(1);
+
+    cy.log(
+      "open the dashboard with only 1 parameter value and verify that the last used values are not applied in this case",
+    );
+    H.visitDashboard("@dashboardId", {
+      params: {
+        [ratingFilter.slug]: 4,
+      },
+    });
+    H.assertTableRowsCount(535);
+  });
+});
+
 describe("issue 32573", () => {
   const modelDetails = {
     name: "M1",
