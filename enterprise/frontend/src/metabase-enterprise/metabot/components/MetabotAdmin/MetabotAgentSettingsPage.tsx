@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
+import { Link } from "react-router";
 import { match } from "ts-pattern";
-import { c, t } from "ttag";
+import { c, jt, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -13,13 +14,14 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers/Collec
 import { useToast } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
-import { Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
+import { Alert, Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
 import {
   useDeleteMetabotEntitiesMutation,
   useListMetabotsEntitiesQuery,
   useListMetabotsQuery,
   useUpdateMetabotEntitiesMutation,
 } from "metabase-enterprise/api";
+import { useMetabotEnabled } from "metabase-enterprise/metabot/hooks";
 import type {
   CollectionEssentials,
   MetabotEntity,
@@ -36,6 +38,7 @@ export function MetabotAgentSettingsPage() {
   const metabotName =
     data?.items?.find((bot) => bot.id === metabotId)?.name ?? t`Metabot`;
   const isEmbeddedMetabot = metabotName.toLowerCase().includes("embed");
+  const isMetabotEnabled = useMetabotEnabled();
 
   const { data: entityList } = useListMetabotsEntitiesQuery(
     metabotId ? { id: metabotId } : skipToken,
@@ -55,6 +58,17 @@ export function MetabotAgentSettingsPage() {
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
       <ErrorBoundary>
         <SettingsSection>
+          {!isMetabotEnabled && (
+            <Alert color="warning" icon={<Icon name="info" />}>
+              <Text>
+                {jt`Metabot is disabled, but you can enable it on the ${(
+                  <Text component={Link} c="brand" to="/admin/metabot/general">
+                    {t`General Metabot Settings`}
+                  </Text>
+                )} page.`}
+              </Text>
+            </Alert>
+          )}
           <Box>
             <SettingHeader
               id="configure-metabot"
