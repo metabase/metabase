@@ -40,7 +40,7 @@ jobs:
               github,
               context,
               token: '${{ secrets.GITHUB_TOKEN }}',
-              branch: 'master',
+              branch: 'generate-new-test-timings',
               daysBack: ${{ inputs.days_back || 7 }},
               existingTimingsPath: 'e2e/support/timings.json'
             });
