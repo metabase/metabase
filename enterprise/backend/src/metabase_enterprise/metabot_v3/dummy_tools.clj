@@ -249,7 +249,7 @@
                                   :with-metrics?                   true
                                   :with-default-temporal-breakout? false
                                   :with-queryable-dimensions?      false})
-                 (tap> (queries)))))
+          (tap> (queries)))))
   -)
 
 (defn get-table-details

@@ -272,9 +272,9 @@
   ;; work if done inside the same transaction.)
   (doseq [{constraint :constraint_name, table :table_name} (jdbc/query
                                                             conn
-                                                            [(str "SELECT * "
-                                                                  "FROM information_schema.table_constraints "
-                                                                  "WHERE constraint_type = 'FOREIGN KEY'")])]
+                                                             [(str "SELECT * "
+                                                                   "FROM information_schema.table_constraints "
+                                                                   "WHERE constraint_type = 'FOREIGN KEY'")])]
     (jdbc/execute! conn [(format "ALTER TABLE \"%s\" ALTER CONSTRAINT \"%s\" DEFERRABLE" table constraint)]))
   ;; now enable constraint deferring for the duration of the transaction
   (jdbc/execute! conn ["SET CONSTRAINTS ALL DEFERRED"]))
