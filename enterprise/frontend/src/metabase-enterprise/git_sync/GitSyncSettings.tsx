@@ -39,8 +39,8 @@ export const GitSyncSettings = () => {
           inputType="text"
         />
         <AdminSettingInput
-          name="git-sync-key"
-          title={t`RSA key`}
+          name="git-sync-token"
+          title={t`Github PAT`}
           inputType="password"
         />
       </SettingsSection>

@@ -607,7 +607,7 @@ export type SyncableEntity =
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
-  "git-sync-key"?: string | null;
+  "git-sync-token"?: string | null;
   "git-sync-url"?: string | null;
   "git-sync-import-branch"?: string | null; // import branch
   "git-sync-export-branch"?: string | null;
