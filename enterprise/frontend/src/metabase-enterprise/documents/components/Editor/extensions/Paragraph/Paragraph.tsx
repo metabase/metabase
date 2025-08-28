@@ -4,10 +4,14 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
+import { useMemo } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { uuid } from "metabase/lib/uuid";
 import { Box, Button, Icon } from "metabase/ui";
+import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
+import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
 
 import {
   ID_ATTRIBUTE_NAME,
@@ -102,22 +106,26 @@ export const Paragraph = Node.create<ParagraphOptions>({
 
 export const ParagraphNodeView = ({ node }: NodeViewProps) => {
   const { _id } = node.attrs;
-  // const { entity, isLoading, error } = useEntityData(entityId, model);
-  const comments = [];
+  const { document, comments } = useDocumentContext();
+
+  const nodeThreads = useMemo(
+    () => getTargetChildCommentThreads(comments, _id),
+    [comments, _id],
+  );
 
   return (
     <NodeViewWrapper as="p" className={S.paragraph}>
       <NodeViewContent />
 
-      <Box className={S.commentsMenu} pl="xl">
-        <Button leftSection={<Icon name="message" />} px="sm" size="xs">
-          {comments.length === 0
-            ? t`Add comment`
-            : comments.length === 1
-              ? t`See 1 comment`
-              : t`See ${comments.length} comments`}
-        </Button>
-      </Box>
+      {document && (
+        <Box className={S.commentsMenu} pr="lg">
+          <Link to={`/document/${document.id}/comments/${_id}`}>
+            <Button leftSection={<Icon name="message" />} px="sm" size="xs">
+              {nodeThreads.length > 0 ? t`Comments` : t`Add comment`}
+            </Button>
+          </Link>
+        </Box>
+      )}
     </NodeViewWrapper>
   );
 };

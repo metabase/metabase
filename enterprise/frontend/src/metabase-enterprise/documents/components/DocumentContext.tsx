@@ -2,9 +2,10 @@ import type React from "react";
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
 
-import type { Comment } from "metabase-types/api";
+import type { Comment, Document } from "metabase-types/api";
 
 export interface DocumentContextValue {
+  document: Document | undefined;
   comments: Comment[] | undefined;
 }
 

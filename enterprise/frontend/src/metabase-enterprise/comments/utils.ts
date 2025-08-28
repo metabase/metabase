@@ -2,7 +2,13 @@ import type { Comment } from "metabase-types/api";
 
 import type { CommentThread } from "./types";
 
-export function getCommentThreads(comments: Comment[]): CommentThread[] {
+export function getCommentThreads(
+  comments: Comment[] | undefined,
+): CommentThread[] {
+  if (!comments) {
+    return [];
+  }
+
   const threadStartingComments = comments.filter(
     (comment) => comment.parent_comment_id == null,
   );
@@ -13,4 +19,19 @@ export function getCommentThreads(comments: Comment[]): CommentThread[] {
       return comment.parent_comment_id === parent.id;
     }),
   }));
+}
+
+export function getTargetChildCommentThreads(
+  comments: Comment[] | undefined,
+  targetChildId: Comment["child_target_id"] | undefined,
+): CommentThread[] {
+  if (!comments || !targetChildId) {
+    return [];
+  }
+
+  const targetComments = comments.filter(
+    (comment) => comment.child_target_id === targetChildId,
+  );
+
+  return getCommentThreads(targetComments);
 }
