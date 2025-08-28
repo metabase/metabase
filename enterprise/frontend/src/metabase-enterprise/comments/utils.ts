@@ -15,9 +15,12 @@ export function getCommentThreads(
 
   return threadStartingComments.map((parent) => ({
     id: parent.id,
-    comments: comments.filter((comment) => {
-      return comment.parent_comment_id === parent.id;
-    }),
+    comments: [
+      parent,
+      ...comments.filter((comment) => {
+        return comment.parent_comment_id === parent.id;
+      }),
+    ],
   }));
 }
 
