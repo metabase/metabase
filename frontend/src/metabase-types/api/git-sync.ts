@@ -33,11 +33,19 @@ export interface GitSyncStatus {
   behind: number;
 }
 
+export type GitDiffStatus = "added" | "modified" | "deleted";
+
+export type GitDiffContentType =
+  | "card"
+  | "dashboard"
+  | "collection"
+  | "transform";
+
 export interface GitDiff {
   id: number;
   name: string;
-  status: "added" | "modified" | "deleted";
-  content_type: "card" | "dashboard" | "collection";
-  current?: any; // The branched version (for added/modified)
-  original?: any; // The original version (for modified/deleted)
+  status: GitDiffStatus;
+  content_type: GitDiffContentType;
+  current?: any;
+  original?: any;
 }

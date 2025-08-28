@@ -5,7 +5,6 @@ import {
   Badge,
   Box,
   Center,
-  Code,
   Flex,
   Group,
   Loader,
@@ -15,8 +14,18 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import { useGetGitDiffQuery, useListGitBranchesQuery } from "metabase-enterprise/api/git-sync";
-import type { GitDiff } from "metabase-types/api";
+import {
+  useGetGitDiffQuery,
+  useListGitBranchesQuery,
+} from "metabase-enterprise/api/git-sync";
+import type { GitDiffContentType, GitDiffStatus } from "metabase-types/api";
+
+import { DiffRenderer } from "./components/DiffRenderer";
+import {
+  CardRenderer,
+  DefaultRenderer,
+  TransformRenderer,
+} from "./components/EntityDiffRenderers";
 
 interface ViewChangesModalProps {
   opened: boolean;
@@ -33,16 +42,15 @@ export const ViewChangesModal = ({
 
   const { data: branches = [] } = useListGitBranchesQuery();
   const currentBranchObj = branches.find((b) => b.name === currentBranch);
-  
-  const { data: diffs = [], isLoading, error } = useGetGitDiffQuery(
+
+  const { data: diffs = [], isLoading } = useGetGitDiffQuery(
     { branchId: currentBranchObj?.id || 0 },
     { skip: !opened || !currentBranchObj },
   );
 
-
   const selectedDiff = diffs.find((d) => d.id === selectedItem) || diffs[0];
 
-  const getStatusText = (status: GitDiff["status"]) => {
+  const getStatusText = (status: GitDiffStatus) => {
     switch (status) {
       case "added":
         return "A";
@@ -52,6 +60,29 @@ export const ViewChangesModal = ({
         return "D";
       default:
         return "?";
+    }
+  };
+
+  const getContentTypeLabel = (contentType: GitDiffContentType) => {
+    switch (contentType) {
+      case "card":
+        return t`Question`;
+      case "transform":
+        return t`Transform`;
+
+      default:
+        return contentType;
+    }
+  };
+
+  const getEntityRenderer = (contentType: GitDiffContentType) => {
+    switch (contentType) {
+      case "card":
+        return CardRenderer;
+      case "transform":
+        return TransformRenderer;
+      default:
+        return DefaultRenderer;
     }
   };
 
@@ -96,9 +127,9 @@ export const ViewChangesModal = ({
           <Box
             w={300}
             p="md"
+            bg="var(--mb-color-bg-light)"
             style={{
               borderRight: "1px solid var(--mb-color-border)",
-              backgroundColor: "var(--mb-color-bg-light)",
             }}
           >
             <Group mb="md" justify="space-between">
@@ -114,12 +145,13 @@ export const ViewChangesModal = ({
                   key={diff.id}
                   onClick={() => setSelectedItem(diff.id)}
                   p="sm"
+                  bg={
+                    selectedItem === diff.id ||
+                    (!selectedItem && diff === selectedDiff)
+                      ? "var(--mb-color-bg-medium)"
+                      : "transparent"
+                  }
                   style={{
-                    backgroundColor:
-                      selectedItem === diff.id ||
-                      (!selectedItem && diff === selectedDiff)
-                        ? "var(--mb-color-bg-medium)"
-                        : "transparent",
                     borderRadius: 0,
                   }}
                   styles={{
@@ -131,12 +163,12 @@ export const ViewChangesModal = ({
                   }}
                 >
                   <Group gap="xs" justify="space-between" w="100%">
-                    <Box style={{ flex: 1, minWidth: 0 }}>
+                    <Box flex={1} miw={0}>
                       <Text size="md" truncate>
                         {diff.name}
                       </Text>
                       <Text size="xs" c="text-medium" truncate>
-                        {diff.content_type === "card" ? t`Question` : t`${diff.content_type}`}
+                        {getContentTypeLabel(diff.content_type)}
                       </Text>
                     </Box>
                     <Badge
@@ -158,14 +190,14 @@ export const ViewChangesModal = ({
             </Stack>
           </Box>
 
-          <Box style={{ flex: 1, overflow: "hidden" }}>
+          <Box flex={1} style={{ overflow: "hidden" }}>
             {selectedDiff ? (
               <Stack h="100%" gap={0}>
                 <Box
                   p="md"
+                  bg="var(--mb-color-bg-light)"
                   style={{
                     borderBottom: "1px solid var(--mb-color-border)",
-                    backgroundColor: "var(--mb-color-bg-light)",
                   }}
                 >
                   <Group justify="space-between">
@@ -188,91 +220,21 @@ export const ViewChangesModal = ({
                       </Badge>
                     </Group>
                     <Text size="xs" c="text-medium">
-                      {selectedDiff.content_type === "card" ? t`Question` : t`${selectedDiff.content_type}`}
+                      {getContentTypeLabel(selectedDiff.content_type)}
                     </Text>
                   </Group>
                 </Box>
 
                 <ScrollArea flex={1}>
-                  {selectedDiff.status === "added" && selectedDiff.current && (
-                    <Stack gap="md" p="md">
-                      <Text fw={600} c="success" size="sm">{t`Added Content`}</Text>
-                      <Code
-                        block
-                        style={{
-                          backgroundColor: "var(--mb-color-bg-white)",
-                          border: "1px solid var(--mb-color-border)",
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                          fontSize: "12px",
-                          lineHeight: "1.5",
-                        }}
-                      >
-                        {JSON.stringify(selectedDiff.current, null, 2)}
-                      </Code>
-                    </Stack>
-                  )}
-
-                  {selectedDiff.status === "deleted" && selectedDiff.original && (
-                    <Stack gap="md" p="md">
-                      <Text fw={600} c="red" size="sm">{t`Deleted Content`}</Text>
-                      <Code
-                        block
-                        style={{
-                          backgroundColor: "var(--mb-color-bg-white)",
-                          border: "1px solid var(--mb-color-border)",
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                          fontSize: "12px",
-                          lineHeight: "1.5",
-                        }}
-                      >
-                        {JSON.stringify(selectedDiff.original, null, 2)}
-                      </Code>
-                    </Stack>
-                  )}
-
-                  {selectedDiff.status === "modified" && (
-                    <Stack gap={0}>
-                      {selectedDiff.original && (
-                        <Box p="md" style={{ borderBottom: "1px solid var(--mb-color-border)" }}>
-                          <Text fw={600} c="text-medium" size="sm" mb="md">{t`Original`}</Text>
-                          <Code
-                            block
-                            style={{
-                              backgroundColor: "var(--mb-color-bg-white)",
-                              border: "1px solid var(--mb-color-border)",
-                              whiteSpace: "pre-wrap",
-                              wordBreak: "break-word",
-                              fontSize: "12px",
-                              lineHeight: "1.5",
-                            }}
-                          >
-                            {JSON.stringify(selectedDiff.original, null, 2)}
-                          </Code>
-                        </Box>
-                      )}
-                      
-                      {selectedDiff.current && (
-                        <Box p="md">
-                          <Text fw={600} c="brand" size="sm" mb="md">{t`Modified`}</Text>
-                          <Code
-                            block
-                            style={{
-                              backgroundColor: "var(--mb-color-bg-white)",
-                              border: "1px solid var(--mb-color-border)",
-                              whiteSpace: "pre-wrap",
-                              wordBreak: "break-word",
-                              fontSize: "12px",
-                              lineHeight: "1.5",
-                            }}
-                          >
-                            {JSON.stringify(selectedDiff.current, null, 2)}
-                          </Code>
-                        </Box>
-                      )}
-                    </Stack>
-                  )}
+                  <DiffRenderer
+                    diff={selectedDiff}
+                    renderContent={(entity) => {
+                      const Renderer = getEntityRenderer(
+                        selectedDiff.content_type,
+                      );
+                      return <Renderer entity={entity} />;
+                    }}
+                  />
                 </ScrollArea>
               </Stack>
             ) : (

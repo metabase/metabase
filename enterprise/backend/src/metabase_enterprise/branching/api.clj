@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.branching.core :as branching]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -35,7 +36,7 @@
    [:id ms/PositiveInt]
    [:name :string]
    [:status [:enum "added" "modified" "deleted"]]
-   [:content_type [:enum "card" "dashboard" "collection"]]
+   [:content_type [:enum "card" "dashboard" "collection" "transform"]]
    [:current {:optional true} :map]
    [:original {:optional true} :map]])
 
@@ -63,20 +64,85 @@
           card-mappings (filter #(= (:model_type %) "report_card") mappings)
           diff-entries (for [{:keys [original_id branched_model_id]} card-mappings]
                          (let [is-added? (= original_id branched_model_id)
-                               status (if is-added? "added" "modified")
-                               original-card (when-not is-added?
-                                               (t2/select-one :model/Card :id original_id))
-                               branched-card (t2/select-one :model/Card :id branched_model_id)
-                               card-fields [:id :name :description :dataset_query :display :visualization_settings]]
+                               is-deleted? (and original_id (nil? branched_model_id))
+                               status (cond
+                                        is-added? "added"
+                                        is-deleted? "deleted"
+                                        :else "modified")
+                               original-card (when (and original_id (not is-added?))
+                                               (binding [branching/*enable-branch-hook* false]
+                                                 (t2/select-one :model/Card :id original_id)))
+                               current-card (when branched_model_id
+                                              (binding [branching/*enable-branch-hook* false]
+                                                (t2/select-one :model/Card :id branched_model_id)))
+                               card-fields [:id :name :description :dataset_query :display :visualization_settings :database_id]]
 
-                           {:id branched_model_id
-                            :name (or (:name branched-card) (:name original-card) "Unknown")
+                           {:id (or branched_model_id original_id)
+                            :name (or (:name current-card) (:name original-card) "Unknown")
                             :status status
                             :content_type "card"
-                            :current (when branched-card (select-keys branched-card card-fields))
+                            :current (when current-card (select-keys current-card card-fields))
                             :original (when original-card (select-keys original-card card-fields))}))]
 
-      {:data diff-entries})))
+      ;; Add mocked transforms for demo purposes
+      (let [mock-transforms [{:id 1001
+                              :name "Sales Report Transform"
+                              :status "added"
+                              :content_type "transform"
+                              :current {:id 1001
+                                        :name "Sales Report Transform"
+                                        :description "Transform sales data for reporting"
+                                        :source {:type "query"
+                                                 :query {:database 1
+                                                         :type "query"
+                                                         :query {:source-table 2
+                                                                 :aggregation [["count"]]
+                                                                 :breakout [["field" 13 {:temporal-unit "month"}]]}}}
+                                        :target {:type "table"
+                                                 :name "sales_monthly"
+                                                 :schema "analytics"}}
+                              :original nil}
+                             {:id 1002
+                              :name "User Metrics SQL Transform"
+                              :status "modified"
+                              :content_type "transform"
+                              :current {:id 1002
+                                        :name "User Metrics SQL Transform"
+                                        :description "SQL transform for user analytics"
+                                        :source {:type "query"
+                                                 :query {:database 1
+                                                         :type "native"
+                                                         :native {:query "SELECT user_id, COUNT(*) as order_count FROM orders WHERE created_at > '2024-01-01' GROUP BY user_id"}}}
+                                        :target {:type "table"
+                                                 :name "user_metrics"
+                                                 :schema "analytics"}}
+                              :original {:id 1002
+                                         :name "User Metrics SQL Transform"
+                                         :description "SQL transform for user analytics"
+                                         :source {:type "query"
+                                                  :query {:database 1
+                                                          :type "native"
+                                                          :native {:query "SELECT user_id, COUNT(*) as order_count FROM orders GROUP BY user_id"}}}
+                                         :target {:type "table"
+                                                  :name "user_metrics"
+                                                  :schema "analytics"}}}
+                             {:id 1003
+                              :name "Deleted Transform"
+                              :status "deleted"
+                              :content_type "transform"
+                              :current nil
+                              :original {:id 1003
+                                         :name "Deleted Transform"
+                                         :description "This transform was removed"
+                                         :source {:type "query"
+                                                  :query {:database 1
+                                                          :type "query"
+                                                          :query {:source-table 3}}}
+                                         :target {:type "table"
+                                                  :name "old_table"
+                                                  :schema "temp"}}}]
+            all-entries (concat diff-entries mock-transforms)]
+        {:data all-entries}))))
 
 (api.macros/defendpoint :get "/:id"
   "Get a single branch by ID."
