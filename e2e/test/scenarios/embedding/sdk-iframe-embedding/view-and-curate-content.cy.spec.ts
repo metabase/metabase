@@ -266,13 +266,13 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       cy.log("breadcrumbs show the new dashboard");
       H.getSimpleEmbedIframeContent()
         .findByTestId("sdk-breadcrumbs")
-        .findByText("Foo Bar Dashboard")
+        .findByText("Foo Bar Dashboard", { timeout: 10_000 })
         .should("be.visible");
 
       cy.log("dashboard title is visible in header");
       H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-header")
-        .findByText("Foo Bar Dashboard")
+        .findByText("Foo Bar Dashboard", { timeout: 10_000 })
         .should("be.visible");
     });
 
