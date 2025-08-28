@@ -1147,7 +1147,7 @@
   drivers.
 
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0", :arglists '([driver connection-details queries])}
+  {:added "0.57.0", :arglists '([driver conn-spec queries])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1194,13 +1194,13 @@
 (defmulti create-schema-if-needed!
   "Creates a schema if it does not already exist.
    Used to create new schemas for transforms."
-  {:added "0.57.0" :arglists '([driver details schema])}
+  {:added "0.57.0" :arglists '([driver conn-spec schema])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod create-schema-if-needed! :default [_driver _details _schema] nil)
+(defmethod create-schema-if-needed! :default [_driver _conn-spec _schema] nil)
 
-(defmulti connection-details
+(defmulti connection-spec
   "Get connection details for a given driver and db object"
   {:added "0.57.0", :arglists '([driver db])}
   dispatch-on-initialized-driver

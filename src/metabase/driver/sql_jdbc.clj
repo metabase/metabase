@@ -311,7 +311,8 @@
   [driver db-id schema]
   (sql-jdbc.execute/do-with-connection-with-options
    driver db-id {}
-   (fn [conn]
-     (let [metadata (.getMetaData conn)
-           schemas (sql-jdbc.describe-database/all-schemas metadata)]
-       (some #(= % schema) schemas)))))
+   (fn [^Connection conn]
+     (let [schemas (-> (.getMetaData conn)
+                       sql-jdbc.describe-database/all-schemas
+                       set)]
+       (contains? schemas schema)))))

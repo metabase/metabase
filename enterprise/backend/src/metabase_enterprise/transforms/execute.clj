@@ -18,7 +18,7 @@
 (mr/def ::transform-details
   [:map
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
-   [:connection-details :any]
+   [:connection-details :any] ;; TODO(rileythomp, 2025-08-28): Rename this more accurately to be conn-spec
    [:query :string]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
 
@@ -69,7 +69,9 @@
            feature (transforms.util/required-database-feature transform)
            transform-details {:db-id db
                               :transform-type (keyword (:type target))
-                              :connection-details (driver/connection-details driver database)
+                              ;; TODO(rileythomp, 2025-08-28): Rename this more accurately to be conn-spec
+                              ;; Requires updating all destructurings of transform-details in the drivers
+                              :connection-details (driver/connection-spec driver database)
                               :query (transforms.util/compile-source source)
                               :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
