@@ -44,7 +44,7 @@ function MetabotEnabledPane() {
       <SettingHeader
         id="enable-metabot"
         title={t`Enable Metabot`}
-        description={t`When enabled, Metabot will be available throughout your Metabase instance to help users create queries, analyze data, and answer questions about your data. When disabled, all Metabot functionality will be turned off.`} // eslint-disable-line no-literal-metabase-strings -- admin UI context
+        description={t`Metabot is Metabase's AI assistant. When enabled, Metabot will be available to help users create queries, analyze data, and answer questions about your data.`} // eslint-disable-line no-literal-metabase-strings -- admin UI context
       />
       <Flex align="center" gap="md" mt="md">
         <Switch
