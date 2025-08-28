@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";

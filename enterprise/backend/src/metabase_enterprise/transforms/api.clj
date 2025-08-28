@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [medley.core :as m]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.execute :as transforms.execute]
@@ -222,7 +223,7 @@
       ;; Handle Python transform execution
       (try
         (let [{:keys [result run-id]} (transforms.execute/execute-python-transform! transform {:run-method :manual})]
-          (log/info "Python transform succeeded" (dissoc result :output))
+          (log/info "Python transform succeeded" (m/dissoc-in result [:body :output]))
           (-> (response/response {:message (deferred-tru "Python transform executed successfully")
                                   :run_id run-id
                                   :result result})

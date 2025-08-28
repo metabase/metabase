@@ -1,5 +1,5 @@
 import { useHotkeys } from "@mantine/hooks";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Flex } from "metabase/ui";
 import type { TransformSource } from "metabase-types/api";
@@ -14,6 +14,7 @@ type PythonTransformEditorProps = {
   isSaving?: boolean;
   onSave: (newSource: TransformSource & { type: "python" }) => void;
   onCancel: () => void;
+  onSourceChange?: (newSource: TransformSource & { type: "python" }) => void;
 };
 
 export function PythonTransformEditor({
@@ -22,10 +23,16 @@ export function PythonTransformEditor({
   isSaving = false,
   onSave,
   onCancel,
+  onSourceChange,
 }: PythonTransformEditorProps) {
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
+
+  useEffect(() => {
+    if (onSourceChange) {
+      onSourceChange(source);
+    }
+  }, [source, onSourceChange]);
 
   const handleScriptChange = (body: string) => {
     const newSource = {
@@ -53,27 +60,6 @@ export function PythonTransformEditor({
     onSave(source);
   };
 
-  const handleRunScript = async () => {
-    setIsRunning(true);
-    // TODO: Implement Python script execution
-    // For now, just simulate running
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsRunning(false);
-  };
-
-  const handleCancelScript = () => {
-    setIsRunning(false);
-  };
-
-  const handleCmdEnter = () => {
-    if (isRunning) {
-      handleCancelScript();
-    } else {
-      handleRunScript();
-    }
-  };
-
-  useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   const canSave = Boolean(
     source.body.trim() &&
@@ -108,11 +94,8 @@ export function PythonTransformEditor({
           <PythonEditor
             script={source.body}
             isRunnable={true}
-            isRunning={isRunning}
-            isResultDirty={false}
             onChange={handleScriptChange}
-            onRunScript={handleRunScript}
-            onCancelScript={handleCancelScript}
+            tables={source["source-tables"]}
           />
         </Flex>
       </Flex>
