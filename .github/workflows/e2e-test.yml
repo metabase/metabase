@@ -122,7 +122,7 @@ jobs:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
-        SPLIT_OUTPUT_FILE: "newTimes.json"
+          SPLIT_OUTPUT_FILE: "newTimes.json"
           SPLIT_TIME_THRESHOLD: 0.01 # 1% threshold for changes
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
