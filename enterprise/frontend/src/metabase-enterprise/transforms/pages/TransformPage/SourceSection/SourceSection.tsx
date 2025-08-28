@@ -81,7 +81,6 @@ function SourceInfo({ transform }: SourceInfoProps) {
         )}
         <Divider />
         <Stack gap="xs">
-          <Text size="sm" fw={500}>{t`Tables:`}</Text>
           {Object.entries(sourceTables).map(([alias, tableId]) => (
             <TableWithAlias
               key={alias}
