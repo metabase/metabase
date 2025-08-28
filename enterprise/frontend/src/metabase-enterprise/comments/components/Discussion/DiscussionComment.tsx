@@ -12,7 +12,6 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Group, Spoiler, Text, Timeline, Tooltip, rem } from "metabase/ui";
-import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
 import { Paragraph } from "metabase-enterprise/documents/components/Editor/extensions/Paragraph";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
 import type { Comment } from "metabase-types/api";
@@ -64,7 +63,6 @@ export function DiscussionComment({
       Link.configure({
         HTMLAttributes: { class: CS.link },
       }),
-      DisableMetabotSidebar,
     ],
     [siteUrl],
   );

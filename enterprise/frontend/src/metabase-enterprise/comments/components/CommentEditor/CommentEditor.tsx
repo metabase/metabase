@@ -17,6 +17,7 @@ import { SmartLink } from "metabase-enterprise/documents/components/Editor/exten
 import type { DocumentContent } from "metabase-types/api";
 
 import S from "./CommentEditor.module.css";
+import { trimTrailingEmptyParagraphsJSON } from "./editor.utils";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [SmartLink.name];
 // TODO: Other formats require to update editor styling.
@@ -89,7 +90,7 @@ export const CommentEditor = ({
     const content = editor.getJSON() as DocumentContent;
     const isEmpty = editor.isEmpty;
     if (!isEmpty && onSubmit) {
-      onSubmit(content);
+      onSubmit(trimTrailingEmptyParagraphsJSON(content));
       editor.commands.clearContent(true);
     }
   };
