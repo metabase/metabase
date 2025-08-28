@@ -16,27 +16,6 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/git-sync-protected]]
   (derive :model/Transform trait))
 
-;; SUPER HACK: we don't want to do this for everything, would be better to use something like
-;; `:hook/git-sync-protected`, but I'm not sure how to go from "an instance of `:hook/git-sync-protected` we're
-;; inserting" to knowing it's an instance of a `:model/Transform`"
-(t2/define-before-insert :model/Transform
-  [instance]
-  (cond-> instance
-    (contains? mi/*syncing-source-of-truth-entities* "Transform")
-    (assoc :synced_to_source_of_truth true)))
-
-(t2/define-before-update :model/Transform
-  [instance]
-  (cond-> instance
-    (contains? mi/*syncing-source-of-truth-entities* "Transform")
-    (assoc :synced_to_source_of_truth true)))
-
-(defmethod mi/can-write? :model/Transform
-  ([instance] (and api/*is-superuser?*
-                   (not (:synced_to_source_of_truth instance))))
-  ([_model id]
-   (not (t2/select-one-fn :synced_to_source_of_truth :model/Transform id))))
-
 (t2/deftransforms :model/Transform
   {:source      mi/transform-json
    :target      mi/transform-json
