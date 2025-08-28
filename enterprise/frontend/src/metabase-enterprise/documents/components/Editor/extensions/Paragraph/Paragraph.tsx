@@ -10,7 +10,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { uuid } from "metabase/lib/uuid";
-import { Box, Button, Icon, rem } from "metabase/ui";
+import { Box, Button, Icon, Tooltip, rem } from "metabase/ui";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
 
@@ -135,22 +135,28 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
           mt={rem(-2)}
           pr="lg"
         >
-          <Button
-            leftSection={<Icon name="message" />}
-            px="sm"
-            size="xs"
-            variant={isOpen ? "filled" : "default"}
-            {...(hasUnsavedChanges || isOpen
-              ? undefined
-              : {
-                  component: Link,
-                  to: `/document/${document.id}/comments/${_id}`,
-                })}
+          <Tooltip
+            disabled={!hasUnsavedChanges}
+            label={t`Save your document first`}
           >
-            {hasComments
-              ? t`Comments (${nodeThreads.flat().length})`
-              : t`Add comment`}
-          </Button>
+            <Button
+              disabled={hasUnsavedChanges}
+              leftSection={<Icon name="message" />}
+              px="sm"
+              size="xs"
+              variant={isOpen ? "filled" : "default"}
+              {...(hasUnsavedChanges || isOpen
+                ? undefined
+                : {
+                    component: Link,
+                    to: `/document/${document.id}/comments/${_id}`,
+                  })}
+            >
+              {hasComments
+                ? t`Comments (${nodeThreads.flat().length})`
+                : t`Add comment`}
+            </Button>
+          </Tooltip>
         </Box>
       )}
     </NodeViewWrapper>
