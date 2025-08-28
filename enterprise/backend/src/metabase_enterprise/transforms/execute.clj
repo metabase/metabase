@@ -13,6 +13,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.request.core :as request]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.upload.core :as upload]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -131,13 +133,14 @@
         api-key  (transforms.settings/python-runner-api-key)
         headers  (cond-> {}
                    api-key (assoc "X-API-Key" api-key))]
-    (http/post (str base-url "/api/python-runner/execute")
-               {:content-type      :json
-                :accept            :json
-                :as                :json
-                :body              (json/encode {:code code, :tables table-name->id})
-                :headers           headers
-                :throw-exceptions? false})))
+    (update (http/post (str base-url "/api/python-runner/execute")
+                       {:content-type      :json
+                        :accept            :json
+                        :as                :json
+                        :body              (json/encode {:code code, :tables table-name->id})
+                        :headers           headers
+                        :throw-exceptions? false})
+            :body #(if (string? %) (json/parse-string % keyword) %))))
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner."
@@ -170,30 +173,33 @@
                              :stdout      (:stdout body)
                              :stderr      (:stderr body)}))
             (try
-              ;; TODO would be nice if we have create or replace in upload
-              (when-let [table (t2/select-one :model/Table
-                                              :name (ddl.i/format-name driver name)
-                                              :schema (ddl.i/format-name driver schema)
-                                              :db_id (:id db))]
-                (upload/delete-upload! table)
-                ;; TODO shouldn't this be handled in upload?
-                (t2/delete! :model/Table (:id table)))
-              ;; Create temporary CSV file from output data
-              (let [temp-file (File/createTempFile "transform-output-" ".csv")
-                    csv-data  (:output body)]
-                (try
-                  (with-open [writer (io/writer temp-file)]
-                    (.write writer ^String csv-data))
-                  (upload/create-from-csv-and-sync! {:db         db
-                                                     :filename   (.getName temp-file)
-                                                     :file       temp-file
-                                                     :schema     schema
-                                                     :table-name name})
-                  (finally
-                    ;; Clean up temp file
-                    (.delete temp-file))))
-              {:run_id run-id
-               :result result}
+              ;; TODO hacky, need to to think through the permission model here
+              (request/with-current-user (:metabase-user-id (mw.session/current-user-info-for-api-key (transforms.settings/python-runner-api-key)))
+                ;; TODO would be nice if we have create or replace in upload
+                (when-let [table (t2/select-one :model/Table
+                                                :name (ddl.i/format-name driver name)
+                                                :schema (ddl.i/format-name driver schema)
+                                                :db_id (:id db))]
+                  (upload/delete-upload! table)
+                  ;; TODO shouldn't this be handled in upload?
+                  (t2/delete! :model/Table (:id table)))
+                ;; Create temporary CSV file from output data
+                (let [temp-file (File/createTempFile "transform-output-" ".csv")
+                      csv-data  (:output body)]
+                  (try
+                    (with-open [writer (io/writer temp-file)]
+                      (.write writer ^String csv-data))
+                    (upload/create-from-csv-and-sync! {:db         db
+                                                       :filename   (.getName temp-file)
+                                                       :file       temp-file
+                                                       :schema     schema
+                                                       :table-name name})
+                    (finally
+                      ;; Clean up temp file
+                      (.delete temp-file))))
+                {:run_id run-id
+                 :result result})
               (catch Exception e
+                (log/error e "Failed to to create resulting table")
                 (throw (ex-info "Failed to create the resulting table"
                                 {:error (.getMessage e)}))))))))))
