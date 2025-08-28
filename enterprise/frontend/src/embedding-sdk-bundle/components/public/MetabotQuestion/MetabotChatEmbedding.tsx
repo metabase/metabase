@@ -15,7 +15,7 @@ import {
 import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
 import {
   useMetabotAgent,
-  useMetabotChat,
+  useMetabotChatHandlers,
 } from "metabase-enterprise/metabot/hooks";
 import {
   cancelInflightAgentRequests,
@@ -28,8 +28,7 @@ const MIN_INPUT_HEIGHT = 42;
 
 export const MetabotChatEmbedding = () => {
   const metabot = useMetabotAgent();
-  const { isDoingScience, handleSubmitInput, handleResetInput } =
-    useMetabotChat();
+  const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
 
   const resetInput = useCallback(() => {
     handleResetInput();
@@ -53,7 +52,9 @@ export const MetabotChatEmbedding = () => {
   };
 
   const inputPlaceholder = t`Tell me to do something, or ask a question`;
-  const placeholder = isDoingScience ? t`Doing science...` : inputPlaceholder;
+  const placeholder = metabot.isDoingScience
+    ? t`Doing science...`
+    : inputPlaceholder;
 
   function cancelRequest() {
     dispatch(cancelInflightAgentRequests());
@@ -70,7 +71,7 @@ export const MetabotChatEmbedding = () => {
       <Flex
         className={cx(
           Styles.innerContainer,
-          isDoingScience && Styles.innerContainerLoading,
+          metabot.isDoingScience && Styles.innerContainerLoading,
           inputExpanded && Styles.innerContainerExpanded,
         )}
         gap="sm"
@@ -83,7 +84,7 @@ export const MetabotChatEmbedding = () => {
           }}
           justify="center"
         >
-          {isDoingScience ? (
+          {metabot.isDoingScience ? (
             <Loader size="sm" />
           ) : (
             <MetabotIcon isLoading={false} />
@@ -99,11 +100,11 @@ export const MetabotChatEmbedding = () => {
           ref={metabot.promptInputRef}
           autoFocus
           value={metabot.prompt}
-          disabled={isDoingScience}
+          disabled={metabot.isDoingScience}
           className={cx(
             Styles.textarea,
             inputExpanded && Styles.textareaExpanded,
-            isDoingScience && Styles.textareaLoading,
+            metabot.isDoingScience && Styles.textareaLoading,
           )}
           placeholder={placeholder}
           onChange={(e) => metabot.setPrompt(e.target.value)}
@@ -122,7 +123,7 @@ export const MetabotChatEmbedding = () => {
             }
           }}
         />
-        {isDoingScience ? (
+        {metabot.isDoingScience ? (
           <UnstyledButton
             h="1rem"
             data-testid="metabot-cancel-request"

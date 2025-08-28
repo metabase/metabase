@@ -19,7 +19,7 @@ import {
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 
-import { useMetabotAgent, useMetabotChat } from "../../hooks";
+import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
 
 import Styles from "./MetabotChat.module.css";
 import { Messages } from "./MetabotChatMessage";
@@ -28,12 +28,8 @@ import { useScrollManager } from "./hooks";
 
 export const MetabotChat = () => {
   const metabot = useMetabotAgent();
-  const {
-    isDoingScience,
-    handleSubmitInput,
-    handleRetryMessage,
-    handleResetInput,
-  } = useMetabotChat();
+  const { handleSubmitInput, handleRetryMessage, handleResetInput } =
+    useMetabotChatHandlers();
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -90,7 +86,7 @@ export const MetabotChat = () => {
           className={Styles.messagesContainer}
           data-testid="metabot-chat-messages"
         >
-          {!hasMessages && !isDoingScience && (
+          {!hasMessages && !metabot.isDoingScience && (
             <>
               {/* empty state */}
               <Flex
@@ -132,7 +128,7 @@ export const MetabotChat = () => {
             </>
           )}
 
-          {(hasMessages || isDoingScience) && (
+          {(hasMessages || metabot.isDoingScience) && (
             <Box
               className={Styles.messages}
               data-testid="metabot-chat-inner-messages"
@@ -142,12 +138,12 @@ export const MetabotChat = () => {
                 messages={metabot.messages}
                 errorMessages={metabot.errorMessages}
                 onRetryMessage={handleRetryMessage}
-                isDoingScience={isDoingScience}
+                isDoingScience={metabot.isDoingScience}
                 showFeedbackButtons
               />
 
               {/* loading */}
-              {isDoingScience && (
+              {metabot.isDoingScience && (
                 <MetabotThinking
                   toolCalls={metabot.toolCalls}
                   hasStartedResponse={
@@ -183,7 +179,7 @@ export const MetabotChat = () => {
           <Paper
             className={cx(
               Styles.inputContainer,
-              isDoingScience && Styles.inputContainerLoading,
+              metabot.isDoingScience && Styles.inputContainerLoading,
             )}
           >
             <Textarea
@@ -203,7 +199,7 @@ export const MetabotChat = () => {
               value={metabot.prompt}
               className={cx(
                 Styles.textarea,
-                isDoingScience && Styles.textareaLoading,
+                metabot.isDoingScience && Styles.textareaLoading,
               )}
               placeholder={t`Tell me to do something, or ask a question`}
               onChange={(e) => metabot.setPrompt(e.target.value)}

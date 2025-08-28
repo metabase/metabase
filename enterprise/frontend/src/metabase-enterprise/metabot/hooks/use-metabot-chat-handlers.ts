@@ -1,17 +1,15 @@
 import { useCallback } from "react";
 
-import { useSelector } from "metabase/lib/redux";
-import { getIsProcessing } from "metabase-enterprise/metabot/state";
-
 import { useMetabotAgent } from "./use-metabot-agent";
 
-export const useMetabotChat = () => {
-  const { setPrompt, promptInputRef, submitInput, retryMessage } =
-    useMetabotAgent();
-
-  const isDoingScience = useSelector(getIsProcessing as any) as ReturnType<
-    typeof getIsProcessing
-  >;
+export const useMetabotChatHandlers = () => {
+  const {
+    isDoingScience,
+    setPrompt,
+    promptInputRef,
+    submitInput,
+    retryMessage,
+  } = useMetabotAgent();
 
   const handleSubmitInput = useCallback(
     (input: string) => {
@@ -48,7 +46,6 @@ export const useMetabotChat = () => {
   }, [setPrompt]);
 
   return {
-    isDoingScience,
     handleSubmitInput,
     handleRetryMessage,
     handleResetInput,

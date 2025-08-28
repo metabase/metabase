@@ -13,7 +13,7 @@ import { Flex, Paper, Stack, Text } from "metabase/ui";
 import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
 import {
   useMetabotAgent,
-  useMetabotChat,
+  useMetabotChatHandlers,
 } from "metabase-enterprise/metabot/hooks";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
@@ -61,7 +61,7 @@ const MetabotQuestionInner = () => {
 function MetabotMessages() {
   const metabot = useMetabotAgent();
   const { messages, errorMessages } = metabot;
-  const { isDoingScience, handleRetryMessage } = useMetabotChat();
+  const { handleRetryMessage } = useMetabotChatHandlers();
   const { setNavigateToPath } = useMetabotReactions();
 
   if (!messages.length && !errorMessages.length) {
@@ -75,7 +75,7 @@ function MetabotMessages() {
           messages={messages}
           errorMessages={errorMessages}
           onRetryMessage={handleRetryMessage}
-          isDoingScience={isDoingScience}
+          isDoingScience={metabot.isDoingScience}
           showFeedbackButtons={false}
           onInternalLinkClick={setNavigateToPath}
         />

@@ -8,6 +8,7 @@ import {
   type MetabotPromptSubmissionResult,
   getAgentErrorMessages,
   getIsLongMetabotConversation,
+  getIsProcessing,
   getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
@@ -24,6 +25,10 @@ export const useMetabotAgent = () => {
   const dispatch = useDispatch();
   const { prompt, setPrompt, promptInputRef, getChatContext } =
     useMetabotContext();
+
+  const isDoingScience = useSelector(getIsProcessing as any) as ReturnType<
+    typeof getIsProcessing
+  >;
 
   // TODO: create an enterprise useSelector
   const messages = useSelector(getMessages as any) as ReturnType<
@@ -137,6 +142,7 @@ export const useMetabotAgent = () => {
   );
 
   return {
+    isDoingScience,
     prompt,
     setPrompt,
     promptInputRef,
