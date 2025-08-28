@@ -80,7 +80,6 @@ function SourceInfo({ transform }: SourceInfoProps) {
         )}
         <Divider />
         <Stack gap="xs">
-          <Text size="sm" fw={500}>{t`Tables:`}</Text>
           {Object.entries(sourceTables).map(([alias, tableId]) => (
             <TableWithAlias
               key={alias}
@@ -125,8 +124,7 @@ function TableWithAlias({ alias, tableId, databaseId }: TableWithAliasProps) {
   }
 
   return (
-    <Group gap="sm" pl="md">
-      <Text size="sm" c="dimmed">{alias}:</Text>
+    <Group gap="sm" align="flex-start">
       <Group gap="xs">
         {table?.schema && (
           <>
