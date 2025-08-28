@@ -19,7 +19,7 @@
   :encryption :no
   :export?    false)
 
-(defsetting git-sync-branch
+(defsetting git-sync-import-branch
   (deferred-tru "The main branch of your git repository, e.g. `main`")
   :type :string
   :visibility :admin

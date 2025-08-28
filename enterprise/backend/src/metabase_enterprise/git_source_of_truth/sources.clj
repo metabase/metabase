@@ -66,6 +66,6 @@
   []
   (when (settings/git-sync-url)
     (->GitSource (settings/git-sync-url)
-                 (settings/git-sync-branch)
+                 (settings/git-sync-import-branch)
                  (settings/git-sync-path)
                  (settings/git-sync-key))))
