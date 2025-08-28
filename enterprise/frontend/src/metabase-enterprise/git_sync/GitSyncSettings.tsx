@@ -59,7 +59,7 @@ export const GitSyncSettings = () => {
       >
         <Flex gap="md" align="end">
           <AdminSettingInput
-            name="git-sync-branch"
+            name="git-sync-import-branch"
             // eslint-disable-next-line
             description={t`Metabase will pull in all content from this branch`}
             title={t`Import branch`}

@@ -20,7 +20,15 @@
   :export?    false)
 
 (defsetting git-sync-import-branch
-  (deferred-tru "The main branch of your git repository, e.g. `main`")
+  (deferred-tru "The git branch to pull from, e.g. `main`")
+  :type :string
+  :visibility :admin
+  :encryption :no
+  :export? false
+  :default "main")
+
+(defsetting git-sync-export-branch
+  (deferred-tru "The git branch to push to, e.g. `new-changes`")
   :type :string
   :visibility :admin
   :encryption :no
