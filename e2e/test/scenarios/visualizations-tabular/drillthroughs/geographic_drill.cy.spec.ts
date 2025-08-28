@@ -23,7 +23,7 @@ describe("scenarios > visualizations > drillthroughs > geographic drill", () => 
             ["field", PEOPLE.LONGITUDE, { binning: { strategy: "default" } }],
           ],
         },
-        display: undefined,
+        display: "table",
       },
       { visitQuestion: true },
     );
