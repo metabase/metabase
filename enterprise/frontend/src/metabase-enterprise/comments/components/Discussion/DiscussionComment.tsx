@@ -7,10 +7,18 @@ import { t } from "ttag";
 import { Group, Spoiler, Text, Timeline, Tooltip, rem } from "metabase/ui";
 import type { Comment } from "metabase-types/api";
 
-import S from "./DiscussionComment.module.css";
+import S from "./Discussion.module.css";
+import {
+  DiscussionActionPanel,
+  type DiscussionActionPanelProps,
+} from "./DiscussionActionPanel";
 
 type DiscussionCommentProps = {
   comment: Comment;
+  actionPanelVariant?: DiscussionActionPanelProps["variant"];
+  onResolve?: (comment: Comment) => unknown;
+  onReaction?: (comment: Comment, emoji: string) => unknown;
+  onDelete?: (comment: Comment) => unknown;
 };
 
 const avatarColors = [
@@ -25,9 +33,15 @@ const avatarColors = [
 ];
 
 const lineHeightPx = 20;
-export function DiscussionComment({ comment }: DiscussionCommentProps) {
+export function DiscussionComment({
+  comment,
+  actionPanelVariant,
+  onResolve,
+  onReaction,
+}: DiscussionCommentProps) {
   return (
     <Timeline.Item
+      className={S.commentRoot}
       mt="1.25rem"
       bullet={
         <Avatar
@@ -39,8 +53,14 @@ export function DiscussionComment({ comment }: DiscussionCommentProps) {
         />
       }
     >
+      <DiscussionActionPanel
+        variant={actionPanelVariant}
+        comment={comment}
+        onResolve={onResolve}
+        onReaction={onReaction}
+      />
       <Group gap="sm" align="center" mb="0.25rem" wrap="nowrap">
-        <Text fw={700} lh={1.1} truncate>
+        <Text fw={700} lh={1.3} truncate>
           {comment.creator.common_name}
         </Text>
         <Tooltip

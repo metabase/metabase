@@ -31,7 +31,7 @@ export const SingleComment = {
         id: "1",
         content_str_stup:
           "The revenue trend line is helpful, but could we also add quarter-over-quarter growth as a percentage?",
-        createdAt: getDateRelativeToNow(60 * 60 * 24 * 2),
+        created_at: getDateRelativeToNow(60 * 60 * 24 * 2),
         creator: {
           common_name: "John Doe",
         },
@@ -48,7 +48,7 @@ export const LongComment = {
         id: "1",
         content_str_stup:
           "I really appreciate the new version of the dashboard, especially the way the KPIs are surfaced at the top. That definitely helps me quickly align with our daily goals. However, I think there are a few areas where we could improve to make the dashboard even more useful for analysis. For example, the revenue trend chart is great for spotting long-term movements, but it would be even more insightful if we could overlay major campaign dates or product launches so we can see correlations between business initiatives and performance.",
-        createdAt: getDateRelativeToNow(60 * 60 * 24 * 2),
+        created_at: getDateRelativeToNow(60 * 60 * 24 * 2),
         creator: {
           common_name: "Super long long long name that should wrap",
         },
@@ -56,7 +56,7 @@ export const LongComment = {
       {
         id: "2",
         content_str_stup: "Yes, we can add that.",
-        createdAt: getDateRelativeToNow(60),
+        created_at: getDateRelativeToNow(60),
         creator: {
           common_name: "Jane Doe",
         },
@@ -73,7 +73,7 @@ export const CommentWithReplies = {
         id: "1",
         content_str_stup:
           "The revenue dashboard looks good, but I think we're missing context on customer churn. Could we add a chart for that?",
-        createdAt: getDateRelativeToNow(60 * 60 * 2),
+        created_at: getDateRelativeToNow(60 * 60 * 2),
         creator: {
           common_name: "Priya Sharma",
         },
@@ -82,7 +82,7 @@ export const CommentWithReplies = {
         id: "2",
         content_str_stup:
           "Good point. We already track churn in a different dataset — I can try to join it with the revenue data.",
-        createdAt: getDateRelativeToNow(60),
+        created_at: getDateRelativeToNow(60),
         creator: {
           common_name: "Michael Chen",
         },
@@ -91,7 +91,7 @@ export const CommentWithReplies = {
         id: "3",
         content_str_stup:
           "Yes please, churn is critical for forecasting. If possible, let's show churn % next to revenue growth.",
-        createdAt: getDateRelativeToNow(5),
+        created_at: getDateRelativeToNow(5),
         creator: {
           common_name: "Sara Lopez",
         },

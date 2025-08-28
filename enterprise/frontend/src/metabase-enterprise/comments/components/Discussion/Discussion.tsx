@@ -6,6 +6,7 @@ import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
 
+import S from "./Discussion.module.css";
 import { DiscussionComment } from "./DiscussionComment";
 
 export interface DiscussionProps {
@@ -25,9 +26,13 @@ export const Discussion = ({ comments }: DiscussionProps) => {
 
   return (
     <Stack>
-      <Timeline lineWidth={1}>
-        {comments.map((comment) => (
-          <DiscussionComment key={comment.id} comment={comment} />
+      <Timeline lineWidth={1} className={S.discussionRoot}>
+        {comments.map((comment, index) => (
+          <DiscussionComment
+            key={comment.id}
+            comment={comment}
+            actionPanelVariant={index === 0 ? "discussion" : "comment"}
+          />
         ))}
       </Timeline>
 
