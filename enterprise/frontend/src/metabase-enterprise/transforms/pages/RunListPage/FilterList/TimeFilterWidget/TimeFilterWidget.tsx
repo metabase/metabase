@@ -22,6 +22,7 @@ export function TimeFilterWidget({
   }
 
   function handleChange(value: string | null) {
+    close();
     onChange(value ?? undefined);
   }
 
