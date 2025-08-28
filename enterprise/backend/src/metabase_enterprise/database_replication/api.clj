@@ -13,7 +13,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.regex PatternSyntaxException)))
 
 (set! *warn-on-reflection* true)
 
@@ -37,12 +39,15 @@
 (defn- schema-filter->fn [{:keys [type patterns]}]
   (fn [table-schema]
     (or (= type "all")
-        (-> patterns
-            driver.s/schema-pattern->re-pattern
-            (re-matches table-schema)
-            ((case type
-               "include" identity
-               "exclude" nil?))))))
+        (try
+          (-> patterns
+              driver.s/schema-pattern->re-pattern
+              (re-matches table-schema)
+              ((case type
+                 "include" identity
+                 "exclude" nil?)))
+          (catch PatternSyntaxException _
+            (api/check-400 false "Invalid schema pattern"))))))
 
 (defn- schema-filters->fn [schema-filters]
   (if (seq schema-filters)
@@ -155,7 +160,7 @@
                 conn         {:connection-id id}]
             (database-replication.settings/database-replication-connections! (assoc conns (kw-id database-id) conn))
             conn)
-          (api/check-400 false "not enough quota"))))))
+          (api/check-400 false "Not enough quota"))))))
 
 (api.macros/defendpoint :delete "/connection/:database-id"
   "Delete PG replication connection for the specified database."
