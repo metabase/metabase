@@ -48,9 +48,9 @@
     (->> comments
          (map (fn [comment]
                 (if (and (:is_deleted comment) (has-replies? (:id comment)))
-                  ;; Replace deleted comment with placeholder if it has replies
+                  ;; Replace deleted comment content with nil if it has replies
                   (assoc comment
-                         :content "[deleted]"
+                         :content nil
                          :creator nil)
                   comment)))
          ;; Remove deleted comments that have no replies
