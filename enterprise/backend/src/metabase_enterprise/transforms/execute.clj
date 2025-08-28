@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase-enterprise.transforms.python-runner :as python-runner]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
@@ -128,19 +129,9 @@
   "Call the Python runner API endpoint to execute Python code.
    Returns the result map or throws on error."
   [code table-name->id]
-  ;; TODO: Add connection-str parameter once the API supports it
-  (let [base-url (transforms.settings/python-runner-base-url)
-        api-key  (transforms.settings/python-runner-api-key)
-        headers  (cond-> {}
-                   api-key (assoc "X-API-Key" api-key))]
-    (update (http/post (str base-url "/api/python-runner/execute")
-                       {:content-type      :json
-                        :accept            :json
-                        :as                :json
-                        :body              (json/encode {:code code, :tables table-name->id})
-                        :headers           headers
-                        :throw-exceptions? false})
-            :body #(if (string? %) json/decode+kw %))))
+  ;; TODO probably don't need this hack anymore, double check
+  (update (python-runner/execute-python-code code table-name->id)
+          :body #(if (string? %) json/decode+kw %)))
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner."
@@ -155,8 +146,6 @@
           db                      (t2/select-one :model/Database target-database)
           driver                  (:engine db)]
       (with-transform-lifecycle [run-id [(:id transform) {:run_method run-method}]]
-        ;; TODO: Pass connection-str to API once it supports it
-        ;; For now, the connection string needs to be embedded in the Python code
         (let [{:keys [body status] :as result}  (call-python-runner-api! body source-tables)]
           (if (not= 200 status)
             (throw (ex-info (str/join "\n"
@@ -173,32 +162,31 @@
                              :stdout      (:stdout body)
                              :stderr      (:stderr body)}))
             (try
-              ;; TODO hacky, need to to think through the permission model here
-              (request/with-current-user (:metabase-user-id (mw.session/current-user-info-for-api-key (transforms.settings/python-runner-api-key)))
-                ;; TODO would be nice if we have create or replace in upload
-                (when-let [table (t2/select-one :model/Table
-                                                :name (ddl.i/format-name driver name)
-                                                :schema (ddl.i/format-name driver schema)
-                                                :db_id (:id db))]
-                  (upload/delete-upload! table)
-                  ;; TODO shouldn't this be handled in upload?
-                  (t2/delete! :model/Table (:id table)))
-                ;; Create temporary CSV file from output data
-                (let [temp-file (File/createTempFile "transform-output-" ".csv")
-                      csv-data  (:output body)]
-                  (try
-                    (with-open [writer (io/writer temp-file)]
-                      (.write writer ^String csv-data))
-                    (upload/create-from-csv-and-sync! {:db         db
-                                                       :filename   (.getName temp-file)
-                                                       :file       temp-file
-                                                       :schema     schema
-                                                       :table-name name})
-                    (finally
-                      ;; Clean up temp file
-                      (.delete temp-file))))
-                {:run_id run-id
-                 :result result})
+              ;; TODO would be nice if we have create or replace in upload
+              ;; NOTE (chris) we do have a replace, so this would be easy! but we're gonna stop using csv
+              (when-let [table (t2/select-one :model/Table
+                                              :name (ddl.i/format-name driver name)
+                                              :schema (ddl.i/format-name driver schema)
+                                              :db_id (:id db))]
+                (upload/delete-upload! table)
+                ;; TODO shouldn't this be handled in upload?
+                (t2/delete! :model/Table (:id table)))
+              ;; Create temporary CSV file from output data
+              (let [temp-file (File/createTempFile "transform-output-" ".csv")
+                    csv-data  (:output body)]
+                (try
+                  (with-open [writer (io/writer temp-file)]
+                    (.write writer ^String csv-data))
+                  (upload/create-from-csv-and-sync! {:db         db
+                                                     :filename   (.getName temp-file)
+                                                     :file       temp-file
+                                                     :schema     schema
+                                                     :table-name name})
+                  (finally
+                    ;; Clean up temp file
+                    (.delete temp-file))))
+              {:run_id run-id
+               :result result}
               (catch Exception e
                 (log/error e "Failed to to create resulting table")
                 (throw (ex-info "Failed to create the resulting table"

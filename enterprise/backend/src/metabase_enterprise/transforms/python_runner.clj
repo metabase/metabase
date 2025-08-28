@@ -1,16 +1,12 @@
-(ns metabase.python-runner.api
-  "API endpoints for executing Python code in a sandboxed environment."
+(ns metabase-enterprise.transforms.python-runner
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [metabase-enterprise.transforms.settings :as transforms.settings]
-   [metabase.api.common :as api]
-   [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
@@ -103,9 +99,10 @@
             ;; Success - read the output CSV if it exists
             (let [output-path (:output_file result)]
               (if (and output-path (.exists (io/file output-path)))
-                {:output (slurp output-path)
-                 :stdout (safe-slurp (:stdout_file result))
-                 :stderr (safe-slurp (:stderr_file result))}
+                {:status 200
+                 :body   {:output (slurp output-path)
+                          :stdout (safe-slurp (:stdout_file result))
+                          :stderr (safe-slurp (:stderr_file result))}}
                 {:status 500
                  :body   {:error  "Transform did not produce output CSV"
                           :stdout (safe-slurp (:stdout_file result))
@@ -130,13 +127,3 @@
       (catch Exception e
         {:status 500
          :body {:error (str "Failed to connect to Python execution server: " (.getMessage e))}}))))
-
-(api.macros/defendpoint :post "/execute"
-  "Execute Python code in a sandboxed environment and return the output."
-  [_route-params
-   _query-params
-   {:keys [code tables]} :- [:map
-                             [:code ms/NonBlankString]
-                             [:tables [:map-of :string ms/PositiveInt]]]]
-  (api/check-superuser)
-  (execute-python-code code tables))

@@ -33,7 +33,6 @@
    [metabase.product-feedback.api]
    [metabase.public-sharing.api]
    [metabase.pulse.api]
-   [metabase.python-runner.api]
    [metabase.queries.api]
    [metabase.query-processor.api]
    [metabase.revisions.api]
@@ -78,7 +77,7 @@
          metabase.permissions.api/keep-me
          metabase.product-feedback.api/keep-me
          metabase.public-sharing.api/keep-me
-         metabase.python-runner.api/keep-me
+         metabase.python-runner.python-runner/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
@@ -166,8 +165,6 @@
    "/product-feedback"     'metabase.product-feedback.api
    "/public"               (+public-exceptions 'metabase.public-sharing.api)
    "/pulse"                metabase.pulse.api/pulse-routes
-   ;; TODO spin this out to a separate service
-   "/python-runner"        (+auth 'metabase.python-runner.api)
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
