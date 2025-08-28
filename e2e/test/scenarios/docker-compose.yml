@@ -36,7 +36,7 @@ services:
       - "1025:1025"
 
   ldap:
-    image: bitnami/openldap:2.6.4
+    image: bitnamilegacy/openldap:2.6.4
     ports:
       - "389:389"
     environment:
