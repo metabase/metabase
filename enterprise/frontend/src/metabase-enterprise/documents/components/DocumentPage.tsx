@@ -41,6 +41,7 @@ import type {
   RegularCollectionId,
 } from "metabase-types/api";
 
+import { trackDocumentCreated, trackDocumentUpdated } from "../analytics";
 import {
   clearDraftCards,
   openVizSettingsSidebar,
@@ -284,11 +285,13 @@ export const DocumentPage = ({
           ? updateDocument({ ...newDocumentData, id: documentData.id }).then(
               (response) => {
                 if (response.data) {
+                  const _document = response.data;
+                  trackDocumentUpdated(_document);
                   scheduleNavigation(() => {
-                    dispatch(push(`/document/${response.data.id}`));
+                    dispatch(push(`/document/${_document.id}`));
                   });
                 }
-                return response.data;
+                return response;
               },
             )
           : createDocument({
@@ -296,20 +299,24 @@ export const DocumentPage = ({
               collection_id: collectionId || undefined,
             }).then((response) => {
               if (response.data) {
+                const _document = response.data;
+                trackDocumentCreated(_document);
                 scheduleNavigation(() => {
-                  dispatch(replace(`/document/${response.data.id}`));
+                  dispatch(replace(`/document/${_document.id}`));
                 });
               }
-              return response.data;
+              return response;
             }));
 
-        if (result) {
+        if (result.data) {
           sendToast({
             message: documentData?.id ? t`Document saved` : t`Document created`,
           });
           dispatch(clearDraftCards());
           // Mark document as clean
           setHasUnsavedEditorChanges(false);
+        } else if (result.error) {
+          throw result.error;
         }
       } catch (error) {
         console.error("Failed to save document:", error);

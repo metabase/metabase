@@ -273,6 +273,7 @@ export const ParameterValueWidget = ({
               className={className}
               ariaLabel={placeholder}
               mimicMantine={mimicMantine}
+              hasPopover
             >
               {typeIcon}
               {prefix && <div className={S.Prefix}>{prefix}</div>}

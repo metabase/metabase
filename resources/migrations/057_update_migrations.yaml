@@ -1075,6 +1075,14 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v57.2025-08-23T16:00:00
+      author: rileythomp
+      comment: Migrate ClickHouse database details to be use `enable-multiple-db` with db filters
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.MigrateClickHouseDetailsToMultiDB"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
