@@ -1,5 +1,7 @@
 (ns metabase-enterprise.transforms.api.transform-job
   (:require
+   [clojure.set :as set]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.transforms.jobs :as transforms.jobs]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
@@ -7,11 +9,16 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.driver :as driver]
+   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
 
@@ -124,14 +131,74 @@
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
     (t2/hydrate job :tag_ids :last_run)))
 
+(defn- report-zone-id
+  ^ZoneId []
+  (if-let [zone-name (driver/report-timezone)]
+    (t/zone-id zone-name)
+    (t/zone-id)))
+
+(defn- report-local-date
+  []
+  (.toLocalDate (t/zoned-date-time (report-zone-id))))
+
+(defn- ->instant
+  ^Instant [t]
+  (when t
+    (condp instance? t
+      Instant        t
+      OffsetDateTime (.toInstant ^OffsetDateTime t)
+      ZonedDateTime  (.toInstant ^ZonedDateTime t)
+      LocalDateTime  (recur (.atZone ^LocalDateTime t (report-zone-id)))
+      LocalTime      (recur (.atDate ^LocalTime t (report-local-date)))
+      OffsetTime     (recur (.atDate ^OffsetTime t (report-local-date)))
+      LocalDate      (recur (.atStartOfDay ^LocalDate t))
+      (throw (ex-info (format "Cannot convert timestamp %s of type %s to an Instant" t (type t))
+                      {:timestamp t})))))
+
+(defn- add-next-run
+  [{id :id :as job}]
+  (if-let [start-time (-> id transforms.schedule/existing-trigger :next-fire-time)]
+    (assoc job :next_run {:start_time (str (->instant start-time))})
+    job))
+
+(defn- matching-timestamp?
+  [job field-path {:keys [start end]}]
+  (when-let [field-instant (->instant (get-in job field-path))]
+    (let [start-instant (some-> start u.date/parse ->instant)
+          end-instant (some-> end u.date/parse ->instant)]
+      (log/debug "matching-timestamp?" (pr-str [field-instant start-instant end-instant]))
+      (and (or (nil? start)
+               (not (.isBefore field-instant start-instant)))
+           (or (nil? end)
+               (.isAfter end-instant field-instant))))))
+
+(defn- ->date-field-filter-xf
+  [field-path filter-value]
+  (let [range (some-> filter-value (params.dates/date-string->range {:inclusive-end? false}))]
+    (if range
+      (filter #(matching-timestamp? % field-path range))
+      identity)))
+
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
   [_route-params
-   _query-params]
+   {:keys [last_run_start_time next_run_start_time transform_tag_ids]} :-
+   [:map
+    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:next_run_start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:transform_tag_ids   {:optional true} [:maybe [:sequential :string]]]]]
   (log/info "Getting all transform jobs")
   (api/check-superuser)
-  (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
-    (t2/hydrate jobs :tag_ids :last_run)))
+  (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})
+        transform-tag-ids (-> transform_tag_ids set not-empty)]
+    (into []
+          (comp (map add-next-run)
+                (->date-field-filter-xf [:last_run :start_time] last_run_start_time)
+                (->date-field-filter-xf [:next_run :start_time] next_run_start_time)
+                (if transform-tag-ids
+                  (filter #(seq (set/intersection transform-tag-ids (:tag-_ids %))))
+                  identity))
+          (t2/hydrate jobs :tag_ids :last_run))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-job` routes."
