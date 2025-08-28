@@ -5,22 +5,13 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
 import ActionButton from "metabase/common/components/ActionButton";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
-import {
-  Form,
-  FormProvider,
-  FormSubmitButton,
-  FormSwitch,
-} from "metabase/forms";
 import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   useExportGitMutation,
   useImportGitMutation,
 } from "metabase-enterprise/api";
-import type { EnterpriseSettings } from "metabase-types/api";
 
 export const GitSyncSettings = () => {
   const [importGit, { isLoading: isImporting }] = useImportGitMutation();
@@ -50,7 +41,7 @@ export const GitSyncSettings = () => {
         <AdminSettingInput
           name="git-sync-key"
           title={t`RSA key`}
-          inputType="textarea"
+          inputType="password"
         />
       </SettingsSection>
       <SettingsSection
@@ -115,8 +106,6 @@ export const GitSyncSettings = () => {
           </ActionButton>
         </Flex>
       </SettingsSection>
-
-      <GitSyncEntities />
     </SettingsPageWrapper>
   );
 };
@@ -134,48 +123,5 @@ const GitSyncStatus = () => {
       <Box bdrs="50%" h="14" w="14" mr="sm" bg={color} />
       <Text c="text-medium">{message}</Text>
     </Flex>
-  );
-};
-
-const GitSyncEntities = () => {
-  const {
-    value: entities,
-    isLoading,
-    updateSetting,
-  } = useAdminSetting("git-sync-entities");
-
-  const handleSubmit = (settings: EnterpriseSettings["git-sync-entities"]) => {
-    updateSetting({
-      key: "git-sync-entities",
-      value: settings,
-    });
-  };
-
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading={isLoading} />;
-  }
-
-  return (
-    <SettingsSection title={t`Entities to sync`}>
-      <FormProvider
-        onSubmit={handleSubmit}
-        initialValues={entities || {}}
-        enableReinitialize
-      >
-        <Form>
-          <Stack gap="sm">
-            <FormSwitch name="transform" label={t`Transforms`} />
-            <FormSwitch name="snippet" label={t`SQL Snippets`} disabled />
-            <FormSwitch name="dataset" label={t`Models`} disabled />
-            <FormSwitch name="metric" label={t`Metrics`} disabled />
-            <FormSwitch name="dashboard" label={t`Dashboards`} disabled />
-            <FormSwitch name="question" label={t`Questions`} disabled />
-          </Stack>
-          <Flex justify="end" mt="md">
-            <FormSubmitButton label={t`Save changes`} variant="filled" />
-          </Flex>
-        </Form>
-      </FormProvider>
-    </SettingsSection>
   );
 };
