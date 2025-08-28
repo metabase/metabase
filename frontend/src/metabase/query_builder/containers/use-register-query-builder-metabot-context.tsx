@@ -202,19 +202,21 @@ const getChartConfigs = async ({
 };
 
 export const registerQueryBuilderMetabotContextFn = async ({
+  isMetabotEnabled,
   question,
   series,
   visualizationSettings,
   timelineEvents,
   queryResult,
 }: {
+  isMetabotEnabled: boolean;
   question: Question | undefined;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
   timelineEvents: TimelineEvent[];
   queryResult: any;
 }) => {
-  if (!PLUGIN_METABOT.isEnabled()) {
+  if (!isMetabotEnabled) {
     return {};
   }
   if (!question) {
@@ -252,6 +254,8 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
+  const isMetabotEnabled = PLUGIN_METABOT.useMetabotEnabled();
+
   useRegisterMetabotContextProvider(async (state) => {
     const question = getQuestion(state);
     const series = getTransformedSeries(state);
@@ -260,6 +264,7 @@ export const useRegisterQueryBuilderMetabotContext = () => {
     const queryResult = getFirstQueryResult(state);
 
     return registerQueryBuilderMetabotContextFn({
+      isMetabotEnabled,
       question,
       series,
       visualizationSettings,

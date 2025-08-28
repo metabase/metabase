@@ -4,9 +4,11 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export const AIQuestionAnalysisButton = () => {
-  const { submitInput } = useMetabotAgent();
+  const { submitInput, isEnabled } = useMetabotAgent();
 
-  const handleClick = () => submitInput("Analyze this chart");
+  if (!isEnabled) {
+    return null;
+  }
 
   const tooltipLabel = t`Explain this chart`;
 
@@ -15,7 +17,7 @@ export const AIQuestionAnalysisButton = () => {
       aria-label={tooltipLabel}
       tooltipLabel={tooltipLabel}
       icon={"metabot"}
-      onClick={handleClick}
+      onClick={() => submitInput("Analyze this chart")}
     />
   );
 };

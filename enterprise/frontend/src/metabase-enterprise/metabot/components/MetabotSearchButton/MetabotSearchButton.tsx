@@ -4,6 +4,7 @@ import { c, t } from "ttag";
 
 import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { METAKEY } from "metabase/lib/browser";
+import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import S from "metabase/nav/components/search/SearchButton/SearchButton.module.css";
 import { Button, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
@@ -19,6 +20,10 @@ export const MetabotSearchButton = () => {
   }, [setVisualState]);
 
   const isSmallScreen = useIsSmallScreen();
+
+  if (!metabot.isEnabled) {
+    return <SearchButton />;
+  }
 
   const label = c("'Search' here is a verb").t`Ask Metabot or search`;
 

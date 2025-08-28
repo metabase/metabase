@@ -12,7 +12,6 @@ import {
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   Box,
   Divider,
@@ -24,6 +23,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
+import { useMetabotEnabled } from "metabase-enterprise/metabot/hooks";
 import type { SearchResult } from "metabase-types/api";
 
 import {
@@ -126,11 +126,13 @@ export const CommandSuggestion = forwardRef<
   const [showEmbedSearch, setShowEmbedSearch] = useState(false);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  const isMetabotEnabled = useMetabotEnabled();
+
   const allCommandSections: CommandSection[] = useMemo(
     () => [
       {
         items: [
-          ...(PLUGIN_METABOT.isEnabled()
+          ...(isMetabotEnabled
             ? ([
                 {
                   icon: "metabot",
@@ -192,7 +194,7 @@ export const CommandSuggestion = forwardRef<
         ],
       },
     ],
-    [],
+    [isMetabotEnabled],
   );
 
   const allCommandOptions = useMemo(

@@ -10,7 +10,7 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
 import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
+import { PLUGIN_DASHCARD_MENU, PLUGIN_METABOT } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
@@ -37,6 +37,7 @@ export const DashCardMenuItems = ({
   canEdit,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
+  const isMetabotEnabled = PLUGIN_METABOT.useMetabotEnabled();
 
   const {
     onEditQuestion = (question, mode = "notebook") =>
@@ -107,7 +108,9 @@ export const DashCardMenuItems = ({
 
     items.push(
       ...PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters
-        .map((itemGetter) => itemGetter(question, dashcardId, dispatch))
+        .map((itemGetter) =>
+          itemGetter(question, dashcardId, dispatch, { isMetabotEnabled }),
+        )
         .filter(isNotNull),
     );
 
@@ -141,6 +144,7 @@ export const DashCardMenuItems = ({
     dashcardId,
     dispatch,
     canEdit,
+    isMetabotEnabled,
   ]);
 
   return menuItems.map((item) => {

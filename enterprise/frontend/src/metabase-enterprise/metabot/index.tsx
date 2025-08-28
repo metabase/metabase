@@ -16,11 +16,12 @@ import { MetabotGeneralSettingsPage } from "./components/MetabotAdmin/MetabotGen
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
-import { useMetabotAgent } from "./hooks";
+import { useMetabotAgent, useMetabotEnabled } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
 
 if (hasPremiumFeature("metabot_v3")) {
-  PLUGIN_METABOT.isEnabled = () => true;
+  PLUGIN_METABOT.useMetabotEnabled = useMetabotEnabled;
+
   PLUGIN_METABOT.Metabot = Metabot;
 
   PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
@@ -51,9 +52,13 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.getMetabotVisible =
     getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
   PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
-    const { startNewConversation } = useMetabotAgent();
+    const { startNewConversation, isEnabled } = useMetabotAgent();
 
     return useMemo(() => {
+      if (!isEnabled) {
+        return [];
+      }
+
       const ret: PaletteAction[] = [
         {
           id: "initialize_metabot",
@@ -67,7 +72,7 @@ if (hasPremiumFeature("metabot_v3")) {
         },
       ];
       return ret;
-    }, [searchText, startNewConversation]);
+    }, [searchText, startNewConversation, isEnabled]);
   };
 
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;

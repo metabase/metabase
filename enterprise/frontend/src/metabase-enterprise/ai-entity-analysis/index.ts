@@ -28,8 +28,11 @@ if (hasPremiumFeature("ai_entity_analysis")) {
     CHART_ANALYSIS_RENDER_FORMATS;
 
   PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters.push(
-    (question, dashcardId, dispatch) => {
-      if (!PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)) {
+    (question, dashcardId, dispatch, { isMetabotEnabled }) => {
+      if (
+        !isMetabotEnabled ||
+        !PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)
+      ) {
         return null;
       }
 
