@@ -124,18 +124,6 @@
   [_transform]
   [:name :created_at])
 
-(defn- extract-database-ids-from-source
-  "Extract database IDs from source configuration."
-  [source]
-  (when (map? source)
-    (cond
-      ;; Direct database reference
-      (:database source) #{(:database source)}
-      ;; Nested database references
-      (:databases source) (set (:databases source))
-      ;; Other potential patterns - extend as needed
-      :else #{})))
-
 (defn- extract-database-ids-from-target
   "Extract database IDs from target configuration."
   [target]
@@ -147,24 +135,6 @@
       (:databases target) (set (:databases target))
       ;; Other potential patterns - extend as needed
       :else #{})))
-
-(defn- transform-source-export
-  "Transform source JSON for export, replacing database IDs with portable names."
-  [source]
-  (when source
-    (let [export-db-fk (:export (serdes/fk :model/Database :name))]
-      (cond-> source
-        (:database source) (update :database export-db-fk)
-        (:databases source) (update :databases #(mapv export-db-fk %))))))
-
-(defn- transform-source-import
-  "Transform source JSON for import, replacing portable names with database IDs."
-  [source]
-  (when source
-    (let [import-db-fk (:import (serdes/fk :model/Database :name))]
-      (cond-> source
-        (:database source) (update :database import-db-fk)
-        (:databases source) (update :databases #(mapv import-db-fk %))))))
 
 (defn- transform-target-export
   "Transform target JSON for export, replacing database IDs with portable names."
@@ -191,19 +161,14 @@
    :transform
    {:created_at (serdes/date)
     :updated_at (serdes/date)
-    :source     {:export transform-source-export
-                 :import transform-source-import}
+    :source     {:export serdes/export-mbql :import serdes/import-mbql}
     :target     {:export transform-target-export
                  :import transform-target-import}
     :tag_associations (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [source target]}]
-  (let [source-db-ids (extract-database-ids-from-source source)
-        target-db-ids (extract-database-ids-from-target target)
-        all-db-ids    (set/union source-db-ids target-db-ids)]
-    (set (for [db-id all-db-ids]
-           [{:model "Database" :id db-id}]))))
+  (set (serdes/mbql-deps source)))
 
 (defmethod serdes/descendants "Transform"
   [_model-name id]
