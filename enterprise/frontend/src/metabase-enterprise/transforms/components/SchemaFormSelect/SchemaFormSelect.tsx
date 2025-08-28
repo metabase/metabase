@@ -11,7 +11,10 @@ export function SchemaFormSelect(props: FormSelectProps & { data: string[] }) {
   const [{ value }] = useField(name);
 
   const [searchValue, setSearchValue] = useState(value);
-  const dataWithNewItem = _.uniq([...data, searchValue]);
+  const dataWithNewItem = _.uniq([
+    ...data,
+    ...(searchValue !== "" ? [searchValue] : []),
+  ]);
 
   const isNewValue = !data.includes(value);
 
