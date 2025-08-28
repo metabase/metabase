@@ -51,6 +51,10 @@ export const DatabaseReplicationModal = ({
       typeof error.data === "string" &&
       setError(error.data);
   };
+  const onModalClose = () => {
+    setSetupStep("form");
+    onClose();
+  };
 
   const [createDatabaseReplication] = useCreateDatabaseReplicationMutation();
   const [previewDatabaseReplication] = usePreviewDatabaseReplicationMutation();
@@ -104,7 +108,7 @@ export const DatabaseReplicationModal = ({
   return (
     <Modal
       opened={isProgressStep || opened}
-      onClose={onClose}
+      onClose={onModalClose}
       closeOnClickOutside={canCloseModal}
       closeOnEscape={canCloseModal}
       withCloseButton={canCloseModal}
@@ -132,9 +136,9 @@ export const DatabaseReplicationModal = ({
       ) : setupStep === "setting-up" ? (
         <DatabaseReplicationSettingUp />
       ) : setupStep === "success" ? (
-        <DatabaseReplicationSuccess onClose={onClose} />
+        <DatabaseReplicationSuccess onClose={onModalClose} />
       ) : setupStep === "error" ? (
-        <DatabaseReplicationError error={error} onClose={onClose} />
+        <DatabaseReplicationError error={error} onClose={onModalClose} />
       ) : undefined}
     </Modal>
   );
