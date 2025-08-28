@@ -1183,6 +1183,14 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti schema-exists?
+  "Checks if a schema exists in the given database."
+  {:added "0.57.0" :arglists '([driver db-id schema])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod schema-exists? :default [_driver _db-id _schema] false)
+
 (defmulti create-schema-if-needed!
   "Creates a schema if it does not already exist.
    Used to create new schemas for transforms."
@@ -1190,8 +1198,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod create-schema-if-needed! :default [_driver _details _schema]
-  nil)
+(defmethod create-schema-if-needed! :default [_driver _details _schema] nil)
 
 (defmulti connection-details
   "Get connection details for a given driver and db object"

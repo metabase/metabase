@@ -39,10 +39,11 @@
 
 (defn run-transform!
   "Run a compiled transform"
-  [run-id driver {:keys [connection-details target] :as transform-details} opts]
+  [run-id driver {:keys [db-id connection-details output-schema] :as transform-details} opts]
   ;; local run is responsible for status
   (try
-    (driver/create-schema-if-needed! driver connection-details (:schema target))
+    (when-not (driver/schema-exists? driver db-id output-schema)
+      (driver/create-schema-if-needed! driver connection-details output-schema))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
       (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
@@ -66,10 +67,11 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           transform-details {:transform-type (keyword (:type target))
+           transform-details {:db-id db
+                              :transform-type (keyword (:type target))
                               :connection-details (driver/connection-details driver database)
                               :query (transforms.util/compile-source source)
-                              :target target
+                              :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
            opts {:overwrite? true}]
        (when-not (driver.u/supports? driver feature database)

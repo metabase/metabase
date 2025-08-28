@@ -919,3 +919,10 @@
   [driver details schema]
   (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
     (driver/execute-raw-queries! driver details sql)))
+
+(defmethod driver/schema-exists? :bigquery-cloud-sdk
+  [_driver db-id schema]
+  (driver-api/with-metadata-provider db-id
+    (let [details (-> (driver-api/metadata-provider) driver-api/database :details)
+          datasets (list-datasets details)]
+      (some #(= % schema) datasets))))
