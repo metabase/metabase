@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { c, jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
@@ -15,9 +15,9 @@ import {
   Stack,
   Text,
   Textarea,
-  UnstyledButton,
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
+import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
 import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
 
@@ -156,21 +156,7 @@ export const MetabotChat = () => {
               <div ref={fillerRef} data-testid="metabot-message-filler" />
 
               {/* long convo warning */}
-              {metabot.isLongConversation && (
-                <Text lh={1} c="text-light" m={0} ta="center">
-                  {jt`This chat is getting long. You can ${(
-                    <UnstyledButton
-                      key="reset"
-                      data-testid="metabot-reset-long-chat"
-                      display="inline"
-                      c="brand"
-                      td="underline"
-                      onClick={() => metabot.resetConversation()}
-                    >{c("'it' refers to a chat with an AI agent")
-                      .t`clear it`}</UnstyledButton>
-                  )}.`}
-                </Text>
-              )}
+              {metabot.isLongConversation && <MetabotResetLongChatButton />}
             </Box>
           )}
         </Box>

@@ -11,6 +11,7 @@ import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSing
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Flex, Paper, Stack, Text } from "metabase/ui";
 import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
+import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import {
   useMetabotAgent,
   useMetabotChatHandlers,
@@ -80,6 +81,8 @@ function MetabotMessages() {
           onInternalLinkClick={setNavigateToPath}
         />
       </Flex>
+
+      {metabot.isLongConversation && <MetabotResetLongChatButton />}
     </Paper>
   );
 }
