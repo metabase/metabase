@@ -57,7 +57,7 @@
   :default    true
   :feature    :metabot-v3
   :doc        false
-  :export?    true)
+  :export?    false)
 
 (defn +require-metabot-enabled
   "Middleware that ensures Metabot feature is enabled before allowing request to proceed."

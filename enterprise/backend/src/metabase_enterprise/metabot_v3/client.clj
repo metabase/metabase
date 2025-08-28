@@ -12,7 +12,7 @@
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
-   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings :refer [assert-metabot-enabled! metabot-feature-enabled]]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings :refer [assert-metabot-enabled!]]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]

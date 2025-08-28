@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
-   [metabase-enterprise.metabot-v3.settings :refer [assert-metabot-enabled-for-non-admins! metabot-feature-enabled]]
+   [metabase-enterprise.metabot-v3.settings :refer [assert-metabot-enabled-for-non-admins!]]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
