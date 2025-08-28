@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { c } from "ttag";
 
 import { Accordion, Icon, Stack, Text } from "metabase/ui";
 
@@ -63,6 +64,13 @@ export const EmbeddingHubChecklist = ({
             <Accordion.Control
               icon={renderStepIcon(step)}
               className={isCompleted ? S.completedControl : undefined}
+              aria-label={
+                isCompleted
+                  ? `${step.title} ${c(
+                      "This is after a name of a step of a checklist, to indicate taht the step has been completed",
+                    ).t`Done`}`
+                  : step.title
+              }
             >
               {step.title}
             </Accordion.Control>
