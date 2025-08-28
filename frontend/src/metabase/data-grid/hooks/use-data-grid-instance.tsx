@@ -20,6 +20,7 @@ import { usePrevious, useUpdateEffect } from "react-use";
 import _ from "underscore";
 
 import {
+  IMAGE_HEIGHT,
   DATASET_INDEX_ATTRIBUTE_NAME,
   MIN_COLUMN_WIDTH,
   ROW_HEIGHT,
@@ -290,6 +291,49 @@ export const useDataGridInstance = <TData, TValue>({
     onRowSelectionChange,
     enableRowSelection,
   });
+
+  // Calculate dynamic row heights for wrapped columns
+  const measureRowHeight = useCallback(
+    (rowIndex: number) => {
+      const height = Math.max(
+        ...columnsOptions.map((column) => {
+          const isWrap = column.wrap;
+          const value = column.accessorFn(data[rowIndex]);
+          const formattedValue = column.formatter
+            ? column.formatter(value, rowIndex, column.id)
+            : String(value);
+
+          // If formattedValue is object and it contains "type" field
+          const isImg =
+            formattedValue != null &&
+            typeof formattedValue === "object" &&
+            "type" in formattedValue &&
+            formattedValue.type === "img";
+          if (!isWrap && !isImg) {
+            return defaultRowHeight;
+          }
+          if (isImg) {
+            return IMAGE_HEIGHT;
+          }
+
+          if (value == null || formattedValue === "") {
+            return defaultRowHeight;
+          }
+          const tableColumn = table.getColumn(column.id);
+
+          const cellDimensions = measureBodyCellDimensions(
+            formattedValue,
+            tableColumn?.getSize(),
+          );
+          return cellDimensions.height;
+        }),
+        defaultRowHeight,
+      );
+
+      return height;
+    },
+    [data, defaultRowHeight, measureBodyCellDimensions, table, columnsOptions],
+  );
 
   // Enable row virtualization only when pagination is disabled
   const enableRowVirtualization = !enablePagination;
