@@ -1,0 +1,54 @@
+.spoilerControl {
+  height: auto;
+  z-index: 1;
+  color: var(--mb-color-text-secondary);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.spoilerContent {
+  mask: linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 20px,
+      rgb(0, 0, 0) 20px
+    ),
+    linear-gradient(270deg, transparent 0, transparent 48px, rgb(0, 0, 0) 96px);
+}
+
+.commentRoot {
+  position: relative;
+}
+
+.discussionRoot {
+  position: relative;
+}
+
+.actionPanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  /* Center the action panel vertically */
+  transform: translateY(-25%);
+  border: 1px solid var(--mb-color-border);
+  visibility: hidden;
+}
+
+.visible {
+  visibility: visible;
+}
+
+.visibleOnCommentHover {
+  .commentRoot:hover & {
+    visibility: visible;
+  }
+}
+
+.visibleOnDiscussionHover {
+  .discussionRoot:hover & {
+    visibility: visible;
+  }
+}
