@@ -5,6 +5,7 @@ import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useAdminSetting } from "metabase/api/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Flex, Switch, Text } from "metabase/ui";
 
 import { MetabotNavPane } from "./MetabotNavPane";
@@ -26,6 +27,7 @@ function MetabotEnabledPane() {
     value: isEnabled,
     updateSetting,
     isLoading,
+    error,
   } = useAdminSetting("metabot-feature-enabled");
 
   const handleToggle = async (checked: boolean) => {
@@ -35,8 +37,13 @@ function MetabotEnabledPane() {
     });
   };
 
-  if (isLoading) {
-    return null;
+  if (isLoading || error) {
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error ? t`Error loading Metabot settings` : null}
+      />
+    );
   }
 
   return (

@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/core";
 import { useState } from "react";
 
 import {
+  setupPropertiesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -116,6 +117,7 @@ const setup = ({
 
   setupSearchEndpoints(SEARCH_ITEMS);
   setupRecentViewsEndpoints(RECENT_ITEMS);
+  setupPropertiesEndpoints(settings.values);
 
   renderWithProviders(
     <TestWrapper
@@ -321,9 +323,10 @@ describe("CommandSuggestion", () => {
       jest.clearAllMocks();
     });
 
+    // TODO: add checks for setting, not just token feature
     describe("when metabot is disabled", () => {
       beforeEach(() => {
-        PLUGIN_METABOT.isEnabled = jest.fn(() => false);
+        PLUGIN_METABOT.useMetabotEnabled = jest.fn(() => false);
       });
 
       it("should show all available commands except Metabot", async () => {
@@ -342,7 +345,7 @@ describe("CommandSuggestion", () => {
 
     describe("when metabot is enabled", () => {
       beforeEach(() => {
-        PLUGIN_METABOT.isEnabled = jest.fn(() => true);
+        PLUGIN_METABOT.useMetabotEnabled = jest.fn(() => true);
       });
 
       it("should show all available commands including Metabot", async () => {
@@ -354,7 +357,7 @@ describe("CommandSuggestion", () => {
 
         setup({ settings });
 
-        expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
+        expect(await screen.findByText("Ask Metabot")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();
       });
     });

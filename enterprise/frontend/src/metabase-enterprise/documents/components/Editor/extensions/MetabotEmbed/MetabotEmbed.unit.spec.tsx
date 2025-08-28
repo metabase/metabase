@@ -32,7 +32,7 @@ describe("MetabotEmbed", () => {
 
   describe("when metabot is disabled", () => {
     beforeEach(() => {
-      PLUGIN_METABOT.isEnabled = jest.fn(() => false);
+      PLUGIN_METABOT.useMetabotEnabled = jest.fn(() => false);
     });
 
     it("should show disabled button with tooltip", async () => {
@@ -61,7 +61,7 @@ describe("MetabotEmbed", () => {
 
   describe("when metabot is enabled", () => {
     beforeEach(() => {
-      PLUGIN_METABOT.isEnabled = jest.fn(() => true);
+      PLUGIN_METABOT.useMetabotEnabled = jest.fn(() => true);
     });
 
     it("should show enabled button without tooltip", async () => {

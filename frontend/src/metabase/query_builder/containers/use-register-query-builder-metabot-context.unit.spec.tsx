@@ -54,6 +54,7 @@ function createMockData(opts: {
   series?: RawSeries | TransformedSeries;
   visualizationSettings?: ComputedVisualizationSettings;
   timelineEvents?: TimelineEvent[];
+  isMetabotEnabled?: boolean;
 }) {
   const question = opts.question;
   const card = question?.card();
@@ -87,6 +88,7 @@ function createMockData(opts: {
     visualizationSettings: question?.settings() ?? {},
     timelineEvents: [],
     queryResult: undefined,
+    isMetabotEnabled: true,
     ...opts,
   };
 }
@@ -253,8 +255,6 @@ describe("registerQueryBuilderMetabotContextFn", () => {
 });
 
 it("should return empty result when metabot is disabled", async () => {
-  PLUGIN_METABOT.isEnabled = jest.fn(() => false);
-
   const card = createMockCard({
     name: "Count by name",
     display: "table",
@@ -263,15 +263,16 @@ it("should return empty result when metabot is disabled", async () => {
       "graph.metrics": ["count"],
     }),
   });
-  const data = createMockData({ question: new Question(card) });
+  const data = createMockData({
+    question: new Question(card),
+    isMetabotEnabled: false,
+  });
   const result = await registerQueryBuilderMetabotContextFn(data);
 
   expect(getUserIsViewing(result)).toBeUndefined();
 });
 
 it("should return populated context when metabot is enabled", async () => {
-  PLUGIN_METABOT.isEnabled = jest.fn(() => true);
-
   const card = createMockCard({
     name: "Count by name",
     display: "table",
@@ -287,7 +288,7 @@ it("should return populated context when metabot is enabled", async () => {
 });
 
 it("should register without throwing", () => {
-  PLUGIN_METABOT.isEnabled = jest.fn(() => true);
+  PLUGIN_METABOT.useMetabotEnabled = jest.fn(() => true);
 
   expect(() => {
     renderHook(() => useRegisterQueryBuilderMetabotContext());
