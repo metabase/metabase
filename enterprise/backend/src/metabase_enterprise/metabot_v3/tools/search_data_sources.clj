@@ -3,10 +3,12 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
-   [metabase.search.core :as search]))
+   [metabase.search.core :as search]
+   [toucan2.core :as t2]))
 
 (def ^:private entity-type->search-model
   "Maps API entity types to search engine model types"
@@ -64,7 +66,7 @@
 (defn search-data-sources
   "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase.
   Abstracted from the API endpoint logic."
-  [{:keys [keywords description database-id entity-types limit]}]
+  [{:keys [keywords description database-id entity-types limit metabot-id]}]
   (let [;; Default to all entity types if none specified
         entity-types (if (seq entity-types)
                        entity-types
@@ -72,23 +74,29 @@
         normalized-description (if (and (string? description) (str/blank? description)) nil description)
         search-terms (distinct (concat (or keywords []) (when normalized-description [normalized-description])))
         search-models (set (keep entity-type->search-model entity-types))
+        metabot (t2/select-one :model/Metabot :entity_id (get-in metabot-v3.config/metabot-config [metabot-id :entity-id] metabot-id))
+        use-verified-content? (if metabot-id
+                                (:use_verified_content metabot)
+                                false)
         ;; Run a search for each term in the search terms
         all-results (mapcat
                      (fn [term]
-                       (let [search-context (search/search-context
-                                             {:search-string term
-                                              :models search-models
-                                              :table-db-id database-id
-                                              ;;TODO: Do we need those impersonated, sandboxed, superuser checks?
-                                              :current-user-id api/*current-user-id*
-                                              :is-impersonated-user? (perms/impersonated-user?)
-                                              :is-sandboxed-user? (perms/sandboxed-user?)
-                                              :is-superuser? api/*is-superuser?*
-                                              :current-user-perms @api/*current-user-permissions-set*
-                                              :context :default ; TODO: Does this need to be a specific Metabot context maybe?
-                                              :archived false
-                                              :limit (or limit 50)
-                                              :offset 0})
+                       (let [search-context (search/search-context (merge
+                                                                    {:search-string term
+                                                                     :models search-models
+                                                                     :table-db-id database-id
+                                                                     ;;TODO: Do we need those impersonated, sandboxed, superuser checks?
+                                                                     :current-user-id api/*current-user-id*
+                                                                     :is-impersonated-user? (perms/impersonated-user?)
+                                                                     :is-sandboxed-user? (perms/sandboxed-user?)
+                                                                     :is-superuser? api/*is-superuser?*
+                                                                     :current-user-perms @api/*current-user-permissions-set*
+                                                                     :context :metabot
+                                                                     :archived false
+                                                                     :limit (or limit 50)
+                                                                     :offset 0}
+                                                                    (when use-verified-content?
+                                                                      {:verified true})))
                              search-results (search/search search-context)]
                          (:data search-results)))
                      search-terms)

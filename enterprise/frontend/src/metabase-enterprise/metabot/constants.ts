@@ -8,6 +8,11 @@ export const FIXED_METABOT_IDS = {
   EMBEDDED: 2 as const,
 };
 
+export const FIXED_METABOT_ENTITY_IDS = {
+  DEFAULT: "metabotmetabotmetabot" as const,
+  EMBEDDED: "embeddedmetabotmetabo" as const,
+};
+
 export const METABOT_ERR_MSG = {
   get default() {
     return t`Sorry, I ran into an error. Could you please try that again?`;

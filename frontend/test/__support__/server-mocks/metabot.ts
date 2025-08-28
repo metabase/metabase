@@ -1,14 +1,13 @@
 import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
-  MetabotApiEntity,
   MetabotId,
   MetabotInfo,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
 } from "metabase-types/api";
 
-export function setupMetabotsEndpoint(
+export function setupMetabotsEndpoints(
   metabots: MetabotInfo[],
   statusCode?: number,
 ) {
@@ -16,30 +15,10 @@ export function setupMetabotsEndpoint(
     "path:/api/ee/metabot-v3/metabot",
     statusCode ? { status: statusCode } : { items: metabots },
   );
-}
-
-export function setupMetabotEntitiesEndpoint(
-  metabotId: MetabotId,
-  entities: MetabotApiEntity[],
-) {
-  fetchMock.get(
-    `path:/api/ee/metabot-v3/metabot/${metabotId}/entities`,
-    {
-      items: entities,
-    },
-    { name: `metabot-${metabotId}-entities-get` },
-  );
-}
-
-export function setupMetabotAddEntitiesEndpoint(metabotId: MetabotId) {
-  fetchMock.put(`path:/api/ee/metabot-v3/metabot/${metabotId}/entities`, {
-    status: 204,
-  });
-}
-
-export function setupMetabotDeleteEntitiesEndpoint() {
-  fetchMock.delete(/api\/ee\/metabot-v3\/metabot\/\d+\/entities/, {
-    status: 204,
+  metabots.forEach((metabot) => {
+    fetchMock.put(`path:/api/ee/metabot-v3/metabot/${metabot.id}`, (call) => {
+      return { ...metabot, ...JSON.parse(call.options?.body as string) };
+    });
   });
 }
 
@@ -50,6 +29,12 @@ export function setupMetabotPromptSuggestionsEndpointError(
     `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
     { status: 500 },
   );
+}
+
+export function setupMetabotAddEntitiesEndpoint(metabotId: MetabotId) {
+  fetchMock.put(`path:/api/ee/metabot-v3/metabot/${metabotId}/entities`, {
+    status: 204,
+  });
 }
 
 type SuggestionsEndpointOptions = {
