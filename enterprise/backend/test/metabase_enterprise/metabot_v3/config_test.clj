@@ -50,38 +50,41 @@
             (is (= "default"
                    (metabot-v3.config/resolve-dynamic-profile-id nil)))))))))
 
-(deftest validate-id-against-whitelist-test
-  (testing "generalized ID whitelist validation"
-    (testing "returns nil when whitelist is not configured"
-      (is (nil? (metabot-v3.config/validate-id-against-whitelist "id1" nil))))
+(deftest validate-profile-id-against-whitelist-test
+  (testing "profile ID whitelist validation"
+    (mt/with-premium-features #{:metabot-v3}
+      (testing "returns nil when whitelist is not configured"
+        (mt/with-temporary-setting-values [metabot-v3.settings/ai-service-profile-id-whitelist nil]
+          (is (nil? (metabot-v3.config/validate-profile-id-against-whitelist "profile1")))))
 
-    (testing "returns nil when whitelist is empty string"
-      (is (nil? (metabot-v3.config/validate-id-against-whitelist "id1" "")))
-      (is (nil? (metabot-v3.config/validate-id-against-whitelist "id1" "   "))))
+      (testing "returns nil when whitelist is empty string"
+        (mt/with-temporary-setting-values [metabot-v3.settings/ai-service-profile-id-whitelist ""]
+          (is (nil? (metabot-v3.config/validate-profile-id-against-whitelist "profile1")))))
 
-    (testing "validates ID in whitelist"
-      (let [whitelist "id1,id2,id3"]
-        (is (= "id1" (metabot-v3.config/validate-id-against-whitelist "id1" whitelist)))
-        (is (= "id2" (metabot-v3.config/validate-id-against-whitelist "id2" whitelist)))
-        (is (= "id3" (metabot-v3.config/validate-id-against-whitelist "id3" whitelist)))))
+      (testing "validates profile ID in whitelist"
+        (mt/with-temporary-setting-values [metabot-v3.settings/ai-service-profile-id-whitelist "profile1,profile2,profile3"]
+          (is (= "profile1" (metabot-v3.config/validate-profile-id-against-whitelist "profile1")))
+          (is (= "profile2" (metabot-v3.config/validate-profile-id-against-whitelist "profile2")))
+          (is (= "profile3" (metabot-v3.config/validate-profile-id-against-whitelist "profile3")))))
 
-    (testing "returns nil for ID not in whitelist"
-      (let [whitelist "id1,id2"]
-        (is (nil? (metabot-v3.config/validate-id-against-whitelist "id3" whitelist)))
-        (is (nil? (metabot-v3.config/validate-id-against-whitelist "unknown" whitelist)))))
+      (testing "returns nil for profile ID not in whitelist"
+        (mt/with-temporary-setting-values [metabot-v3.settings/ai-service-profile-id-whitelist "profile1,profile2"]
+          (is (nil? (metabot-v3.config/validate-profile-id-against-whitelist "profile3")))
+          (is (nil? (metabot-v3.config/validate-profile-id-against-whitelist "unknown")))))
 
-    (testing "case insensitive comparison"
-      (let [whitelist "Id1,ID2"]
-        (is (= "id1" (metabot-v3.config/validate-id-against-whitelist "id1" whitelist)))
-        (is (= "id2" (metabot-v3.config/validate-id-against-whitelist "Id2" whitelist)))))
+      (testing "case insensitive comparison"
+        (mt/with-temporary-setting-values [metabot-v3.settings/ai-service-profile-id-whitelist "Profile1,PROFILE2"]
+          (is (= "profile1" (metabot-v3.config/validate-profile-id-against-whitelist "PROfile1")))
+          (is (= "profile2" (metabot-v3.config/validate-profile-id-against-whitelist "Profile2")))))
 
-    (testing "trims whitespace from whitelist entries and input"
-      (let [whitelist " id1 , id2 "]
-        (is (= "id1" (metabot-v3.config/validate-id-against-whitelist " id1 " whitelist)))
-        (is (= "id2" (metabot-v3.config/validate-id-against-whitelist "id2" whitelist)))))
+      (testing "trims whitespace from whitelist entries and input"
+        (mt/with-temporary-setting-values [metabot-v3.settings/ai-service-profile-id-whitelist " profile1 , profile2 "]
+          (is (= "profile1" (metabot-v3.config/validate-profile-id-against-whitelist " profile1 ")))
+          (is (= "profile2" (metabot-v3.config/validate-profile-id-against-whitelist "profile2")))))
 
-    (testing "returns nil for nil input"
-      (is (nil? (metabot-v3.config/validate-id-against-whitelist nil "id1"))))))
+      (testing "returns nil for nil input"
+        (mt/with-temporary-setting-values [metabot-v3.settings/ai-service-profile-id-whitelist "profile1"]
+          (is (nil? (metabot-v3.config/validate-profile-id-against-whitelist nil))))))))
 
 (deftest integrated-resolution-test
   (testing "combination of metabot-id and profile-id precedence resolution"
@@ -115,29 +118,13 @@
                                            metabot-v3.settings/ai-service-profile-id nil
                                            metabot-v3.settings/ai-service-profile-id-whitelist "allowed-profile"]
           (testing "allowed profile ID passes through"
-            (let [validated-profile (metabot-v3.config/validate-id-against-whitelist "allowed-profile" (metabot-v3.settings/ai-service-profile-id-whitelist))
+            (let [validated-profile (metabot-v3.config/validate-profile-id-against-whitelist "allowed-profile")
                   profile-id (metabot-v3.config/resolve-dynamic-profile-id validated-profile nil)]
               (is (= "allowed-profile" validated-profile))
               (is (= "allowed-profile" profile-id))))
 
           (testing "blocked profile ID falls back to defaults"
-            (let [validated-profile (metabot-v3.config/validate-id-against-whitelist "blocked-profile" (metabot-v3.settings/ai-service-profile-id-whitelist))
+            (let [validated-profile (metabot-v3.config/validate-profile-id-against-whitelist "blocked-profile")
                   profile-id (metabot-v3.config/resolve-dynamic-profile-id validated-profile metabot-v3.config/internal-metabot-id)]
               (is (nil? validated-profile))
-              (is (= "experimental" profile-id))))))
-
-      (testing "metabot-id whitelist validation in dynamic resolution"
-        (mt/with-temporary-setting-values [metabot-v3.settings/metabot-id nil
-                                           metabot-v3.settings/ai-service-profile-id nil
-                                           metabot-v3.settings/metabot-id-whitelist "allowed-metabot"]
-          (testing "allowed metabot ID passes through"
-            (let [validated-metabot (metabot-v3.config/validate-id-against-whitelist "allowed-metabot" (metabot-v3.settings/metabot-id-whitelist))
-                  metabot-id (metabot-v3.config/resolve-dynamic-metabot-id validated-metabot)]
-              (is (= "allowed-metabot" validated-metabot))
-              (is (= "allowed-metabot" metabot-id))))
-
-          (testing "blocked metabot ID falls back to defaults"
-            (let [validated-metabot (metabot-v3.config/validate-id-against-whitelist "blocked-metabot" (metabot-v3.settings/metabot-id-whitelist))
-                  metabot-id (metabot-v3.config/resolve-dynamic-metabot-id validated-metabot)]
-              (is (nil? validated-metabot))
-              (is (= metabot-v3.config/internal-metabot-id metabot-id)))))))))
+              (is (= "experimental" profile-id)))))))))

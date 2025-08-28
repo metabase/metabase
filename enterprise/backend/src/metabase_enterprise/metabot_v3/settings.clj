@@ -54,11 +54,3 @@
   :feature    :metabot-v3
   :encryption :no
   :export?    false)
-
-(defsetting metabot-id-whitelist
-  (deferred-tru "Comma-delimited list of allowed metabot IDs that can be passed from the frontend.")
-  :type       :string
-  :visibility :internal
-  :feature    :metabot-v3
-  :encryption :no
-  :export?    false)
