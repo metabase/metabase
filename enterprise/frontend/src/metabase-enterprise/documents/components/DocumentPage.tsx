@@ -63,7 +63,6 @@ import { DocumentHeader } from "./DocumentHeader";
 import styles from "./DocumentPage.module.css";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
-import { CommentEditor } from "metabase-enterprise/comments/components";
 
 export const DocumentPage = ({
   params: { entityId },
