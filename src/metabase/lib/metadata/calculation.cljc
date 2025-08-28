@@ -480,17 +480,15 @@
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:and
    [:map
-    [:include-remaps? {:optional true, :default false} :boolean]]
-   [:fn
-    {:error/message "unique-name-fn is no longer allowed as an option."}
-    (complement :unique-name-fn)]
+    [:include-remaps? {:optional true, :default false} :boolean]
+    ;; Whether to include inactive columns that were probably previously returned but no longer are. This is not yet
+    ;; implemented for tables, but should work in most other places. See
+    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1756412445099449 for a discussion about this.
+    [:include-inactive? {:optional true, :default false} :boolean]]
    ;; historically the third arg to [[visible-columns]] was something like a stage; catch code that has not been
    ;; updated yet.
-   [:fn
-    {:error/message "Expected an options map, got something with :lib/type"
-     :error/fn      (fn [{:keys [value]} _]
-                      (str "Expected an options map, got a " (pr-str (:lib/type value))))}
-    (complement :lib/type)]])
+   (lib.schema.common/disallowed-keys
+    {:lib/type "Expected an options map, got something with :lib/type"})])
 
 (def ^:private returned-columns-options-keys
   (mu/map-schema-keys ::returned-columns.options))
@@ -549,7 +547,8 @@
      ;; will effectively be ignored, which sorta forces people to actually go document them.
      (let [options (select-keys options returned-columns-options-keys)]
        (lib.metadata.cache/with-cached-value query (cache-key ::returned-columns query stage-number x options)
-         (returned-columns-method query stage-number x options))))))
+         (cond->> (returned-columns-method query stage-number x options)
+           (not (:include-inactive? options)) (remove #(false? (:active %)))))))))
 
 (mr/def ::visible-column
   "Schema for a column that should be returned by [[visible-columns]]. A visible column is a column metadata that is

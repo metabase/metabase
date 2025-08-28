@@ -295,8 +295,7 @@
                         (let [;; we don't want to include all visible joined columns, so calculate that separately
                               source-cols (previous-stage-or-source-visible-columns
                                            query stage-number
-                                           {:include-implicitly-joinable? false
-                                            :include-remaps?              (boolean include-remaps?)})]
+                                           (assoc options :include-implicitly-joinable? false))]
                           (concat
                            source-cols
                            (expressions-metadata query stage-number {:include-late-exprs? true})

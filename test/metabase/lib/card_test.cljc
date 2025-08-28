@@ -2,9 +2,8 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.set :as set]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.breakout-test]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -17,6 +16,7 @@
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -110,11 +110,11 @@
   (sort-by (juxt :id :name :source-alias :lib/desired-column-alias) cols))
 
 (deftest ^:parallel visible-columns-use-result-metadata-test
-  (testing "visible-columns should use the Card's `:result-metadata` (regardless of what's actually in the Card)"
+  (testing "visible-columns should use the Card's `:result-metadata` if we can't recalculate metadata from the Card query"
     (let [venues-query (lib/query
                         (lib.tu/mock-metadata-provider
                          meta/metadata-provider
-                         {:cards [(assoc (:orders (lib.tu/mock-cards)) :dataset-query (lib.tu/venues-query))]})
+                         {:cards [(assoc (:orders (lib.tu/mock-cards)) :dataset-query (lib/native-query meta/metadata-provider "SELECT *"))]})
                         (:orders (lib.tu/mock-cards)))]
       (is (=? (->> (cols-of :orders)
                    sort-cols)
@@ -254,9 +254,9 @@
     (let [query (lib.tu.mocks-31769/query)
           card-1  (lib.metadata/card query 1)
           card-2  (lib.metadata/card query 2)]
-      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :is-source-card true}
+      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :is-source-card true, :question? true}
              (lib/display-info query card-1)))
-      (is (= {:name "Card 2", :display-name "Card 2", :long-display-name "Card 2"}
+      (is (= {:name "Card 2", :display-name "Card 2", :long-display-name "Card 2", :question? true}
              (lib/display-info query card-2)))
       (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :is-source-card true, :metric? true}
              (lib/display-info query (assoc card-1 :type :metric)))))))
@@ -360,7 +360,7 @@
 
 ;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
 (deftest ^:parallel preserve-edited-metadata-test
-  (testing "Cards preserve their edited metadata"
+  (testing "Models preserve their edited metadata"
     (doseq [result-metadata-style [::mlv2-returned-columns ::mlv2-expected-columns ::legacy-snake-case-qp]]
       (testing (str "result metadata style = " (name result-metadata-style))
         (let [mp (preserve-edited-metadata-test-mock-metadata-provider {:result-metadata-style result-metadata-style})]
@@ -415,6 +415,7 @@
                       edited-mp   (lib.tu/merged-mock-metadata-provider
                                    mp
                                    {:cards [{:id              card-id
+                                             :type            :model
                                              :result-metadata user-edited}]})]
                   (testing "card result metadata"
                     (is (=? [{:name "ID",          :description "user description", :display-name "user display name", :semantic-type :type/Quantity}
@@ -465,7 +466,7 @@
     (let [mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :name "Card 1", :database-id (meta/id)}]})]
-      (is (nil? (#'lib.card/source-model-cols mp (lib.metadata/card mp 1)))))))
+      (is (nil? (#'lib.card/source-model-cols mp (lib.metadata/card mp 1) nil))))))
 
 (deftest ^:parallel do-not-include-join-aliases-in-original-display-names-test
   (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true)]
@@ -588,3 +589,55 @@
                   :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_00028d48"
                   :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}]
                 (lib/returned-columns query 1)))))))
+
+(deftest ^:parallel card-returned-columns-propagate-inactive-test
+  (let [card-query (lib/query
+                    meta/metadata-provider
+                    (lib.tu.macros/mbql-query orders
+                      {:fields [$id $subtotal $tax $total $created-at $quantity]
+                       :joins  [{:source-table $$products
+                                 :alias        "Product"
+                                 :condition    [:=
+                                                $orders.product-id
+                                                [:field %products.id {:join-alias "Product"}]]
+                                 :fields       [[:field %products.id {:join-alias "Product"}]
+                                                [:field %products.title {:join-alias "Product"}]
+                                                [:field %products.vendor {:join-alias "Product"}]
+                                                [:field %products.price {:join-alias "Product"}]
+                                                [:field %products.rating {:join-alias "Product"}]]}]}))
+        mp         (-> meta/metadata-provider
+                       (lib.tu/mock-metadata-provider
+                        {:cards [{:id              1
+                                  :dataset-query   card-query
+                                  :result-metadata (lib/returned-columns card-query)}]})
+                       (lib.tu/merged-mock-metadata-provider
+                        {:fields (for [field-id [(meta/id :orders :tax) (meta/id :products :vendor)]]
+                                   {:id field-id, :active false})}))
+        query      (lib/query mp (lib.metadata/card mp 1))]
+    (are [options expected] (= expected
+                               (into []
+                                     (map (juxt :lib/desired-column-alias :active))
+                                     (lib/returned-columns query -1 (lib.util/query-stage query -1) options)))
+      {:include-remaps? true}
+      [["ID"              true]
+       ["SUBTOTAL"        true]
+       ["TOTAL"           true]
+       ["CREATED_AT"      true]
+       ["QUANTITY"        true]
+       ["Product__ID"     true]
+       ["Product__TITLE"  true]
+       ["Product__PRICE"  true]
+       ["Product__RATING" true]]
+
+      {:include-remaps? true, :include-inactive? true}
+      [["ID"              true]
+       ["SUBTOTAL"        true]
+       ["TAX"             false]
+       ["TOTAL"           true]
+       ["CREATED_AT"      true]
+       ["QUANTITY"        true]
+       ["Product__ID"     true]
+       ["Product__TITLE"  true]
+       ["Product__VENDOR" false]
+       ["Product__PRICE"  true]
+       ["Product__RATING" true]])))
