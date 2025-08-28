@@ -386,8 +386,8 @@
   using the gate-docs prior :retry_count and the policy associated with the caught error."
   [pgvector index gate-docs]
   (let [[upserts deletes] ((juxt filter remove) :document gate-docs)
-        upsert-outcome (some->> upserts (retry-upserts! pgvector index))
-        delete-outcome (some->> deletes (retry-deletes! pgvector index))]
+        upsert-outcome (some->> (seq upserts) (retry-upserts! pgvector index))
+        delete-outcome (some->> (seq deletes) (retry-deletes! pgvector index))]
     (merge-outcomes {} upsert-outcome delete-outcome)))
 
 (defn- update-dlq-with-retry-outcome! [pgvector index-metadata index-id outcome]
