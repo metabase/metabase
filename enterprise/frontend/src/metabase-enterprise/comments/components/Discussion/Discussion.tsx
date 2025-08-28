@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Box, Stack, Timeline } from "metabase/ui";
+import { Stack, Timeline } from "metabase/ui";
 import { useCreateCommentMutation } from "metabase-enterprise/api";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
