@@ -231,7 +231,8 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         cy.findByText("New collection").click();
 
         H.modal()
-          .eq(2)
+          .contains("header", "Create a new collection", { timeout: 10_000 })
+          .parent()
           .within(() => {
             cy.findByPlaceholderText("My new collection").type(
               "Foo Collection",
