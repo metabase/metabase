@@ -10,7 +10,6 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
-   (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter File)
    (java.nio.charset StandardCharsets)))
 
@@ -24,17 +23,15 @@
 (defn- write-to-stream! [^OutputStream os col-names reducible-rows]
   (let [writer (-> os
                    (OutputStreamWriter. StandardCharsets/UTF_8)
-                   (BufferedWriter.))
-        ^JsonGenerator jgen (json/create-generator writer)]
+                   (BufferedWriter.))]
 
     (run! (fn [row]
             (let [row-map (zipmap col-names row)]
-              (json/generate jgen row-map json/default-date-format nil nil)
-              (.writeRaw jgen "\n")
-              (.flush jgen)))
+              (json/encode-to row-map writer {})
+              (.newLine writer)))
           reducible-rows)
 
-    (doto jgen
+    (doto writer
       (.flush)
       (.close))))
 
