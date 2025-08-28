@@ -16,30 +16,20 @@ import {
   FormSwitch,
 } from "metabase/forms";
 import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
-import { useReloadGitMutation } from "metabase-enterprise/api";
+import {
+  useExportGitMutation,
+  useImportGitMutation,
+} from "metabase-enterprise/api";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export const GitSyncSettings = () => {
-  const [reload] = useReloadGitMutation();
+  const [importGit, { isLoading: isImporting }] = useImportGitMutation();
+  const [exportGit, { isLoading: isExporting }] = useExportGitMutation();
+
+  const isLoading = isImporting || isExporting;
 
   return (
     <SettingsPageWrapper title={t`Git sync settings`}>
-      <ActionButton
-        primary
-        actionFn={() => {
-          reload({}).unwrap();
-        }}
-        variant="filled"
-        leftSection={<Icon name="refresh" />}
-        failedText={t`Sync failed`}
-        activeText={t`Syncing...`}
-        useLoadingSpinner
-      >
-        <Group align="center" gap="sm">
-          <Icon name="refresh" />
-          {t`Import changes`}
-        </Group>
-      </ActionButton>
       <SettingsSection
         title={t`Configure git`}
         description={
@@ -63,6 +53,62 @@ export const GitSyncSettings = () => {
           inputType="textarea"
         />
       </SettingsSection>
+      <SettingsSection
+        title={t`Sync control`}
+        description={t`Manually trigger a git sync to push any local changes to the remote repository and pull down any changes from the remote repository.`}
+      >
+        <Flex gap="md" align="end">
+          <AdminSettingInput
+            name="git-sync-branch"
+            // eslint-disable-next-line
+            description={t`Metabase will pull in all content from this branch`}
+            title={t`Import branch`}
+            inputType="text"
+            w="20rem"
+          />
+          <ActionButton
+            primary
+            actionFn={() => importGit({}).unwrap()}
+            variant="filled"
+            failedText={t`Sync failed`}
+            activeText={t`Syncing...`}
+            successText={t`Synced`}
+            useLoadingSpinner
+            disabled={isLoading}
+          >
+            <Group align="center" gap="sm">
+              <Icon name="download" />
+              {t`Import`}
+            </Group>
+          </ActionButton>
+        </Flex>
+        <Flex gap="md" align="end">
+          <AdminSettingInput
+            name="git-sync-export-branch"
+            // eslint-disable-next-line
+            description={t`Metabase will save all content to this branch`}
+            title={t`Export branch`}
+            inputType="text"
+            w="20rem"
+          />
+          <ActionButton
+            primary
+            actionFn={() => exportGit({}).unwrap()}
+            variant="filled"
+            failedText={t`Sync failed`}
+            activeText={t`Syncing...`}
+            successText={t`Synced`}
+            useLoadingSpinner
+            disabled={isLoading}
+          >
+            <Group align="center" gap="sm">
+              <Icon name="upload" />
+              {t`Export`}
+            </Group>
+          </ActionButton>
+        </Flex>
+      </SettingsSection>
+
       <GitSyncEntities />
     </SettingsPageWrapper>
   );
