@@ -283,15 +283,36 @@
     (str (upper-case-en (subs s 0 1))
          (subs s 1))))
 
+(defn kebab->snake
+  "Simple conversion from kebab-case to snake_case by replacing hyphens with underscores.
+  Does not detect or convert camelCase, preserving mixed-case identifiers."
+  [x]
+  (cond
+    (keyword? x) (keyword (namespace x) (str/replace (name x) #"-" "_"))
+    (string? x)  (str/replace x #"-" "_")
+    :else        x))
+
 (defn snake-keys
   "Convert the top-level keys in a map to `snake_case`."
   [m]
   (perf/update-keys m ->snake_case_en))
 
+(defn kebab->snake-keys
+  "Convert the top-level kebab-case keys in a map to snake_case by replacing hyphens.
+  Preserves camelCase and other formatting."
+  [m]
+  (perf/update-keys m kebab->snake))
+
 (defn deep-snake-keys
   "Recursively convert the keys in a map to `snake_case`."
   [m]
   (recursive-map-keys ->snake_case_en m))
+
+(defn deep-kebab->snake-keys
+  "Recursively convert kebab-case keys in a map to snake_case by replacing hyphens.
+  Preserves camelCase and other formatting."
+  [m]
+  (recursive-map-keys kebab->snake m))
 
 (defn normalize-map
   "Given any map-like object, return it as a Clojure map with :kebab-case keyword keys.
