@@ -776,13 +776,15 @@ describe("metabot-streaming", () => {
 
     it("should send along available actions in context", async () => {
       setup();
-      fetchMock.removeRoutes({ names: ["database-list"] });
-      setupDatabaseListEndpoint([
-        createMockDatabase({
-          is_saved_questions: false,
-          native_permissions: "none",
-        }),
-      ]);
+      setupDatabaseListEndpoint(
+        [
+          createMockDatabase({
+            is_saved_questions: false,
+            native_permissions: "none",
+          }),
+        ],
+        { overwriteRoutes: true },
+      );
 
       const agentSpy = mockAgentEndpoint({
         textChunks: whoIsYourFavoriteResponse,
