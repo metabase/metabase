@@ -257,7 +257,7 @@
   1000)
 
 (defn poll
-  "Polls the indexes DLQ table for up to poll-limit entries ready to be retried.
+  "Polls the indexer DLQ table for up to poll-limit entries ready to be retried.
 
   Considers the state of both the DLQ table and the gate table to:
   - Find DLQ entries where attempt_at <= current time (ready for retry)
