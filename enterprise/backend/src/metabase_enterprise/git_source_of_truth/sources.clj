@@ -86,7 +86,7 @@
       (execute-git-command source-dir "add" "-A")
       (execute-git-command source-dir "commit" "-m" "Update content")
       (execute-git-command source-dir "-c" "credential.username=x-access-token"
-                           "push" "-u" "origin" (str branch ":" dest-branch)
+                           "push" "--force" "-u" "origin" (str branch ":" dest-branch)
                            :env {"GIT_ASKPASS" askpass
                                  "GIT_TOKEN" token
                                  "GIT_TERMINAL_PROMPT" "0"}))))
