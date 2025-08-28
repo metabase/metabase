@@ -13,9 +13,9 @@
 
 (def metabot-config
   "The name of the collection exposed by the answer-sources tool."
-  {internal-metabot-id {:profile-id "experimental"
+  {internal-metabot-id {:profile-id "internal"
                         :entity-id "metabotmetabotmetabot"}
-   embedded-metabot-id {:profile-id "default"
+   embedded-metabot-id {:profile-id "embedding"
                         :entity-id "embeddedmetabotmetabo"}})
 
 (defn metabot-profile-id
