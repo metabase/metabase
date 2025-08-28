@@ -14,32 +14,16 @@ import traceback
 import pandas as pd
 import json
 from pathlib import Path
-try:
-    import requests
-except ImportError:
-    print("ERROR: requests library is required but not available", file=sys.stderr)
-    sys.exit(1)
 
+def read_jsonl_to_array(filepath):
+    data_array = []
+    with open(filepath, 'r', encoding='utf-8') as f:
+        for line in f:
+            data_array.append(json.loads(line.strip()))
+    return data_array
 
-class MetabaseAPIConnection:
-    """Metabase API connection wrapper that provides read_table functionality."""
-
-    def __init__(self, metabase_url=None, api_key=None):
-        """
-        Initialize connection to Metabase API.
-
-        Args:
-            metabase_url: Base URL for Metabase API (e.g., http://127.0.0.1:3000)
-            api_key: Optional API key for authentication
-        """
-        self.metabase_url = metabase_url
-        self.session = requests.Session()
-        # Set API key header if provided
-        if api_key:
-            self.session.headers['x-api-key'] = api_key
-
-    def read_table(self, table_id, limit=None):
-        """
+def read_table(table_file, limit=None):
+    """
         Read a table from Metabase using the API and return as a pandas DataFrame.
 
         Args:
@@ -48,44 +32,24 @@ class MetabaseAPIConnection:
 
         Returns:
             pandas.DataFrame: The table data
-        """
+    """
 
-        table_id = int(table_id)
+    try:
 
-        try:
-            # Build API URL
-            url = f"{self.metabase_url}/api/python-runner/table/{table_id}/data"
-            params = {}
-            if limit:
-                params['limit'] = limit
+        rows = read_jsonl_to_array(table_file)
 
-            # Make API request
-            response = self.session.get(url, params=params, stream=True)
-            response.raise_for_status()
+        if not rows:
+            # Empty table
+            return pd.DataFrame()
 
-            # # Parse JSONLines response
-            # rows = []
-            # for line in response.iter_lines(decode_unicode=True):
-            #     if line.strip():
-            #         data = json.loads(line)
-            #         rows.append(data)
+        # Convert to DataFrame
+        df = pd.DataFrame(rows)
+        return df
 
-            rows = response.json()
-
-            if not rows:
-                # Empty table
-                return pd.DataFrame()
-
-            # Convert to DataFrame
-            df = pd.DataFrame(rows)
-            return df
-
-        except requests.exceptions.RequestException as e:
-            raise RuntimeError(f"Failed to fetch table {table_id} from Metabase API: {e}")
-        except json.JSONDecodeError as e:
-            raise RuntimeError(f"Failed to parse JSON response for table {table_id}: {e}")
-        except Exception as e:
-            raise RuntimeError(f"Failed to read table {table_id}: {e}")
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Failed to parse JSON response for table: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Failed to read table: {e}")
 
 
 def main():
@@ -96,19 +60,10 @@ def main():
             print("ERROR: OUTPUT_FILE environment variable not set", file=sys.stderr)
             sys.exit(1)
 
-        # Get Metabase API configuration from environment variables
-        metabase_url = os.environ.get('METABASE_URL')
-        api_key = os.environ.get('X_API_KEY')
+        table_file_mapping_json = os.environ.get('TABLE_FILE_MAPPING', '{}')
+        table_file_mapping = json.loads(table_file_mapping_json)
 
-        # Get table ID mapping from environment
-        import json
-        table_id_mapping_json = os.environ.get('TABLE_ID_MAPPING', '{}')
-        table_id_mapping = json.loads(table_id_mapping_json)
-
-        # Create Metabase API connection object
-        db = MetabaseAPIConnection(metabase_url, api_key)
-
-        # Import the user's script from current directory
+        # Import the user's script
         sys.path.insert(0, '.')
 
         # Import and execute the user's code
@@ -132,10 +87,10 @@ def main():
                 # Build kwargs with DataFrames for each named table
                 kwargs = {}
                 for param_name in sig.parameters:
-                    if param_name in table_id_mapping:
-                        table_id = table_id_mapping[param_name]
-                        kwargs[param_name] = db.read_table(table_id)
-                
+                    if param_name in table_file_mapping:
+                        table_file = table_file_mapping[param_name]
+                        kwargs[param_name] = read_table(table_file)
+
                 # Call transform with named arguments
                 result = script.transform(**kwargs)
             else:

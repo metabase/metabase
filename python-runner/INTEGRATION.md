@@ -28,11 +28,9 @@ The `/execute` endpoint now accepts additional optional parameters:
   "code": "Python code with transform() function",
   "working_dir": "/path/to/work/dir",
   "timeout": 30,
-  "metabase_url": "http://metabase:3000",  // Optional
-  "api_key": "api-key",                    // Optional
   "table_mapping": {                       // Optional
-    "orders": 123,
-    "customers": 456
+    "orders": /path/to/orders.jsonl
+    "customers": /path/to/customers.jsonl
   }
 }
 ```
