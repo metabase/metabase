@@ -5,7 +5,7 @@ import { useSetting } from "metabase/common/hooks";
 import { Text } from "metabase/ui";
 
 export const ReadOnlyBanner = () => {
-  const gitSyncConfigured = useSetting("git-sync-import-branch"); // should be "git-sync-configured" but using this to test
+  const gitSyncConfigured = useSetting("git-sync-read-only");
 
   if (gitSyncConfigured) {
     return (
