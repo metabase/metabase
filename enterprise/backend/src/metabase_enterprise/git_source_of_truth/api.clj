@@ -52,16 +52,17 @@
     (with-temp-directory dir
       (log/info "Reloading Metabase configuration from source")
       (try
-        (binding [mi/*syncing-source-of-truth?* true]
-          (serdes/with-cache
-            (serdes.load/load-selective!
-             (serdes.ingest/ingest-yaml (sources/load-source! source (.toString dir)))
-             (->> (settings/git-sync-entities)
-                  (filter val)
-                  (map key)
-                  (map name)
-                  (map u/capitalize-first-char)
-                  (into #{})))))
+        (let [entities (->> (settings/git-sync-entities)
+                            (filter val)
+                            (map key)
+                            (map name)
+                            (map u/capitalize-first-char)
+                            (into #{}))]
+          (binding [mi/*syncing-source-of-truth-entities* entities]
+            (serdes/with-cache
+              (serdes.load/load-selective!
+               (serdes.ingest/ingest-yaml (sources/load-source! source (.toString dir)))
+               entities))))
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
          :message "Successfully reloaded from git repository"}

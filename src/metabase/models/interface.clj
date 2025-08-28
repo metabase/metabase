@@ -17,7 +17,6 @@
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
@@ -60,10 +59,9 @@
   on a future deserialization."
   false)
 
-(def ^:dynamic *syncing-source-of-truth?*
-  "This is dynamically bound to true when syncing the source of truth. For models where it's enabled we'll set
-  `synced_to_source_of_truth` to true."
-  false)
+(def ^:dynamic *syncing-source-of-truth-entities*
+  "This is dynamically bound to the set of entities that we are syncing when syncing the source of truth."
+  #{})
 
 (def ^:dynamic *allow-sync-protected-writes?*
   "This is dynamically bound to true to allow writes to entities that are synced to source of truth.
@@ -605,12 +603,11 @@
   [instance]
   (prevent-sync-protected-writes instance)
   (cond-> instance
-    (and *syncing-source-of-truth?*
-         (contains? (->> (setting/get :git-sync-entities)
-                         (filter val)
-                         (map key)
-                         (into #{}))
-                    (name (t2/model instance))))
+    (contains? (->> *syncing-source-of-truth-entities*
+                    (filter val)
+                    (map key)
+                    (into #{}))
+               (name (t2/model instance)))
     (assoc :synced_to_source_of_truth true)))
 
 (t2/define-before-update :hook/git-sync-protected
