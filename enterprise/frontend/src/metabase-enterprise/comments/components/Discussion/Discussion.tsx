@@ -22,8 +22,9 @@ export interface DiscussionProps {
 export const Discussion = ({ comments }: DiscussionProps) => {
   const [, setNewComment] = useState<DocumentContent>();
 
-  const handleSubmit = () => {
+  const handleSubmit = (doc: DocumentContent) => {
     // TODO: implement me
+    console.log(doc);
   };
 
   return (
@@ -38,6 +39,7 @@ export const Discussion = ({ comments }: DiscussionProps) => {
         <CommentEditor
           disabled
           onChange={(document) => setNewComment(document)}
+          onSubmit={handleSubmit}
         />
 
         <Button type="submit" onClick={handleSubmit}>{t`Post comment`}</Button>

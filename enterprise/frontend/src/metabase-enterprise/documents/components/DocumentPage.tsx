@@ -394,10 +394,7 @@ export const DocumentPage = ({
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
-          <Box
-            className={styles.documentContainer}
-            style={{ border: "1px solid red" }}
-          >
+          <Box className={styles.documentContainer}>
             <DocumentHeader
               document={documentData}
               documentTitle={documentTitle}
