@@ -37,7 +37,6 @@
    "Dimension"
    "ParameterCard"
    "DashboardCardSeries"
-   "MetabotEntity"
    "MetabotPrompt"
    "TimelineEvent"])
 

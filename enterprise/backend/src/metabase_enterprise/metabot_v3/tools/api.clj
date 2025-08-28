@@ -759,10 +759,12 @@
    _query-params
    {:keys [arguments conversation_id] :as body} :- [:merge
                                                     [:map [:arguments [:map [:message :string]]]]
-                                                    ::tool-request]]
+                                                    ::tool-request]
+   request]
   (metabot-v3.context/log (assoc body :api :find-metric) :llm.log/llm->be)
   (doto (-> (mc/decode ::find-metric-result
-                       (metabot-v3.tools.find-metric/find-metric arguments)
+                       (metabot-v3.tools.find-metric/find-metric
+                        (assoc arguments :metabot-id (:metabot-v3/metabot-id request)))
                        (mtx/transformer {:name :tool-api-response}))
             (assoc :conversation_id conversation_id))
     (metabot-v3.context/log :llm.log/be->llm)))
@@ -958,12 +960,15 @@
    _query-params
    {:keys [arguments conversation_id] :as body} :- [:merge
                                                     [:map [:arguments {:optional true} ::search-data-sources-arguments]]
-                                                    ::tool-request]]
+                                                    ::tool-request]
+   request]
   (metabot-v3.context/log (assoc body :api :search-data-sources) :llm.log/llm->be)
   (try
     (let [options (mc/encode ::search-data-sources-arguments
                              arguments (mtx/transformer {:name :tool-api-request}))
-          results (metabot-v3.tools.search-data-sources/search-data-sources options)
+          metabot-id (:metabot-v3/metabot-id request)
+          results (metabot-v3.tools.search-data-sources/search-data-sources
+                   (assoc options :metabot-id metabot-id))
           response-data {:data results
                          :total_count (count results)}]
       (doto (-> (mc/decode ::search-data-sources-result

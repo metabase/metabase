@@ -374,6 +374,288 @@ databaseChangeLog:
                     AND mt2.id != metabase_table.id);
 
   - changeSet:
+      id: v56.2025-08-22T12:00:00
+      author: sloansparger
+      comment: Add use_verified_content column to metabot
+      changes:
+        - addColumn:
+            tableName: metabot
+            columns:
+              - column:
+                  name: use_verified_content
+                  type: ${boolean.type}
+                  remarks: Whether this metabot should only use verified content
+                  constraints:
+                    nullable: true
+                  defaultValueBoolean: false
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:01
+      author: sloansparger
+      comment: Add collection_id column to metabot
+      changes:
+        - addColumn:
+            tableName: metabot
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: ID of the collection this metabot can access
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:02
+      author: sloansparger
+      comment: Add metabot_id column to metabot_prompt
+      changes:
+        - addColumn:
+            tableName: metabot_prompt
+            columns:
+              - column:
+                  name: metabot_id
+                  type: int
+                  remarks: The metabot this prompt is associated with
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:03
+      author: sloansparger
+      comment: Migrate collection references from metabot_entity to metabot.collection_id with exception to the default metabot instance
+      changes:
+        - sql:
+            comment: Migrate collection references from metabot_entity to metabot.collection_id with exception to the default metabot instance
+            sql: >-
+              UPDATE metabot
+              SET collection_id = (
+                SELECT me.model_id
+                FROM metabot_entity me
+                WHERE me.metabot_id = metabot.id
+                  AND me.model = 'collection'
+                LIMIT 1
+              )
+              WHERE EXISTS (
+                SELECT 1
+                FROM metabot_entity me
+                WHERE me.metabot_id = metabot.id
+                  AND me.model = 'collection'
+              )
+              AND metabot.entity_id != 'metabotmetabotmetabot';
+      rollback:
+        - sql:
+            comment: Clear collection_id values set by the migration
+            sql: >-
+              UPDATE metabot
+              SET collection_id = NULL
+              WHERE collection_id IS NOT NULL
+              AND metabot.entity_id != 'metabotmetabotmetabot';
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:04
+      author: sloansparger
+      comment: Migrate metabot_prompt.metabot_entity_id to metabot_prompt.metabot_id
+      changes:
+        - sql:
+            comment: Migrate metabot_prompt.metabot_entity_id to metabot_prompt.metabot_id
+            sql: >-
+              UPDATE metabot_prompt
+              SET metabot_id = (
+                SELECT me.metabot_id
+                FROM metabot_entity me
+                WHERE me.id = metabot_prompt.metabot_entity_id
+              );
+      rollback:
+        - sql:
+            comment: Clear metabot_id values set by the migration
+            sql: >-
+              UPDATE metabot_prompt
+              SET metabot_id = NULL
+              WHERE metabot_id IS NOT NULL;
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:05
+      author: sloansparger
+      comment: Add not null constraint to metabot_prompt.metabot_id
+      changes:
+        - addNotNullConstraint:
+            tableName: metabot_prompt
+            columnName: metabot_id
+            columnDataType: int
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:06
+      author: sloansparger
+      comment: Add index on metabot_prompt.metabot_id
+      changes:
+        - createIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_metabot_id
+            columns:
+              - column:
+                  name: metabot_id
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:07
+      author: sloansparger
+      comment: Add foreign key constraint metabot_prompt.metabot_id -> metabot.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: metabot_id
+            referencedTableName: metabot
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_metabot_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:08
+      author: sloansparger
+      comment: Drop foreign key constraint metabot_prompt.metabot_entity_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            constraintName: fk_metabot_prompt_metabot_entity_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: metabot_entity_id
+            referencedTableName: metabot_entity
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_metabot_entity_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:09
+      author: sloansparger
+      comment: Drop index on metabot_prompt.metabot_entity_id
+      changes:
+        - dropIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_metabot_entity_id
+      rollback:
+        - createIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_metabot_entity_id
+            columns:
+              - column:
+                  name: metabot_entity_id
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:10
+      author: sloansparger
+      comment: Drop metabot_entity_id column from metabot_prompt
+      changes:
+        - dropColumn:
+            tableName: metabot_prompt
+            columnName: metabot_entity_id
+      rollback:
+        - addColumn:
+            tableName: metabot_prompt
+            columns:
+              - column:
+                  name: metabot_entity_id
+                  type: int
+                  remarks: The metabot entity this prompt is associated with
+                  constraints:
+                    nullable: true
+            preConditions:
+              - onFail: MARK_RAN
+              - not:
+                  - columnExists:
+                      tableName: metabot_prompt
+                      columnName: metabot_entity_id
+        - sql:
+            comment: Restore metabot_prompt.metabot_entity_id values from metabot_prompt.metabot_id
+            sql: >-
+              UPDATE metabot_prompt
+              SET metabot_entity_id = (
+                SELECT me.id
+                FROM metabot_entity me
+                WHERE me.metabot_id = metabot_prompt.metabot_id
+                  AND me.model = 'collection'
+                LIMIT 1
+              );
+        - addNotNullConstraint:
+            tableName: metabot_prompt
+            columnName: metabot_entity_id
+            columnDataType: int
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:11
+      author: sloansparger
+      comment: Remove metabot_entity table as collection association is now direct
+      changes:
+        - dropTable:
+            tableName: metabot_entity
+            cascadeConstraints: true
+            comment: Remove metabot_entity table as collection association is now direct
+      rollback:
+        - createTable:
+            tableName: metabot_entity
+            remarks: Entities associated with a metabot
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metabot_id
+                  type: int
+                  remarks: The metabot this entity is associated with
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  remarks: The type of model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: The ID of the model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the entity was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: metabot_entity
+            indexName: idx_metabot_entity_metabot_id
+            columns:
+              - column:
+                  name: metabot_id
+        - addForeignKeyConstraint:
+            baseTableName: metabot_entity
+            baseColumnNames: metabot_id
+            referencedTableName: metabot
+            referencedColumnNames: id
+            constraintName: fk_metabot_entity_metabot_id
+            onDelete: CASCADE
+        - sql:
+            comment: Restore collection references to metabot_entity from metabot.collection_id
+            sql: >-
+              INSERT INTO metabot_entity (metabot_id, model, model_id)
+              SELECT id, 'collection', collection_id
+              FROM metabot
+              WHERE collection_id IS NOT NULL;
+
+  - changeSet:
       id: v56.2025-09-03T17:15:00
       author: piranha
       comment: metabot_conversation table
