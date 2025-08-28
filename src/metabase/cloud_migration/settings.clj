@@ -25,7 +25,7 @@
 (defn- store-url-default
   "Returns the default store URL, with support for environment variable override in dev mode only."
   []
-  (if-some [env-url (and config/is-dev? (config/config-str :mb-store-url))]
+  (if-some [env-url (when config/is-dev? (config/config-str :mb-store-url))]
     (str env-url)
     (str "https://store" (when (default-to-staging?) ".staging") ".metabase.com")))
 
