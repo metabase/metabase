@@ -62,11 +62,30 @@
 (deftest ^:parallel endpoint-test
   (testing "AWS Endpoint URL"
     (are [region endpoint] (= endpoint
-                              (athena/endpoint-for-region region))
-      "us-east-1"      ".amazonaws.com"
-      "us-west-2"      ".amazonaws.com"
-      "cn-north-1"     ".amazonaws.com.cn"
-      "cn-northwest-1" ".amazonaws.com.cn")))
+                              (#'athena/endpoint-for-region region))
+      "us-east-1"      "//athena.us-east-1.amazonaws.com:443"
+      "us-west-2"      "//athena.us-west-2.amazonaws.com:443"
+      "cn-north-1"     "//athena.cn-north-1.amazonaws.com.cn:443"
+      "cn-northwest-1" "//athena.cn-northwest-1.amazonaws.com.cn:443")))
+
+(deftest ^:parallel athena-subname-uses-hostname-test
+  (mt/test-driver :athena
+    (testing "the subname uses the region when the hostname is not provided"
+      (is (= "//athena.us-east-1.amazonaws.com:443"
+             (->> {:region "us-east-1"}
+                  (sql-jdbc.conn/connection-details->spec driver/*driver*)
+                  :subname))))
+    (testing "the subname uses cn when the region is in china"
+      (is (= "//athena.cn-north-1.amazonaws.com.cn:443"
+             (->> {:region "cn-north-1"}
+                  (sql-jdbc.conn/connection-details->spec driver/*driver*)
+                  :subname))))
+    (testing "the subname uses the hostname as is when it is provided"
+      (is (= "//athena.us-east-1.amazonaws.com:443"
+             (->> {:region "us-east-1"
+                   :hostname "athena.us-east-1.amazonaws.com"}
+                  (sql-jdbc.conn/connection-details->spec driver/*driver*)
+                  :subname))))))
 
 (deftest ^:parallel data-source-name-test
   (are [details expected] (= expected

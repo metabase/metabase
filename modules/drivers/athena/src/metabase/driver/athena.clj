@@ -60,12 +60,10 @@
 
 ;;; ---------------------------------------------- sql-jdbc.connection -----------------------------------------------
 
-(defn endpoint-for-region
+(defn- endpoint-for-region
   "Returns the endpoint URL for a specific region"
   [region]
-  (cond
-    (str/starts-with? region "cn-") ".amazonaws.com.cn"
-    :else ".amazonaws.com"))
+  (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
@@ -74,7 +72,7 @@
         :subprotocol    "athena"
         :subname       (if (not (str/blank? hostname))
                          (str "//" hostname ":443")
-                         (str "//athena." region (endpoint-for-region region) ":443"))
+                         (endpoint-for-region region))
         :User           access_key
         :Password       secret_key
         :OutputLocation s3_staging_dir
