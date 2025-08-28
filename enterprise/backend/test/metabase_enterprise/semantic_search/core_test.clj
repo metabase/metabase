@@ -84,8 +84,8 @@
 
 (defn- with-search-engine-mocks!
   "Sets up search engine mocks for the semantic & appdb backends for testing fallback behavior.
-   appdb-fn can be a collection of results or a function that takes a context."
-  [semantic-results appdb-results thunk]
+   fallback-results can be a collection of results or a function that takes a context."
+  [semantic-results fallback-results thunk]
   (with-redefs [semantic.pgvector-api/query (fn [_pgvector _index-metadata _search-ctx]
                                               (if (map? semantic-results)
                                                 semantic-results
@@ -93,12 +93,15 @@
                                                  ;; Set raw-count to a non-zero value to ensure fallback logic is
                                                  ;; triggered
                                                  :raw-count 1}))
+                search.engine/score (fn [result _ctx]
+                                      {:result (dissoc result :score)
+                                       :score  (:score result)})
                 search.engine/results (fn [ctx]
                                         (case (:search-engine ctx)
-                                          :search.engine/appdb (if (fn? appdb-results)
-                                                                 (appdb-results ctx)
-                                                                 appdb-results)
-                                          :search.engine/semantic (semantic.core/results ctx)))]
+                                          :search.engine/semantic (semantic.core/results ctx)
+                                          (if (fn? fallback-results)
+                                            (fallback-results ctx)
+                                            fallback-results)))]
     (thunk)))
 
 (defn- make-card-result
@@ -108,23 +111,23 @@
     score (assoc :score score)))
 
 (deftest test-semantic-search-fallback-supplementation
-  (testing "semantic search results below threshold are supplemented with appdb results"
+  (testing "semantic search results below threshold are supplemented with fallback results"
     (mt/with-premium-features #{:semantic-search}
       (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
-        (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)
-              appdb-results   [(make-card-result 1 "appdb-card-1")
-                               (make-card-result 2 "appdb-card-2")
-                               (make-card-result 3 "appdb-card-3")
-                               (make-card-result 4 "appdb-dashboard" :model "dashboard")]
-              search-ctx      search-context]
-          (with-search-engine-mocks! [semantic-result] appdb-results
+        (let [semantic-result  (make-card-result 1 "semantic-card" :score 0.9)
+              fallback-results [(make-card-result 1 "fallback-card-1")
+                                (make-card-result 2 "fallback-card-2")
+                                (make-card-result 3 "fallback-card-3")
+                                (make-card-result 4 "fallback-dashboard" :model "dashboard")]
+              search-ctx       search-context]
+          (with-search-engine-mocks! [semantic-result] fallback-results
             (fn []
               (let [results (semantic.core/results search-ctx)]
                 (testing "semantic result comes first"
                   (is (= semantic-result (first results))))
 
-                (testing "appdb results are appended, and duplicate model/id pairs are removed"
-                  (is (= (rest appdb-results)
+                (testing "fallback results are appended, and duplicate model/id pairs are removed"
+                  (is (= (rest fallback-results)
                          (rest results))))))))))))
 
 (deftest test-semantic-search-fallback-failure-resilient
@@ -160,31 +163,31 @@
     (mt/with-premium-features #{:semantic-search}
       (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3
                                          semantic-search-results-limit 5]
-        (let [semantic-result (make-card-result 1 "semantic-card" :score 0.9)
-              appdb-results   (for [i (range 2 10)]
-                                (make-card-result i (str "appdb-card-" i)))
-              search-ctx      search-context]
-          (with-search-engine-mocks! [semantic-result] appdb-results
+        (let [semantic-result  (make-card-result 1 "semantic-card" :score 0.9)
+              fallback-results (for [i (range 2 10)]
+                                 (make-card-result i (str "fallback-card-" i)))
+              search-ctx       search-context]
+          (with-search-engine-mocks! [semantic-result] fallback-results
             (fn []
               (let [results (semantic.core/results search-ctx)]
                 (testing "semantic result is included first"
                   (is (= semantic-result (first results))))
-                (testing "remaining slots filled with appdb results"
+                (testing "remaining slots filled with fallback results"
                   (let [remaining (rest results)]
                     (is (= 4 (count remaining)))
-                    (is (every? #(contains? (set appdb-results) %) remaining))))))))))))
+                    (is (every? #(contains? (set fallback-results) %) remaining))))))))))))
 
 (deftest test-semantic-search-fallback-empty-or-nil-search-string
   (testing "fallback to backup search engine if :search-string is empty or nil"
     (mt/with-premium-features #{:semantic-search}
       (let [semantic-results {:results [] :raw-count 0}
-            appdb-results    [(make-card-result 1 "appdb-card-1")]
+            fallback-results [(make-card-result 1 "fallback-card-1")]
             search-ctx       search-context]
-        (with-search-engine-mocks! semantic-results appdb-results
+        (with-search-engine-mocks! semantic-results fallback-results
           (fn []
             (testing ":search-string is nil"
               (let [results (semantic.core/results (assoc search-ctx :search-string nil))]
-                (is (= appdb-results results))))
+                (is (= fallback-results results))))
             (testing ":search-string is empty"
               (let [results (semantic.core/results (assoc search-ctx :search-string ""))]
-                (is (= appdb-results results))))))))))
+                (is (= fallback-results results))))))))))
