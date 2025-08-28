@@ -42,9 +42,9 @@ export const commentApi = EnterpriseApi.injectEndpoints({
     }),
 
     getCommentHistory: builder.query<Comment[], CommentId>({
-      query: (commentId) => ({
+      query: (id) => ({
         method: "GET",
-        url: `/api/ee/comments/${commentId}/history`,
+        url: `/api/ee/comments/${id}/history`,
       }),
       providesTags: (response) =>
         response && response.length > 0 ? provideCommentListTags(response) : [],

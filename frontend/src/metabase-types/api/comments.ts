@@ -11,12 +11,12 @@ export interface Comment {
   id: CommentId;
   parent_comment_id: CommentId | null;
 
-  entity_type: CommentEntityType;
-  entity_id: EntityId;
-  child_entity_id: EntityId | null;
+  target_type: CommentEntityType;
+  target_id: EntityId;
+  child_target_id: EntityId | null;
 
   creator: BaseUser;
-  document: DocumentContent;
+  content: DocumentContent;
   // TODO: remove this once we have real data in the database
   content_str_stup: string;
 
@@ -32,21 +32,21 @@ export interface Comment {
 /** request types below */
 
 export interface ListCommentsRequest {
-  entity_type: CommentEntityType;
-  entity_id: EntityId;
+  target_type: CommentEntityType;
+  target_id: EntityId;
 }
 
 export interface CreateCommentRequest {
-  entity_id: EntityId;
-  entity_type: CommentEntityType;
-  child_entity_id: EntityId | null;
+  target_id: EntityId;
+  target_type: CommentEntityType;
+  child_target_id: EntityId | null;
   parent_comment_id: CommentId | null;
-  document: DocumentContent;
+  content: DocumentContent;
 }
 
 export interface UpdateCommentRequest {
   id: CommentId;
-  document?: DocumentContent;
+  content?: DocumentContent;
   is_deleted?: boolean;
   is_resolved?: boolean;
 }
