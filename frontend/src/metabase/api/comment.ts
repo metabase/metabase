@@ -14,7 +14,7 @@ export const commentApi = Api.injectEndpoints({
     listComments: builder.query<Comment[], ListCommentsRequest | void>({
       query: (params) => ({
         method: "GET",
-        url: "/api/comments",
+        url: "/api/ee/comments",
         params,
       }),
       providesTags: (response) =>
@@ -24,7 +24,7 @@ export const commentApi = Api.injectEndpoints({
     createComment: builder.mutation<Comment, CreateCommentRequest>({
       query: (body) => ({
         method: "POST",
-        url: `/api/comments`,
+        url: `/api/ee/comments`,
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -34,7 +34,7 @@ export const commentApi = Api.injectEndpoints({
     updateComment: builder.mutation<Comment, UpdateCommentRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `/api/comments/${id}`,
+        url: `/api/ee/comments/${id}`,
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -44,7 +44,7 @@ export const commentApi = Api.injectEndpoints({
     getCommentHistory: builder.query<Comment[], CommentId>({
       query: (commentId) => ({
         method: "GET",
-        url: `/api/comments/${commentId}/history`,
+        url: `/api/ee/comments/${commentId}/history`,
       }),
       providesTags: (response) =>
         response && response.length > 0 ? provideCommentListTags(response) : [],
