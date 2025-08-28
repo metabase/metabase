@@ -69,7 +69,7 @@ export const CommentEditor = ({
       content: initialContent || "",
       autofocus: true,
       editable: !disabled,
-      immediatelyRender: false,
+      immediatelyRender: true,
       onUpdate: ({ editor }) => {
         const doc = editor.getText();
         setContent(doc);

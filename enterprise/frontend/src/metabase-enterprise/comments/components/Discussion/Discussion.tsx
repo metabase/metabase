@@ -52,12 +52,10 @@ export const Discussion = ({
         ))}
       </Timeline>
 
-      <Box>
-        <CommentEditor
-          onChange={(document) => setNewComment(document)}
-          onSubmit={handleSubmit}
-        />
-      </Box>
+      <CommentEditor
+        onChange={(document) => setNewComment(document)}
+        onSubmit={handleSubmit}
+      />
     </Stack>
   );
 };

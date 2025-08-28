@@ -43,7 +43,7 @@
 }
 
 /* Placeholder styling */
-.content :global(p.is-empty:first-child:before) {
+.content :global(.is-empty:first-child:before) {
   color: var(--mb-color-text-light);
   content: attr(data-placeholder);
   height: 0;
