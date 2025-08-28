@@ -22,6 +22,7 @@
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -79,17 +80,10 @@
     (jdbc/execute-one! pgvector sql)
     nil))
 
-(defn- table-exists? [pgvector table-name]
-  (-> (jdbc/execute-one! pgvector
-                         ["SELECT exists (select 1 FROM information_schema.tables WHERE table_name = ?) table_exists"
-                          table-name]
-                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-      (:table_exists false)))
-
 (defn dlq-table-exists?
   "Returns true if the dead letter queue table exists for the given index."
   [pgvector index-metadata index-id]
-  (table-exists? pgvector (name (dlq-table-name-kw index-metadata index-id))))
+  (semantic.util/table-exists? pgvector (name (dlq-table-name-kw index-metadata index-id))))
 
 (defn categorize-error
   "Categorizes an error as :transient, :permanent, or defaults to :transient.

@@ -14,6 +14,7 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
@@ -338,10 +339,7 @@
   [table-name]
   (when table-name
     (try
-      (let [result (jdbc/execute! db
-                                  ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = ?)"
-                                   (name table-name)])]
-        (-> result first vals first))
+      (semantic.util/table-exists? db (name table-name))
       (catch Exception _ false))))
 
 (defn table-has-index?
