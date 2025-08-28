@@ -797,7 +797,8 @@
                   (->> query
                        lib/available-aggregation-operators
                        (m/find-first #(= (:short %) :sum))
-                       lib/aggregation-operator-columns))]
+                       lib/aggregation-operator-columns
+                       (map #(dissoc % :lib/source-uuid))))]
       (is (= (clean built-query)
              (clean converted-query))))))
 
