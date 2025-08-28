@@ -8,7 +8,7 @@
   }
 }
 
-.spoilerContent {
+.spoilerRoot[data-has-spoiler] .spoilerContent {
   mask: linear-gradient(
       0deg,
       transparent 0,

@@ -85,6 +85,7 @@ export function DiscussionComment({
         showLabel={t`... more`}
         hideLabel={null}
         classNames={{
+          root: S.spoilerRoot,
           content: S.spoilerContent,
           control: S.spoilerControl,
         }}
