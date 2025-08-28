@@ -4,9 +4,7 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
-import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Icon, type IconName, Modal, Tabs } from "metabase/ui";
 
 import S from "./AddDataModal.module.css";
@@ -14,6 +12,7 @@ import { CSVPanel } from "./Panels/CSVPanel";
 import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
+import { useAddDataPermissions } from "./use-add-data-permission";
 import { isValidTab, shouldShowUploadPanel } from "./utils";
 
 interface AddDataModalProps {
@@ -29,6 +28,9 @@ interface Tabs {
 }
 
 export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
+  const { areUploadsEnabled, canUploadToDatabase, canManageUploads, isAdmin } =
+    useAddDataPermissions();
+
   const { data: databasesResponse } = useListDatabasesQuery();
   const { data: uploadableDatabasesResponse } = useListDatabasesQuery({
     include_only_uploadable: true,
@@ -42,21 +44,6 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
   const [activeTab, setActiveTab] = useState<Tabs["value"] | null>(null);
 
   const isHosted = useSetting("is-hosted?");
-
-  const isAdmin = useSelector(getUserIsAdmin);
-  const userCanAccessSettings = useSelector(canAccessSettings);
-
-  const databases = databasesResponse?.data;
-  const uploadDbId = useSetting("uploads-settings")?.db_id;
-  const uploadDB = databases?.find((db) => db.id === uploadDbId);
-
-  /**
-   * This covers the case where instance has the attached dwh. In such cases
-   * uploads are enabled by default.
-   */
-  const areUploadsEnabled = !!uploadDbId;
-  const canUploadToDatabase = !!uploadDB?.can_upload;
-  const canManageUploads = userCanAccessSettings;
 
   const handleTabChange = (tabValue: string | null) => {
     if (tabValue === activeTab || !isValidTab(tabValue)) {
