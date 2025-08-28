@@ -9,6 +9,8 @@ summary: Metabot is Metabase's AI assistant that helps you analyze data, create 
 
 > For now, [Metabot](https://www.metabase.com/features/metabot-ai) is only available as an add-on for Pro and Enterprise plans on Metabase Cloud.
 
+![Meet Metabot](./images/metabot.png)
+
 Metabot helps you analyze your data. You can ask it to create charts, pull up dashboards, and more.
 
 Here's Metabot in its own words:
