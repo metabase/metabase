@@ -22,7 +22,7 @@ import { QuestionTitle } from "./QuestionTitle";
 
 const MetabotQuestionInner = () => {
   const { isLocaleLoading } = useLocale();
-  const metabot = useMetabotAgent();
+  const { navigateToPath } = useMetabotChat();
 
   if (isLocaleLoading) {
     return <SdkLoader />;
@@ -34,9 +34,9 @@ const MetabotQuestionInner = () => {
 
       <MetabotChatEmbedding />
 
-      {!!metabot.navigateToPath && (
+      {!!navigateToPath && (
         <SdkAdHocQuestion
-          questionPath={metabot.navigateToPath}
+          questionPath={navigateToPath}
           title={false}
           isSaveEnabled={false}
         >
@@ -59,8 +59,8 @@ const MetabotQuestionInner = () => {
 
 function MetabotMessages() {
   const metabot = useMetabotAgent();
-  const { messages, errorMessages, setNavigateToPath } = metabot;
-  const { handleRetryMessage } = useMetabotChat();
+  const { messages, errorMessages } = metabot;
+  const { handleRetryMessage, setNavigateToPath } = useMetabotChat();
 
   if (!messages.length && !errorMessages.length) {
     return null;

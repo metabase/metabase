@@ -1,8 +1,16 @@
 import { useCallback } from "react";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  getMetabotReactionsState,
+  setNavigateToPath as setNavigateToPathAction,
+} from "metabase-enterprise/metabot/state";
+
 import { useMetabotAgent } from "./use-metabot-agent";
 
 export const useMetabotChat = () => {
+  const dispatch = useDispatch();
+
   const {
     isDoingScience,
     setPrompt,
@@ -10,6 +18,10 @@ export const useMetabotChat = () => {
     submitInput,
     retryMessage,
   } = useMetabotAgent();
+
+  const { navigateToPath } = useSelector(
+    getMetabotReactionsState as any,
+  ) as ReturnType<typeof getMetabotReactionsState>;
 
   const handleSubmitInput = useCallback(
     (input: string) => {
@@ -45,9 +57,18 @@ export const useMetabotChat = () => {
     setPrompt("");
   }, [setPrompt]);
 
+  const setNavigateToPath = useCallback(
+    async (navigateToPath: string) => {
+      dispatch(setNavigateToPathAction(navigateToPath));
+    },
+    [dispatch],
+  );
+
   return {
     handleSubmitInput,
     handleRetryMessage,
     handleResetInput,
+    navigateToPath,
+    setNavigateToPath,
   };
 };

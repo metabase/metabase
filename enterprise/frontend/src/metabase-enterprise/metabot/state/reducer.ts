@@ -28,7 +28,7 @@ export type MetabotToolCall = {
   status: "started" | "ended";
 };
 
-export type MetabotUIState = {
+export type MetabotReactionsState = {
   navigateToPath: string | null;
 };
 
@@ -40,7 +40,7 @@ export interface MetabotState {
   visible: boolean;
   history: MetabotHistory;
   state: any;
-  uiState: MetabotUIState;
+  reactions: MetabotReactionsState;
   toolCalls: MetabotToolCall[];
 }
 
@@ -52,7 +52,7 @@ export const getMetabotInitialState = (): MetabotState => ({
   visible: false,
   history: [],
   state: {},
-  uiState: {
+  reactions: {
     navigateToPath: null,
   },
   toolCalls: [],
@@ -156,7 +156,7 @@ export const metabot = createSlice({
       state.isProcessing = action.payload;
     },
     setNavigateToPath: (state, action: PayloadAction<string>) => {
-      state.uiState.navigateToPath = action.payload;
+      state.reactions.navigateToPath = action.payload;
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;

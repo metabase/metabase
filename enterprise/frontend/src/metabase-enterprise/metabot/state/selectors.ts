@@ -91,9 +91,9 @@ export const getMetabotState = createSelector(
   (metabot) => metabot.state,
 );
 
-export const getMetabotUiState = createSelector(
+export const getMetabotReactionsState = createSelector(
   getMetabot,
-  (metabot) => metabot.uiState,
+  (metabot) => metabot.reactions,
 );
 
 export const getIsLongMetabotConversation = createSelector(
@@ -128,6 +128,6 @@ export const getAgentRequestMetadata = createSelector(
 );
 
 export const getNavigateToPath = createSelector(
-  getMetabotUiState,
-  (uiState) => uiState.navigateToPath,
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.navigateToPath,
 );
