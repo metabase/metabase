@@ -855,10 +855,4 @@
      toucan2.tools.with-temp/with-temp         {:message "Use lib.tu/mock-metadata-provider in QP tests. Exceptions: tests for code that doesn't use MPs or models not supported by MPs"}}
 
     :metabase/disallow-hardcoded-driver-names-in-tests
-    {:level :warning}}}
-
-  python-runner-namespaces
-  {:linters
-   {:discouraged-namespace
-    ;; TODO: Remove this ignore once we migrate from QP Store to lib.metadata.jvm/application-database-metadata-provider
-    {metabase.query-processor.store {:level :off}}}}}}}
+    {:level :warning}}}}}

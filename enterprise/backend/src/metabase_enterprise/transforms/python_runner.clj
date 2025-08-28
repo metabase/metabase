@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.util.json :as json]
    [toucan2.core :as t2])

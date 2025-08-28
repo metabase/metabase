@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms.execute
   (:require
-   [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -14,8 +13,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.request.core :as request]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.upload.core :as upload]
    [metabase.util.json :as json]
    [metabase.util.log :as log]

@@ -77,7 +77,6 @@
          metabase.permissions.api/keep-me
          metabase.product-feedback.api/keep-me
          metabase.public-sharing.api/keep-me
-         metabase.python-runner.python-runner/keep-me
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
