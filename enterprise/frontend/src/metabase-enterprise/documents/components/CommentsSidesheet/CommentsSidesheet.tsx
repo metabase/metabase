@@ -43,7 +43,13 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
   }
 
   return (
-    <Modal.Root h="100dvh" opened variant="sidesheet" onClose={onClose}>
+    <Modal.Root
+      h="100dvh"
+      lockScroll={false}
+      opened
+      variant="sidesheet"
+      onClose={onClose}
+    >
       <Modal.Content
         classNames={{
           content: cx(S.content, Animation.slideLeft),
