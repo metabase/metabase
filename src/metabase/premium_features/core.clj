@@ -28,7 +28,8 @@
   log-enabled?
   max-users-allowed
   plan-alias
-  TokenStatus]
+  TokenStatus
+  clear-cache]
 
  (metabase.premium-features.settings
   active-users-count
@@ -76,6 +77,7 @@
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
+  offer-metabase-ai?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
   table-data-editing?

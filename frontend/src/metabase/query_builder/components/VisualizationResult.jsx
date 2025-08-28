@@ -24,6 +24,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "renderTableHeader",
   "mode",
   "renderEmptyMessage",
+  "zoomedRowIndex",
 ];
 
 export default class VisualizationResult extends Component {
