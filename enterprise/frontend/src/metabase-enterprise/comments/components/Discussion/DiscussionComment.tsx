@@ -7,6 +7,8 @@ import { t } from "ttag";
 import { Group, Spoiler, Text, Timeline, Tooltip, rem } from "metabase/ui";
 import type { Comment } from "metabase-types/api";
 
+import { CommentEditor } from "../CommentEditor";
+
 import S from "./Discussion.module.css";
 import {
   DiscussionActionPanel,
@@ -94,7 +96,7 @@ export function DiscussionComment({
           },
         }}
       >
-        <Text lh={rem(lineHeightPx)}>{comment.content_str_stup}</Text>
+        <CommentEditor disabled initialContent={comment.content} />
       </Spoiler>
     </Timeline.Item>
   );
