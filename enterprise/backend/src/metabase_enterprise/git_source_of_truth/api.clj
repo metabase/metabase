@@ -4,8 +4,10 @@
    [clojure.string :as str]
    [metabase-enterprise.git-source-of-truth.settings :as settings]
    [metabase-enterprise.git-source-of-truth.sources :as sources]
+   [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.storage :as serdes.storage]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -122,6 +124,13 @@
   []
   (api/check-superuser)
   ;; Placeholder
+  (with-temp-directory tmp
+    (serdes/with-cache
+      (-> (serdes.extract/extract {:no-settings true
+                                   :include-database-secrets false})
+          (serdes.storage/store! tmp)))
+
+    (sources/push-branch! (sources/get-source) tmp))
   "Success")
 
 (def ^{:arglists '([request respond raise])} routes

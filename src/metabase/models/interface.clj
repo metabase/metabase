@@ -63,11 +63,6 @@
   "This is dynamically bound to the set of entities that we are syncing when syncing the source of truth."
   #{})
 
-(def ^:dynamic *allow-sync-protected-writes?*
-  "This is dynamically bound to true to allow writes to entities that are synced to source of truth.
-  Normally these are read-only but during deserialization we need to be able to update them."
-  false)
-
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
   ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
@@ -592,14 +587,22 @@
 (defn- prevent-sync-protected-writes
   "Prevents writes to entities that are synced to source of truth, unless explicitly allowed."
   [instance]
-  (when (and (:synced_to_source_of_truth instance)
-             (not (or *allow-sync-protected-writes?* *deserializing?*)))
+  (when (and (try (requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only)
+                  (catch Exception _ false))
+             (not *deserializing?*))
     (throw (ex-info "Cannot modify entities synced to source of truth"
                     {:entity-id (:entity_id instance)
                      :model (model instance)})))
   instance)
 
-;; TODO: Have this handle setting `synced_to_source_of_truth` too
+(defmethod can-write? :hook/git-sync-protected
+  ([instance]
+   (try (false? (requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only))
+        (catch Exception _ true)))
+  ([_model _pk]
+   (try (false? (requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only))
+        (catch Exception _ true))))
+
 (t2/define-before-insert :hook/git-sync-protected
   [instance]
   (prevent-sync-protected-writes instance))

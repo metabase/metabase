@@ -35,14 +35,6 @@
   :export? false
   :default "main")
 
-(defsetting git-sync-path
-  (deferred-tru "The path within the repo where your metabase files are located, e.g. `metabase/`")
-  :type :string
-  :visibility :admin
-  :encryption :no
-  :export? false
-  :default ".")
-
 ;; TODO: flip this to true if we have successfully pulled from the repo
 (defsetting git-sync-configured
   (deferred-tru "Whether git sync is configured.")
@@ -58,3 +50,10 @@
   :visibility :authenticated
   :encryption :no
   :export?    false)
+
+(defsetting git-sync-read-only
+  (deferred-tru "Whether the instance is synced to git and read-only")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :default false)

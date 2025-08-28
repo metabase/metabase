@@ -13,10 +13,13 @@
 (defprotocol ISource
   (load-source! [this dir]
     "Loads the source, taking a directory and returning an absolute path to the source directory that can be loaded
-    with serdes. The returned path may be different from the original because sources may use subdirectories.
-
+    with serdes.
     TODO: working with directories (taking a directory and modifying it and returning a path) isn't really the best
     API but it'll do for now."))
+
+(defprotocol IDestination
+  (push-branch! [this source-dir]
+    "Pushes the contentents of `source-dir` to the branch specified."))
 
 (defn- execute-git-command
   "Execute a git command in the specified directory. Returns {:exit-code :stdout :stderr}."
@@ -55,11 +58,24 @@
 
     full-path))
 
-(defrecord GitSource [url branch path key]
+(defrecord GitSource [url source-branch key dest-branch]
   ISource
   (load-source! [_this dir]
-    (clone-repository! url branch dir key)
-    (get-serdes-path dir path)))
+    (clone-repository! url source-branch dir key)
+    dir)
+
+  IDestination
+  (push-branch! [_this source-dir]
+    (let [branch (str (random-uuid))]
+      (execute-git-command source-dir "init")
+      (execute-git-command source-dir "remote" "add" "origin" url)
+      (execute-git-command source-dir "fetch" "origin")
+      (execute-git-command source-dir "checkout" "-b" branch)
+      (try (execute-git-command source-dir "reset" "--mixed" (str "origin/" source-branch))
+           (catch Exception _ nil))
+      (execute-git-command source-dir "add" "-A")
+      (execute-git-command source-dir "commit" "-m" "Update content")
+      (execute-git-command source-dir "push" "-u" "origin" (str branch ":" dest-branch)))))
 
 (defn get-source
   "Returns the source that we should actually use. A source implements the `ISource` protocol."
@@ -67,5 +83,5 @@
   (when (settings/git-sync-url)
     (->GitSource (settings/git-sync-url)
                  (settings/git-sync-import-branch)
-                 (settings/git-sync-path)
-                 (settings/git-sync-key))))
+                 (settings/git-sync-key)
+                 (settings/git-sync-export-branch))))
