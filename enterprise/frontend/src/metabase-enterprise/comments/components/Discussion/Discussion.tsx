@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { t } from "ttag";
 
-import { Box, Button, Stack, Timeline } from "metabase/ui";
+import { Box, Stack, Timeline } from "metabase/ui";
+import { useCreateCommentMutation } from "metabase-enterprise/api";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
@@ -10,19 +10,34 @@ import S from "./Discussion.module.css";
 import { DiscussionComment } from "./DiscussionComment";
 
 export interface DiscussionProps {
+  childTargetId: Comment["child_target_id"];
   comments: Comment[];
+  targetId: Comment["target_id"];
+  targetType: Comment["target_type"];
 }
 
 /**
  * TODO: implement me
  * This component should not fetch any data (except version history) but it should use mutations.
  */
-export const Discussion = ({ comments }: DiscussionProps) => {
+export const Discussion = ({
+  childTargetId,
+  comments,
+  targetId,
+  targetType,
+}: DiscussionProps) => {
   const [, setNewComment] = useState<DocumentContent>();
 
+  const [createComment] = useCreateCommentMutation();
+
   const handleSubmit = (doc: DocumentContent) => {
-    // TODO: implement me
-    console.log(doc);
+    createComment({
+      child_target_id: childTargetId,
+      target_id: targetId,
+      target_type: targetType,
+      content: doc,
+      parent_comment_id: null, // TODO: implement me
+    });
   };
 
   return (
@@ -39,12 +54,9 @@ export const Discussion = ({ comments }: DiscussionProps) => {
 
       <Box>
         <CommentEditor
-          disabled
           onChange={(document) => setNewComment(document)}
           onSubmit={handleSubmit}
         />
-
-        <Button type="submit" onClick={handleSubmit}>{t`Post comment`}</Button>
       </Box>
     </Stack>
   );

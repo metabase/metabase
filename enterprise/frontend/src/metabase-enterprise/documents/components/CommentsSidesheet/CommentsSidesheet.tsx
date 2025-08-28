@@ -12,15 +12,15 @@ import S from "./CommentsSidesheet.module.css";
 
 interface Props {
   params?: {
-    targetChildId: string;
+    childTargetId: string;
   };
   onClose: () => void;
 }
 
 export const CommentsSidesheet = ({ params, onClose }: Props) => {
-  const targetChildId = params?.targetChildId;
+  const childTargetId = params?.childTargetId;
 
-  const { comments } = useDocumentContext();
+  const { comments, document } = useDocumentContext();
 
   const targetComments = useMemo(() => {
     if (!comments) {
@@ -28,15 +28,19 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     }
 
     return comments.filter(
-      (comment) => comment.child_target_id === targetChildId,
+      (comment) => comment.child_target_id === childTargetId,
     );
-  }, [comments, targetChildId]);
+  }, [comments, childTargetId]);
 
   useEffect(() => {
-    if (targetChildId == null) {
+    if (childTargetId == null) {
       onClose();
     }
-  }, [targetChildId, onClose]);
+  }, [childTargetId, onClose]);
+
+  if (!childTargetId || !document) {
+    return null;
+  }
 
   return (
     <Modal.Root h="100dvh" opened variant="sidesheet" onClose={onClose}>
@@ -66,7 +70,12 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
           </Group>
 
           <Stack className={S.scrollable} gap={0} h="100%" p="xl">
-            <Discussion comments={targetComments} />
+            <Discussion
+              childTargetId={childTargetId}
+              comments={targetComments}
+              targetId={document.id}
+              targetType="document"
+            />
           </Stack>
         </Modal.Body>
       </Modal.Content>

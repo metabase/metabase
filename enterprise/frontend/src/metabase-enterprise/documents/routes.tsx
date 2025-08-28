@@ -7,7 +7,7 @@ import { DocumentPage } from "./components/DocumentPage";
 export const getRoutes = () => (
   <Route path="document/:entityId" component={DocumentPage}>
     <ModalRoute
-      path="comments/:targetChildId"
+      path="comments/:childTargetId"
       modal={CommentsSidesheet}
       noWrap
       modalProps={{

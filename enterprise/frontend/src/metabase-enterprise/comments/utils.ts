@@ -23,14 +23,14 @@ export function getCommentThreads(
 
 export function getTargetChildCommentThreads(
   comments: Comment[] | undefined,
-  targetChildId: Comment["child_target_id"] | undefined,
+  childTargetId: Comment["child_target_id"] | undefined,
 ): CommentThread[] {
-  if (!comments || !targetChildId) {
+  if (!comments || !childTargetId) {
     return [];
   }
 
   const targetComments = comments.filter(
-    (comment) => comment.child_target_id === targetChildId,
+    (comment) => comment.child_target_id === childTargetId,
   );
 
   return getCommentThreads(targetComments);
