@@ -389,7 +389,7 @@ export const DocumentPage = ({
     [dispatch, selectedEmbedIndex],
   );
 
-  const { data: comments } = useListCommentsQuery(
+  const { data } = useListCommentsQuery(
     documentData
       ? {
           target_id: documentData.id,
@@ -397,6 +397,8 @@ export const DocumentPage = ({
         }
       : skipToken,
   );
+
+  const comments = data?.comments;
 
   return (
     <DocumentProvider value={{ comments }}>
