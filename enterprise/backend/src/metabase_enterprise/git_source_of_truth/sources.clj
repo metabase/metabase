@@ -29,7 +29,7 @@
 
 (defn clone-repository!
   "Clone git repository to a temporary directory. Returns the path to the cloned repository."
-  [url branch dir]
+  [url branch dir _key]
   (let [result (execute-git-command dir "clone" "--single-branch" "--branch" branch url ".")]
     (if (zero? (:exit result))
       (log/infof "Successfully cloned repository to %s" dir)
@@ -55,10 +55,10 @@
 
     full-path))
 
-(defrecord GitSource [url branch path]
+(defrecord GitSource [url branch path key]
   ISource
   (load-source! [_this dir]
-    (clone-repository! url branch dir)
+    (clone-repository! url branch dir key)
     (get-serdes-path dir path)))
 
 (defn get-source
@@ -67,4 +67,5 @@
   (when (settings/git-sync-url)
     (->GitSource (settings/git-sync-url)
                  (settings/git-sync-branch)
-                 (settings/git-sync-path))))
+                 (settings/git-sync-path)
+                 (settings/git-sync-key))))

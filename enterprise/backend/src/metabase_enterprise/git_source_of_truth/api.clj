@@ -90,25 +90,20 @@
     {:status :error
      :message "Git source of truth is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
-(api.macros/defendpoint :post "/reload"
+(api.macros/defendpoint :post "/import"
   "Reload Metabase content from Git repository source of truth.
   
   This endpoint will:
   1. Fetch the latest changes from the configured git repository
   2. Load the updated content using the serialization/deserialization system
-  3. Ensure read-only mode remains enabled
-  
+
   Requires superuser permissions."
   []
   (api/check-superuser)
-  (log/info "API request to reload from git repository")
-
   (let [result (reload-from-git!)]
     (case (:status result)
       :success
-      {:status 200
-       :body {:status "success"
-              :message (:message result)}}
+      "Success"
 
       :error
       {:status 400
@@ -119,6 +114,15 @@
       {:status 500
        :body {:status "error"
               :message "Unexpected error occurred during reload"}})))
+
+(api.macros/defendpoint :post "/export"
+  "Exports Metabase content to the Git repository source of truth.
+
+  Requires superuser"
+  []
+  (api/check-superuser)
+  ;; Placeholder
+  "Success")
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/git-source-of-truth` routes."
