@@ -1,7 +1,6 @@
 import { isFulfilled } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
 
@@ -22,11 +21,7 @@ import {
   submitInput as submitInputAction,
 } from "../state";
 
-export const useMetabotEnabled = () => {
-  const { value: isEnabled } = useAdminSetting("metabot-feature-enabled");
-
-  return !!isEnabled;
-};
+import { useMetabotEnabled } from "./use-metabot-enabled";
 
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
