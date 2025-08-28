@@ -2,7 +2,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { hasFeature } from "metabase/admin/databases/utils";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -71,14 +76,26 @@ function CreateTransformForm({
   onClose,
 }: CreateTransformFormProps) {
   const { database: databaseId } = query;
+
+  const {
+    data: database,
+    isLoading: isDatabaseLoading,
+    error: databaseError,
+  } = useGetDatabaseQuery(databaseId ? { id: databaseId } : skipToken);
+
   const {
     data: schemas = [],
-    isLoading,
-    error,
+    isLoading: isSchemasLoading,
+    error: schemasError,
   } = useListDatabaseSchemasQuery(
     databaseId ? { id: databaseId, include_hidden: true } : skipToken,
   );
+
+  const isLoading = isDatabaseLoading || isSchemasLoading;
+  const error = databaseError ?? schemasError;
+
   const [createTransform] = useCreateTransformMutation();
+  const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
     () => getInitialValues(schemas),
@@ -116,11 +133,13 @@ function CreateTransformForm({
             label={t`Description`}
             placeholder={t`This is optional`}
           />
-          <SchemaFormSelect
-            name="targetSchema"
-            label={t`Schema`}
-            data={schemas}
-          />
+          {supportsSchemas && (
+            <SchemaFormSelect
+              name="targetSchema"
+              label={t`Schema`}
+              data={schemas}
+            />
+          )}
           <FormTextInput
             name="targetName"
             label={t`Table name`}

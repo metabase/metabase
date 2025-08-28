@@ -2,7 +2,12 @@ import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { hasFeature } from "metabase/admin/databases/utils";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -85,12 +90,23 @@ function UpdateTargetForm({
   const [shouldDeleteTarget, setShouldDeleteTarget] = useState(false);
 
   const {
+    data: database,
+    isLoading: isDatabaseLoading,
+    error: databaseError,
+  } = useGetDatabaseQuery(databaseId ? { id: databaseId } : skipToken);
+
+  const {
     data: schemas = [],
-    isLoading,
-    error,
+    isLoading: isSchemasLoading,
+    error: schemasError,
   } = useListDatabaseSchemasQuery(
     databaseId ? { id: databaseId, include_hidden: true } : skipToken,
   );
+
+  const isLoading = isDatabaseLoading || isSchemasLoading;
+  const error = databaseError ?? schemasError;
+
+  const supportsSchemas = database && hasFeature(database, "schemas");
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -113,7 +129,7 @@ function UpdateTargetForm({
       {({ dirty }) => (
         <Form>
           <Stack gap="lg">
-            {schemas.length > 1 && (
+            {supportsSchemas && (
               <SchemaFormSelect
                 name="schema"
                 label={t`Schema`}
