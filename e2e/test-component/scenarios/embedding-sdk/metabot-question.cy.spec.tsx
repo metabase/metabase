@@ -30,6 +30,8 @@ const metabotResponse = `0:"Here is the [question link](${adHocQuestionPath})"`;
 const metabotResponseWithNavigateTo = `${metabotResponse}
 2:{"type":"navigate_to","version":1,"value":"${adHocQuestionPath}"}`;
 
+const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuestionPath})"`;
+
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {
     signInAsAdminAndEnableEmbeddingSdk();
@@ -83,6 +85,33 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
         .click();
 
       cy.findByTestId("visualization-root").should("exist");
+    });
+  });
+
+  it("should retry a message when clicking the retry button", () => {
+    setup(metabotResponse);
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+
+      H.mockMetabotResponse({
+        statusCode: 200,
+        body: metabotRetryResponse,
+      });
+
+      cy.findAllByTestId("metabot-chat-message")
+        .should("have.length", 2)
+        .last()
+        .findByTestId("metabot-chat-message-retry")
+        .click();
+
+      cy.findAllByTestId("metabot-chat-message")
+        .should("have.length", 2)
+        .last()
+        .findByText(/Retry: Here is the/)
+        .should("exist");
     });
   });
 });
