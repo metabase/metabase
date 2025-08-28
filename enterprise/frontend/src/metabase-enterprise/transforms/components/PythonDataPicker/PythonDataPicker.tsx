@@ -236,11 +236,17 @@ export function PythonDataPicker({
             {t`Select tables to use as data sources and provide aliases for each`}
           </Text>
           <Stack gap="sm">
-            {tableSelections.map((selection, index) => (
+            {tableSelections.map((selection, index) => {
+              // Filter available tables to exclude already selected ones (except current selection)
+              const filteredTables = availableTables.filter((table) => 
+                !selectedTableIds.has(table.value) || table.value === selection.tableId?.toString()
+              );
+              
+              return (
               <Group key={selection.id} gap="sm" align="flex-end">
                 <Select
                   style={{ flex: 1 }}
-                  data={availableTables}
+                  data={filteredTables}
                   value={selection.tableId?.toString() || null}
                   onChange={(value) => handleTableChange(selection.id, value)}
                   placeholder={t`Select a table`}
@@ -267,7 +273,8 @@ export function PythonDataPicker({
                   </ActionIcon>
                 )}
               </Group>
-            ))}
+              );
+            })}
             <Button
               leftSection={<Icon name="add" />}
               variant="subtle"
