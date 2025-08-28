@@ -19,7 +19,7 @@ import {
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 
-import { useMetabotAgent } from "../../hooks";
+import { useMetabotAgent, useMetabotChat } from "../../hooks";
 
 import Styles from "./MetabotChat.module.css";
 import { Messages } from "./MetabotChatMessage";
@@ -28,6 +28,8 @@ import { useScrollManager } from "./hooks";
 
 export const MetabotChat = () => {
   const metabot = useMetabotAgent();
+  const { handleSubmitInput, handleRetryMessage, handleResetInput } =
+    useMetabotChat();
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -44,32 +46,8 @@ export const MetabotChat = () => {
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
-  const handleSubmitInput = (input: string) => {
-    if (metabot.isDoingScience) {
-      return;
-    }
-
-    const trimmedInput = input.trim();
-    if (!trimmedInput.length || metabot.isDoingScience) {
-      return;
-    }
-    metabot.setPrompt("");
-    metabot.promptInputRef?.current?.focus();
-    metabot.submitInput(trimmedInput).catch((err) => console.error(err));
-  };
-
-  const handleRetryMessage = (messageId: string) => {
-    if (metabot.isDoingScience) {
-      return;
-    }
-
-    metabot.setPrompt("");
-    metabot.promptInputRef?.current?.focus();
-    metabot.retryMessage(messageId).catch((err) => console.error(err));
-  };
-
   const handleClose = () => {
-    metabot.setPrompt("");
+    handleResetInput();
     metabot.setVisible(false);
   };
 

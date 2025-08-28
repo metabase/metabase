@@ -13,7 +13,10 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import {
+  useMetabotAgent,
+  useMetabotChat,
+} from "metabase-enterprise/metabot/hooks";
 import {
   cancelInflightAgentRequests,
   resetConversationId,
@@ -25,27 +28,12 @@ const MIN_INPUT_HEIGHT = 42;
 
 export const MetabotChatEmbedding = () => {
   const metabot = useMetabotAgent();
-  const { setPrompt } = metabot;
+  const { handleSubmitInput, handleResetInput } = useMetabotChat();
 
   const resetInput = useCallback(() => {
-    setPrompt("");
+    handleResetInput();
     setInputExpanded(false);
-  }, [setPrompt]);
-
-  const handleSend = (input: string) => {
-    if (metabot.isDoingScience) {
-      return;
-    }
-
-    const trimmedInput = input.trim();
-    if (!trimmedInput.length || metabot.isDoingScience) {
-      return;
-    }
-
-    metabot.setPrompt("");
-    metabot.promptInputRef?.current?.focus();
-    metabot.submitInput(trimmedInput).catch((err) => console.error(err));
-  };
+  }, [handleResetInput]);
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {
@@ -131,7 +119,7 @@ export const MetabotChatEmbedding = () => {
               // prevent event from inserting new line + interacting with other content
               e.preventDefault();
               e.stopPropagation();
-              handleSend(metabot.prompt);
+              handleSubmitInput(metabot.prompt);
             }
           }}
         />

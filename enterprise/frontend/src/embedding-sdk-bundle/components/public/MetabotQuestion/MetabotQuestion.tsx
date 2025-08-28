@@ -11,7 +11,10 @@ import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSing
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Flex, Paper, Stack, Text } from "metabase/ui";
 import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import {
+  useMetabotAgent,
+  useMetabotChat,
+} from "metabase-enterprise/metabot/hooks";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 import { QuestionDetails } from "./QuestionDetails";
@@ -56,7 +59,8 @@ const MetabotQuestionInner = () => {
 
 function MetabotMessages() {
   const metabot = useMetabotAgent();
-  const { messages, errorMessages, setNavigateToPath, retryMessage } = metabot;
+  const { messages, errorMessages, setNavigateToPath } = metabot;
+  const { handleRetryMessage } = useMetabotChat();
 
   if (!messages.length && !errorMessages.length) {
     return null;
@@ -68,7 +72,7 @@ function MetabotMessages() {
         <Messages
           messages={messages}
           errorMessages={errorMessages}
-          onRetryMessage={retryMessage}
+          onRetryMessage={handleRetryMessage}
           isDoingScience={metabot.isDoingScience}
           showFeedbackButtons={false}
           onInternalLinkClick={setNavigateToPath}
