@@ -21,7 +21,7 @@ import {
   setNavigateToPath as setNavigateToPathAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
-} from "./state";
+} from "../state";
 
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
