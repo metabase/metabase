@@ -135,22 +135,20 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
           mt={rem(-2)}
           pr="lg"
         >
-          <Link
-            to={
-              hasUnsavedChanges
-                ? ""
-                : `/document/${document.id}/comments/${_id}`
-            }
+          <Button
+            leftSection={<Icon name="message" />}
+            px="sm"
+            size="xs"
+            variant={isOpen ? "filled" : "default"}
+            {...(hasUnsavedChanges || isOpen
+              ? undefined
+              : {
+                  component: Link,
+                  to: `/document/${document.id}/comments/${_id}`,
+                })}
           >
-            <Button
-              leftSection={<Icon name="message" />}
-              px="sm"
-              size="xs"
-              variant={isOpen ? "filled" : "default"}
-            >
-              {hasComments ? t`Comments (${comments?.length})` : t`Add comment`}
-            </Button>
-          </Link>
+            {hasComments ? t`Comments (${comments?.length})` : t`Add comment`}
+          </Button>
         </Box>
       )}
     </NodeViewWrapper>
