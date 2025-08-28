@@ -60,19 +60,19 @@
 
 ;;; ---------------------------------------------- sql-jdbc.connection -----------------------------------------------
 
-(defn endpoint-for-region
+(defn- endpoint-for-region
   "Returns the endpoint URL for a specific region"
   [region]
-  (cond
-    (str/starts-with? region "cn-") ".amazonaws.com.cn"
-    :else ".amazonaws.com"))
+  (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
-  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname], :as details}]
+  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
   (-> (merge
        {:classname      "com.amazon.athena.jdbc.AthenaDriver"
         :subprotocol    "athena"
-        :subname        (str "//athena." region (endpoint-for-region region) ":443")
+        :subname       (if (str/blank? hostname)
+                         (endpoint-for-region region)
+                         (str "//" hostname ":443"))
         :User           access_key
         :Password       secret_key
         :OutputLocation s3_staging_dir
@@ -88,7 +88,7 @@
        (dissoc details
                ;; Remove 2.x jdbc driver version options from details.
                ;; They are mapped to appropriate 3.x keys on preceding lines
-               :db :dbname :catalog :region :access_key :secret_key :s3_staging_dir :workgroup))
+               :db :dbname :catalog :region :access_key :secret_key :s3_staging_dir :workgroup :hostname))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
 (defmethod sql-jdbc.conn/data-source-name :athena

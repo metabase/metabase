@@ -2781,10 +2781,10 @@
     fs-extra "^9.1.0"
     tempy "^1.0.0"
 
-"@mantine/core@8.2.2":
-  version "8.2.2"
-  resolved "https://registry.yarnpkg.com/@mantine/core/-/core-8.2.2.tgz#6983d0a6d640d894dc473555abac05783ddb7863"
-  integrity sha512-+WnqII3zSD72F+7GLcRXZ/MyO4r7A4JM/yWkCSclxR4LeRQ5bd4HBRXkvXRMZP28UeL2b5X9Re2Sig3KVGDBeQ==
+"@mantine/core@8.2.4":
+  version "8.2.4"
+  resolved "https://registry.yarnpkg.com/@mantine/core/-/core-8.2.4.tgz#2e28effa7680b2311c676a5f8daac86d00c2366c"
+  integrity sha512-bZBxt6CFNLleARe5Ni2oYOcuRdi8ZEaxoZBmdc3sQu24tiX61xTKtjOfHaPffNMpqNQoIbgOi955rk3t1KSLig==
   dependencies:
     "@floating-ui/react" "^0.26.28"
     clsx "^2.1.1"
@@ -2793,17 +2793,17 @@
     react-textarea-autosize "8.5.9"
     type-fest "^4.27.0"
 
-"@mantine/dates@8.2.2":
-  version "8.2.2"
-  resolved "https://registry.yarnpkg.com/@mantine/dates/-/dates-8.2.2.tgz#da2e1c11ec433445749944e346fbb0f32c59e65b"
-  integrity sha512-ZDY6/OBgz8827Tu+sOxPNYXrsgLxWwF7pXDEL7vQN1XAm3pQdq2ljPn7Ykh/H9d7QEXQAFO6q5knwnyAXjn06g==
+"@mantine/dates@8.2.4":
+  version "8.2.4"
+  resolved "https://registry.yarnpkg.com/@mantine/dates/-/dates-8.2.4.tgz#652a6648b121670ee93132fd46c5fb612e6f4ec4"
+  integrity sha512-i4t1vKGQhqbT8B+/hK2iF0taYRrWKwNEFXoQrwIrau5OE8MZaIBiMVZaO6qYSW0KAvW1ZIt6SF7UpiZTqnytqQ==
   dependencies:
     clsx "^2.1.1"
 
-"@mantine/hooks@8.2.2":
-  version "8.2.2"
-  resolved "https://registry.yarnpkg.com/@mantine/hooks/-/hooks-8.2.2.tgz#1e404bcba3af04270e7220f2ebff988a2080acb1"
-  integrity sha512-fjt0+pc1UxJIIUswu4ur72qVH+/UoFxyYmqWexuHJTOvuB86M//KUvXpFyhJcTdEENBHg2k1fyMpWmgg1VOZ5w==
+"@mantine/hooks@8.2.4":
+  version "8.2.4"
+  resolved "https://registry.yarnpkg.com/@mantine/hooks/-/hooks-8.2.4.tgz#2dba93edb0a26d037dfcac4017860057a82e2643"
+  integrity sha512-ZXQ0uk6UtJa6Gl+ZWMBh4wC7UqCAoWWvau1TOoe05sBrkyGcXSVrTfoCVzjEQaB/h8VEOUWLGtJokkiMQKcMzA==
 
 "@marijn/find-cluster-break@^1.0.0":
   version "1.0.2"
