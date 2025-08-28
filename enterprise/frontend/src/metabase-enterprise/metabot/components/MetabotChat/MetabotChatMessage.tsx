@@ -12,7 +12,6 @@ import {
   type IconName,
   Text,
 } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import type {
   MetabotChatMessage,
   MetabotErrorMessage,
@@ -238,17 +237,18 @@ export const getFullAgentReply = (
 export const Messages = ({
   messages,
   errorMessages,
+  onRetryMessage,
   isDoingScience,
   showFeedbackButtons,
+  onInternalLinkClick,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
+  onRetryMessage: (messageId: string) => void;
   isDoingScience: boolean;
   showFeedbackButtons: boolean;
+  onInternalLinkClick?: (navigateToPath: string) => void;
 }) => {
-  const metabot = useMetabotAgent();
-  const { setNavigateToPath } = metabot;
-
   const clipboard = useClipboard();
   const [sendToast] = useToast();
 
@@ -259,16 +259,6 @@ export const Messages = ({
     submitted: {},
     modal: undefined,
   });
-
-  const handleRetryMessage = (messageId: string) => {
-    if (metabot.isDoingScience) {
-      return;
-    }
-
-    metabot.setPrompt("");
-    metabot.promptInputRef?.current?.focus();
-    metabot.retryMessage(messageId).catch((err) => console.error(err));
-  };
 
   const submitFeedback = async (metabotFeedback: MetabotFeedback) => {
     const { message_id, positive } = metabotFeedback.feedback;
@@ -312,13 +302,13 @@ export const Messages = ({
             key={"msg-" + index}
             data-testid="metabot-chat-message"
             message={message}
-            onRetry={handleRetryMessage}
+            onRetry={onRetryMessage}
             onCopy={onAgentMessageCopy}
             showFeedbackButtons={showFeedbackButtons}
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={messages[index + 1]?.role === "agent"}
-            onInternalLinkClick={setNavigateToPath}
+            onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
           <UserMessage

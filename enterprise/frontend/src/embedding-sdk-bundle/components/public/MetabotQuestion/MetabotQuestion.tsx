@@ -56,7 +56,7 @@ const MetabotQuestionInner = () => {
 
 function MetabotMessages() {
   const metabot = useMetabotAgent();
-  const { messages, errorMessages } = metabot;
+  const { messages, errorMessages, setNavigateToPath, retryMessage } = metabot;
 
   if (!messages.length && !errorMessages.length) {
     return null;
@@ -68,8 +68,10 @@ function MetabotMessages() {
         <Messages
           messages={messages}
           errorMessages={errorMessages}
+          onRetryMessage={retryMessage}
           isDoingScience={metabot.isDoingScience}
           showFeedbackButtons={false}
+          onInternalLinkClick={setNavigateToPath}
         />
       </Flex>
     </Paper>

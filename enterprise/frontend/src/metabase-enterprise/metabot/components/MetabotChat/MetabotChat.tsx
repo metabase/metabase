@@ -58,6 +58,16 @@ export const MetabotChat = () => {
     metabot.submitInput(trimmedInput).catch((err) => console.error(err));
   };
 
+  const handleRetryMessage = (messageId: string) => {
+    if (metabot.isDoingScience) {
+      return;
+    }
+
+    metabot.setPrompt("");
+    metabot.promptInputRef?.current?.focus();
+    metabot.retryMessage(messageId).catch((err) => console.error(err));
+  };
+
   const handleClose = () => {
     metabot.setPrompt("");
     metabot.setVisible(false);
@@ -149,6 +159,7 @@ export const MetabotChat = () => {
               <Messages
                 messages={metabot.messages}
                 errorMessages={metabot.errorMessages}
+                onRetryMessage={handleRetryMessage}
                 isDoingScience={metabot.isDoingScience}
                 showFeedbackButtons
               />
