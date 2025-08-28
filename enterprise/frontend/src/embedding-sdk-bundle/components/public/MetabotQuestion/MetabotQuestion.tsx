@@ -15,6 +15,7 @@ import {
   useMetabotAgent,
   useMetabotChat,
 } from "metabase-enterprise/metabot/hooks";
+import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 import { QuestionDetails } from "./QuestionDetails";
@@ -22,7 +23,7 @@ import { QuestionTitle } from "./QuestionTitle";
 
 const MetabotQuestionInner = () => {
   const { isLocaleLoading } = useLocale();
-  const { navigateToPath } = useMetabotChat();
+  const { navigateToPath } = useMetabotReactions();
 
   if (isLocaleLoading) {
     return <SdkLoader />;
@@ -60,8 +61,8 @@ const MetabotQuestionInner = () => {
 function MetabotMessages() {
   const metabot = useMetabotAgent();
   const { messages, errorMessages } = metabot;
-  const { isDoingScience, handleRetryMessage, setNavigateToPath } =
-    useMetabotChat();
+  const { isDoingScience, handleRetryMessage } = useMetabotChat();
+  const { setNavigateToPath } = useMetabotReactions();
 
   if (!messages.length && !errorMessages.length) {
     return null;
