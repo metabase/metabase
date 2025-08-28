@@ -114,8 +114,10 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
   );
 
   return (
-    <NodeViewWrapper as="p" className={S.paragraph}>
-      <NodeViewContent />
+    <NodeViewWrapper>
+      <p className={S.paragraph}>
+        <NodeViewContent />
+      </p>
 
       {document && (
         <Box className={S.commentsMenu} pr="lg">
