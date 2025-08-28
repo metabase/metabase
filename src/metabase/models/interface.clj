@@ -599,16 +599,10 @@
                      :model (model instance)})))
   instance)
 
+;; TODO: Have this handle setting `synced_to_source_of_truth` too
 (t2/define-before-insert :hook/git-sync-protected
   [instance]
-  (prevent-sync-protected-writes instance)
-  (cond-> instance
-    (contains? (->> *syncing-source-of-truth-entities*
-                    (filter val)
-                    (map key)
-                    (into #{}))
-               (name (t2/model instance)))
-    (assoc :synced_to_source_of_truth true)))
+  (prevent-sync-protected-writes instance))
 
 (t2/define-before-update :hook/git-sync-protected
   [instance]
