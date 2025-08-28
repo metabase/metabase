@@ -7,6 +7,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.core :as appdb]
    [metabase.search.engine :as search.engine]
+   [metabase.search.in-place.legacy :as in-place.legacy]
+   [metabase.search.in-place.scoring :as in-place.scoring]
    [metabase.search.settings :as search.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -30,43 +32,52 @@
   (mt/with-premium-features #{:semantic-search}
     (mt/with-temporary-setting-values [search.settings/search-engine "semantic"]
       (with-open [_ (semantic.tu/open-temp-index!)]
-        ;; Disable falling back to appdb search engine when not enough semantic results are returned
+        ;; Disable falling back to appdb / in-place search engine when not enough semantic results are returned
         (mt/with-temporary-setting-values [semantic-search-min-results-threshold 0]
-          (testing "API defaults to semantic engine when configured"
-            (let [semantic-called? (atom false)
-                  appdb-called? (atom false)]
-              (with-redefs [semantic.pgvector-api/query
-                            (fn [& _]
-                              (reset! semantic-called? true)
-                              {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}]
-                               :raw-count 0})
-                            appdb/results
-                            (fn [_]
-                              (reset! appdb-called? true)
-                              [{:id 2 :name "appdb-result" :model "card" :collection_id 1 :score 0.9}])]
-
+          (let [semantic-called? (atom false)
+                appdb-called? (atom false)
+                legacy-called? (atom false)
+                reset-called-atoms! #(do (reset! semantic-called? false)
+                                         (reset! appdb-called? false)
+                                         (reset! legacy-called? false))]
+            (with-redefs [semantic.pgvector-api/query
+                          (fn [& _]
+                            (reset! semantic-called? true)
+                            {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}]
+                             :raw-count 0})
+                          appdb/results
+                          (fn [_]
+                            (reset! appdb-called? true)
+                            [{:id 2 :name "appdb-result" :model "card" :collection_id 1 :score 0.9}])
+                          in-place.scoring/score-and-result
+                          (fn [result _]
+                            {:result (dissoc result :score)
+                             :score  (:score result)})
+                          in-place.legacy/results
+                          (fn [_]
+                            (reset! legacy-called? true)
+                            [{:id 2 :name "legacy-result" :model "card" :collection_id 1 :score 0.7}])]
+              (testing "API defaults to semantic engine when configured"
                 (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test")]
                   (is @semantic-called? "Semantic search should be called by default")
                   (is (not @appdb-called?) "AppDB search should not be called by default")
-                  (is (= "search.engine/semantic" (:engine response)))))))
-
-          (testing "API can override engine with search_engine=appdb parameter"
-            (let [semantic-called? (atom false)
-                  appdb-called? (atom false)]
-              (with-redefs [semantic.pgvector-api/query
-                            (fn [& _]
-                              (reset! semantic-called? true)
-                              {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0.8}]
-                               :raw-count 0})
-                            appdb/results
-                            (fn [_]
-                              (reset! appdb-called? true)
-                              [{:id 2 :name "appdb-result" :model "card" :collection_id 1 :score 0.9}])]
-
-                (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test" :search_engine "appdb")]
-                  (is (not @semantic-called?) "Semantic search should not be called when overridden")
-                  (is @appdb-called? "AppDB search should be called when specified")
-                  (is (= "search.engine/appdb" (:engine response))))))))))))
+                  (is (not @legacy-called?) "Legacy search should not be called by default")
+                  (is (= "search.engine/semantic" (:engine response)))))
+              (reset-called-atoms!)
+              (testing "API can override engine with search_engine parameter"
+                (when (search.engine/supported-engine? :search.engine/appdb)
+                  (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test" :search_engine "appdb")]
+                    (is (= "search.engine/appdb" (:engine response)))
+                    (is @appdb-called? "AppDB search should be called when specified")
+                    (is (not @semantic-called?) "Semantic search should not be called when overridden")
+                    (is (not @legacy-called?) "Legacy search should not be called when overridden")))
+                (reset-called-atoms!)
+                (when (search.engine/supported-engine? :search.engine/in-place)
+                  (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test" :search_engine "in-place")]
+                    (is (= "search.engine/in-place" (:engine response)))
+                    (is @legacy-called? "Legacy search should be called when specified")
+                    (is (not @semantic-called?) "Semantic search should not be called when overridden")
+                    (is (not @appdb-called?) "AppDB search should not be called when overridden")))))))))))
 
 (def ^:private search-context
   {:search-string "test" :search-engine :search.engine/semantic})
