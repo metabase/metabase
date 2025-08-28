@@ -53,11 +53,17 @@ export const DataStep = ({
   };
 
   const handleOpenColumnPicker = () => {
+    const tableName = table
+      ? Lib.displayInfo(query, stageIndex, table).displayName
+      : undefined;
+
     dispatch(
       onOpenColumnPickerSidebar({
         sidebarData: {
           type: "data-step",
-          title: t`Pick columns`,
+          title: tableName
+            ? t`Pick columns from ${tableName}`
+            : t`Pick columns`,
         },
       }),
     );
