@@ -87,9 +87,7 @@
     (let [parent (api/check-404 (t2/select-one :model/Comment :id parent_comment_id))]
       (api/check-400 (and (= (:target_type parent) target_type)
                           (= (:target_id parent) target_id))
-                     "Parent comment doesn't belong to the same entity")
-      (api/check-400 (not (:is_deleted parent))
-                     "Cannot reply to a deleted comment")))
+                     "Parent comment doesn't belong to the same entity")))
 
   (let [comment-id (t2/insert-returning-pk! :model/Comment
                                            {:target_type target_type
