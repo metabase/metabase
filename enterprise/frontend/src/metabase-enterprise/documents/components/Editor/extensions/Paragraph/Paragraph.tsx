@@ -147,7 +147,9 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
                   to: `/document/${document.id}/comments/${_id}`,
                 })}
           >
-            {hasComments ? t`Comments (${comments?.length})` : t`Add comment`}
+            {hasComments
+              ? t`Comments (${nodeThreads.flat().length})`
+              : t`Add comment`}
           </Button>
         </Box>
       )}
