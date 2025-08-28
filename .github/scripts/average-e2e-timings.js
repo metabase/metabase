@@ -35,6 +35,10 @@ const collectAndAverageTimings = async ({
       JSON.stringify(averagedTimings, null, 2),
     );
     console.log(`✅ Updated ${existingTimingsPath} with new timing data`);
+    
+    return {
+      artifactCount: timingData.length
+    };
   } catch (error) {
     console.error("❌ Error in collectAndAverageTimings:", error.message);
     throw error;

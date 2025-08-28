@@ -7,12 +7,7 @@ on:
         description: "Number of days to look back for timing artifacts"
         type: number
         default: 7
-  push:
-    branches:
-      - master
-      - generate-new-test-timings
-    paths:
-      - ".github/workflows/update-e2e-timings.yml"
+        required: false
   schedule:
     # Run weekly on Sundays at 6 AM UTC
     - cron: "0 6 * * 0"
@@ -21,6 +16,8 @@ jobs:
   collect-and-average-timings:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
+    env:
+      DAYS_BACK: ${{ inputs.days_back || 7 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,18 +29,21 @@ jobs:
           node-version: 22
 
       - name: Collect and average timing data
+        id: collect-timings
         uses: actions/github-script@v7
         with:
           script: |
             const { collectAndAverageTimings } = require('${{ github.workspace }}/.github/scripts/average-e2e-timings.js');
-            await collectAndAverageTimings({
+            const result = await collectAndAverageTimings({
               github,
               context,
               token: '${{ secrets.GITHUB_TOKEN }}',
-              branch: 'generate-new-test-timings',
-              daysBack: ${{ inputs.days_back || 7 }},
+              branch: 'master',
+              daysBack: ${{ env.DAYS_BACK }},
               existingTimingsPath: 'e2e/support/timings.json'
             });
+
+            core.setOutput('artifact-count', result.artifactCount);
 
       - name: Set up git configuration
         run: |
@@ -58,11 +58,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ env.BRANCH_NAME }}
-          base: generate-new-test-timings
+          base: master
           commit-message: |
             Update E2E test timings with averaged data
 
-            Collected timing data from ${{ inputs.days_back || 7 }} days of test runs.
+            Collected timing data from ${{ env.DAYS_BACK }} days of test runs.
             All specs with timing data were included (simple averages).
 
             🤖 Generated automatically by update-e2e-timings workflow
@@ -76,7 +76,8 @@ jobs:
             This PR updates the E2E test timing data with averaged values from recent test runs.
 
             ## Details
-            - 📅 Collected data from the last **${{ inputs.days_back || 7 }} days** of test runs
+            - Collected data from the last **${{ env.DAYS_BACK }} days** of test runs
+            - Averaged timing data from **${{ steps.collect-timings.outputs.artifact-count }}** test runs
 
             ## Generated automatically
             🤖 This PR was created automatically by the `update-e2e-timings` workflow.
