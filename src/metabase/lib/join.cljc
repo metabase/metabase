@@ -349,7 +349,8 @@
                                                         (pr-str join-alias)
                                                         (pr-str field-ref)
                                                         (pr-str (map (juxt :id :lib/source-column-alias) cols))))]
-                        :when     match]
+                        :when     (and match
+                                       (not (false? (:active match))))]
                     (-> match
                         (assoc :lib/source-uuid (lib.options/uuid field-ref))
                         ;; if the ref in join `:fields` is bucketed then we need to propagate this, since the
