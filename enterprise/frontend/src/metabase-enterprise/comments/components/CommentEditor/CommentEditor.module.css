@@ -10,7 +10,7 @@
   &.readonly {
     border: none;
     box-shadow: none;
-    padding-block: var(--mantine-spacing-sm);
+    padding: 0;
 
     .content :global(.ProseMirror) {
       padding-block: var(--mantine-spacing-xs);
