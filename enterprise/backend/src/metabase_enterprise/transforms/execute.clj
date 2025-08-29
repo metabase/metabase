@@ -144,6 +144,7 @@
              {:keys [target-database source-tables body]} source
              {:keys [schema name]} target
              db (t2/select-one :model/Database target-database)
+             driver (:engine db)
              {run-id :id} (try
                             (transform-run/start-run! transform-id {:run_method run-method})
                             (catch java.sql.SQLException e
@@ -177,7 +178,7 @@
                  ;; TODO would be nice if we have create or replace in upload
                  ;; NOTE (chris) we do have a replace, so this would be easy! but we're gonna stop using csv
                  (when-let [table (t2/select-one :model/Table
-                                                 :name (ddl.i/format-name (:engine db) name)
+                                                 :name (ddl.i/format-name driver name)
                                                  :schema (ddl.i/format-name driver schema)
                                                  :db_id (:id db))]
                    (upload/delete-upload! table)
