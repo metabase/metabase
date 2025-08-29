@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
-  "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
+  "Middlware for adding an implicit `:order-by` clauses to certain queries."
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -7,28 +7,6 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
-
-(mu/defn- should-add-implicit-fields?
-  "Whether we should add implicit `:fields` to a query stage."
-  [{:keys        [fields]
-    breakouts    :breakout
-    aggregations :aggregation
-    :as          stage} :- ::lib.schema/stage]
-  (and (= (:lib/type stage) :mbql.stage/mbql)
-       (empty? breakouts)
-       (empty? aggregations)
-       (empty? fields)))
-
-(mu/defn- add-implicit-fields :- ::lib.schema/stage
-  "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
-  expressions definied in the query."
-  [query :- ::lib.schema/query
-   path  :- ::lib.walk/path
-   stage :- ::lib.schema/stage]
-  (or (when (should-add-implicit-fields? stage)
-        (when-let [cols (not-empty (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path))]
-          (assoc stage :fields (mapv lib/ref cols))))
-      stage))
 
 (mu/defn- fix-order-by-field-refs :- ::lib.schema/stage
   "This function transforms top level integer field refs in order by to corresponding string field refs from breakout
@@ -72,7 +50,7 @@
       (when-let [source-query (:source-query stage)]
         (has-window-function-aggregations? source-query))))
 
-(mu/defn- add-implicit-breakout-order-by :- ::lib.schema/stage
+(mu/defn- add-order-bys-for-breakouts* :- ::lib.schema/stage
   "Fields specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that Field is already
   *explicitly* referenced in `order-by`."
   [query :- ::lib.schema/query
@@ -93,10 +71,7 @@
          path)
         (get-in (take-last 2 path)))))
 
-(mu/defn add-implicit-clauses :- ::lib.schema/query
-  "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.
-   Add implicit `:order-by` clauses for fields specified in a `:breakout`."
+(mu/defn add-order-bys-for-breakouts :- ::lib.schema/query
+  "Add implicit `:order-by` clauses for fields specified in a `:breakout`."
   [query :- ::lib.schema/query]
-  (-> query
-      (lib.walk/walk-stages add-implicit-fields)
-      (lib.walk/walk-stages add-implicit-breakout-order-by)))
+  (lib.walk/walk-stages query add-order-bys-for-breakouts*))

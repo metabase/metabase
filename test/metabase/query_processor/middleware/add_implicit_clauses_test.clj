@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -21,7 +20,7 @@
 (defn- add-implicit-breakout-order-by [inner-query]
   (let [query  (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query inner-query})
         path   [:stages (dec (count (:stages query)))]
-        stage' (#'qp.add-implicit-clauses/add-implicit-breakout-order-by query path (get-in query path))]
+        stage' (#'qp.add-implicit-clauses/add-order-bys-for-breakouts* query path (get-in query path))]
     (lib/->legacy-MBQL stage')))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test
@@ -76,114 +75,6 @@
             (is (=? query
                     (add-implicit-breakout-order-by query)))))))))
 
-(defn- add-implicit-fields
-  ([inner-query]
-   (add-implicit-fields meta/metadata-provider inner-query))
-
-  ([mp inner-query]
-   (let [query  (lib/query
-                 mp
-                 {:database (meta/id)
-                  :type     :query
-                  :query    inner-query})
-         path   [:stages (dec (count (:stages query)))]
-         stage' (#'qp.add-implicit-clauses/add-implicit-fields query path (get-in query path))]
-     (lib/->legacy-MBQL stage'))))
-
-(deftest ^:parallel add-order-bys-for-no-aggregations-test
-  (testing "We should add sorted implicit Fields for a query with no aggregations"
-    (is (=? (:query
-             (lib.tu.macros/mbql-query venues
-               {:fields [;; :type/PK Fields should get sorted first
-                         [:field %id {}]
-                         ;; followed by :type/Name Fields
-                         [:field %name {}]
-                         ;; followed by other Fields sorted by name
-                         [:field %category-id {}]
-                         [:field %latitude {}]
-                         [:field %longitude {}]
-                         [:field %price {}]]}))
-            (add-implicit-fields (:query (lib.tu.macros/mbql-query venues)))))))
-
-(deftest ^:parallel sort-by-field-position-test
-  (testing "when adding sorted implicit Fields, Field positions should be taken into account"
-    (let [mp (lib.tu/mock-metadata-provider
-              meta/metadata-provider
-              {:fields [{:id        1
-                         :table-id  (meta/id :venues)
-                         :position  100
-                         :name      "bbbbb"
-                         :base-type :type/Text}
-                        {:id        2
-                         :table-id  (meta/id :venues)
-                         :position  101
-                         :name      "aaaaa"
-                         :base-type :type/Text}]})]
-      (is (=? (:query
-               (lib.tu.macros/mbql-query venues
-                 {:fields [;; all fields with lower positions should get sorted first according to rules above
-                           [:field %id {}]
-                           [:field %name {}]
-                           [:field %category-id {}]
-                           [:field %latitude {}]
-                           [:field %longitude {}]
-                           [:field %price {}]
-                           ;; followed by position = 100, then position = 101
-                           [:field 1 {}]
-                           [:field 2 {}]]}))
-              (add-implicit-fields mp (:query (lib.tu.macros/mbql-query venues))))))))
-
-(deftest ^:parallel default-bucketing-test
-  (testing "datetime Fields should get default bucketing of :day"
-    (let [mp (lib.tu/mock-metadata-provider
-              meta/metadata-provider
-              {:fields [{:id        1
-                         :table-id  (meta/id :venues)
-                         :position  2
-                         :name      "aaaaa"
-                         :base-type :type/DateTime}]})]
-      (is (lib.types.isa/temporal? (lib.metadata/field mp 1)))
-      (is (=? (:query
-               (lib.tu.macros/mbql-query venues
-                 {:fields [[:field %id {}]
-                           [:field %name {}]
-                           [:field 1 {}]
-                           [:field %category-id {}]
-                           [:field %latitude {}]
-                           [:field %longitude {}]
-                           [:field %price {}]]}))
-              (add-implicit-fields mp (:query (lib.tu.macros/mbql-query venues))))))))
-
-(deftest ^:parallel add-implicit-fields-for-source-queries-test
-  (testing "We should add implicit Fields for source queries that have source-metadata as appropriate"
-    (let [{{source-query :query} :dataset_query
-           source-metadata       :result_metadata}
-          (qp.test-util/card-with-source-metadata-for-query
-           (mt/mbql-query checkins
-             {:aggregation [[:count]]
-              :breakout    [!month.$date]}))]
-      (is (=? {:fields [[:field "DATE" {:inherited-temporal-unit :month}] ; (was an ID ref)
-                        [:field "count" {:base-type :type/Integer}]]}
-              (add-implicit-fields
-               (mt/application-database-metadata-provider (mt/id))
-               (:query (lib.tu.macros/mbql-query checkins
-                         {:source-query    source-query
-                          :source-metadata source-metadata}))))))))
-
-(deftest ^:parallel expression-with-only-field-in-source-query-test
-  (testing "Field coming from expression in source query should have string id"
-    (let [{{source-query :query} :dataset_query
-           source-metadata       :result_metadata}
-          (qp.test-util/card-with-source-metadata-for-query
-           (mt/mbql-query venues {:expressions {"ccprice" $price}}))]
-      (is (some #(when (= % [:field "ccprice" {:base-type :type/Integer}]) %)
-                (->> (lib.tu.macros/mbql-query nil
-                       {:source-query    source-query
-                        :source-metadata source-metadata})
-                     :query
-                     (add-implicit-fields (mt/application-database-metadata-provider (mt/id)))
-                     :fields))))))
-
 (defn- add-implicit-clauses
   ([query]
    (add-implicit-clauses meta/metadata-provider query))
@@ -191,7 +82,7 @@
   ([mp query]
    (let [query (lib/query mp query)]
      (-> query
-         qp.add-implicit-clauses/add-implicit-clauses
+         qp.add-implicit-clauses/add-order-bys-for-breakouts
          lib/->legacy-MBQL))))
 
 (deftest ^:parallel joined-field-test

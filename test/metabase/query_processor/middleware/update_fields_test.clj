@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.resolve-joins-test
+(ns metabase.query-processor.middleware.update-fields-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -6,17 +6,17 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.test :as mt]))
+   [metabase.query-processor.middleware.update-fields :as update-fields]
+   [metabase.query-processor.preprocess :as qp.preprocess]))
 
-(defn- resolve-joins
+(defn- update-fields
   ([query]
-   (resolve-joins meta/metadata-provider query))
+   (update-fields meta/metadata-provider query))
 
   ([mp query]
-   (resolve-joins mp query (if (:lib/type query)
+   (update-fields mp query (if (:lib/type query)
                              :lib
                              :legacy)))
 
@@ -24,24 +24,106 @@
    (-> (if (:lib/metadata query)
          query
          (lib/query mp query))
-       resolve-joins/resolve-joins
+       update-fields/update-fields
        (cond-> (= result-type :legacy) lib/->legacy-MBQL))))
+
+(deftest ^:parallel add-order-bys-for-no-aggregations-test
+  (testing "We should add sorted implicit Fields for a query with no aggregations"
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:fields [ ;; :type/PK Fields should get sorted first
+                        [:field %id {}]
+                        ;; followed by :type/Name Fields
+                        [:field %name {}]
+                        ;; followed by other Fields sorted by name
+                        [:field %category-id {}]
+                        [:field %latitude {}]
+                        [:field %longitude {}]
+                        [:field %price {}]]})
+            (update-fields (lib.tu.macros/mbql-query venues))))))
+
+(deftest ^:parallel sort-by-field-position-test
+  (testing "when adding sorted implicit Fields, Field positions should be taken into account"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:fields [{:id        1
+                         :table-id  (meta/id :venues)
+                         :position  100
+                         :name      "bbbbb"
+                         :base-type :type/Text}
+                        {:id        2
+                         :table-id  (meta/id :venues)
+                         :position  101
+                         :name      "aaaaa"
+                         :base-type :type/Text}]})]
+      (is (=? (lib.tu.macros/mbql-query venues
+                {:fields [ ;; all fields with lower positions should get sorted first according to rules above
+                          [:field %id {}]
+                          [:field %name {}]
+                          [:field %category-id {}]
+                          [:field %latitude {}]
+                          [:field %longitude {}]
+                          [:field %price {}]
+                          ;; followed by position = 100, then position = 101
+                          [:field 1 {}]
+                          [:field 2 {}]]})
+              (update-fields mp (lib.tu.macros/mbql-query venues)))))))
+
+(deftest ^:parallel default-bucketing-test
+  (testing "datetime Fields should get default bucketing of :day"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:fields [{:id        1
+                         :table-id  (meta/id :venues)
+                         :position  2
+                         :name      "aaaaa"
+                         :base-type :type/DateTime}]})]
+      (is (lib.types.isa/temporal? (lib.metadata/field mp 1)))
+      (is (=? (lib.tu.macros/mbql-query venues
+                {:fields [[:field %id {}]
+                          [:field %name {}]
+                          [:field 1 {}]
+                          [:field %category-id {}]
+                          [:field %latitude {}]
+                          [:field %longitude {}]
+                          [:field %price {}]]})
+              (update-fields mp (lib.tu.macros/mbql-query venues)))))))
+
+(deftest ^:parallel update-fields-for-source-queries-test
+  (testing "We should add implicit Fields for source queries that have source-metadata as appropriate"
+    (let [source-query (:query (lib.tu.macros/mbql-query checkins
+                                 {:aggregation [[:count]]
+                                  :breakout    [!month.$date]}))]
+      (is (=? {:fields [[:field "DATE" {:inherited-temporal-unit :month}] ; (was an ID ref)
+                        [:field "count" {:base-type :type/Integer}]]}
+              (-> (update-fields
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query checkins
+                     {:source-query source-query}))
+                  :query))))))
+
+(deftest ^:parallel expression-with-only-field-in-source-query-test
+  (testing "Field coming from expression in source query should have string id"
+    (let [source-query (:query (lib.tu.macros/mbql-query venues {:expressions {"ccprice" $price}}))]
+      (is (= [:field "ccprice" {:base-type :type/Integer}]
+             (->> (lib.tu.macros/mbql-query nil
+                    {:source-query source-query})
+                  (update-fields meta/metadata-provider)
+                  :query
+                  :fields
+                  last))))))
 
 (deftest ^:parallel no-op-test
   (testing "Does the middleware function if the query has no joins?"
-    (is (= (lib.tu.macros/mbql-query venues)
-           (resolve-joins
-            (lib.tu.macros/mbql-query venues))))))
+    (is (some? (update-fields (lib.tu.macros/mbql-query venues))))))
 
 (deftest ^:parallel fields-none-test
   (testing "Can we resolve some joins w/ fields = none?"
     (is (=? (lib.tu.macros/mbql-query venues
               {:joins
-               [{:source-table $$categories
-                 :alias        "c"
-                 :strategy     :left-join
-                 :condition    [:= $category-id &c.categories.id]}]})
-            (resolve-joins
+               [{:alias     "c"
+                 :strategy  :left-join
+                 :condition [:= $category-id &c.categories.id]}]})
+            (update-fields
              (lib.tu.macros/mbql-query venues
                {:joins [{:source-table $$categories
                          :alias        "c"
@@ -52,19 +134,17 @@
   (testing "Can we resolve some joins w/ fields = all ???"
     (is (=? (lib.tu.macros/mbql-query venues
               {:joins
-               [{:source-table $$categories
-                 :alias        "c"
-                 :strategy     :left-join
-                 :condition    [:= $category-id &c.categories.id]
-                 :fields       [&c.categories.id
-                                &c.categories.name]}]
+               [{:alias     "c"
+                 :strategy  :left-join
+                 :condition [:= $category-id &c.categories.id]
+                 :fields    :all}]
                :fields [$venues.id
                         $venues.name
                         [:field %categories.id {:join-alias         "c"
                                                 :qp/ignore-coercion true}]
                         [:field %categories.name {:join-alias         "c"
                                                   :qp/ignore-coercion true}]]})
-            (resolve-joins
+            (update-fields
              (lib.tu.macros/mbql-query venues
                {:fields [$venues.id $venues.name]
                 :joins  [{:source-table $$categories
@@ -76,16 +156,15 @@
   (testing "can we resolve joins w/ fields = <sequence>"
     (is (=? (lib.tu.macros/mbql-query venues
               {:joins
-               [{:source-table $$categories
-                 :alias        "c"
-                 :strategy     :left-join
-                 :condition    [:= $category-id &c.categories.id]
-                 :fields       [&c.categories.name]}]
+               [{:alias     "c"
+                 :strategy  :left-join
+                 :condition [:= $category-id &c.categories.id]
+                 :fields    [&c.categories.name]}]
                :fields [$venues.id
                         $venues.name
                         [:field %categories.name {:join-alias         "c"
                                                   :qp/ignore-coercion true}]]})
-            (resolve-joins
+            (update-fields
              (lib.tu.macros/mbql-query venues
                {:fields [$venues.id $venues.name]
                 :joins  [{:source-table $$categories
@@ -94,23 +173,21 @@
                           :fields       [&c.categories.name]}]}))))))
 
 (deftest ^:parallel join-table-without-alias-test
-  (testing "Does joining a table an explicit alias add a default alias?"
-    (is (=? (lib.tu.macros/mbql-query venues
-              {:joins        [{:source-table $$categories
-                               :alias        "__join"
-                               :strategy     :left-join
-                               :condition    [:= $category-id 1]}
-                              {:source-table $$categories
-                               :alias        "__join_2"
-                               :strategy     :left-join
-                               :condition    [:= $category-id 2]}]
-               :source-table (meta/id :venues)})
-            (resolve-joins
-             (lib.tu.macros/mbql-query venues
-               {:joins [{:source-table $$categories
-                         :condition    [:= $category-id 1]}
-                        {:source-table $$categories
-                         :condition    [:= $category-id 2]}]}))))))
+  (testing "Do joins get default aliases?"
+    (is (=? {:stages [{:joins [{:alias      "__join"
+                                :strategy   :left-join
+                                :conditions [[:= {} [:field {} (meta/id :venues :category-id)] 1]]}
+                               {:alias      "__join_2"
+                                :strategy   :left-join
+                                :conditions [[:= {} [:field {} (meta/id :venues :category-id)] 2]]}]}]}
+            (update-fields
+             (lib/query
+              meta/metadata-provider
+              (lib.tu.macros/mbql-query venues
+                {:joins [{:source-table $$categories
+                          :condition    [:= $category-id 1]}
+                         {:source-table $$categories
+                          :condition    [:= $category-id 2]}]})))))))
 
 (deftest ^:parallel disallow-joins-against-table-on-different-db-test
   (testing "Test that joining against a table in a different DB throws an Exception"
@@ -120,7 +197,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"^Invalid output: \[\"Valid Table metadata, got: nil\"\]$"
-           (resolve-joins
+           (update-fields
             mp
             (lib.tu.macros/mbql-query venues
               {:joins [{:source-table (meta/id :categories)
@@ -134,19 +211,17 @@
               {:source-table $$checkins
                :aggregation  [[:sum &USERS__via__USER_ID.users.id]]
                :breakout     [$id]
-               :joins        [{:source-table $$users
-                               :alias        "USERS__via__USER_ID"
+               :joins        [{:alias        "USERS__via__USER_ID"
                                :strategy     :left-join
                                :condition    [:= $user-id &USERS__via__USER_ID.users.id]
                                :fk-field-id  (meta/id :checkins :user-id)}
                               {:alias        "u"
-                               :source-table $$users
                                :strategy     :left-join
                                :condition    [:=
                                               [:field "ID" {:base-type :type/BigInteger}]
                                               &u.users.id]}]
                :limit        10})
-            (resolve-joins
+            (update-fields
              (lib.tu.macros/mbql-query checkins
                {:source-table $$checkins
                 :aggregation  [[:sum &USERS__via__USER_ID.users.id]]
@@ -164,58 +239,28 @@
                                                [:field %users.id {:join-alias "u"}]]}]
                 :limit        10}))))))
 
-(deftest ^:parallel join-with-source-query-test
-  (testing "Does a join using a source query get its Tables resolved?"
-    (is (=? (lib.tu.macros/mbql-query venues
-              {:joins    [{:alias        "cat"
-                           :source-table $$categories
-                           :strategy     :left-join
-                           :condition    [:=
-                                          $category-id
-                                          [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
-               :order-by [[:asc $name]]
-               :limit    3})
-            (resolve-joins
-             (lib.tu.macros/mbql-query venues
-               {:joins    [{:alias        "cat"
-                            :source-query {:source-table $$categories}
-                            :condition    [:=
-                                           $category-id
-                                           [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
-                :order-by [[:asc $name]]
-                :limit    3}))))))
-
 (deftest ^:parallel resolve-source-query-with-fields-all-test
   (testing "Can we resolve joins using a `:source-query` and `:fields` `:all`?"
-    (let [source-metadata (get-in (qp/process-query
-                                   (qp/userland-query
-                                    (mt/mbql-query categories {:limit 1})))
-                                  [:data :results_metadata :columns])
-          resolved        (resolve-joins
-                           (mt/application-database-metadata-provider (mt/id))
-                           (mt/mbql-query venues
-                             {:joins    [{:alias           "cat"
-                                          :source-query    {:source-table $$categories}
-                                          :source-metadata source-metadata
-                                          :fields          :all
-                                          :condition       [:=
-                                                            $category_id
-                                                            [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
-                              :fields   [$name]
-                              :order-by [[:asc $name]]
-                              :limit    3}))]
-      (is (=? (mt/mbql-query venues
-                {:fields   [[:field (mt/id :venues :name) nil]
-                            [:field (mt/id :categories :id) {:join-alias "cat", :qp/ignore-coercion true}]
-                            [:field (mt/id :categories :name) {:join-alias "cat", :qp/ignore-coercion true}]]
-                 :joins    [{:alias           "cat"
-                             :source-table    $$categories
-                             :source-metadata (for [col source-metadata]
-                                                (dissoc col :fingerprint))
-                             :strategy        :left-join
-                             :condition       [:= $category_id [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]
-                             :fields          [&cat.categories.id
-                                               &cat.categories.name]}]
+    (let [resolved (update-fields
+                    meta/metadata-provider
+                    (lib.tu.macros/mbql-query venues
+                      {:joins    [{:alias        "cat"
+                                   :source-query {:source-table $$categories}
+                                   :fields       :all
+                                   :condition    [:=
+                                                  $category-id
+                                                  [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]}]
+                       :fields   [$name]
+                       :order-by [[:asc $name]]
+                       :limit    3}))]
+      (is (=? (lib.tu.macros/mbql-query venues
+                {:joins    [{:alias     "cat"
+                             :strategy  :left-join
+                             :condition [:= $category-id [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]
+                             :fields    :all}]
+                 :fields   [[:field (meta/id :venues :name) nil]
+                            [:field (meta/id :categories :id) {:join-alias "cat", :qp/ignore-coercion true}]
+                            [:field (meta/id :categories :name) {:join-alias "cat", :qp/ignore-coercion true}]]
                  :order-by [[:asc $name]]
                  :limit    3})
               resolved)))))
@@ -223,17 +268,13 @@
 (deftest ^:parallel dont-append-fields-if-parent-has-breakout-or-aggregation-test
   (testing "if the parent level has a breakout or aggregation, we shouldn't append Join fields to the parent level"
     (is (=? (lib.tu.macros/mbql-query users
-              {:joins       [{:source-table $$checkins
-                              :alias        "c"
-                              :strategy     :left-join
-                              :condition    [:= $id [:field "USER_ID" {:base-type :type/Integer, :join-alias "c"}]]
-                              :fields       [&c.checkins.id
-                                             &c.checkins.date
-                                             &c.checkins.user-id
-                                             &c.checkins.venue-id]}]
+              {:joins       [{:alias     "c"
+                              :strategy  :left-join
+                              :condition [:= $id [:field "USER_ID" {:base-type :type/Integer, :join-alias "c"}]]
+                              :fields    :all}]
                :aggregation [[:sum [:field "id" {:base-type :type/Float, :join-alias "c"}]]]
                :breakout    [[:field %last-login {:temporal-unit :month}]]})
-            (resolve-joins
+            (update-fields
              (lib.tu.macros/mbql-query users
                {:joins       [{:fields       :all
                                :alias        "c"
@@ -244,7 +285,7 @@
 
 (deftest ^:parallel aggregation-field-ref-test
   (testing "Should correctly handle [:aggregation n] field refs"
-    (is (some? (resolve-joins
+    (is (some? (update-fields
                 (lib.tu.macros/mbql-query users
                   {:fields [$id
                             $name
@@ -281,23 +322,23 @@
                             :fingerprint   {:global {:distinct-count 15, :nil% 0.0}}}]]
       (is (=? (lib.tu.macros/mbql-query users
                 {:fields [$id
-                          [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
-                 :joins  [{:fields       [[:field "_USER_ID" {:base-type :type/Integer
-                                                              :join-alias "alias"
-                                                              :qp/ignore-coercion true}]]
-                           :alias        "alias"
-                           :strategy     :left-join
-                           :condition    [:= $id [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
-                           :source-query {:native "SELECT USER_ID AS _USER_ID FROM CHECKINS"}
+                          [:field "_USER_ID" {:base-type          :type/Integer
+                                              :join-alias         "alias"
+                                              :qp/ignore-coercion true}]]
+                 :joins  [{:fields          :all
+                           :alias           "alias"
+                           :strategy        :left-join
+                           :condition       [:= $id [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
+                           :source-query    {:native "SELECT USER_ID AS _USER_ID FROM CHECKINS"}
                            :source-metadata source-metadata}]
                  :limit  10})
-              (resolve-joins
+              (update-fields
                (lib.tu.macros/mbql-query users
                  {:fields [$id]
-                  :joins  [{:fields         :all
-                            :alias          "alias"
-                            :condition      [:= $id [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
-                            :source-query   {:native "SELECT USER_ID AS _USER_ID FROM CHECKINS"}
+                  :joins  [{:fields          :all
+                            :alias           "alias"
+                            :condition       [:= $id [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
+                            :source-query    {:native "SELECT USER_ID AS _USER_ID FROM CHECKINS"}
                             :source-metadata source-metadata}]
                   :limit  10})))))))
 
@@ -317,7 +358,7 @@
                         $venues.price]
              :order-by [[:asc $venues.name]]
              :limit    3})
-          (resolve-joins
+          (update-fields
            (lib.tu.macros/mbql-query venues
              {:joins    [{:source-query {:source-table $$categories
                                          :fields       [$categories.id
@@ -419,13 +460,14 @@
                                                             [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "native_card"}]]
                                              :strategy     :left-join}]
                              :limit        10}})]
-      (is (=? {:query {:fields [[:field (meta/id :venues :id) nil]
-                                [:field (meta/id :venues :name) nil]
-                                [:field (meta/id :venues :category-id) nil]
-                                [:field (meta/id :venues :latitude) nil]
-                                [:field (meta/id :venues :longitude) nil]
-                                [:field (meta/id :venues :price) nil]
-                                [:field "ID" {:base-type :type/Integer, :join-alias "native_card"}]]}}
+      (is (=? {:fields [[:field "ID"          {}]
+                        [:field "NAME"        {}]
+                        [:field "CATEGORY_ID" {}]
+                        [:field "LATITUDE"    {}]
+                        [:field "LONGITUDE"   {}]
+                        [:field "PRICE"       {}]
+                        [:field "ID"          {:join-alias "native_card"}]]}
               (-> query
                   qp.preprocess/preprocess
-                  lib/->legacy-MBQL))))))
+                  lib/->legacy-MBQL
+                  :query))))))

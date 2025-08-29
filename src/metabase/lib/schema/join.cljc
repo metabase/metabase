@@ -18,9 +18,12 @@
 
   * a sequence of Field clauses: include only the Fields specified. Only `:field` clauses are allowed here! References
     to expressions or aggregations in the thing we're joining should use column literal (string column name) `:field`
-    references. This should be non-empty and all elements should be distinct (ignoring `:lib/uuid`)."
+    references. This should be non-empty and all elements should be distinct (ignoring `:lib/uuid`).
+
+  While `:none` is the default as far as MBQL is concerned, in the UI when adding explicit joins the default is
+  `:all`."
   [:multi
-   {:dispatch (some-fn keyword? string?)}
+   {:dispatch (some-fn keyword? string?), :default :none}
    [true  [:enum {:decode/normalize common/normalize-keyword} :all :none]]
    [false
     [:and
@@ -111,14 +114,11 @@
    [:map
     {:default {}, :decode/normalize normalize-join}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
-    ;; TODO (Cam 7/23/25) -- why would a join need an options map? If we need to add extra keys we can just add them
-    ;; to the join itself.
-    [:lib/options ::common/options]
     [:stages      [:ref :metabase.lib.schema/stages]]
-    [:conditions  ::conditions]
-    [:alias       ::alias]
-    [:fields   {:optional true} ::fields]
-    [:strategy {:optional true} ::strategy]]
+    [:conditions  [:ref ::conditions]]
+    [:alias       [:ref ::alias]]
+    [:fields      [:ref ::fields]]
+    [:strategy    [:ref ::strategy]]]
    (common/disallowed-keys
     {:lib/stage-metadata "joins should not have metadata attached directly to them; attach metadata to their last stage instead"
      :source-metadata    "joins should not have metadata attached directly to them; attach metadata to their last stage instead"

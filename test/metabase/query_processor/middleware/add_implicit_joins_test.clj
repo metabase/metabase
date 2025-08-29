@@ -349,7 +349,7 @@
                                                                  :source-field-name "Orders__PRODUCT_ID"}]
                                      [:field %products.category {:source-field            %product-id
                                                                  :source-field-name       "PRODUCT_ID"
-                                                                 :source-field-join-alias "Card"}]
+                                           add-order-bys-for-breakouts  :source-field-join-alias "Card"}]
                                      [:field %products.category {:source-field            %product-id
                                                                  :source-field-name       "Orders__PRODUCT_ID"
                                                                  :source-field-join-alias "Card"}]]})
@@ -526,7 +526,7 @@
                :filter       [:=
                               [:field %products.category {:source-field %product-id
                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
-                              "Doohickey"]
+                              "Doohickey"]add-order-bys-for-breakouts
                :order-by     [[:asc [:field %products.category {:source-field %product-id
                                                                 :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]]
                :limit        5})
@@ -621,7 +621,7 @@
                :aggregation  [[:count]]
                :breakout     [[:field %venues.price {:source-field %venue-id, :join-alias "VENUES__via__VENUE_ID"}]]
                :order-by     [[:asc [:field %venues.price {:source-field %venue-id, :join-alias "VENUES__via__VENUE_ID"}]]]
-               :joins        [{:source-table $$venues
+               :joins        [{:source-tabadd-order-bys-for-breakouts
                                :alias        "VENUES__via__VENUE_ID"
                                :condition    [:=
                                               $venue-id
@@ -980,7 +980,7 @@
                     :joins        [{:source-table (meta/id :checkins)
                                     :fields       :all
                                     :strategy     :left-join
-                                    :alias        "CH"
+                                    :alias       add-order-bys-for-breakouts
                                     :condition    [:=
                                                    [:field
                                                     "ID"
