@@ -42,14 +42,6 @@
                                                        (t2/select-one-fn :id :model/NativeQuerySnippet
                                                                          :name snippet-name))))))))
 
-(defn- add-template-tags-for-deserialization
-  "Add template tags during deserialization. Unlike `add-template-tags`, this doesn't look up
-   snippet IDs from the database since they might not exist yet during deserialization."
-  [snippet]
-  (assoc snippet :template_tags
-         (-> (:content snippet)
-             lib/recognize-template-tags)))
-
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
@@ -102,10 +94,11 @@
   (serdes/extract-query-collections :model/NativeQuerySnippet opts))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :content :description :entity_id :name]
-   :transform {:created_at    (serdes/date)
+  {:copy [:archived :content :description :entity_id :name]
+   :skip [:template_tags] ; Computed from :content in serdes/load-one!
+   :transform {:created_at (serdes/date)
                :collection_id (serdes/fk :model/Collection)
-               :creator_id    (serdes/fk :model/User)}})
+               :creator_id (serdes/fk :model/User)}})
 
 (defmethod serdes/dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
@@ -121,6 +114,14 @@
         file  (last basis)
         colls (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
     (concat ["snippets"] colls [file])))
+
+(defn- add-template-tags-for-deserialization
+  "Add template tags during deserialization. Unlike `add-template-tags`, this doesn't look up
+   snippet IDs from the database since they might not exist yet during deserialization."
+  [snippet]
+  (assoc snippet :template_tags
+         (-> (:content snippet)
+             lib/recognize-template-tags)))
 
 (defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
   ;; Add template tags during deserialization to ensure they're available
