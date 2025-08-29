@@ -15,7 +15,6 @@ The server uses a transform-based architecture where users write a `transform()`
 python-runner/
 ├── server.py            # Flask web server with execution queue
 ├── transform_runner.py  # Transform framework that wraps user code
-├── client.py           # Python client library for the API
 ├── Dockerfile          # Container definition
 ├── Makefile           # Development and deployment commands
 ├── run_tests.sh       # Test suite runner
@@ -79,7 +78,7 @@ def transform():
         "column1": [1, 2, 3],
         "column2": ["a", "b", "c"]
     })
-    
+
     # Return DataFrame (will be saved as CSV)
     return df
 ```
