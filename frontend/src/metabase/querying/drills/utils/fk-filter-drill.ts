@@ -21,7 +21,6 @@ export const fkFilterDrill: Drill<Lib.FKFilterDrillThruInfo> = ({
   const columnTitle =
     locale === "en" ? singularize(stripId(columnName)) : stripId(columnName);
 
-  // Check if this is a NULL value click to provide appropriate title
   const isNullValue = clicked?.value === null;
   const title = isNullValue
     ? t`View ${tableTitle} with no ${columnTitle}`
