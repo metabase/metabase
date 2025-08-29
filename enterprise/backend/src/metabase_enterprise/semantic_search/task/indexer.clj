@@ -53,7 +53,7 @@
         (.interrupt execution-thread)))))
 
 (def ^:private ^Duration startup-delay (Duration/parse "PT10S"))
-(def ^:private ^Duration run-frequency (Duration/parse "PT10S"))
+(def ^:private ^Duration run-frequency (Duration/parse "PT20S"))
 
 (defmethod task/init! ::SemanticSearchIndexer [_]
   (when (premium-features/has-feature? :semantic-search)
