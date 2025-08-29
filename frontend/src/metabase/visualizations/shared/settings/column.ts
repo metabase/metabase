@@ -13,6 +13,14 @@ export function getDefaultNumberStyle(
     return "percent";
   }
 
+  // Auto-detect file size columns
+  const columnName = column.name?.toLowerCase() || "";
+  const bytesIndicators = ["byte", "size", "bandwidth", "traffic", "data_transfer", "file_size"];
+  
+  if (bytesIndicators.some(indicator => columnName.includes(indicator))) {
+    return "filesize";
+  }
+
   return "decimal";
 }
 
@@ -58,4 +66,12 @@ export function getDefaultCurrencyInHeader() {
 
 export function getDefaultNumberSeparators() {
   return ".,";
+}
+
+export function getDefaultFileSizeUnitSystem() {
+  return "binary";
+}
+
+export function getDefaultFileSizeUnitInHeader() {
+  return false;
 }
