@@ -53,8 +53,9 @@
 
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
+   (when (seq initial-snippet-ids)
    (let [snippets (t2/select :model/NativeQuerySnippet :id [:in initial-snippet-ids])]
-     (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids))))
+       (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids)))))
   ([all-snippets snippets-to-recurse seen-ids]
    (let [->nested-snippet-ids (fn [snippet]
                                 (when snippet
