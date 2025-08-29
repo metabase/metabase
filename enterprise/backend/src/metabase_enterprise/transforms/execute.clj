@@ -79,6 +79,17 @@
     (finally
       (canceling/chan-end-run! run-id))))
 
+(defn- try-start-unless-already-running [id run-method]
+  (try
+    (transform-run/start-run! id {:run_method run-method})
+    (catch java.sql.SQLException e
+      (if (= (.getSQLState e) "23505")
+        (throw (ex-info "Transform is already running"
+                        {:error :already-running
+                         :transform-id id}
+                        e))
+        (throw e)))))
+
 (defn run-mbql-transform!
   "Run `transform` and sync its target table.
 
@@ -100,15 +111,7 @@
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :feature feature})))
        ;; mark the execution as started and notify any observers
-       (let [{run-id :id} (try
-                            (transform-run/start-run! id {:run_method run-method})
-                            (catch java.sql.SQLException e
-                              (if (= (.getSQLState e) "23505")
-                                (throw (ex-info "Transform is already running"
-                                                {:error :already-running
-                                                 :transform-id id}
-                                                e))
-                                (throw e))))]
+       (let [{run-id :id} (try-start-unless-already-running id run-method)]
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
@@ -145,15 +148,7 @@
              {:keys [schema name]} target
              db (t2/select-one :model/Database target-database)
              driver (:engine db)
-             {run-id :id} (try
-                            (transform-run/start-run! transform-id {:run_method run-method})
-                            (catch java.sql.SQLException e
-                              (if (= (.getSQLState e) "23505")
-                                (throw (ex-info "Transform is already running"
-                                                {:error :already-running
-                                                 :transform-id transform-id}
-                                                e))
-                                (throw e))))]
+             {run-id :id} (try-start-unless-already-running transform-id run-method)]
          (some-> start-promise (deliver [:started run-id]))
          (log/info "Executing Python transform" (:id transform) "with target" (pr-str target))
          (try
