@@ -41,7 +41,8 @@
     ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)
-   (net.sf.jsqlparser.schema Table)))
+   (net.sf.jsqlparser.schema Table)
+   (net.sf.jsqlparser.statement.select PlainSelect Select)))
 
 (set! *warn-on-reflection* true)
 
@@ -942,9 +943,9 @@
 
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
-  (let [table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        parsed-query (macaw/parsed-query query)
-        select-body (.getSelectBody parsed-query)]
+  (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
+        ^Select parsed-query (macaw/parsed-query query)
+        ^PlainSelect select-body (.getSelectBody parsed-query)]
     (.setIntoTables select-body [(Table. table-name)])
     [(str parsed-query)]))
 
