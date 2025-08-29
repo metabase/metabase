@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.cache :as cache]
    [metabase.test :as mt]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
@@ -240,3 +241,66 @@
                                      (encoded-lat-field-ref)
                                      (encoded-lon-field-ref))
              :query (json/encode (mt/mbql-query venues {:filter [:= $users.id 1]})))))))
+
+(deftest caching-test
+  (testing "Tile queries should respect caching settings"
+    (testing "Dashboard tile queries use caching"
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)
+                                                              :cache_invalidated_at nil}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                              :dashboard_id dashboard-id}]
+        (mt/with-temporary-setting-values [enable-query-caching true]
+          (let [query-count (atom 0)
+                original-process-query @#'api.tiles/tiles-query]
+            (with-redefs [metabase.tiles.api/tiles-query (fn [& args]
+                                                            (swap! query-count inc)
+                                                            (apply original-process-query args))]
+              (testing "First request executes query"
+                ;; First request should execute query
+                (is (png? (mt/user-http-request
+                          :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
+                                                       dashboard-id
+                                                       dashcard-id
+                                                       card-id
+                                                       (encoded-lat-field-ref)
+                                                       (encoded-lon-field-ref)))))
+                (is (= 1 @query-count)))
+              
+              (testing "Second identical request should use cache"
+                ;; Second identical request should be cached
+                (is (png? (mt/user-http-request
+                          :crowberto :get 200 (format "tiles/%d/dashcard/%d/card/%d/1/1/1/%s/%s"
+                                                       dashboard-id
+                                                       dashcard-id
+                                                       card-id
+                                                       (encoded-lat-field-ref)
+                                                       (encoded-lon-field-ref)))))
+                ;; Query count should still be 1 if caching worked
+                (is (= 1 @query-count))))))))
+    
+    (testing "Saved card tile queries use caching" 
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)
+                                                :cache_invalidated_at nil}]
+        (mt/with-temporary-setting-values [enable-query-caching true]
+          (let [query-count (atom 0)
+                original-process-query @#'api.tiles/tiles-query]
+            (with-redefs [metabase.tiles.api/tiles-query (fn [& args]
+                                                            (swap! query-count inc)
+                                                            (apply original-process-query args))]
+              (testing "First request executes query"
+                (is (png? (mt/user-http-request
+                          :crowberto :get 200 (format "tiles/%d/1/1/1/%s/%s"
+                                                       card-id
+                                                       (encoded-lat-field-ref)
+                                                       (encoded-lon-field-ref)))))
+                (is (= 1 @query-count)))
+              
+              (testing "Second identical request should use cache"
+                (is (png? (mt/user-http-request
+                          :crowberto :get 200 (format "tiles/%d/1/1/1/%s/%s"
+                                                       card-id
+                                                       (encoded-lat-field-ref)
+                                                       (encoded-lon-field-ref)))))
+                ;; Query count should still be 1 if caching worked
+                (is (= 1 @query-count))))))))))
