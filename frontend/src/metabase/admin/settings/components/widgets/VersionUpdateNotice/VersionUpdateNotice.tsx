@@ -64,8 +64,6 @@ function NewVersionAvailable({
   currentVersion: string;
   latestVersion: string;
 }) {
-  const lastestMajorVersion = getLatestMajorVersion(latestVersion);
-
   return (
     <div>
       <div
@@ -100,29 +98,39 @@ function NewVersionAvailable({
           {t`Update`}
         </ExternalLink>
       </div>
-      <Tabs mt="md" defaultValue="whats-new">
-        <Tabs.List>
-          <Tabs.Tab value="whats-new">{t`What's new`}</Tabs.Tab>
-          <Tabs.Tab value="changelog">{t`Changelog`}</Tabs.Tab>
-        </Tabs.List>
-        <Tabs.Panel value="whats-new">
-          <iframe
-            src={`https://www.metabase.com/releases${embedQueryParams}`}
-            className={S.iframe}
-          />
-        </Tabs.Panel>
-        <Tabs.Panel value="changelog">
-          <iframe
-            src={`https://www.metabase.com/changelog/${lastestMajorVersion}${embedQueryParams}`}
-            className={S.iframe}
-          />
-        </Tabs.Panel>
-      </Tabs>
     </div>
   );
 }
 
-function getLatestMajorVersion(version: string) {
+export function NewVersionInfo() {
+  const { data: versionInfo } = useGetVersionInfoQuery();
+  const latestMajorVersion = getLatestMajorVersion(
+    versionInfo?.latest?.version,
+  );
+
+  return (
+    <Tabs mt="md" defaultValue="whats-new">
+      <Tabs.List>
+        <Tabs.Tab value="whats-new">{t`What's new`}</Tabs.Tab>
+        <Tabs.Tab value="changelog">{t`Changelog`}</Tabs.Tab>
+      </Tabs.List>
+      <Tabs.Panel value="whats-new">
+        <iframe
+          src={`https://www.metabase.com/releases${embedQueryParams}`}
+          className={S.iframe}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel value="changelog">
+        <iframe
+          src={`https://www.metabase.com/changelog/${latestMajorVersion}${embedQueryParams}`}
+          className={S.iframe}
+        />
+      </Tabs.Panel>
+    </Tabs>
+  );
+}
+
+function getLatestMajorVersion(version: string | null | undefined) {
   return version?.split(".")[1] ?? "";
 }
 
