@@ -18,51 +18,53 @@ interface Props {
   style: CSSProperties;
 }
 
-export const CommentsMenu = forwardRef(function CommentsMenu(
-  { active, disabled, href, show, style, threads }: Props,
-  ref,
-) {
-  const hasUnresolvedComments = threads
-    .flatMap((thread) => thread.comments)
-    .some((comment) => !comment.is_resolved);
+export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
+  function CommentsMenu(
+    { active, disabled, href, show, style, threads }: Props,
+    ref,
+  ) {
+    const hasUnresolvedComments = threads
+      .flatMap((thread) => thread.comments)
+      .some((comment) => !comment.is_resolved);
 
-  return (
-    <Portal>
-      <Box
-        className={cx(S.commentsMenu, {
-          [S.visible]: disabled
-            ? hasUnresolvedComments
-            : show || hasUnresolvedComments,
-        })}
-        contentEditable={false}
-        draggable={false}
-        mt={rem(-2)}
-        pl="lg"
-        ref={ref}
-        style={style}
-      >
-        <Button
-          disabled={disabled}
-          leftSection={<Icon name="message" />}
-          px="sm"
-          size="xs"
-          variant={active ? "filled" : "default"}
-          {...(disabled
-            ? undefined
-            : {
-                component: Link,
-                // If no existing comments, add query param to auto-open new comment form
-                to: threads.length === 0 ? `${href}?new=true` : href,
-              })}
+    return (
+      <Portal>
+        <Box
+          className={cx(S.commentsMenu, {
+            [S.visible]: disabled
+              ? hasUnresolvedComments
+              : show || hasUnresolvedComments,
+          })}
+          contentEditable={false}
+          draggable={false}
+          mt={rem(-2)}
+          pl="lg"
+          ref={ref}
+          style={style}
         >
-          {(() => {
-            const unresolvedCount = threads
-              .flatMap((thread) => thread.comments)
-              .filter((comment) => !comment.is_resolved).length;
-            return unresolvedCount > 0 ? t`${unresolvedCount}` : "";
-          })()}
-        </Button>
-      </Box>
-    </Portal>
-  );
-});
+          <Button
+            disabled={disabled}
+            leftSection={<Icon name="message" />}
+            px="sm"
+            size="xs"
+            variant={active ? "filled" : "default"}
+            {...(disabled
+              ? undefined
+              : {
+                  component: Link,
+                  // If no existing comments, add query param to auto-open new comment form
+                  to: threads.length === 0 ? `${href}?new=true` : href,
+                })}
+          >
+            {(() => {
+              const unresolvedCount = threads
+                .flatMap((thread) => thread.comments)
+                .filter((comment) => !comment.is_resolved).length;
+              return unresolvedCount > 0 ? t`${unresolvedCount}` : "";
+            })()}
+          </Button>
+        </Box>
+      </Portal>
+    );
+  },
+);

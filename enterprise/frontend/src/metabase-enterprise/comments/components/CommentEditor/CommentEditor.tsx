@@ -1,6 +1,11 @@
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { EditorContent, type Extension, useEditor } from "@tiptap/react";
+import {
+  type Editor,
+  EditorContent,
+  type Extension,
+  useEditor,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
