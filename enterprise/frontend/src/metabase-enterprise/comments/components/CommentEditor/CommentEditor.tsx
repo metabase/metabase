@@ -35,6 +35,8 @@ interface Props {
   onChange?: (content: DocumentContent) => void;
   onSubmit?: (content: DocumentContent) => void;
   onBlur?: (content: DocumentContent, editor: Editor) => void;
+  isNewThread?: boolean;
+  autoFocus?: boolean;
 }
 
 export const CommentEditor = ({
@@ -44,6 +46,8 @@ export const CommentEditor = ({
   onChange,
   onSubmit,
   onBlur,
+  isNewThread = false,
+  autoFocus = false,
 }: Props) => {
   const currentUser = useSelector(getUser);
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
@@ -64,18 +68,18 @@ export const CommentEditor = ({
         configureMentionExtension({ currentUser, dispatch }),
         !readonly &&
           Placeholder.configure({
-            placeholder: t`Add a comment…`,
+            placeholder: isNewThread ? t`Add your comment…` : t`Reply…`,
           }),
         !readonly && DisableMetabotSidebar,
       ].filter(Boolean) as Extension[],
-    [siteUrl, currentUser, dispatch, readonly],
+    [siteUrl, currentUser, dispatch, readonly, isNewThread],
   );
 
   const editor = useEditor(
     {
       extensions,
       content: initialContent || "",
-      autofocus: false,
+      autofocus: autoFocus,
       editable: !readonly,
       immediatelyRender: true,
       onUpdate: ({ editor }) => {
@@ -91,7 +95,7 @@ export const CommentEditor = ({
         }
       },
     },
-    [readonly],
+    [readonly, autoFocus],
   );
 
   useEffect(() => {

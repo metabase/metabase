@@ -1,11 +1,10 @@
-// our Portal in metabase/ui does not work here, so we're using the originnal Mantine one
-import { Portal } from "@mantine/core";
 import cx from "classnames";
 import { type CSSProperties, forwardRef } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Box, Button, Icon, rem } from "metabase/ui";
+// our Portal in metabase/ui does not work here, so we're using the originnal Mantine one
+import { Box, Button, Icon, Portal, rem } from "metabase/ui";
 import type { CommentThread } from "metabase-enterprise/comments/types";
 
 import S from "./CommentsMenu.module.css";
@@ -44,11 +43,20 @@ export const CommentsMenu = forwardRef(function CommentsMenu(
           px="sm"
           size="xs"
           variant={active ? "filled" : "default"}
-          {...(disabled ? undefined : { component: Link, to: href })}
+          {...(disabled
+            ? undefined
+            : {
+                component: Link,
+                // If no existing comments, add query param to auto-open new comment form
+                to: threads.length === 0 ? `${href}?new=true` : href,
+              })}
         >
-          {hasComments
-            ? t`Comments (${threads.flatMap((thread) => thread.comments).length})`
-            : t`Add comment`}
+          {(() => {
+            const unresolvedCount = threads
+              .flatMap((thread) => thread.comments)
+              .filter((comment) => !comment.is_resolved).length;
+            return unresolvedCount > 0 ? t`${unresolvedCount}` : "";
+          })()}
         </Button>
       </Box>
     </Portal>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Divider, Stack } from "metabase/ui";
@@ -14,6 +14,7 @@ export interface DiscussionProps {
   comments: Comment[];
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
+  autoOpenNewComment?: boolean;
 }
 
 /**
@@ -25,6 +26,7 @@ export const Discussions = ({
   comments,
   targetId,
   targetType,
+  autoOpenNewComment = false,
 }: DiscussionProps) => {
   const [, setNewComment] = useState<DocumentContent>();
 
@@ -42,7 +44,15 @@ export const Discussions = ({
     });
   };
 
-  const [isNewThreadStarted, setIsNewThreadStarted] = useState(false);
+  const [isNewThreadStarted, setIsNewThreadStarted] =
+    useState(autoOpenNewComment);
+
+  // Auto-open new comment form if requested
+  useEffect(() => {
+    if (autoOpenNewComment) {
+      setIsNewThreadStarted(true);
+    }
+  }, [autoOpenNewComment]);
 
   return (
     <Stack gap="0">
@@ -64,11 +74,13 @@ export const Discussions = ({
       <Box p="xl">
         {!isNewThreadStarted && (
           <Button onClick={() => setIsNewThreadStarted(true)} variant="subtle">
-            {t`Start new thread`}
+            {t`New comment`}
           </Button>
         )}
         {isNewThreadStarted && (
           <CommentEditor
+            isNewThread={true}
+            autoFocus={autoOpenNewComment}
             onChange={(document) => setNewComment(document)}
             onSubmit={(doc) => {
               handleSubmit(doc);
