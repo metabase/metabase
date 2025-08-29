@@ -116,8 +116,6 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO Although these methods are implemented here, in fact they only work for sql-jdbc drivers, because
-;; execute-raw-queries! is not in implemented for plain sql drivers.
 (defmethod driver/run-transform! [:sql :table]
   [driver {:keys [connection-details output-table] :as transform-details} {:keys [overwrite?]}]
   (let [queries (cond->> [(driver/compile-transform driver transform-details)]

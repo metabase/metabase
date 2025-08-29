@@ -18,7 +18,7 @@
 (mr/def ::transform-details
   [:map
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
-   [:connection-details :any]
+   [:connection-details :any] ;; TODO(rileythomp, 2025-08-28): Rename this more accurately to be conn-spec
    [:query :string]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
 
@@ -39,10 +39,11 @@
 
 (defn run-transform!
   "Run a compiled transform"
-  [run-id driver {:keys [connection-details target] :as transform-details} opts]
+  [run-id driver {:keys [db-id connection-details output-schema] :as transform-details} opts]
   ;; local run is responsible for status
   (try
-    (driver/create-schema-if-needed! driver connection-details (:schema target))
+    (when-not (driver/schema-exists? driver db-id output-schema)
+      (driver/create-schema-if-needed! driver connection-details output-schema))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
       (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
@@ -66,10 +67,13 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           transform-details {:transform-type (keyword (:type target))
-                              :connection-details (driver/connection-details driver database)
+           transform-details {:db-id db
+                              :transform-type (keyword (:type target))
+                              ;; TODO(rileythomp, 2025-08-28): Rename this more accurately to be conn-spec
+                              ;; Requires updating all destructurings of transform-details in the drivers
+                              :connection-details (driver/connection-spec driver database)
                               :query (transforms.util/compile-source source)
-                              :target target
+                              :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
            opts {:overwrite? true}]
        (when-not (driver.u/supports? driver feature database)

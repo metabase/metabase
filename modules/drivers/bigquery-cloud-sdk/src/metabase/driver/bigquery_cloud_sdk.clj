@@ -847,13 +847,13 @@
     [(format "DROP TABLE IF EXISTS %s" table-str)]))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
-  [_driver connection-details queries]
+  [_driver conn-spec queries]
   ;; Execute DDL queries using BigQuery client
   ;; connection-details is either database details directly (from transforms)
   ;; or a database map with :details key (from other contexts)
-  (let [details (if (contains? connection-details :details)
-                  (:details connection-details)
-                  connection-details)
+  (let [details (if (contains? conn-spec :details)
+                  (:details conn-spec)
+                  conn-spec)
         client (database-details->client details)]
     (try
       (vec
@@ -893,7 +893,7 @@
     (driver/execute-raw-queries! driver database [drop-sql])
     nil))
 
-(defmethod driver/connection-details :bigquery-cloud-sdk
+(defmethod driver/connection-spec :bigquery-cloud-sdk
   [_driver database]
   ;; For BigQuery, return the database details directly since we don't use JDBC
   (:details database))
@@ -915,6 +915,15 @@
        (into #{} (keep #(driver.sql/find-table-or-transform driver %)))))
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
-  [driver details schema]
+  [driver conn-spec schema]
   (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
-    (driver/execute-raw-queries! driver details sql)))
+    (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/schema-exists? :bigquery-cloud-sdk
+  [_driver db-id schema]
+  (driver-api/with-metadata-provider db-id
+    (let [datasets (-> (driver-api/metadata-provider)
+                       driver-api/database
+                       :details
+                       list-datasets)]
+      (some #(= % schema) datasets))))

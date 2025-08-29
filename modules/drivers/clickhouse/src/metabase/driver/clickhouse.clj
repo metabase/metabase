@@ -320,6 +320,6 @@
     (into [query] params)))
 
 (defmethod driver/create-schema-if-needed! :clickhouse
-  [driver details schema]
+  [driver conn-spec schema]
   (let [sql [[(format "CREATE DATABASE IF NOT EXISTS `%s`;" schema)]]]
-    (driver/execute-raw-queries! driver details sql)))
+    (driver/execute-raw-queries! driver conn-spec sql)))

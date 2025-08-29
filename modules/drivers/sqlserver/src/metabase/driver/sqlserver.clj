@@ -960,6 +960,6 @@
          (.next rs))))))
 
 (defmethod driver/create-schema-if-needed! :sqlserver
-  [driver details schema]
+  [driver conn-spec schema]
   (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
-    (driver/execute-raw-queries! driver details sql)))
+    (driver/execute-raw-queries! driver conn-spec sql)))
