@@ -278,6 +278,57 @@
         {:output (str "No model found with model_id " model-id)}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
+(defn- query-table*
+  [{:keys [table-id fields filters aggregations group-by order-by limit] :as _arguments}]
+  (let [table-id (cond-> table-id
+                   (string? table-id) parse-long)
+        table (metabot-v3.tools.u/get-table table-id :db_id)
+        mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))
+        base-query (lib/query mp (lib.metadata/table mp table-id))
+        visible-cols (lib/visible-columns base-query)
+        filter-field-id-prefix (metabot-v3.tools.u/table-field-id-prefix table-id)
+        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
+        projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
+                                                             (let [column (cond-> column
+                                                                            bucket (assoc :unit bucket))]
+                                                               (lib/display-name base-query -1 column :long))))
+                              resolve-visible-column)
+                        fields)
+        reduce-query (fn [query f coll] (reduce f query coll))
+        query (-> base-query
+                  (reduce-query (fn [query [expr-or-column expr-name]]
+                                  (lib/expression query expr-name expr-or-column))
+                                (filter (comp expression? first) projection))
+                  (add-fields projection)
+                  (reduce-query add-filter (map resolve-visible-column filters))
+                  (reduce-query add-aggregation (map resolve-visible-column aggregations))
+                  (reduce-query add-breakout (map resolve-visible-column group-by))
+                  (reduce-query add-order-by (map resolve-order-by-column order-by))
+                  (add-limit limit))
+        query-id (u/generate-nano-id)
+        query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
+        returned-cols (lib/returned-columns query)]
+    {:type :query
+     :query-id query-id
+     :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
+     :result-columns (into []
+                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                           returned-cols)}))
+
+(defn query-table
+  "Create a query based on a table."
+  [{:keys [table-id] :as arguments}]
+  (try
+    (cond
+      (int? table-id) {:structured-output (query-table* arguments)}
+      (string? table-id) {:structured-output (query-table* (update arguments :table-id parse-long))}
+      :else {:output (str "Invalid table_id " table-id)})
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (str "No table found with table_id " table-id)}
+        (metabot-v3.tools.u/handle-agent-error e)))))
+
 (defn- base-query
   [data-source]
   (let [{:keys [table-id query query-id report-id]} data-source
