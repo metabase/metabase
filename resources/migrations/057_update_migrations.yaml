@@ -1294,6 +1294,15 @@ databaseChangeLog:
               - column:
                   name: branched_model_id
 
+  - changeSet:
+      id: v57.2025-08-29T04:40:42
+      author: nvoxland
+      comment: Drop unique constraint for entity id that can now be duplicated
+      changes:
+        - dropUniqueConstraint:
+            tableName: report_card
+            constraintName: report_card_entity_id_key
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

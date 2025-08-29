@@ -31,6 +31,7 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
+   [toucan2.tools.after :as t2.after]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.tools.identity-query :as t2.identity-query]
@@ -605,6 +606,10 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/git-sync-protected :hook/timestamped?)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/git-sync-protected :hook/entity-id)
+(methodical/prefer-method! #'t2.after/each-row-fn [:toucan.query-type/insert.* :hook/branchable]
+                           [:toucan.query-type/insert.* :hook/search-index])
 
 ;; --- helper fns
 (defn changes-with-pk

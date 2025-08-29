@@ -54,6 +54,7 @@
    [clojure.main]
    [clojure.string :as str]
    [clojure.test]
+   [dev.branching :as dev.branching]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
    [dev.h2 :as dev.h2]

@@ -115,7 +115,7 @@
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
-  (derive :hook/branchable)
+  ;(derive :hook/branchable)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
@@ -1108,7 +1108,7 @@
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [card-before-update card-updates actor delete-old-dashcards? branched-id]}]
+  [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! card-before-update card-updates)
@@ -1129,7 +1129,7 @@
     (cache/invalidate-config! {:questions [(:id card-before-update)]
                                :with-overrides? true})
     ;; ok, now save the Card
-    (t2/update! :model/Card (or branched-id (:id card-before-update))
+    (t2/update! :model/Card (:id card-before-update)
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
                 ;; Other values should only be modified if they're passed in as non-nil
                 (u/select-keys-when card-updates

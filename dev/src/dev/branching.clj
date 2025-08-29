@@ -1,5 +1,6 @@
 (ns dev.branching
   (:require
+   [metabase.branching.core :as branching]
    [metabase.test.initialize.test-users :as tu]
    [toucan2.core :as t2]))
 
@@ -184,3 +185,14 @@
   ;; Clean up when done
   (cleanup-branch-setup! setup)
   (cleanup-branch-setup! custom-setup))
+
+(comment
+  (binding [branching/*enable-branch-hook* true
+            branching/*current-branch* (atom (t2/select-one :model/Branch :id 392))]
+    (t2/debug
+      (time (t2/select-one :model/Card :id 75)))))
+
+(comment
+  (let [cards (t2/select :model/Card)]
+    (binding [branching/*enable-branch-hook* false]
+      (time (count (map #(t2/select-one :model/Card :id %) (map :id (mapcat #(repeat 5 %) cards))))))))

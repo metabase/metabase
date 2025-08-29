@@ -18,7 +18,7 @@
 (defn do-with-current-branch-var
   "Impl for with-current-branch-var"
   [branch-name thunk]
-  (binding [*current-branch* (when branch-name (delay (t2/select-one :model/Branch :name branch-name)))]
+  (binding [*current-branch* (if branch-name (delay (t2/select-one :model/Branch :name branch-name)) (delay nil))]
     (thunk)))
 
 (defmacro with-current-branch-var
