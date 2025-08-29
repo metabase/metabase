@@ -9,6 +9,8 @@
 }
 
 .spoilerRoot[data-has-spoiler] .spoilerContent {
+  /* mask: linear-gradient(0deg, transparent 0, rgb(0, 0, 0) 60px),
+    linear-gradient(270deg, transparent 0, transparent 50px, rgb(0, 0, 0) 100px); */
   mask: linear-gradient(
       0deg,
       transparent 0,

@@ -54,7 +54,7 @@ const avatarColors = [
   "var(--mb-base-color-octopus-40)",
 ];
 
-const lineHeightPx = 20;
+const lineHeightPx = 17;
 export function DiscussionComment({
   comment,
   actionPanelVariant,
@@ -144,7 +144,7 @@ export function DiscussionComment({
         />
       )}
 
-      <Group gap="sm" align="center" mb="0.25rem" wrap="nowrap">
+      <Group gap="sm" align="center" wrap="nowrap">
         <Text fw={700} lh={1.3} truncate>
           {comment.creator.common_name}
         </Text>
@@ -164,7 +164,8 @@ export function DiscussionComment({
 
       <Spoiler
         mb="0"
-        maxHeight={lineHeightPx * 3}
+        // TODO: remove +14. Currently it's related to Paragraph margin style, which is 14px
+        maxHeight={lineHeightPx * 3 + 14}
         showLabel={t`... more`}
         hideLabel={null}
         classNames={{
