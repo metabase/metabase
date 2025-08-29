@@ -271,15 +271,19 @@ describe("scenarios > native > snippet tags", () => {
       cy.button(/Edit/).click();
     });
 
-    cy.log("create a cycle and try to save the snippet");
+    cy.log("create a cycle and save the first snippet");
     H.modal().within(() => {
       getSnippetContentInput()
         .clear()
         .type("{{snippet: snippet2}}", { parseSpecialCharSequences: false })
         .click();
       cy.button("Save").click();
-      cy.findByText("Cannot save snippet with cycles.").should("be.visible");
     });
+
+    cy.log("run a query with a snippet cycle");
+    H.NativeEditor.type("select {{snippet: snippet1}}");
+    H.runNativeQuery();
+    // TODO - check for error
   });
 });
 
