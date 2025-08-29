@@ -31,6 +31,7 @@ type DiscussionCommentProps = {
   onReaction?: (comment: Comment, emoji: string) => unknown;
   onDelete?: (comment: Comment) => unknown;
   onEdit?: (comment: Comment, newContent: DocumentContent) => unknown;
+  onCopyLink?: (comment: Comment) => unknown;
 };
 
 const lineHeightPx = 17;
@@ -42,6 +43,7 @@ export function DiscussionComment({
   onReaction,
   onDelete,
   onEdit,
+  onCopyLink,
 }: DiscussionCommentProps) {
   const [isEditing, editingHandler] = useDisclosure(false);
   const [expanded, setExpanded] = useState(false);
@@ -87,6 +89,7 @@ export function DiscussionComment({
           onReaction={onReaction}
           onDelete={onDelete}
           onEdit={handleEditClick}
+          onCopyLink={onCopyLink}
         />
       )}
 

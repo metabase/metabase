@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { match } from "ts-pattern";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -8,7 +9,12 @@ import {
   useDeleteCommentMutation,
   useUpdateCommentMutation,
 } from "metabase-enterprise/api";
-import type { Comment, DocumentContent } from "metabase-types/api";
+import type {
+  Comment,
+  CommentEntityType,
+  DocumentContent,
+  EntityId,
+} from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
 
@@ -17,10 +23,10 @@ import { DiscussionAvatar } from "./DiscussionAvatar";
 import { DiscussionComment } from "./DiscussionComment";
 
 export interface DiscussionProps {
-  childTargetId: Comment["child_target_id"];
+  childTargetId: EntityId | null;
   comments: Comment[];
-  targetId: Comment["target_id"];
-  targetType: Comment["target_type"];
+  targetId: EntityId;
+  targetType: CommentEntityType;
 }
 
 /**
@@ -35,6 +41,7 @@ export const Discussion = ({
 }: DiscussionProps) => {
   const currentUser = useSelector(getCurrentUser);
   const [, setNewComment] = useState<DocumentContent>();
+  const [linkCopied, setLinkCopied] = useState(false);
   const parentCommentId = comments[0].id;
 
   const [createComment] = useCreateCommentMutation();
@@ -67,6 +74,20 @@ export const Discussion = ({
     updateComment({ id: comment.id, content: newContent });
   };
 
+  const handleCopyLink = () => {
+    const url = getUrl({ childTargetId, targetId, targetType });
+
+    navigator.clipboard.writeText(`${window.location.origin}${url}`);
+    setLinkCopied(true);
+  };
+
+  useEffect(() => {
+    if (linkCopied) {
+      const timeout = setTimeout(() => setLinkCopied(false), 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [linkCopied]);
+
   return (
     <Stack>
       <Timeline bulletSize={rem(24)} lineWidth={1} className={S.discussionRoot}>
@@ -79,6 +100,7 @@ export const Discussion = ({
             onResolve={handleResolveComment}
             onReopen={handleReopenComment}
             onEdit={handleEditComment}
+            onCopyLink={handleCopyLink}
           />
         ))}
         <Timeline.Item
@@ -95,3 +117,19 @@ export const Discussion = ({
     </Stack>
   );
 };
+
+function getUrl({
+  childTargetId,
+  targetId,
+  targetType,
+}: {
+  childTargetId: EntityId | null;
+  targetId: EntityId;
+  targetType: CommentEntityType;
+}) {
+  return match(targetType)
+    .with("document", () => {
+      return `/document/${targetId}/comments/${childTargetId}`;
+    })
+    .exhaustive();
+}
