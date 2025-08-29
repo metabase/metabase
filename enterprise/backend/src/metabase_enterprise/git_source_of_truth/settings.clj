@@ -53,13 +53,6 @@
   :encryption :no
   :default    false)
 
-(defsetting git-sync-entities
-  (deferred-tru "A map of which entities are synced to git.")
-  :type       :json
-  :visibility :authenticated
-  :encryption :no
-  :export?    false)
-
 (defsetting git-sync-read-only
   (deferred-tru "Whether the instance is synced to git and read-only")
   :type :boolean
