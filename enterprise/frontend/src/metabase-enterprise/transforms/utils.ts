@@ -22,6 +22,8 @@ export function formatStatus(status: TransformRunStatus) {
       return `Failed`;
     case "timeout":
       return t`Timeout`;
+    case "canceled":
+      return t`Canceled`;
   }
 }
 
