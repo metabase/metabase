@@ -493,7 +493,7 @@ export const getIsResultDirty = createSelector(
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
-      question && Lib.queryDisplayInfo(question.query()).isEditable;
+      !!question && Lib.queryDisplayInfo(question.query()).isEditable;
 
     return (
       haveParametersChanged ||
@@ -938,7 +938,9 @@ export const getIsVisualized = createSelector(
   (question, settings) =>
     question &&
     // table is the default
-    ((question.display() !== "table" && question.display() !== "pivot") ||
+    ((question.display() !== "table" &&
+      question.display() !== "pivot" &&
+      question.display() !== "list") ||
       (settings != null && settings["table.pivot"])),
 );
 
@@ -1089,3 +1091,8 @@ export const getIsNotebookNativePreviewShown = (state) =>
 
 export const getNotebookNativePreviewSidebarWidth = (state) =>
   getSetting(state, "notebook-native-preview-sidebar-width");
+
+export const getIsListViewConfigurationShown = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls.isShowingListViewConfiguration,
+);
