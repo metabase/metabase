@@ -33,7 +33,7 @@ export function createProseMirrorPlugin(nodeName: string) {
       // Check if any nodes were split (have the same _id)
       const seenIds = new Set();
 
-      doc.forEach((node, pos) => {
+      doc.descendants((node, pos) => {
         const isRightNode = node.type.name === nodeName;
         const _id = node.attrs[ID_ATTRIBUTE_NAME];
         const hasNoId = _id == null;
