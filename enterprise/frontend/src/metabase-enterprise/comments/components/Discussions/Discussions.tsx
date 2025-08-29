@@ -59,27 +59,30 @@ export const Discussions = ({
         </>
       ))}
 
-      <Box>
-        {!isNewThreadStarted && (
-          <Button onClick={() => setIsNewThreadStarted(true)} variant="subtle">
-            {t`Start new thread`}
-          </Button>
-        )}
-        {isNewThreadStarted && (
-          <CommentEditor
-            onChange={(document) => setNewComment(document)}
-            onSubmit={(doc) => {
-              handleSubmit(doc);
+      {!isNewThreadStarted && (
+        <Button
+          style={{ alignSelf: "start" }}
+          mt="sm"
+          onClick={() => setIsNewThreadStarted(true)}
+          variant="subtle"
+        >
+          {t`Start new thread`}
+        </Button>
+      )}
+      {isNewThreadStarted && (
+        <CommentEditor
+          onChange={(document) => setNewComment(document)}
+          onSubmit={(doc) => {
+            handleSubmit(doc);
+            setIsNewThreadStarted(false);
+          }}
+          onBlur={(doc, editor) => {
+            if (editor.isEmpty) {
               setIsNewThreadStarted(false);
-            }}
-            onBlur={(doc, editor) => {
-              if (editor.isEmpty) {
-                setIsNewThreadStarted(false);
-              }
-            }}
-          />
-        )}
-      </Box>
+            }
+          }}
+        />
+      )}
     </Stack>
   );
 };
