@@ -6,12 +6,12 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const TEST_EMBED: EmbeddingHubStep = {
     id: "create-test-embed",
     title: t`Create a test embed`,
-    icon: "check",
+    icon: "test_tube",
     description: t`Test out the capabilities of Embedded Analytics JS by embedding a sample dashboard.`,
     actions: [
       {
         label: t`Create an embed`,
-        to: "/embed-js",
+        to: "/embed-js?auth_method=user_session",
         variant: "outline",
       },
     ],
@@ -69,7 +69,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
 
   const CONFIGURE_ROW_COLUMN_SECURITY: EmbeddingHubStep = {
     id: "configure-row-column-security",
-    title: t`Configure row and column security`,
+    title: t`Configure row and column security (optional)`,
     icon: "permissions_limited",
     description: t`Manage permissions to limit what data your users can access.`,
     actions: [
@@ -83,6 +83,10 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       src: "app/assets/img/embedding_hub_row_column_security.png",
       srcSet: "app/assets/img/embedding_hub_row_column_security@2x.png 2x",
       alt: t`Screenshot of configuring row and column security`,
+    },
+    infoAlert: {
+      type: "always",
+      message: t`Log in using SSO to create a user with attributes before setting up row and column security.`,
     },
   };
 
@@ -108,12 +112,12 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const EMBED_PRODUCTION: EmbeddingHubStep = {
     id: "embed-production",
     title: t`Embed in production`,
-    icon: "bolt",
+    icon: "code_block",
     description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
     actions: [
       {
         label: t`Create an embed`,
-        to: "/embed-js",
+        to: "/embed-js?auth_method=sso",
         variant: "outline",
       },
     ],
@@ -121,6 +125,10 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       src: "app/assets/img/embedding_hub_create_embed.png",
       srcSet: "app/assets/img/embedding_hub_create_embed@2x.png 2x",
       alt: t`Screenshot of creating an embed`,
+    },
+    infoAlert: {
+      type: "locked",
+      message: t`Configure SSO authentication to unlock this step.`,
     },
   };
 
