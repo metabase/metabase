@@ -3,6 +3,7 @@
 import { Avatar } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -56,6 +57,12 @@ export function DiscussionComment({
   onEdit,
 }: DiscussionCommentProps) {
   const [isEditing, editingHandler] = useDisclosure(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const handleEditClick = useCallback(() => {
+    editingHandler.open();
+    setExpanded(true);
+  }, [editingHandler]);
 
   const handleEditingSubmit = (document: DocumentContent) => {
     onEdit?.(comment, document);
@@ -101,7 +108,7 @@ export function DiscussionComment({
           onReopen={onReopen}
           onReaction={onReaction}
           onDelete={onDelete}
-          onEdit={editingHandler.open}
+          onEdit={handleEditClick}
         />
       )}
 
@@ -134,6 +141,8 @@ export function DiscussionComment({
           content: S.spoilerContent,
           control: S.spoilerControl,
         }}
+        expanded={expanded}
+        onExpandedChange={setExpanded}
         // We can't move this to CSS since control position is set via style attribute
         styles={{
           control: {
