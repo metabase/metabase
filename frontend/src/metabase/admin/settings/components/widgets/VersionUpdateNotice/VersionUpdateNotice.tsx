@@ -8,8 +8,11 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { newVersionAvailable, versionIsLatest } from "metabase/lib/utils";
+import { Tabs } from "metabase/ui";
 
 import S from "./VersionUpdateNotice.module.css";
+
+const embedQueryParams = "?hide_nav=true&no_gdpr=true";
 
 export function VersionUpdateNotice() {
   const { data: versionInfo } = useGetVersionInfoQuery();
@@ -97,17 +100,30 @@ function NewVersionAvailable({
           {t`Update`}
         </ExternalLink>
       </div>
-
-      <iframe
-        src={`https://www.metabase.com/changelog/${lastestMajorVersion}`}
-        className={S.iframe}
-      />
+      <Tabs mt="md" defaultValue="whats-new">
+        <Tabs.List>
+          <Tabs.Tab value="whats-new">{t`What's new`}</Tabs.Tab>
+          <Tabs.Tab value="changelog">{t`Changelog`}</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="whats-new">
+          <iframe
+            src={`https://www.metabase.com/releases${embedQueryParams}`}
+            className={S.iframe}
+          />
+        </Tabs.Panel>
+        <Tabs.Panel value="changelog">
+          <iframe
+            src={`https://www.metabase.com/changelog/${lastestMajorVersion}${embedQueryParams}`}
+            className={S.iframe}
+          />
+        </Tabs.Panel>
+      </Tabs>
     </div>
   );
 }
 
 function getLatestMajorVersion(version: string) {
-  return version.split(".")[1];
+  return version?.split(".")[1] ?? "";
 }
 
 function formatVersion(versionLabel = "") {
