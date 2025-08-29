@@ -42,6 +42,14 @@
                                                        (t2/select-one-fn :id :model/NativeQuerySnippet
                                                                          :name snippet-name))))))))
 
+(defn- add-template-tags-for-deserialization
+  "Add template tags during deserialization. Unlike `add-template-tags`, this doesn't look up
+   snippet IDs from the database since they might not exist yet during deserialization."
+  [snippet]
+  (assoc snippet :template_tags
+         (-> (:content snippet)
+             lib/recognize-template-tags)))
+
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
@@ -94,7 +102,7 @@
   (serdes/extract-query-collections :model/NativeQuerySnippet opts))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :content :description :entity_id :name :template_tags]
+  {:copy      [:archived :content :description :entity_id :name]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)}})
@@ -115,11 +123,13 @@
     (concat ["snippets"] colls [file])))
 
 (defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
+  ;; Add template tags during deserialization to ensure they're available
+  (let [ingested-with-tags (add-template-tags-for-deserialization ingested)]
   ;; if we got local snippet in db and it has same name as incoming one, we can be sure
   ;; there will be no conflicts and skip the query to the db
-  (if (and (not= (:name ingested) (:name maybe-local))
+    (if (and (not= (:name ingested-with-tags) (:name maybe-local))
            (t2/exists? :model/NativeQuerySnippet
-                       :name (:name ingested) :entity_id [:!= (:entity_id ingested)]))
-    (recur (update ingested :name str " (copy)")
+                         :name (:name ingested-with-tags) :entity_id [:!= (:entity_id ingested-with-tags)]))
+      (recur (update ingested-with-tags :name str " (copy)")
            maybe-local)
-    (serdes/default-load-one! ingested maybe-local)))
+      (serdes/default-load-one! ingested-with-tags maybe-local))))
