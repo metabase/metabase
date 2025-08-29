@@ -247,6 +247,31 @@
                                   :run_id run-id})
               (assoc :status 202)))))))
 
+(api.macros/defendpoint :post "/test"
+  "Test Python code execution without creating a transform."
+  [_route-params
+   _query-params
+   body :- [:map
+            [:code :string]
+            [:tables [:map-of :string :int]]]]
+  (log/info "test python code execution")
+  (api/check-superuser)
+  (try
+    (let [result (transforms.execute/call-python-runner-api! (:code body) (:tables body))]
+      (log/info "Python test execution succeeded")
+      (-> (response/response {:message (deferred-tru "Python code executed successfully")
+                              :result result})
+          (assoc :status 200)))
+    (catch Exception e
+      (log/error e "Error executing Python test code")
+      (let [ex-data (ex-data e)]
+        (-> (response/response {:message (deferred-tru "Python code execution failed")
+                                :error (.getMessage e)
+                                :stdout (:stdout ex-data)
+                                :stderr (:stderr ex-data)
+                                :exit_code (:exit-code ex-data)})
+            (assoc :status (or (:status-code ex-data) 500)))))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."
   (handlers/routes

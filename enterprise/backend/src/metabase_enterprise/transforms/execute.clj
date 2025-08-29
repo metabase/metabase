@@ -122,7 +122,7 @@
          (deliver start-promise t))
        (throw t)))))
 
-(defn- call-python-runner-api!
+(defn call-python-runner-api!
   "Call the Python runner API endpoint to execute Python code.
    Returns the result map or throws on error."
   [code table-name->id]
@@ -143,7 +143,7 @@
           db                      (t2/select-one :model/Database target-database)
           driver                  (:engine db)]
       (with-transform-lifecycle [run-id [(:id transform) {:run_method run-method}]]
-        (let [{:keys [body status] :as result}  (call-python-runner-api! body source-tables)]
+        (let [{:keys [body status] :as result} (call-python-runner-api! body source-tables)]
           (if (not= 200 status)
             (throw (ex-info (str/join "\n"
                                       [(format "exit code %d" (:exit-code body))
