@@ -134,19 +134,22 @@
   (update (python-runner/execute-python-code code table-name->id)
           :body #(if (string? %) json/decode+kw %)))
 
+(defn- debug-info-str [{:keys [exit-code stdout stderr]}]
+  (str/join "\n"
+            [(format "exit code %d" exit-code)
+             "======"
+             "stdout"
+             "======"
+             stdout
+             "stderr"
+             "======"
+             stderr]))
+
 (defn- run-python-transform! [{:keys [schema name]} {:keys [source-tables body]} db]
   (let [driver (:engine db)
         {:keys [body status] :as result} (call-python-runner-api! body source-tables)]
     (if (not= 200 status)
-      (throw (ex-info (str/join "\n"
-                                [(format "exit code %d" (:exit-code body))
-                                 "======"
-                                 "stdout"
-                                 "======"
-                                 (:stdout body)
-                                 "stderr"
-                                 "======"
-                                 (:stderr body)])
+      (throw (ex-info (debug-info-str body)
                       {:status-code 400
                        :error (or (:stderr body) (:error body))
                        :stdout (:stdout body)
