@@ -22,13 +22,13 @@
                                 {:filter [:< $price 3]})])
           query             (lib/query
                              metadata-provider
-                              {:database (mt/id)
-                               :type     :native
-                               :native   {:query {}
-                                          :template-tags
-                                          {"tag-name-not-important1" {:type         :card
-                                                                      :display-name "X"
-                                                                      :card-id      1}}}})]
+                             {:database (mt/id)
+                              :type     :native
+                              :native   {:query {}
+                                         :template-tags
+                                         {"tag-name-not-important1" {:type         :card
+                                                                     :display-name "X"
+                                                                     :card-id      1}}}})]
       (is (= query
              (#'qp.resolve-referenced/resolve-referenced-card-resources query)))
       (is (some? (lib.metadata.protocols/cached-metadata
@@ -48,12 +48,12 @@
                              (lib.tu/mock-metadata-provider
                               metadata-provider
                               {:database (assoc (lib.metadata/database metadata-provider) :id 1234)})
-                              {:database 1234
-                               :type     :native
-                               :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
-                                          :template-tags {tag-name ; This tag's query is from the test db
-                                                          {:id   tag-name, :name    tag-name, :display-name tag-name,
-                                                           :type "card",   :card-id 1}}}})]
+                             {:database 1234
+                              :type     :native
+                              :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
+                                         :template-tags {tag-name ; This tag's query is from the test db
+                                                         {:id   tag-name, :name    tag-name, :display-name tag-name,
+                                                          :type "card",   :card-id 1}}}})]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"\QCard 1 does not exist, or is from a different Database.\E"
@@ -73,10 +73,10 @@
                                           :template-tags (card-template-tags [1])}}])
           entrypoint-query  (lib/query
                              metadata-provider
-                              {:database (meta/id)
-                               :type     :native
-                               :native   {:query         "SELECT * FROM {{#1}}"
-                                          :template-tags (card-template-tags [1])}})]
+                             {:database (meta/id)
+                              :type     :native
+                              :native   {:query         "SELECT * FROM {{#1}}"
+                                         :template-tags (card-template-tags [1])}})]
       (is (thrown?
            ExceptionInfo
            (#'qp.resolve-referenced/check-for-circular-references entrypoint-query)))
@@ -140,10 +140,10 @@
             ;; Create the query that starts the cycle
             entrypoint-query (lib/query
                               metadata-provider-with-snippet
-                               {:database (meta/id)
-                                :type     :native
-                                :native   {:query         "SELECT * FROM {{#1}}"
-                                           :template-tags (card-template-tags [1])}})]
+                              {:database (meta/id)
+                               :type     :native
+                               :native   {:query         "SELECT * FROM {{#1}}"
+                                          :template-tags (card-template-tags [1])}})]
 
         (testing "Should throw an exception for circular reference"
           (is (thrown-with-msg?
@@ -193,10 +193,10 @@
             ;; Create the query that starts with Card A
             entrypoint-query (lib/query
                               metadata-provider-with-snippets
-                               {:database (meta/id)
-                                :type     :native
-                                :native   {:query         "SELECT * FROM {{#1}}"
-                                           :template-tags (card-template-tags [1])}})]
+                              {:database (meta/id)
+                               :type     :native
+                               :native   {:query         "SELECT * FROM {{#1}}"
+                                          :template-tags (card-template-tags [1])}})]
 
         (testing "Should throw an exception for circular reference"
           (is (thrown-with-msg?
@@ -208,10 +208,10 @@
           ;; Starting from Card B should also detect the cycle
           (let [card-b-query (lib/query
                               metadata-provider-with-snippets
-                               {:database (meta/id)
-                                :type     :native
-                                :native   {:query         "SELECT * FROM {{#2}}"
-                                           :template-tags (card-template-tags [2])}})]
+                              {:database (meta/id)
+                               :type     :native
+                               :native   {:query         "SELECT * FROM {{#2}}"
+                                          :template-tags (card-template-tags [2])}})]
             (is (thrown-with-msg?
                  ExceptionInfo
                  #"circular|cycle"
@@ -236,10 +236,10 @@
                                                      :snippet-refs [[201 "snippet-a"]]})]})
             entrypoint-query (lib/query
                               metadata-provider-with-snippets
-                               {:database (meta/id)
-                                :type     :native
-                                :native   {:query         "SELECT * FROM orders {{snippet: snippet-a}}"
-                                           :template-tags (make-snippet-template-tag 201 "snippet-a")}})]
+                              {:database (meta/id)
+                               :type     :native
+                               :native   {:query         "SELECT * FROM orders {{snippet: snippet-a}}"
+                                          :template-tags (make-snippet-template-tag 201 "snippet-a")}})]
         (testing "Should throw an exception specifically mentioning snippet cycle"
           (is (thrown-with-msg?
                ExceptionInfo
@@ -258,10 +258,10 @@
                                                      :snippet-refs [[301 "recursive-snippet"]]})]})
             entrypoint-query (lib/query
                               metadata-provider-with-snippet
-                               {:database (meta/id)
-                                :type     :native
-                                :native   {:query         "SELECT * FROM venues {{snippet: recursive-snippet}}"
-                                           :template-tags (make-snippet-template-tag 301 "recursive-snippet")}})]
+                              {:database (meta/id)
+                               :type     :native
+                               :native   {:query         "SELECT * FROM venues {{snippet: recursive-snippet}}"
+                                          :template-tags (make-snippet-template-tag 301 "recursive-snippet")}})]
         (testing "Should throw an exception for self-referencing snippet"
           (is (thrown-with-msg?
                ExceptionInfo
