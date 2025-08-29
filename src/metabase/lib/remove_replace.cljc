@@ -15,6 +15,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.stage :as lib.stage]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
@@ -284,9 +285,12 @@
   ([query :- ::lib.schema/query
     stage-number :- :int
     target-clause]
-   (if (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
-     (remove-join query stage-number target-clause)
-     (remove-replace* query stage-number target-clause :remove nil))))
+   (let [result-query (if (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
+                        (remove-join query stage-number target-clause)
+                        (remove-replace* query stage-number target-clause :remove nil))]
+     ;; After removing clauses, optimize stages to merge empty ones with subsequent stages
+     ;; This addresses issue #45041 where removing clauses can leave redundant nested stages
+     (lib.stage/optimize-stages result-query))))
 
 (defn- fresh-ref
   [reference]
