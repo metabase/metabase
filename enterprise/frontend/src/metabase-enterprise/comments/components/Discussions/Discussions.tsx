@@ -72,6 +72,11 @@ export const Discussions = ({
               handleSubmit(doc);
               setIsNewThreadStarted(false);
             }}
+            onBlur={(doc, editor) => {
+              if (editor.isEmpty) {
+                setIsNewThreadStarted(false);
+              }
+            }}
           />
         )}
       </Box>

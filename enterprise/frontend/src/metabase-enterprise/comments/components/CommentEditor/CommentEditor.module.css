@@ -7,13 +7,25 @@
   z-index: 1;
   width: 100%;
 
-  &.readonly {
+  &.readonly,
+  &:not(.active) {
     border: none;
     box-shadow: none;
     padding: 0;
 
     .content :global(.ProseMirror) {
       padding-block: var(--mantine-spacing-xs);
+    }
+
+    .submitBtn {
+      visibility: hidden;
+      pointer-events: none;
+    }
+  }
+  &:not(.active):focus-within {
+    .submitBtn {
+      visibility: visible;
+      pointer-events: auto;
     }
   }
 }

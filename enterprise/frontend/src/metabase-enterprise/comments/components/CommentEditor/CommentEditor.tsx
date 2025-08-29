@@ -30,16 +30,20 @@ const ALLOWED_FORMATTING = {
 
 interface Props {
   readonly?: boolean;
+  active?: boolean;
   initialContent?: DocumentContent | null;
   onChange?: (content: DocumentContent) => void;
   onSubmit?: (content: DocumentContent) => void;
+  onBlur?: (content: DocumentContent, editor: Editor) => void;
 }
 
 export const CommentEditor = ({
   readonly = false,
+  active = true,
   initialContent,
   onChange,
   onSubmit,
+  onBlur,
 }: Props) => {
   const currentUser = useSelector(getUser);
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
@@ -49,7 +53,7 @@ export const CommentEditor = ({
   const extensions = useMemo(
     () =>
       [
-        StarterKit,
+        StarterKit.configure({ link: false }),
         SmartLink.configure({
           HTMLAttributes: { class: "smart-link" },
           siteUrl,
@@ -79,6 +83,11 @@ export const CommentEditor = ({
         setContent(doc);
         if (onChange) {
           onChange(editor.getJSON() as DocumentContent);
+        }
+      },
+      onBlur: ({ editor }) => {
+        if (onBlur) {
+          onBlur(editor.getJSON() as DocumentContent, editor);
         }
       },
     },
@@ -118,7 +127,10 @@ export const CommentEditor = ({
 
   return (
     <Flex
-      className={cx(S.container, { [S.readonly]: readonly })}
+      className={cx(S.container, {
+        [S.readonly]: readonly,
+        [S.active]: active,
+      })}
       onKeyDown={handleKeyDown}
     >
       <EditorContent editor={editor} className={S.content} />

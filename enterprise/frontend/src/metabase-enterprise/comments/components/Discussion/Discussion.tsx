@@ -86,6 +86,7 @@ export const Discussion = ({
           bullet={<DiscussionAvatar user={currentUser} />}
         >
           <CommentEditor
+            active={false}
             onChange={(document) => setNewComment(document)}
             onSubmit={handleSubmit}
           />
