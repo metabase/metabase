@@ -17,6 +17,10 @@ export interface EmbeddingHubStep {
 
   image?: EmbeddingHubImage;
   video?: EmbeddingHubVideo;
+
+  /** Show an info alert box above the CTA */
+  infoAlert?: EmbeddingHubInfoAlert;
+
   actions?: EmbeddingHubAction[];
 }
 
@@ -24,6 +28,11 @@ export type EmbeddingHubModalToTrigger =
   | { type: "add-data"; initialTab: AddDataTab }
   | { type: "new-dashboard" }
   | { type: "xray-dashboard" };
+
+/** `always` is always shown. `locked` only shows on locked steps */
+export type EmbeddingHubInfoAlert =
+  | { type: "always"; message: string }
+  | { type: "locked"; message: string };
 
 interface EmbeddingHubAction {
   label: string;
