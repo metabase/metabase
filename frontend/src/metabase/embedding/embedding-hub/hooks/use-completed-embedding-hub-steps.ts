@@ -42,7 +42,7 @@ export const useCompletedEmbeddingHubSteps = (): Record<
   return useMemo(() => {
     return {
       "create-test-embed": isTestEmbedCreated ?? false,
-      "add-data": false,
+      "add-data": embeddingHubChecklist?.["add-data"] ?? false,
       "create-dashboard": embeddingHubChecklist?.["create-dashboard"] ?? false,
       "configure-row-column-security": hasConfiguredSandboxes,
       "secure-embeds": isSsoReady,

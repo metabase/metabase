@@ -38,5 +38,26 @@ describe("scenarios - embedding hub", () => {
         "Create a dashboard Done",
       );
     });
+
+    it('"Add your data" step should work correctly', () => {
+      cy.visit("/embedding-hub");
+
+      cy.log("Check that it's not set as completed by default");
+      cy.findByRole("button", { name: /add your data/i })
+        .scrollIntoView()
+        .should("have.attr", "aria-label", "Add your data")
+        .click();
+
+      cy.log("Add a QA Postgres database via API");
+      H.addPostgresDatabase("Test QA Database");
+
+      cy.log("Refresh the page and check that the step is marked as completed");
+      cy.visit("/embedding-hub");
+      cy.findByRole("button", { name: /add your data/i }).should(
+        "have.attr",
+        "aria-label",
+        "Add your data Done",
+      );
+    });
   });
 });
