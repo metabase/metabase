@@ -10,14 +10,12 @@ on:
         required: true
         default: "master"
         options:
-          - master
-          - release-x.51.x
-          - release-x.52.x
-          - release-x.53.x
-          - release-x.54.x
           - release-x.55.x
-          - release-x.56.x
-          - esbuild-main
+      tag-as-latest:
+        description: "Tag this release as 'latest' on npm"
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -37,6 +35,7 @@ jobs:
           **Inputs:**
 
           - \`branch\`: ${{ inputs.branch }}
+          - \`tag-as-latest\`: ${{ inputs.tag-as-latest }}
 
           triggered by: @${{ github.event.sender.login }}
           EOF
@@ -401,12 +400,11 @@ jobs:
            "release-x.53.x": "53-stable",
            "release-x.54.x": "54-stable",
            "release-x.55.x": "55-stable",
-           "release-x.56.x": "56-nightly",
-           "esbuild-main": "56-esbuild"
+           "release-x.56.x": "56-stable"
            }')[inputs.branch]}}
 
-      - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-        if: ${{ inputs.branch == 'release-x.55.x' }}
+      - name: Add `latest` tag to the latest release branch (`release-x.56.x`) deployment
+        if: ${{ inputs.branch == 'release-x.56.x' && inputs.tag-as-latest }}
         working-directory: sdk
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
