@@ -1056,14 +1056,14 @@
 (deftest ^:parallel join-returned-columns-with-inactive-remap-test
   (testing "Do not add inactive remapped columns in a join (#62591)"
     (let [mp    (-> meta/metadata-provider
-                 (lib.tu/remap-metadata-provider (meta/id :orders :product-id) (meta/id :products :title))
-                 (lib.tu/merged-mock-metadata-provider
-                  {:fields [{:id     (meta/id :products :title)
-                             :active false}]}))
+                    (lib.tu/remap-metadata-provider (meta/id :orders :product-id) (meta/id :products :title))
+                    (lib.tu/merged-mock-metadata-provider
+                     {:fields [{:id     (meta/id :products :title)
+                                :active false}]}))
           query (-> (lib/query mp (lib.metadata/table mp (meta/id :people)))
-                      (lib/join (lib.metadata/table mp (meta/id :orders)))
-                      (lib/order-by (lib.metadata/field mp (meta/id :people :id)))
-                      (lib/limit 2))]
+                    (lib/join (lib.metadata/table mp (meta/id :orders)))
+                    (lib/order-by (lib.metadata/field mp (meta/id :people :id)))
+                    (lib/limit 2))]
       (is (= ["ID"
               "Address"
               "Email"
