@@ -70,6 +70,7 @@ config:
     admin-email: null
     aggregated-query-row-limit: null
     ai-service-base-url: http://localhost:8000
+    ai-service-profile-id: null
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -199,6 +200,7 @@ config:
     login-page-illustration: default
     login-page-illustration-custom: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+    metabot-id: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
