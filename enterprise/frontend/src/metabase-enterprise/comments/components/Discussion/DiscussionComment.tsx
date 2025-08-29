@@ -26,6 +26,7 @@ type DiscussionCommentProps = {
   comment: Comment;
   actionPanelVariant?: DiscussionActionPanelProps["variant"];
   onResolve?: (comment: Comment) => unknown;
+  onReopen?: (comment: Comment) => unknown;
   onReaction?: (comment: Comment, emoji: string) => unknown;
   onDelete?: (comment: Comment) => unknown;
 };
@@ -46,7 +47,9 @@ export function DiscussionComment({
   comment,
   actionPanelVariant,
   onResolve,
+  onReopen,
   onReaction,
+  onDelete,
 }: DiscussionCommentProps) {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
 
@@ -77,6 +80,16 @@ export function DiscussionComment({
     [],
   );
 
+  if (comment.is_deleted) {
+    return (
+      <Timeline.Item className={S.commentRoot} mt="1.25rem">
+        <Text size="sm" c="text-disabled" lh={1.1} fs="italic">
+          {t`Comment deleted`}
+        </Text>
+      </Timeline.Item>
+    );
+  }
+
   return (
     <Timeline.Item
       className={S.commentRoot}
@@ -95,7 +108,9 @@ export function DiscussionComment({
         variant={actionPanelVariant}
         comment={comment}
         onResolve={onResolve}
+        onReopen={onReopen}
         onReaction={onReaction}
+        onDelete={onDelete}
       />
       <Group gap="sm" align="center" mb="0.25rem" wrap="nowrap">
         <Text fw={700} lh={1.3} truncate>

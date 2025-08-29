@@ -20,6 +20,7 @@ export type DiscussionActionPanelProps = {
   variant?: "comment" | "discussion";
   comment: Comment;
   onResolve?: (comment: Comment) => unknown;
+  onReopen?: (comment: Comment) => unknown;
   onReaction?: (comment: Comment, emoji: string) => unknown;
   onDelete?: (comment: Comment) => unknown;
   onEdit?: (comment: Comment) => unknown;
@@ -39,7 +40,7 @@ export function DiscussionActionPanel({
   variant = "comment",
   comment,
   onResolve,
-  onReaction,
+  onReopen,
   onDelete,
   onEdit,
   onCopyLink,
@@ -57,23 +58,25 @@ export function DiscussionActionPanel({
       p="0.125rem"
     >
       <Group gap="0">
-        <Tooltip label={t`Add reaction`}>
-          {/* TODO: add emoji picker */}
+        {/*<Tooltip label={t`Add reaction`}>
+           TODO: add emoji picker 
           <ActionIcon
             size={ACTION_ICON_SIZE}
             onClick={() => onReaction?.(comment, "👍")}
           >
-            {/* TODO: add reaction icon */}
+             TODO: add reaction icon
             <Icon name="bolt" />
           </ActionIcon>
-        </Tooltip>
+        </Tooltip> */}
         {variant === "discussion" && (
-          <Tooltip label={t`Resolve`}>
+          <Tooltip label={comment.is_resolved ? t`Re-open` : t`Resolve`}>
             <ActionIcon
               size={ACTION_ICON_SIZE}
-              onClick={() => onResolve?.(comment)}
+              onClick={() =>
+                comment.is_resolved ? onReopen?.(comment) : onResolve?.(comment)
+              }
             >
-              <Icon name="check" />
+              <Icon name={comment.is_resolved ? "undo" : "check"} />
             </ActionIcon>
           </Tooltip>
         )}

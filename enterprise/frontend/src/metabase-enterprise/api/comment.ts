@@ -44,6 +44,15 @@ export const commentApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
     }),
 
+    deleteComment: builder.mutation<void, CommentId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/ee/comment/${id}`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("comment", id), listTag("comment")]),
+    }),
+
     getCommentHistory: builder.query<Comment[], CommentId>({
       query: (id) => ({
         method: "GET",
@@ -59,5 +68,6 @@ export const {
   useListCommentsQuery,
   useCreateCommentMutation,
   useUpdateCommentMutation,
+  useDeleteCommentMutation,
   useGetCommentHistoryQuery,
 } = commentApi;

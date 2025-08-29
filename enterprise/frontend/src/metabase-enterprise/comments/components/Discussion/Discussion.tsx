@@ -1,7 +1,11 @@
 import { useState } from "react";
 
 import { Stack, Timeline } from "metabase/ui";
-import { useCreateCommentMutation } from "metabase-enterprise/api";
+import {
+  useCreateCommentMutation,
+  useDeleteCommentMutation,
+  useUpdateCommentMutation,
+} from "metabase-enterprise/api";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
@@ -30,6 +34,8 @@ export const Discussion = ({
   const parentCommentId = comments[0].id;
 
   const [createComment] = useCreateCommentMutation();
+  const [updateComment] = useUpdateCommentMutation();
+  const [deleteComment] = useDeleteCommentMutation();
 
   const handleSubmit = (doc: DocumentContent) => {
     createComment({
@@ -41,6 +47,18 @@ export const Discussion = ({
     });
   };
 
+  const handleDeleteComment = (comment: Comment) => {
+    deleteComment(comment.id);
+  };
+
+  const handleResolveComment = (comment: Comment) => {
+    updateComment({ id: comment.id, is_resolved: true });
+  };
+
+  const handleReopenComment = (comment: Comment) => {
+    updateComment({ id: comment.id, is_resolved: false });
+  };
+
   return (
     <Stack>
       <Timeline lineWidth={1} className={S.discussionRoot}>
@@ -49,6 +67,9 @@ export const Discussion = ({
             key={comment.id}
             comment={comment}
             actionPanelVariant={index === 0 ? "discussion" : "comment"}
+            onDelete={handleDeleteComment}
+            onResolve={handleResolveComment}
+            onReopen={handleReopenComment}
           />
         ))}
       </Timeline>
