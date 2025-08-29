@@ -2,12 +2,10 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { c, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { Box, Text, Title } from "metabase/ui";
+import { Box, Icon, Menu, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
 import type { EmbeddingHubStepId } from "../types";
@@ -32,17 +30,6 @@ export const EmbeddingHub = () => {
 
   const closeModal = () => setOpenedModal(null);
 
-  // TODO: will be replaced by a dropdown
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- This link only shows for admins.
-  const embedJsDocsUrl = useDocsUrl("embedding/embedded-analytics-js", {
-    utm: {
-      utm_content: "embed-js-docs",
-      utm_medium: "docs",
-      utm_source: "product",
-      utm_campaign: "embedding-hub",
-    },
-  });
-
   const lockedSteps: Partial<Record<EmbeddingHubStepId, boolean>> = {
     // Production embeds requires JWT to be configured.
     "embed-production": !completedSteps["secure-embeds"],
@@ -55,7 +42,7 @@ export const EmbeddingHub = () => {
 
         <Text mb="xl" c="text-medium">
           {c("{0} is the link to the selected embedding type.")
-            .jt`Get started with ${(<ExternalLink href={embedJsDocsUrl?.url} className={cx(CS.textBold, CS.link)} key="embedded-analytics-js-link">{t`Embedded Analytics JS`}</ExternalLink>)}.`}
+            .jt`Get started with ${(<EmbeddingTypeDropdown />)}`}
         </Text>
 
         <EmbeddingHubChecklist
@@ -89,3 +76,28 @@ export const EmbeddingHub = () => {
     </Box>
   );
 };
+
+/**
+ * TODO: made the other embedding types functional.
+ *
+ * This is just to illustrate that we will be able to pick other
+ * embedding types soon.
+ */
+const EmbeddingTypeDropdown = () => (
+  <Menu key="embedded-analytics-js-menu" position="bottom-start">
+    <Menu.Target>
+      <span className={cx(CS.textBold, CS.link, CS.cursorPointer)}>
+        <span>{t`Embedded Analytics JS`}</span>
+
+        <Icon name="chevrondown" size={12} ml={4} />
+      </span>
+    </Menu.Target>
+
+    <Menu.Dropdown>
+      <Menu.Item>{t`Embedded Analytics JS`}</Menu.Item>
+      <Menu.Item disabled>{t`Embedded Analytics SDK for React`}</Menu.Item>
+      <Menu.Item disabled>{t`Static embedding`}</Menu.Item>
+      <Menu.Item disabled>{t`Help me choose`}</Menu.Item>
+    </Menu.Dropdown>
+  </Menu>
+);
