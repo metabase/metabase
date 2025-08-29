@@ -167,9 +167,7 @@
                                                                                                            :where  [:= :id to-copy-id]} {:inline true}))) {:returning-keys true})
                                 first)]
             (t2/insert! :model/BranchModelMapping {:original_id       to-copy-id
-                                                   :branched_model_id (if (= :h2 db-type) ;; TODO: this is ugly for h2, is there a better way?
-                                                                        (:val (first (t2/query [(str "SELECT max(id) as val from " (name (t2/table-name model)))])))
-                                                                        inserted-id)
+                                                   :branched_model_id (:val (first (t2/query [(str "SELECT max(id) as val from " (name (t2/table-name model)))]))) ;; TODO: this is ugly for h2 vs using "RETURNING ID" and returning-keys seems to lie, is there a better way?
                                                    :model_type        (model->type model)
                                                    :branch_id         (:id @branching/*current-branch*)})))))))
 
