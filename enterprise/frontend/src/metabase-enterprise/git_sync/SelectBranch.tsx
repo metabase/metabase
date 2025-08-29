@@ -42,7 +42,7 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
 
   const { data: branches = [], isLoading } = useListGitBranchesQuery();
 
-  const defaultBranch = branches.find((b) => !b.parent_branch_id);
+  const defaultBranch = branches.find((b) => b.name === "main");
   const displayBranch = currentBranch || defaultBranch?.name;
   const [createBranch, { isLoading: isCreatingBranch }] =
     useCreateGitBranchMutation();
@@ -103,10 +103,8 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
   const handleCreateAndSwitch = useCallback(
     async (branchName: string) => {
       try {
-        const currentBranchObj = branches.find((b) => b.name === displayBranch);
         const result = await createBranch({
           name: branchName.trim(),
-          parent_branch_id: currentBranchObj?.id,
         }).unwrap();
 
         handleBranchSelect(result);
@@ -114,7 +112,7 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
         console.error("Failed to create branch:", error);
       }
     },
-    [createBranch, displayBranch, handleBranchSelect, branches],
+    [createBranch, handleBranchSelect],
   );
 
   const handleDeleteBranch = useCallback(
@@ -122,7 +120,7 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
       event.stopPropagation();
 
       if (branch.name === displayBranch) {
-        const defaultBranch = branches.find((b) => !b.parent_branch_id);
+        const defaultBranch = branches.find((b) => b.name === "main");
         if (defaultBranch) {
           setCurrentBranch(defaultBranch.name);
         }
@@ -134,7 +132,7 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
         console.error("Failed to delete branch:", error);
       }
     },
-    [deleteBranch, displayBranch, branches, setCurrentBranch],
+    [branches, deleteBranch, displayBranch, setCurrentBranch],
   );
 
   return (
@@ -232,7 +230,7 @@ export const SelectBranch = ({ disabled = false }: SelectBranchProps) => {
                     disabled={isCreatingBranch}
                     py="xs"
                   >
-                    <Text c="brand">{t`Create "${searchValue}"`}</Text>
+                    <Text c="brand">{t`Create "${searchValue}" off "main"`}</Text>
                   </Combobox.Option>
                 )}
 
