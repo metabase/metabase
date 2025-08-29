@@ -69,9 +69,10 @@
   ;; local run is responsible for status, using canceling lifecycle
   (try
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
-    (let [ret (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-                (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
-                (run-transform!))]
+    (let [cancel-chan (a/promise-chan)
+          ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
+                (canceling/chan-start-run! run-id cancel-chan)
+                (run-transform! cancel-chan))]
       (transform-run/succeed-started-run! run-id)
       ret)
     (catch Throwable t
@@ -116,7 +117,7 @@
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
-         (run-cancelable-transform! run-id #(driver/run-transform! driver transform-details opts))
+         (run-cancelable-transform! run-id (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))
          (sync-target! target database run-id)))
      (catch Throwable t
        (log/error t "Error executing transform")
@@ -199,7 +200,7 @@
              {run-id :id} (try-start-unless-already-running transform-id run-method)]
          (some-> start-promise (deliver [:started run-id]))
          (log/info "Executing Python transform" transform-id "with target" (pr-str target))
-         (let [result (run-cancelable-transform! run-id #(run-python-transform! target source db))]
+         (let [result (run-cancelable-transform! run-id (fn [_cancel-chan] (run-python-transform! target source db)))]
            {:run_id run-id
             :result result}))
        (catch Throwable t
