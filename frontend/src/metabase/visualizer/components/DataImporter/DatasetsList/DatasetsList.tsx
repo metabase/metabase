@@ -138,7 +138,9 @@ export function DatasetsList({
         models: ["card", "dataset", "metric"],
         include_dashboard_questions: true,
         include_metadata: true,
-        search_engine: "appdb",
+        ...(search.length === 0 && {
+          search_engine: "appdb",
+        }),
         ...(visualizationType &&
           isCartesianChart(visualizationType) &&
           search.length === 0 && {
