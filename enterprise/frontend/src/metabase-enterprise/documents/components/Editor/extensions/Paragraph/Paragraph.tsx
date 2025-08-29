@@ -99,7 +99,7 @@ export const Paragraph = Node.create<ParagraphOptions>({
   },
 });
 
-export const ParagraphNodeView = ({ node }: NodeViewProps) => {
+export const ParagraphNodeView = ({ node, editor, getPos }: NodeViewProps) => {
   const { childTargetId, comments, document, hasUnsavedChanges } =
     useDocumentContext();
   const [hovered, setHovered] = useState(false);
@@ -136,7 +136,7 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
         <NodeViewContent as="p" />
       </NodeViewWrapper>
 
-      {document && rendered && (
+      {document && rendered && isTopLevel({ editor, getPos }) && (
         <CommentsMenu
           active={isOpen}
           disabled={hasUnsavedChanges}
@@ -150,3 +150,21 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
     </>
   );
 };
+
+function isTopLevel({
+  editor,
+  getPos,
+}: Pick<NodeViewProps, "editor" | "getPos">) {
+  if (!editor || !getPos) {
+    return true;
+  }
+
+  const pos = getPos();
+
+  if (pos === null || pos === undefined) {
+    return true;
+  }
+
+  const resolvedPos = editor.state.doc.resolve(pos);
+  return resolvedPos.depth === 0;
+}
