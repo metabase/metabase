@@ -21,6 +21,7 @@ import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mention
 
 import S from "./Editor.module.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
+import { Blockquote } from "./extensions/Blockquote";
 import { CardEmbed } from "./extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "./extensions/Command/CommandExtension";
 import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
@@ -96,8 +97,14 @@ export const Editor: React.FC<EditorProps> = ({
   const extensions = useMemo(
     () => [
       Paragraph,
+      Blockquote,
       StarterKit.configure({
         paragraph: false,
+        blockquote: false,
+        // codeBlock: false,
+        // heading: false,
+        // bulletList: false,
+        // orderedList: false,
       }),
       Image.configure({
         inline: false,
