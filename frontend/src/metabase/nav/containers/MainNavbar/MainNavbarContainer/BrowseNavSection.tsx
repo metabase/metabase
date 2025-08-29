@@ -19,6 +19,8 @@ import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import { trackAddDataModalOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
+import { useAddDataPermissions } from "./AddDataModal/use-add-data-permission";
+
 export const BrowseNavSection = ({
   nonEntityItem,
   onItemSelect,
@@ -38,8 +40,8 @@ export const BrowseNavSection = ({
     "expand-browse-in-nav",
   );
 
+  const { canPerformMeaningfulActions } = useAddDataPermissions();
   const [opened, { toggle }] = useDisclosure(expandBrowse);
-
   const entityTypes = useSelector(getEntityTypes);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
@@ -47,6 +49,8 @@ export const BrowseNavSection = ({
     toggle();
     setExpandBrowse(!opened);
   };
+
+  const showAddDataButton = canPerformMeaningfulActions && !isEmbeddingIframe;
 
   return (
     <div aria-selected={opened} role="tab">
@@ -64,7 +68,7 @@ export const BrowseNavSection = ({
           </SidebarHeading>
           <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
         </Group>
-        {!isEmbeddingIframe && (
+        {showAddDataButton && (
           <Button
             aria-label="Add data"
             variant="subtle"

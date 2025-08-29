@@ -1,14 +1,17 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { GettingStartedSection } from "./GettingStartedSection";
 
 const setup = ({
   hasChildren = true,
+  isAdmin = true,
 }: {
   hasChildren?: boolean;
+  isAdmin?: boolean;
 } = {}) => {
   const onAddDataModalOpen = jest.fn();
 
@@ -19,7 +22,11 @@ const setup = ({
     >
       {hasChildren && "Child"}
     </GettingStartedSection>,
-    { storeInitialState: createMockState() },
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+      }),
+    },
   );
 
   return { onAddDataModalOpen };
@@ -51,6 +58,11 @@ describe("GettingStartedSection", () => {
   it("should render the 'Add data' button", () => {
     setup();
     expect(screen.getByLabelText("Add data")).toBeInTheDocument();
+  });
+
+  it("should not render the 'Add data' button if the user is not an admin", () => {
+    setup({ isAdmin: false });
+    expect(screen.queryByLabelText("Add data")).not.toBeInTheDocument();
   });
 
   it("should trigger the modal on 'Add data' click", async () => {

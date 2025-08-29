@@ -383,6 +383,14 @@ describe("Add data modal", () => {
         .should("contain", "value1")
         .and("contain", "value2");
     });
+
+    it("should be hidden for non-admins without upload permissions", () => {
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.findByRole("tab", { name: /^Data/i }).within(() => {
+        cy.findByLabelText("Add data").should("not.exist");
+      });
+    });
   });
 });
 
