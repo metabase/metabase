@@ -543,6 +543,7 @@ export type FKFilterDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/fk-filter"> & {
     tableName: string;
     columnName: string;
+    isNull: boolean;
   };
 export type DistributionDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/distribution">;

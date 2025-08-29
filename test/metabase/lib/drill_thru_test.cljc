@@ -140,7 +140,7 @@
 
 (deftest ^:parallel table-view-available-drill-thrus-headers-fk-test
   (testing "column headers: click on"
-    (testing "foreign key - distribution, column filter (default: Is), sort, summarize (distinct only)"
+    (testing "foreign key - distribution, column filter (default: Is), fk-filter (is-null: true), sort, summarize (distinct only)"
       (let [context (basic-context (meta/field-metadata :orders :user-id) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
@@ -149,6 +149,12 @@
                  {:lib/type :metabase.lib.drill-thru/drill-thru
                   :type     :drill-thru/distribution
                   :column   (meta/field-metadata :orders :user-id)}
+                 {:lib/type :metabase.lib.drill-thru/drill-thru
+                  :type :drill-thru/fk-filter
+                  :filter [:is-null {} [:field {} (meta/id :orders :user-id)]]
+                  :column-name "User ID"
+                  :table-name "Orders"
+                  :is-null true}
                  {:lib/type        :metabase.lib.drill-thru/drill-thru
                   :type            :drill-thru/sort
                   :column          (meta/field-metadata :orders :user-id)
@@ -695,6 +701,7 @@
     :column-name "PRODUCT_ID"
     :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
                   {:type :drill-thru/distribution}
+                  {:type :drill-thru/fk-filter, :is-null true}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}
 

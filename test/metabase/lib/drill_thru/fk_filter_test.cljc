@@ -11,13 +11,11 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel fk-filter-availability-test
-  (testing "fk-filter is available for cell clicks on FKs with non-NULL values"
+  (testing "fk-filter is available for cell clicks on FKs with all values"
     (doseq [[test-case context {:keys [click column-type]}] (canned/canned-clicks)]
-      (if (and (= click :cell)
-               (= column-type :fk)
-               (not= (:value context) :null))
-        (is (canned/returned test-case context :drill-thru/fk-filter))
-        (is (not (canned/returned test-case context :drill-thru/fk-filter)))))))
+      (when (and (= click :cell)
+                 (= column-type :fk))
+        (is (canned/returned test-case context :drill-thru/fk-filter))))))
 
 (deftest ^:parallel returns-fk-filter-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -53,7 +51,7 @@
       :column-name "max"})))
 
 (deftest ^:parallel do-not-return-fk-filter-for-null-fk-test
-  (testing "#13957 if this is an FK column but the value clicked is NULL, don't show the FK filter drill"
+  (testing "#35561 if this is an FK column and the value clicked is NULL, don't show the FK filter drill"
     (let [test-case            {:drill-type  :drill-thru/fk-filter
                                 :click-type  :cell
                                 :query-type  :unaggregated
@@ -67,8 +65,8 @@
         (lib.drill-thru.tu/test-returns-drill test-case))
       (testing "not returned with NULL value"
         (-> test-case
-            (assoc :custom-row (assoc row "PRODUCT_ID" nil))
-            (dissoc :expected))))))
+            (update :expected assoc :is-null true)
+            (assoc :custom-row (assoc row "PRODUCT_ID" nil)))))))
 
 (deftest ^:parallel fk-filter-on-model-test
   (testing "FK filter drill should not appear on native query models (#35689, #36633)"
@@ -139,7 +137,8 @@
             fk-filter-drill))
     (is (= {:type :drill-thru/fk-filter
             :column-name "Venues → Category ID"
-            :table-name "Checkins"}
+            :table-name "Checkins"
+            :is-null false}
            (lib/display-info query fk-filter-drill)))))
 
 (deftest ^:parallel fk-filter-application-test
