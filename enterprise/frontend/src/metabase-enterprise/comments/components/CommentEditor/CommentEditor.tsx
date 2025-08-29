@@ -131,7 +131,7 @@ export const CommentEditor = ({
         [S.readonly]: readonly,
         [S.active]: active,
       })}
-      onKeyDown={handleKeyDown}
+      onKeyDownCapture={handleKeyDown}
     >
       <EditorContent editor={editor} className={S.content} />
       {readonly ? null : (
