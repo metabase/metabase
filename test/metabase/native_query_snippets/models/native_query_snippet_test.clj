@@ -122,7 +122,8 @@
                                                       :creator_id user-id
                                                       :template_tags nil})
               extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
-          (is (nil? (:template_tags extracted)))
+          ;; toucan hooks populate it:
+          (is (= {} (:template_tags extracted)))
           (t2/delete! :model/NativeQuerySnippet :id (:id snippet))))
 
       (testing "empty map in -> empty map out"
