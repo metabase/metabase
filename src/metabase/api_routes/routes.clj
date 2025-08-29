@@ -21,6 +21,7 @@
    [metabase.dashboards.api]
    [metabase.eid-translation.api]
    [metabase.embedding.api]
+   [metabase.embedding-hub.api]
    [metabase.geojson.api]
    [metabase.indexed-entities.api]
    [metabase.logger.api]
@@ -68,6 +69,7 @@
          metabase.collections.api/keep-me
          metabase.dashboards.api/keep-me
          metabase.eid-translation.api/keep-me
+         metabase.embedding-hub.api/keep-me
          metabase.geojson.api/keep-me
          metabase.indexed-entities.api/keep-me
          metabase.logger.api/keep-me
@@ -147,6 +149,7 @@
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding.api/embedding-routes)
+   "/embedding-hub"        (+auth 'metabase.embedding-hub.api)
    "/field"                (+auth metabase.warehouse-schema.api/field-routes)
    "/geojson"              'metabase.geojson.api
    "/google"               (+auth metabase.sso.api/google-auth-routes)
