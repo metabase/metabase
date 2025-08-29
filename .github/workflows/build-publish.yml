@@ -1,0 +1,12 @@
+name: Build and publish docker image
+run-name: ${{ github.actor }} Build and Publish Docker Image
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    name: Clone, Build & Publish
+    uses: "ecov/reusable_workflows/.github/workflows/build_publish_docker_image.yml@main"
+    with:
+      platforms: '[ "linux/amd64" ]'
+    secrets: inherit
