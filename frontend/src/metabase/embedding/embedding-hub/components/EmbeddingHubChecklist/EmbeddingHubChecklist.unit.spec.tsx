@@ -10,12 +10,16 @@ import { getEmbeddingHubSteps } from "../../utils";
 
 import { EmbeddingHubChecklist } from "./EmbeddingHubChecklist";
 
+type StepMap = Partial<Record<EmbeddingHubStepId, boolean>>;
+
 const setup = ({
   completedSteps = {},
+  lockedSteps = {},
   defaultOpenStep,
   isAdmin = true,
 }: {
-  completedSteps?: Partial<Record<EmbeddingHubStepId, boolean>>;
+  completedSteps?: StepMap;
+  lockedSteps?: StepMap;
   defaultOpenStep?: EmbeddingHubStepId;
   isAdmin?: boolean;
 } = {}) => {
@@ -30,6 +34,7 @@ const setup = ({
     <EmbeddingHubChecklist
       steps={getEmbeddingHubSteps()}
       completedSteps={completedSteps}
+      lockedSteps={lockedSteps}
       defaultOpenStep={defaultOpenStep}
     />,
     { storeInitialState: state },
@@ -76,5 +81,44 @@ describe("EmbeddingChecklist", () => {
     await userEvent.click(screen.getByText("Add your data"));
 
     expect(screen.getByText("Add data")).toBeInTheDocument();
+  });
+
+  it("should disable the button and show the info alert when a step is locked", async () => {
+    setup({ lockedSteps: { "embed-production": true } });
+
+    await userEvent.click(screen.getByText("Embed in production"));
+
+    // We should still be able to expand locked steps
+    expect(
+      screen.getByText("Configure SSO authentication to unlock this step."),
+    ).toBeInTheDocument();
+
+    const panel = screen.getByTestId("embed-production-item");
+
+    expect(
+      within(panel).getByRole("button", {
+        name: "Create an embed",
+        hidden: true,
+      }),
+    ).toBeDisabled();
+  });
+
+  it("should enable the button and hide the info alert when a step is unlocked", async () => {
+    setup({ lockedSteps: { "embed-production": false } });
+
+    await userEvent.click(screen.getByText("Embed in production"));
+
+    expect(
+      screen.queryByText("Configure SSO authentication to unlock this step."),
+    ).not.toBeInTheDocument();
+
+    const panel = screen.getByTestId("embed-production-item");
+
+    expect(
+      within(panel).getByRole("button", {
+        name: "Create an embed",
+        hidden: true,
+      }),
+    ).toBeEnabled();
   });
 });

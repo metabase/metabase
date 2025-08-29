@@ -1,30 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupDashboardEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-} from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockDashboard } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { screen } from "__support__/ui";
 
-import { SdkIframeEmbedSetup } from "./SdkIframeEmbedSetup";
-
-const setup = (options?: { simpleEmbeddingEnabled?: boolean }) => {
-  setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
-  setupDashboardEndpoints(createMockDashboard());
-
-  renderWithProviders(<SdkIframeEmbedSetup />, {
-    storeInitialState: createMockState({
-      settings: createMockSettingsState({
-        "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
-      }),
-    }),
-  });
-};
+import { setup } from "./test-setup";
 
 describe("Embed flow > initial setup", () => {
   it("shows the embed experience step as the first step", () => {

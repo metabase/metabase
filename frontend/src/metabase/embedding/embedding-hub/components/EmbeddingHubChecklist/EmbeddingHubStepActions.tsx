@@ -7,9 +7,11 @@ import { DocsLink } from "../DocsLink";
 
 export const EmbeddingHubStepActions = ({
   step,
+  isLocked,
   onModalAction,
 }: {
   step: EmbeddingHubStep;
+  isLocked: boolean;
   onModalAction?: (modal: EmbeddingHubModalToTrigger) => void;
 }) => {
   if (!step.actions?.length) {
@@ -25,6 +27,7 @@ export const EmbeddingHubStepActions = ({
               key={index}
               variant={action.variant || "outline"}
               onClick={() => onModalAction?.(action.modal!)}
+              disabled={isLocked}
             >
               {action.label}
             </Button>
@@ -49,7 +52,7 @@ export const EmbeddingHubStepActions = ({
         if (action.to) {
           return (
             <Link key={index} to={action.to}>
-              <Button variant={action.variant ?? "outline"}>
+              <Button variant={action.variant ?? "outline"} disabled={isLocked}>
                 {action.label}
               </Button>
             </Link>
