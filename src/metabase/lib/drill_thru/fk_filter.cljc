@@ -51,12 +51,12 @@
              (lib.types.isa/foreign-key? column))
     (let [source (or (some->> query lib.util/source-table-id (lib.metadata/table query))
                      (some->> query lib.util/source-card-id (lib.metadata/card query)))
-          filter (if (= value :null)
-                   (lib.options/ensure-uuid (lib.filter/is-null column-ref))
-                   (lib.options/ensure-uuid (lib.filter/= column-ref value)))]
+          filter-expr (if (= value :null)
+                        (lib.options/ensure-uuid (lib.filter/is-null column-ref))
+                        (lib.options/ensure-uuid (lib.filter/= column-ref value)))]
       {:lib/type :metabase.lib.drill-thru/drill-thru
        :type     :drill-thru/fk-filter
-       :filter   filter
+       :filter   filter-expr
        :column-name (lib.metadata.calculation/display-name query stage-number column :long)
        :table-name (lib.metadata.calculation/display-name query 0 source)})))
 

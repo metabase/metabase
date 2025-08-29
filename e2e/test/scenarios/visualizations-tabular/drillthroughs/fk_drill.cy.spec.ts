@@ -9,7 +9,7 @@ describe("scenarios > visualizations > drillthroughs > fk drill", () => {
     cy.signInAsAdmin();
   });
 
-  it("should display fk drill for null values", () => {
+  it("should display a functional fk drill for null values", () => {
     H.createNativeQuestion(
       {
         name: "Model",
@@ -53,9 +53,16 @@ SELECT 2 AS ID, 3 AS USER_ID
       .within(() => {
         cy.get("[data-column-id='USER_ID']").click();
       });
-    cy.findByTestId("table-body").findAllByText("1").first().click();
     H.popover().within(() => {
-      cy.findByText("View Models with no User").should("be.visible");
+      cy.findByText("View Models with no User").should("be.visible").click();
+    });
+    cy.findByTestId("table-body").within(() => {
+      cy.findAllByRole("row").should("have.length", 1);
+      cy.findAllByRole("row")
+        .first()
+        .within(() => {
+          cy.get("[data-column-id='USER_ID']").should("have.value", "");
+        });
     });
   });
 
@@ -103,7 +110,6 @@ SELECT 2 AS ID, 3 AS USER_ID
       .within(() => {
         cy.get("[data-column-id='USER_ID']").click();
       });
-    cy.findByTestId("table-body").findAllByText("1").first().click();
     H.popover().within(() => {
       cy.findByText("View this User's Models").should("be.visible");
     });
