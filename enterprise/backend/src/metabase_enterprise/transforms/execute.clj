@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.python-runner :as python-runner]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
@@ -158,28 +159,30 @@
       (try
         ;; TODO would be nice if we have create or replace in upload
         ;; NOTE (chris) we do have a replace, so this would be easy! but we're gonna stop using csv
-        (when-let [table (t2/select-one :model/Table
-                                        :name (ddl.i/format-name driver name)
-                                        :schema (ddl.i/format-name driver schema)
-                                        :db_id (:id db))]
-          (upload/delete-upload! table)
-          ;; TODO shouldn't this be handled in upload?
-          (t2/delete! :model/Table (:id table)))
-        ;; Create temporary CSV file from output data
-        (let [temp-file (File/createTempFile "transform-output-" ".csv")
-              csv-data (:output body)]
-          (try
-            (with-open [writer (io/writer temp-file)]
-              (.write writer ^String csv-data))
-            (upload/create-from-csv-and-sync! {:db db
-                                               :filename (.getName temp-file)
-                                               :file temp-file
-                                               :schema schema
-                                               :table-name name})
-            (finally
-              ;; Clean up temp file
-              (.delete temp-file))))
-        result
+        ;; TODO we can remove this hack once we move away from upload-csv
+        (binding [api/*current-user-permissions-set* (atom #{"/"})]
+          (when-let [table (t2/select-one :model/Table
+                                          :name (ddl.i/format-name driver name)
+                                          :schema (ddl.i/format-name driver schema)
+                                          :db_id (:id db))]
+            (upload/delete-upload! table)
+            ;; TODO shouldn't this be handled in upload?
+            (t2/delete! :model/Table (:id table)))
+          ;; Create temporary CSV file from output data
+          (let [temp-file (File/createTempFile "transform-output-" ".csv")
+                csv-data (:output body)]
+            (try
+              (with-open [writer (io/writer temp-file)]
+                (.write writer ^String csv-data))
+              (upload/create-from-csv-and-sync! {:db db
+                                                 :filename (.getName temp-file)
+                                                 :file temp-file
+                                                 :schema schema
+                                                 :table-name name})
+              (finally
+                ;; Clean up temp file
+                (.delete temp-file))))
+          result)
         (catch Exception e
           (log/error e "Failed to to create resulting table")
           (throw (ex-info "Failed to create the resulting table"
