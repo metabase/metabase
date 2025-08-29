@@ -13,9 +13,9 @@
 (defn- by-name
   [dimensions dimension-name]
   (let [pred (if (string? dimension-name)
-               (comp #{dimension-name} :name)
+               (comp #{dimension-name} :display_name)
                (every-pred (comp #{(first dimension-name)} :table-reference)
-                           (comp #{(second dimension-name)} :name)))]
+                           (comp #{(second dimension-name)} :display_name)))]
     (m/find-first pred dimensions)))
 
 (deftest ^:parallel query-metric-test
