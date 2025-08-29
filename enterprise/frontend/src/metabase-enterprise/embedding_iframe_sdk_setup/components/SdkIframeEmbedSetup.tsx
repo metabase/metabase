@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { ResizableBox } from "react-resizable";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import "react-resizable/css/styles.css";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useSetting, useToast } from "metabase/common/hooks";
-import { Box, Button, Group, Stack } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack } from "metabase/ui";
+import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedNavigation } from "../hooks";
@@ -17,26 +19,31 @@ import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 import { SimpleEmbedTermsCard } from "./SimpleEmbedTermsCard";
 
 const SdkIframeEmbedSetupContent = () => {
-  const { currentStep } = useSdkIframeEmbedSetupContext();
+  const { currentStep, settings } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
   const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
   const [updateSettings] = useUpdateSettingsMutation();
   const [sendToast] = useToast();
 
-  const {
-    handleNext,
-    handleBack,
-    canGoNext,
-    canGoBack,
-    isLastStep,
-    StepContent,
-  } = useSdkIframeEmbedNavigation();
+  const { handleNext, handleBack, canGoBack, StepContent } =
+    useSdkIframeEmbedNavigation();
 
   // The embed disclaimer is only shown once per instance.
   // If an admin accepts the terms, we never show it again.
   const acceptSimpleEmbedTerms = () =>
     updateSettings({ "show-simple-embed-terms": false });
+
+  function handleEmbedDone() {
+    // Embedding Hub: track step completion
+    const settingKey: SettingKey = settings.useExistingUserSession
+      ? "embedding-hub-test-embed-snippet-created"
+      : "embedding-hub-production-embed-snippet-created";
+
+    updateSettings({ [settingKey]: true });
+
+    window.history.back();
+  }
 
   // Automatically enable embedding if it's not already enabled.
   useEffect(() => {
@@ -48,6 +55,27 @@ const SdkIframeEmbedSetupContent = () => {
       });
     }
   }, [isSimpleEmbeddingEnabled, sendToast, updateSettings]);
+
+  const nextStepButton = match(currentStep)
+    .with("get-code", () => (
+      <Button
+        variant="filled"
+        onClick={handleEmbedDone}
+        leftSection={<Icon name="check_filled" />}
+      >
+        {t`Done`}
+      </Button>
+    ))
+    .with("select-embed-options", () => (
+      <Button variant="filled" onClick={handleNext}>
+        {t`Get Code`}
+      </Button>
+    ))
+    .otherwise(() => (
+      <Button variant="filled" onClick={handleNext}>
+        {t`Next`}
+      </Button>
+    ));
 
   return (
     <Box className={S.Container}>
@@ -66,15 +94,7 @@ const SdkIframeEmbedSetupContent = () => {
               {t`Back`}
             </Button>
 
-            {!isLastStep && (
-              <Button
-                variant="filled"
-                onClick={handleNext}
-                disabled={!canGoNext}
-              >
-                {currentStep === "select-embed-options" ? t`Get Code` : t`Next`}
-              </Button>
-            )}
+            {nextStepButton}
           </Group>
         </Box>
       </SidebarResizer>

@@ -10,6 +10,7 @@ import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarConta
 import { Box, Text, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
+import type { EmbeddingHubStepId } from "../types";
 import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
 import { getEmbeddingHubSteps } from "../utils";
 
@@ -42,6 +43,11 @@ export const EmbeddingHub = () => {
     },
   });
 
+  const lockedSteps: Partial<Record<EmbeddingHubStepId, boolean>> = {
+    // Production embeds requires JWT to be configured.
+    "embed-production": !completedSteps["secure-embeds"],
+  };
+
   return (
     <Box mih="100%" px="lg" py="xl" bg="bg-white">
       <Box maw={600} mx="auto">
@@ -55,6 +61,7 @@ export const EmbeddingHub = () => {
         <EmbeddingHubChecklist
           steps={embeddingSteps}
           completedSteps={completedSteps}
+          lockedSteps={lockedSteps}
           defaultOpenStep={firstUncompletedStep?.id}
           onModalAction={setOpenedModal}
         />
