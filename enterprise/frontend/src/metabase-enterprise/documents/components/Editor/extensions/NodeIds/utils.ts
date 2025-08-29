@@ -40,7 +40,7 @@ export function createProseMirrorPlugin(nodeName: string) {
         const isDuplicate = seenIds.has(_id);
         seenIds.add(_id);
 
-        if (isRightNode && (hasNoId || isDuplicate)) {
+        if ((isRightNode && hasNoId) || isDuplicate) {
           tr.setNodeAttribute(pos, ID_ATTRIBUTE_NAME, uuid());
           updated = true;
         }
