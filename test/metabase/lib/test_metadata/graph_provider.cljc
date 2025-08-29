@@ -69,8 +69,8 @@
     (graph-database metadata-graph))
   (metadatas [_this metadata-type ids]
     (graph-metadatas metadata-graph metadata-type ids))
-  (metadatas-by-name [_this metadata-type names]
-    ;; Not implemented - just return empty for now
+  (metadatas-by-name [_this _metadata-type _names]
+    ;; Not implemented
     [])
   (tables [_this]
     (graph-tables metadata-graph))
