@@ -12,6 +12,7 @@
    [metabase-enterprise.cache.init]
    [metabase-enterprise.database-replication.init]
    [metabase-enterprise.documents.init]
+   [metabase-enterprise.git-source-of-truth.init]
    [metabase-enterprise.gsheets.init]
    [metabase-enterprise.llm.init]
    [metabase-enterprise.metabot-v3.init]
