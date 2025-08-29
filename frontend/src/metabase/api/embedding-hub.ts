@@ -1,6 +1,9 @@
 import { Api } from "metabase/api";
 
-type CheckListApiStep = "create-dashboard" | "add-data";
+type CheckListApiStep =
+  | "create-dashboard"
+  | "add-data"
+  | "configure-row-column-security";
 export type EmbeddingHubChecklist = Record<CheckListApiStep, boolean>;
 
 export const embeddingHubApi = Api.injectEndpoints({
