@@ -725,7 +725,23 @@
 
    "subclauses of `:aggregation-options` should get canonicalized correctly"
    {{:query {:aggregation [[:aggregation-options [:sum 10] {}]]}}
-    {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {}]]}}}
+    {:query {:aggregation [[:sum [:field 10 nil]]]}}}
+
+   ":aggregation-options with nil options should be unwrapped"
+   {{:query {:aggregation [[:aggregation-options [:sum 10] nil]]}}
+    {:query {:aggregation [[:sum [:field 10 nil]]]}}}
+
+   ":aggregation-options with empty map should be unwrapped"
+   {{:query {:aggregation [[:aggregation-options [:count] {}]]}}
+    {:query {:aggregation [[:count]]}}}
+
+   ":aggregation-options with non-empty options should be preserved"
+   {{:query {:aggregation [[:aggregation-options [:sum 10] {:name "My Sum"}]]}}
+    {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {:name "My Sum"}]]}}}
+
+   ":aggregation-options with options containing nil values should be preserved"
+   {{:query {:aggregation [[:aggregation-options [:sum 10] {:name nil :display-name "My Sum"}]]}}
+    {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {:name nil :display-name "My Sum"}]]}}}
 
    "make sure expression aggregations work correctly"
    {{:query {:aggregation [:+ [:sum 10] 2]}}
