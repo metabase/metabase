@@ -59,7 +59,7 @@
   :encryption :no
   :export? false
   :visibility :internal
-  :doc "The maximum number of tokens sent in a single embedding API call.")
+  :doc false)
 
 (defsetting semantic-search-results-limit
   (deferred-tru "Maximum number of results to return from a single semantic search query.")
