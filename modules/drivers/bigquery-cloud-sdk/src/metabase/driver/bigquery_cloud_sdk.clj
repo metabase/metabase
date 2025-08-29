@@ -912,8 +912,7 @@
        (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
        (map #(let [parts (str/split (:table %) #"\.")]
                {:schema (first parts) :table (second parts)}))
-       (keep #(driver.sql/find-table driver %))
-       set))
+       (into #{} (keep #(driver.sql/find-table-or-transform driver %)))))
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver details schema]

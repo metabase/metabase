@@ -4,14 +4,16 @@
    [metabase-enterprise.transforms.ordering :as ordering]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]))
 
-(defn- make-transform [query & [name]]
-  (let [name (or name (mt/random-name))]
+(defn- make-transform [query & [name schema]]
+  (let [name (or name (mt/random-name))
+        schema (or schema "public")]
     {:source {:type :query
               :query query}
      :name (str "transform_" name)
-     :target {:schema "public"
+     :target {:schema schema
               :name name
               :type :table}}))
 
@@ -111,6 +113,37 @@
                 t2 #{}
                 t3 #{t1 t2}}
                (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))
+
+(deftest bigquery-native-transform-dependency-ordering-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [[dataset] (sql.tx/qualified-name-components :bigquery-cloud-sdk nil)]
+      (testing "dependencies are correctly identified when some transform have been run and some haven't"
+        (mt/with-temp [:model/Transform {t1 :id} (make-transform
+                                                  {:database (mt/id),
+                                                   :type :native,
+                                                   :native {:query (format "SELECT * FROM `%s.checkins` LIMIT 100" dataset)}}
+                                                  "checkins_transform" dataset)
+                       :model/Table {table1 :id} {:schema dataset
+                                                  :name "checkins_transform"}
+                       :model/Transform {t2 :id} (make-transform
+                                                  {:database (mt/id),
+                                                   :type :native,
+                                                   :native {:query (format "SELECT * FROM `%s.venues` LIMIT 100" dataset)}}
+                                                  "venues_transform" dataset)
+                       :model/Transform {t3 :id} (make-transform
+                                                  {:database (mt/id),
+                                                   :type :native,
+                                                   :native {:query (format "SELECT * FROM `%s.venues_transform` vt
+                                                                            LEFT JOIN `%s.checkins_transform` ct
+                                                                            ON vt.id = ct.venue_id
+                                                                            LIMIT 100" dataset dataset)}}
+                                                  "venues_transform_2" dataset)]
+          (is (= #{{:table table1} {:transform t2}}
+                 (transform-deps-for-db (t2/select-one :model/Transform  t3))))
+          (is (= {t1 #{}
+                  t2 #{}
+                  t3 #{t1 t2}}
+                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))
 
 (deftest basic-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
@@ -248,7 +281,7 @@
                    (ordering/find-cycle test-graph)))))
 
 (deftest get-transform-cycle-test
-  (mt/test-driver :postgres
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (testing "cycle is detected in transform referencing itself"
       (mt/with-temp [:model/Table {table1 :id} {:schema "public"
                                                 :name "table_1"}

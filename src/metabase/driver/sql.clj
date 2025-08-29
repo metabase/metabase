@@ -164,15 +164,6 @@
   [_]
   "public")
 
-(defmulti find-table
-  "Finds the table matching a given name and schema.
-
-  Names and schemas are potentially taken from a raw sql query and will be normalized accordingly. Drivers that
-  support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver {:keys [table schema]}])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
    It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
