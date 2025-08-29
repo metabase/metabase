@@ -7,15 +7,13 @@
    [metabase.actions.models :as action]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
+   [metabase.driver.test-util :as driver.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (org.apache.sshd.server SshServer)
-   (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -499,26 +497,6 @@
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
 
-(defn basic-auth-ssh-server ^java.io.Closeable [username password]
-  (try
-    (let [password-auth    (reify org.apache.sshd.server.auth.password.PasswordAuthenticator
-                             (authenticate [_ auth-username auth-password _session]
-                               (and
-                                (= auth-username username)
-                                (= auth-password password))))
-          keypair-provider (org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider.)
-          sshd             (doto (SshServer/setUpDefaultServer)
-                             (.setPort 0)
-                             (.setKeyPairProvider keypair-provider)
-                             (.setPasswordAuthenticator password-auth)
-                             (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)
-                             .start)]
-      sshd)
-    (catch Throwable e
-      (throw (ex-info (format "Error starting SSH mock server with password")
-                      {:username username :password password}
-                      e)))))
-
 (deftest actions-on-ssh-tunneled-db
   ;; testing actions against dbs with ssh tunnels. Use an in-memory ssh server that just forwards to the correct port
   ;; through localhost. Since it is local, it's possible for the application to ignore the ssh tunnel and just talk to
@@ -527,10 +505,10 @@
   ;; through the ssh tunnel
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
     (let [username "username", password "password"]
-      (with-open [ssh-server (basic-auth-ssh-server username password)]
+      (with-open [ssh-server (driver.tu/basic-auth-ssh-server username password)]
         (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
           (with-actions-test-data-and-actions-permissively-enabled!
-            (let [ssh-port (.getPort ^SshServer ssh-server)
+            (let [ssh-port (.getPort ssh-server)
                   table-id (mt/id :categories)]
               (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
                 (t2/update! 'Database (mt/id)
