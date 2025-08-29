@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Stack } from "metabase/ui";
+import { Box, Button, Divider, Stack } from "metabase/ui";
 import { useCreateCommentMutation } from "metabase-enterprise/api";
 import { getCommentThreads } from "metabase-enterprise/comments/utils";
 import type { Comment, DocumentContent } from "metabase-types/api";
@@ -42,24 +42,38 @@ export const Discussions = ({
     });
   };
 
+  const [isNewThreadStarted, setIsNewThreadStarted] = useState(false);
+
   return (
     <Stack>
-      {threads.map((thread) => (
-        <Discussion
-          childTargetId={childTargetId}
-          comments={thread.comments}
-          key={thread.id}
-          targetId={targetId}
-          targetType={targetType}
-        />
+      {threads.map((thread, index) => (
+        <>
+          <Discussion
+            childTargetId={childTargetId}
+            comments={thread.comments}
+            key={thread.id}
+            targetId={targetId}
+            targetType={targetType}
+          />
+          {index < threads.length - 1 && <Divider />}
+        </>
       ))}
 
       <Box>
-        <Box>{t`Start new thread`}</Box>
-        <CommentEditor
-          onChange={(document) => setNewComment(document)}
-          onSubmit={handleSubmit}
-        />
+        {!isNewThreadStarted && (
+          <Button onClick={() => setIsNewThreadStarted(true)} variant="subtle">
+            {t`Start new thread`}
+          </Button>
+        )}
+        {isNewThreadStarted && (
+          <CommentEditor
+            onChange={(document) => setNewComment(document)}
+            onSubmit={(doc) => {
+              handleSubmit(doc);
+              setIsNewThreadStarted(false);
+            }}
+          />
+        )}
       </Box>
     </Stack>
   );
