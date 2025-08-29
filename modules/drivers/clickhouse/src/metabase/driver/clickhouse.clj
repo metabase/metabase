@@ -279,7 +279,8 @@
   [_driver _feature db]
   (if db
     (try (clickhouse-version/is-at-least? 24 4 db)
-         (catch Throwable _e
+         (catch Throwable e
+           (log/warn e "Error checking connection impersonation")
            false))
     false))
 
