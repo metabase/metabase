@@ -35,7 +35,8 @@ export const useCompletedEmbeddingHubSteps = (): Record<
       "create-test-embed": isTestEmbedCreated ?? false,
       "add-data": embeddingHubChecklist?.["add-data"] ?? false,
       "create-dashboard": embeddingHubChecklist?.["create-dashboard"] ?? false,
-      "configure-row-column-security": false,
+      "configure-row-column-security":
+        embeddingHubChecklist?.["configure-row-column-security"] ?? false,
       "secure-embeds": isSsoReady,
       "embed-production": isProductionEmbedCreated ?? false,
     };

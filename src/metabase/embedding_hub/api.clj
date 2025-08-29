@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.audit-app.core :as audit]
    [metabase.appearance.settings :as appearance.settings]
+   [metabase.premium-features.core :as premium-features]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -26,10 +27,19 @@
         where-clause (filterv some? where-clause)]
     (t2/exists? :model/Dashboard {:where where-clause})))
 
+(defn- has-configured-sandboxes? []
+  "Return true if at least one sandbox (row-level policy) exists. Safe on OSS."
+  (boolean
+   (and (premium-features/has-feature? :sandboxes)
+        (try
+          (t2/exists? :model/GroupTableAccessPolicy)
+          (catch Throwable _ false)))))
+
 (defn- embedding-hub-checklist []
   "Return checklist of embedding hub steps and their completion status."
   { "add-data" (has-user-added-database?)
-    "create-dashboard" (has-user-created-dashboard?)})
+    "create-dashboard" (has-user-created-dashboard?)
+    "configure-row-column-security" (has-configured-sandboxes?)})
 
 (api.macros/defendpoint :get "/checklist"
   "Return embedding hub checklist steps and whether they've been completed."
