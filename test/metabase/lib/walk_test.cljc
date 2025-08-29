@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.walk :as lib.walk]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -233,3 +234,65 @@
                  ;; check that we support `f` returning no clause (treat this the same as returning the original clause)
                  (constantly nil)]]
         (is (identical? query (lib.walk/walk-clauses query f)))))))
+
+(deftest ^:parallel walk-clauses-case-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                  (lib/aggregate (lib/sum (lib/case [[(lib/between
+                                                       (meta/field-metadata :checkins :date)
+                                                       "2018-09-01"
+                                                       "2018-09-30")
+                                                      false]]
+                                            false))))]
+    (testing "No changes should return the original query (same object)"
+      (is (identical? query
+                      (lib.walk/walk-clauses query (constantly nil)))))
+    (let [calls (atom [])]
+      (is (=? [:SUM {}
+               [:CASE {}
+                [[[:BETWEEN {}
+                   [:FIELD {} pos-int?]
+                   "2018-09-01"
+                   "2018-09-30"]
+                  false]]
+                false]]
+              (-> query
+                  (lib.walk/walk-clauses
+                   (fn [_query _path-type _stage-or-join-path clause]
+                     (swap! calls conj clause)
+                     (when (vector? clause)
+                       (update clause 0 (comp keyword u/upper-case-en name)))))
+                  :stages
+                  first
+                  :aggregation
+                  first)))
+      (is (=? [;; sum => case => if-then-pairs => if expr (between) => field => arg
+               (meta/id :checkins :date)
+               ;; sum => case => if-then-pairs => if expr (between) => field
+               [:field {} (meta/id :checkins :date)]
+               ;; sum => case => if-then-pairs => if expr (between) => other args
+               "2018-09-01"
+               "2018-09-30"
+               ;; sum => case => if-then-pairs => if expr (between)
+               [:between {} [:FIELD {} (meta/id :checkins :date)] "2018-09-01" "2018-09-30"]
+               ;; sum => case => if-then-pairs => then expr (false)
+               false
+               ;; sum => case => default
+               false
+               ;; sum => case
+               [:case {}
+                [[[:BETWEEN {}
+                   [:FIELD {} pos-int?]
+                   "2018-09-01"
+                   "2018-09-30"]
+                  false]]
+                false]
+               ;; sum
+               [:sum {}
+                [:CASE {}
+                 [[[:BETWEEN {}
+                    [:FIELD {} pos-int?]
+                    "2018-09-01"
+                    "2018-09-30"]
+                   false]]
+                 false]]]
+              @calls)))))

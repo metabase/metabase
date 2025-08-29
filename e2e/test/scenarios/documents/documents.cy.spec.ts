@@ -227,6 +227,34 @@ H.describeWithSnowplowEE("documents", () => {
           });
         });
       });
+
+      it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
+        const isMac = Cypress.platform === "darwin";
+        const metaKey = isMac ? "Meta" : "Control";
+        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.getDocumentCard("Orders").should("exist");
+        H.documentContent().within(() => {
+          const originalText = "Lorem Ipsum and some more words";
+          const originalExact = new RegExp(`^${originalText}$`);
+          cy.contains(originalExact).click();
+          cy.realPress([metaKey, "z"]);
+          cy.contains(originalExact);
+
+          const modification = " etc.";
+          const modifiedExact = new RegExp(`^${originalText}${modification}$`);
+          H.addToDocument(modification, false);
+          cy.contains(modifiedExact);
+          cy.realPress([metaKey, "z"]);
+          cy.contains(originalExact);
+          cy.realPress(["Shift", metaKey, "z"]);
+          cy.contains(modifiedExact);
+          cy.realPress([metaKey, "z"]); // revert to prevent "unsaved changes" dialog
+        });
+        H.newButton("Document").click();
+        H.documentContent().should("have.text", "");
+        cy.realPress([metaKey, "z"]);
+        H.documentContent().should("have.text", "");
+      });
     });
   });
 
@@ -687,6 +715,51 @@ H.describeWithSnowplowEE("documents", () => {
           cy.location("pathname").should("equal", `/document/${id}`),
         );
       });
+    });
+  });
+
+  describe("error handling", () => {
+    it("should display an error toast when creating a new document fails", () => {
+      // setup
+      cy.intercept("POST", "/api/ee/document", { statusCode: 500 });
+      cy.visit("/document/new");
+
+      // make changes and attempt to save
+      cy.findByRole("textbox", { name: "Document Title" }).type("Title");
+      H.documentSaveButton().click();
+      H.entityPickerModalTab("Collections").click();
+      H.entityPickerModalItem(0, "Our analytics")
+        .should("have.attr", "data-active", "true")
+        .click();
+      H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+
+      // assert error toast is visible and user can reattempt save
+      cy.findByTestId("toast-undo")
+        .should("be.visible")
+        .and("contain.text", "Error saving document");
+      H.documentSaveButton().should("be.visible");
+    });
+
+    it("should display an error toast when updating a document fails", () => {
+      // setup
+      cy.intercept("PUT", "/api/ee/document/*", { statusCode: 500 });
+      H.createDocument({
+        name: "Test Document",
+        document: { type: "doc", content: [] },
+        idAlias: "documentId",
+      });
+      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+
+      // make changes and attempt to save
+      H.documentContent().click();
+      H.addToDocument("aaa");
+      H.documentSaveButton().click();
+
+      // assert error toast is visible and user can reattempt save
+      cy.findByTestId("toast-undo")
+        .should("be.visible")
+        .and("contain.text", "Error saving document");
+      H.documentSaveButton().should("be.visible");
     });
   });
 });

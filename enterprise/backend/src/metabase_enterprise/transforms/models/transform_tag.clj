@@ -1,7 +1,7 @@
 (ns metabase-enterprise.transforms.models.transform-tag
   (:require
-   [metabase.util.i18n :as i18n]
    [metabase.models.serialization :as serdes]
+   [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

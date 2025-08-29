@@ -4,8 +4,8 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase.models.interface :as mi]
-   [metabase.util.i18n :as i18n]
    [metabase.models.serialization :as serdes]
+   [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

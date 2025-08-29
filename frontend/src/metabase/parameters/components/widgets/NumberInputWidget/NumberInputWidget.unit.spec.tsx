@@ -9,7 +9,7 @@ import {
   type NumberInputWidgetProps,
 } from "./NumberInputWidget";
 
-type SetupOpts = Omit<NumberInputWidgetProps, "setValue"> & {
+type SetupOpts = Omit<NumberInputWidgetProps, "parameter" | "setValue"> & {
   parameter?: Parameter;
 };
 
@@ -117,16 +117,29 @@ describe("NumberInputWidget", () => {
       expect(textbox2).toHaveValue("456");
     });
 
-    it("should be invalid when one of the inputs is empty", async () => {
-      setup({ value: [123, 456], arity: 2 });
+    it("should allow to submit a value without min", async () => {
+      const { setValue } = setup({ value: [123, 456], arity: 2 });
 
       const [textbox1] = screen.getAllByRole("textbox");
       await userEvent.clear(textbox1);
       const button = screen.getByRole("button", { name: "Update filter" });
-      expect(button).toBeDisabled();
+      await userEvent.click(button);
+
+      expect(setValue).toHaveBeenCalledWith([null, 456]);
     });
 
-    it("should be settable", async () => {
+    it("should allow to submit a value without max", async () => {
+      const { setValue } = setup({ value: [123, 456], arity: 2 });
+
+      const [_textbox1, textbox2] = screen.getAllByRole("textbox");
+      await userEvent.clear(textbox2);
+      const button = screen.getByRole("button", { name: "Update filter" });
+      await userEvent.click(button);
+
+      expect(setValue).toHaveBeenCalledWith([123, null]);
+    });
+
+    it("should allow to submit a value with both min and max", async () => {
       const { setValue } = setup({ value: undefined, arity: 2 });
 
       const [textbox1, textbox2] = screen.getAllByRole("textbox");
@@ -137,6 +150,24 @@ describe("NumberInputWidget", () => {
       await userEvent.click(button);
 
       expect(setValue).toHaveBeenCalledWith([1, 2]);
+    });
+
+    it("should allow to clear an existing filter", async () => {
+      const { setValue } = setup({ value: [1, 2], arity: 2 });
+
+      const [textbox1, textbox2] = screen.getAllByRole("textbox");
+      await userEvent.clear(textbox1);
+      await userEvent.clear(textbox2);
+      const button = screen.getByRole("button", { name: "Update filter" });
+      await userEvent.click(button);
+
+      expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should allow to submit an empty value for an existing filter", async () => {
+      setup({ value: [], arity: 2 });
+      const button = screen.getByRole("button", { name: "Add filter" });
+      expect(button).toBeDisabled();
     });
 
     it("should correctly parse big integers", async () => {

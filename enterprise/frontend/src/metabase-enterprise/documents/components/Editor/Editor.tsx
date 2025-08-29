@@ -4,7 +4,6 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import type { EditorState } from "@tiptap/pm/state";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
 import type React from "react";
 import { useEffect, useMemo } from "react";
@@ -24,6 +23,7 @@ import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { CardEmbed } from "./extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "./extensions/Command/CommandExtension";
 import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
+import { CustomStarterKit } from "./extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
 import { MentionExtension } from "./extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
@@ -95,7 +95,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   const extensions = useMemo(
     () => [
-      StarterKit,
+      CustomStarterKit,
       Image.configure({
         inline: false,
         HTMLAttributes: {
@@ -164,7 +164,11 @@ export const Editor: React.FC<EditorProps> = ({
     if (editor && initialContent !== undefined) {
       // Use Promise.resolve() to avoid flushSync warning
       Promise.resolve().then(() => {
-        editor.commands.setContent(initialContent || "");
+        editor
+          .chain()
+          .setMeta("addToHistory", false)
+          .setContent(initialContent || "")
+          .run();
       });
     }
   }, [editor, initialContent]);

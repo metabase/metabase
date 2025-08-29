@@ -1076,6 +1076,14 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v57.2025-08-23T16:00:00
+      author: rileythomp
+      comment: Migrate ClickHouse database details to be use `enable-multiple-db` with db filters
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.MigrateClickHouseDetailsToMultiDB"
+
+  - changeSet:
       id: v57.2025-08-26T10:51:08
       author: jds
       comment: Add synced_to_source_of_truth column to transform table
