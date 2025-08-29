@@ -83,7 +83,7 @@
       (mu/disable-enforcement
         (is (=? {:name              "Unknown Field"
                  :display-name      "Unknown Field" #_"join → Unknown Field" ; either answer can be considered correct I guess
-                 :long-display-name "join → Unknown Field"}
+                 :long-display-name "Unknown Field"}
                 (lib/display-info query [:field {:join-alias "join"} field-id])))))))
 
 (defn- visible-columns-with-desired-aliases

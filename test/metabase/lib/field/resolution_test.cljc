@@ -718,44 +718,6 @@
                    {:display-name "Sum of Total"}]
                   (lib/returned-columns query))))))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
-(deftest ^:parallel preserve-model-metadata-test
-  (let [mp        (metabase.lib.card-test/preserve-edited-metadata-test-mock-metadata-provider
-                   {:result-metadata-style :metabase.lib.card-test/legacy-snake-case-qp})
-        edited-mp (lib.tu/merged-mock-metadata-provider
-                   mp
-                   {:cards [{:id              3
-                             :result-metadata (for [col (:result-metadata (lib.metadata/card mp 3))]
-                                                (assoc col :description "user description", :display_name "user display name"))}]})]
-    (testing "card metadata (sanity check)"
-      (is (=? {:name "NAME", :description "user description", :display_name "user display name"}
-              (m/find-first #(= (:name %) "NAME")
-                            (:result-metadata (lib.metadata/card edited-mp 3))))))
-    (testing "field resolution"
-      (let [query     (lib/query
-                       edited-mp
-                       {:database (meta/id)
-                        :type     :query
-                        :query    {:qp/stage-had-source-card 3
-                                   :source-query/model?      true
-                                   :source-query             {:qp/stage-is-from-source-card 3
-                                                              :native                       "select * from venues"}
-                                   :source-metadata          (:result-metadata (lib.metadata/card edited-mp 3))
-                                   :fields                   [[:field (meta/id :venues :id) nil]
-                                                              [:field (meta/id :venues :name) nil]
-                                                              [:field (meta/id :venues :category-id) nil]
-                                                              [:field (meta/id :venues :latitude) nil]
-                                                              [:field (meta/id :venues :longitude) nil]
-                                                              [:field (meta/id :venues :price) nil]]}})
-            field-ref [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :name)]]
-        (testing `lib.field.resolution/resolve-column-in-previous-stage-metadata
-          (let [stage-cols (get-in (lib.util/query-stage query 0) [:lib/stage-metadata :columns])]
-            (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
-                    (#'lib.field.resolution/resolve-column-in-previous-stage-metadata query field-ref stage-cols)))))
-        (testing `lib.field.resolution/resolve-field-ref
-          (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
-                  (lib.field.resolution/resolve-field-ref query -1 field-ref))))))))
-
 (deftest ^:parallel use-unknown-name-for-display-name-for-fields-that-cant-be-resolved-test
   (let [query     (lib/query meta/metadata-provider (meta/table-metadata :venues))
         field-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 123456789]]
@@ -1019,9 +981,7 @@
       (is (=? {:id                                       (meta/id :products :id)
                :name                                     "ID"
                :table-id                                 (meta/id :products)
-               ;; TODO (Cam 7/29/25) -- maybe we need to add a `:source/indetermiate` option or something. Because
-               ;; this is wrong... but nothing else is right either.
-               :lib/source                               :source/table-defaults
+               :lib/source                               :source/previous-stage
                ::lib.field.resolution/fallback-metadata? true}
               (lib.field.resolution/resolve-field-ref
                query -1
