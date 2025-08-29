@@ -30,7 +30,7 @@
       :query (into #{}
                    (keep #(clojure.core.match/match %
                             [:source-table source] (when (int? source)
-                                                     source)
+                                                     {:table source})
                             _ nil))
                    (tree-seq coll? seq query)))))
 
@@ -62,14 +62,18 @@
                               (map (fn [transform]
                                      {(get-in transform [:source :query :database]) [transform]}))
                               (apply merge-with into))
-
+        transform-ids (into #{} (map :id) transforms)
         {:keys [output-tables dependencies]} (->> transforms-by-db
                                                   (map (fn [[db-id db-transforms]]
                                                          (qp.store/with-metadata-provider db-id
                                                            {:output-tables (output-table-map db-transforms)
                                                             :dependencies (dependency-map db-transforms)})))
                                                   (apply merge-with merge))]
-    (update-vals dependencies #(into #{} (keep output-tables) %))))
+    (update-vals dependencies #(into #{}
+                                     (keep (fn [{:keys [table transform]}]
+                                             (or (output-tables table)
+                                                 (transform-ids transform))))
+                                     %))))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.
@@ -115,9 +119,12 @@
                                transforms)
         db-id (get-in to-check [:source :query :database])]
     (qp.store/with-metadata-provider db-id
-      (let [output-tables (output-table-map (filter #(= (get-in % [:source :query :database]) db-id)
-                                                    transforms))
-            node->children #(->> % transforms-by-id transform-deps (keep output-tables))
+      (let [db-transforms (filter #(= (get-in % [:source :query :database]) db-id) transforms)
+            output-tables (output-table-map db-transforms)
+            transform-ids (into #{} (map :id) db-transforms)
+            node->children #(->> % transforms-by-id transform-deps (keep (fn [{:keys [table transform]}]
+                                                                           (or (output-tables table)
+                                                                               (transform-ids transform)))))
             id->name (comp :name transforms-by-id)
             cycle (find-cycle node->children [transform-id])]
         (when cycle
