@@ -93,10 +93,10 @@
 (defmethod mbql-field [:id :->]
   [_ _ source-table-symb source-token-str dest-token-str]
   ;; recursively parse the destination field, then add `:source-field` to it.
-  (let [[_ id-form options] (parse-token-by-sigil source-table-symb (symbol (if (token->sigil dest-token-str)
-                                                                              dest-token-str
-                                                                              (str \$ dest-token-str))))]
-    (field-ref id-form (assoc options :source-field (field-id-call source-table-symb source-token-str)))))
+  (-> (parse-token-by-sigil source-table-symb (symbol (if (token->sigil dest-token-str)
+                                                        dest-token-str
+                                                        (str \$ dest-token-str))))
+      (field-ref-update-options assoc :source-field (field-id-call source-table-symb source-token-str))))
 
 (defmethod mbql-field [:raw :normal]
   [_ _ source-table-symb token-str]
@@ -177,10 +177,10 @@
 (defmethod parse-token-by-sigil "!"
   [source-table-symb token]
   (if-let [[_ unit token] (re-matches #"^!([^.]+)\.(.+$)" (str token))]
-    (let [[_ id-or-name opts] (parse-token-by-sigil source-table-symb (if (token->sigil token)
-                                                                        (symbol token)
-                                                                        (symbol (str \$ token))))]
-      (field-ref id-or-name (assoc opts :temporal-unit (keyword unit))))
+    (-> (parse-token-by-sigil source-table-symb (if (token->sigil token)
+                                                  (symbol token)
+                                                  (symbol (str \$ token))))
+        (field-ref-update-options assoc :temporal-unit (keyword unit)))
     (throw (ex-info "Error parsing token starting with '!'" {:token token}))))
 
 ;; $$ = table ID.

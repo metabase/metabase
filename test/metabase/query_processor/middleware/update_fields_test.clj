@@ -7,7 +7,6 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.update-fields :as update-fields]
    [metabase.query-processor.preprocess :as qp.preprocess]))
 
@@ -111,6 +110,151 @@
                   :query
                   :fields
                   last))))))
+
+(deftest ^:parallel joined-field-test
+  (testing "When adding implicit `:fields` clauses, should include `join-alias` clauses for joined fields (#14745)"
+    (doseq [field-ref (lib.tu.macros/$ids
+                        [[:field %categories.name {:join-alias "c"}]
+                         [:field %categories.name {:join-alias "c", :temporal-unit :default}]])]
+      (testing (format "field ref = %s" (pr-str field-ref))
+        (let [query (lib.tu.macros/mbql-query venues
+                      {:source-query    {:source-table $$venues
+                                         :fields       [$id &c.categories.name $category-id->categories.name]
+                                         :joins        [{:fields       [&c.categories.name]
+                                                         :source-table $$categories
+                                                         :strategy     :left-join
+                                                         :condition    [:= $category-id &c.categories.id]
+                                                         :alias        "c"}]}
+                       :source-metadata [{:table_id      $$venues
+                                          :semantic_type :type/PK
+                                          :name          "ID"
+                                          :field_ref     $id
+                                          :id            %id
+                                          :display_name  "ID"
+                                          :base_type     :type/BigInteger}
+                                         {:table_id      $$categories
+                                          :semantic_type :type/Name
+                                          :name          "NAME"
+                                          :field_ref     field-ref
+                                          :id            %categories.name
+                                          :display_name  "c → Name"
+                                          :base_type     :type/Text}
+                                         {:table_id     $$categories
+                                          :name         "NAME"
+                                          :field_ref    $category-id->categories.name
+                                          :id           %categories.name
+                                          :display_name "Category → Name"
+                                          :base_type    :type/Text}]})]
+          (is (=? [[:field "ID" {:base-type :type/BigInteger}]
+                   [:field "c__NAME" {:base-type :type/Text}]
+                   [:field "CATEGORIES__via__CATEGORY_ID__NAME" {:base-type :type/Text}]]
+                  (get-in (update-fields query)
+                          [:query :fields]))))))))
+
+(deftest ^:parallel add-correct-implicit-fields-for-deeply-nested-source-queries-test
+  (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-5-query orders
+                   {:stages [{:filters     [[:= {} $id 1]]
+                              :aggregation [[:sum {} $total]]
+                              :breakout    [!day.created-at
+                                            $product-id->products.title
+                                            $product-id->products.category]}
+                             {:filters     [[:> {} *sum/Float 100]]
+                              :aggregation [[:sum {} *sum/Float]]
+                              :breakout    [$orders.product-id->products.title]}
+                             {:filters [[:> {} *sum/Float 100]]}]}))]
+      (is (=? [[:field {:base-type :type/Text} "PRODUCTS__via__PRODUCT_ID__TITLE"]
+               [:field {:base-type :type/Float} "sum"]]
+              (-> (update-fields query)
+                  :stages
+                  last
+                  :fields))))))
+
+(deftest ^:parallel add-implicit-fields-for-source-query-inside-join-test
+  (testing "Should add implicit `:fields` for `:source-query` inside a join"
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:joins    [{:source-query {:source-table $$categories
+                                          :fields       [[:field %categories.id {}]
+                                                         [:field %categories.name {}]]}
+                           :alias        "cat"
+                           :condition    [:= $venues.category-id &cat.*ID/BigInteger]}]
+               :fields   [[:field %venues.id {}]
+                          [:field %venues.name {}]
+                          [:field %venues.category-id {}]
+                          [:field %venues.latitude {}]
+                          [:field %venues.longitude {}]
+                          [:field %venues.price {}]]
+               :order-by [[:asc $venues.name]]
+               :limit    3})
+            (update-fields
+             (lib.tu.macros/mbql-query venues
+               {:joins    [{:alias        "cat"
+                            :source-query {:source-table $$categories}
+                            :condition    [:= $category-id &cat.*categories.id]}]
+                :order-by [[:asc $name]]
+                :limit    3}))))))
+
+(deftest ^:parallel add-implicit-fields-skip-join-test
+  (testing "Don't add implicit `:fields` clause to a JOIN"
+    (is (=? (lib.tu.macros/mbql-query venues
+              {:joins    [{:source-query {:source-table $$categories
+                                          :fields       [[:field %categories.id {}]
+                                                         [:field %categories.name {}]]}
+                           :alias        "cat"
+                           :condition    [:= $venues.category-id &cat.*ID/BigInteger]}]
+               :fields   [[:field %venues.id {}]
+                          [:field %venues.name {}]
+                          [:field %venues.category-id {}]
+                          [:field %venues.latitude {}]
+                          [:field %venues.longitude {}]
+                          [:field %venues.price {}]]
+               :order-by [[:asc $venues.name]]
+               :limit    3})
+            (update-fields
+             (lib.tu.macros/mbql-query venues
+               {:source-table $$venues
+                :joins        [{:alias        "cat"
+                                :source-query {:source-table $$categories}
+                                :condition    [:= $category-id &cat.*categories.id]}]
+                :order-by     [[:asc $name]]
+                :limit        3}))))))
+
+(deftest ^:parallel add-implicit-clauses-inside-joins-e2e-test
+  (testing "Add :fields to a join with a source query with :expressions correctly"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query nil
+                   {:source-query {:source-query {:source-table $$products
+                                                  :aggregation  [[:count]]
+                                                  :breakout     [$products.category]}
+                                   :expressions  {:CC [:+ 1 1]}}
+                    :joins        [{:source-query {:source-query {:source-table $$products
+                                                                  :aggregation  [[:count]]
+                                                                  :breakout     [$products.category]}
+                                                   :expressions  {:CC [:+ 1 1]}}
+                                    :alias        "Q1"
+                                    :condition    [:=
+                                                   [:field "CC" {:base-type :type/Integer}]
+                                                   [:field "CC" {:base-type :type/Integer, :join-alias "Q1"}]]
+                                    :fields       :all}]
+                    :order-by     [[:asc $products.category]
+                                   [:desc [:field "count" {:base-type :type/Integer}]]
+                                   [:asc &Q1.products.category]]
+                    :limit        1}))]
+      (is (=? [{:source-table (meta/id :products)}
+               {:expressions  [[:+ {:lib/expression-name "CC"} 1 1]]
+                :fields       [[:field {} "CATEGORY"]
+                               [:field {:base-type :type/Integer} "count"]
+                               [:expression {} "CC"]]}]
+              (-> query
+                  qp.preprocess/preprocess
+                  :stages
+                  last
+                  :joins
+                  first
+                  :stages))))))
 
 (deftest ^:parallel no-op-test
   (testing "Does the middleware function if the query has no joins?"
