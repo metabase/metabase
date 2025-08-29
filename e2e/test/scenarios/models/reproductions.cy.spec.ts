@@ -861,9 +861,9 @@ describe("issue 33844", () => {
     H.tableInteractive().findByText("ID").should("not.exist");
     H.openObjectDetail(0);
     H.modal().within(() => {
-      cy.findByText("Order").should("be.visible");
-      cy.findByText("ID").should("be.visible");
-      cy.findByTestId("object-detail-close-button").click();
+      cy.findByText("Quantity").should("be.visible");
+      cy.findByRole("heading", { name: "1" }).should("be.visible");
+      cy.findByLabelText("Close").click();
     });
 
     cy.log("make the column visible in table views");
@@ -890,7 +890,7 @@ describe("issue 33844", () => {
     });
     cy.findByTestId("run-button").click();
     cy.wait("@dataset");
-    cy.findByTestId("dataset-edit-bar").findByText("Metadata").click();
+    cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
     testModelMetadata(true);
   });
 
@@ -926,7 +926,7 @@ describe("issue 45924", () => {
     H.popover().findByText("ID").click();
     cy.findByTestId("run-button").click();
     cy.wait("@dataset");
-    cy.findByTestId("dataset-edit-bar").findByText("Metadata").click();
+    cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
     H.tableHeaderClick("ID1");
     cy.findByLabelText("Display name").should("have.value", "ID1");
     cy.findByTestId("dataset-edit-bar").button("Save changes").click();
@@ -1169,7 +1169,7 @@ describe("issue 36161", () => {
     H.popover().button("Done").click();
     H.runButtonOverlay().click();
     cy.wait("@dataset");
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns-name").click();
     H.openColumnOptions("ID2");
     H.renameColumn("ID2", "ID2 custom");
     H.openColumnOptions("ID3");
@@ -1228,12 +1228,8 @@ describe("issue 34514", () => {
     cy.wait("@dataset");
     assertQueryTabState();
 
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns-name").click();
     assertMetadataTabState();
-
-    // Close the TabHinToast component.
-    // This isn't a part of the test scenario but it helps with flakiness.
-    cy.icon("close").click();
 
     cy.go("back");
     cy.wait(["@dataset", "@fetchDatabase"]); // This should be removed when (metabase#45787) is fixed
@@ -1261,7 +1257,7 @@ describe("issue 34514", () => {
     H.entityPickerModal().should("be.visible");
     H.entityPickerModal().button("Close").click();
 
-    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+    cy.findByTestId("editor-tabs-columns").should("be.disabled");
     cy.button("Save").should("be.disabled");
     H.getNotebookStep("data")
       .findByText("Pick your starting data")
@@ -1720,7 +1716,7 @@ describe("issue 57557", () => {
     });
     H.waitForLoaderToBeRemoved();
     cy.findByTestId("editor-tabs-query").should("be.disabled");
-    cy.findByTestId("editor-tabs-metadata").should("be.checked");
+    cy.findByTestId("editor-tabs-columns").should("be.checked");
   });
 });
 
@@ -1811,7 +1807,7 @@ describe("issue 55486", () => {
   });
 
   function checkIsShowingMetadataEditorTab() {
-    cy.findByTestId("editor-tabs-metadata").should("be.checked");
+    cy.findByTestId("editor-tabs-columns").should("be.checked");
     cy.findByTestId("visualization-root").should("be.visible");
   }
 
@@ -1823,7 +1819,7 @@ describe("issue 55486", () => {
   it("should render the correct query after using the back button in a model (metabase#56775)", () => {
     H.openQuestionActions("Edit query definition");
 
-    H.datasetEditBar().findByText("Metadata").click();
+    H.datasetEditBar().findByText("Columns").click();
     checkIsShowingMetadataEditorTab();
 
     H.datasetEditBar().findByText("Query").click();
@@ -2019,5 +2015,41 @@ describe.skip("issue 45919", () => {
     H.tableInteractive().should("be.visible");
     H.tableInteractiveHeader().findByText("Password").should("not.exist");
     H.tableInteractiveHeader().findByText("Email").should("be.visible");
+  });
+});
+
+describe("issue 50915", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should use the model for the data source for drills after the model is created (metabase#50915)", () => {
+    cy.log("create a model via the UI");
+    cy.visit("/model/new");
+    H.main().findByText("Use the notebook editor").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("People").click();
+    });
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
+    H.queryBuilderHeader().should("be.visible");
+
+    cy.log("immediately after saving, drill-thru");
+    H.tableHeaderClick("Discount ($)");
+    H.popover().findByText("Distinct values").click();
+    H.assertTableData({ columns: ["Distinct values of Discount"] });
+
+    cy.log("assert that the model is used for the data source");
+    H.openNotebook();
+    H.getNotebookStep("data")
+      .findByText("Orders + People")
+      .should("be.visible");
   });
 });

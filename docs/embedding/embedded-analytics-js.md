@@ -42,7 +42,7 @@ The exact customization options you see will depend on what type of entity you'r
 
 ![Customizing embeds](./images/embed-flow-options.png)
 
-You'll also be be able to pick brand, text, and background color used for all your embeds. To configure other colors (e.g. secondary colors, query builder colors etc), as well as font, you' can specify a [theme](#theming) in your embed code snippet.
+You'll also be be able to pick brand, text, and background color used for all your embeds. To configure other colors (e.g. secondary colors, query builder colors etc), as well as font, you can specify a [theme](#theming) in your embed code snippet.
 
 All the customization options you select in this interactive flow will be reflected in the parameter values in the embed code, so you'll be able to adjust them later by editing the embed snippet.
 

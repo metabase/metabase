@@ -44,7 +44,7 @@ jobs:
             echo "A relevant team label is present. Tier 3 driver tests will run."
           else
             echo "Checking for changes in relevant folders..."
-            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
+            CHANGED_FILES=$(git diff --name-only $(git merge-base ${{ github.event.pull_request.base.sha }} ${{ github.sha }}) ${{ github.sha }})
 
             # Initialize an empty array to store folders with changes
             CHANGED_FOLDERS=()
