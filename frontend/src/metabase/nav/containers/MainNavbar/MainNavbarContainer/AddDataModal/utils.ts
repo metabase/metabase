@@ -15,11 +15,7 @@ export function shouldShowUploadPanel({
   allDatabases: Database[] | undefined;
   allUploadableDatabases: Database[] | undefined;
 }) {
-  if (!allUploadableDatabases || !allDatabases) {
-    return false;
-  }
-
-  if (allUploadableDatabases.length === 0) {
+  if (!allUploadableDatabases?.length || !allDatabases) {
     return false;
   }
 
