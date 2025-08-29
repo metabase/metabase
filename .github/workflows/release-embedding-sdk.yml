@@ -14,7 +14,7 @@ on:
       tag-as-latest:
         description: "Tag this release as 'latest' on npm"
         type: boolean
-        required: true
+        required: false
         default: false
 
 concurrency:
