@@ -1,6 +1,7 @@
 (ns metabase.server.handler
   "Top-level Metabase Ring handler."
   (:require
+   [clojure.java.classpath :as classpath]
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
@@ -45,17 +46,23 @@
        (name kkey))
      response output-stream)))
 
+(defn enterprise-path-when-loaded []
+  (let [loaded-paths (map str (classpath/classpath-directories))]
+    (when (some #{"enterprise/backend/src"} loaded-paths)
+      "enterprise/backend/src")))
+
 (def wrap-reload-dev-mw
   "In dev, reload files on the fly if they've changed. Returns nil in prod."
-  (when-let [wrap-reload (try (and
-                               config/is-dev?
-                               (not *compile-files*)
-                               ;; `*enable-wrap-reload*` is set to true `dev.clj` when the `--hot-reload` flag is passed to the :dev-start alias
-                               (true? @(requiring-resolve 'user/*enable-hot-reload*))
-                               ;; this middleware is only available in dev
-                               (requiring-resolve 'ring.middleware.reload/wrap-reload))
-                              (catch Exception _ nil))]
-    wrap-reload))
+  (when (and
+         config/is-dev?
+         (not *compile-files*)
+         ;; [[user/*enable-hot-reload*]] is set to true in `dev.clj` when the `--hot` flag is passed to the `:dev-start` alias
+         (true? @(requiring-resolve 'user/*enable-hot-reload*)))
+    (log/info "Wrap Reload Dev MW Enabled. Outdated namespaces will be recompiled when handling incoming requests")
+    (let [wrap-reload (requiring-resolve 'ring.middleware.reload/wrap-reload)
+          watch-dirs (conj ["src"] (enterprise-path-when-loaded))]
+      (fn wrap-reload-dev-mw-fn [handler]
+        (wrap-reload handler {:dirs watch-dirs})))))
 
 (def ^:private middleware
   ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
@@ -84,7 +91,8 @@
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
-        wrap-reload-dev-mw]
+        wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
+        ]
        (remove nil?)))
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 
