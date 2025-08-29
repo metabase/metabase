@@ -39,7 +39,6 @@
                               :test/jvm-timezone-setting       false
                               :test/date-time-type             false
                               :test/time-type                  false
-                              :schemas                         true
                               :datetime-diff                   true
                               :expression-literals             true
                               :expressions/integer             true
@@ -54,8 +53,12 @@
                               :describe-fks                    false
                               :actions                         false
                               :metadata/key-constraints        (not driver-api/is-test?)
-                              :database-routing                false}]
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
+
+(defmethod driver/database-supports? [:clickhouse :schemas]
+  [_driver _feature db]
+  (boolean (:enable-multiple-db (:details db))))
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
@@ -66,9 +69,6 @@
                            default-connection-details
                            details)
         {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
-        ;; if multiple databases were specified for the connection,
-        ;; use only the first dbname as the "main" one
-        dbname (first (str/split (str/trim dbname) #" "))
         host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)

@@ -4,7 +4,6 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import type { EditorState } from "@tiptap/pm/state";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
 import type React from "react";
 import { useEffect, useMemo } from "react";
@@ -21,21 +20,16 @@ import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mention
 
 import S from "./Editor.module.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
-import { Blockquote } from "./extensions/Blockquote";
-import { BulletList } from "./extensions/BulletList";
 import { CardEmbed } from "./extensions/CardEmbed/CardEmbedNode";
-import { CodeBlock } from "./extensions/CodeBlock";
 import { CommandExtension } from "./extensions/Command/CommandExtension";
 import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
+import { CustomStarterKit } from "./extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
-import { Heading } from "./extensions/Heading";
 import { MentionExtension } from "./extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
 import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
-import { OrderedList } from "./extensions/OrderedList";
-import { Paragraph } from "./extensions/Paragraph";
 import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
@@ -100,20 +94,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   const extensions = useMemo(
     () => [
-      Paragraph,
-      Blockquote,
-      CodeBlock,
-      Heading,
-      BulletList,
-      OrderedList,
-      StarterKit.configure({
-        paragraph: false,
-        blockquote: false,
-        codeBlock: false,
-        heading: false,
-        bulletList: false,
-        orderedList: false,
-      }),
+      CustomStarterKit,
       Image.configure({
         inline: false,
         HTMLAttributes: {
@@ -182,7 +163,11 @@ export const Editor: React.FC<EditorProps> = ({
     if (editor && initialContent !== undefined) {
       // Use Promise.resolve() to avoid flushSync warning
       Promise.resolve().then(() => {
-        editor.commands.setContent(initialContent || "");
+        editor
+          .chain()
+          .setMeta("addToHistory", false)
+          .setContent(initialContent || "")
+          .run();
       });
     }
   }, [editor, initialContent]);

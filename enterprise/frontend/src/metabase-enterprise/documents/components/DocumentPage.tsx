@@ -299,7 +299,7 @@ export const DocumentPage = ({
                     dispatch(push(`/document/${_document.id}`));
                   });
                 }
-                return response.data;
+                return response;
               },
             )
           : createDocument({
@@ -313,16 +313,18 @@ export const DocumentPage = ({
                   dispatch(replace(`/document/${_document.id}`));
                 });
               }
-              return response.data;
+              return response;
             }));
 
-        if (result) {
+        if (result.data) {
           sendToast({
             message: documentData?.id ? t`Document saved` : t`Document created`,
           });
           dispatch(clearDraftCards());
           // Mark document as clean
           setHasUnsavedEditorChanges(false);
+        } else if (result.error) {
+          throw result.error;
         }
       } catch (error) {
         console.error("Failed to save document:", error);
