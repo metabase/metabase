@@ -147,7 +147,7 @@ function ConnectionStringDescription({
       exitDelay={0}
     >
       {(styles) => (
-        <Group style={styles} top={0} pos="absolute" h="lg">
+        <Group style={styles} top={0} pos="absolute" h="lg" component="span">
           {t`You can use a connection string to pre-fill the details below.`}
         </Group>
       )}
@@ -169,8 +169,9 @@ function ConnectionStringDescription({
           c="danger"
           fw="bold"
           fz="sm"
+          component="span"
         >
-          <Group gap="xs">
+          <Group gap="xs" component="span">
             <Icon name="warning_round_filled" c="var(--mb-color-danger)" />
             {t`Couldn’t use this connection string.`}
           </Group>
@@ -194,8 +195,9 @@ function ConnectionStringDescription({
           c="success"
           fw="bold"
           fz="sm"
+          component="span"
         >
-          <Group gap="xs">
+          <Group gap="xs" component="span">
             <Icon
               name="check_filled"
               style={{ color: "var(--mb-color-success)" }}
@@ -207,7 +209,7 @@ function ConnectionStringDescription({
     </Transition>
   );
   return (
-    <Group h="lg" pos="relative">
+    <Group h="lg" pos="relative" component="span">
       {failureMessage}
       {defaultDescription}
       {successMessage}

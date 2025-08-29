@@ -1,0 +1,16 @@
+.paper {
+  border: 1px solid var(--mb-base-color-orion-alpha-20);
+  margin-top: 2rem;
+
+  .alertTitle {
+    color: var(--mb-base-color-orion-80);
+    font-size: var(--mantine-font-size-sm);
+    line-height: 1rem;
+  }
+
+  .alertMessage {
+    color: var(--mb-base-color-orion-80);
+    font-size: var(--mantine-font-size-md);
+    line-height: 1.25rem;
+  }
+}

@@ -200,10 +200,10 @@
   --mb-base-color-orion-alpha-60: hsla(204, 66%, 8%, 0.62);
   --mb-base-color-orion-alpha-50: hsla(204, 66%, 8%, 0.51);
   --mb-base-color-orion-alpha-40: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-30: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-20: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-10: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-5: hsla(204, 66%, 8%, 0.44);
+  --mb-base-color-orion-alpha-30: hsla(204, 66%, 8%, 0.29);
+  --mb-base-color-orion-alpha-20: hsla(204, 66%, 8%, 0.14);
+  --mb-base-color-orion-alpha-10: hsla(204, 66%, 8%, 0.05);
+  --mb-base-color-orion-alpha-5: hsla(204, 66%, 8%, 0.02);
 
   /* Lobster */
   --mb-base-color-lobster-100: hsla(0, 81%, 11%, 1);
