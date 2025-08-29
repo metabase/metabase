@@ -47,7 +47,7 @@ export const CommentsMenu = forwardRef(function CommentsMenu(
           {...(disabled ? undefined : { component: Link, to: href })}
         >
           {hasComments
-            ? t`Comments (${threads.flat().length})`
+            ? t`Comments (${threads.flatMap((thread) => thread.comments).length})`
             : t`Add comment`}
         </Button>
       </Box>
