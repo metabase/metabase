@@ -153,24 +153,28 @@
 
 (defn- copy-unbranched
   [model parsed-args]
-  (let [kv-args (:kv-args parsed-args)
-        query (-> (t2.query/apply-kv-args model {} kv-args)
-                  (update :where only-not-in-branch))
-        columns (map keyword (remove #(#{"id" "ID"} %) ((t2/table-name model) @branchables)))
-        insert-half (first (sql/format {:insert-into [(t2/table-name model) columns]} {:inline true}))]
-    (t2/with-connection [^java.sql.Connection conn]
-      (doseq [to-copy-id (t2/select-pks-vec model query)]
-        (let [inserted-id (jdbc/query {:connection conn} (str insert-half " " (first (sql/format {:select columns
-                                                                                                  :from   [(t2/table-name model)]
-                                                                                                  :where  [:= :id to-copy-id]} {:inline true}))
-                                                              " RETURNING id"))]
-          (t2/insert! :model/BranchModelMapping {:original_id       to-copy-id
-                                                 :branched_model_id (:id (first inserted-id))
-                                                 :model_type        (model->type model)
-                                                 :branch_id         (:id @branching/*current-branch*)}))))))
+  (when @branching/*current-branch*
+    (let [db-type (mdb/db-type)
+          kv-args (:kv-args parsed-args)
+          query (-> (t2.query/apply-kv-args model {} kv-args)
+                    (update :where only-not-in-branch))
+          columns (map keyword (remove #(#{"id" "ID"} %) ((t2/table-name model) @branchables)))
+          insert-half (first (sql/format {:insert-into [(t2/table-name model) columns]} {:inline true}))]
+      (t2/with-connection [^java.sql.Connection conn]
+        (doseq [to-copy-id (t2/select-pks-vec model query)]
+          (let [inserted-id (-> (jdbc/execute! {:connection conn} (str insert-half " " (first (sql/format {:select columns
+                                                                                                           :from   [(t2/table-name model)]
+                                                                                                           :where  [:= :id to-copy-id]} {:inline true}))) {:returning-keys true})
+                                first)]
+            (t2/insert! :model/BranchModelMapping {:original_id       to-copy-id
+                                                   :branched_model_id (if (= :h2 db-type) ;; TODO: this is ugly for h2, is there a better way?
+                                                                        (:val (first (t2/query [(str "SELECT max(id) as val from " (name (t2/table-name model)))])))
+                                                                        inserted-id)
+                                                   :model_type        (model->type model)
+                                                   :branch_id         (:id @branching/*current-branch*)})))))))
 
 (methodical/defmethod t2.pipeline/transduce-query [#_query-type :toucan.query-type/update.*
-                                                   #_model :hook/branchable
+                                                   #_model :model/Transform ; TODO: make this :hook/branchable
                                                    #_resolved-query :default]
   [rf query-type model parsed-args resolved-query]
   (copy-unbranched model parsed-args)
