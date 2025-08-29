@@ -71,13 +71,6 @@ Maximum number of rows to return for aggregated queries via the API.
 
 Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
-### `MB_AI_SERVICE_BASE_URL`
-
-- Type: string
-- Default: `http://localhost:8000`
-
-URL for the a AI Service.
-
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
 - Type: string
@@ -407,36 +400,6 @@ Whether or not the default GeoJSON maps are enabled.
 - [Exported as](../installation-and-operation/serialization.md): `download-row-limit`.
 
 Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.
-
-### `MB_EE_AI_FEATURES_ENABLED`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `ee-ai-features-enabled`
-
-Enable AI features.
-
-This feature is experimental.
-
-### `MB_EE_OPENAI_API_KEY`
-
-- Type: string
-- Default: `null`
-- [Configuration file name](./config-file.md): `ee-openai-api-key`
-
-The OpenAI API Key used in Metabase Enterprise.
-
-This feature is experimental.
-
-### `MB_EE_OPENAI_MODEL`
-
-- Type: string
-- Default: `gpt-4-turbo-preview`
-- [Configuration file name](./config-file.md): `ee-openai-model`
-
-The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo').
-
-This feature is experimental.
 
 ### `MB_EMAIL_FROM_ADDRESS`
 
@@ -1704,17 +1667,6 @@ Whether or not to display x-ray suggestions on the homepage. They will also be h
 - [Configuration file name](./config-file.md): `show-metabase-links`
 
 Whether or not to display Metabase links outside admin settings.
-
-### `MB_SHOW_METABOT`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: boolean
-- Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-metabot`.
-- [Configuration file name](./config-file.md): `show-metabot`
-
-Enables Metabot character on the home page.
 
 ### `MB_SHOW_STATIC_EMBED_TERMS`
 
