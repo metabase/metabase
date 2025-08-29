@@ -8,8 +8,6 @@ import type { EmbeddingHubStepId } from "../types";
 
 /**
  * Embedding Hub completion steps should be derived by the instance state at the time, or tracked manually in instance settings for some of them.
- *
- * TODO: make this live.
  */
 export const useCompletedEmbeddingHubSteps = (): Record<
   EmbeddingHubStepId,
@@ -30,16 +28,29 @@ export const useCompletedEmbeddingHubSteps = (): Record<
     [permissionsGraph],
   );
 
+  const isTestEmbedCreated = useSetting(
+    "embedding-hub-test-embed-snippet-created",
+  );
+
+  const isProductionEmbedCreated = useSetting(
+    "embedding-hub-production-embed-snippet-created",
+  );
+
   return useMemo(() => {
     return {
-      "create-test-embed": true,
+      "create-test-embed": isTestEmbedCreated ?? false,
       "add-data": false,
       "create-dashboard": false,
       "configure-row-column-security": hasConfiguredSandboxes,
       "secure-embeds": isSsoReady,
-      "embed-production": false,
+      "embed-production": isProductionEmbedCreated ?? false,
     };
-  }, [isSsoReady, hasConfiguredSandboxes]);
+  }, [
+    isTestEmbedCreated,
+    hasConfiguredSandboxes,
+    isSsoReady,
+    isProductionEmbedCreated,
+  ]);
 };
 
 /**

@@ -416,6 +416,8 @@ import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import test_tube_component from "./test_tube.svg?component";
+import test_tube_source from "./test_tube.svg?source";
 import text_bold_component from "./text_bold.svg?component";
 import text_bold_source from "./text_bold.svg?source";
 import text_italic_component from "./text_italic.svg?component";
@@ -1431,6 +1433,7 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     table_spaced: { component: table_component, source: table_source },
     collection: { component: folder_component, source: folder_source },
     beaker: { component: formula_component, source: formula_source },
+    test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
   };
 
@@ -1680,6 +1683,7 @@ export type IconName =
   | "table_spaced"
   | "collection"
   | "beaker"
+  | "test_tube"
   | "eye_filled";
 
 export const iconNames = Object.keys(Icons) as unknown as IconName[];
