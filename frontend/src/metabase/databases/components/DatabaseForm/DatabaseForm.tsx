@@ -1,5 +1,4 @@
-import { useFormikContext } from "formik";
-import { type JSX, useCallback, useEffect, useMemo, useState } from "react";
+import { type JSX, useCallback, useMemo, useState } from "react";
 
 import { Form, FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
@@ -46,7 +45,6 @@ export const DatabaseForm = ({
   ContinueWithoutDataSlot,
   config = {},
 }: DatabaseFormProps): JSX.Element => {
-  const { dirty } = useFormikContext<DatabaseData>();
   const isAdvanced = config.isAdvanced || false;
   const engineFieldState = config.engine?.fieldState;
 
@@ -54,10 +52,6 @@ export const DatabaseForm = ({
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
   const engine = getEngine(engines, engineKey);
-
-  useEffect(() => {
-    setIsDirty?.(dirty);
-  }, [dirty, setIsDirty]);
 
   const validationSchema = useMemo(() => {
     return getValidationSchema(engine, engineKey, isAdvanced);
@@ -103,11 +97,11 @@ export const DatabaseForm = ({
           isAdvanced={isAdvanced}
           onEngineChange={handleEngineChange}
           config={config}
+          setIsDirty={setIsDirty}
           showSampleDatabase={showSampleDatabase}
           location={location}
         />
         <DatabaseFormFooter
-          isDirty={dirty}
           isAdvanced={isAdvanced}
           onCancel={onCancel}
           showSampleDatabase={showSampleDatabase}

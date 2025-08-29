@@ -169,6 +169,7 @@ function ConnectionStringDescription({
           c="danger"
           fw="bold"
           fz="sm"
+          component="span"
         >
           <Group gap="xs" component="span">
             <Icon name="warning_round_filled" c="var(--mb-color-danger)" />
@@ -194,6 +195,7 @@ function ConnectionStringDescription({
           c="success"
           fw="bold"
           fz="sm"
+          component="span"
         >
           <Group gap="xs" component="span">
             <Icon

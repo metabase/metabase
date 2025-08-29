@@ -1,8 +1,7 @@
 import { useFormikContext } from "formik";
-import { type JSX, useMemo } from "react";
+import { type JSX, useEffect, useMemo } from "react";
 
 import { getVisibleFields } from "metabase/databases/utils/schema";
-import { Form } from "metabase/forms";
 import { Box } from "metabase/ui";
 import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 
@@ -24,6 +23,7 @@ interface DatabaseFormBodyProps {
   isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   config: DatabaseFormConfig;
+  setIsDirty?: (dirty: boolean) => void;
   showSampleDatabase?: boolean;
   location: "admin" | "setup" | "embedding_setup";
 }
@@ -37,65 +37,69 @@ export const DatabaseFormBody = ({
   isAdvanced,
   onEngineChange,
   config,
+  setIsDirty,
   showSampleDatabase = false,
   location,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, setValues } = useFormikContext<DatabaseData>();
+  const { values, dirty, setValues } = useFormikContext<DatabaseData>();
   const hasConnectionError = useHasConnectionError();
+
+  useEffect(() => {
+    setIsDirty?.(dirty);
+  }, [dirty, setIsDirty]);
 
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form data-testid="database-form" pt="md">
-      <Box
-        mah="calc(100vh - 20rem)"
-        style={{ overflowY: "auto" }}
-        px={location === "setup" ? "sm" : "xl"}
-        mb="md"
-      >
-        {engineFieldState !== "hidden" && (
-          <>
-            <DatabaseEngineField
-              engineKey={engineKey}
-              engines={engines}
-              isAdvanced={isAdvanced}
-              onChange={onEngineChange}
-              disabled={engineFieldState === "disabled"}
-              showSampleDatabase={showSampleDatabase}
-            />
-            <DatabaseEngineWarning
-              engineKey={engineKey}
-              engines={engines}
-              onChange={onEngineChange}
-            />
-          </>
-        )}
-        <DatabaseConnectionStringField
-          engineKey={engineKey}
-          location={location}
-          setValues={setValues}
-        />
-        {engine && (
-          <DatabaseNameField
-            engine={engine}
-            config={config}
-            autoFocus={autofocusFieldName === "name"}
-          />
-        )}
-        {fields.map((field) => (
-          <DatabaseDetailField
-            key={field.name}
-            field={field}
-            autoFocus={autofocusFieldName === field.name}
-            data-kek={field.name}
+    <Box
+      id="scrollable-database-form-body"
+      mah="calc(100vh - 20rem)"
+      mb="md"
+      px={location === "setup" ? "sm" : "xl"}
+      style={{ overflowY: "auto", position: "relative" }}
+    >
+      {engineFieldState !== "hidden" && (
+        <>
+          <DatabaseEngineField
             engineKey={engineKey}
-            engine={engine}
+            engines={engines}
+            isAdvanced={isAdvanced}
+            onChange={onEngineChange}
+            disabled={engineFieldState === "disabled"}
+            showSampleDatabase={showSampleDatabase}
           />
-        ))}
-        {location === "admin" && hasConnectionError && <DatabaseFormError />}
-      </Box>
-    </Form>
+          <DatabaseEngineWarning
+            engineKey={engineKey}
+            engines={engines}
+            onChange={onEngineChange}
+          />
+        </>
+      )}
+      <DatabaseConnectionStringField
+        engineKey={engineKey}
+        location={location}
+        setValues={setValues}
+      />
+      {engine && (
+        <DatabaseNameField
+          engine={engine}
+          config={config}
+          autoFocus={autofocusFieldName === "name"}
+        />
+      )}
+      {fields.map((field) => (
+        <DatabaseDetailField
+          key={field.name}
+          field={field}
+          autoFocus={autofocusFieldName === field.name}
+          data-kek={field.name}
+          engineKey={engineKey}
+          engine={engine}
+        />
+      ))}
+      {location === "admin" && hasConnectionError && <DatabaseFormError />}
+    </Box>
   );
 };

@@ -14,7 +14,7 @@ export type TipProps = {
   body: ReactNode;
   noIcon?: boolean;
   title: string;
-} & Omit<FlexProps, "title">;
+} & Pick<FlexProps, "pb">;
 
 export const TroubleshootingTip = (props: TipProps) => {
   const { title, body, noIcon, ...flexProps } = props;

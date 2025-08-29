@@ -1,5 +1,7 @@
 import { useFormikContext } from "formik";
-import { useState } from "react";
+import { Fragment, useRef, useState } from "react";
+import { useMount } from "react-use";
+import slugg from "slugg";
 import { t } from "ttag";
 
 import { useFormErrorMessage } from "metabase/forms";
@@ -21,12 +23,33 @@ export const DatabaseFormError = () => {
   const troubleshootingTips = useTroubleshootingTips(
     showMoreTips ? undefined : initialTipCount,
   );
+  const ref = useRef<HTMLDivElement>(null);
   const title = isHostAndPortError
     ? t`Hmm, we couldn't connect to the database`
     : t`${applicationName} tried, but couldn't connect`;
 
+  useMount(() => {
+    if (ref.current) {
+      ref.current.scrollIntoView({ behavior: "smooth" });
+    }
+  });
+
+  const onCheckHostAndPortClick = () => {
+    // Scroll to the area with errors
+    const scrollableEl = document.getElementById(
+      "scrollable-database-form-body",
+    );
+    const dataErrorEl =
+      scrollableEl?.querySelector<HTMLDivElement>("div[data-error]");
+
+    if (dataErrorEl) {
+      const y = dataErrorEl.offsetTop - 48; // 48px clearance
+      scrollableEl?.scrollTo({ behavior: "smooth", top: y });
+    }
+  };
+
   return (
-    <Paper className={S.paper}>
+    <Paper className={S.paper} ref={ref}>
       <Box p="md" pb={0}>
         <Alert
           bd="1px solid warning"
@@ -39,10 +62,10 @@ export const DatabaseFormError = () => {
           {errorMessage}
         </Alert>
         {troubleshootingTips.map((tipProps, _index) => (
-          <>
+          <Fragment key={slugg(tipProps.title)}>
             {!!_index && <Divider variant="dashed" />}
-            <TroubleshootingTip key={`tip-${_index}`} {...tipProps} />
-          </>
+            <TroubleshootingTip {...tipProps} />
+          </Fragment>
         ))}
         {showMoreTips && <AdditionalHelpButtonGroup />}
       </Box>
@@ -53,7 +76,7 @@ export const DatabaseFormError = () => {
             fw={700}
             fz="md"
             leftSection={<Icon name="gear" size={12} />}
-            onClick={() => alert("TODO")}
+            onClick={onCheckHostAndPortClick}
             variant="subtle"
           >
             {t`Check Host and Port settings`}

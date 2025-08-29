@@ -16,7 +16,6 @@ import {
 
 interface DatabaseFormFooterProps {
   isAdvanced: boolean;
-  isDirty: boolean;
   onCancel?: () => void;
   showSampleDatabase?: boolean;
   ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
@@ -24,12 +23,11 @@ interface DatabaseFormFooterProps {
 
 export const DatabaseFormFooter = ({
   isAdvanced,
-  isDirty,
   onCancel,
   showSampleDatabase,
   ContinueWithoutDataSlot,
 }: DatabaseFormFooterProps) => {
-  const { values } = useFormikContext<DatabaseData>();
+  const { values, dirty, isSubmitting } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
   const hasConnectionError = useHasConnectionError();
 
@@ -55,9 +53,11 @@ export const DatabaseFormFooter = ({
           )}
 
           <Flex gap="sm">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
+            <Button onClick={onCancel} disabled={isSubmitting}>
+              {t`Cancel`}
+            </Button>
             <FormSubmitButton
-              disabled={!isDirty}
+              disabled={!dirty || isSubmitting}
               variant="filled"
               label={isNew ? t`Save` : t`Save changes`}
             />
