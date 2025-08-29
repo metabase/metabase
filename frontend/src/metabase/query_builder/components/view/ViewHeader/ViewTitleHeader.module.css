@@ -183,6 +183,17 @@
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 
+  @media screen and (max-width: 70em) {
+    &.isNavBarOpen {
+      .ViewHeaderActionPanel {
+        margin-left: 0;
+      }
+
+      flex-direction: column;
+      align-items: start;
+    }
+  }
+
   @media screen and (max-width: 40em) {
     flex-direction: column;
     align-items: start;
