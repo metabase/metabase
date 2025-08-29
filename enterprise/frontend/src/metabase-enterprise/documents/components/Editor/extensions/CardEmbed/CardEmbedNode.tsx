@@ -1,3 +1,4 @@
+import { autoUpdate, useFloating } from "@floating-ui/react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
   type NodeViewProps,
@@ -5,7 +6,7 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
@@ -17,8 +18,10 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
+import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { navigateToCardFromDocument } from "metabase-enterprise/documents/actions";
 import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
+import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
@@ -29,7 +32,9 @@ import {
   openVizSettingsSidebar,
 } from "../../../../documents.slice";
 import { useCardData } from "../../../../hooks/use-card-data";
+import { CommentsMenu } from "../../CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
+import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
@@ -82,6 +87,7 @@ export const CardEmbed: Node<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-name"),
       },
+      ...createIdAttribute(),
     };
   },
 
@@ -109,6 +115,10 @@ export const CardEmbed: Node<{
     ];
   },
 
+  addProseMirrorPlugins() {
+    return [createProseMirrorPlugin("cardEmbed")];
+  },
+
   renderText({ node }) {
     return formatCardEmbed(node.attrs as CardEmbedAttributes);
   },
@@ -120,6 +130,20 @@ export const CardEmbed: Node<{
 
 export const CardEmbedComponent = memo(
   ({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) => {
+    const { childTargetId, comments, hasUnsavedChanges } = useDocumentContext();
+    const [hovered, setHovered] = useState(false);
+    const { _id } = node.attrs;
+    const isOpen = childTargetId === _id;
+    const threads = useMemo(
+      () => getTargetChildCommentThreads(comments, _id),
+      [comments, _id],
+    );
+    const { refs, floatingStyles } = useFloating({
+      placement: "left-start",
+      whileElementsMounted: autoUpdate,
+      strategy: "fixed",
+    });
+
     const { id, name } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
@@ -325,187 +349,206 @@ export const CardEmbedComponent = memo(
     }
 
     return (
-      <NodeViewWrapper
-        className={styles.embedWrapper}
-        data-testid="document-card-embed"
-      >
-        <Box
-          className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
-            [styles.selected]: selected,
+      <>
+        <NodeViewWrapper
+          className={cx(styles.embedWrapper, {
+            [styles.open]: isOpen,
           })}
+          data-testid="document-card-embed"
+          ref={refs.setReference}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
         >
-          {card && (
-            <Box className={styles.questionHeader}>
-              <Flex align="center" justify="space-between" gap="0.5rem">
-                {isEditingTitle ? (
-                  <TextInput
-                    ref={titleInputRef}
-                    value={editedTitle}
-                    onChange={(e) => setEditedTitle(e.target.value)}
-                    onBlur={handleTitleSave}
-                    onKeyDown={handleTitleKeyDown}
-                    size="md"
-                    flex={1}
-                    styles={{
-                      input: {
-                        fontWeight: 700,
-                        fontSize: "1rem",
-                        border: "1px solid transparent",
-                        padding: 0,
-                        height: "auto",
-                        minHeight: "auto",
-                        lineHeight: 1.55,
-                        backgroundColor: "transparent",
-                        "&:focus": {
-                          border: "1px solid var(--mb-color-border)",
-                          backgroundColor: "var(--mb-color-bg-white)",
-                          padding: "0 0.25rem",
-                        },
-                      },
-                    }}
-                  />
-                ) : (
-                  <Box className={styles.titleContainer}>
-                    <Text
+          <Box
+            className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
+              [styles.selected]: selected,
+            })}
+          >
+            {card && (
+              <Box className={styles.questionHeader}>
+                <Flex align="center" justify="space-between" gap="0.5rem">
+                  {isEditingTitle ? (
+                    <TextInput
+                      ref={titleInputRef}
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      onBlur={handleTitleSave}
+                      onKeyDown={handleTitleKeyDown}
                       size="md"
-                      color="text-dark"
-                      fw={700}
-                      onClick={handleTitleClick}
-                      c="pointer"
-                    >
-                      {displayName}
-                    </Text>
-                    {canWrite && (
-                      <Icon
-                        name="pencil"
-                        size={14}
-                        color="var(--mb-color-text-medium)"
-                        className={styles.titleEditIcon}
+                      flex={1}
+                      styles={{
+                        input: {
+                          fontWeight: 700,
+                          fontSize: "1rem",
+                          border: "1px solid transparent",
+                          padding: 0,
+                          height: "auto",
+                          minHeight: "auto",
+                          lineHeight: 1.55,
+                          backgroundColor: "transparent",
+                          "&:focus": {
+                            border: "1px solid var(--mb-color-border)",
+                            backgroundColor: "var(--mb-color-bg-white)",
+                            padding: "0 0.25rem",
+                          },
+                        },
+                      }}
+                    />
+                  ) : (
+                    <Box className={styles.titleContainer}>
+                      <Text
+                        size="md"
+                        color="text-dark"
+                        fw={700}
+                        onClick={handleTitleClick}
                         c="pointer"
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                          setEditedTitle(displayName);
-                          setIsEditingTitle(true);
-                        }}
-                      />
-                    )}
-                  </Box>
-                )}
-                {!isEditingTitle && (
-                  <Menu withinPortal position="bottom-end" data-hide-on-print>
-                    <Menu.Target>
-                      <Flex
-                        component="button"
-                        bg="transparent"
-                        c="pointer"
-                        p="0.25rem"
-                        align="center"
-                        justify="center"
-                        className={styles.menuButton}
-                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
                       >
+                        {displayName}
+                      </Text>
+                      {canWrite && (
                         <Icon
-                          name="ellipsis"
-                          size={16}
+                          name="pencil"
+                          size={14}
                           color="var(--mb-color-text-medium)"
+                          className={styles.titleEditIcon}
+                          c="pointer"
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            setEditedTitle(displayName);
+                            setIsEditingTitle(true);
+                          }}
                         />
-                      </Flex>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Item
-                        onClick={handleEditVisualizationSettings}
-                        disabled={!canWrite}
-                        leftSection={<Icon name="palette" size={14} />}
-                      >
-                        {t`Edit Visualization`}
-                      </Menu.Item>
-                      <Menu.Item
-                        onClick={() => setIsModifyModalOpen(true)}
-                        disabled={!canWrite}
-                        leftSection={
+                      )}
+                    </Box>
+                  )}
+                  {!isEditingTitle && (
+                    <Menu withinPortal position="bottom-end" data-hide-on-print>
+                      <Menu.Target>
+                        <Flex
+                          component="button"
+                          bg="transparent"
+                          c="pointer"
+                          p="0.25rem"
+                          align="center"
+                          justify="center"
+                          className={styles.menuButton}
+                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        >
                           <Icon
-                            name={isNativeQuestion ? "sql" : "notebook"}
-                            size={14}
+                            name="ellipsis"
+                            size={16}
+                            color="var(--mb-color-text-medium)"
                           />
-                        }
-                      >
-                        {t`Edit Query`}
-                      </Menu.Item>
-                      <Menu.Item
-                        onClick={handleReplaceQuestion}
-                        disabled={!canWrite}
-                        leftSection={<Icon name="refresh" size={14} />}
-                      >
-                        {t`Replace`}
-                      </Menu.Item>
-                    </Menu.Dropdown>
-                  </Menu>
-                )}
-              </Flex>
-            </Box>
-          )}
-          {series ? (
-            <>
+                        </Flex>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item
+                          onClick={handleEditVisualizationSettings}
+                          disabled={!canWrite}
+                          leftSection={<Icon name="palette" size={14} />}
+                        >
+                          {t`Edit Visualization`}
+                        </Menu.Item>
+                        <Menu.Item
+                          onClick={() => setIsModifyModalOpen(true)}
+                          disabled={!canWrite}
+                          leftSection={
+                            <Icon
+                              name={isNativeQuestion ? "sql" : "notebook"}
+                              size={14}
+                            />
+                          }
+                        >
+                          {t`Edit Query`}
+                        </Menu.Item>
+                        <Menu.Item
+                          onClick={handleReplaceQuestion}
+                          disabled={!canWrite}
+                          leftSection={<Icon name="refresh" size={14} />}
+                        >
+                          {t`Replace`}
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  )}
+                </Flex>
+              </Box>
+            )}
+            {series ? (
+              <>
+                <Box className={styles.questionResults}>
+                  <Visualization
+                    rawSeries={series}
+                    metadata={metadata}
+                    onChangeCardAndRun={handleChangeCardAndRun}
+                    getExtraDataForClick={() => ({})}
+                    isEditing={false}
+                    isDashboard={false}
+                    isDocument={true}
+                    showTitle={false}
+                    error={datasetError?.message}
+                    errorIcon={datasetError?.icon}
+                  />
+                </Box>
+              </>
+            ) : (
               <Box className={styles.questionResults}>
-                <Visualization
-                  rawSeries={series}
-                  metadata={metadata}
-                  onChangeCardAndRun={handleChangeCardAndRun}
-                  getExtraDataForClick={() => ({})}
-                  isEditing={false}
-                  isDashboard={false}
-                  isDocument={true}
-                  showTitle={false}
-                  error={datasetError?.message}
-                  errorIcon={datasetError?.icon}
+                <ChartSkeleton
+                  display={(card?.display as CardDisplayType) || "table"}
                 />
               </Box>
-            </>
-          ) : (
-            <Box className={styles.questionResults}>
-              <ChartSkeleton
-                display={(card?.display as CardDisplayType) || "table"}
+            )}
+          </Box>
+          {isModifyModalOpen &&
+            card &&
+            (isNativeQuestion ? (
+              <NativeQueryModal
+                card={card}
+                isOpen={isModifyModalOpen}
+                onClose={() => setIsModifyModalOpen(false)}
+                initialDataset={dataset}
+                onSave={(result) => {
+                  updateAttributes({
+                    id: result.card_id,
+                    name: null,
+                  });
+                  setIsModifyModalOpen(false);
+                }}
               />
-            </Box>
+            ) : (
+              <ModifyQuestionModal
+                card={card}
+                isOpen={isModifyModalOpen}
+                onClose={() => setIsModifyModalOpen(false)}
+                onSave={(result) => {
+                  updateAttributes({
+                    id: result.card_id,
+                    name: null,
+                  });
+                  setIsModifyModalOpen(false);
+                }}
+              />
+            ))}
+          {isReplaceModalOpen && (
+            <QuestionPickerModal
+              onChange={handleReplaceModalSelect}
+              onClose={() => setIsReplaceModalOpen(false)}
+            />
           )}
-        </Box>
-        {isModifyModalOpen &&
-          card &&
-          (isNativeQuestion ? (
-            <NativeQueryModal
-              card={card}
-              isOpen={isModifyModalOpen}
-              onClose={() => setIsModifyModalOpen(false)}
-              initialDataset={dataset}
-              onSave={(result) => {
-                updateAttributes({
-                  id: result.card_id,
-                  name: null,
-                });
-                setIsModifyModalOpen(false);
-              }}
-            />
-          ) : (
-            <ModifyQuestionModal
-              card={card}
-              isOpen={isModifyModalOpen}
-              onClose={() => setIsModifyModalOpen(false)}
-              onSave={(result) => {
-                updateAttributes({
-                  id: result.card_id,
-                  name: null,
-                });
-                setIsModifyModalOpen(false);
-              }}
-            />
-          ))}
-        {isReplaceModalOpen && (
-          <QuestionPickerModal
-            onChange={handleReplaceModalSelect}
-            onClose={() => setIsReplaceModalOpen(false)}
+        </NodeViewWrapper>
+
+        {document && (
+          <CommentsMenu
+            active={isOpen}
+            disabled={hasUnsavedChanges}
+            href={`/document/${document.id}/comments/${_id}`}
+            ref={refs.setFloating}
+            show={isOpen || hovered}
+            threads={threads}
+            style={floatingStyles}
           />
         )}
-      </NodeViewWrapper>
+      </>
     );
   },
   (prevProps, nextProps) => {

@@ -106,23 +106,20 @@ export const Paragraph = Node.create<ParagraphOptions>({
 });
 
 export const ParagraphNodeView = ({ node }: NodeViewProps) => {
-  const { _id } = node.attrs;
   const { childTargetId, comments, document, hasUnsavedChanges } =
     useDocumentContext();
-
+  const [hovered, setHovered] = useState(false);
+  const { _id } = node.attrs;
   const isOpen = childTargetId === _id;
   const threads = useMemo(
     () => getTargetChildCommentThreads(comments, _id),
     [comments, _id],
   );
-
   const { refs, floatingStyles } = useFloating({
     placement: "left-start",
     whileElementsMounted: autoUpdate,
     strategy: "fixed",
   });
-
-  const [hovered, setHovered] = useState(false);
 
   return (
     <>
