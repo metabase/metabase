@@ -7,14 +7,13 @@
    [metabase.lib.native :as lib.native]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.test :as mt]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel variable-tag-test
-  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags (mt/metadata-provider) input))))
+  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
     #{"foo"} "SELECT * FROM table WHERE {{foo}} AND some_field IS NOT NULL"
     #{"foo" "bar"} "SELECT * FROM table WHERE {{foo}} AND some_field = {{bar}}"
     ;; Duplicates are flattened.
@@ -23,7 +22,7 @@
     #{} "SELECT * FROM table WHERE {{&foo}}"))
 
 (deftest ^:parallel snippet-tag-test
-  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags (mt/metadata-provider) input))))
+  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
     #{"snippet:   foo  "} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
     #{"snippet:   foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
     ;; TODO: This logic should trim the whitespace and unify these two snippet names.
@@ -32,7 +31,7 @@
     #{"snippet: foo" "snippet:foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
 
 (deftest ^:parallel card-tag-test
-  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags (mt/metadata-provider) input))))
+  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
     #{"#123"} "SELECT * FROM table WHERE {{ #123 }} AND some_field IS NOT NULL"
     ;; TODO: This logic should trim the whitespace and unify these two card tags.
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
@@ -78,14 +77,14 @@
                         :name         "bar"
                         :display-name "Bar"
                         :id           (:id old-tag)}}
-                (lib.native/extract-template-tags (mt/metadata-provider) "SELECT * FROM {{bar}}"
+                (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}}"
                                                   {"foo" old-tag}))))
       (testing "keeps display-name if it's customized"
         (is (=? {"bar" {:type         :text
                         :name         "bar"
                         :display-name "Custom Name"
                         :id           (:id old-tag)}}
-                (lib.native/extract-template-tags (mt/metadata-provider) "SELECT * FROM {{bar}}"
+                (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}}"
                                                   {"foo" (assoc old-tag :display-name "Custom Name")}))))
 
       (testing "works with other variables present, if they don't change"
@@ -98,7 +97,7 @@
                             :name         "bar"
                             :display-name "Bar"
                             :id           (:id old-tag)}}
-                  (lib.native/extract-template-tags (mt/metadata-provider) "SELECT * FROM {{bar}} AND field = {{other}}"
+                  (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}} AND field = {{other}}"
                                                     {"foo"   old-tag
                                                      "other" other})))))))
 
