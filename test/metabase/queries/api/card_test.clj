@@ -4389,7 +4389,7 @@
                                        {:database (mt/id)
                                         :type :native
                                         :native {:query (str "SELECT * FROM products {{snippet:" "snippet-1" "}}")
-                                                 :template-tags {(str "snippet:" "snippet-1")
+                                                 :template-tags {"snippet:snippet-1"
                                                                  {:type :snippet
                                                                   :snippet-id (:id snippet-1)
                                                                   :snippet-name "snippet-1"
@@ -4424,7 +4424,7 @@
                                                               {:type :snippet
                                                                :snippet-id (:id snippet-1)
                                                                :snippet-name "snippet-1"
-                                                               :name (str "snippet:" "snippet-1")
+                                                               :name "snippet:snippet-1"
                                                                :display-name "Snippet 1"}
                                                               (str "snippet:" "snippet-2")
                                                               {:type :snippet
@@ -4432,6 +4432,43 @@
                                                                :snippet-name "snippet-2"
                                                                :name (str "snippet:" "snippet-2")
                                                                :display-name "Snippet 2"}}}}}))))))
+
+(deftest cannot-create-new-card-with-cyclic-snippets-test
+  (testing "Cannot create a new card that references snippets with existing cycles"
+    ;; Create two snippets that reference each other in a cycle
+    (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:name          "snippet-1"
+                                                        :content       "WHERE category = 'Electronics'"
+                                                        :template_tags {"snippet:snippet-2"
+                                                                        {:type         :snippet
+                                                                         :snippet-name "snippet-2"
+                                                                         :name         "snippet:snippet-2"
+                                                                         :display-name "Snippet 2"}}}
+                   :model/NativeQuerySnippet _snippet-2 {:name          "snippet-2"
+                                                         :content       "AND price > 100 {{snippet: snippet-1}}"
+                                                         :template_tags {"snippet: snippet-1"
+                                                                         {:type         :snippet
+                                                                          :snippet-name "snippet-1"
+                                                                          :name         "snippet:snippet-1"
+                                                                          :display-name "Snippet 1"}}}]
+      (t2/update! :model/NativeQuerySnippet (:id snippet-1)
+                  {:content "WHERE category = 'Electronics' {{snippet: snippet-2}}"})
+      ;; Now try to create a NEW card that references snippet-1 (which has a cycle with snippet-2)
+      ;; This should fail even though the card doesn't exist yet
+      (is (= "Cannot save card with cycles."
+             (mt/user-http-request :crowberto :post 400 "card"
+                                   {:name                   "New Card with Cyclic Snippets"
+                                    :dataset_query
+                                    {:database (mt/id)
+                                     :type     :native
+                                     :native   {:query         "SELECT * FROM products {{snippet:snippet-1}}"
+                                                :template-tags {"snippet:snippet-1"
+                                                                {:type         :snippet
+                                                                 :snippet-id   (:id snippet-1)
+                                                                 :snippet-name "snippet-1"
+                                                                 :name         "snippet:snippet-1"
+                                                                 :display-name "Snippet 1"}}}}
+                                    :display                "table"
+                                    :visualization_settings {}}))))))
 
 (deftest e2e-card-update-invalidates-cache-test
   (testing "Card update invalidates card's cache (#55955)"
