@@ -55,7 +55,7 @@ export const Discussions = ({
             targetId={targetId}
             targetType={targetType}
           />
-          {index < threads.length - 1 && <Divider />}
+          {index < threads.length - 1 && <Divider key={`divider-${index}`} />}
         </>
       ))}
 

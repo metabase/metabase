@@ -1,5 +1,5 @@
 .container {
-  background: var(--mb-color-bg-white, #fff);
+  /* background: var(--mb-color-bg-white, #fff); */
   border: 1px solid var(--mb-color-border);
   box-shadow: var(--mantine-shadow-xs);
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
@@ -22,6 +22,7 @@
       pointer-events: none;
     }
   }
+
   &:not(.active):focus-within {
     .submitBtn {
       visibility: visible;

@@ -59,7 +59,7 @@ export function DiscussionActionPanel({
     >
       <Group gap="0">
         {/*<Tooltip label={t`Add reaction`}>
-           TODO: add emoji picker 
+           TODO: add emoji picker
           <ActionIcon
             size={ACTION_ICON_SIZE}
             onClick={() => onReaction?.(comment, "👍")}
@@ -83,7 +83,7 @@ export function DiscussionActionPanel({
         <Popover
           opened={popoverOpened}
           onChange={setPopoverOpened}
-          width={rem(200)}
+          width={rem(140)}
           position="bottom-end"
         >
           <Popover.Target>
@@ -98,18 +98,16 @@ export function DiscussionActionPanel({
           </Popover.Target>
           <Popover.Dropdown>
             <Paper p="0.25rem">
-              {variant === "discussion" && (
-                <Button
-                  {...ACTION_BUTTON_STYLE_PROPS}
-                  leftSection={<Icon name="link" c="text-primary" />}
-                  onClick={() => {
-                    onCopyLink?.(comment);
-                    setPopoverOpened(false);
-                  }}
-                >
-                  {t`Copy link to discussion`}
-                </Button>
-              )}
+              <Button
+                {...ACTION_BUTTON_STYLE_PROPS}
+                leftSection={<Icon name="link" c="text-primary" />}
+                onClick={() => {
+                  onCopyLink?.(comment);
+                  setPopoverOpened(false);
+                }}
+              >
+                {t`Copy link`}
+              </Button>
               <Button
                 {...ACTION_BUTTON_STYLE_PROPS}
                 leftSection={<Icon name="pencil" c="text-primary" />}
@@ -118,7 +116,7 @@ export function DiscussionActionPanel({
                   setPopoverOpened(false);
                 }}
               >
-                {t`Edit comment`}
+                {t`Edit`}
               </Button>
               <Button
                 {...ACTION_BUTTON_STYLE_PROPS}
@@ -128,7 +126,7 @@ export function DiscussionActionPanel({
                   setPopoverOpened(false);
                 }}
               >
-                {t`Delete comment`}
+                {t`Delete`}
               </Button>
             </Paper>
           </Popover.Dropdown>

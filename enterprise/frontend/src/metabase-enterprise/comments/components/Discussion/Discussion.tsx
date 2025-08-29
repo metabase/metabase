@@ -74,8 +74,8 @@ export const Discussion = ({
     updateComment({ id: comment.id, content: newContent });
   };
 
-  const handleCopyLink = () => {
-    const url = getUrl({ childTargetId, targetId, targetType });
+  const handleCopyLink = (comment: Comment) => {
+    const url = getUrl({ childTargetId, targetId, targetType, comment });
 
     navigator.clipboard.writeText(`${window.location.origin}${url}`);
     setLinkCopied(true);
@@ -122,13 +122,19 @@ function getUrl({
   childTargetId,
   targetId,
   targetType,
+  comment,
 }: {
   childTargetId: EntityId | null;
   targetId: EntityId;
   targetType: CommentEntityType;
+  comment: Comment | undefined;
 }) {
   return match(targetType)
     .with("document", () => {
+      if (comment) {
+        return `/document/${targetId}/comments/${childTargetId}#comment-${comment.id}`;
+      }
+
       return `/document/${targetId}/comments/${childTargetId}`;
     })
     .exhaustive();

@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import dayjs from "dayjs";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
@@ -34,6 +35,10 @@ type DiscussionCommentProps = {
   onCopyLink?: (comment: Comment) => unknown;
 };
 
+function getCommentNodeId(comment: Comment) {
+  return `comment-${comment.id}`;
+}
+
 const lineHeightPx = 17;
 export function DiscussionComment({
   comment,
@@ -58,13 +63,19 @@ export function DiscussionComment({
     editingHandler.close();
   };
 
+  const isTarget =
+    document.location.hash.substring(1) === getCommentNodeId(comment);
+
   if (comment.is_deleted) {
     return (
       <Timeline.Item
         classNames={{
-          item: S.commentRoot,
+          item: cx(S.commentRoot, {
+            [S.target]: isTarget,
+          }),
           itemBullet: S.commentBulletDeleted,
         }}
+        id={getCommentNodeId(comment)}
         mt="1.25rem"
         bullet={<Icon name="trash" />}
       >
@@ -77,8 +88,11 @@ export function DiscussionComment({
 
   return (
     <Timeline.Item
-      className={S.commentRoot}
+      className={cx(S.commentRoot, {
+        [S.target]: isTarget,
+      })}
       bullet={<DiscussionAvatar user={comment.creator} />}
+      id={getCommentNodeId(comment)}
     >
       {!isEditing && (
         <DiscussionActionPanel
