@@ -30,6 +30,7 @@ import type {
   VisualizerColumnReference,
   VisualizerDataSource,
   VisualizerDataSourceId,
+  XAxisScale,
 } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
@@ -455,13 +456,16 @@ export function maybeImportDimensionsFromOtherDataSources(
 
 function sortDimensionsByXAxisScale(
   dimensions: DatasetColumn[],
-  xAxisScale: string | undefined,
+  xAxisScale: XAxisScale | undefined,
 ): DatasetColumn[] {
   if (!xAxisScale) {
     return dimensions;
   }
 
-  const priorityPredicates: Record<string, (col: DatasetColumn) => boolean> = {
+  const priorityPredicates: Record<
+    XAxisScale,
+    (col: DatasetColumn) => boolean
+  > = {
     timeseries: (col) => isDate(col),
     linear: (col) => isNumeric(col),
     pow: (col) => isNumeric(col),
