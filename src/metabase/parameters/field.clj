@@ -64,9 +64,9 @@
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
   [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}]
-  ;; TODO: explain why using remapped fields is restricted to `has_field_values=list`
-  (if-let [remapped-field-id (when (= has-field-values-type :list)
-                               (chain-filter/remapped-field-id field-id))]
+  ;; Check for remapped field regardless of has_field_values type to fix #41999
+  ;; This ensures string FK fields with remapping work correctly
+  (if-let [remapped-field-id (chain-filter/remapped-field-id field-id)]
     {:values          (search-values (api/check-404 field)
                                      (api/check-404 (t2/select-one :model/Field :id remapped-field-id)))
      :field_id        field-id
