@@ -9,6 +9,18 @@ import { idTag, invalidateTags } from "./tags";
 
 export const gitSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    importGit: builder.mutation({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/git-source-of-truth/import",
+      }),
+    }),
+    exportGit: builder.mutation({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/git-source-of-truth/export",
+      }),
+    }),
     listGitBranches: builder.query<GitBranch[], void>({
       query: () => ({
         url: `/api/ee/branch/`,
@@ -57,6 +69,8 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useImportGitMutation,
+  useExportGitMutation,
   useListGitBranchesQuery,
   useGetGitBranchQuery,
   useCreateGitBranchMutation,

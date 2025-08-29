@@ -8,7 +8,6 @@ import {
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { useIsInLibrary } from "metabase-enterprise/git_sync/useIsInLibrary";
 import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
@@ -140,7 +139,6 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [fetchTransform, { isFetching }] = useLazyGetTransformQuery();
   const [runTransform, { isLoading: isRunning }] = useRunTransformMutation();
   const { sendErrorToast } = useMetadataToasts();
-  const readOnly = useIsInLibrary("transform");
 
   const handleRun = async () => {
     trackTranformTriggerManualRun({
@@ -163,7 +161,6 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
       run={transform.last_run}
       isLoading={isFetching || isRunning}
       onRun={handleRun}
-      isDisabled={readOnly}
     />
   );
 }
@@ -176,7 +173,6 @@ function TagSection({ transform }: TagSectionProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-  const readOnly = useIsInLibrary("transform");
 
   const handleTagListChange = async (
     tagIds: TransformTagId[],
@@ -207,9 +203,7 @@ function TagSection({ transform }: TagSectionProps) {
       <TagMultiSelect
         tagIds={transform.tag_ids ?? []}
         onChange={handleTagListChange}
-        disabled={readOnly}
       />
     </Box>
   );
 }
-

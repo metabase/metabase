@@ -2354,6 +2354,55 @@ describe("issue 52451", () => {
   });
 });
 
+describe("issue 56602", () => {
+  const productsModelDetails = {
+    name: "M1",
+    type: "model",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const ordersModelDetails = {
+    name: "M2",
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  const expressionName = "awesome stuff";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use expressions when joining models (metabase#56602)", () => {
+    H.createQuestion(productsModelDetails);
+    H.createQuestion(ordersModelDetails);
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(productsModelDetails.name).click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(ordersModelDetails.name).click();
+    });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      name: expressionName,
+      formula: `coalesce([User -> Birth Date], [${ordersModelDetails.name} -> Created At])`,
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().should("contain", expressionName);
+  });
+});
+
 describe("issue 61010", () => {
   const CUSTOM_COLUMN_NAME = "Foo";
   const AGGREGATION_NAME = "New count";

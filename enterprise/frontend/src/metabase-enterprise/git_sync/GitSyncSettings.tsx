@@ -5,19 +5,20 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import ActionButton from "metabase/common/components/ActionButton";
 import { useSetting } from "metabase/common/hooks";
+import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import {
-  Form,
-  FormProvider,
-  FormSubmitButton,
-  FormSwitch,
-} from "metabase/forms";
-import { Box, Flex, Stack, Text } from "metabase/ui";
-import type { EnterpriseSettings } from "metabase-types/api";
+  useExportGitMutation,
+  useImportGitMutation,
+} from "metabase-enterprise/api";
 
 export const GitSyncSettings = () => {
+  const [importGit, { isLoading: isImporting }] = useImportGitMutation();
+  const [exportGit, { isLoading: isExporting }] = useExportGitMutation();
+
+  const isLoading = isImporting || isExporting;
+
   return (
     <SettingsPageWrapper title={t`Git sync settings`}>
       <SettingsSection
@@ -38,9 +39,9 @@ export const GitSyncSettings = () => {
           inputType="text"
         />
         <AdminSettingInput
-          name="git-sync-key"
-          title={t`RSA key`}
-          inputType="textarea"
+          name="git-sync-token"
+          title={t`Github PAT`}
+          inputType="password"
         />
         <AdminSettingInput
           name="git-sync-default-branch"
@@ -48,7 +49,68 @@ export const GitSyncSettings = () => {
           inputType="text"
         />
       </SettingsSection>
-      <GitSyncEntities />
+      <SettingsSection
+        title={t`Sync control`}
+        description={t`Manually trigger a git sync to push any local changes to the remote repository and pull down any changes from the remote repository.`}
+      >
+        <AdminSettingInput
+          name="git-sync-read-only"
+          // eslint-disable-next-line
+          description={t`Make this instance read only, preventing any changes except when pulled from git.`}
+          title={t`Read only mode`}
+          inputType="boolean"
+        />
+        <Flex gap="md" align="end">
+          <AdminSettingInput
+            name="git-sync-import-branch"
+            // eslint-disable-next-line
+            description={t`Metabase will pull in all content from this branch`}
+            title={t`Import branch`}
+            inputType="text"
+            w="20rem"
+          />
+          <ActionButton
+            primary
+            actionFn={() => importGit({}).unwrap()}
+            variant="filled"
+            failedText={t`Sync failed`}
+            activeText={t`Syncing...`}
+            successText={t`Synced`}
+            useLoadingSpinner
+            disabled={isLoading}
+          >
+            <Group align="center" gap="sm">
+              <Icon name="download" />
+              {t`Import`}
+            </Group>
+          </ActionButton>
+        </Flex>
+        <Flex gap="md" align="end">
+          <AdminSettingInput
+            name="git-sync-export-branch"
+            // eslint-disable-next-line
+            description={t`Metabase will save all content to this branch`}
+            title={t`Export branch`}
+            inputType="text"
+            w="20rem"
+          />
+          <ActionButton
+            primary
+            actionFn={() => exportGit({}).unwrap()}
+            variant="filled"
+            failedText={t`Sync failed`}
+            activeText={t`Syncing...`}
+            successText={t`Synced`}
+            useLoadingSpinner
+            disabled={isLoading}
+          >
+            <Group align="center" gap="sm">
+              <Icon name="upload" />
+              {t`Export`}
+            </Group>
+          </ActionButton>
+        </Flex>
+      </SettingsSection>
     </SettingsPageWrapper>
   );
 };
@@ -66,48 +128,5 @@ const GitSyncStatus = () => {
       <Box bdrs="50%" h="14" w="14" mr="sm" bg={color} />
       <Text c="text-medium">{message}</Text>
     </Flex>
-  );
-};
-
-const GitSyncEntities = () => {
-  const {
-    value: entities,
-    isLoading,
-    updateSetting,
-  } = useAdminSetting("git-sync-entities");
-
-  const handleSubmit = (settings: EnterpriseSettings["git-sync-entities"]) => {
-    updateSetting({
-      key: "git-sync-entities",
-      value: settings,
-    });
-  };
-
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading={isLoading} />;
-  }
-
-  return (
-    <SettingsSection title={t`Entities to sync`}>
-      <FormProvider
-        onSubmit={handleSubmit}
-        initialValues={entities || {}}
-        enableReinitialize
-      >
-        <Form>
-          <Stack gap="sm">
-            <FormSwitch name="transform" label={t`Transforms`} />
-            <FormSwitch name="snippet" label={t`SQL Snippets`} disabled />
-            <FormSwitch name="dataset" label={t`Models`} disabled />
-            <FormSwitch name="metric" label={t`Metrics`} disabled />
-            <FormSwitch name="dashboard" label={t`Dashboards`} disabled />
-            <FormSwitch name="question" label={t`Questions`} disabled />
-          </Stack>
-          <Flex justify="end" mt="md">
-            <FormSubmitButton label={t`Save changes`} variant="filled" />
-          </Flex>
-        </Form>
-      </FormProvider>
-    </SettingsSection>
   );
 };

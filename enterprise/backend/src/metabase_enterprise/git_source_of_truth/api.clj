@@ -4,11 +4,16 @@
    [clojure.string :as str]
    [metabase-enterprise.git-source-of-truth.settings :as settings]
    [metabase-enterprise.git-source-of-truth.sources :as sources]
-
-   [metabase-enterprise.serialization.cmd :as serdes-cmd]
+   [metabase-enterprise.serialization.v2.extract :as serdes.extract]
+   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
+   [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.storage :as serdes.storage]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import (java.io File)
            (java.nio.file Files)
@@ -49,10 +54,9 @@
     (with-temp-directory dir
       (log/info "Reloading Metabase configuration from source")
       (try
-        (serdes-cmd/v2-load-internal! (sources/load-source! source (.toString dir))
-                                      {}
-                                      :require-initialized-db? false)
-
+        (serdes/with-cache
+          (serdes.load/load-metabase!
+           (serdes.ingest/ingest-yaml (sources/load-source! source (.toString dir)))))
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
          :message "Successfully reloaded from git repository"}
@@ -80,25 +84,20 @@
     {:status :error
      :message "Git source of truth is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
-(api.macros/defendpoint :post "/reload"
+(api.macros/defendpoint :post "/import"
   "Reload Metabase content from Git repository source of truth.
   
   This endpoint will:
   1. Fetch the latest changes from the configured git repository
   2. Load the updated content using the serialization/deserialization system
-  3. Ensure read-only mode remains enabled
-  
+
   Requires superuser permissions."
   []
   (api/check-superuser)
-  (log/info "API request to reload from git repository")
-
   (let [result (reload-from-git!)]
     (case (:status result)
       :success
-      {:status 200
-       :body {:status "success"
-              :message (:message result)}}
+      "Success"
 
       :error
       {:status 400
@@ -109,6 +108,22 @@
       {:status 500
        :body {:status "error"
               :message "Unexpected error occurred during reload"}})))
+
+(api.macros/defendpoint :post "/export"
+  "Exports Metabase content to the Git repository source of truth.
+
+  Requires superuser"
+  []
+  (api/check-superuser)
+  ;; Placeholder
+  (with-temp-directory tmp
+    (serdes/with-cache
+      (-> (serdes.extract/extract {:no-settings true
+                                   :include-database-secrets false})
+          (serdes.storage/store! tmp)))
+
+    (sources/push-branch! (sources/get-source) tmp))
+  "Success")
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/git-source-of-truth` routes."

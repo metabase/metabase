@@ -1,5 +1,7 @@
 (ns metabase-enterprise.semantic-search.index
   (:require
+   [buddy.core.codecs :as buddy-codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
    [honey.sql :as sql]
@@ -213,13 +215,18 @@
         excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
     (zipmap update-keys (map excluded-kw update-keys))))
 
-(defn- throw-if-max-pg-len
-  [resource-name msg]
-  (when (> (count resource-name) 63)
-    (throw (ex-info msg
-                    {:table-name resource-name
-                     :length (count resource-name)
-                     :limit 63}))))
+(defn hash-identifier-if-exceeds-pg-limit
+  "Sometimes we need to generate new table/index names, such as when forcing a new index despite no change in index parameters.
+  When we do so we need to be sure any index names do not exceed the postgres limit for names. This function will hash the identifier
+  if it exceeds the length, and will get a name like index_${sha1} instead.
+
+  Note: The index parameters will still be available in index_metadata"
+  [identifier]
+  (if (<= (count identifier) 63)
+    identifier
+    (let [hashed-name (str "index_" (buddy-codecs/bytes->hex (buddy-hash/sha1 identifier)))]
+      (log/warnf "Using hashed name for index table %s as original table name %s exceeded the maximum table name length" hashed-name identifier)
+      hashed-name)))
 
 (defn model-table-suffix
   "Returns a new suffix for a table name, based on current timestamp"
@@ -227,19 +234,18 @@
   (mod (.toEpochSecond (t/offset-date-time)) 10000000))
 
 (defn model-table-name
-  "Returns the table name for a model."
+  "Returns a default table name for a model. If the table name would exceed the 63 byte postgres limit, a hashed name is preferred."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
         abbrev-model-name (embedding/abbrev-model-name model-name)
-        result (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions "_" (model-table-suffix))]
-    (throw-if-max-pg-len result "Table name exceeds PostgreSQL limit")
-    result))
+        ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
+    (hash-identifier-if-exceeds-pg-limit ideal-table-name)))
 
 (defn default-index
   "Returns the default index spec for a model."
-  [embedding-model]
-  (let [table-name (model-table-name embedding-model)]
+  [embedding-model & {:keys [table-name]}]
+  (let [table-name (or table-name (model-table-name embedding-model))]
     {:embedding-model embedding-model
      :table-name table-name
      :version 1}))
@@ -383,9 +389,8 @@
 (defn- index-name
   "Returns the name for an index for the given index configuration, column, and index type."
   [index suffix]
-  (let [result (str (:table-name index) suffix)]
-    (throw-if-max-pg-len result "Index name exceeds PostgreSQL limit")
-    result))
+  (let [index-name (str (:table-name index) suffix)]
+    (hash-identifier-if-exceeds-pg-limit index-name)))
 
 (defn hnsw-index-name
   "Returns the name for a HNSW database index for the given semantic search index configuration."

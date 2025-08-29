@@ -11,11 +11,13 @@ import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { commonReducers } from "metabase/reducers-common";
 import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { PieChart } from "metabase/visualizations/visualizations/PieChart";
 import type { DatasetData } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockDataset,
+  createMockPieRow,
 } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -25,6 +27,8 @@ import Data from "./data/data.json";
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(LineChart);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(PieChart);
 
 const settings = mockSettings();
 
@@ -74,6 +78,32 @@ export default {
           HttpResponse.json(createMockCardQueryMetadata()),
         ),
         http.post("/api/card/114/query", () =>
+          HttpResponse.json(
+            createMockDataset({
+              data: Data.card114Query.data as unknown as DatasetData,
+            }),
+          ),
+        ),
+        http.get("/api/card/115", () =>
+          HttpResponse.json(
+            createMockCard({
+              name: "Test Pie Question",
+              display: "pie",
+              id: 115,
+              visualization_settings: {
+                "pie.rows": [
+                  createMockPieRow({
+                    name: "This is a really long name that will push the chart over",
+                  }),
+                ],
+              },
+            }),
+          ),
+        ),
+        http.get("/api/card/115/query_metadata", () =>
+          HttpResponse.json(createMockCardQueryMetadata()),
+        ),
+        http.post("/api/card/115/query", () =>
           HttpResponse.json(
             createMockDataset({
               data: Data.card114Query.data as unknown as DatasetData,

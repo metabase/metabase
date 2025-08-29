@@ -36,9 +36,8 @@ export const engineKeys = [
   "bigquery-cloud-sdk",
   "clickhouse",
   "databricks",
-  "druid",
   "druid-jdbc",
-  "databricks",
+  "druid",
   "mysql",
   "oracle",
   "postgres",
@@ -52,6 +51,29 @@ export const engineKeys = [
   "vertica",
 ] as const;
 
+export const providerNames = [
+  "Aiven",
+  "Amazon RDS",
+  "Azure",
+  "Crunchy Data",
+  "DigitalOcean",
+  "Fly.io",
+  "Neon",
+  "PlanetScale",
+  "Railway",
+  "Render",
+  "Scaleway",
+  "Supabase",
+  "Timescale",
+] as const;
+
+export type DatabaseProviderName = (typeof providerNames)[number];
+
+export type DatabaseProvider = {
+  name: DatabaseProviderName;
+  pattern: string;
+};
+
 export type EngineKey = (typeof engineKeys)[number];
 
 export interface Engine {
@@ -63,6 +85,7 @@ export interface Engine {
     "db-routing-info": {
       text: string;
     };
+    providers?: DatabaseProvider[];
   } | null;
 }
 
@@ -293,6 +316,7 @@ export const tokenFeatures = [
   "development_mode",
   "etl_connections",
   "etl_connections_pg",
+  "table_data_editing",
   "documents",
   "semantic_search",
   "transforms",
@@ -608,11 +632,14 @@ export type SyncableEntity =
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
-  "git-sync-key"?: string | null;
+  "git-sync-token"?: string | null;
   "git-sync-url"?: string | null;
   "git-sync-default-branch"?: string | null;
+  "git-sync-import-branch"?: string | null; // import branch
+  "git-sync-export-branch"?: string | null;
   "git-sync-entities"?: Partial<Record<SyncableEntity, boolean>> | null;
   "git-sync-configured"?: boolean | null;
+  "git-sync-read-only"?: boolean;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

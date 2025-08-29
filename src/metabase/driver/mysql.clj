@@ -87,7 +87,9 @@
                               ;; and make this work.
                               :window-functions/offset                false
                               :expression-literals                    true
-                              :database-routing                       true}]
+                              :database-routing                       true
+                              :metadata/table-existence-check         true
+                              :transforms/table                       true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -244,22 +246,23 @@
   (h2x/current-datetime-honeysql-form driver))
 
 (defmethod driver/humanize-connection-error-message :mysql
-  [_ message]
-  (condp re-matches message
-    #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
-    :cannot-connect-check-host-and-port
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
+      :cannot-connect-check-host-and-port
 
-    #"^Unknown database .*$"
-    :database-name-incorrect
+      #"^Unknown database .*$"
+      :database-name-incorrect
 
-    #"Access denied for user.*$"
-    :username-or-password-incorrect
+      #"Access denied for user.*$"
+      :username-or-password-incorrect
 
-    #"Must specify port after ':' in connection string"
-    :invalid-hostname
+      #"Must specify port after ':' in connection string"
+      :invalid-hostname
 
-    ;; else
-    message))
+      ;; else
+      message)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
@@ -1073,3 +1076,7 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42S02"))
+
+(defmethod driver.sql/default-schema :mysql
+  [_]
+  nil)

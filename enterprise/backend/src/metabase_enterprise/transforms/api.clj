@@ -35,7 +35,7 @@
 (mr/def ::transform-target
   [:map
    [:type [:enum "table"]]
-   [:schema {:optional true} [:or :string :nil]]
+   [:schema {:optional true} [:or ms/NonBlankString :nil]]
    [:name :string]])
 
 (mr/def ::run-trigger
@@ -75,7 +75,7 @@
   [_route-params
    _query-params]
   (api/check-superuser)
-  (t2/hydrate (t2/select :model/Transform) :last_run :transform_tag_ids))
+  (t2/hydrate (t2/select :model/Transform) :last_run :transform_tag_ids :can_write))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform."
@@ -113,7 +113,7 @@
         database-id (source-database-id transform)
         target-table (transforms.util/target-table database-id target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids)
+        (t2/hydrate :last_run :transform_tag_ids :can_write)
         (assoc :table target-table))))
 
 (api.macros/defendpoint :get "/run"

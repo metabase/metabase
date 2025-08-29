@@ -17,7 +17,7 @@ import type {
 type ActionParameterTuple = [ParameterId, ActionParameterValue];
 
 function formatParameterValue(value: ParameterValueOrArray) {
-  return Array.isArray(value) ? value[0] : value;
+  return Array.isArray(value) ? value.filter(isNotNull)[0] : value;
 }
 
 function prepareParameter(

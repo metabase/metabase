@@ -21,6 +21,7 @@ import {
   isDate,
   isDimension,
   isMetric,
+  isNumeric,
   isString,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -29,6 +30,7 @@ import type {
   VisualizerColumnReference,
   VisualizerDataSource,
   VisualizerDataSourceId,
+  XAxisScale,
 } from "metabase-types/api";
 import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
@@ -452,6 +454,44 @@ export function maybeImportDimensionsFromOtherDataSources(
   });
 }
 
+function sortDimensionsByXAxisScale(
+  dimensions: DatasetColumn[],
+  xAxisScale: XAxisScale | undefined,
+): DatasetColumn[] {
+  if (!xAxisScale) {
+    return dimensions;
+  }
+
+  const priorityPredicates: Record<
+    XAxisScale,
+    (col: DatasetColumn) => boolean
+  > = {
+    timeseries: (col) => isDate(col),
+    linear: (col) => isNumeric(col),
+    pow: (col) => isNumeric(col),
+    log: (col) => isNumeric(col),
+    histogram: (col) => isNumeric(col),
+    ordinal: (col) => isString(col),
+  };
+
+  const priorityPredicate = priorityPredicates[xAxisScale];
+  if (!priorityPredicate) {
+    return dimensions;
+  }
+
+  return [...dimensions].sort((a, b) => {
+    const aPriority = priorityPredicate(a);
+    const bPriority = priorityPredicate(b);
+    if (aPriority && !bPriority) {
+      return -1;
+    }
+    if (!aPriority && bPriority) {
+      return 1;
+    }
+    return 0;
+  });
+}
+
 export function combineWithCartesianChart(
   state: VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
@@ -488,7 +528,12 @@ export function combineWithCartesianChart(
     }
   });
 
-  dimensions.forEach((column) => {
+  const sortedDimensions = sortDimensionsByXAxisScale(
+    dimensions,
+    settings["graph.x_axis.scale"],
+  );
+
+  sortedDimensions.forEach((column) => {
     const isCompatible = !!findColumnSlotForCartesianChart({
       state,
       settings,

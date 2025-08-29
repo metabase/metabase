@@ -60,10 +60,9 @@
   on a future deserialization."
   false)
 
-(def ^:dynamic *allow-sync-protected-writes?*
-  "This is dynamically bound to true to allow writes to entities that are synced to source of truth.
-  Normally these are read-only but during deserialization we need to be able to update them."
-  false)
+(def ^:dynamic *syncing-source-of-truth-entities*
+  "This is dynamically bound to the set of entities that we are syncing when syncing the source of truth."
+  #{})
 
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
@@ -589,8 +588,9 @@
 (defn- prevent-sync-protected-writes
   "Prevents writes to entities that are synced to source of truth, unless explicitly allowed."
   [instance]
-  (when (and (:synced_to_source_of_truth instance)
-             (not (or *allow-sync-protected-writes?* *deserializing?*)))
+  (when (and (try ((requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only))
+                  (catch Exception _ false))
+             (not *deserializing?*))
     (throw (ex-info "Cannot modify entities synced to source of truth"
                     {:entity-id (:entity_id instance)
                      :model (model instance)})))
@@ -607,9 +607,10 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
-(methodical/prefer-method! #'t2.before-insert/before-insert :hook/git-sync-protected :hook/timestamped?)
-(methodical/prefer-method! #'t2.before-insert/before-insert :hook/git-sync-protected :hook/entity-id)
-(methodical/prefer-method! #'t2.before-update/before-update :hook/git-sync-protected :hook/timestamped?)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/entity-id :hook/git-sync-protected)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/git-sync-protected)
+(methodical/prefer-method! #'t2.before-update/before-update :hook/entity-id :hook/git-sync-protected)
+(methodical/prefer-method! #'t2.before-update/before-update :hook/timestamped? :hook/git-sync-protected)
 (methodical/prefer-method! #'t2.after/each-row-fn [:toucan.query-type/insert.* :hook/branchable]
                            [:toucan.query-type/insert.* :hook/search-index])
 
@@ -677,6 +678,14 @@
       this)"
   {:arglists '([instance] [model pk])}
   dispatch-on-model)
+
+(defmethod can-write? :hook/git-sync-protected
+  ([instance]
+   (try (false? ((requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only)))
+        (catch Exception _ true)))
+  ([_model _pk]
+   (try (false? ((requiring-resolve 'metabase-enterprise.git-source-of-truth.settings/git-sync-read-only)))
+        (catch Exception _ true))))
 
 #_{:clj-kondo/ignore [:unused-private-var]}
 (define-simple-hydration-method ^:private hydrate-can-write

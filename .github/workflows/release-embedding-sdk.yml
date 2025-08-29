@@ -5,18 +5,12 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch we want to release the SDK from"
+        description: "Branch we want to release the SDK from (to release from other branches use the workflow from those branches)"
         type: choice
         required: true
         default: "master"
         options:
           - master
-          - release-x.51.x
-          - release-x.52.x
-          - release-x.53.x
-          - release-x.54.x
-          - release-x.55.x
-          - release-x.56.x
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
