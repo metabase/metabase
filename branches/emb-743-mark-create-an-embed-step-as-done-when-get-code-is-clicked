@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
-    "hash": "147e68d02b8d975477477aca87f421abfeea24f4"
+    "hash": "2773d942fcf0e2560da10b35ad1a1702d38c5440"
   },
   "upstream": {
     "branch": "emb-743-mark-create-an-embed-step-as-done-when-get-code-is-clicked"
