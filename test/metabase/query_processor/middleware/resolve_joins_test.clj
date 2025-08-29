@@ -60,8 +60,10 @@
                                 &c.categories.name]}]
                :fields [$venues.id
                         $venues.name
-                        &c.categories.id
-                        &c.categories.name]})
+                        [:field %categories.id {:join-alias         "c"
+                                                :qp/ignore-coercion true}]
+                        [:field %categories.name {:join-alias         "c"
+                                                  :qp/ignore-coercion true}]]})
             (resolve-joins
              (lib.tu.macros/mbql-query venues
                {:fields [$venues.id $venues.name]
@@ -81,7 +83,8 @@
                  :fields       [&c.categories.name]}]
                :fields [$venues.id
                         $venues.name
-                        &c.categories.name]})
+                        [:field %categories.name {:join-alias         "c"
+                                                  :qp/ignore-coercion true}]]})
             (resolve-joins
              (lib.tu.macros/mbql-query venues
                {:fields [$venues.id $venues.name]
@@ -203,8 +206,8 @@
                               :limit    3}))]
       (is (=? (mt/mbql-query venues
                 {:fields   [[:field (mt/id :venues :name) nil]
-                            [:field (mt/id :categories :id) {:join-alias "cat"}]
-                            [:field (mt/id :categories :name) {:join-alias "cat"}]]
+                            [:field (mt/id :categories :id) {:join-alias "cat", :qp/ignore-coercion true}]
+                            [:field (mt/id :categories :name) {:join-alias "cat", :qp/ignore-coercion true}]]
                  :joins    [{:alias           "cat"
                              :source-table    $$categories
                              :source-metadata (for [col source-metadata]
@@ -279,7 +282,9 @@
       (is (=? (lib.tu.macros/mbql-query users
                 {:fields [$id
                           [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
-                 :joins  [{:fields       [[:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
+                 :joins  [{:fields       [[:field "_USER_ID" {:base-type :type/Integer
+                                                              :join-alias "alias"
+                                                              :qp/ignore-coercion true}]]
                            :alias        "alias"
                            :strategy     :left-join
                            :condition    [:= $id [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]

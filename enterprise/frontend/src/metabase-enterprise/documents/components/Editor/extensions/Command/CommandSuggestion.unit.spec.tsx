@@ -170,6 +170,7 @@ describe("CommandSuggestion", () => {
       embedItem: true,
       entityId: 2,
       model: "card",
+      document: null,
     });
   });
 
@@ -201,6 +202,7 @@ describe("CommandSuggestion", () => {
       selectItem: true,
       entityId: 4,
       model: "document",
+      document: null,
     });
   });
 
@@ -240,6 +242,7 @@ describe("CommandSuggestion", () => {
       embedItem: true,
       entityId: 5,
       model: "card",
+      document: null,
     });
   });
 
@@ -274,6 +277,7 @@ describe("CommandSuggestion", () => {
       embedItem: true,
       entityId: 6,
       model: "card",
+      document: null,
     });
   });
 
@@ -308,6 +312,7 @@ describe("CommandSuggestion", () => {
       selectItem: true,
       entityId: 8,
       model: "table",
+      document: null,
     });
   });
 

@@ -1264,6 +1264,25 @@ describe("issue 49304", () => {
   });
 });
 
+describe("issue 41305", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to right click in the suggestion popover without closing it (metabase#41305)", () => {
+    H.openProductsTable({ mode: "notebook" });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "contains(", blur: false });
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .findByText("The column or text to check.")
+      .rightclick();
+    H.popover().should("have.length", 2);
+  });
+});
+
 describe("issue 49305", () => {
   beforeEach(() => {
     H.restore();
@@ -2332,6 +2351,55 @@ describe("issue 52451", () => {
     H.popover().findByText("Inner join").click();
     H.visualize();
     H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 56602", () => {
+  const productsModelDetails = {
+    name: "M1",
+    type: "model",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const ordersModelDetails = {
+    name: "M2",
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  const expressionName = "awesome stuff";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use expressions when joining models (metabase#56602)", () => {
+    H.createQuestion(productsModelDetails);
+    H.createQuestion(ordersModelDetails);
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(productsModelDetails.name).click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(ordersModelDetails.name).click();
+    });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      name: expressionName,
+      formula: `coalesce([User -> Birth Date], [${ordersModelDetails.name} -> Created At])`,
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().should("contain", expressionName);
   });
 });
 

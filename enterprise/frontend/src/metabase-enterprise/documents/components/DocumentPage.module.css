@@ -57,12 +57,21 @@
       padding: 0;
     }
 
+    :global(.node-metabot),
     :global(.node-cardEmbed) {
       break-inside: avoid;
     }
 
     [data-hide-on-print] {
       visibility: hidden;
+    }
+  }
+}
+
+@media not print {
+  .documentContainer {
+    [data-show-on-print] {
+      display: none;
     }
   }
 }

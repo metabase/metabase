@@ -177,8 +177,14 @@
   (.append writer " ")
   (.append writer database_type))
 
+(defn- format-column-ddl
+  [{:keys [^String data_type], fname :name} ^Writer writer]
+  (format-escaped fname writer)
+  (.append writer " ")
+  (.append writer data_type))
+
 (defn- format-table-ddl
-  [{:keys [schema fields], tname :name} ^Writer writer]
+  [{:keys [schema fields columns], tname :name} ^Writer writer]
   (.append writer "CREATE TABLE ")
   (when (seq schema)
     (format-escaped schema writer)
@@ -191,6 +197,12 @@
     (doseq [field (rest fields)]
       (.append writer ",\n  ")
       (format-field-ddl field writer)))
+  (when (seq columns)
+    (.append writer "\n  ")
+    (format-column-ddl (first columns) writer)
+    (doseq [column (rest columns)]
+      (.append writer ",\n  ")
+      (format-column-ddl column writer)))
   (.append writer "\n);"))
 
 (defn- format-schema-ddl
@@ -216,3 +228,9 @@
                   tables)
          tables (t2/hydrate tables :fields)]
      (format-schema-ddl tables))))
+
+(defn schema-full
+  "Returns the DDL for all tables in a database."
+  [database-id]
+  (let [tables (database-tables database-id)]
+    (format-schema-ddl (t2/hydrate tables :fields))))

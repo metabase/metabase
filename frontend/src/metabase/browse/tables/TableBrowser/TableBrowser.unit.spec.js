@@ -21,7 +21,7 @@ describe("TableBrowser", () => {
     setup({ id: 1, name: "Orders", initial_sync_status: "complete" });
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.getByLabelText("bolt_filled icon")).toBeInTheDocument();
+    expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 
@@ -29,7 +29,7 @@ describe("TableBrowser", () => {
     setup({ id: 1, name: "Orders", initial_sync_status: "incomplete" });
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.queryByLabelText("bolt_filled icon")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("bolt icon")).not.toBeInTheDocument();
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
@@ -37,7 +37,7 @@ describe("TableBrowser", () => {
     setup({ id: 1, name: "Orders", initial_sync_status: "aborted" });
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.getByLabelText("bolt_filled icon")).toBeInTheDocument();
+    expect(screen.getByLabelText("bolt icon")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 });

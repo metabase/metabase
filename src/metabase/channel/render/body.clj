@@ -74,6 +74,8 @@
 (mu/defn- format-scalar-value
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
+    ;; legacy usage -- do not use going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (types/temporal-field? col)
     ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 
@@ -389,21 +391,6 @@
   (-> m
       (assoc :data (:data result))
       (dissoc :result)))
-
-(mu/defmethod render :row :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card _dashcard data]
-  (let [viz-settings (get card :visualization_settings)
-        image-bundle   (image-bundle/make-image-bundle
-                        render-type
-                        (js.svg/row-chart viz-settings data))]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
 
 (mu/defmethod render :scalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]

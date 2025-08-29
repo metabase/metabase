@@ -307,18 +307,19 @@
     (dateadd unit amount hsql-form)))
 
 (defmethod driver/humanize-connection-error-message :h2
-  [_ message]
-  (condp re-matches message
-    #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
-    :implicitly-relative-db-file-path
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
+      :implicitly-relative-db-file-path
 
-    #"^Database .* not found, .*$"
-    :db-file-not-found
+      #"^Database .* not found, .*$"
+      :db-file-not-found
 
-    #"^Wrong user name or password .*$"
-    :username-or-password-incorrect
+      #"^Wrong user name or password .*$"
+      :username-or-password-incorrect
 
-    message))
+      message)))
 
 (defmethod driver/db-default-timezone :h2
   [_driver _database]
@@ -542,7 +543,9 @@
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
-  (apply sql-jdbc.sync/post-filtered-active-tables args))
+  ;; HACK: we assume that all h2 tables are writable
+  (eduction (map #(assoc % :is_writable true))
+            (apply sql-jdbc.sync/post-filtered-active-tables args)))
 
 (defmethod sql-jdbc.sync/excluded-schemas :h2
   [_]

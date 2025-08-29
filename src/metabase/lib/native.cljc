@@ -175,12 +175,12 @@
     results-metadata          :- [:maybe ::lib.schema.metadata/stage]
     native-extras             :- [:maybe ::native-extras]]
    (let [tags (extract-template-tags sql-or-other-native-query)]
-     (-> (lib.query/query-with-stages metadata-providerable
-                                      [{:lib/type           :mbql.stage/native
-                                        :lib/stage-metadata results-metadata
-                                        :template-tags      tags
-                                        :native             sql-or-other-native-query}])
-         (with-native-extras native-extras)))))
+     (cond-> (lib.query/query-with-stages metadata-providerable
+                                          [{:lib/type           :mbql.stage/native
+                                            :lib/stage-metadata results-metadata
+                                            :template-tags      tags
+                                            :native             sql-or-other-native-query}])
+       native-extras (with-native-extras native-extras)))))
 
 (mu/defn with-different-database :- ::lib.schema/query
   "Changes the database for this query. The first stage must be a native type.

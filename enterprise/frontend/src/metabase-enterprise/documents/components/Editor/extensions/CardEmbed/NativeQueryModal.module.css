@@ -12,6 +12,14 @@
   overflow: hidden;
 }
 
+.errorContainer {
+  overflow: auto;
+}
+
+.errorMessage {
+  margin: auto;
+}
+
 .loadingOverlay {
   z-index: 10;
 }

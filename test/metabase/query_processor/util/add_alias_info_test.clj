@@ -178,15 +178,13 @@
   (is (=? (lib.tu.macros/mbql-query checkins
             {:aggregation [[:aggregation-options
                             [:count]
-                            {:name               "count"
-                             ::add/source-alias  "count"
+                            {::add/source-alias  "count"
                              ::add/desired-alias "count"}]]
              :filter      [:!=
                            [:field %date {::add/source-table $$checkins
                                           ::add/source-alias "DATE"}]
-                           [:value nil {:base_type         :type/Date
-                                        :database_type     "DATE"
-                                        :name              "DATE"}]]})
+                           [:value nil {:base_type     :type/Date
+                                        :database_type "DATE"}]]})
           (add-alias-info
            (lib.tu.macros/mbql-query checkins
              {:aggregation [[:count]]
@@ -197,18 +195,15 @@
             {:source-query {:source-table $$venues
                             :aggregation  [[:aggregation-options
                                             [:count]
-                                            {:name               "count"
-                                             ::add/source-alias  "count"
+                                            {::add/source-alias  "count"
                                              ::add/desired-alias "count"}]
                                            [:aggregation-options
                                             [:count]
-                                            {:name               "count_2"
-                                             ::add/source-alias  "count_2"
+                                            {::add/source-alias  "count_2"
                                              ::add/desired-alias "count_2"}]
                                            [:aggregation-options
                                             [:count]
-                                            {:name               "count_3"
-                                             ::add/source-alias  "count_3"
+                                            {::add/source-alias  "count_3"
                                              ::add/desired-alias "count_3"}]]}
              :fields       [[:field "count" {:base-type          :type/Integer
                                              ::add/source-table  ::add/source
@@ -296,7 +291,6 @@
                                                                   ::add/source-alias "P2__CATEGORY"}]
                                       [:value 1 {:base_type     :type/Text
                                                  :database_type "CHARACTER VARYING"
-                                                 :name          "CATEGORY"
                                                  :semantic_type :type/Category}]]}]
              :fields [[:field %products.category {:join-alias         "Q2"
                                                   ::add/source-table  "Q2"
@@ -351,8 +345,7 @@
                                     ::add/source-table  ::add/source
                                     ::add/source-alias  "COOL.double_price"
                                     ::add/desired-alias "COOL.double_price"}]]
-                 {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
-                                                                ::add/desired-alias "COOL.COOL.count"}]]
+                 {:aggregation [[:aggregation-options [:count] {::add/desired-alias "COOL.count"}]]
                   :breakout    [double-price]
                   :order-by    [[:asc double-price]]})))
             (-> (lib.tu.macros/mbql-query venues
@@ -427,9 +420,9 @@
                                                    ::add/source-table $$orders}]
                                                  [:field
                                                   %products.id
-                                                  {::add/source-alias  "ID"
-                                                   ::add/source-table  "Products_Renamed"
-                                                   :join-alias         "Products Renamed"}]]
+                                                  {::add/source-alias "ID"
+                                                   ::add/source-table "Products_Renamed"
+                                                   :join-alias        "Products Renamed"}]]
                                                 :strategy     :left-join}]
                                 :expressions  {"CC" [:+ 1 1]}
                                 :fields
@@ -445,14 +438,13 @@
                                  [:field
                                   %products.category
                                   {::add/source-alias "CATEGORY"
-                                   ::add/source-table  "Products_Renamed"
+                                   ::add/source-table "Products_Renamed"
                                    :join-alias        "Products Renamed"}]
                                  [:value
                                   "Doohickey"
-                                  {:base_type         :type/Text
-                                   :database_type     "CHARACTER VARYING"
-                                   :name              "CATEGORY"
-                                   :semantic_type     :type/Category}]]}
+                                  {:base_type     :type/Text
+                                   :database_type "CHARACTER VARYING"
+                                   :semantic_type :type/Category}]]}
                  :fields       [[:field
                                  %products.id
                                  {::add/desired-alias "Products_Renamed__ID"
@@ -561,8 +553,7 @@
   (testing "Make sure we add info to `:aggregation` reference clauses correctly"
     (is (=? (lib.tu.macros/$ids checkins
               {:stages [{:aggregation [[:sum
-                                        {:name               "sum"
-                                         ::add/desired-alias "sum"}
+                                        {::add/desired-alias "sum"}
                                         [:field {::add/source-table $$checkins
                                                  ::add/source-alias "USER_ID"}
                                          %user-id]]]
@@ -715,8 +706,8 @@
                               :breakout     [[:field (meta/id :orders :id) {}]]
                               :aggregation  [[:aggregation-options
                                               [:cum-sum [:field (meta/id :orders :id) {}]]
-                                              {:name "sum"}]]}
-               :breakout     [[:field "id" {:base-type :type/Integer, ::add/desired-alias "id"}]
+                                              {:name "sum", ::add/desired-alias "sum"}]]}
+               :breakout     [[:field "ID" {:base-type :type/Integer, ::add/desired-alias "ID"}]
                               [:field "sum" {:base-type :type/Integer, ::add/desired-alias "__cumulative_sum"}]]
                :aggregation  [[:aggregation-options
                                [:cum-sum [:field "sum" {:base-type :type/Integer}]]
@@ -727,7 +718,7 @@
                                :aggregation  [[:aggregation-options
                                                [:cum-sum [:field (meta/id :orders :id) nil]]
                                                {:name "sum"}]]}
-                :breakout     [[:field "id" {:base-type :type/Integer}]
+                :breakout     [[:field "ID" {:base-type :type/Integer}]
                                [:field "sum" {:base-type :type/Integer, :name "__cumulative_sum"}]]
                 :aggregation  [[:aggregation-options
                                 [:cum-sum [:field "sum" {:base-type :type/Integer}]]
@@ -773,8 +764,7 @@
                                 [:cum-sum
                                  [:field "TOTAL" {::add/source-table ::add/source
                                                   ::add/source-alias "TOTAL"}]]
-                                {:name "sum"
-                                 ::add/source-alias "sum" ; FIXME This key shouldn't be here, this doesn't come from the source query.
+                                {::add/source-alias "sum" ; FIXME This key shouldn't be here, this doesn't come from the source query.
                                  ::add/desired-alias "sum"}]]
                  :breakout [[:field "CREATED_AT" {::add/source-alias "CREATED_AT"
                                                   ::add/desired-alias "CREATED_AT"}]
@@ -944,7 +934,7 @@
                                               {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]
                        :aggregation         [[:aggregation-options
                                               [:avg [:field "RATING" {::add/source-alias "RATING"}]]
-                                              {:name "avg", ::add/desired-alias "avg"}]]
+                                              {::add/desired-alias "avg"}]]
                        :order-by            [[:asc
                                               [:field
                                                "Reviews__CREATED_AT"
@@ -1174,8 +1164,7 @@
                                          ::add/desired-alias "PRODUCTS__via__PRODUC_8b0b9fea"
                                          ::add/source-table  "PRODUCTS__via__PRODUCT_ID"}
                                  any?]]]
-                 :aggregation [[:sum {:name               "sum"
-                                      ::add/source-table  ::add/none
+                 :aggregation [[:sum {::add/source-table  ::add/none
                                       ::add/source-alias  "sum"
                                       ::add/desired-alias "sum"}
                                 [:field {::add/source-table  (meta/id :orders)
@@ -1257,8 +1246,7 @@
                                            (meta/id :orders :total)
                                            {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 50}}]]}})]
     (is (=? {:aggregation [[:count
-                            {:name               "count"
-                             ::add/source-table  ::add/none
+                            {::add/source-table  ::add/none
                              ::add/source-alias  "count"
                              ::add/desired-alias "count"}]]
              :breakout    [[:field
