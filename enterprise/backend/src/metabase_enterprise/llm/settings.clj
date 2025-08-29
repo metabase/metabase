@@ -9,14 +9,14 @@
   :visibility :settings-manager
   :default "gpt-4-turbo-preview"
   :export? false
-  :doc "This feature is experimental.")
+  :doc false)
 
 (defsetting ee-openai-api-key
   (deferred-tru "The OpenAI API Key used in Metabase Enterprise.")
   :encryption :no
   :visibility :settings-manager
   :export? false
-  :doc "This feature is experimental.")
+  :doc false)
 
 (defsetting ee-ai-features-enabled
   (deferred-tru "Enable AI features.")
@@ -27,4 +27,4 @@
   :setter (fn [new-value]
             (when (some? (ee-openai-api-key))
               (setting/set-value-of-type! :boolean :ee-ai-features-enabled new-value)))
-  :doc "This feature is experimental.")
+  :doc false)
