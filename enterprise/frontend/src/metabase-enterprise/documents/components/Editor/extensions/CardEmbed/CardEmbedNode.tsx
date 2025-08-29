@@ -139,7 +139,7 @@ export const CardEmbedComponent = memo(
       [comments, _id],
     );
     const { refs, floatingStyles } = useFloating({
-      placement: "left-start",
+      placement: "right-start",
       whileElementsMounted: autoUpdate,
       strategy: "fixed",
     });

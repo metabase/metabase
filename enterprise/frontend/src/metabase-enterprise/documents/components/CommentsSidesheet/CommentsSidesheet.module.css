@@ -21,10 +21,6 @@
   }
 }
 
-.header {
-  border-bottom: 1px solid var(--mb-color-border);
-}
-
 .tabsList {
   position: sticky;
   top: 0;

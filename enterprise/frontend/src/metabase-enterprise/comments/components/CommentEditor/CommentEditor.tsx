@@ -1,6 +1,11 @@
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { EditorContent, type Extension, useEditor } from "@tiptap/react";
+import {
+  type Editor,
+  EditorContent,
+  type Extension,
+  useEditor,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
@@ -35,6 +40,8 @@ interface Props {
   onChange?: (content: DocumentContent) => void;
   onSubmit?: (content: DocumentContent) => void;
   onBlur?: (content: DocumentContent, editor: Editor) => void;
+  isNewThread?: boolean;
+  autoFocus?: boolean;
 }
 
 export const CommentEditor = ({
@@ -44,6 +51,8 @@ export const CommentEditor = ({
   onChange,
   onSubmit,
   onBlur,
+  isNewThread = false,
+  autoFocus = false,
 }: Props) => {
   const currentUser = useSelector(getUser);
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
@@ -64,18 +73,18 @@ export const CommentEditor = ({
         configureMentionExtension({ currentUser, dispatch }),
         !readonly &&
           Placeholder.configure({
-            placeholder: t`Add a comment…`,
+            placeholder: isNewThread ? t`Add a comment…` : t`Reply…`,
           }),
         !readonly && DisableMetabotSidebar,
       ].filter(Boolean) as Extension[],
-    [siteUrl, currentUser, dispatch, readonly],
+    [siteUrl, currentUser, dispatch, readonly, isNewThread],
   );
 
   const editor = useEditor(
     {
       extensions,
       content: initialContent || "",
-      autofocus: false,
+      autofocus: autoFocus,
       editable: !readonly,
       immediatelyRender: true,
       onUpdate: ({ editor }) => {
@@ -91,7 +100,7 @@ export const CommentEditor = ({
         }
       },
     },
-    [readonly],
+    [readonly, autoFocus],
   );
 
   useEffect(() => {
