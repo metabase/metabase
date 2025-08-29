@@ -1,11 +1,11 @@
 (ns metabase.query-processor.middleware.resolve-fields
   "Middleware that resolves the Fields referenced by a query."
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -17,40 +17,27 @@
   (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/column field-ids)
   (when-let [parent-ids (not-empty
                          (into #{}
-                               (comp (map (fn [field-id]
-                                            (:parent-id (lib.metadata/field metadata-providerable field-id))))
-                                     (filter some?))
+                               (keep (fn [field-id]
+                                       (:parent-id (lib.metadata/field metadata-providerable field-id))))
                                field-ids))]
     (recur metadata-providerable parent-ids)))
 
-(defmulti ^:private field-ids
-  {:arglists '([query])}
-  (fn [query]
-    (if (:lib/type query) ::pmbql ::legacy)))
-
-(mu/defmethod field-ids ::pmbql :- [:set ::lib.schema.id/field]
+(mu/defn- field-ids :- [:set ::lib.schema.id/field]
   [query :- ::lib.schema/query]
-  (into #{}
-        (lib.util.match/match (:stages query)
-          [:field _opts (id :guard pos-int?)]
-          id
+  (let [field-ids (atom #{})]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query _path-type _stage-or-join-path clause]
+       (lib.util.match/match-lite clause
+         [:field _opts (id :guard pos-int?)]
+         (do
+           (swap! field-ids conj id)
+           nil))))
+    @field-ids))
 
-          ;; stage metadata
-          {:lib/type :metadata/column, :id (id :guard pos-int?)}
-          id)))
-
-(mu/defmethod field-ids ::legacy :- [:set ::lib.schema.id/field]
-  [query :- ::mbql.s/Query]
-  (into (set (lib.util.match/match (:query query) [:field (id :guard integer?) _] id))
-        (comp cat (keep :id))
-        (lib.util.match/match (:query query) {:source-metadata source-metadata} source-metadata)))
-
-;;; TODO (Cam 7/24/25) -- rename this to `fetch-fields` or something
-(mu/defn resolve-fields :- [:map
-                            [:database ::lib.schema.id/database]]
-  "Resolve all field referenced in the `query`, and store them in the QP Store."
-  [query :- [:map
-             [:database ::lib.schema.id/database]]]
+(mu/defn bulk-fetch-fields :- ::lib.schema.id/query
+  "Warm the MetadataProvider cache by fetching all Fields referenced by ID in the `query`."
+  [query :- ::lib.schema.id/query]
   (let [ids (field-ids query)]
     (try
       (u/prog1 query
