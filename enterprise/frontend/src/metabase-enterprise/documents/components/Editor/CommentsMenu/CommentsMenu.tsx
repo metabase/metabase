@@ -37,7 +37,7 @@ export const CommentsMenu = forwardRef(function CommentsMenu(
         contentEditable={false}
         draggable={false}
         mt={rem(-2)}
-        pr="lg"
+        pl="lg"
         ref={ref}
         style={style}
       >

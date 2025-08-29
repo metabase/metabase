@@ -46,7 +46,7 @@ export const BulletListNodeView = ({ node, editor, getPos }: NodeViewProps) => {
     [comments, _id],
   );
   const { refs, floatingStyles } = useFloating({
-    placement: "left-start",
+    placement: "right-start",
     whileElementsMounted: autoUpdate,
     strategy: "fixed",
     open: rendered,
