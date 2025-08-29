@@ -416,7 +416,10 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     }
 
-    setFetchCardDataCancel(card.id, dashcard.id, null);
+    // If the request was not previously cancelled, then clear the defer for the card
+    if (!cancelled) {
+      setFetchCardDataCancel(card.id, dashcard.id, null);
+    }
     clearTimeout(slowCardTimer);
 
     return {
