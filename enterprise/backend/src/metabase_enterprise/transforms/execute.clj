@@ -131,60 +131,83 @@
           :body #(if (string? %) json/decode+kw %)))
 
 (defn execute-python-transform!
-  "Execute a Python transform by calling the python runner."
-  [transform {:keys [run-method]}]
-  (when (transforms.util/python-transform? transform)
-    (let [{:keys [source
-                  target]}        transform
-          {:keys [target-database
-                  source-tables
-                  body]}          source
-          {:keys [schema name]}   target
-          db                      (t2/select-one :model/Database target-database)
-          driver                  (:engine db)]
-      (with-transform-lifecycle [run-id [(:id transform) {:run_method run-method}]]
-        (let [{:keys [body status] :as result} (call-python-runner-api! body source-tables)]
-          (if (not= 200 status)
-            (throw (ex-info (str/join "\n"
-                                      [(format "exit code %d" (:exit-code body))
-                                       "======"
-                                       "stdout"
-                                       "======"
-                                       (:stdout body)
-                                       "stderr"
-                                       "======"
-                                       (:stderr body)])
-                            {:status-code 400
-                             :error       (or (:stderr body) (:error body))
-                             :stdout      (:stdout body)
-                             :stderr      (:stderr body)}))
-            (try
-              ;; TODO would be nice if we have create or replace in upload
-              ;; NOTE (chris) we do have a replace, so this would be easy! but we're gonna stop using csv
-              (when-let [table (t2/select-one :model/Table
-                                              :name (ddl.i/format-name driver name)
-                                              :schema (ddl.i/format-name driver schema)
-                                              :db_id (:id db))]
-                (upload/delete-upload! table)
-                ;; TODO shouldn't this be handled in upload?
-                (t2/delete! :model/Table (:id table)))
-              ;; Create temporary CSV file from output data
-              (let [temp-file (File/createTempFile "transform-output-" ".csv")
-                    csv-data  (:output body)]
-                (try
-                  (with-open [writer (io/writer temp-file)]
-                    (.write writer ^String csv-data))
-                  (upload/create-from-csv-and-sync! {:db         db
-                                                     :filename   (.getName temp-file)
-                                                     :file       temp-file
-                                                     :schema     schema
-                                                     :table-name name})
-                  (finally
-                    ;; Clean up temp file
-                    (.delete temp-file))))
-              {:run_id run-id
-               :result result}
-              (catch Exception e
-                (log/error e "Failed to to create resulting table")
-                (throw (ex-info "Failed to create the resulting table"
-                                {:error (.getMessage e)}))))))))))
+  "Execute a Python transform by calling the python runner.
+
+  This is executing synchronously, but supports being kicked off in the background
+  by delivering the `start-promise` just before the start when the beginning of the execution has been booked
+  in the database."
+  ([transform] (execute-python-transform! transform nil))
+  ([transform {:keys [run-method start-promise]}]
+   (when (transforms.util/python-transform? transform)
+     (try
+       (let [{:keys [source target] transform-id :id} transform
+             {:keys [target-database source-tables body]} source
+             {:keys [schema name]} target
+             db (t2/select-one :model/Database target-database)
+             {run-id :id} (try
+                            (transform-run/start-run! transform-id {:run_method run-method})
+                            (catch java.sql.SQLException e
+                              (if (= (.getSQLState e) "23505")
+                                (throw (ex-info "Transform is already running"
+                                                {:error :already-running
+                                                 :transform-id transform-id}
+                                                e))
+                                (throw e))))]
+         (some-> start-promise (deliver [:started run-id]))
+         (log/info "Executing Python transform" (:id transform) "with target" (pr-str target))
+         (try
+           (let [{:keys [body status] :as result} (call-python-runner-api! body source-tables)]
+             (if (not= 200 status)
+               (do
+                 (transform-run/fail-started-run! run-id {:message (or (:stderr body) (:error body))})
+                 (throw (ex-info (str/join "\n"
+                                           [(format "exit code %d" (:exit-code body))
+                                            "======"
+                                            "stdout"
+                                            "======"
+                                            (:stdout body)
+                                            "stderr"
+                                            "======"
+                                            (:stderr body)])
+                                 {:status-code 400
+                                  :error (or (:stderr body) (:error body))
+                                  :stdout (:stdout body)
+                                  :stderr (:stderr body)})))
+               (try
+                 ;; TODO would be nice if we have create or replace in upload
+                 ;; NOTE (chris) we do have a replace, so this would be easy! but we're gonna stop using csv
+                 (when-let [table (t2/select-one :model/Table
+                                                 :name (ddl.i/format-name (:engine db) name)
+                                                 :schema (ddl.i/format-name driver schema)
+                                                 :db_id (:id db))]
+                   (upload/delete-upload! table)
+                   ;; TODO shouldn't this be handled in upload?
+                   (t2/delete! :model/Table (:id table)))
+                 ;; Create temporary CSV file from output data
+                 (let [temp-file (File/createTempFile "transform-output-" ".csv")
+                       csv-data (:output body)]
+                   (try
+                     (with-open [writer (io/writer temp-file)]
+                       (.write writer ^String csv-data))
+                     (upload/create-from-csv-and-sync! {:db db
+                                                        :filename (.getName temp-file)
+                                                        :file temp-file
+                                                        :schema schema
+                                                        :table-name name})
+                     (finally
+                       ;; Clean up temp file
+                       (.delete temp-file))))
+                 (transform-run/succeed-started-run! run-id)
+                 {:run_id run-id
+                  :result result}
+                 (catch Exception e
+                   (transform-run/fail-started-run! run-id {:message (.getMessage e)})
+                   (log/error e "Failed to to create resulting table")
+                   (throw (ex-info "Failed to create the resulting table"
+                                   {:error (.getMessage e)}))))))
+           (catch Throwable t
+             (transform-run/fail-started-run! run-id {:message (.getMessage t)})
+             (throw t))))
+       (catch Throwable t
+         (log/error t "Error executing Python transform")
+         (throw t))))))

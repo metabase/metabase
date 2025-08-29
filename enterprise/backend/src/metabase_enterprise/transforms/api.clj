@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms.api
   (:require
-   [medley.core :as m]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.execute :as transforms.execute]
@@ -218,34 +217,23 @@
                     [:id ms/PositiveInt]]]
   (log/info "run transform" id)
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        start-promise (promise)]
     (if (transforms.util/python-transform? transform)
-      ;; Handle Python transform execution
-      (try
-        (let [{:keys [result run-id]} (transforms.execute/execute-python-transform! transform {:run-method :manual})]
-          (log/info "Python transform succeeded" (m/dissoc-in result [:body :output]))
-          (-> (response/response {:message (deferred-tru "Python transform executed successfully")
-                                  :run_id run-id
-                                  :result result})
-              (assoc :status 200)))
-        (catch Exception e
-          (log/error e "Error executing Python transform")
-          (-> (response/response {:message (deferred-tru "Python transform execution failed")
-                                  :error (.getMessage e)})
-              (assoc :status 500))))
-      ;; Handle MBQL transform execution (existing logic)
-      (let [start-promise (promise)]
-        (u.jvm/in-virtual-thread*
-         (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
-                                                            :run-method :manual}))
-        (when (instance? Throwable @start-promise)
-          (throw @start-promise))
-        (let [result @start-promise
-              run-id (when (and (vector? result) (= (first result) :started))
-                       (second result))]
-          (-> (response/response {:message (deferred-tru "Transform run started")
-                                  :run_id run-id})
-              (assoc :status 202)))))))
+      (u.jvm/in-virtual-thread*
+       (transforms.execute/execute-python-transform! transform {:start-promise start-promise
+                                                                :run-method :manual}))
+      (u.jvm/in-virtual-thread*
+       (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
+                                                          :run-method :manual})))
+    (when (instance? Throwable @start-promise)
+      (throw @start-promise))
+    (let [result @start-promise
+          run-id (when (and (vector? result) (= (first result) :started))
+                   (second result))]
+      (-> (response/response {:message (deferred-tru "Transform run started")
+                              :run_id run-id})
+          (assoc :status 202)))))
 
 (api.macros/defendpoint :post "/test"
   "Test Python code execution without creating a transform."
