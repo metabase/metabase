@@ -1,5 +1,9 @@
 import type { CodeLanguage } from "metabase/common/components/CodeEditor";
-import type { Card, Dashboard } from "metabase-types/api";
+import type {
+  Card,
+  Dashboard,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 
 export type DisplayTheme = "light" | "night" | "transparent";
 
@@ -17,7 +21,7 @@ export type EmbedResourceParameter = {
   slug: string;
   type: string;
   required?: boolean;
-  default?: unknown;
+  default?: ParameterValueOrArray | null;
 };
 
 export type EmbedResourceDownloadOptions = {

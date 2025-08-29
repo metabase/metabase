@@ -48,7 +48,10 @@ export function getUrlWithParameters(
   question: Question,
   originalQuestion: Question,
   parameters: ParameterWithTarget[],
-  parameterValues: Record<ParameterId, ParameterValueOrArray>,
+  parameterValues: Record<
+    ParameterId,
+    ParameterValueOrArray | undefined | null
+  >,
   { objectId }: { objectId?: string | number } = {},
 ): string {
   const includeDisplayIsLocked = true;

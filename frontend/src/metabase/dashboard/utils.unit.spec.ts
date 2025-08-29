@@ -18,6 +18,7 @@ import {
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { checkNotNull } from "metabase/lib/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
+import type { ParameterValueOrArray } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockDashboard,
@@ -489,7 +490,7 @@ describe("Dashboard utils", () => {
     function getEmptyDefaultValueCases({
       default: defaultValue,
     }: {
-      default: unknown;
+      default: ParameterValueOrArray | undefined | null;
     }) {
       return [
         { default: defaultValue, value: null, expected: false },
@@ -503,7 +504,11 @@ describe("Dashboard utils", () => {
       ];
     }
 
-    it.each<{ default: unknown; value: unknown; expected: boolean }>([
+    it.each<{
+      default: ParameterValueOrArray | undefined | null;
+      value: ParameterValueOrArray | undefined | null;
+      expected: boolean;
+    }>([
       ...getEmptyDefaultValueCases({ default: null }),
       ...getEmptyDefaultValueCases({ default: undefined }),
       ...getEmptyDefaultValueCases({ default: "" }),
