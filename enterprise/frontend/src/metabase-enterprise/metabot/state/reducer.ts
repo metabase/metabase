@@ -42,6 +42,9 @@ export interface MetabotState {
   state: any;
   reactions: MetabotReactionsState;
   toolCalls: MetabotToolCall[];
+  experimental: {
+    profileOverride: string | undefined;
+  };
 }
 
 export const getMetabotInitialState = (): MetabotState => ({
@@ -56,6 +59,9 @@ export const getMetabotInitialState = (): MetabotState => ({
     navigateToPath: null,
   },
   toolCalls: [],
+  experimental: {
+    profileOverride: undefined,
+  },
 });
 
 export const metabot = createSlice({
@@ -160,6 +166,9 @@ export const metabot = createSlice({
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;
+    },
+    setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
+      state.experimental.profileOverride = action.payload;
     },
   },
   extraReducers: (builder) => {
