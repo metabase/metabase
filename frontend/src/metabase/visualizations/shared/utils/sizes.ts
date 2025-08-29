@@ -40,6 +40,7 @@ export const MOBILE_HEIGHT_BY_DISPLAY_TYPE: Record<
   action: 1,
   link: 1,
   text: (desktopHeight) => Math.max(2, desktopHeight),
+  markdowncard: (desktopHeight) => Math.max(3, desktopHeight),
   heading: 2,
   scalar: 4,
 };
