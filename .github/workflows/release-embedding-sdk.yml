@@ -17,7 +17,6 @@ on:
           - release-x.54.x
           - release-x.55.x
           - release-x.56.x
-          - esbuild-main
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -401,12 +400,11 @@ jobs:
            "release-x.53.x": "53-stable",
            "release-x.54.x": "54-stable",
            "release-x.55.x": "55-stable",
-           "release-x.56.x": "56-nightly",
-           "esbuild-main": "56-esbuild"
+           "release-x.56.x": "56-stable"
            }')[inputs.branch]}}
 
-      - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-        if: ${{ inputs.branch == 'release-x.55.x' }}
+      - name: Add `latest` tag to the latest release branch (`release-x.56.x`) deployment
+        if: ${{ inputs.branch == 'release-x.56.x' }}
         working-directory: sdk
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
