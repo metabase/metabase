@@ -1,1 +1,1 @@
-export * from './CommentEditor';
+export * from "./CommentEditor";
