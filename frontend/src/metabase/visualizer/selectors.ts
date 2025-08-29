@@ -130,13 +130,21 @@ const getVisualizerDatasetData = createSelector(
     getVisualizationColumns,
     getVisualizerColumnValuesMapping,
   ],
-  (dataSources, datasets, columns, columnValuesMapping): DatasetData =>
-    mergeVisualizerData({
+  (dataSources, datasets, columns, columnValuesMapping): DatasetData => {
+    console.log("getVisualizerAllDatasetsData", {
+      dataSources,
+      datasets,
+      columns,
+      columnValuesMapping,
+    });
+
+    return mergeVisualizerData({
       columns,
       columnValuesMapping,
       datasets,
       dataSources,
-    }) as DatasetData,
+    }) as DatasetData;
+  },
 );
 
 export const getVisualizerDatasetColumns = createSelector(
@@ -199,6 +207,51 @@ export const getVisualizerRawSeries = createSelector(
       ...s,
       columnValuesMapping,
     }));
+  },
+);
+
+export const getVisualizerAllAvailableRawSeries = createSelector(
+  [
+    getVisualizationType,
+    getVisualizerRawSettings,
+    getDataSources,
+    getDatasets,
+    getCards,
+  ],
+  (display, settings, dataSources, datasets, cards): RawSeries => {
+    if (!display) {
+      return [];
+    }
+
+    return dataSources.map((dataSource, i) => {
+      return {
+        card: {
+          display,
+          dataset_query: {},
+          visualization_settings: cards[i]?.visualization_settings || {},
+        } as Card,
+
+        data: datasets[dataSource.id]?.data,
+
+        // Certain visualizations memoize settings computation based on series keys
+        // This guarantees a visualization always rerenders on changes
+        started_at: new Date().toISOString(),
+      };
+    });
+  },
+);
+
+export const getVisualizerAllAvailableTransformedSeries = createSelector(
+  [getVisualizerAllAvailableRawSeries],
+  (rawSeries) => {
+    if (rawSeries.length === 0) {
+      return [];
+    }
+    const { series } = getVisualizationTransformed(
+      extractRemappings(rawSeries),
+    );
+
+    return series;
   },
 );
 
