@@ -7,6 +7,7 @@ import {
   Center,
   Flex,
   Group,
+  Icon,
   Loader,
   Modal,
   ScrollArea,
@@ -115,10 +116,13 @@ export const ViewChangesModal = ({
         </Center>
       ) : diffs.length === 0 ? (
         <Center h="100%">
-          <Stack align="center">
-            <Text c="dimmed">{t`No changes found`}</Text>
-            <Text size="sm" c="dimmed">
-              {t`This branch has no changes`}
+          <Stack align="center" gap="xs">
+            <Icon name="git_compare" size={40} color="text-light" />
+            <Text fw={600} c="text-medium">
+              {t`No changes found`}
+            </Text>
+            <Text size="sm" c="text-medium" ta="center" maw="25rem">
+              {t`This branch has no changes compared to the main branch`}
             </Text>
           </Stack>
         </Center>
