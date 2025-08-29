@@ -20,35 +20,35 @@ import { isTopLevel } from "metabase-enterprise/documents/utils/editorNodeUtils"
 import { CommentsMenu } from "../../CommentsMenu";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 
-import S from "./OrderedList.module.css";
+import S from "./BulletList.module.css";
 
 const ListItemName = "listItem";
 const TextStyleName = "textStyle";
 
-export interface OrderedListOptions {
+export interface BulletListOptions {
   /**
-   * The node type name for list items.
+   * The node name for the list items
    * @default 'listItem'
-   * @example 'myListItem'
+   * @example 'paragraph'
    */
   itemTypeName: string;
 
   /**
-   * The HTML attributes for an ordered list node.
+   * HTML attributes to add to the bullet list element
    * @default {}
    * @example { class: 'foo' }
    */
   HTMLAttributes: Record<string, any>;
 
   /**
-   * Keep the marks when splitting a list item.
+   * Keep the marks when splitting the list
    * @default false
    * @example true
    */
   keepMarks: boolean;
 
   /**
-   * Keep the attributes when splitting a list item.
+   * Keep the attributes when splitting the list
    * @default false
    * @example true
    */
@@ -57,29 +57,28 @@ export interface OrderedListOptions {
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
-    orderedList: {
+    bulletList: {
       /**
-       * Toggle an ordered list
-       * @example editor.commands.toggleOrderedList()
+       * Toggle a bullet list
        */
-      toggleOrderedList: () => ReturnType;
+      toggleBulletList: () => ReturnType;
     };
   }
 }
 
 /**
- * Matches an ordered list to a 1. on input (or any number followed by a dot).
+ * Matches a bullet list to a dash or asterisk.
  */
-export const orderedListInputRegex = /^(\d+)\.\s$/;
+export const bulletListInputRegex = /^\s*([-+*])\s$/;
 
 /**
- * This extension allows you to create ordered lists.
+ * This extension allows you to create bullet lists.
  * This requires the ListItem extension
- * @see https://www.tiptap.dev/api/nodes/ordered-list
- * @see https://www.tiptap.dev/api/nodes/list-item
+ * @see https://tiptap.dev/api/nodes/bullet-list
+ * @see https://tiptap.dev/api/nodes/list-item.
  */
-export const OrderedList = Node.create<OrderedListOptions>({
-  name: "orderedList",
+export const BulletList = Node.create<BulletListOptions>({
+  name: "bulletList",
 
   addOptions() {
     return {
@@ -98,53 +97,33 @@ export const OrderedList = Node.create<OrderedListOptions>({
 
   addAttributes() {
     return {
-      start: {
-        default: 1,
-        parseHTML: (element) => {
-          return element.hasAttribute("start")
-            ? parseInt(element.getAttribute("start") || "", 10)
-            : 1;
-        },
-      },
-      type: {
-        default: null,
-        parseHTML: (element) => element.getAttribute("type"),
-      },
       ...createIdAttribute(),
     };
   },
 
   parseHTML() {
-    return [
-      {
-        tag: "ol",
-      },
-    ];
+    return [{ tag: "ul" }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    const { start, ...attributesWithoutStart } = HTMLAttributes;
-
-    return start === 1
-      ? [
-          "ol",
-          mergeAttributes(this.options.HTMLAttributes, attributesWithoutStart),
-          0,
-        ]
-      : ["ol", mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0];
+    return [
+      "ul",
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
+      0,
+    ];
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(OrderedListNodeView);
+    return ReactNodeViewRenderer(BulletListNodeView);
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("orderedList")];
+    return [createProseMirrorPlugin("bulletList")];
   },
 
   addCommands() {
     return {
-      toggleOrderedList:
+      toggleBulletList:
         () =>
         ({ commands, chain }) => {
           if (this.options.keepAttributes) {
@@ -171,31 +150,25 @@ export const OrderedList = Node.create<OrderedListOptions>({
 
   addKeyboardShortcuts() {
     return {
-      "Mod-Shift-7": () => this.editor.commands.toggleOrderedList(),
+      "Mod-Shift-8": () => this.editor.commands.toggleBulletList(),
     };
   },
 
   addInputRules() {
     let inputRule = wrappingInputRule({
-      find: orderedListInputRegex,
+      find: bulletListInputRegex,
       type: this.type,
-      getAttributes: (match) => ({ start: +match[1] }),
-      joinPredicate: (match, node) =>
-        node.childCount + node.attrs.start === +match[1],
     });
 
     if (this.options.keepMarks || this.options.keepAttributes) {
       inputRule = wrappingInputRule({
-        find: orderedListInputRegex,
+        find: bulletListInputRegex,
         type: this.type,
         keepMarks: this.options.keepMarks,
         keepAttributes: this.options.keepAttributes,
-        getAttributes: (match) => ({
-          start: +match[1],
-          ...this.editor.getAttributes(TextStyleName),
-        }),
-        joinPredicate: (match, node) =>
-          node.childCount + node.attrs.start === +match[1],
+        getAttributes: () => {
+          return this.editor.getAttributes(TextStyleName);
+        },
         editor: this.editor,
       });
     }
@@ -203,11 +176,7 @@ export const OrderedList = Node.create<OrderedListOptions>({
   },
 });
 
-export const OrderedListNodeView = ({
-  node,
-  editor,
-  getPos,
-}: NodeViewProps) => {
+export const BulletListNodeView = ({ node, editor, getPos }: NodeViewProps) => {
   const { childTargetId, comments, document, hasUnsavedChanges } =
     useDocumentContext();
   const [hovered, setHovered] = useState(false);
@@ -234,7 +203,7 @@ export const OrderedListNodeView = ({
   return (
     <>
       <NodeViewWrapper
-        className={cx(S.orderedList, {
+        className={cx(S.bulletList, {
           [S.open]: isOpen,
         })}
         ref={refs.setReference}
@@ -242,7 +211,7 @@ export const OrderedListNodeView = ({
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
-        <NodeViewContent as="ol" />
+        <NodeViewContent as="ul" />
       </NodeViewWrapper>
 
       {document && rendered && isTopLevel({ editor, getPos }) && (

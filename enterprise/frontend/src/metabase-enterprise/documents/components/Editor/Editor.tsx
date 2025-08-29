@@ -22,6 +22,7 @@ import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mention
 import S from "./Editor.module.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { Blockquote } from "./extensions/Blockquote";
+import { BulletList } from "./extensions/BulletList";
 import { CardEmbed } from "./extensions/CardEmbed/CardEmbedNode";
 import { CodeBlock } from "./extensions/CodeBlock";
 import { CommandExtension } from "./extensions/Command/CommandExtension";
@@ -103,13 +104,14 @@ export const Editor: React.FC<EditorProps> = ({
       Blockquote,
       CodeBlock,
       Heading,
+      BulletList,
       OrderedList,
       StarterKit.configure({
         paragraph: false,
         blockquote: false,
         codeBlock: false,
         heading: false,
-        // bulletList: false,
+        bulletList: false,
         orderedList: false,
       }),
       Image.configure({
