@@ -1558,16 +1558,14 @@
 (defn- uuid-field?
   [x]
   (and (driver-api/mbql-clause? x)
-       (let [[_kind id-or-value opts] x
-             field-type (or (:effective-type opts)
-                            (:effective_type opts)
-                            (when (pos-int? id-or-value)
-                              (let [{:keys [base-type effective-type]}
-                                    (driver-api/field (driver-api/metadata-provider) id-or-value)]
-                                (or effective-type base-type)))
-                            (:base-type opts)
-                            (:base_type opts))]
-         (isa? field-type :type/UUID))))
+       (isa? (or (:effective-type (get x 2))
+                 (let [field-id (second x)]
+                   (when (pos-int? field-id)
+                     (let [{:keys [base-type effective-type]}
+                           (driver-api/field (driver-api/metadata-provider) field-id)]
+                       (or effective-type base-type))))
+                 (:base-type (get x 2)))
+             :type/UUID)))
 
 (mu/defn- maybe-cast-uuid-for-equality
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
