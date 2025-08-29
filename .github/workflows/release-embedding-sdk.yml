@@ -11,6 +11,11 @@ on:
         default: "master"
         options:
           - release-x.55.x
+      tag-as-latest:
+        description: "Tag this release as 'latest' on npm"
+        type: boolean
+        required: true
+        default: false
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -30,6 +35,7 @@ jobs:
           **Inputs:**
 
           - \`branch\`: ${{ inputs.branch }}
+          - \`tag-as-latest\`: ${{ inputs.tag-as-latest }}
 
           triggered by: @${{ github.event.sender.login }}
           EOF
@@ -398,7 +404,7 @@ jobs:
            }')[inputs.branch]}}
 
       - name: Add `latest` tag to the latest release branch (`release-x.56.x`) deployment
-        if: ${{ inputs.branch == 'release-x.56.x' }}
+        if: ${{ inputs.branch == 'release-x.56.x' && inputs.tag-as-latest }}
         working-directory: sdk
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
