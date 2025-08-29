@@ -1,0 +1,117 @@
+{
+  "name": "@metabase/embedding-sdk-internal",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Internal package for Metabase Embedding SDK build scripts",
+  "devDependencies": {
+    "wireit": "^0.14.9"
+  },
+  "scripts": {
+    "clean": "wireit",
+    "tsc": "wireit",
+    "generate-package": "wireit",
+    "generate-nextjs-compat": "wireit",
+    "fixup-types-imports": "wireit",
+    "build-cli": "wireit",
+    "build-package": "wireit",
+    "build-bundle": "wireit",
+    "build-complete": "wireit",
+    "test-unit": "wireit",
+    "docs:generate": "wireit"
+  },
+  "wireit": {
+    "clean": {
+      "command": "rm -rf ../../../../resources/embedding-sdk/dist && rm -rf ../../../../resources/embedding-sdk/.tsbuildinfo"
+    },
+    "tsc": {
+      "command": "tsc --project ../../../../tsconfig.sdk.json",
+      "files": [
+        "../../../../tsconfig.sdk.json",
+        "**/*.ts",
+        "**/*.tsx"
+      ]
+    },
+    "generate-package": {
+      "command": "cd ../../../../ && node bin/embedding-sdk/generate-sdk-package-files.js",
+      "files": [
+        "../../../../bin/embedding-sdk/generate-sdk-package-files.js",
+        "package.template.json"
+      ]
+    },
+    "generate-nextjs-compat": {
+      "command": "cd ../../../../ && tsx enterprise/frontend/src/embedding-sdk/bin/generate-nextjs-compat.ts",
+      "dependencies": [
+        "generate-package"
+      ],
+      "files": [
+        "bin/generate-nextjs-compat.ts"
+      ]
+    },
+    "fixup-types-imports": {
+      "command": "cd ../../../../ && node bin/embedding-sdk/fixup-types-after-compilation.js",
+      "dependencies": [
+        "build-package"
+      ],
+      "files": [
+        "../../../../bin/embedding-sdk/fixup-types-after-compilation.js"
+      ]
+    },
+    "build-cli": {
+      "command": "cd ../../../../ && rspack --config rspack.embedding-sdk-cli.config.js",
+      "files": [
+        "../../../../rspack.embedding-sdk-cli.config.js",
+        "cli/**/*"
+      ]
+    },
+    "build-package": {
+      "command": "cd ../../../../ && WEBPACK_BUNDLE=production rspack --config rspack.embedding-sdk-package.config.js",
+      "dependencies": [
+        "generate-package",
+        "generate-nextjs-compat"
+      ],
+      "files": [
+        "../../../../rspack.embedding-sdk-package.config.js",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.css"
+      ]
+    },
+    "build-bundle": {
+      "command": "cd ../../../../ && WEBPACK_BUNDLE=production rspack --config rspack.embedding-sdk-bundle.config.js",
+      "files": [
+        "../../../../rspack.embedding-sdk-bundle.config.js",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.css"
+      ]
+    },
+    "build-complete": {
+      "dependencies": [
+        "generate-package",
+        "generate-nextjs-compat",
+        "build-package",
+        "build-cli",
+        "fixup-types-imports"
+      ]
+    },
+    "test-unit": {
+      "command": "yarn --cwd ../../../../ test-unit enterprise/frontend/src/embedding-sdk/",
+      "dependencies": [
+        "../../../..:build:cljs"
+      ],
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx"
+      ]
+    },
+    "docs:generate": {
+      "dependencies": [
+        "build-package",
+        "fixup-types-imports"
+      ],
+      "command": "typedoc --options ../../../../.typedoc/typedoc.html.config.js && typedoc --options ../../../../.typedoc/typedoc.markdown.config.js"
+    }
+  }
+}
