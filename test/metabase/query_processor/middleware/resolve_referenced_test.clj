@@ -217,3 +217,56 @@
                  ExceptionInfo
                  #"circular|cycle"
                  (#'qp.resolve-referenced/check-for-circular-references card-b-query)))))))))
+
+(deftest ^:parallel snippet-to-snippet-cycle-test
+  (testing "Detects direct snippet→snippet cycles"
+    (testing "Snippet A → Snippet B → Snippet A"
+      (let [;; Create snippets that reference each other
+            metadata-provider-with-snippets
+            (lib.tu/mock-metadata-provider
+             meta/metadata-provider
+             {:native-query-snippets [(make-snippet {:id           201
+                                                     :name         "snippet-a"
+                                                     :content      "WHERE x IN ({{snippet: snippet-b}})"
+                                                     :card-refs    []
+                                                     :snippet-refs [[202 "snippet-b"]]})
+                                      (make-snippet {:id           202
+                                                     :name         "snippet-b"
+                                                     :content      "SELECT y FROM ({{snippet: snippet-a}})"
+                                                     :card-refs    []
+                                                     :snippet-refs [[201 "snippet-a"]]})]})
+
+            ;; Create a query that uses snippet-a
+            entrypoint-query (lib/query
+                              metadata-provider-with-snippets
+                               {:database (meta/id)
+                                :type     :native
+                                :native   {:query         "SELECT * FROM orders {{snippet: snippet-a}}"
+                                           :template-tags (make-snippet-template-tag 201 "snippet-a")}})]
+        (testing "Should throw an exception specifically mentioning snippet cycle"
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"circular|cycle"
+               (#'qp.resolve-referenced/check-for-circular-references entrypoint-query))))))
+
+    (testing "Self-referencing snippet"
+      (let [metadata-provider-with-snippet
+            (lib.tu/mock-metadata-provider
+             meta/metadata-provider
+             {:native-query-snippets [;; Snippet that references itself
+                                      (make-snippet {:id           301
+                                                     :name         "recursive-snippet"
+                                                     :content      "WHERE id IN (SELECT id FROM ({{snippet: recursive-snippet}}))"
+                                                     :card-refs    []
+                                                     :snippet-refs [[301 "recursive-snippet"]]})]})
+            entrypoint-query (lib/query
+                              metadata-provider-with-snippet
+                               {:database (meta/id)
+                                :type     :native
+                                :native   {:query         "SELECT * FROM venues {{snippet: recursive-snippet}}"
+                                           :template-tags (make-snippet-template-tag 301 "recursive-snippet")}})]
+        (testing "Should throw an exception for self-referencing snippet"
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"Snippet to snippet cycle detected"
+               (#'qp.resolve-referenced/check-for-circular-references entrypoint-query))))))))

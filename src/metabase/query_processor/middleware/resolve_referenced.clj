@@ -39,8 +39,7 @@
            card-ids #{}]
       (if-let [snippet-id (first to-process)]
         (if (visited snippet-id)
-          ;; Skip already processed snippet
-          (recur (rest to-process) visited card-ids)
+          (throw (ex-info (tru "Snippet to snippet cycle detected!") {:native-query-snippet-id snippet-id}))
           ;; Process this snippet
           (let [snippet (lib.metadata/native-query-snippet metadata-providerable snippet-id)
                 snippet-template-tags (:template-tags snippet)
@@ -53,6 +52,12 @@
         card-ids))
     #{}))
 
+(defn- card-references
+  [metadata-providerable card-query]
+  (set/union
+   (lib/native-query-card-ids card-query)
+   (expand-snippets-to-card-ids metadata-providerable card-query)))
+
 (mu/defn- card-subquery-graph
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    graph                 :- :map
@@ -62,9 +67,7 @@
                                             {:type qp.error-type/invalid-query, :card-id card-id})))
                         (qp.fetch-source-query/normalize-card-query metadata-providerable)
                         :dataset-query)
-        card-ids (set/union
-                  (lib/native-query-card-ids card-query)
-                  (expand-snippets-to-card-ids metadata-providerable card-query))]
+        card-ids (card-references metadata-providerable card-query)]
     (reduce
      (fn [g sub-card-id]
        (card-subquery-graph metadata-providerable
@@ -97,7 +100,7 @@
   (try
     (reduce (partial card-subquery-graph query)
             (dep/graph)
-            (lib/native-query-card-ids query))
+            (card-references query query))
     (catch ExceptionInfo e
       (let [{:keys [reason node dependency]} (ex-data e)]
         (if (= reason :weavejester.dependency/circular-dependency)
