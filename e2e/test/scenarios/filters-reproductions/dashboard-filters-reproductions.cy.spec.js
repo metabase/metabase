@@ -5170,6 +5170,111 @@ describe("Issue 46767", () => {
   });
 });
 
+describe("issue 46541", () => {
+  const TARGET_FILTER = {
+    name: "Target filter",
+    slug: "target-filter",
+    id: "ffa421da",
+    type: "number/>=",
+    sectionId: "number",
+  };
+
+  const OTHER_FILTER = {
+    name: "Other filter",
+    slug: "other-filter",
+    id: "dfaa3356",
+    type: "number/>=",
+    sectionId: "number",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        query: { "source-table": ORDERS_ID },
+      },
+      dashboardDetails: {
+        name: "Dashboard A",
+      },
+    }).then(({ body }) => {
+      cy.wrap(body.dashboard_id).as("dashboardA");
+
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          query: { "source-table": ORDERS_ID },
+        },
+        dashboardDetails: {
+          name: "Dashboard B",
+          parameters: [TARGET_FILTER, OTHER_FILTER],
+        },
+      }).then(({ body }) => {
+        cy.wrap(body.dashboard_id).as("dashboardB");
+
+        H.updateDashboardCards({
+          dashboard_id: body.dashboard_id,
+          cards: [
+            {
+              card_id: body.card_id,
+              parameter_mappings: [
+                {
+                  parameter_id: TARGET_FILTER.id,
+                  card_id: body.card_id,
+                  target: ["dimension", ["field", ORDERS.TOTAL, null]],
+                },
+                {
+                  parameter_id: OTHER_FILTER.id,
+                  card_id: body.card_id,
+                  target: ["dimension", ["field", ORDERS.SUBTOTAL, null]],
+                },
+              ],
+            },
+          ],
+        });
+
+        cy.log("Set parameter value on Dashboard B");
+        H.visitDashboard("@dashboardB");
+        H.filterWidget(OTHER_FILTER).click();
+        H.popover().within(() => {
+          cy.findByPlaceholderText("Enter a number").type("10");
+          cy.button("Add filter").click();
+        });
+
+        cy.log("Set up click behaviour on Dashboard A");
+        H.visitDashboard("@dashboardA");
+        H.editDashboard();
+
+        H.showDashboardCardActions();
+        cy.findByLabelText("Click behavior").click();
+
+        H.sidebar().within(() => {
+          cy.findByText("Tax").click();
+          cy.findByText("Go to a custom destination").click();
+          cy.findByText("Dashboard").click();
+        });
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Dashboards").click();
+          cy.findByText("Dashboard B").click();
+        });
+
+        H.sidebar().findByText(TARGET_FILTER.name).click();
+        H.popover().findByText("Tax").click();
+        H.saveDashboard();
+      });
+    });
+  });
+
+  it("should reset other filters when coming to a dashboard from a click action with a filter (metabase#46541)", () => {
+    cy.log("Navigate from Dashboard A to Dashboard B with a click action");
+    H.tableInteractiveBody().findByText("2.07").click();
+
+    H.filterWidget(TARGET_FILTER).should("contain", "2.07");
+    H.filterWidget(OTHER_FILTER).should("not.contain", "10");
+  });
+});
+
 describe("issue 46372", () => {
   beforeEach(() => {
     H.restore();
