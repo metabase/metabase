@@ -876,8 +876,8 @@
                  {:status-code 422})
 
         (not (mi/can-read? table))
-        (ex-info (tru "You don''t have permissions to do that.")
-                 {:status-code 403}))))
+        (ex-info (tru "You don''t have permissions to do that or it does not exist.")
+                 {:status-code 404}))))
 
 (defn- check-can-update
   "Throws an error if the user cannot upload to the given database and schema."
@@ -900,8 +900,8 @@
                {:status-code 422})
 
       (not (mi/can-write? table))
-      (ex-info (tru "You don''t have permissions to do that.")
-               {:status-code 403}))))
+      (ex-info (tru "You don''t have permissions to do that or it does not exist.")
+               {:status-code 404}))))
 
 (defn- check-can-delete
   "Throws an error if the given table is not an upload, or if the user does not have permission to delete it."
