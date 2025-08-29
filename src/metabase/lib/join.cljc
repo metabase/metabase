@@ -344,11 +344,21 @@
           cols' (if (= fields :all)
                   cols
                   (for [field-ref fields
-                        :let      [match (or (lib.equality/find-matching-column field-ref cols)
+                        ;; ignore `:source-field` in field refs... join `:fields` probably shouldn't be adding
+                        ;; implicitly joined columns anyway (this is not something you can do in the UI at any rate).
+                        ;; It might possibly be getting incorrectly propagated somewhere,
+                        ;; see [[metabase.query-processor-test.remapping-test/explicit-join-with-fields-and-implicitly-joined-remaps-test]]
+                        ;; for an example of where this happens. Having it here will cause `lib.equality` to fail to
+                        ;; find a match.
+                        ;;
+                        ;; TODO (Cam 8/29/25) -- investigate how this is happening and consider whether Join `:fields`
+                        ;; should disallow refs with `:source-field`/remove it automatically.
+                        :let      [field-ref (lib.options/update-options field-ref dissoc :source-field)
+                                   match (or (lib.equality/find-matching-column field-ref cols)
                                              (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
                                                         (pr-str join-alias)
                                                         (pr-str field-ref)
-                                                        (pr-str (map (juxt :id :lib/source-column-alias) cols))))]
+                                                        (pr-str (map (juxt :id :metabase.lib.join/join-alias :lib/source-column-alias) cols))))]
                         :when     (and match
                                        (not (false? (:active match))))]
                     (-> match
