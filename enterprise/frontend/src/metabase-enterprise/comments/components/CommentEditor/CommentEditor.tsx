@@ -75,7 +75,7 @@ export const CommentEditor = ({
     {
       extensions,
       content: initialContent || "",
-      autofocus: true,
+      autofocus: false,
       editable: !readonly,
       immediatelyRender: true,
       onUpdate: ({ editor }) => {

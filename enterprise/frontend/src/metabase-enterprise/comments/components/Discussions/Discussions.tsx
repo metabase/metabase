@@ -45,44 +45,38 @@ export const Discussions = ({
   const [isNewThreadStarted, setIsNewThreadStarted] = useState(false);
 
   return (
-    <Stack>
-      {threads.map((thread, index) => (
+    <Stack gap="0">
+      {threads.map((thread) => (
         <>
-          <Discussion
-            childTargetId={childTargetId}
-            comments={thread.comments}
-            key={thread.id}
-            targetId={targetId}
-            targetType={targetType}
-          />
-          {index < threads.length - 1 && <Divider key={`divider-${index}`} />}
+          <Box key={thread.id} px="xl" mb="md">
+            <Discussion
+              childTargetId={childTargetId}
+              comments={thread.comments}
+              key={thread.id}
+              targetId={targetId}
+              targetType={targetType}
+            />
+          </Box>
+          <Divider />
         </>
       ))}
 
-      {!isNewThreadStarted && (
-        <Button
-          style={{ alignSelf: "start" }}
-          mt="sm"
-          onClick={() => setIsNewThreadStarted(true)}
-          variant="subtle"
-        >
-          {t`Start new thread`}
-        </Button>
-      )}
-      {isNewThreadStarted && (
-        <CommentEditor
-          onChange={(document) => setNewComment(document)}
-          onSubmit={(doc) => {
-            handleSubmit(doc);
-            setIsNewThreadStarted(false);
-          }}
-          onBlur={(doc, editor) => {
-            if (editor.isEmpty) {
+      <Box p="xl">
+        {!isNewThreadStarted && (
+          <Button onClick={() => setIsNewThreadStarted(true)} variant="subtle">
+            {t`Start new thread`}
+          </Button>
+        )}
+        {isNewThreadStarted && (
+          <CommentEditor
+            onChange={(document) => setNewComment(document)}
+            onSubmit={(doc) => {
+              handleSubmit(doc);
               setIsNewThreadStarted(false);
-            }
-          }}
-        />
-      )}
+            }}
+          />
+        )}
+      </Box>
     </Stack>
   );
 };

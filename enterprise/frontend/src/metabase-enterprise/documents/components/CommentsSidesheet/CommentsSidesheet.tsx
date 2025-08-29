@@ -1,9 +1,9 @@
 import cx from "classnames";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
-import { Button, Group, Icon, Modal, Stack, Tooltip, rem } from "metabase/ui";
+import { Modal, Tabs, rem } from "metabase/ui";
 import { Discussions } from "metabase-enterprise/comments/components/Discussions";
 
 import { useDocumentContext } from "../DocumentContext";
@@ -20,6 +20,7 @@ interface Props {
 export const CommentsSidesheet = ({ params, onClose }: Props) => {
   const childTargetId = params?.childTargetId;
 
+  const [activeTab, setActiveTab] = useState<string | null>("open");
   const { comments, document } = useDocumentContext();
 
   const targetComments = useMemo(() => {
@@ -37,6 +38,16 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       onClose();
     }
   }, [childTargetId, onClose]);
+
+  const resolvedComments = useMemo(
+    () => targetComments?.filter((comment) => comment.is_resolved) ?? [],
+    [targetComments],
+  );
+
+  const activeComments = useMemo(
+    () => targetComments?.filter((comment) => !comment.is_resolved) ?? [],
+    [targetComments],
+  );
 
   if (!childTargetId || !document) {
     return null;
@@ -59,30 +70,33 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         transitionProps={{ duration: 0 }}
         w={rem(400)}
       >
-        <Modal.Body className={S.body} p={0} pt="lg">
-          <Group gap="lg" justify="flex-end" px="xl">
-            <Tooltip label={t`Close`}>
-              <Button
-                aria-label={t`Close`}
-                c="text-dark"
-                h={20}
-                leftSection={<Icon name="close" />}
-                p={0}
-                variant="subtle"
-                w={20}
-                onClick={onClose}
+        <Modal.Header px="xl" className={S.header}>
+          <Modal.Title>{t`Discussions`}</Modal.Title>
+          <Modal.CloseButton />
+        </Modal.Header>
+        <Modal.Body className={S.body} p={0}>
+          <Tabs value={activeTab} onChange={setActiveTab}>
+            <Tabs.List px="1.625rem" className={S.tabsList}>
+              <Tabs.Tab value="open">{t`Active`}</Tabs.Tab>
+              <Tabs.Tab value="resolved">{t`Resolved`}</Tabs.Tab>
+            </Tabs.List>
+            <Tabs.Panel value="open">
+              <Discussions
+                childTargetId={childTargetId}
+                comments={activeComments}
+                targetId={document.id}
+                targetType="document"
               />
-            </Tooltip>
-          </Group>
-
-          <Stack className={S.scrollable} gap={0} h="100%" p="xl">
-            <Discussions
-              childTargetId={childTargetId}
-              comments={targetComments}
-              targetId={document.id}
-              targetType="document"
-            />
-          </Stack>
+            </Tabs.Panel>
+            <Tabs.Panel value="resolved">
+              <Discussions
+                childTargetId={childTargetId}
+                comments={resolvedComments}
+                targetId={document.id}
+                targetType="document"
+              />
+            </Tabs.Panel>
+          </Tabs>
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>
