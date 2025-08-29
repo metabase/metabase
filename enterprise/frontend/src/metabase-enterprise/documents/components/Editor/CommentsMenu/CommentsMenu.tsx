@@ -22,13 +22,17 @@ export const CommentsMenu = forwardRef(function CommentsMenu(
   { active, disabled, href, show, style, threads }: Props,
   ref,
 ) {
-  const hasComments = threads.length > 0;
+  const hasUnresolvedComments = threads
+    .flatMap((thread) => thread.comments)
+    .some((comment) => !comment.is_resolved);
 
   return (
     <Portal>
       <Box
         className={cx(S.commentsMenu, {
-          [S.visible]: disabled ? hasComments : show || hasComments,
+          [S.visible]: disabled
+            ? hasUnresolvedComments
+            : show || hasUnresolvedComments,
         })}
         contentEditable={false}
         draggable={false}
