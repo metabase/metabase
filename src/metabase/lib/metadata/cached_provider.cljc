@@ -56,7 +56,7 @@
 (defn- database [cache metadata-provider]
   (get-in-cache-or-fetch cache [:metadata/database] #(lib.metadata.protocols/database metadata-provider)))
 
-(defn- metadatas [inner-fn key cache uncached-provider metadata-type values]
+(defn- metadatas [inner-fn k cache uncached-provider metadata-type values]
   (when (seq values)
     (log/tracef "Getting %s metadata with Values %s" metadata-type (pr-str (sort values)))
     (let [metadata-cache (get @cache metadata-type)]
@@ -67,12 +67,12 @@
           (when (seq missing-values)
             (log/tracef "Need to fetch %s: %s" metadata-type (pr-str (sort missing-values)))
             (let [fetched-metadatas (inner-fn uncached-provider metadata-type missing-values)
-                  fetched-values       (map key fetched-metadatas)
+                  fetched-values       (map k fetched-metadatas)
                   unfetched-values     (set/difference (set missing-values) (set fetched-values))]
               (when (seq fetched-values)
                 (log/tracef "Fetched %s: %s" metadata-type (pr-str (sort fetched-values)))
                 (doseq [instance fetched-metadatas]
-                  (store-in-cache! cache [metadata-type (key instance)] instance)))
+                  (store-in-cache! cache [metadata-type (k instance)] instance)))
               (when (seq unfetched-values)
                 (log/tracef "Failed to fetch %s: %s" metadata-type (pr-str (sort unfetched-values)))
                 (doseq [unfetched-id unfetched-values]

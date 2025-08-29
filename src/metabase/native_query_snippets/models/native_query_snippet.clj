@@ -32,7 +32,6 @@
   #{:snippets})
 
 (defn- add-template-tags [snippet]
-  ;; We need a metadata provider, but we don't care about which db it is connected to, so we just pick a random db
   (assoc snippet :template_tags
          (-> (:content snippet)
              lib/recognize-template-tags

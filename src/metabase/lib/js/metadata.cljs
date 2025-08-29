@@ -546,8 +546,8 @@
         k          (-> metadata-type metadata-field by-name-field)
         metadatas* (some-> metadata k deref)]
     (into []
-          (keep (fn [name]
-                  (some-> metadatas* (get name))))
+          (keep (fn [the-name]
+                  (some-> metadatas* (get the-name))))
           names)))
 
 (defn- tables [metadata database-id]
