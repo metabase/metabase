@@ -2,16 +2,9 @@
 /* eslint-disable no-restricted-imports */
 import { Avatar } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import Link from "@tiptap/extension-link";
-import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import dayjs from "dayjs";
-import { useMemo } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
 import {
   Group,
   Icon,
@@ -21,8 +14,6 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import { configureMentionExtension } from "metabase-enterprise/comments/mentions/extension";
-import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
@@ -64,38 +55,9 @@ export function DiscussionComment({
   onDelete,
   onEdit,
 }: DiscussionCommentProps) {
-  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
-  const dispatch = useDispatch();
-
-  const extensions = useMemo(
-    () => [
-      StarterKit,
-      SmartLink.configure({
-        HTMLAttributes: { class: "smart-link" },
-        siteUrl,
-      }),
-      Link.configure({
-        HTMLAttributes: { class: CS.link },
-      }),
-      configureMentionExtension(dispatch),
-    ],
-    [dispatch, siteUrl],
-  );
-
-  const commentRenderingHandle = useEditor(
-    {
-      extensions,
-      content: comment.content,
-      editable: false,
-      immediatelyRender: true,
-    },
-    [],
-  );
-
   const [isEditing, editingHandler] = useDisclosure(false);
 
   const handleEditingSubmit = (document: DocumentContent) => {
-    commentRenderingHandle.commands.setContent(document);
     onEdit?.(comment, document);
     editingHandler.close();
   };
@@ -180,14 +142,11 @@ export function DiscussionComment({
           },
         }}
       >
-        {isEditing ? (
-          <CommentEditor
-            initialContent={comment.content}
-            onSubmit={handleEditingSubmit}
-          />
-        ) : (
-          <EditorContent disabled editor={commentRenderingHandle} />
-        )}
+        <CommentEditor
+          initialContent={comment.content}
+          onSubmit={handleEditingSubmit}
+          readonly={!isEditing}
+        />
       </Spoiler>
     </Timeline.Item>
   );

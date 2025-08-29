@@ -6,6 +6,16 @@
   border-radius: var(--mantine-spacing-sm);
   z-index: 1;
   width: 20rem;
+
+  &.readonly {
+    border: none;
+    box-shadow: none;
+    padding-block: var(--mantine-spacing-sm);
+
+    .content :global(.ProseMirror) {
+      padding-block: var(--mantine-spacing-xs);
+    }
+  }
 }
 
 /* ProseMirror area */

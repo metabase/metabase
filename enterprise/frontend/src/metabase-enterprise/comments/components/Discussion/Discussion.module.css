@@ -6,6 +6,11 @@
   &:hover {
     color: var(--mb-color-brand);
   }
+
+  & + .spoilerContent {
+    overflow: hidden;
+    pointer-events: none;
+  }
 }
 
 .spoilerRoot[data-has-spoiler] .spoilerContent {

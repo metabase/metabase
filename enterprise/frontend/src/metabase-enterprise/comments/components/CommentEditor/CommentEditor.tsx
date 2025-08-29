@@ -1,9 +1,9 @@
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, type Extension, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -29,14 +29,14 @@ const ALLOWED_FORMATTING = {
 } as const;
 
 interface Props {
-  disabled?: boolean;
+  readonly?: boolean;
   initialContent?: DocumentContent | null;
   onChange?: (content: DocumentContent) => void;
   onSubmit?: (content: DocumentContent) => void;
 }
 
 export const CommentEditor = ({
-  disabled = false,
+  readonly = false,
   initialContent,
   onChange,
   onSubmit,
@@ -47,22 +47,24 @@ export const CommentEditor = ({
   const dispatch = useDispatch();
 
   const extensions = useMemo(
-    () => [
-      StarterKit,
-      SmartLink.configure({
-        HTMLAttributes: { class: "smart-link" },
-        siteUrl,
-      }),
-      Link.configure({
-        HTMLAttributes: { class: CS.link },
-      }),
-      Placeholder.configure({
-        placeholder: t`Add a comment…`,
-      }),
-      DisableMetabotSidebar,
-      configureMentionExtension({ currentUser, dispatch }),
-    ],
-    [currentUser, dispatch, siteUrl],
+    () =>
+      [
+        StarterKit,
+        SmartLink.configure({
+          HTMLAttributes: { class: "smart-link" },
+          siteUrl,
+        }),
+        Link.configure({
+          HTMLAttributes: { class: CS.link },
+        }),
+        configureMentionExtension({ currentUser, dispatch }),
+        !readonly &&
+          Placeholder.configure({
+            placeholder: t`Add a comment…`,
+          }),
+        !readonly && DisableMetabotSidebar,
+      ].filter(Boolean) as Extension[],
+    [siteUrl, currentUser, dispatch, readonly],
   );
 
   const editor = useEditor(
@@ -70,7 +72,7 @@ export const CommentEditor = ({
       extensions,
       content: initialContent || "",
       autofocus: true,
-      editable: !disabled,
+      editable: !readonly,
       immediatelyRender: true,
       onUpdate: ({ editor }) => {
         const doc = editor.getText();
@@ -80,8 +82,14 @@ export const CommentEditor = ({
         }
       },
     },
-    [disabled],
+    [readonly],
   );
+
+  useEffect(() => {
+    if (editor && initialContent) {
+      editor.commands.setContent(initialContent);
+    }
+  }, [editor, initialContent]);
 
   if (!editor) {
     return null;
@@ -96,7 +104,7 @@ export const CommentEditor = ({
     }
   };
   const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
-    if (disabled) {
+    if (readonly) {
       return;
     }
     if (e.key === "Enter" && !e.shiftKey) {
@@ -109,20 +117,27 @@ export const CommentEditor = ({
   };
 
   return (
-    <Flex className={cx(S.container)} onKeyDown={handleKeyDown}>
+    <Flex
+      className={cx(S.container, { [S.readonly]: readonly })}
+      onKeyDown={handleKeyDown}
+    >
       <EditorContent editor={editor} className={S.content} />
-      <ActionIcon
-        variant="subtle"
-        className={cx(S.submitBtn, { [S.canSubmit]: !!content })}
-        onClick={submitDoc}
-      >
-        <Icon name="arrow_up" />
-      </ActionIcon>
-      <EditorBubbleMenu
-        editor={editor}
-        disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
-        allowedFormatting={ALLOWED_FORMATTING}
-      />
+      {readonly ? null : (
+        <ActionIcon
+          variant="subtle"
+          className={cx(S.submitBtn, { [S.canSubmit]: !!content })}
+          onClick={submitDoc}
+        >
+          <Icon name="arrow_up" />
+        </ActionIcon>
+      )}
+      {!readonly && (
+        <EditorBubbleMenu
+          editor={editor}
+          disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+          allowedFormatting={ALLOWED_FORMATTING}
+        />
+      )}
     </Flex>
   );
 };
