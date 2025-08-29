@@ -6,9 +6,8 @@ summary: Configure Metabot settings, including which collections Metabot can acc
 # Metabot settings
 
 {% include beta-blockquote.html
-   message="Foe now, Metabot](https://www.metabase.com/features/metabot-ai) is only available as an add-on for Pro and Enterprise plans on Metabase Cloud."
-%} 
-
+   message="For now, <a href='https://www.metabase.com/features/metabot-ai'>Metabot</a> is only available as an add-on for Pro and Enterprise plans on Metabase Cloud."
+%}
 
 _Settings > Admin settings > AI_
 
