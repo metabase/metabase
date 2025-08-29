@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.analytics.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -110,7 +111,32 @@
     (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 
-;; TODO: force a new index
+(defenterprise repair-index!
+  "Brings the semantic search index into consistency with the provided document set.
+  Does not fully reinitialize the index, but will add missing documents and remove stale ones."
+  :feature :semantic-search
+  [searchable-documents]
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.env/get-index-metadata)]
+    (if-not (index-active? pgvector index-metadata)
+      (log/warn "repair-index! called prior to init!")
+      (let [{:keys [metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+            active-index-name      (:table_name metadata-row)
+            index-version          (:index_version metadata-row)]
+        (semantic.repair/with-repair-table!
+          pgvector
+          index-version
+          (fn [repair-table-name]
+            ;; Re-gate all provided documents, populating the repair table as we go
+            (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents
+                                                 :repair-table repair-table-name)
+            ;; Find documents in the index that are not in the provided searchable-documents, and gate deletes for them
+            (when-let [ids-by-model (semantic.repair/find-lost-deletes-by-model pgvector active-index-name repair-table-name)]
+              (doseq [[model ids] ids-by-model]
+                (log/infof "Repairing lost deletes for model %s: deleting %d documents" model (count ids))
+                (semantic.pgvector-api/gate-deletes! pgvector index-metadata model ids)))))))))
+
+;; TODO: Explicitly disable
 (defenterprise reindex!
   "Reindex the semantic search index."
   :feature :semantic-search
@@ -123,7 +149,7 @@
     (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
     nil))
 
-;; TODO: implement
+;; TODO: Explicitly disable
 (defenterprise reset-tracking!
   "Enterprise implementation of semantic search tracking reset."
   :feature :semantic-search
@@ -147,4 +173,7 @@
   (def all-docs (search.ingestion/searchable-documents))
   (def subset-docs (eduction (take 2000) all-docs))
   (reindex! subset-docs {})
-  (reindex! all-docs {}))
+  (reindex! all-docs {})
+
+  ;; repair-index! testing
+  (repair-index! all-docs))
