@@ -963,6 +963,59 @@
                    :content "11 = 11"}
                   (t2/select-one :model/NativeQuerySnippet :entity_id (:entity_id snippet)))))))))
 
+(deftest snippet-template-tags-import-test
+  (testing "Template tags import preserves nil, empty, and populated values"
+    (mt/with-empty-h2-app-db!
+      (testing "Missing template_tags field -> nil in database"
+        (let [snippet-data {:serdes/meta [{:model "NativeQuerySnippet"
+                                           :id    "test-entity-1"
+                                           :label "test_snippet_1"}]
+                            :name        "no-tags-field"
+                            :content     "WHERE id = {{id}}"
+                            :creator_id  "test@example.com"
+                            :entity_id   "test-entity-1"}
+              ingestion    (ingestion-in-memory [snippet-data])]
+          (serdes.load/load-metabase! ingestion)
+          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-1")]
+            ;; Toucan hooks compute the template-tags:
+            (is (=? {"id" {:type         :text
+                           :display-name "ID"
+                           :name         "id"}}
+                    template-tags)))))
+
+      (testing "Empty map template_tags -> preserved as empty map"
+        (let [snippet-data {:serdes/meta   [{:model "NativeQuerySnippet"
+                                             :id    "test-entity-2"
+                                             :label "test_snippet_2"}]
+                            :name          "empty-tags"
+                            :content       "SELECT 1"
+                            :template_tags {}
+                            :creator_id    "test@example.com"
+                            :entity_id     "test-entity-2"}
+              ingestion    (ingestion-in-memory [snippet-data])]
+          (serdes.load/load-metabase! ingestion)
+          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-2")]
+            (is (= {} template-tags)))))
+
+      (testing "Populated template_tags -> preserved as-is"
+        (let [snippet-data {:serdes/meta   [{:model "NativeQuerySnippet"
+                                             :id    "test-entity-3"
+                                             :label "test_snippet_3"}]
+                            :name          "with-tags"
+                            :content       "WHERE id = {{id}}"
+                            :template_tags {"id" {:type         "text"
+                                                  :name         "id"
+                                                  :display-name "ID"}}
+                            :creator_id    "test@example.com"
+                            :entity_id     "test-entity-3"}
+              ingestion    (ingestion-in-memory [snippet-data])]
+          (serdes.load/load-metabase! ingestion)
+          (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-3")]
+            (is (=? {"id" {:type         :text
+                           :name         "id"
+                           :display-name "ID"}}
+                    template-tags))))))))
+
 (deftest load-action-test
   (let [serialized (atom nil)
         eid (u/generate-nano-id)]

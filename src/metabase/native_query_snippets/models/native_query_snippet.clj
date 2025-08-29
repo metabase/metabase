@@ -113,24 +113,12 @@
         colls (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
     (concat ["snippets"] colls [file])))
 
-(defn- add-template-tags-for-deserialization
-  "Add template tags during deserialization. Unlike `add-template-tags`, this doesn't look up
-   snippet IDs from the database since they might not exist yet during deserialization."
-  [snippet]
-  (assoc snippet :template_tags
-         (-> (:content snippet)
-             lib/recognize-template-tags)))
-
 (defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
-  ;; Ensure template_tags is present, computing it if missing (for backwards compatibility)
-  (let [ingested-with-tags (if (contains? ingested :template_tags)
-                             ingested
-                             (add-template-tags-for-deserialization ingested))]
-    ;; if we got local snippet in db and it has same name as incoming one, we can be sure
-    ;; there will be no conflicts and skip the query to the db
-    (if (and (not= (:name ingested-with-tags) (:name maybe-local))
-             (t2/exists? :model/NativeQuerySnippet
-                         :name (:name ingested-with-tags) :entity_id [:!= (:entity_id ingested-with-tags)]))
-      (recur (update ingested-with-tags :name str " (copy)")
-             maybe-local)
-      (serdes/default-load-one! ingested-with-tags maybe-local))))
+  ;; if we got local snippet in db and it has same name as incoming one, we can be sure
+  ;; there will be no conflicts and skip the query to the db
+  (if (and (not= (:name ingested) (:name maybe-local))
+           (t2/exists? :model/NativeQuerySnippet
+                       :name (:name ingested) :entity_id [:!= (:entity_id ingested)]))
+    (recur (update ingested :name str " (copy)")
+           maybe-local)
+    (serdes/default-load-one! ingested maybe-local)))
