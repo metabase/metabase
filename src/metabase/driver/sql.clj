@@ -179,7 +179,7 @@
         (some (fn [{:keys [id] {:keys [name schema]} :target}]
                 (when (matches? name schema)
                   {:transform id}))
-              (t2/select-fn-vec #(select-keys % [:id :target]) :model/Transform)))))
+              (t2/select [:model/Transform :id :target])))))
 
 (defmethod driver/native-query-deps :sql
   [driver query]
