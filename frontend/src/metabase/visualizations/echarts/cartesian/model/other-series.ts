@@ -83,10 +83,19 @@ export const getAggregatedOtherSeriesValue = (
   aggregationType: AggregationType = "sum",
   datum: Datum,
 ): number => {
-  const aggregation = AGGREGATION_FN_MAP[aggregationType];
   const values = seriesModels.map((model) =>
     checkNumber(datum[model.dataKey] ?? 0),
   );
+
+  return getAggregationByValues(values, aggregationType);
+};
+
+export const getAggregationByValues = (
+  values: number[],
+  aggregationType: AggregationType = "sum",
+): number => {
+  const aggregation = AGGREGATION_FN_MAP[aggregationType];
+
   return aggregation.fn(values);
 };
 
