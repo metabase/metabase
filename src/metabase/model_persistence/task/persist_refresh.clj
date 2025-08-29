@@ -14,7 +14,6 @@
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.query-processor.middleware.limit :as limit]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.util :as u]
@@ -292,9 +291,7 @@
   [cron-spec]
   (cron/schedule
    (cron/cron-schedule cron-spec)
-   (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
-                                                (qp.timezone/system-timezone-id)
-                                                "UTC")))
+   (cron/in-time-zone (TimeZone/getTimeZone (driver/report-timezone-long)))
    (cron/with-misfire-handling-instruction-do-nothing)))
 
 (comment
