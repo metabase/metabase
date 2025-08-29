@@ -36,9 +36,8 @@ export const engineKeys = [
   "bigquery-cloud-sdk",
   "clickhouse",
   "databricks",
-  "druid",
   "druid-jdbc",
-  "databricks",
+  "druid",
   "mysql",
   "oracle",
   "postgres",
@@ -52,6 +51,29 @@ export const engineKeys = [
   "vertica",
 ] as const;
 
+export const providerNames = [
+  "Aiven",
+  "Amazon RDS",
+  "Azure",
+  "Crunchy Data",
+  "DigitalOcean",
+  "Fly.io",
+  "Neon",
+  "PlanetScale",
+  "Railway",
+  "Render",
+  "Scaleway",
+  "Supabase",
+  "Timescale",
+] as const;
+
+export type DatabaseProviderName = (typeof providerNames)[number];
+
+export type DatabaseProvider = {
+  name: DatabaseProviderName;
+  pattern: string;
+};
+
 export type EngineKey = (typeof engineKeys)[number];
 
 export interface Engine {
@@ -63,6 +85,7 @@ export interface Engine {
     "db-routing-info": {
       text: string;
     };
+    providers?: DatabaseProvider[];
   } | null;
 }
 
