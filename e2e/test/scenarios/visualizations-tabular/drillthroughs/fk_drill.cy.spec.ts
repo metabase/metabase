@@ -61,12 +61,14 @@ SELECT 2 AS ID, 3 AS USER_ID
       cy.findAllByRole("row")
         .first()
         .within(() => {
-          cy.get("[data-column-id='USER_ID']").should("have.value", "");
+          cy.get("[data-column-id='USER_ID']").within(() => {
+            cy.get("[data-testid=cell-data]").should("not.exist");
+          });
         });
     });
   });
 
-  it("should display fk drill for non-null values", () => {
+  it("should display functional fk drill for non-null values", () => {
     H.createNativeQuestion(
       {
         name: "Model",
@@ -111,7 +113,17 @@ SELECT 2 AS ID, 3 AS USER_ID
         cy.get("[data-column-id='USER_ID']").click();
       });
     H.popover().within(() => {
-      cy.findByText("View this User's Models").should("be.visible");
+      cy.findByText("View this User's Models").should("be.visible").click();
+    });
+    cy.findByTestId("table-body").within(() => {
+      cy.findAllByRole("row").should("have.length", 1);
+      cy.findAllByRole("row")
+        .first()
+        .within(() => {
+          cy.get("[data-column-id='USER_ID']").within(() => {
+            cy.get("[data-testid=cell-data]").should("have.text", "3");
+          });
+        });
     });
   });
 });
