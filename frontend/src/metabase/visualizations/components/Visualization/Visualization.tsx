@@ -633,6 +633,7 @@ class Visualization extends PureComponent<
       onUpdateWarnings,
       titleMenuItems,
       zoomedRowIndex,
+      tableFooterExtraButtons,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
@@ -900,6 +901,7 @@ class Visualization extends PureComponent<
                     onVisualizationClick={this.handleVisualizationClick}
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                     titleMenuItems={hasHeader ? undefined : titleMenuItems}
+                    tableFooterExtraButtons={tableFooterExtraButtons}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}
