@@ -5,6 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useLocation } from "react-use";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -35,6 +36,7 @@ interface SdkIframeEmbedSetupProviderProps {
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
+  const location = useLocation();
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
@@ -57,6 +59,11 @@ export const SdkIframeEmbedSetupProvider = ({
   });
 
   const modelCount = searchData?.total ?? 0;
+
+  // Embedding Hub: pre-specifies the auth method to use
+  const authMethodOverride = useMemo(() => {
+    return new URLSearchParams(location.search).get("auth_method");
+  }, [location.search]);
 
   const defaultSettings = useMemo(() => {
     return getDefaultSdkIframeEmbedSettings(
@@ -163,11 +170,26 @@ export const SdkIframeEmbedSetupProvider = ({
   // If they are, set them as the current settings.
   useEffect(() => {
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
-      setRawSettings({ ...settings, ...persistedSettings });
+      setRawSettings({
+        ...settings,
+        ...persistedSettings,
+
+        // Override the persisted settings if `auth_method` is specified.
+        // This is used for Embedding Hub.
+        ...(authMethodOverride !== null && {
+          useExistingUserSession: authMethodOverride === "user_session",
+        }),
+      });
 
       setEmbedSettingsLoaded(true);
     }
-  }, [persistedSettings, isEmbedSettingsLoaded, settings, isRecentsLoading]);
+  }, [
+    persistedSettings,
+    isEmbedSettingsLoaded,
+    settings,
+    isRecentsLoading,
+    authMethodOverride,
+  ]);
 
   return (
     <SdkIframeEmbedSetupContext.Provider value={value}>
