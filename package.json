@@ -39,6 +39,7 @@
     "@tiptap/core": "^3.2.0",
     "@tiptap/extension-bubble-menu": "^3.2.0",
     "@tiptap/extension-image": "^3.2.0",
+    "@tiptap/extension-mention": "^3.3.0",
     "@tiptap/extension-placeholder": "^3.2.0",
     "@tiptap/pm": "^3.2.0",
     "@tiptap/react": "^3.2.0",

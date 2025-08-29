@@ -10,7 +10,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Group,
@@ -21,6 +21,7 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
+import { configureMentionExtension } from "metabase-enterprise/comments/mentions/extension";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
@@ -64,6 +65,7 @@ export function DiscussionComment({
   onEdit,
 }: DiscussionCommentProps) {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+  const dispatch = useDispatch();
 
   const extensions = useMemo(
     () => [
@@ -75,8 +77,9 @@ export function DiscussionComment({
       Link.configure({
         HTMLAttributes: { class: CS.link },
       }),
+      configureMentionExtension(dispatch),
     ],
-    [siteUrl],
+    [dispatch, siteUrl],
   );
 
   const commentRenderingHandle = useEditor(

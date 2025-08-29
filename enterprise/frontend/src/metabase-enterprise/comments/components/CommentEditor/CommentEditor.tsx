@@ -7,9 +7,11 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
+import { getUser } from "metabase/selectors/user";
 import { ActionIcon, Flex, Icon } from "metabase/ui";
+import { configureMentionExtension } from "metabase-enterprise/comments/mentions/extension";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
@@ -39,8 +41,10 @@ export const CommentEditor = ({
   onChange,
   onSubmit,
 }: Props) => {
+  const currentUser = useSelector(getUser);
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const [content, setContent] = useState<string | null>(null);
+  const dispatch = useDispatch();
 
   const extensions = useMemo(
     () => [
@@ -56,8 +60,9 @@ export const CommentEditor = ({
         placeholder: t`Add a comment…`,
       }),
       DisableMetabotSidebar,
+      configureMentionExtension({ currentUser, dispatch }),
     ],
-    [siteUrl],
+    [currentUser, dispatch, siteUrl],
   );
 
   const editor = useEditor(

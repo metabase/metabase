@@ -1,0 +1,37 @@
+/* Mentions dropdown */
+.mentionList {
+  background: var(--mb-color-background);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  box-shadow: var(--mantine-shadow-md);
+  padding: 0.25rem;
+  font-size: var(--mantine-font-size-sm);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.mentionItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: transparent;
+  color: var(--mb-color-text-dark);
+  cursor: pointer;
+  border-radius: var(--mantine-radius-sm);
+  font-size: var(--mantine-font-size-sm);
+  transition: background-color 100ms ease;
+}
+
+.mentionItem:hover,
+.mentionItemSelected {
+  background: var(--mb-color-brand-lighter);
+  color: var(--mb-color-brand);
+}
+
+.mentionEmpty {
+  padding: 0.5rem 0.75rem;
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mb-color-text-medium);
+}
