@@ -79,9 +79,12 @@
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
             schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-        (with-transform-cleanup! [target-table {:type   target-type
-                                                :schema schema
-                                                :name   "widgets_daily"}]
+        (with-transform-cleanup! [no-limit-table {:type   target-type
+                                                  :schema schema
+                                                  :name   "widgets_daily_no_limit"}
+                                  limit-table {:type   target-type
+                                               :schema schema
+                                               :name   "widgets_daily_limit"}]
           (let [mp (mt/metadata-provider)
                 transforms-products (lib.metadata/table mp (mt/id :transforms_products))
                 transforms-orders (lib.metadata/table mp (mt/id :transforms_orders))
@@ -90,53 +93,35 @@
                 products-category (lib.metadata/field mp (mt/id :transforms_products :category))
                 orders-total (lib.metadata/field mp (mt/id :transforms_orders :total))
                 orders-order-date (lib.metadata/field mp (mt/id :transforms_orders :order_date))
-                aggregated-query (-> (lib/query mp transforms-products)
-                                     (lib/join (lib/join-clause transforms-orders
-                                                                [(lib/= products-id orders-product-id)]))
-                                     (lib/filter (lib/= products-category "Widget"))
-                                     (lib/filter (lib/not-null orders-total))
-                                     (lib/aggregate (lib/sum orders-total))
-                                     (lib/breakout (lib/with-temporal-bucket
-                                                     orders-order-date :day))
-                                     (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0) :desc))
-                                     (lib/limit 5))]
-            (mt/with-temp [:model/Transform transform {:name   "transform"
-                                                       :source {:type  :query
-                                                                :query aggregated-query}
-                                                       :target target-table}]
-              (transforms.execute/run-mbql-transform! transform {:run-method :manual})
-              (let [table-result      (wait-for-table (:name target-table) 10000)
-                    query-result (->> (lib/query mp table-result)
-                                      (qp/process-query)
-                                      (mt/formatted-rows [str 2.0])
-                                      (sort-by second >)
-                                      vec)]
-                (is (= [["2024-01-24T00:00:00Z" 104.97]
-                        ["2024-01-22T00:00:00Z" 49.98]
-                        ["2024-01-15T00:00:00Z" 39.98]
-                        ["2024-01-21T00:00:00Z" 19.99]
-                        ["2024-01-23T00:00:00Z" 14.99]]
-                       query-result))))))))))
-
-(deftest sqlserver-without-limit-errors-test
-  (mt/test-driver :sqlserver
-    (mt/dataset transforms-dataset/transforms-test
-      (let [target-type "table"
-            schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-        (with-transform-cleanup! [target-table {:type   target-type
-                                                :schema schema
-                                                :name   "prodcuts_count"}]
-          (let [mp (mt/metadata-provider)
-                transforms-products (lib.metadata/table mp (mt/id :transforms_products))
-                products-id (lib.metadata/field mp (mt/id :transforms_products :id))
-                query (-> (lib/query mp transforms-products)
-                          (lib/aggregate (lib/count))
-                          (lib/order-by products-id :asc))]
-            (mt/with-temp [:model/Transform transform {:name   "transform"
-                                                       :source {:type  :query
-                                                                :query query}
-                                                       :target target-table}]
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table expressions, unless TOP, OFFSET or FOR XML is also specified."
-                   (transforms.execute/run-mbql-transform! transform {:run-method :manual}))))))))))
+                query-no-limit (-> (lib/query mp transforms-products)
+                                   (lib/join (lib/join-clause transforms-orders
+                                                              [(lib/= products-id orders-product-id)]))
+                                   (lib/filter (lib/= products-category "Widget"))
+                                   (lib/filter (lib/not-null orders-total))
+                                   (lib/aggregate (lib/sum orders-total))
+                                   (lib/breakout (lib/with-temporal-bucket
+                                                   orders-order-date :day))
+                                   (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0) :desc)))]
+            (mt/with-temp [:model/Transform transform-no-limit {:name   "transform"
+                                                                :source {:type  :query
+                                                                         :query query-no-limit}
+                                                                :target no-limit-table}
+                           :model/Transform transform-limit {:name   "transform"
+                                                             :source {:type  :query
+                                                                      :query (lib/limit query-no-limit 5)}
+                                                             :target limit-table}]
+              (doseq [transform [transform-no-limit transform-limit]]
+                (transforms.execute/run-mbql-transform! transform {:run-method :manual})
+                (let [table-name (-> transform :target :name)
+                      table-result (wait-for-table table-name 10000)
+                      query-result (->> (lib/query mp table-result)
+                                        (qp/process-query)
+                                        (mt/formatted-rows [str 2.0])
+                                        (sort-by second >)
+                                        vec)]
+                  (is (= [["2024-01-24T00:00:00Z" 104.97]
+                          ["2024-01-22T00:00:00Z" 49.98]
+                          ["2024-01-15T00:00:00Z" 39.98]
+                          ["2024-01-21T00:00:00Z" 19.99]
+                          ["2024-01-23T00:00:00Z" 14.99]]
+                         query-result)))))))))))
