@@ -26,7 +26,7 @@ const generateVersionInfo = ({
     version,
     released: new Date().toISOString().slice(0, 10),
     patch: ["patch", "minor"].includes(getVersionType(version)),
-    highlights: [ `see https://www.metabase.com/changelog/${majorVersion}#metabase${majorVersion}${minorVersion}}` ],
+    highlights: [ `see https://www.metabase.com/changelog/${majorVersion}#metabase-${majorVersion}${minorVersion}}` ],
   };
 };
 
