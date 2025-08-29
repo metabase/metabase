@@ -48,6 +48,9 @@ export function getRunListUrl({
   transformIds,
   statuses,
   transformTagIds,
+  startTime,
+  endTime,
+  runMethods,
 }: RunListParams = {}) {
   const searchParams = new URLSearchParams();
   if (page != null) {
@@ -61,6 +64,15 @@ export function getRunListUrl({
   });
   transformTagIds?.forEach((tagId) => {
     searchParams.append("transformTagIds", String(tagId));
+  });
+  if (startTime != null) {
+    searchParams.set("startTime", startTime);
+  }
+  if (endTime != null) {
+    searchParams.set("endTime", endTime);
+  }
+  runMethods?.forEach((runMethod) => {
+    searchParams.append("runMethods", runMethod);
   });
 
   const queryString = searchParams.toString();
