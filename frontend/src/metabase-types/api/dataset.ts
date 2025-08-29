@@ -130,7 +130,10 @@ export type DatasetError =
   | string
   | {
       status: number; // HTTP status code
-      data?: string;
+      data: {
+        via: Record<string, any>[];
+        error: string;
+      };
     };
 
 export type DatasetErrorType =
