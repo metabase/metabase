@@ -378,8 +378,8 @@ export const CodeBlockNodeView = ({ node }: NodeViewProps) => {
           [S.open]: isOpen,
         })}
         ref={refs.setReference}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        onMouseOver={() => setHovered(true)}
+        onMouseOut={() => setHovered(false)}
       >
         <pre>
           <NodeViewContent

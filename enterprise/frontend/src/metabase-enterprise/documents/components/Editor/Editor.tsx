@@ -33,6 +33,7 @@ import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
 import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
+import { OrderedList } from "./extensions/OrderedList";
 import { Paragraph } from "./extensions/Paragraph";
 import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
@@ -102,13 +103,14 @@ export const Editor: React.FC<EditorProps> = ({
       Blockquote,
       CodeBlock,
       Heading,
+      OrderedList,
       StarterKit.configure({
         paragraph: false,
         blockquote: false,
         codeBlock: false,
         heading: false,
         // bulletList: false,
-        // orderedList: false,
+        orderedList: false,
       }),
       Image.configure({
         inline: false,

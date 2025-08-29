@@ -356,8 +356,8 @@ export const CardEmbedComponent = memo(
           })}
           data-testid="document-card-embed"
           ref={refs.setReference}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
+          onMouseOver={() => setHovered(true)}
+          onMouseOut={() => setHovered(false)}
         >
           <Box
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
