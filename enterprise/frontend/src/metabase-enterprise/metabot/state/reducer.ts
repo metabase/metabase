@@ -67,11 +67,7 @@ export const metabot = createSlice({
       const { id, message } = action.payload;
 
       state.errorMessages = [];
-      state.messages.push({
-        id,
-        role: "user",
-        message,
-      });
+      state.messages.push({ id, role: "user", message });
       state.history.push({ id, role: "user", content: message });
     },
     addAgentMessage: (
@@ -132,6 +128,10 @@ export const metabot = createSlice({
     // NOTE: this doesn't work in non-streaming contexts right now
     rewindStateToMessageId: (state, { payload: id }: PayloadAction<string>) => {
       state.isProcessing = false;
+      const messageIndex = state.messages.findLastIndex((m) => id === m.id);
+      if (messageIndex > -1) {
+        state.messages = state.messages.slice(0, messageIndex);
+      }
 
       const historyIndex = state.history.findLastIndex((h) => id === h.id);
       if (historyIndex > -1) {
