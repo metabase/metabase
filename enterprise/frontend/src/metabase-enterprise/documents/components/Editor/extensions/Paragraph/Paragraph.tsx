@@ -1,5 +1,4 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
-// our Portal in metabase/ui does not work here, so we're using the originnal Mantine one
 import { Node, type NodeViewProps, mergeAttributes } from "@tiptap/core";
 import {
   NodeViewContent,
