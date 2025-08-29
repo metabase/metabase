@@ -8,6 +8,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -39,7 +40,9 @@
     OffsetTime
     ZonedDateTime)
    (java.time.format DateTimeFormatter)
-   [java.util UUID]))
+   (java.util UUID)
+   (net.sf.jsqlparser.schema Table)
+   (net.sf.jsqlparser.statement.select PlainSelect Select)))
 
 (set! *warn-on-reflection* true)
 
@@ -940,8 +943,11 @@
 
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
-  (let [table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
-    [(str "SELECT * INTO " table-name " FROM (" query ") AS transform_query;")]))
+  (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
+        ^Select parsed-query (macaw/parsed-query query)
+        ^PlainSelect select-body (.getSelectBody parsed-query)]
+    (.setIntoTables select-body [(Table. table-name)])
+    [(str parsed-query)]))
 
 (defmethod driver/table-exists? :sqlserver
   [driver database {:keys [schema name] :as _table}]
