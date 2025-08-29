@@ -313,6 +313,5 @@
                 (sql.qp/format-honeysql driver {:raw "ORDER BY ()"})
                 ["AS"]
                 (sql.qp/format-honeysql driver {:raw query})]
-        query (str/join " " (map first pieces))
-        params (reduce into [] (map rest pieces))]
-    (into [query] params)))
+        query (str/join " " (map first pieces))]
+    (into [query] (mapcat rest) pieces)))
