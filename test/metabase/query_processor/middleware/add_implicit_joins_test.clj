@@ -8,9 +8,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.fetch-source-query]
+   [metabase.query-processor.middleware.update-fields :as qp.update-fields]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
@@ -348,12 +348,12 @@
                                                                  :source-field-name "Orders__PRODUCT_ID"}]
                                      [:field %products.category {:source-field            %product-id
                                                                  :source-field-name       "PRODUCT_ID"
-                                           add-order-bys-for-breakouts  :source-field-join-alias "Card"}]
+                                                                 :source-field-join-alias "Card"}]
                                      [:field %products.category {:source-field            %product-id
                                                                  :source-field-name       "Orders__PRODUCT_ID"
                                                                  :source-field-join-alias "Card"}]]})
                    (->> (lib/query (qp.store/metadata-provider)))
-                   qp.add-implicit-clauses/add-implicit-clauses
+                   qp.update-fields/update-fields
                    lib/->legacy-MBQL)))))))
 
 (deftest ^:parallel reuse-existing-joins-test
@@ -524,7 +524,7 @@
                :filter       [:=
                               [:field %products.category {:source-field %product-id
                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
-                              "Doohickey"]add-order-bys-for-breakouts
+                              "Doohickey"]
                :order-by     [[:asc [:field %products.category {:source-field %product-id
                                                                 :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]]
                :limit        5})
@@ -538,7 +538,7 @@
                      :order-by     [[:asc $product-id->products.category]]
                      :limit        5})
                   (->> (lib/query (qp.store/metadata-provider)))
-                  qp.add-implicit-clauses/add-implicit-clauses
+                  qp.update-fields/update-fields
                   add-implicit-joins
                   lib/->legacy-MBQL))))))
 
@@ -619,7 +619,7 @@
                :aggregation  [[:count]]
                :breakout     [[:field %venues.price {:source-field %venue-id, :join-alias "VENUES__via__VENUE_ID"}]]
                :order-by     [[:asc [:field %venues.price {:source-field %venue-id, :join-alias "VENUES__via__VENUE_ID"}]]]
-               :joins        [{:source-tabadd-order-bys-for-breakouts
+               :joins        [{:source-table $$venues
                                :alias        "VENUES__via__VENUE_ID"
                                :condition    [:=
                                               $venue-id
@@ -635,7 +635,7 @@
                     :aggregation  [[:count]]
                     :breakout     [$venue-id->venues.price]
                     :order-by     [[:asc $venue-id->venues.price]]}))
-                qp.add-implicit-clauses/add-implicit-clauses
+                qp.update-fields/update-fields
                 add-implicit-joins
                 lib/->legacy-MBQL)))))
 
@@ -978,7 +978,7 @@
                     :joins        [{:source-table (meta/id :checkins)
                                     :fields       :all
                                     :strategy     :left-join
-                                    :alias       add-order-bys-for-breakouts
+                                    :alias        "CH"
                                     :condition    [:=
                                                    [:field
                                                     "ID"
@@ -994,7 +994,7 @@
       (qp.store/with-metadata-provider mp
         (let [query' (-> query
                          metabase.query-processor.middleware.fetch-source-query/resolve-source-cards
-                         qp.add-implicit-clauses/add-implicit-clauses
+                         qp.update-fields/update-fields
                          lib/->legacy-MBQL)]
           (testing "sanity check: before add-implicit-joins"
             (is (=? {:source-table (meta/id :orders)

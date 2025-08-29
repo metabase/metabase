@@ -35,9 +35,9 @@
            nil))))
     @field-ids))
 
-(mu/defn bulk-fetch-fields :- ::lib.schema.id/query
+(mu/defn bulk-fetch-fields :- ::lib.schema/query
   "Warm the MetadataProvider cache by fetching all Fields referenced by ID in the `query`."
-  [query :- ::lib.schema.id/query]
+  [query :- ::lib.schema/query]
   (let [ids (field-ids query)]
     (try
       (u/prog1 query

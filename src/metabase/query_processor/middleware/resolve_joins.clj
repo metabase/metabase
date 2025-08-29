@@ -19,24 +19,7 @@
    (when (str/starts-with? (:alias join) lib/legacy-default-join-alias)
      {:qp/keep-default-join-alias true})))
 
-#_(mu/defn- add-join-fields-to-stage :- [:maybe ::lib.schema/stage]
-  [query :- ::lib.schema/query
-   path  :- ::lib.walk/path
-   stage :- ::lib.schema/stage]
-  (when (and (seq (:fields stage))
-             (seq (:joins stage)))
-    (let [stage-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
-      (assoc stage :fields (into []
-                                 (comp (map lib/ref)
-                                       (map (fn [a-ref]
-                                              (cond-> a-ref
-                                                ;; Any coercion or temporal bucketing will already have been done in
-                                                ;; the subquery for the join itself. Mark the parent ref to make sure
-                                                ;; it is not double-coerced, which leads to SQL errors.
-                                                (lib/current-join-alias a-ref) (lib/update-options assoc :qp/ignore-coercion true)))))
-                                 stage-cols)))))
-
-(mu/defn ^:deprecated resolve-joins :- ::lib.schema/query
+(mu/defn resolve-joins :- ::lib.schema/query
   "* Replace `:fields :all` inside joins with a sequence of field refs
 
   * Add default values for `:strategy`
@@ -45,7 +28,6 @@
   [query :- ::lib.schema/query]
   (lib.walk/walk
    query
-   (fn [query path-type path stage-or-join]
-     (case path-type
-       :lib.walk/join  (resolve-join stage-or-join)
-       :lib.walk/stage nil #_(add-join-fields-to-stage query path stage-or-join)))))
+   (fn [_query path-type _path join]
+     (when (= path-type :lib.walk/join)
+       (resolve-join join)))))

@@ -414,11 +414,12 @@
       (set/rename-keys old->new)))
 
 (mu/defn- column-metadata->field-ref :- :mbql.clause/field
-  [metadata :- ::lib.schema.metadata/column]
-  (let [inherited-column? (lib.field.util/inherited-column? metadata)
+  [col :- ::lib.schema.metadata/column]
+  (let [inherited-column? (lib.field.util/inherited-column? col)
         options           (merge {:lib/uuid       (str (random-uuid))
-                                  :effective-type (column-metadata-effective-type metadata)}
-                                 (select-renamed-keys metadata field-ref-propagated-keys)
+                                  :base-type      (:base-type col)
+                                  :effective-type (column-metadata-effective-type col)}
+                                 (select-renamed-keys col field-ref-propagated-keys)
                                  ;; MEGA HACK! QP result metadata includes `:source-alias` (which is basically any
                                  ;; join alias that was ever used for the column); if that is present then we need to
                                  ;; generate field refs that use as a join alias because even tho that sounds
@@ -427,15 +428,18 @@
                                  ;;
                                  ;; TODO (Cam 6/26/25) -- figure out if we can actually take this out or not.
                                  (when-let [source-alias (and (not inherited-column?)
-                                                              (not (:fk-field-id metadata))
+                                                              (not (:fk-field-id col))
                                                               (not= :source/implicitly-joinable
-                                                                    (:lib/source metadata))
-                                                              (:source-alias metadata))]
+                                                                    (:lib/source col))
+                                                              (:source-alias col))]
                                    {:join-alias source-alias})
                                  (when-not inherited-column?
-                                   (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))
-        id-or-name        (or (lib.field.util/inherited-column-name metadata)
-                              ((some-fn :id :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) metadata))]
+                                   (select-renamed-keys col field-ref-propagated-keys-for-non-inherited-columns)))
+        id-or-name        (or (lib.field.util/inherited-column-name col)
+                              (when (and (= lib.ref/*ref-style* :ref.style/default)
+                                         (#{:source/joins :source/implicitly-joinable} (:lib/source col)))
+                                ((some-fn :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) col))
+                              ((some-fn :id :lib/deduplicated-name :lib/original-name :name) col))]
     [:field options id-or-name]))
 
 (mu/defmethod lib.ref/ref-method :metadata/column :- ::lib.schema.ref/ref

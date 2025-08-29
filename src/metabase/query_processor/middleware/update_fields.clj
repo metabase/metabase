@@ -6,7 +6,8 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
 
-(defn- update-fields* [query path stage]
+(mu/defn- update-fields* :- [:maybe ::lib.schema/stage]
+  [query path stage]
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
              (empty? (:breakout stage))
              (empty? (:aggregation stage)))

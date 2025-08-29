@@ -386,7 +386,7 @@
                 ;; calculatedd by general QP/Lib stuff anyway so if it passes for H2 we can be satisfied that it works
                 ;; as intended for all drivers
                 _ (when (= driver/*driver* :h2)
-                    (testing "should return distinct field refs (QUE-1623)"
+                    (testing "should return distinct field refs for legacy result metadata purposes (QUE-1623)"
                       (is (= [[:field (mt/id :people :id) nil]
                               [:field "USER_ID"   {:base-type :type/Integer}]
                               [:field "count"     {:base-type :type/Integer}]
@@ -426,7 +426,7 @@
                            :order-by [[:asc $id]]
                            :limit    3})]
               (when (= driver/*driver* :h2)
-                (testing "should return distinct field refs (QUE-1623)"
+                (testing "should return distinct field refs for legacy metadata purposes (QUE-1623)"
                   ;; the refs and names returned should use deduplicated names for consistency with legacy viz settings
                   ;; that use them as keys
                   (is (= [[:field (mt/id :people :id) nil]
