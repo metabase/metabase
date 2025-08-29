@@ -1,7 +1,5 @@
 import { useMemo } from "react";
-import _ from "underscore";
 
-import { useGetPermissionsGraphQuery } from "metabase/api";
 import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 import { useSetting } from "metabase/common/hooks";
 
@@ -26,34 +24,14 @@ export const useCompletedEmbeddingHubSteps = (): Record<
   const isSsoReady =
     (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
 
-  const { data: permissionsGraph } = useGetPermissionsGraphQuery();
-
-  const hasConfiguredSandboxes = useMemo(
-    () => getValuesFlat(permissionsGraph).includes("sandboxed"),
-    [permissionsGraph],
-  );
-
   return useMemo(() => {
     return {
       "create-test-embed": true,
       "add-data": embeddingHubChecklist?.["add-data"] ?? false,
       "create-dashboard": embeddingHubChecklist?.["create-dashboard"] ?? false,
-      "configure-row-column-security": hasConfiguredSandboxes,
+      "configure-row-column-security": false,
       "secure-embeds": isSsoReady,
       "embed-production": false,
     };
-  }, [isSsoReady, hasConfiguredSandboxes, embeddingHubChecklist]);
+  }, [isSsoReady, embeddingHubChecklist]);
 };
-
-/**
- * Converts nested objects to a flat array of "leaf" values
- * eg: { k1: { k3: "1" }, k2: "2" } -> ["1", "2"]
- */
-function getValuesFlat(obj: unknown): string[] {
-  return _.chain(obj)
-    .values()
-    .map((v) => (_.isObject(v) ? getValuesFlat(v) : v))
-    .flatten()
-    .filter((v): v is string => typeof v === "string")
-    .value();
-}
