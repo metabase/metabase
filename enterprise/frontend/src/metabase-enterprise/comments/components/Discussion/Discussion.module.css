@@ -52,3 +52,8 @@
     visibility: visible;
   }
 }
+
+.commentBulletDeleted {
+  background-color: var(--mb-color-background);
+  color: var(--mb-color-text-disabled);
+}

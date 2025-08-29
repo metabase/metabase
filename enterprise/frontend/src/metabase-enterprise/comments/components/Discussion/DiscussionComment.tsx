@@ -11,7 +11,15 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { Group, Spoiler, Text, Timeline, Tooltip, rem } from "metabase/ui";
+import {
+  Group,
+  Icon,
+  Spoiler,
+  Text,
+  Timeline,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 import { Paragraph } from "metabase-enterprise/documents/components/Editor/extensions/Paragraph";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
 import type { Comment } from "metabase-types/api";
@@ -82,9 +90,16 @@ export function DiscussionComment({
 
   if (comment.is_deleted) {
     return (
-      <Timeline.Item className={S.commentRoot} mt="1.25rem">
-        <Text size="sm" c="text-disabled" lh={1.1} fs="italic">
-          {t`Comment deleted`}
+      <Timeline.Item
+        classNames={{
+          item: S.commentRoot,
+          itemBullet: S.commentBulletDeleted,
+        }}
+        mt="1.25rem"
+        bullet={<Icon name="trash" />}
+      >
+        <Text size="md" c="text-disabled" fs="italic">
+          {t`This message was deleted.`}
         </Text>
       </Timeline.Item>
     );

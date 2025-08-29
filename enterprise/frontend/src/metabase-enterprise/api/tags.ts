@@ -115,5 +115,9 @@ export function provideCommentListTags(
 export function provideCommentTags(
   comment: Comment,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
+  if (comment.creator) {
+    return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
+  }
+
+  return [idTag("comment", comment.id)];
 }

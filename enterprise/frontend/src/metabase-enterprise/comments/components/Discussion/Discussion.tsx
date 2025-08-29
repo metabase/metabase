@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Stack, Timeline } from "metabase/ui";
+import { Stack, Timeline, rem } from "metabase/ui";
 import {
   useCreateCommentMutation,
   useDeleteCommentMutation,
@@ -61,7 +61,7 @@ export const Discussion = ({
 
   return (
     <Stack>
-      <Timeline lineWidth={1} className={S.discussionRoot}>
+      <Timeline bulletSize={rem(24)} lineWidth={1} className={S.discussionRoot}>
         {comments.map((comment, index) => (
           <DiscussionComment
             key={comment.id}
