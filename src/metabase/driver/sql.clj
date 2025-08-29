@@ -146,7 +146,7 @@
             quote (str quote-char)]
         (-> name-str
             (subs 1 (dec (count name-str)))
-            (str/replace (re-pattern quote-quote) quote)))
+            (str/replace quote-quote quote)))
       (u/lower-case-en name-str))))
 
 (defmulti default-schema
