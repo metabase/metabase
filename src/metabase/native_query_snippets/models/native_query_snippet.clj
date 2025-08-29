@@ -125,11 +125,11 @@
 (defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
   ;; Add template tags during deserialization to ensure they're available
   (let [ingested-with-tags (add-template-tags-for-deserialization ingested)]
-  ;; if we got local snippet in db and it has same name as incoming one, we can be sure
-  ;; there will be no conflicts and skip the query to the db
+    ;; if we got local snippet in db and it has same name as incoming one, we can be sure
+    ;; there will be no conflicts and skip the query to the db
     (if (and (not= (:name ingested-with-tags) (:name maybe-local))
-           (t2/exists? :model/NativeQuerySnippet
+             (t2/exists? :model/NativeQuerySnippet
                          :name (:name ingested-with-tags) :entity_id [:!= (:entity_id ingested-with-tags)]))
       (recur (update ingested-with-tags :name str " (copy)")
-           maybe-local)
+             maybe-local)
       (serdes/default-load-one! ingested-with-tags maybe-local))))
