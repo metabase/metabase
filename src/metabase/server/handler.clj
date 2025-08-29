@@ -1,7 +1,6 @@
 (ns metabase.server.handler
   "Top-level Metabase Ring handler."
   (:require
-   [clojure.java.classpath :as classpath]
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
@@ -46,11 +45,6 @@
        (name kkey))
      response output-stream)))
 
-(defn enterprise-path-when-loaded []
-  (let [loaded-paths (map str (classpath/classpath-directories))]
-    (when (some #{"enterprise/backend/src"} loaded-paths)
-      "enterprise/backend/src")))
-
 (def wrap-reload-dev-mw
   "In dev, reload files on the fly if they've changed. Returns nil in prod."
   (when (and
@@ -59,10 +53,9 @@
          ;; [[user/*enable-hot-reload*]] is set to true in `dev.clj` when the `--hot` flag is passed to the `:dev-start` alias
          (true? @(requiring-resolve 'user/*enable-hot-reload*)))
     (log/info "Wrap Reload Dev MW Enabled. Outdated namespaces will be recompiled when handling incoming requests")
-    (let [wrap-reload (requiring-resolve 'ring.middleware.reload/wrap-reload)
-          watch-dirs (conj ["src"] (enterprise-path-when-loaded))]
+    (let [wrap-reload (requiring-resolve 'ring.middleware.reload/wrap-reload)]
       (fn wrap-reload-dev-mw-fn [handler]
-        (wrap-reload handler {:dirs watch-dirs})))))
+        (wrap-reload handler {:dirs ["src" "enterprise/backend/src"]})))))
 
 (def ^:private middleware
   ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
