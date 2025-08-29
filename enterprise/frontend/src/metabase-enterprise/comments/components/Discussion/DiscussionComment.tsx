@@ -80,7 +80,7 @@ export function DiscussionComment({
         bullet={<Icon name="trash" />}
       >
         <Text size="md" c="text-disabled" fs="italic">
-          {t`This message was deleted.`}
+          {t`This comment was deleted.`}
         </Text>
       </Timeline.Item>
     );
