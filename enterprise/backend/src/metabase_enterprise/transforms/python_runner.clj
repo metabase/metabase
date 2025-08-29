@@ -20,6 +20,11 @@
   [file]
   (try (slurp file) (catch Exception _ "")))
 
+(defn- safe-delete
+  "Safely delete a file."
+  [^File file]
+  (try (.delete file) (catch Exception _)))
+
 (defn- write-to-stream! [^OutputStream os col-names reducible-rows]
   (let [writer (-> os
                    (OutputStreamWriter. StandardCharsets/UTF_8)
@@ -118,8 +123,7 @@
             (try
               (when (.exists work-dir-file)
                 ;; Delete directory and all contents
-                (doseq [file (reverse (file-seq work-dir-file))]
-                  (.delete ^File file)))
+                (run! safe-delete (reverse (file-seq work-dir-file))))
               (catch Exception _)))))
 
       (catch Exception e
