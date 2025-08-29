@@ -29,7 +29,9 @@
 (defn- substitute-native-query-snippet [param->value [sql args missing] in-optional? v]
   (let [{:keys [replacement-snippet]} (sql.params.substitution/->replacement-snippet-info driver/*driver* v)
         [processed-snippet snippet-args snippet-missing] (substitute* param->value (params.parse/parse replacement-snippet) in-optional?)]
-    [(str sql processed-snippet) (concat args snippet-args) (concat missing snippet-missing)]))
+    [(str sql processed-snippet)
+     (not-empty (concat args snippet-args))
+     (not-empty (concat missing snippet-missing))]))
 
 (defn- substitute-param [param->value [sql args missing] in-optional? {:keys [k]}]
   (if-not (contains? param->value k)
