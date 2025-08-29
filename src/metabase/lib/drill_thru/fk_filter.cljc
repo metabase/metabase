@@ -52,13 +52,13 @@
     (let [source (or (some->> query lib.util/source-table-id (lib.metadata/table query))
                      (some->> query lib.util/source-card-id (lib.metadata/card query)))
           filter (if (= value :null)
-                   (lib.options/ensure-uuid [:is-null {} column-ref])
-                   (lib.options/ensure-uuid [:= {} column-ref value]))]
+                   (lib.options/ensure-uuid (lib.filter/is-null column-ref))
+                   (lib.options/ensure-uuid (lib.filter/= column-ref value)))]
       {:lib/type :metabase.lib.drill-thru/drill-thru
        :type     :drill-thru/fk-filter
        :filter   filter
        :column-name (lib.metadata.calculation/display-name query stage-number column :long)
-       :table-name (lib.metadata.calculation/display-name query 0 source)}))))
+       :table-name (lib.metadata.calculation/display-name query 0 source)})))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/fk-filter
   [_query _stage-number drill-thru]
