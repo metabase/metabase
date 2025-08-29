@@ -8,11 +8,13 @@
    [metabase-enterprise.semantic-search.core]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
+   [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
@@ -225,7 +227,7 @@
   [results]
   (filter #(contains? mock-embeddings (:name %)) results))
 
-(defn closeable [o close-fn]
+(defn closeable ^Closeable [o close-fn]
   (reify
     IDeref
     (deref [_] o)
@@ -310,7 +312,7 @@
                         :indexer_last_seen Instant/EPOCH}
         indexing-state (semantic.indexer/init-indexing-state metadata-row)
         step (fn [] (semantic.indexer/indexing-step db mock-index-metadata mock-index indexing-state))]
-    (while (do (step) (pos? (:last-indexed-count @indexing-state))))))
+    (while (do (step) (pos? (:last-novel-count @indexing-state))))))
 
 (defmacro blocking-index!
   "Execute body ensuring [[index-all!]] is invoked at the end"
@@ -325,7 +327,7 @@
   `(with-indexable-documents!
      (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
                    semantic.index-metadata/default-index-metadata mock-index-metadata
-                   semantic.index/model-table-suffix mock-table-suffix]
+                   semantic.index/model-table-suffix              mock-table-suffix]
        (with-open [_# (open-temp-index-and-metadata!)]
          (binding [search.ingestion/*force-sync* true]
            (blocking-index!
@@ -337,10 +339,7 @@
   [table-name]
   (when table-name
     (try
-      (let [result (jdbc/execute! db
-                                  ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = ?)"
-                                   (name table-name)])]
-        (-> result first vals first))
+      (semantic.util/table-exists? db (name table-name))
       (catch Exception _ false))))
 
 (defn table-has-index?
@@ -371,10 +370,11 @@
 (defn cleanup-index-metadata!
   "A-la-carte drop everything related to the index-metdata root (including index tables themselves)"
   [pgvector index-metadata]
-  (doseq [{:keys [table_name]}
+  (doseq [{index-id :id, :keys [table_name]}
           (when (table-exists-in-db? (:metadata-table-name index-metadata))
             (get-metadata-rows pgvector index-metadata))]
-    (semantic.index/drop-index-table! pgvector {:table-name table_name}))
+    (semantic.index/drop-index-table! pgvector {:table-name table_name})
+    (semantic.dlq/drop-dlq-table-if-exists! pgvector index-metadata index-id))
   (semantic.index-metadata/drop-tables-if-exists! pgvector index-metadata)
   (semantic.db.migration/drop-migration-table! pgvector))
 

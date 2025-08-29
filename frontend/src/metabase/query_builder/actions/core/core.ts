@@ -217,7 +217,15 @@ export const apiCreateQuestion = (
   options?: OnCreateOptions,
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
-    const submittableQuestion = getSubmittableQuestion(getState(), question);
+    let submittableQuestion = getSubmittableQuestion(getState(), question);
+    // Saving models with list view setting as a question in not allowed for now,
+    // so we change it back to table.
+    if (
+      question.type() === "question" &&
+      submittableQuestion.display() === "list"
+    ) {
+      submittableQuestion = submittableQuestion.setDisplay("table");
+    }
     const createdQuestion = await reduxCreateQuestion(
       submittableQuestion,
       dispatch,

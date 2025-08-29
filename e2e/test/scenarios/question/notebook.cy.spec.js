@@ -1205,7 +1205,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.location("pathname").should(
         "equal",
-        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+        `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       );
 
       H.datasetEditBar().findByText("Query").click();
@@ -1214,7 +1214,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.location("pathname").should(
         "equal",
-        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+        `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       );
 
       cy.go("forward");
@@ -1238,7 +1238,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       // This should work, but doesn't (metabase#55486)
       // cy.location("pathname").should(
       //   "equal",
-      //   `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      //   `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       // );
 
       H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();

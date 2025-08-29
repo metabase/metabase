@@ -843,7 +843,7 @@
   (let [details (get connection-details :details connection-details)
         client (database-details->client details)]
     (try
-      (for [query queries]
+      (doseq [query queries]
         (let [sql (if (string? query) query (first query))
               _ (log/debugf "Executing BigQuery DDL: %s" sql)
               job-config (-> (QueryJobConfiguration/newBuilder sql)
@@ -894,8 +894,8 @@
 (defmethod driver/schema-exists? :bigquery-cloud-sdk
   [_driver db-id schema]
   (driver-api/with-metadata-provider db-id
-    (let [datasets (-> (driver-api/metadata-provider)
-                       driver-api/database
-                       :details
-                       list-datasets)]
-      (some #(= % schema) datasets))))
+    (->> (driver-api/metadata-provider)
+         driver-api/database
+         :details
+         list-datasets
+         (some #{schema}))))
