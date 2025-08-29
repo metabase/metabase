@@ -15,49 +15,44 @@ interface ExecutePythonResponse {
 }
 
 export const pythonRunnerApi = Api.injectEndpoints({
-  endpoints: builder => ({
-    executePython: builder.mutation<ExecutePythonResponse, ExecutePythonRequest>({
-      queryFn: async ({ code, tables }, { getState }) => {
-        try {
-          // Get settings from Redux state
-          const state = getState() as any;
-          const settings = state.settings?.values || {};
-
-          const serverUrl = settings["python-runner-base-url"] || "http://localhost:3000";
-          const apiKey = settings["python-runner-api-key"] || "";
-
-          const response = await fetch(`${serverUrl}/api/python-runner/execute`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Accept": "application/json"
-            },
-            body: JSON.stringify({
-              code,
-              tables
-            })
-          });
-
-          const result = await response.json();
-
-          if (response.ok) {
-            return { data: result };
-          } else {
-            return { error: { status: response.status, data: result } };
-          }
-        } catch (error: any) {
+  endpoints: (builder) => ({
+    executePython: builder.mutation<
+      ExecutePythonResponse,
+      ExecutePythonRequest
+    >({
+      query: ({ code, tables }) => ({
+        url: "/api/ee/transform/test",
+        method: "POST",
+        body: {
+          code,
+          tables,
+        },
+      }),
+      transformResponse: (response: any) => {
+        // Extract the nested result from the backend response
+        if (response?.result?.body) {
           return {
-            error: {
-              status: 500,
-              data: {
-                error: `Failed to connect to Python execution server: ${error.message}`,
-                stdout: "",
-                stderr: ""
-              }
-            }
+            output: response.result.body.output,
+            stdout: response.result.body.stdout,
+            stderr: response.result.body.stderr,
+            error: response.result.body.error,
+            exit_code: response.result.body.exit_code,
+            timeout: response.result.body.timeout,
           };
         }
-      }
+        return response;
+      },
+      transformErrorResponse: (response: any) => {
+        return {
+          status: response?.status || 500,
+          data: {
+            error: response?.data?.error || "Python execution failed",
+            stdout: response?.data?.stdout || "",
+            stderr: response?.data?.stderr || "",
+            exit_code: response?.data?.exit_code,
+          },
+        };
+      },
     }),
   }),
   overrideExisting: true,
