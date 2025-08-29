@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Card, Group, Icon } from "metabase/ui";
-import { useIsInLibrary } from "metabase-enterprise/git_sync/useIsInLibrary";
 import type { Transform } from "metabase-types/api";
 
 import { QueryView } from "../../../components/QueryView";
@@ -42,13 +41,11 @@ type EditQueryButtonProps = {
 };
 
 function EditQueryButton({ transform }: EditQueryButtonProps) {
-  const readOnly = useIsInLibrary("transform");
   return (
     <Button
-      component={readOnly ? undefined : Link}
+      component={Link}
       to={getTransformQueryUrl(transform.id)}
       leftSection={<Icon name="pencil_lines" aria-hidden />}
-      disabled={readOnly}
     >
       {t`Edit query`}
     </Button>
@@ -61,7 +58,6 @@ type DeleteTransformButtonProps = {
 
 function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
   const dispatch = useDispatch();
-  const readOnly = useIsInLibrary("transform");
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const { sendSuccessToast } = useMetadataToasts();
@@ -76,7 +72,6 @@ function DeleteTransformButton({ transform }: DeleteTransformButtonProps) {
       <Button
         leftSection={<Icon name="trash" aria-hidden />}
         onClick={openModal}
-        disabled={readOnly}
       >
         {t`Delete`}
       </Button>

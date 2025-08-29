@@ -21,13 +21,11 @@ import type { TransformJobInfo } from "../types";
 type ScheduleSectionProps = {
   job: TransformJobInfo;
   onScheduleChange: (schedule: string) => void;
-  disabled?: boolean;
 };
 
 export function ScheduleSection({
   job,
   onScheduleChange,
-  disabled,
 }: ScheduleSectionProps) {
   const [schedule, setSchedule] = useState(() =>
     formatCronExpressionForUI(job.schedule),
@@ -42,7 +40,6 @@ export function ScheduleSection({
       <Box px="xl" py="lg">
         <CronSection
           schedule={schedule}
-          disabled={disabled}
           onChangeSchedule={setSchedule}
           onChangeSubmit={onScheduleChange}
         />
@@ -69,18 +66,15 @@ type CronSectionProps = {
   schedule: string;
   onChangeSchedule: (schedule: string) => void;
   onChangeSubmit: (schedule: string) => void;
-  disabled?: boolean;
 };
 
 function CronSection({
   schedule,
   onChangeSchedule,
   onChangeSubmit,
-  disabled,
 }: CronSectionProps) {
   return (
     <CronExpressionInput
-      disabled={disabled}
       value={schedule}
       onChange={onChangeSchedule}
       onBlurChange={onChangeSubmit}
