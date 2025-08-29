@@ -73,7 +73,7 @@ export const CommentEditor = ({
         configureMentionExtension({ currentUser, dispatch }),
         !readonly &&
           Placeholder.configure({
-            placeholder: isNewThread ? t`Add your comment…` : t`Reply…`,
+            placeholder: isNewThread ? t`Add a comment…` : t`Reply…`,
           }),
         !readonly && DisableMetabotSidebar,
       ].filter(Boolean) as Extension[],

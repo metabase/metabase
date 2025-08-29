@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { useMemo, useState } from "react";
 
-import { Box, Button, Divider, Stack } from "metabase/ui";
+import { Box, Divider, Stack } from "metabase/ui";
 import { useCreateCommentMutation } from "metabase-enterprise/api";
 import { getCommentThreads } from "metabase-enterprise/comments/utils";
 import type { Comment, DocumentContent } from "metabase-types/api";
@@ -44,16 +43,6 @@ export const Discussions = ({
     });
   };
 
-  const [isNewThreadStarted, setIsNewThreadStarted] =
-    useState(autoOpenNewComment);
-
-  // Auto-open new comment form if requested
-  useEffect(() => {
-    if (autoOpenNewComment) {
-      setIsNewThreadStarted(true);
-    }
-  }, [autoOpenNewComment]);
-
   return (
     <Stack gap="0">
       {threads.map((thread) => (
@@ -72,22 +61,14 @@ export const Discussions = ({
       ))}
 
       <Box p="xl">
-        {!isNewThreadStarted && (
-          <Button onClick={() => setIsNewThreadStarted(true)} variant="subtle">
-            {t`New comment`}
-          </Button>
-        )}
-        {isNewThreadStarted && (
-          <CommentEditor
-            isNewThread={true}
-            autoFocus={autoOpenNewComment}
-            onChange={(document) => setNewComment(document)}
-            onSubmit={(doc) => {
-              handleSubmit(doc);
-              setIsNewThreadStarted(false);
-            }}
-          />
-        )}
+        <CommentEditor
+          isNewThread={true}
+          autoFocus={autoOpenNewComment}
+          onChange={(document) => setNewComment(document)}
+          onSubmit={(doc) => {
+            handleSubmit(doc);
+          }}
+        />
       </Box>
     </Stack>
   );
