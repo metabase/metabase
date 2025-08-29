@@ -885,3 +885,10 @@
                       (cons [(format "USE DATABASE \"%s\"" db-name-val)] queries)
                       queries)]
     {:rows-affected (last (driver/execute-raw-queries! driver connection-details all-queries))}))
+
+(defmethod driver/create-schema-if-needed! :snowflake
+  [driver conn-spec schema]
+  (let [queries [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]
+        db-name-val (or (:db conn-spec) (:dbname conn-spec))
+        all-queries (if db-name-val (cons [(format "USE DATABASE \"%s\"" db-name-val)] queries) queries)]
+    (driver/execute-raw-queries! driver conn-spec all-queries)))

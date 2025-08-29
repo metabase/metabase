@@ -843,7 +843,7 @@
   (let [details (get connection-details :details connection-details)
         client (database-details->client details)]
     (try
-      (for [query queries]
+      (doseq [query queries]
         (let [sql (if (string? query) query (first query))
               _ (log/debugf "Executing BigQuery DDL: %s" sql)
               job-config (-> (QueryJobConfiguration/newBuilder sql)
@@ -865,7 +865,7 @@
     (driver/execute-raw-queries! driver database [drop-sql])
     nil))
 
-(defmethod driver/connection-details :bigquery-cloud-sdk
+(defmethod driver/connection-spec :bigquery-cloud-sdk
   [_driver database]
   ;; Return the database details directly since we don't use a JDBC spec for bigquery
   (:details database))
@@ -886,3 +886,17 @@
                {:schema (first parts) :table (second parts)}))
        (keep #(driver.sql/find-table driver %))
        set))
+
+(defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
+  [driver conn-spec schema]
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
+    (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/schema-exists? :bigquery-cloud-sdk
+  [_driver db-id schema]
+  (driver-api/with-metadata-provider db-id
+    (->> (driver-api/metadata-provider)
+         driver-api/database
+         :details
+         list-datasets
+         (some #{schema}))))
