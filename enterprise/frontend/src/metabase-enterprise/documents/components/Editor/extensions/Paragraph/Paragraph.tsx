@@ -1,3 +1,6 @@
+import { autoUpdate, useFloating } from "@floating-ui/react";
+// our Portal in metabase/ui does not work here, so we're using the originnal Mantine one
+import { Portal } from "@mantine/core";
 import { Node, type NodeViewProps, mergeAttributes } from "@tiptap/core";
 import {
   NodeViewContent,
@@ -5,12 +8,12 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { uuid } from "metabase/lib/uuid";
-import { Box, Button, Icon, Tooltip, rem } from "metabase/ui";
+import { Box, Button, Icon, rem } from "metabase/ui";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
 
@@ -117,27 +120,37 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
   );
   const hasComments = nodeThreads.length > 0;
 
+  const { refs, floatingStyles } = useFloating({
+    placement: "left-start",
+    whileElementsMounted: autoUpdate,
+    strategy: "fixed",
+  });
+
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <NodeViewWrapper
-      className={cx(S.paragraph, {
-        [S.open]: isOpen,
-      })}
-      as="p"
-    >
-      <NodeViewContent />
+    <>
+      <NodeViewWrapper
+        className={cx(S.paragraph, {
+          [S.open]: isOpen,
+        })}
+        ref={refs.setReference}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        <NodeViewContent as="p" />
+      </NodeViewWrapper>
 
       {document && (
-        <Box
-          className={cx(S.commentsMenu, {
-            [S.visible]: hasComments || isOpen,
-          })}
-          h="100%"
-          mt={rem(-2)}
-          pr="lg"
-        >
-          <Tooltip
-            disabled={!hasUnsavedChanges}
-            label={t`Save your document first`}
+        <Portal>
+          <Box
+            className={cx(S.commentsMenu, {
+              [S.visible]: hasComments || isOpen || hovered,
+            })}
+            mt={rem(-2)}
+            pr="lg"
+            ref={refs.setFloating}
+            style={floatingStyles}
           >
             <Button
               disabled={hasUnsavedChanges}
@@ -156,9 +169,9 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
                 ? t`Comments (${nodeThreads.flat().length})`
                 : t`Add comment`}
             </Button>
-          </Tooltip>
-        </Box>
+          </Box>
+        </Portal>
       )}
-    </NodeViewWrapper>
+    </>
   );
 };
