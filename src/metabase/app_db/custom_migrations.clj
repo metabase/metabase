@@ -188,15 +188,29 @@
                          :where [:or [:like :object (h2x/literal "/data/db/%")]
                                  [:like :object (h2x/literal "/query/db/%")]]}))
 
-(define-migration DropUniqueConstraintH2
-  (let [constraint-name (-> (t2/query {:select [:CONSTRAINT_NAME]
-                                       :from   [:INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE]
-                                       :where  [:and
-                                                [:= :TABLE_NAME "TRANSFORM"]
-                                                [:= :COLUMN_NAME "ENTITY_ID"]]})
-                            first
-                            :constraint_name)]
-    (t2/query [(str "ALTER TABLE TRANSFORM DROP CONSTRAINT " constraint-name)]))
+(define-migration DropUniqueConstraint
+  (case (mdb.connection/db-type)
+    :h2
+    (let [constraint-name (-> (t2/query {:select [:CONSTRAINT_NAME]
+                                         :from   [:INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE]
+                                         :where  [:and
+                                                  [:= :TABLE_NAME "TRANSFORM"]
+                                                  [:= :COLUMN_NAME "ENTITY_ID"]]})
+                              first
+                              :constraint_name)]
+      (t2/query [(str "ALTER TABLE TRANSFORM DROP CONSTRAINT " constraint-name)]))
+    :postgres
+    (let [constraint-name (-> (t2/query {:select [:constraint_name]
+                                         :from   [:information_schema.constraint_column_usage]
+                                         :where  [:and
+                                                  [:= :table_name "transform"]
+                                                  [:= :column_name "entity_id"]]})
+                              first
+                              :constraint_name)]
+      (t2/query [(str "ALTER TABLE TRANSFORM DROP CONSTRAINT " constraint-name)]))
+
+    :else
+    (throw (ex-info "Unsupported appdb type" {})))
   (log/info "Dropped unique constraint on transform.entity_id"))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
