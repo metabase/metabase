@@ -21,7 +21,6 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import { Paragraph } from "metabase-enterprise/documents/components/Editor/extensions/Paragraph";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
@@ -68,10 +67,7 @@ export function DiscussionComment({
 
   const extensions = useMemo(
     () => [
-      Paragraph,
-      StarterKit.configure({
-        paragraph: false,
-      }),
+      StarterKit,
       SmartLink.configure({
         HTMLAttributes: { class: "smart-link" },
         siteUrl,

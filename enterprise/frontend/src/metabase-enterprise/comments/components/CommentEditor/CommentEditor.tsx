@@ -12,7 +12,6 @@ import { getSetting } from "metabase/selectors/settings";
 import { ActionIcon, Flex, Icon } from "metabase/ui";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
-import { Paragraph } from "metabase-enterprise/documents/components/Editor/extensions/Paragraph";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
 import type { DocumentContent } from "metabase-types/api";
 
@@ -45,10 +44,7 @@ export const CommentEditor = ({
 
   const extensions = useMemo(
     () => [
-      Paragraph,
-      StarterKit.configure({
-        paragraph: false,
-      }),
+      StarterKit,
       SmartLink.configure({
         HTMLAttributes: { class: "smart-link" },
         siteUrl,

@@ -1,28 +1,5 @@
 .paragraph {
   position: relative;
-
-  &:hover {
-    .commentsMenu {
-      opacity: 1;
-    }
-  }
-}
-
-.commentsMenu {
-  position: absolute;
-  top: 0;
-  right: 100%;
-  opacity: 0;
-  user-select: none;
-
-  &:hover,
-  &:focus-within {
-    opacity: 1;
-  }
-}
-
-.visible {
-  opacity: 1;
 }
 
 .open {

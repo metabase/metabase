@@ -1,3 +1,5 @@
+import { autoUpdate, useFloating } from "@floating-ui/react";
+// our Portal in metabase/ui does not work here, so we're using the originnal Mantine one
 import { Node, type NodeViewProps, mergeAttributes } from "@tiptap/core";
 import {
   NodeViewContent,
@@ -5,15 +7,13 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { useMemo } from "react";
-import { Link } from "react-router";
-import { t } from "ttag";
+import { useMemo, useState } from "react";
 
 import { uuid } from "metabase/lib/uuid";
-import { Box, Button, Icon, Tooltip, rem } from "metabase/ui";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
 
+import { CommentsMenu } from "../../CommentsMenu";
 import {
   ID_ATTRIBUTE_NAME,
   createIdAttribute,
@@ -38,7 +38,7 @@ declare module "@tiptap/core" {
        * Toggle a paragraph
        * @example editor.commands.toggleParagraph()
        */
-      setParagraph: () => ReturnType;
+      satParagraph: () => ReturnType;
     };
   }
 }
@@ -106,59 +106,45 @@ export const Paragraph = Node.create<ParagraphOptions>({
 });
 
 export const ParagraphNodeView = ({ node }: NodeViewProps) => {
-  const { _id } = node.attrs;
   const { childTargetId, comments, document, hasUnsavedChanges } =
     useDocumentContext();
-
+  const [hovered, setHovered] = useState(false);
+  const { _id } = node.attrs;
   const isOpen = childTargetId === _id;
-  const nodeThreads = useMemo(
+  const threads = useMemo(
     () => getTargetChildCommentThreads(comments, _id),
     [comments, _id],
   );
-  const hasComments = nodeThreads.length > 0;
+  const { refs, floatingStyles } = useFloating({
+    placement: "left-start",
+    whileElementsMounted: autoUpdate,
+    strategy: "fixed",
+  });
 
   return (
-    <NodeViewWrapper
-      className={cx(S.paragraph, {
-        [S.open]: isOpen,
-      })}
-      as="p"
-    >
-      <NodeViewContent />
+    <>
+      <NodeViewWrapper
+        className={cx(S.paragraph, {
+          [S.open]: isOpen,
+        })}
+        ref={refs.setReference}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        <NodeViewContent as="p" />
+      </NodeViewWrapper>
 
       {document && (
-        <Box
-          className={cx(S.commentsMenu, {
-            [S.visible]: hasComments || isOpen,
-          })}
-          h="100%"
-          mt={rem(-2)}
-          pr="lg"
-        >
-          <Tooltip
-            disabled={!hasUnsavedChanges}
-            label={t`Save your document first`}
-          >
-            <Button
-              disabled={hasUnsavedChanges}
-              leftSection={<Icon name="message" />}
-              px="sm"
-              size="xs"
-              variant={isOpen ? "filled" : "default"}
-              {...(hasUnsavedChanges || isOpen
-                ? undefined
-                : {
-                    component: Link,
-                    to: `/document/${document.id}/comments/${_id}`,
-                  })}
-            >
-              {hasComments
-                ? t`Comments (${nodeThreads.flat().length})`
-                : t`Add comment`}
-            </Button>
-          </Tooltip>
-        </Box>
+        <CommentsMenu
+          active={isOpen}
+          disabled={hasUnsavedChanges}
+          href={`/document/${document.id}/comments/${_id}`}
+          ref={refs.setFloating}
+          show={isOpen || hovered}
+          threads={threads}
+          style={floatingStyles}
+        />
       )}
-    </NodeViewWrapper>
+    </>
   );
 };
