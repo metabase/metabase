@@ -1,6 +1,5 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
 // our Portal in metabase/ui does not work here, so we're using the originnal Mantine one
-import { Portal } from "@mantine/core";
 import { Node, type NodeViewProps, mergeAttributes } from "@tiptap/core";
 import {
   NodeViewContent,
@@ -9,14 +8,12 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
-import { t } from "ttag";
 
 import { uuid } from "metabase/lib/uuid";
-import { Box, Button, Icon, rem } from "metabase/ui";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
 
+import { CommentsMenu } from "../../CommentsMenu";
 import {
   ID_ATTRIBUTE_NAME,
   createIdAttribute,
@@ -41,7 +38,7 @@ declare module "@tiptap/core" {
        * Toggle a paragraph
        * @example editor.commands.toggleParagraph()
        */
-      setParagraph: () => ReturnType;
+      satParagraph: () => ReturnType;
     };
   }
 }
@@ -114,11 +111,10 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
     useDocumentContext();
 
   const isOpen = childTargetId === _id;
-  const nodeThreads = useMemo(
+  const threads = useMemo(
     () => getTargetChildCommentThreads(comments, _id),
     [comments, _id],
   );
-  const hasComments = nodeThreads.length > 0;
 
   const { refs, floatingStyles } = useFloating({
     placement: "left-start",
@@ -142,35 +138,15 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
       </NodeViewWrapper>
 
       {document && (
-        <Portal>
-          <Box
-            className={cx(S.commentsMenu, {
-              [S.visible]: hasComments || isOpen || hovered,
-            })}
-            mt={rem(-2)}
-            pr="lg"
-            ref={refs.setFloating}
-            style={floatingStyles}
-          >
-            <Button
-              disabled={hasUnsavedChanges}
-              leftSection={<Icon name="message" />}
-              px="sm"
-              size="xs"
-              variant={isOpen ? "filled" : "default"}
-              {...(hasUnsavedChanges || isOpen
-                ? undefined
-                : {
-                    component: Link,
-                    to: `/document/${document.id}/comments/${_id}`,
-                  })}
-            >
-              {hasComments
-                ? t`Comments (${nodeThreads.flat().length})`
-                : t`Add comment`}
-            </Button>
-          </Box>
-        </Portal>
+        <CommentsMenu
+          active={isOpen}
+          disabled={hasUnsavedChanges}
+          href={`/document/${document.id}/comments/${_id}`}
+          ref={refs.setFloating}
+          show={isOpen || hovered}
+          threads={threads}
+          style={floatingStyles}
+        />
       )}
     </>
   );

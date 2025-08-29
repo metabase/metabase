@@ -2,20 +2,6 @@
   position: relative;
 }
 
-.commentsMenu {
-  opacity: 0;
-  user-select: none;
-
-  &:hover,
-  &:focus-within {
-    opacity: 1;
-  }
-}
-
-.visible {
-  opacity: 1;
-}
-
 .open {
   --padding: 24px;
 
