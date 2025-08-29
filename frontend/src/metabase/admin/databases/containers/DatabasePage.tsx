@@ -30,7 +30,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
     engine: preselectedEngine,
   };
 
-  const handleCloseModal = () => {
+  const handleCancel = () => {
     dispatch(
       database?.id
         ? push(`/admin/databases/${database.id}`)
@@ -42,7 +42,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
     if (addingNewDatabase) {
       dispatch(push(`/admin/databases/${savedDB.id}`));
     } else {
-      handleCloseModal();
+      handleCancel();
     }
   };
 
@@ -55,7 +55,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
         initializeError={databaseReq.error}
         onSubmitted={handleOnSubmit}
         route={route}
-        onCancel={handleCloseModal}
+        onCancel={handleCancel}
         config={{
           engine: {
             fieldState: database

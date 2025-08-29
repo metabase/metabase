@@ -86,6 +86,7 @@ export const DatabaseConnectionModalInner = ({
               : "disabled",
           },
         }}
+        formLocation="admin"
       />
     </Modal>
   );
