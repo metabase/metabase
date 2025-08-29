@@ -6,23 +6,22 @@ import {
   shift,
   size,
 } from "@floating-ui/dom";
-import Mention from "@tiptap/extension-mention";
 import { ReactRenderer } from "@tiptap/react";
 import type {
   SuggestionKeyDownProps,
   SuggestionProps,
 } from "@tiptap/suggestion";
 
-import { userApi } from "metabase/api";
+import { searchApi, userApi } from "metabase/api";
 import type { DispatchFn } from "metabase/lib/redux";
 import type { User } from "metabase-types/api";
 
+import { CustomMentionExtension } from "./CustomMentionExtension";
 import {
   MentionList,
   type MentionListProps,
   type MentionListRef,
 } from "./MentionList";
-import S from "./mentions.module.css";
 
 type ExtensionProps = {
   currentUser?: User | null;
@@ -33,26 +32,73 @@ export const configureMentionExtension = ({
   currentUser,
   dispatch,
 }: ExtensionProps) =>
-  Mention.configure({
-    HTMLAttributes: { class: S.mention },
+  CustomMentionExtension.configure({
     suggestion: {
       char: "@",
       allowSpaces: true,
       items: async ({ query }) => {
-        const result = await dispatch(
-          userApi.endpoints.listUsers.initiate({ query }),
-        );
-        if (!result.data) {
-          return [];
+        const [userResult, searchResult] = await Promise.all([
+          dispatch(userApi.endpoints.listUsers.initiate({ query })),
+          dispatch(
+            searchApi.endpoints.search.initiate({
+              q: query,
+              filter_items_in_personal_collection: "exclude",
+              models: ["card", "dashboard", "dataset", "metric"],
+              limit: 10,
+            }),
+          ),
+        ]);
+
+        const items = [];
+
+        if (userResult.data) {
+          const users = userResult.data.data
+            .map((user) => ({
+              id: `user:${user.id}`,
+              entityId: user.id,
+              label: user.common_name,
+              type: "user" as const,
+            }))
+            .filter((user) => user.entityId !== currentUser?.id)
+            .slice(0, 5);
+
+          items.push(...users);
         }
-        return result.data.data
-          .map((user) => ({
-            id: user.id,
-            label: user.common_name,
-          }))
-          .filter((user) => user.id !== currentUser?.id);
+
+        if (searchResult.data) {
+          const searchItems = searchResult.data.data
+            .slice(0, 5)
+            .map((item) => ({
+              id: `${item.model}:${item.id}`,
+              entityId: item.id,
+              label: item.name,
+              type: item.model,
+              collection: item.collection?.name,
+            }));
+
+          items.push(...searchItems);
+        }
+
+        return items;
       },
       render: renderMentionList,
+      command: ({ editor, range, props }) => {
+        const item = props as any;
+
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent({
+            type: "mention",
+            attrs: {
+              id: String(item.entityId),
+              label: item.label,
+              model: item.type,
+            },
+          })
+          .run();
+      },
     },
   });
 
@@ -105,7 +151,8 @@ const renderMentionList = () => {
             size({
               apply({ availableHeight }) {
                 Object.assign(popup.style, {
-                  maxHeight: `${Math.min(200, availableHeight)}px`,
+                  maxHeight: `${Math.min(400, availableHeight)}px`,
+                  minWidth: "320px",
                 });
               },
             }),
@@ -149,7 +196,8 @@ const renderMentionList = () => {
           size({
             apply({ availableHeight }) {
               Object.assign(popup.style, {
-                maxHeight: `${Math.min(200, availableHeight)}px`,
+                maxHeight: `${Math.min(400, availableHeight)}px`,
+                minWidth: "320px",
               });
             },
           }),

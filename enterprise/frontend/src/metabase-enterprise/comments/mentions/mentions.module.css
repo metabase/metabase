@@ -1,7 +1,0 @@
-.mention {
-  background-color: var(--mb-color-brand-lighter);
-  border-radius: var(--mantine-radius-sm);
-  color: var(--mb-color-brand);
-  display: inline-block;
-  padding: 0.125rem 0.25rem;
-}

@@ -6,7 +6,7 @@
   box-shadow: var(--mantine-shadow-md);
   padding: 0.25rem;
   font-size: var(--mantine-font-size-sm);
-  max-height: 200px;
+  max-height: 380px;
   overflow-y: auto;
 }
 
@@ -34,4 +34,76 @@
   padding: 0.5rem 0.75rem;
   font-size: var(--mantine-font-size-sm);
   color: var(--mb-color-text-medium);
+}
+
+/* Section headers */
+.mentionSectionHeader {
+  padding: 0.25rem 0.75rem;
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 600;
+  color: var(--mb-color-text-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 0.25rem;
+}
+
+.mentionSectionHeader:first-child {
+  margin-top: 0;
+}
+
+/* Item content structure */
+.mentionItemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.mentionItemMain {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mentionItemIcon {
+  color: var(--mb-color-text-medium);
+  flex-shrink: 0;
+}
+
+.mentionItemLabel {
+  font-weight: 500;
+}
+
+.mentionItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mb-color-text-light);
+}
+
+.mentionItemType {
+  color: var(--mb-color-text-medium);
+}
+
+.mentionItemSeparator {
+  color: var(--mb-color-text-light);
+}
+
+.mentionItemCollection {
+  color: var(--mb-color-text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Adjust selected state for metadata */
+.mentionItemSelected .mentionItemMeta,
+.mentionItem:hover .mentionItemMeta {
+  color: var(--mb-color-brand);
+  opacity: 0.8;
+}
+
+.mentionItemSelected .mentionItemIcon,
+.mentionItem:hover .mentionItemIcon {
+  color: var(--mb-color-brand);
 }
