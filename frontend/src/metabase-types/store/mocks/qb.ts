@@ -4,8 +4,8 @@ import type {
   QueryBuilderUIControls,
 } from "metabase-types/store";
 
-export const createMockQueryBuilderUIControlsState = (
-  opts?: Partial<QueryBuilderUIControls>,
+export const createMockQueryBuilderUIControls = (
+  opts: Partial<QueryBuilderUIControls> = {},
 ): QueryBuilderUIControls => ({
   isModifiedFromNotebook: false,
   isShowingDataReference: false,
@@ -18,11 +18,13 @@ export const createMockQueryBuilderUIControlsState = (
   isShowingQuestionDetailsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingSnippetSidebar: false,
+  isShowingColumnPickerSidebar: false,
+  activeColumnPickerStepId: null,
   isShowingTimelineSidebar: false,
+  isNativeEditorOpen: false,
   isShowingAIQuestionAnalysisSidebar: false,
   initialChartSetting: {},
   isShowingRawTable: false,
-  isNativeEditorOpen: false,
   queryBuilderMode: "view",
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
@@ -34,6 +36,8 @@ export const createMockQueryBuilderUIControlsState = (
   modalContext: null,
   dataReferenceStack: null,
   highlightedNativeQueryLineNumbers: [],
+  openColumnPickerId: null,
+  activeSidebar: null,
   ...opts,
 });
 
@@ -50,7 +54,7 @@ export const createMockQueryBuilderParentEntityState = (
 export const createMockQueryBuilderState = (
   opts?: Partial<QueryBuilderState>,
 ): QueryBuilderState => ({
-  uiControls: createMockQueryBuilderUIControlsState(),
+  uiControls: createMockQueryBuilderUIControls(),
   loadingControls: {
     showLoadCompleteFavicon: false,
     documentTitle: "",

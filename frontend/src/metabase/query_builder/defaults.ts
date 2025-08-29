@@ -26,12 +26,16 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   datasetEditorTab: "query", // "query" / "metadata"
   isShowingQuestionDetailsSidebar: false,
   isShowingSnippetSidebar: false,
+  isShowingColumnPickerSidebar: false,
+  activeColumnPickerStepId: null,
   isShowingNotebookNativePreview: false,
   notebookNativePreviewSidebarWidth: null,
   showSidebarTitle: false,
   modal: null,
   modalContext: null,
   highlightedNativeQueryLineNumbers: [],
+  openColumnPickerId: null,
+  activeSidebar: null,
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
@@ -56,6 +60,8 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingAIQuestionAnalysisSidebar: false,
   isShowingTimelineSidebar: false,
   isShowingQuestionInfoSidebar: false,
+  isShowingColumnPickerSidebar: false,
+  activeColumnPickerStepId: null,
   isShowingDataReference: false,
 };
 

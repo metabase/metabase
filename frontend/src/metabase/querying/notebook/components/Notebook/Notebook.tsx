@@ -1,5 +1,6 @@
 import { arrayMove } from "@dnd-kit/sortable";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
@@ -123,18 +124,30 @@ function CustomizeColumnsButton({ question }: CustomizeColumnsButtonProps) {
   return (
     <>
       <Button onClick={handleClick}>{t`Customize Columns`}</Button>
-      {isSidebarOpen && (
-        <ColumnPickerSidebar
-          title={t`Reorder and rename columns`}
-          isOpen={isSidebarOpen}
-          query={question.query()}
-          stageIndex={-1}
-          onClose={() => setIsSidebarOpen(false)}
-          columns={columns}
-          isDraggable
-          onReorderColumns={handleReorderColumns}
-        />
-      )}
+      {isSidebarOpen && (() => {
+        // Try resizable portal first, fallback to regular portal
+        const resizablePortal = document.getElementById("notebook-column-picker-portal-resizable");
+        const regularPortal = document.getElementById("notebook-column-picker-portal");
+        const targetPortal = resizablePortal || regularPortal;
+        
+        if (!targetPortal) {
+          return null;
+        }
+        
+        return createPortal(
+          <ColumnPickerSidebar
+            title={t`Reorder and rename columns`}
+            isOpen={isSidebarOpen}
+            query={question.query()}
+            stageIndex={-1}
+            onClose={() => setIsSidebarOpen(false)}
+            columns={columns}
+            isDraggable
+            onReorderColumns={handleReorderColumns}
+          />,
+          targetPortal
+        );
+      })()}
     </>
   );
 }

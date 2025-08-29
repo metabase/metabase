@@ -3,12 +3,14 @@ import { t } from "ttag";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
+  closeAllSidebars,
+  setActiveSidebar,
   setNotebookNativePreviewState,
   setUIControls,
 } from "metabase/query_builder/actions";
 import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytics";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { getUiControls } from "metabase/query_builder/selectors";
+import { getActiveSidebar, getUiControls } from "metabase/query_builder/selectors";
 import { Button, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -44,6 +46,7 @@ export const ToggleNativeQueryPreview = ({
   const {
     isShowingNotebookNativePreview,
   }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
+  const activeSidebar = useSelector(getActiveSidebar);
 
   const screenSize = useNotebookScreenSize();
 
@@ -53,11 +56,18 @@ export const ToggleNativeQueryPreview = ({
     : BUTTON_TEXT[engineType];
 
   const handleClick = () => {
-    dispatch(
-      setUIControls({
-        isShowingNotebookNativePreview: !isShowingNotebookNativePreview,
-      }),
-    );
+    if (isShowingNotebookNativePreview && activeSidebar === "native-preview") {
+      // Close native preview
+      dispatch(closeAllSidebars());
+    } else {
+      // Open native preview and set as active sidebar
+      dispatch(
+        setUIControls({
+          isShowingNotebookNativePreview: true,
+        }),
+      );
+      dispatch(setActiveSidebar("native-preview"));
+    }
 
     // the setting is intentionally remembered only for large screens
     if (screenSize === "large") {

@@ -6,12 +6,16 @@ import { useWindowSize } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
+  closeAllSidebars,
+  setActiveSidebar,
   setNotebookNativePreviewSidebarWidth,
   setUIControls,
-} from "metabase/query_builder/actions";
+} from "metabase/query_builder/actions/ui";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import {
+  getActiveSidebar,
   getIsNotebookNativePreviewShown,
+  getIsShowingColumnPickerSidebar,
   getUiControls,
 } from "metabase/query_builder/selectors";
 import {
@@ -53,10 +57,47 @@ export const NotebookContainer = ({
 
   const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
     useSelector(getUiControls);
+  const activeSidebar = useSelector(getActiveSidebar);
+  const isShowingColumnPickerSidebar = useSelector(getIsShowingColumnPickerSidebar);
 
   const renderNativePreview =
     isShowingNotebookNativePreview &&
+    activeSidebar === "native-preview" &&
     canShowNativePreview({ question, queryBuilderMode: "notebook" });
+
+  // Check if there's any content in the column picker portal
+  const [hasColumnPickerContent, setHasColumnPickerContent] = useState(false);
+  const renderColumnPickerSidebar = isShowingColumnPickerSidebar && hasColumnPickerContent;
+
+  useEffect(() => {
+    const checkForContent = () => {
+      const regularPortal = document.getElementById("notebook-column-picker-portal");
+      const resizablePortal = document.getElementById("notebook-column-picker-portal-resizable");
+      const hasContent = Boolean((regularPortal && regularPortal.children.length > 0) ||
+        (resizablePortal && resizablePortal.children.length > 0));
+      setHasColumnPickerContent(hasContent);
+    };
+
+    // Check immediately and set up observers
+    checkForContent();
+    const observers: MutationObserver[] = [];
+
+    const regularPortal = document.getElementById("notebook-column-picker-portal");
+    if (regularPortal) {
+      const observer = new MutationObserver(checkForContent);
+      observer.observe(regularPortal, { childList: true });
+      observers.push(observer);
+    }
+
+    const resizablePortal = document.getElementById("notebook-column-picker-portal-resizable");
+    if (resizablePortal) {
+      const observer = new MutationObserver(checkForContent);
+      observer.observe(resizablePortal, { childList: true });
+      observers.push(observer);
+    }
+
+    return () => observers.forEach(observer => observer.disconnect());
+  }, []);
 
   const minNotebookWidth = 640;
   const minSidebarWidth = 428;
@@ -90,6 +131,9 @@ export const NotebookContainer = ({
   useEffect(() => {
     if (screenSize === "small") {
       dispatch(setUIControls({ isShowingNotebookNativePreview: false }));
+      if (activeSidebar === "native-preview") {
+        dispatch(closeAllSidebars());
+      }
     } else if (screenSize === "large") {
       const currentSettingValue = isNotebookNativePreviewShown;
 
@@ -98,8 +142,12 @@ export const NotebookContainer = ({
           isShowingNotebookNativePreview: currentSettingValue,
         }),
       );
+      
+      if (currentSettingValue && !activeSidebar) {
+        dispatch(setActiveSidebar("native-preview"));
+      }
     }
-  }, [dispatch, isNotebookNativePreviewShown, screenSize]);
+  }, [dispatch, isNotebookNativePreviewShown, screenSize, activeSidebar]);
 
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
@@ -136,66 +184,108 @@ export const NotebookContainer = ({
   });
 
   return (
-    <Flex
-      pos="absolute"
-      inset={0}
-      bg="bg-white"
-      opacity={isOpen ? 1 : 0}
-      style={{
-        transform: transformStyle,
-        transition: `transform ${delayBeforeNotRenderingNotebook}ms, opacity ${delayBeforeNotRenderingNotebook}ms`,
-        zIndex: 2,
-        overflowY: "hidden",
-      }}
-      onTransitionEnd={handleTransitionEnd}
-    >
-      {shouldShowNotebook && (
-        <Box
-          miw={{ lg: minNotebookWidth }}
-          style={{ flex: 1, overflowY: "auto" }}
-        >
-          <Notebook
-            question={question.setType("question")}
-            isDirty={isDirty}
-            isRunnable={isRunnable}
-            isResultDirty={isResultDirty}
-            reportTimezone={reportTimezone}
-            readOnly={readOnly}
-            updateQuestion={updateQuestion}
-            runQuestionQuery={runQuestionQuery}
-            setQueryBuilderMode={setQueryBuilderMode}
-            hasVisualizeButton={hasVisualizeButton}
-          />
-        </Box>
-      )}
+    <>
+      <Flex
+        pos="absolute"
+        inset={0}
+        bg="bg-white"
+        opacity={isOpen ? 1 : 0}
+        style={{
+          transform: transformStyle,
+          transition: `transform ${delayBeforeNotRenderingNotebook}ms, opacity ${delayBeforeNotRenderingNotebook}ms`,
+          zIndex: 2,
+          overflowY: "hidden",
+        }}
+        onTransitionEnd={handleTransitionEnd}
+      >
+        {shouldShowNotebook && (
+          <Box
+            miw={{ lg: minNotebookWidth }}
+            style={{ flex: 1, overflowY: "auto" }}
+          >
+            <Notebook
+              question={question.setType("question")}
+              isDirty={isDirty}
+              isRunnable={isRunnable}
+              isResultDirty={isResultDirty}
+              reportTimezone={reportTimezone}
+              readOnly={readOnly}
+              updateQuestion={updateQuestion}
+              runQuestionQuery={runQuestionQuery}
+              setQueryBuilderMode={setQueryBuilderMode}
+              hasVisualizeButton={hasVisualizeButton}
+            />
+          </Box>
+        )}
 
-      {renderNativePreview && screenSize && (
-        <>
-          {screenSize === "small" && (
-            <Box pos="absolute" inset={0}>
-              <NotebookNativePreview />
-            </Box>
-          )}
+        {renderNativePreview && screenSize && (
+          <>
+            {screenSize === "small" && (
+              <Box pos="absolute" inset={0}>
+                <NotebookNativePreview />
+              </Box>
+            )}
 
-          {screenSize === "large" && (
-            <ResizableBox
-              width={sidebarWidth}
-              minConstraints={[minSidebarWidth, 0]}
-              maxConstraints={[maxSidebarWidth, 0]}
-              axis="x"
-              resizeHandles={["w"]}
-              handle={<Handle />}
-              onResizeStop={handleResizeStop}
+            {screenSize === "large" && (
+              <ResizableBox
+                width={sidebarWidth}
+                minConstraints={[minSidebarWidth, 0]}
+                maxConstraints={[maxSidebarWidth, 0]}
+                axis="x"
+                resizeHandles={["w"]}
+                handle={<Handle />}
+                onResizeStop={handleResizeStop}
+                style={{
+                  borderLeft: "1px solid var(--mb-color-border)",
+                  marginInlineStart: "0.25rem",
+                }}
+              >
+                <NotebookNativePreview />
+              </ResizableBox>
+            )}
+          </>
+        )}
+
+        {/* Column Picker Sidebar - renders portal content inside ResizableBox */}
+        {renderColumnPickerSidebar && screenSize === "large" && (
+          <ResizableBox
+            width={sidebarWidth}
+            minConstraints={[minSidebarWidth, 0]}
+            maxConstraints={[maxSidebarWidth, 0]}
+            axis="x"
+            resizeHandles={["w"]}
+            handle={<Handle />}
+            onResizeStop={handleResizeStop}
+            style={{
+              borderLeft: "1px solid var(--mb-color-border)",
+              marginInlineStart: "0.25rem",
+            }}
+          >
+            {/* Portal container for resizable sidebar */}
+            <div
+              id="notebook-column-picker-portal-resizable"
               style={{
-                borderLeft: "1px solid var(--mb-color-border)",
-                marginInlineStart: "0.25rem",
+                width: "100%",
+                height: "100%",
+                overflow: "auto",
               }}
-            >
-              <NotebookNativePreview />
-            </ResizableBox>
-          )}
-        </>
-      )}
-    </Flex>
+            />
+          </ResizableBox>
+        )}
+      </Flex>
+
+      {/* Portal container - always exists for createPortal */}
+      <div
+        id="notebook-column-picker-portal"
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 3,
+          pointerEvents: "none",
+        }}
+      />
+    </>
   );
 };

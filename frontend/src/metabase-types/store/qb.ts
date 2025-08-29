@@ -35,6 +35,8 @@ export interface QueryBuilderUIControls {
   isShowingQuestionDetailsSidebar: boolean;
   isShowingQuestionInfoSidebar: boolean;
   isShowingSnippetSidebar: boolean;
+  isShowingColumnPickerSidebar: boolean;
+  activeColumnPickerStepId: string | null;
   isShowingTimelineSidebar: boolean;
   isNativeEditorOpen: boolean;
   isShowingAIQuestionAnalysisSidebar: boolean;
@@ -51,6 +53,8 @@ export interface QueryBuilderUIControls {
   modalContext: TimelineEventId | null;
   dataReferenceStack: null;
   highlightedNativeQueryLineNumbers: number[];
+  openColumnPickerId: string | null;
+  activeSidebar: string | null;
 }
 
 export interface QueryBuilderLoadingControls {

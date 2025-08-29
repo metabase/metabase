@@ -1,4 +1,5 @@
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
@@ -6,6 +7,7 @@ import { ColumnPickerSidebar } from "metabase/query_builder/components/ColumnPic
 import { Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { useColumnPickerState } from "../../hooks/useColumnPickerState";
 import type { NotebookStepProps } from "../../types";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import { CONTAINER_PADDING } from "../NotebookCell/constants";
@@ -49,7 +51,10 @@ export const DataStep = ({
       await updateQuery(newQuery);
     }
   };
-  const [isColumnPickerOpen, setIsColumnPickerOpen] = useState(false);
+
+  const { openColumnPicker, closeColumnPicker, isColumnPickerOpen } = useColumnPickerState();
+  const columnPickerId = `data-step-${stageIndex}`;
+  const isColumnPickerOpenState = isColumnPickerOpen(columnPickerId);
 
   const columns = useMemo(
     () => Lib.fieldableColumns(query, stageIndex),
@@ -91,7 +96,7 @@ export const DataStep = ({
                   }
                   aria-label={t`Pick columns`}
                   data-testid="fields-picker"
-                  onClick={() => setIsColumnPickerOpen(true)}
+                  onClick={() => openColumnPicker(columnPickerId)}
                 >
                   <Icon name="notebook" />
                 </IconButtonWrapper>
@@ -116,21 +121,32 @@ export const DataStep = ({
         </NotebookCellItem>
       </NotebookCell>
 
-      {canSelectTableColumns && (
-        <ColumnPickerSidebar
-          isOpen={isColumnPickerOpen}
-          onClose={() => setIsColumnPickerOpen(false)}
-          query={query}
-          stageIndex={stageIndex}
-          columns={columns}
-          title={t`Pick columns`}
-          onToggle={handleToggle}
-          onSelectAll={handleSelectAll}
-          onSelectNone={handleSelectNone}
-          // onReorderColumns={handleReorderColumns}
-          data-testid="data-step-column-picker"
-        />
-      )}
+      {canSelectTableColumns && isColumnPickerOpenState && (() => {
+        // Try resizable portal first, fallback to regular portal
+        const resizablePortal = document.getElementById("notebook-column-picker-portal-resizable");
+        const regularPortal = document.getElementById("notebook-column-picker-portal");
+        const targetPortal = resizablePortal || regularPortal;
+
+        if (!targetPortal) {
+          return null;
+        }
+
+        return createPortal(
+          <ColumnPickerSidebar
+            isOpen={isColumnPickerOpenState}
+            onClose={() => closeColumnPicker(columnPickerId)}
+            query={query}
+            stageIndex={stageIndex}
+            columns={columns}
+            title={t`Pick columns`}
+            onToggle={handleToggle}
+            onSelectAll={handleSelectAll}
+            onSelectNone={handleSelectNone}
+            data-testid="data-step-column-picker"
+          />,
+          targetPortal
+        );
+      })()}
     </>
   );
 };

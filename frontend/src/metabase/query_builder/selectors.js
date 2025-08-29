@@ -75,6 +75,7 @@ const SIDEBARS = [
   "isShowingAIQuestionAnalysisSidebar",
 
   "isShowingSummarySidebar",
+  "isShowingColumnPickerSidebar",
 
   "isShowingDataReference",
   "isShowingTemplateTagsEditor",
@@ -85,6 +86,14 @@ export const getIsAnySidebarOpen = createSelector(
   [getUiControls],
   (uiControls) => SIDEBARS.some((sidebar) => uiControls[sidebar]),
 );
+
+export const getActiveSidebar = (state) => getUiControls(state)?.activeSidebar;
+
+export const getIsShowingColumnPickerSidebar = (state) => 
+  getUiControls(state)?.isShowingColumnPickerSidebar;
+
+export const getActiveColumnPickerStepId = (state) =>
+  getUiControls(state)?.activeColumnPickerStepId;
 
 export const getIsRunning = (state) => getUiControls(state).isRunning;
 export const getIsLoadingComplete = (state) =>

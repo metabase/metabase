@@ -88,8 +88,23 @@ export const onCloseQuestionSettings = createAction(
 export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");
 export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 
+export const onOpenColumnPicker = createAction("metabase/qb/OPEN_COLUMN_PICKER");
+export const onCloseColumnPicker = createAction("metabase/qb/CLOSE_COLUMN_PICKER");
+
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
+
+export const OPEN_COLUMN_PICKER = "metabase/qb/OPEN_COLUMN_PICKER";
+export const openColumnPicker = createAction(OPEN_COLUMN_PICKER);
+
+export const CLOSE_COLUMN_PICKER = "metabase/qb/CLOSE_COLUMN_PICKER";
+export const closeColumnPicker = createAction(CLOSE_COLUMN_PICKER);
+
+export const SET_ACTIVE_SIDEBAR = "metabase/qb/SET_ACTIVE_SIDEBAR";
+export const setActiveSidebar = createAction(SET_ACTIVE_SIDEBAR);
+
+export const CLOSE_ALL_SIDEBARS = "metabase/qb/CLOSE_ALL_SIDEBARS";
+export const closeAllSidebars = createAction(CLOSE_ALL_SIDEBARS);
 
 export const SHOW_CHART_SETTINGS = "metabase/qb/SHOW_CHART_SETTINGS";
 export const showChartSettings = createAction(SHOW_CHART_SETTINGS);

@@ -1,6 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { t } from "ttag";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { onOpenColumnPicker, onCloseColumnPicker } from "metabase/query_builder/actions/ui";
+import { getIsShowingColumnPickerSidebar, getActiveColumnPickerStepId } from "metabase/query_builder/selectors";
 import { ColumnPickerSidebar } from "metabase/query_builder/components/ColumnPickerSidebar/ColumnPickerSidebar";
 import * as Lib from "metabase-lib";
 
@@ -19,10 +23,23 @@ export function JoinTableColumnPicker({
   onChange,
   onClose,
 }: JoinTableColumnPickerProps) {
+  const dispatch = useDispatch();
+  const isShowingColumnPickerSidebar = useSelector(getIsShowingColumnPickerSidebar);
+  const activeColumnPickerStepId = useSelector(getActiveColumnPickerStepId);
+  
+  // Create a unique ID for this join column picker
+  const stepId = `join-${stageIndex}-${Lib.displayInfo(query, stageIndex, join).name}`;
+  const isActive = isShowingColumnPickerSidebar && activeColumnPickerStepId === stepId;
+  
   const columns = useMemo(
     () => Lib.joinableColumns(query, stageIndex, join),
     [query, stageIndex, join],
   );
+  
+  useEffect(() => {
+    // Open the column picker when this component mounts
+    dispatch(onOpenColumnPicker(stepId));
+  }, [dispatch, stepId]);
 
   const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
     const newQuery = isSelected
@@ -43,10 +60,29 @@ export function JoinTableColumnPicker({
     onChange(newQuery);
   };
 
-  return (
+  // Only render if this specific step is the active column picker
+  if (!isActive) {
+    return null;
+  }
+
+  // Try resizable portal first, fallback to regular portal
+  const resizablePortal = document.getElementById("notebook-column-picker-portal-resizable");
+  const regularPortal = document.getElementById("notebook-column-picker-portal");
+  const targetPortal = resizablePortal || regularPortal;
+  
+  if (!targetPortal) {
+    return null;
+  }
+  
+  const handleClose = () => {
+    dispatch(onCloseColumnPicker());
+    onClose();
+  };
+  
+  return createPortal(
     <ColumnPickerSidebar
-      isOpen
-      onClose={onClose}
+      isOpen={isActive}
+      onClose={handleClose}
       query={query}
       stageIndex={stageIndex}
       columns={columns}
@@ -55,6 +91,7 @@ export function JoinTableColumnPicker({
       onSelectAll={handleSelectAll}
       onSelectNone={handleSelectNone}
       data-testid="join-columns-picker-sidebar"
-    />
+    />,
+    targetPortal
   );
 }

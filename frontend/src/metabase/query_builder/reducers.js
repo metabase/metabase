@@ -16,6 +16,7 @@ import {
   CANCEL_QUESTION_CHANGES,
   CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   CLEAR_QUERY_RESULT,
+  CLOSE_ALL_SIDEBARS,
   CLOSE_QB,
   CLOSE_QB_NEWB_MODAL,
   DESELECT_TIMELINE_EVENTS,
@@ -31,6 +32,7 @@ import {
   RESET_UI_CONTROLS,
   RUN_QUERY,
   SELECT_TIMELINE_EVENTS,
+  SET_ACTIVE_SIDEBAR,
   SET_CARD_AND_RUN,
   SET_CURRENT_STATE,
   SET_DATA_REFERENCE_STACK,
@@ -66,6 +68,8 @@ import {
   onOpenQuestionInfo,
   onOpenQuestionSettings,
   onOpenTimelines,
+  onOpenColumnPicker,
+  onCloseColumnPicker,
 } from "./actions";
 import {
   CLOSED_NATIVE_EDITOR_SIDEBARS,
@@ -297,9 +301,29 @@ export const uiControls = handleActions(
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
+    [onOpenColumnPicker]: (state, { payload }) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingColumnPickerSidebar: true,
+      activeColumnPickerStepId: payload || null,
+    }),
+    [onCloseColumnPicker]: (state) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
     [onCloseSidebars]: (state) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [SET_ACTIVE_SIDEBAR]: (state, { payload }) => ({
+      ...state,
+      activeSidebar: payload,
+    }),
+    [CLOSE_ALL_SIDEBARS]: (state) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      activeSidebar: null,
+      isShowingNotebookNativePreview: false,
     }),
   },
   DEFAULT_UI_CONTROLS,

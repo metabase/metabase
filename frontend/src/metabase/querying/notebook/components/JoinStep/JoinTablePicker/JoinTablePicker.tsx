@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { onOpenColumnPicker, onCloseColumnPicker } from "metabase/query_builder/actions/ui";
+import { getIsShowingColumnPickerSidebar, getActiveColumnPickerStepId } from "metabase/query_builder/selectors";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -20,6 +23,7 @@ interface JoinTablePickerProps {
   onChange: (table: Lib.Joinable) => void;
   isOpened: boolean;
   setIsOpened: (isOpened: boolean) => void;
+  joinPosition?: number;
 }
 
 export function JoinTablePicker({
@@ -32,6 +36,7 @@ export function JoinTablePicker({
   onChange,
   isOpened,
   setIsOpened,
+  joinPosition,
 }: JoinTablePickerProps) {
   const isDisabled = isReadOnly;
 
@@ -47,6 +52,8 @@ export function JoinTablePicker({
             columnPicker={columnPicker}
             isOpened={isOpened}
             setIsOpened={setIsOpened}
+            stageIndex={stageIndex}
+            joinPosition={joinPosition}
           />
         ) : null
       }
@@ -80,10 +87,32 @@ function JoinTableColumnPickerWrapper({
   isOpened,
   setIsOpened,
 }: JoinTableColumnPickerProps) {
+  const dispatch = useDispatch();
+  const isShowingColumnPickerSidebar = useSelector(getIsShowingColumnPickerSidebar);
+  const activeColumnPickerStepId = useSelector(getActiveColumnPickerStepId);
+  
+  // The step ID for this specific join column picker
+  const stepId = "join-table-picker";
+  const isThisPickerActive = isShowingColumnPickerSidebar && activeColumnPickerStepId === stepId;
+  
+  const handleClick = () => {
+    if (isThisPickerActive) {
+      // If this picker is already active, close it
+      dispatch(onCloseColumnPicker());
+    } else {
+      // Otherwise, open this picker (will close any other active picker)
+      dispatch(onOpenColumnPicker(stepId));
+    }
+  };
+  
   return (
     <Popover
-      opened={isOpened}
-      onChange={setIsOpened}
+      opened={isThisPickerActive}
+      onChange={(opened) => {
+        if (!opened) {
+          dispatch(onCloseColumnPicker());
+        }
+      }}
       withOverlay={false}
       closeOnClickOutside={false}
     >
@@ -96,7 +125,7 @@ function JoinTableColumnPickerWrapper({
                 "--notebook-cell-container-padding": CONTAINER_PADDING,
               } as React.CSSProperties
             }
-            onClick={() => setIsOpened(!isOpened)}
+            onClick={handleClick}
             aria-label={t`Pick columns`}
             data-testid="fields-picker"
           >
