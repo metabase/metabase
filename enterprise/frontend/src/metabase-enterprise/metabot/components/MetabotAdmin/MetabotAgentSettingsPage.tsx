@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { match } from "ts-pattern";
-import { c, jt, t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -60,13 +59,7 @@ export function MetabotAgentSettingsPage() {
         <SettingsSection>
           {!isMetabotEnabled && (
             <Alert color="warning" icon={<Icon name="info" />}>
-              <Text>
-                {jt`Metabot is disabled, but you can enable it on the ${(
-                  <Text component={Link} c="brand" to="/admin/metabot/general">
-                    {t`General Metabot Settings`}
-                  </Text>
-                )} page.`}
-              </Text>
+              <Text>{t`Metabot is disabled, but you can enable it.`}</Text>
             </Alert>
           )}
           <Box>

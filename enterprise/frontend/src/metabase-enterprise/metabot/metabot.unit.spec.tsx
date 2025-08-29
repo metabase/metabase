@@ -5,8 +5,10 @@ import { P, isMatching } from "ts-pattern";
 import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
+import {
+  setupDatabaseListEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import {
   act,
   renderWithProviders,
@@ -27,6 +29,7 @@ import {
 import type { User } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -65,26 +68,29 @@ function setup(
     metabotPluginInitialState?: MetabotState;
     currentUser?: User | null | undefined;
     promptSuggestions?: { prompt: string }[];
+    metabotFeatureEnabled?: boolean;
   } | void,
 ) {
-  const settings = mockSettings({
-    "token-features": createMockTokenFeatures({
-      metabot_v3: true,
-    }),
-  });
-
-  setupEnterprisePlugins();
-
   const {
     ui = <Metabot />,
     currentUser = createMockUser(),
+    metabotFeatureEnabled = true,
     metabotPluginInitialState = {
       ...getMetabotInitialState(),
       visible: true,
-      useStreaming: true,
     },
     promptSuggestions = [],
   } = options || {};
+
+  const settings = createMockSettings({
+    "token-features": createMockTokenFeatures({
+      metabot_v3: true,
+    }),
+    "metabot-feature-enabled": metabotFeatureEnabled,
+  });
+
+  setupEnterprisePlugins();
+  setupPropertiesEndpoints(settings);
 
   fetchMock.get(
     `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
@@ -156,9 +162,16 @@ const lastReqBody = async (agentSpy: ReturnType<typeof mockAgentEndpoint>) => {
 
 describe("metabot-streaming", () => {
   describe("ui", () => {
-    it("should be able to render metabot", async () => {
-      setup();
+    it("should be able to render metabot when enabled", async () => {
+      setup({ metabotFeatureEnabled: true });
       await assertVisible();
+    });
+
+    it("should not render when metabot feature is disabled", async () => {
+      const { store } = setup({ metabotFeatureEnabled: false });
+      await assertNotVisible();
+      showMetabot(store.dispatch);
+      await assertNotVisible();
     });
 
     it("should warn that metabot can be inaccurate", async () => {

@@ -186,13 +186,13 @@ describe("getPlaceholderText", () => {
     });
 
     it("should return metabot placeholder text for sql", () => {
-      expect(getPlaceholderText("sql")).toBe(
+      expect(getPlaceholderText("sql", true)).toBe(
         "Write and select text to generate SQL with Metabot, or type SQL directly",
       );
     });
 
     it("should return regular placeholder text for nosql", () => {
-      expect(getPlaceholderText("mongo")).toBe(
+      expect(getPlaceholderText("mongo", true)).toBe(
         '[ { "$project": { "_id": "$_id" } } ]',
       );
     });

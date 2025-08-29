@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
 import { useState } from "react";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupRecentViewsEndpoints,
@@ -9,7 +10,6 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { Input } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
@@ -17,7 +17,6 @@ import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
-  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import type { SettingsState } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -105,7 +104,7 @@ type SetupProps = {
 
 const setup = ({
   query = "",
-  settings = mockSettings({}),
+  settings = mockSettings({ "metabot-feature-enabled": true }),
 }: SetupProps = {}) => {
   const command = jest.fn();
 
@@ -115,6 +114,7 @@ const setup = ({
     },
   };
 
+  setupEnterprisePlugins();
   setupSearchEndpoints(SEARCH_ITEMS);
   setupRecentViewsEndpoints(RECENT_ITEMS);
   setupPropertiesEndpoints(settings.values);
@@ -319,47 +319,20 @@ describe("CommandSuggestion", () => {
   });
 
   describe("metabot", () => {
-    beforeEach(() => {
-      jest.clearAllMocks();
+    it("should not show Ask Metabot command when metabot is disabled", async () => {
+      setup({
+        settings: mockSettings({ "metabot-feature-enabled": false }),
+      });
+
+      expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
+      await expectStandardCommandsToBePresent();
     });
 
-    // TODO: add checks for setting, not just token feature
-    describe("when metabot is disabled", () => {
-      beforeEach(() => {
-        PLUGIN_METABOT.useMetabotEnabled = jest.fn(() => false);
-      });
+    it("should show Ask Metabot command when metabot is enabled", async () => {
+      setup();
 
-      it("should show all available commands except Metabot", async () => {
-        const settings = mockSettings({
-          "token-features": createMockTokenFeatures({
-            metabot_v3: false,
-          }),
-        });
-
-        setup({ settings });
-
-        expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
-        await expectStandardCommandsToBePresent();
-      });
-    });
-
-    describe("when metabot is enabled", () => {
-      beforeEach(() => {
-        PLUGIN_METABOT.useMetabotEnabled = jest.fn(() => true);
-      });
-
-      it("should show all available commands including Metabot", async () => {
-        const settings = mockSettings({
-          "token-features": createMockTokenFeatures({
-            metabot_v3: true,
-          }),
-        });
-
-        setup({ settings });
-
-        expect(await screen.findByText("Ask Metabot")).toBeInTheDocument();
-        await expectStandardCommandsToBePresent();
-      });
+      expect(await screen.findByText("Ask Metabot")).toBeInTheDocument();
+      await expectStandardCommandsToBePresent();
     });
   });
 });

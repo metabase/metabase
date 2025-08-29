@@ -7,6 +7,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupPropertiesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -23,7 +24,10 @@ import type {
   MetabotId,
   RecentItem,
 } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 
 import { MetabotAgentSettingsPage } from "./MetabotAgentSettingsPage";
 import * as hooks from "./utils";
@@ -93,9 +97,15 @@ const setup = async (
   initialPathParam: MetabotId = 1,
   seedData = entities,
   error = false,
+  metabotFeatureEnabled = true,
 ) => {
   mockPathParam(initialPathParam);
   setupMetabotsEndpoint(metabots, error ? 500 : undefined);
+  setupPropertiesEndpoints(
+    createMockSettings({
+      "metabot-feature-enabled": metabotFeatureEnabled,
+    }),
+  );
   const collections = [...seedData[1], ...seedData[2], ...seedData.recents];
   setupCollectionByIdEndpoint({
     collections: collections.map((c: any) => ({ id: c.model_id, ...c })),
@@ -286,5 +296,21 @@ describe("MetabotAgentSettingsPage", () => {
     expect(
       await screen.findByText("Error fetching Metabots"),
     ).toBeInTheDocument();
+  });
+
+  it("should show disabled alert when metabot feature is disabled", async () => {
+    await setup(1, entities, false, false);
+
+    expect(
+      await screen.findByText(/Metabot is disabled, but you can enable it/),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show disabled alert when metabot feature is enabled", async () => {
+    await setup(1, entities, false, true);
+
+    expect(
+      screen.queryByText(/Metabot is disabled, but you can enable it/),
+    ).not.toBeInTheDocument();
   });
 });
