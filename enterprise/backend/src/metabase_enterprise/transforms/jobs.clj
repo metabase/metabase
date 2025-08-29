@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [flatland.ordered.set :as ordered-set]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -77,19 +78,33 @@
             (transforms.job-run/add-run-activity! run-id)
             (recur (conj complete (:id current-transform)) nil)))))))
 
+(defn- job-transform-ids [job-id]
+  (t2/select-fn-set :transform_id
+                    :transform_job_transform_tag
+                    {:select    :transform_transform_tag.transform_id
+                     :from      :transform_job_transform_tag
+                     :left-join [:transform_transform_tag [:=
+                                                           :transform_transform_tag.tag_id
+                                                           :transform_job_transform_tag.tag_id]]
+                     :where     [:= :transform_job_transform_tag.job_id job-id]}))
+
+(defn job-transforms
+  "Return the transforms that are executed when running the job with ID `job-id`.
+
+  The transforms are returned in the order of their execution."
+  [job-id]
+  (let [{:keys [ordering transforms-by-id]} (get-plan (job-transform-ids job-id))]
+    (loop [complete (ordered-set/ordered-set)]
+      (if-let [available (not-empty (transforms.ordering/available-transforms ordering #{} complete))]
+        (recur (into complete available))
+        (map transforms-by-id complete)))))
+
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."
   [job-id {:keys [run-method] :as opts}]
   (if (transforms.job-run/running-run-for-job-id job-id)
     (log/info "Not executing transform job" (pr-str job-id) "because it is already running")
-    (let [transforms (t2/select-fn-set :transform_id
-                                       :transform_job_transform_tag
-                                       {:select    :transform_transform_tag.transform_id
-                                        :from      :transform_job_transform_tag
-                                        :left-join [:transform_transform_tag [:=
-                                                                              :transform_transform_tag.tag_id
-                                                                              :transform_job_transform_tag.tag_id]]
-                                        :where     [:= :transform_job_transform_tag.job_id job-id]})]
+    (let [transforms (job-transform-ids job-id)]
       (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
       (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
         (try

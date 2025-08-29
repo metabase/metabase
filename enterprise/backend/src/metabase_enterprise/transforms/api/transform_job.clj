@@ -124,6 +124,15 @@
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
     (t2/hydrate job :tag_ids :last_run)))
 
+(api.macros/defendpoint :get "/:job-id/transforms"
+  "Get the transforms of job specified by the job's ID."
+  [{:keys [job-id]} :- [:map
+                        [:job-id ms/PositiveInt]]]
+  (log/info "Getting the transforms of transform job" job-id)
+  (api/check-superuser)
+  (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
+  (transforms.jobs/job-transforms job-id))
+
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
   [_route-params

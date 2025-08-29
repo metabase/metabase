@@ -116,6 +116,18 @@
         (t2/hydrate :last_run :transform_tag_ids)
         (assoc :table target-table))))
 
+(api.macros/defendpoint :get "/:id/dependencies"
+  "Get the dependencies of a specific transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (log/info "get dependencies for transform" id)
+  (api/check-superuser)
+  (let [id->transform (t2/select-pk->fn identity :model/Transform)
+        _ (api/check-404 (get id->transform id))
+        global-ordering (transforms.ordering/transform-ordering (vals id->transform))
+        dep-ids (get global-ordering id)]
+    (map id->transform dep-ids)))
+
 (api.macros/defendpoint :get "/run"
   "Get transform runs based on a set of filter params."
   [_route-params
