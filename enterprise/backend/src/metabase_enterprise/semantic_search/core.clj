@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.core
   "Enterprise implementations of semantic search core functions using defenterprise."
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -43,7 +44,10 @@
           final-count (count results)
           threshold (semantic.settings/semantic-search-min-results-threshold)]
       (if (or (>= final-count threshold)
-              (zero? raw-count))
+              (and (zero? raw-count)
+                   ;; :search-string is nil when using search to populate the list of tables for a given database in
+                   ;; the native query editor. Semantic search doesn't support this, so fallback in this case.
+                   (not (str/blank? (:search-string search-ctx)))))
         results
         ;; Fallback: semantic search found results but some were filtered out (e.g. due to permission checks), so try to
         ;; supplement with appdb search.
