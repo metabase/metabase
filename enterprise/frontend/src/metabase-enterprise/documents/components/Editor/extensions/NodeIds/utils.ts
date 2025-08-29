@@ -3,7 +3,7 @@ import { Plugin } from "prosemirror-state";
 
 import { uuid } from "metabase/lib/uuid";
 
-import { ID_ATTRIBUTE_NAME } from "../NodeIds";
+import { ID_ATTRIBUTE_NAME } from "./constants";
 
 type Attributes = {
   [key: string]: Attribute;
