@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
+import { isTopLevel } from "metabase-enterprise/documents/utils/editorNodeUtils";
 
 import { CommentsMenu } from "../../CommentsMenu";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
@@ -150,21 +151,3 @@ export const ParagraphNodeView = ({ node, editor, getPos }: NodeViewProps) => {
     </>
   );
 };
-
-function isTopLevel({
-  editor,
-  getPos,
-}: Pick<NodeViewProps, "editor" | "getPos">) {
-  if (!editor || !getPos) {
-    return true;
-  }
-
-  const pos = getPos();
-
-  if (pos === null || pos === undefined) {
-    return true;
-  }
-
-  const resolvedPos = editor.state.doc.resolve(pos);
-  return resolvedPos.depth === 0;
-}
