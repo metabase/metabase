@@ -1,5 +1,4 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
-// our Portal in metabase/ui does not work here, so we're using the originnal Mantine one
 import { Node, type NodeViewProps, mergeAttributes } from "@tiptap/core";
 import {
   NodeViewContent,
@@ -9,16 +8,11 @@ import {
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
-import { uuid } from "metabase/lib/uuid";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
 
 import { CommentsMenu } from "../../CommentsMenu";
-import {
-  ID_ATTRIBUTE_NAME,
-  createIdAttribute,
-  createProseMirrorPlugin,
-} from "../NodeIds";
+import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 
 import S from "./Paragraph.module.css";
 
@@ -93,7 +87,7 @@ export const Paragraph = Node.create<ParagraphOptions>({
       setParagraph:
         () =>
         ({ commands }) => {
-          return commands.setNode(this.name, { [ID_ATTRIBUTE_NAME]: uuid() });
+          return commands.setNode(this.name);
         },
     };
   },

@@ -23,9 +23,11 @@ import S from "./Editor.module.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { Blockquote } from "./extensions/Blockquote";
 import { CardEmbed } from "./extensions/CardEmbed/CardEmbedNode";
+import { CodeBlock } from "./extensions/CodeBlock";
 import { CommandExtension } from "./extensions/Command/CommandExtension";
 import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
+import { Heading } from "./extensions/Heading";
 import { MentionExtension } from "./extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
 import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
@@ -98,11 +100,13 @@ export const Editor: React.FC<EditorProps> = ({
     () => [
       Paragraph,
       Blockquote,
+      CodeBlock,
+      Heading,
       StarterKit.configure({
         paragraph: false,
         blockquote: false,
-        // codeBlock: false,
-        // heading: false,
+        codeBlock: false,
+        heading: false,
         // bulletList: false,
         // orderedList: false,
       }),
