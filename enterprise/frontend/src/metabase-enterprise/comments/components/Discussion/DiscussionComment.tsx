@@ -1,6 +1,7 @@
 // TODO: move Avatar component to metabase/ui
 /* eslint-disable no-restricted-imports */
 import { Avatar } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import Link from "@tiptap/extension-link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -22,7 +23,9 @@ import {
 } from "metabase/ui";
 import { Paragraph } from "metabase-enterprise/documents/components/Editor/extensions/Paragraph";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
-import type { Comment } from "metabase-types/api";
+import type { Comment, DocumentContent } from "metabase-types/api";
+
+import { CommentEditor } from "../CommentEditor";
 
 import S from "./Discussion.module.css";
 import {
@@ -37,6 +40,7 @@ type DiscussionCommentProps = {
   onReopen?: (comment: Comment) => unknown;
   onReaction?: (comment: Comment, emoji: string) => unknown;
   onDelete?: (comment: Comment) => unknown;
+  onEdit?: (comment: Comment, newContent: DocumentContent) => unknown;
 };
 
 const avatarColors = [
@@ -58,6 +62,7 @@ export function DiscussionComment({
   onReopen,
   onReaction,
   onDelete,
+  onEdit,
 }: DiscussionCommentProps) {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
 
@@ -78,7 +83,7 @@ export function DiscussionComment({
     [siteUrl],
   );
 
-  const editorHandle = useEditor(
+  const commentRenderingHandle = useEditor(
     {
       extensions,
       content: comment.content,
@@ -87,6 +92,14 @@ export function DiscussionComment({
     },
     [],
   );
+
+  const [isEditing, editingHandler] = useDisclosure(false);
+
+  const handleEditingSubmit = (document: DocumentContent) => {
+    commentRenderingHandle.commands.setContent(document);
+    onEdit?.(comment, document);
+    editingHandler.close();
+  };
 
   if (comment.is_deleted) {
     return (
@@ -119,14 +132,18 @@ export function DiscussionComment({
         />
       }
     >
-      <DiscussionActionPanel
-        variant={actionPanelVariant}
-        comment={comment}
-        onResolve={onResolve}
-        onReopen={onReopen}
-        onReaction={onReaction}
-        onDelete={onDelete}
-      />
+      {!isEditing && (
+        <DiscussionActionPanel
+          variant={actionPanelVariant}
+          comment={comment}
+          onResolve={onResolve}
+          onReopen={onReopen}
+          onReaction={onReaction}
+          onDelete={onDelete}
+          onEdit={editingHandler.open}
+        />
+      )}
+
       <Group gap="sm" align="center" mb="0.25rem" wrap="nowrap">
         <Text fw={700} lh={1.3} truncate>
           {comment.creator.common_name}
@@ -163,7 +180,14 @@ export function DiscussionComment({
           },
         }}
       >
-        <EditorContent disabled editor={editorHandle} />
+        {isEditing ? (
+          <CommentEditor
+            initialContent={comment.content}
+            onSubmit={handleEditingSubmit}
+          />
+        ) : (
+          <EditorContent disabled editor={commentRenderingHandle} />
+        )}
       </Spoiler>
     </Timeline.Item>
   );

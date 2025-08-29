@@ -59,6 +59,10 @@ export const Discussion = ({
     updateComment({ id: comment.id, is_resolved: false });
   };
 
+  const handleEditComment = (comment: Comment, newContent: DocumentContent) => {
+    updateComment({ id: comment.id, content: newContent });
+  };
+
   return (
     <Stack>
       <Timeline bulletSize={rem(24)} lineWidth={1} className={S.discussionRoot}>
@@ -70,6 +74,7 @@ export const Discussion = ({
             onDelete={handleDeleteComment}
             onResolve={handleResolveComment}
             onReopen={handleReopenComment}
+            onEdit={handleEditComment}
           />
         ))}
       </Timeline>

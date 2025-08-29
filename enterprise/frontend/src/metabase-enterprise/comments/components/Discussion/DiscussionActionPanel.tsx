@@ -1,5 +1,5 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -45,7 +45,7 @@ export function DiscussionActionPanel({
   onEdit,
   onCopyLink,
 }: DiscussionActionPanelProps) {
-  const [popoverOpened, popoverHandler] = useDisclosure(false);
+  const [popoverOpened, setPopoverOpened] = useState(false);
 
   return (
     <Paper
@@ -81,14 +81,17 @@ export function DiscussionActionPanel({
           </Tooltip>
         )}
         <Popover
-          onOpen={popoverHandler.open}
-          onClose={popoverHandler.close}
+          opened={popoverOpened}
+          onChange={setPopoverOpened}
           width={rem(200)}
           position="bottom-end"
         >
           <Popover.Target>
             <Tooltip label={t`More actions`} disabled={popoverOpened}>
-              <ActionIcon size={ACTION_ICON_SIZE}>
+              <ActionIcon
+                size={ACTION_ICON_SIZE}
+                onClick={() => setPopoverOpened((opened) => !opened)}
+              >
                 <Icon name="ellipsis" />
               </ActionIcon>
             </Tooltip>
@@ -99,7 +102,10 @@ export function DiscussionActionPanel({
                 <Button
                   {...ACTION_BUTTON_STYLE_PROPS}
                   leftSection={<Icon name="link" c="text-primary" />}
-                  onClick={() => onCopyLink?.(comment)}
+                  onClick={() => {
+                    onCopyLink?.(comment);
+                    setPopoverOpened(false);
+                  }}
                 >
                   {t`Copy link to discussion`}
                 </Button>
@@ -107,14 +113,20 @@ export function DiscussionActionPanel({
               <Button
                 {...ACTION_BUTTON_STYLE_PROPS}
                 leftSection={<Icon name="pencil" c="text-primary" />}
-                onClick={() => onEdit?.(comment)}
+                onClick={() => {
+                  onEdit?.(comment);
+                  setPopoverOpened(false);
+                }}
               >
                 {t`Edit comment`}
               </Button>
               <Button
                 {...ACTION_BUTTON_STYLE_PROPS}
                 leftSection={<Icon name="trash" c="text-primary" />}
-                onClick={() => onDelete?.(comment)}
+                onClick={() => {
+                  onDelete?.(comment);
+                  setPopoverOpened(false);
+                }}
               >
                 {t`Delete comment`}
               </Button>
