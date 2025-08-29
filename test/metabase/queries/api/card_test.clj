@@ -12,6 +12,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.driver :as driver]
@@ -1319,21 +1320,21 @@
   (testing "POST /api/card"
     (testing "Make sure if we don't have access to table, creatings a query on query on the table should fail"
       (mt/with-premium-features #{:advanced-permissions}
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp-copy-of-db
-            (mt/with-no-data-perms-for-all-users!
-              (mt/with-temp [:model/Card card {:database_id   (mt/id)
-                                               :dataset_query {:query    {:source-table (mt/id :venues)}
-                                                               :type     :query
-                                                               :database (mt/id)}}]
-                (mt/user-http-request :rasta :post 403 (format "card/%d/query" (u/the-id card)))
-                (mt/user-http-request :rasta :post 403 "card" {:name "DUPLICATE"
-                                                               :display "table"
-                                                               :visualization_settings {}
-                                                               :database_id (mt/id)
-                                                               :dataset_query {:query    {:source-table (format "card__%s" (u/the-id card))}
-                                                                               :type     :query
-                                                                               :database (mt/id)}})))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                             :dataset_query {:query    {:source-table (mt/id :venues)}
+                                                             :type     :query
+                                                             :database (mt/id)}}]
+              (mt/user-http-request :rasta :post 403 (format "card/%d/query" (u/the-id card)))
+              (mt/user-http-request :rasta :post 403 "card" {:name "DUPLICATE"
+                                                             :display "table"
+                                                             :visualization_settings {}
+                                                             :database_id (mt/id)
+                                                             :dataset_query {:query    {:source-table (format "card__%s" (u/the-id card))}
+                                                                             :type     :query
+                                                                             :database (mt/id)}
+                                                             :collection_id (-> :rasta mt/user->id collection/user->personal-collection u/the-id)}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
