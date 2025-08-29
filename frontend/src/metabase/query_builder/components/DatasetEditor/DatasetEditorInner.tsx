@@ -317,12 +317,8 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     ];
   }, [tempModelSettings, rawSeries]);
 
-  const [isDirty, setIsDirty] = useState(
-    () => isModelQueryDirty || isMetadataDirty,
-  );
-  useEffect(() => {
-    setIsDirty((isDirty) => isDirty || isModelQueryDirty || isMetadataDirty);
-  }, [isModelQueryDirty, isMetadataDirty]);
+  const [isSettingsDirty, setSettingsDirty] = useState(false);
+  const isDirty = isSettingsDirty || isModelQueryDirty || isMetadataDirty;
 
   const { data: modelIndexes } = useListModelIndexesQuery(
     {
@@ -638,7 +634,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       onFieldMetadataChange,
       onMappedDatabaseColumnChange,
       onUpdateModelSettings: (settings: ModelSettings) => {
-        setIsDirty(true);
+        setSettingsDirty(settings.display !== question.display());
         if (settings.display) {
           setTempModelSettings({ display: settings.display });
         }

@@ -299,7 +299,7 @@ export function ReorderableTagsInput({
 
   return (
     <Combobox
-      data-test-id={dataTestId}
+      data-testid={dataTestId}
       store={combobox}
       withinPortal={true}
       onOptionSubmit={(val) => {

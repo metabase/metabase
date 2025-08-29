@@ -56,6 +56,7 @@ export function ListView({
 
   return (
     <Stack
+      data-testid="list-view"
       className={styles.listViewContainer}
       style={{ "--grid-columns": Math.max(rightColumns.length, 1) }}
     >
