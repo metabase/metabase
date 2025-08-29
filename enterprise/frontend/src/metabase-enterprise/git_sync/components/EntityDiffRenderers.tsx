@@ -1,11 +1,13 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Center, Code, Text } from "metabase/ui";
+import { getSetting } from "metabase/selectors/settings";
+import { Box, Center, Code, Loader, Text } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 
 import { GitDiffVisualization } from "./GitDiffVisualization";
@@ -26,14 +28,20 @@ export const CardRenderer = ({ entity }: { entity: any }) => (
 export const TransformRenderer = ({ entity }: { entity: any }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+  const reportTimezone = useSelector((state) =>
+    getSetting(state, "report-timezone-long"),
+  );
+  const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
+    null,
+  );
+  const [isLoading, setIsLoading] = useState(true);
 
   const transformCard = useMemo(() => {
     if (!entity?.source?.query) {
       return null;
     }
     return {
-      id: null,
-      name: "Transform",
+      name: entity.name || "Transform",
       dataset_query: entity.source.query,
       display: "table" as const,
       visualization_settings: {},
@@ -41,22 +49,34 @@ export const TransformRenderer = ({ entity }: { entity: any }) => {
   }, [entity]);
 
   useEffect(() => {
-    if (transformCard) {
-      dispatch(loadMetadataForCard(transformCard));
+    if (!transformCard) {
+      setIsLoading(false);
+      return;
     }
+
+    setIsLoading(true);
+    const cardForMetadata = _.omit(transformCard, "id");
+    dispatch(loadMetadataForCard(cardForMetadata)).then(() => {
+      setIsLoading(false);
+    });
   }, [transformCard, dispatch]);
 
-  const question = useMemo(() => {
-    if (!transformCard || !metadata) {
-      return null;
+  // Create question after metadata is loaded
+  useEffect(() => {
+    if (!isLoading && transformCard && metadata) {
+      try {
+        const baseQuestion = new Question(transformCard, metadata);
+        setModifiedQuestion(baseQuestion);
+      } catch (error) {
+        console.warn("Failed to create transform question:", error);
+      }
     }
-    try {
-      return new Question(transformCard, metadata);
-    } catch (error) {
-      console.warn("Failed to create transform question:", error);
-      return null;
-    }
-  }, [transformCard, metadata]);
+  }, [isLoading, transformCard, metadata]);
+
+  // No-op function for read-only display
+  const handleUpdateQuestion = async (newQuestion: Question) => {
+    setModifiedQuestion(newQuestion);
+  };
 
   const isNativeQuery = entity?.source?.query?.type === "native";
 
@@ -85,7 +105,7 @@ export const TransformRenderer = ({ entity }: { entity: any }) => {
     );
   }
 
-  if (!question) {
+  if (isLoading) {
     return (
       <Center
         bg="var(--mb-color-bg-white)"
@@ -95,10 +115,24 @@ export const TransformRenderer = ({ entity }: { entity: any }) => {
         h="100%"
         style={{ overflow: "auto" }}
       >
-        <Text
-          c="text-medium"
-          size="sm"
-        >{t`Unable to load transform query`}</Text>
+        <Loader size="sm" />
+      </Center>
+    );
+  }
+
+  if (!modifiedQuestion) {
+    return (
+      <Center
+        bg="var(--mb-color-bg-white)"
+        bd="1px solid var(--mb-color-border)"
+        bdrs="8px"
+        p="16px"
+        h="100%"
+        style={{ overflow: "auto" }}
+      >
+        <Text c="text-medium" size="sm">
+          {t`Unable to load transform query`}
+        </Text>
       </Center>
     );
   }
@@ -113,10 +147,14 @@ export const TransformRenderer = ({ entity }: { entity: any }) => {
       style={{ overflow: "auto" }}
     >
       <Notebook
-        question={question}
-        isEditable={false}
+        question={modifiedQuestion}
         isDirty={false}
+        isRunnable={false}
+        isResultDirty={false}
+        reportTimezone={reportTimezone}
         hasVisualizeButton={false}
+        updateQuestion={handleUpdateQuestion}
+        readOnly={true}
       />
     </Box>
   );
