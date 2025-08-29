@@ -188,6 +188,17 @@
                          :where [:or [:like :object (h2x/literal "/data/db/%")]
                                  [:like :object (h2x/literal "/query/db/%")]]}))
 
+(define-migration DropUniqueConstraintH2
+  (let [constraint-name #p (-> (t2/query {:select [:CONSTRAINT_NAME]
+                                          :from   [:INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE]
+                                          :where  [:and
+                                                   [:= :TABLE_NAME "TRANSFORM"]
+                                                   [:= :COLUMN_NAME "ENTITY_ID"]]})
+                               first
+                               :constraint_name)]
+    (t2/query [(str "ALTER TABLE TRANSFORM DROP CONSTRAINT " constraint-name)]))
+  (log/info "Dropped unique constraint on transform.entity_id"))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Quartz Scheduler Helpers                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+

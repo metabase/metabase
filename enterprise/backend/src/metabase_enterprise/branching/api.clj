@@ -17,7 +17,7 @@
   "Schema for creating a new branch."
   [:map
    [:name ms/NonBlankString]
-   [:parent_branch_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:parent_branch_id {:optional true} [:maybe ms/Int]]])
 
 (def BranchResponse
   "Schema for branch API responses."
@@ -47,11 +47,18 @@
   [_route-params
    {:keys [parent_id]} :- [:map
                            [:parent_id {:optional true} [:maybe ms/Int]]]]
-  {:data (map #(select-keys % [:id :name :slug :creator_id :parent_branch_id :created_at :updated_at])
-              (cond
-                (nil? parent_id) (t2/select :model/Branch)
-                (> 0 parent_id) (branch/get-children-by-id nil)
-                :else (branch/get-children-by-id parent_id)))})
+  {:data (into [{:id               -1
+                 :name             "main"
+                 :slug             "main"
+                 :creator_id       1
+                 :parent_branch_id nil
+                 :created_at       "1970-01-01T00:00:00Z"
+                 :updated_at       "1970-01-01T00:00:00Z"}]
+               (map #(select-keys % [:id :name :slug :creator_id :parent_branch_id :created_at :updated_at])
+                    (cond
+                      (nil? parent_id) (t2/select :model/Branch)
+                      (> 0 parent_id) (branch/get-children-by-id nil)
+                      :else (branch/get-children-by-id parent_id))))})
 
 (api.macros/defendpoint :get "/:id/diff"
   "Get diff of changes in a branch compared to its parent branch. Open access for authenticated users."
@@ -124,18 +131,19 @@
   [_route-params
    _query-params
    {:keys [name parent_branch_id]} :- BranchCreateRequest]
-  (when parent_branch_id
-    ;; Validate parent branch exists
-    (when-not (t2/exists? :model/Branch :id parent_branch_id)
-      (throw (ex-info (tru "Parent branch does not exist.") {:status-code 400}))))
+  (let [parent_branch_id (if (= -1 parent_branch_id) nil parent_branch_id)]
+    (when parent_branch_id
+      ;; Validate parent branch exists
+      (when-not (t2/exists? :model/Branch :id parent_branch_id)
+        (throw (ex-info (tru "Parent branch does not exist.") {:status-code 400}))))
 
-  ;; Create the branch
-  (let [branch-data (cond-> {:name name
-                             :creator_id api/*current-user-id*}
-                      parent_branch_id (assoc :parent_branch_id parent_branch_id))
-        new-id (t2/insert-returning-pk! :model/Branch branch-data)]
-    (-> (t2/select-one :model/Branch :id new-id)
-        (select-keys [:id :name :slug :creator_id :parent_branch_id :created_at :updated_at]))))
+    ;; Create the branch
+    (let [branch-data (cond-> {:name       name
+                               :creator_id api/*current-user-id*}
+                        parent_branch_id (assoc :parent_branch_id parent_branch_id))
+          new-id (t2/insert-returning-pk! :model/Branch branch-data)]
+      (-> (t2/select-one :model/Branch :id new-id)
+          (select-keys [:id :name :slug :creator_id :parent_branch_id :created_at :updated_at])))))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a branch by ID. Open access for authenticated users."

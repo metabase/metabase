@@ -170,7 +170,7 @@
                                                  :branch_id         (:id @branching/*current-branch*)}))))))
 
 (methodical/defmethod t2.pipeline/transduce-query [#_query-type :toucan.query-type/update.*
-                                                   #_model :model/Card
+                                                   #_model :hook/branchable
                                                    #_resolved-query :default]
   [rf query-type model parsed-args resolved-query]
   (copy-unbranched model parsed-args)

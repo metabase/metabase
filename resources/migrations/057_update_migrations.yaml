@@ -1296,12 +1296,22 @@ databaseChangeLog:
 
   - changeSet:
       id: v57.2025-08-29T04:40:42
+      dbms: postgresql
       author: nvoxland
       comment: Drop unique constraint for entity id that can now be duplicated
       changes:
         - dropUniqueConstraint:
-            tableName: report_card
+            tableName: transform
             constraintName: report_card_entity_id_key
+
+  - changeSet:
+      id: v57.2025-08-29T04:40:43
+      dbms: h2
+      author: nvoxland
+      comment: Drop unique constraint for entity id that can now be duplicated
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.DropUniqueConstraintH2" ## TODO: This should be rewritten to take tablename as an arg
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
