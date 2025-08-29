@@ -1,6 +1,6 @@
 import { createMockDatabase } from "metabase-types/api/mocks";
 
-import { shouldShowUploadPanel } from "./utils";
+import { hasMeaningfulUploadableDatabases } from "./utils";
 
 const h2 = createMockDatabase({
   id: 1,
@@ -55,11 +55,11 @@ const testCases = [
   },
 ];
 
-describe("useShowUploadPanel", () => {
+describe("hasMeaningfulUploadableDatabases", () => {
   it.each(testCases)(
     "should return $result when $description",
     ({ result, data }) => {
-      expect(shouldShowUploadPanel(data)).toBe(result);
+      expect(hasMeaningfulUploadableDatabases(data)).toBe(result);
     },
   );
 });

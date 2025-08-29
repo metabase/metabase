@@ -13,7 +13,7 @@ import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
 import { useAddDataPermissions } from "./use-add-data-permission";
-import { isValidTab, shouldShowUploadPanel } from "./utils";
+import { hasMeaningfulUploadableDatabases, isValidTab } from "./utils";
 
 interface AddDataModalProps {
   opened: boolean;
@@ -36,10 +36,12 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
     include_only_uploadable: true,
   });
 
-  const shouldShowUploadsPanel = shouldShowUploadPanel({
+  const hasUploadableDatabases = hasMeaningfulUploadableDatabases({
     allDatabases: databasesResponse?.data,
     allUploadableDatabases: uploadableDatabasesResponse?.data,
   });
+
+  const shouldShowUploadsPanel = hasUploadableDatabases || canUploadToDatabase;
 
   const [activeTab, setActiveTab] = useState<Tabs["value"] | null>(null);
 
