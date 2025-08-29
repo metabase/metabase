@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { useSelector } from "metabase/lib/redux";
 import { Stack, Timeline, rem } from "metabase/ui";
 import {
   useCreateCommentMutation,
@@ -11,6 +13,7 @@ import type { Comment, DocumentContent } from "metabase-types/api";
 import { CommentEditor } from "../CommentEditor";
 
 import S from "./Discussion.module.css";
+import { DiscussionAvatar } from "./DiscussionAvatar";
 import { DiscussionComment } from "./DiscussionComment";
 
 export interface DiscussionProps {
@@ -30,6 +33,7 @@ export const Discussion = ({
   targetId,
   targetType,
 }: DiscussionProps) => {
+  const currentUser = useSelector(getCurrentUser);
   const [, setNewComment] = useState<DocumentContent>();
   const parentCommentId = comments[0].id;
 
@@ -77,12 +81,16 @@ export const Discussion = ({
             onEdit={handleEditComment}
           />
         ))}
+        <Timeline.Item
+          className={S.commentRoot}
+          bullet={<DiscussionAvatar user={currentUser} />}
+        >
+          <CommentEditor
+            onChange={(document) => setNewComment(document)}
+            onSubmit={handleSubmit}
+          />
+        </Timeline.Item>
       </Timeline>
-
-      <CommentEditor
-        onChange={(document) => setNewComment(document)}
-        onSubmit={handleSubmit}
-      />
     </Stack>
   );
 };

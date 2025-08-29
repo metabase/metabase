@@ -1,6 +1,3 @@
-// TODO: move Avatar component to metabase/ui
-/* eslint-disable no-restricted-imports */
-import { Avatar } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
 import { useCallback, useState } from "react";
@@ -24,6 +21,7 @@ import {
   DiscussionActionPanel,
   type DiscussionActionPanelProps,
 } from "./DiscussionActionPanel";
+import { DiscussionAvatar } from "./DiscussionAvatar";
 
 type DiscussionCommentProps = {
   comment: Comment;
@@ -34,17 +32,6 @@ type DiscussionCommentProps = {
   onDelete?: (comment: Comment) => unknown;
   onEdit?: (comment: Comment, newContent: DocumentContent) => unknown;
 };
-
-const avatarColors = [
-  "var(--mb-base-color-lobster-40)",
-  "var(--mb-base-color-flamingo-40)",
-  "var(--mb-base-color-mango-40)",
-  "var(--mb-base-color-orion-40)",
-  "var(--mb-base-color-dubloon-40)",
-  "var(--mb-base-color-palm-40)",
-  "var(--mb-base-color-seafoam-40)",
-  "var(--mb-base-color-octopus-40)",
-];
 
 const lineHeightPx = 17;
 export function DiscussionComment({
@@ -89,16 +76,7 @@ export function DiscussionComment({
   return (
     <Timeline.Item
       className={S.commentRoot}
-      mt="1.25rem"
-      bullet={
-        <Avatar
-          variant="filled"
-          size={rem(24)}
-          name={comment.creator.common_name}
-          color="initials"
-          allowedInitialsColors={avatarColors}
-        />
-      }
+      bullet={<DiscussionAvatar user={comment.creator} />}
     >
       {!isEditing && (
         <DiscussionActionPanel
