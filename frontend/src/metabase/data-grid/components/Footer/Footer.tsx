@@ -41,6 +41,7 @@ export const Footer = <TData,>({
       Math.min((pagination.pageIndex + 1) * pagination.pageSize, total) - 1;
     return (
       <div {...wrapperAttributes}>
+        {tableFooterExtraButtons}
         <PaginationFooter
           start={start}
           end={end}
