@@ -93,8 +93,7 @@
   (serdes/extract-query-collections :model/NativeQuerySnippet opts))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy [:archived :content :description :entity_id :name]
-   :skip [:template_tags] ; Computed from :content in serdes/load-one!
+  {:copy [:archived :content :description :entity_id :name :template_tags]
    :transform {:created_at (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id (serdes/fk :model/User)}})
@@ -123,8 +122,10 @@
              lib/recognize-template-tags)))
 
 (defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
-  ;; Add template tags during deserialization to ensure they're available
-  (let [ingested-with-tags (add-template-tags-for-deserialization ingested)]
+  ;; Ensure template_tags is present, computing it if missing (for backwards compatibility)
+  (let [ingested-with-tags (if (contains? ingested :template_tags)
+                             ingested
+                             (add-template-tags-for-deserialization ingested))]
     ;; if we got local snippet in db and it has same name as incoming one, we can be sure
     ;; there will be no conflicts and skip the query to the db
     (if (and (not= (:name ingested-with-tags) (:name maybe-local))
