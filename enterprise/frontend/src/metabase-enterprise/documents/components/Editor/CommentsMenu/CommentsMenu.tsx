@@ -29,7 +29,7 @@ export const CommentsMenu = forwardRef(function CommentsMenu(
     <Portal>
       <Box
         className={cx(S.commentsMenu, {
-          [S.visible]: hasComments || show,
+          [S.visible]: disabled ? hasComments : show || hasComments,
         })}
         mt={rem(-2)}
         pr="lg"
