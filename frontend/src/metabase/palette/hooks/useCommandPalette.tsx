@@ -63,10 +63,10 @@ export const useCommandPalette = ({
 
   useDebounce(
     () => {
-      setDebouncedSearchText(trimmedQuery);
+      setDebouncedSearchText(isVisible ? trimmedQuery : "");
     },
-    SEARCH_DEBOUNCE_DURATION,
-    [trimmedQuery],
+    isVisible ? SEARCH_DEBOUNCE_DURATION : 0,
+    [trimmedQuery, isVisible],
   );
 
   const hasQuery = searchQuery.length > 0;
