@@ -28,7 +28,9 @@
     ;; TODO: This logic should trim the whitespace and unify these two snippet names.
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
     ;; Tech debt issue: #39378
-    #{"snippet: foo" "snippet:foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
+    #{"snippet: foo" "snippet:foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"
+    ;; This reproduces issue #38938 - snippet with space after }} should work  
+    #{"snippet: test"} "SELECT * FROM table WHERE {{snippet: test}}  AND some_field IS NOT NULL"))
 
 (deftest ^:parallel card-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
