@@ -31,6 +31,8 @@ export const CommentsMenu = forwardRef(function CommentsMenu(
         className={cx(S.commentsMenu, {
           [S.visible]: disabled ? hasComments : show || hasComments,
         })}
+        contentEditable={false}
+        draggable={false}
         mt={rem(-2)}
         pr="lg"
         ref={ref}

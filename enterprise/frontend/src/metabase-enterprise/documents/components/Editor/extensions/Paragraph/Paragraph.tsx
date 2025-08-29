@@ -7,7 +7,7 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { uuid } from "metabase/lib/uuid";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
@@ -109,6 +109,7 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
   const { childTargetId, comments, document, hasUnsavedChanges } =
     useDocumentContext();
   const [hovered, setHovered] = useState(false);
+  const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const { _id } = node.attrs;
   const isOpen = childTargetId === _id;
   const threads = useMemo(
@@ -119,7 +120,14 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
     placement: "left-start",
     whileElementsMounted: autoUpdate,
     strategy: "fixed",
+    open: rendered,
   });
+
+  useEffect(() => {
+    if (!rendered) {
+      setRendered(true);
+    }
+  }, [rendered]);
 
   return (
     <>
@@ -134,7 +142,7 @@ export const ParagraphNodeView = ({ node }: NodeViewProps) => {
         <NodeViewContent as="p" />
       </NodeViewWrapper>
 
-      {document && (
+      {document && rendered && (
         <CommentsMenu
           active={isOpen}
           disabled={hasUnsavedChanges}
