@@ -37,6 +37,9 @@ export interface MetabotState {
   history: MetabotHistory;
   state: any;
   toolCalls: MetabotToolCall[];
+  experimental: {
+    profileOverride: string | undefined;
+  };
 }
 
 export const getMetabotInitialState = (): MetabotState => ({
@@ -48,6 +51,9 @@ export const getMetabotInitialState = (): MetabotState => ({
   history: [],
   state: {},
   toolCalls: [],
+  experimental: {
+    profileOverride: undefined,
+  },
 });
 
 export const metabot = createSlice({
@@ -61,7 +67,11 @@ export const metabot = createSlice({
       const { id, message } = action.payload;
 
       state.errorMessages = [];
-      state.messages.push({ id, role: "user", message });
+      state.messages.push({
+        id,
+        role: "user",
+        message,
+      });
       state.history.push({ id, role: "user", content: message });
     },
     addAgentMessage: (
@@ -122,10 +132,6 @@ export const metabot = createSlice({
     // NOTE: this doesn't work in non-streaming contexts right now
     rewindStateToMessageId: (state, { payload: id }: PayloadAction<string>) => {
       state.isProcessing = false;
-      const messageIndex = state.messages.findLastIndex((m) => id === m.id);
-      if (messageIndex > -1) {
-        state.messages = state.messages.slice(0, messageIndex);
-      }
 
       const historyIndex = state.history.findLastIndex((h) => id === h.id);
       if (historyIndex > -1) {
@@ -149,6 +155,9 @@ export const metabot = createSlice({
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;
+    },
+    setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
+      state.experimental.profileOverride = action.payload;
     },
   },
   extraReducers: (builder) => {
