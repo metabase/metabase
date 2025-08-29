@@ -29,6 +29,7 @@ asana.com,
 gist.github.com,
 linkedin.com,
 twitter.com,
+metabase.com,
 x.com")
 
 (defsetting allowed-iframe-hosts
