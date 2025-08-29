@@ -300,6 +300,28 @@
   [driver conn table-id query]
   (correct-columns-name table-id (query-rows driver conn query)))
 
+(mu/defn- table-id->pk-field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
+  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
+  [database-id :- driver-api/schema.id.database
+   table-id :- driver-api/schema.id.table]
+  (driver-api/cached-value
+   [::table-id->pk-field-name->id table-id]
+   #(into {}
+          (comp (filter (fn [{:keys [semantic-type], :as _field}]
+                          (isa? semantic-type :type/PK)))
+                (map (juxt :name :id)))
+          (driver-api/with-metadata-provider database-id
+            (driver-api/fields
+             (driver-api/metadata-provider)
+             table-id)))))
+
+(defn- assert-pk! [db-id table-id]
+  (when (empty? (table-id->pk-field-name->id db-id table-id))
+    (throw (ex-info (tru "Cannot edit a table without it having at least one entity key configured.")
+                    {:type        :data-editing/no-pk
+                     :status-code 400
+                     :table-id    table-id}))))
+
 (defn- row-delete!* [action database query]
   (log/tracef "Deleting %s" query)
   (let [db-id      (u/the-id database)
@@ -429,21 +451,6 @@
         select-sql-args (sql.qp/format-honeysql driver select-hsql)]
     (log/tracef ":model.row/create SELECT HoneySQL:\n\n%s" (u/pprint-to-str select-hsql))
     (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
-
-(defn- assert-pk! [db-id table-id]
-  (when (empty? (table-id->pk-field-name->id db-id table-id))
-    (throw (ex-info (tru "Cannot edit a table without it having at least one entity key configured.")
-                    {:type        :data-editing/no-pk
-                     :status-code 400
-                     :table-id    table-id}))))
-
-(mu/defn- table-id->pk-field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
-  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [database-id :- driver-api/schema.id.database
-   table-id :- driver-api/schema.id.table]
-  (driver-api/cached-value
-   [::table-id->pk-field-name->id table-id]
-   #(pk-field-name->id* database-id table-id)))
 
 (defn- row-create!* [action database {:keys [create-row] :as query}]
   (log/tracef "creating %s" query)
@@ -581,16 +588,6 @@
 (methodical/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/create]
   [action context inputs]
   (table-row-create! action context inputs))
-
-(defn- pk-field-name->id* [database-id table-id]
-  (into {}
-        (comp (filter (fn [{:keys [semantic-type], :as _field}]
-                        (isa? semantic-type :type/PK)))
-              (map (juxt :name :id)))
-        (driver-api/with-metadata-provider database-id
-          (driver-api/fields
-           (driver-api/metadata-provider)
-           table-id))))
 
 (mu/defn- row->mbql-filter-clause
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
