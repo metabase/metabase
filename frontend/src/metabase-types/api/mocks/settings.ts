@@ -354,6 +354,7 @@ export const createMockSettings = (
   "show-metabase-links": true,
   "show-metabot": true,
   "show-updated-permission-modal": false,
+  "metabot-feature-enabled": true,
   "show-updated-permission-banner": false,
   "site-locale": "en",
   "site-name": "Metabae",

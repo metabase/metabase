@@ -254,7 +254,10 @@ export const getReferencedCardIds = createSelector(
   },
 );
 
-export const getPlaceholderText = (engine?: string | null): string => {
+export const getPlaceholderText = (
+  engine?: string | null,
+  metabotEnabled?: boolean,
+): string => {
   if (!engine) {
     return "";
   }
@@ -264,10 +267,8 @@ export const getPlaceholderText = (engine?: string | null): string => {
 
   const engineType = getEngineNativeType(engine);
 
-  if (PLUGIN_AI_SQL_GENERATION.isEnabled()) {
-    if (engineType === "sql") {
-      return PLUGIN_AI_SQL_GENERATION.getPlaceholderText();
-    }
+  if (metabotEnabled && engineType === "sql") {
+    return PLUGIN_AI_SQL_GENERATION.getPlaceholderText();
   }
 
   switch (true) {

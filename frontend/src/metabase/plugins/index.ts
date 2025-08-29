@@ -713,7 +713,7 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
 };
 
 export const PLUGIN_METABOT = {
-  isEnabled: () => false,
+  useMetabotEnabled: (): boolean => false,
   Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
@@ -730,7 +730,6 @@ export const PLUGIN_METABOT = {
   getAdminPaths: () => [] as AdminPath[],
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null as React.ReactElement | null,
-  MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
 };
@@ -739,6 +738,7 @@ type DashCardMenuItemGetter = (
   question: Question,
   dashcardId: DashCardId | undefined,
   dispatch: ReduxDispatch,
+  options: { isMetabotEnabled: boolean },
 ) => (DashCardMenuItem & { key: string }) | null;
 
 export type PluginDashcardMenu = {
