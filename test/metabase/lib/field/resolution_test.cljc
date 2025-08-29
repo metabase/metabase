@@ -250,13 +250,13 @@
                        :database     (meta/id)
                        :stages       [{:lib/type                     :mbql.stage/native
                                        :lib/stage-metadata           {:lib/type :metadata/results
-                                                                      :columns  (lib.card/card-metadata-columns mp (lib.metadata/card mp 1))}
+                                                                      :columns  (lib.card/card-returned-columns mp (lib.metadata/card mp 1))}
                                        :native                       "SELECT * FROM some_table;"
                                        ;; `:qp` and `:source-query` keys get added by QP middleware during preprocessing.
                                        :qp/stage-is-from-source-card 1}
                                       {:lib/type                     :mbql.stage/mbql
                                        :lib/stage-metadata           {:lib/type :metadata/results
-                                                                      :columns  (lib.card/card-metadata-columns mp (lib.metadata/card mp 2))}
+                                                                      :columns  (lib.card/card-returned-columns mp (lib.metadata/card mp 2))}
                                        :fields                       [[:field {:base-type :type/DateTime, :lib/uuid "48052020-59e3-47e7-bfdc-38ab12c27292"}
                                                                        "EXAMPLE_TIMESTAMP"]
                                                                       [:field {:base-type :type/DateTime, :temporal-unit :week, :lib/uuid "dd9bdda4-688c-4a14-8ff6-88d4e2de6628"}

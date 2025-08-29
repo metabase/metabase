@@ -193,7 +193,7 @@ export const Editor: React.FC<EditorProps> = ({
   if (isLoading) {
     return (
       <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
-        <Loader />
+        <Loader data-testid="editor-loader" />
       </Box>
     );
   }

@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -143,7 +142,7 @@
 
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           query             (lib/query
                              metadata-provider
                              {:database   (mt/id)
@@ -321,24 +320,28 @@
                                     [:field %people.id {:join-alias "People - User"}]]}]
                    :aggregation  [[:sum $subtotal]]
                    :breakout     [!month.created_at
-                                  [:field %people.id {:join-alias "People - User"}]]})]
-      (mt/with-temp [:model/Card card {:dataset_query model, :type :model}]
-        (testing "Column aliasing needs to work even with aggregations over a model"
-          (let [query        (mt/mbql-query
-                               orders {:source-table (str "card__" (u/the-id card))
-                                       :aggregation  [[:sum [:field "sum" {:base-type :type/Number}]]]
-                                       :breakout     [[:field "ID" {:base-type :type/Number}]]})
-                viz-settings {:pivot_table.column_split
-                              {:columns ["ID"]}}]
-            (testing "for a regular query"
-              (is (=? {:status :completed}
-                      (qp/process-query query))))
-            (testing "and a pivot query"
-              (is (=? {:status    :completed
-                       :row_count 1747}
-                      (-> query
-                          (assoc :info {:visualization-settings viz-settings})
-                          qp.pivot/run-pivot-query))))))))))
+                                  [:field %people.id {:join-alias "People - User"}]]})
+          mp    (lib.tu/mock-metadata-provider
+                 (mt/metadata-provider)
+                 {:cards [{:id 1, :dataset-query model, :type :model}]})]
+      (testing "Column aliasing needs to work even with aggregations over a model"
+        (let [query        (lib/query
+                            mp
+                            (mt/mbql-query
+                              orders {:source-table "card__1"
+                                      :aggregation  [[:sum [:field "sum" {:base-type :type/Number}]]]
+                                      :breakout     [[:field "ID" {:base-type :type/Number}]]}))
+              viz-settings {:pivot_table.column_split
+                            {:columns ["ID"]}}]
+          (testing "for a regular query"
+            (is (=? {:status :completed}
+                    (qp/process-query query))))
+          (testing "and a pivot query"
+            (is (=? {:status    :completed
+                     :row_count 1747}
+                    (-> query
+                        (assoc :info {:visualization-settings viz-settings})
+                        qp.pivot/run-pivot-query)))))))))
 
 (deftest ^:parallel nested-models-with-expressions-pivot-breakout-names-test
   (testing "#43993 again - breakouts on an expression from the inner model should pass"
@@ -550,6 +553,9 @@
             (testing "Should be able to run the query via a Card that All Users has perms for"
               ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
               ;; Collection inherits Root Collection perms when created
+              ;;
+              ;; allowing `with-temp` here since we need it to make a Collection
+              #_{:clj-kondo/ignore [:discouraged-var]}
               (mt/with-temp [:model/Collection collection {}
                              :model/Card       card {:collection_id (u/the-id collection), :dataset_query query}]
                 (is (=? {:status "completed"}
@@ -653,7 +659,7 @@
   (testing "Should be able to run a pivot query for an MLv2 query (#39024)"
     ;; this is literally the same query as [[pivot-with-order-by-aggregation-test]], just in MLv2, so it should return
     ;; the same exact results.
-    (let [metadata-provider  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider  (mt/metadata-provider)
           reviews            (lib.metadata/table metadata-provider (mt/id :reviews))
           reviews-rating     (lib.metadata/field metadata-provider (mt/id :reviews :rating))
           reviews-created-at (lib.metadata/field metadata-provider (mt/id :reviews :created_at))

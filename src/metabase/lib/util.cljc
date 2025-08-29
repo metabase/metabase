@@ -25,7 +25,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -46,7 +47,7 @@
   [clause]
   (and (vector? clause)
        (keyword? (first clause))
-       (let [opts (get clause 1)]
+       (let [opts (second clause)]
          (and (map? opts)
               (contains? opts :lib/uuid)))))
 
@@ -54,7 +55,9 @@
   "Returns true if this is a clause."
   [clause clause-type]
   (and (clause? clause)
-       (= (first clause) clause-type)))
+       (if (set? clause-type)
+         (clause-type (first clause))
+         (= (first clause) clause-type))))
 
 (defn field-clause?
   "Returns true if this is a field clause."
@@ -221,7 +224,7 @@
           (update :columns (fn [columns]
                              (mapv (fn [column]
                                      (-> column
-                                         (update-keys u/->kebab-case-en)
+                                         (perf/update-keys u/->kebab-case-en)
                                          (assoc :lib/type :metadata/column)))
                                    columns)))
           (assoc :lib/type :metadata/results)))))

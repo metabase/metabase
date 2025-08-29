@@ -322,6 +322,40 @@ H.describeWithSnowplow(suiteTitle, () => {
     codeBlock().should("contain", 'is-save-enabled="true"');
   });
 
+  it("can toggle read-only setting for browser", () => {
+    navigateToEmbedOptionsStep({
+      experience: "browser",
+      resourceName: "First collection",
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow editing dashboards and questions")
+      .should("not.be.checked");
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New Dashboard").should("not.exist");
+    });
+
+    cy.log("turn on editing (set read-only to false)");
+    getEmbedSidebar()
+      .findByLabelText("Allow editing dashboards and questions")
+      .click()
+      .should("be.checked");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "readOnly",
+    });
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New Dashboard").should("be.visible");
+    });
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", 'read-only="false"');
+  });
+
   it("can change brand color and reset colors", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",

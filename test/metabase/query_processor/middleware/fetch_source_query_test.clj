@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -63,7 +62,7 @@
        result-metadata
        (assoc-in [:query :source-metadata] result-metadata)))))
 
-(def ^:private mock-metadata-provider
+(defn- mock-metadata-provider []
   (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
    meta/metadata-provider
    [(lib.tu.macros/mbql-query venues)
@@ -71,7 +70,7 @@
 
 (deftest ^:parallel resolve-mbql-queries-test
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves MBQL queries"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       (is (=? (assoc (default-result-with-inner-query
                       {:source-query {:source-table (meta/id :venues)}}
                       (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
@@ -83,7 +82,7 @@
 
 (deftest ^:parallel resolve-mbql-queries-test-2
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves MBQL queries"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       (testing "with aggregations/breakouts"
         (is (=? (assoc (default-result-with-inner-query
                         {:aggregation  [[:count]]
@@ -100,7 +99,7 @@
 
 (deftest ^:parallel resolve-mbql-queries-test-3
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves MBQL queries"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       (testing "with filters"
         (is (=? (assoc (default-result-with-inner-query
                         {:source-query {:source-table (meta/id :checkins)}
@@ -118,7 +117,7 @@
 
 (deftest resolve-mbql-queries-test-4
   (testing "respects `enable-nested-queries` server setting when true"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       ;; by default nested queries are enabled:
       (is (true? (lib-be/enable-nested-queries)))
       (is (some? (resolve-source-cards (lib.tu.macros/mbql-query nil {:source-table "card__1"})))))))
@@ -128,7 +127,7 @@
     ;; if the env var is set, the setting respects it:
     (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
       (is (false? (lib-be/enable-nested-queries))))
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
 
 ;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
       (is (thrown-with-msg? Exception
@@ -185,7 +184,7 @@
                 {:source-table "card__2", :limit 25})))))))
 
 (defn- nested-nested-app-db-provider []
-  (let [base     (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [base     (-> (mt/metadata-provider)
                      (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                       [(mt/mbql-query venues {:limit 100})
                        {:database lib.schema.id/saved-questions-virtual-database-id
@@ -375,7 +374,7 @@
 
 (deftest ^:parallel dont-overwrite-existing-card-id-test
   (testing "Don't overwrite existing values of `[:info :card-id]`"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       (let [query (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
                          :info {:card-id Integer/MAX_VALUE})]
         (is (=? (assoc (lib.tu.macros/mbql-query nil

@@ -3,6 +3,9 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { PluginKey } from "@tiptap/pm/state";
 import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 
+import { trackDocumentAddSmartLink } from "metabase-enterprise/documents/analytics";
+import type { Document } from "metabase-types/api";
+
 export interface MentionOptions {
   HTMLAttributes: Record<string, unknown>;
   renderText: (props: {
@@ -12,10 +15,11 @@ export interface MentionOptions {
   suggestion: Partial<SuggestionOptions>;
 }
 
-interface MentionProps {
+export interface MentionCommandProps {
   type?: string;
   id?: number | string;
   model?: string;
+  document?: Document | null;
 }
 
 export const MentionPluginKey = new PluginKey("mention");
@@ -41,7 +45,7 @@ export const MentionExtension = Extension.create<MentionOptions>({
         }: {
           editor: Editor;
           range: Range;
-          props: MentionProps;
+          props: MentionCommandProps;
         }) => {
           if (props.id && props.model) {
             editor
@@ -56,6 +60,9 @@ export const MentionExtension = Extension.create<MentionOptions>({
                 },
               })
               .run();
+            if (props.document) {
+              trackDocumentAddSmartLink(props.document);
+            }
           }
         },
       },

@@ -18,7 +18,11 @@
 
 (mu/defn legacy-inner-query->mlv2-query :- ::lib.schema/query
   "Convert a legacy `inner-query` to an MLv2 query. Requires bound QP store."
-  [inner-query :- :map]
+  [inner-query :- [:and
+                   :map
+                   [:fn
+                    {:error/message "Should be a legacy MBQL inner query"}
+                    (some-fn :query :source-table :source-query)]]]
   (qp.store/cached [:mlv2-query (hash inner-query)]
     (try
       (lib/query-from-legacy-inner-query

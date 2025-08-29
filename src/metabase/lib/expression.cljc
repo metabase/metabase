@@ -392,7 +392,7 @@
    [:relative-datetime {:lib/uuid (str (random-uuid))} t])
 
   ([t    :- ::lib.schema.expression.temporal/relative-datetime.amount
-    unit :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
+    unit :- ::lib.schema.expression.temporal/relative-datetime.unit]
    [:relative-datetime {:lib/uuid (str (random-uuid))} t unit]))
 
 (mu/defn value :- ::lib.schema.expression/expression
