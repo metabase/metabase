@@ -77,7 +77,7 @@ export function VisualizationError({
     return (
       <Center className={className}>
         <EmptyState
-          title={t`Sorry, you don’t have permissions to view this.`}
+          title={t`Sorry, you don't have permission to run this query.`}
           illustrationElement={<Icon name="key" size={100} />}
         />
       </Center>
