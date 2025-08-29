@@ -98,7 +98,7 @@ export const Blockquote = Node.create<BlockquoteOptions>({
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("paragraph")];
+    return [createProseMirrorPlugin("blockquote")];
   },
 
   addCommands() {
