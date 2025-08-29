@@ -50,6 +50,13 @@
   [_searchable-documents _opts]
   (oss-semantic-search-error))
 
+(defenterprise repair-index!
+  "Brings the semantic search index into consistency with the provided document set.
+  Does not promise a full reindex, but will add missing documents and remove stale ones."
+  metabase-enterprise.semantic-search.core
+  [_searchable-documents]
+  (oss-semantic-search-error))
+
 (defenterprise reset-tracking!
   "Reset tracking for the semantic search engine."
   metabase-enterprise.semantic-search.core
