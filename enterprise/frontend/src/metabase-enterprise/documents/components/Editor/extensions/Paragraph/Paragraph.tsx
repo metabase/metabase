@@ -1,5 +1,6 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
-import { Node, type NodeViewProps, mergeAttributes } from "@tiptap/core";
+import type { NodeViewProps } from "@tiptap/core";
+import { Paragraph } from "@tiptap/extension-paragraph";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -17,62 +18,11 @@ import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 
 import S from "./Paragraph.module.css";
 
-export interface ParagraphOptions {
-  /**
-   * The HTML attributes for a paragraph node.
-   * @default {}
-   * @example { class: 'foo' }
-   */
-  HTMLAttributes: Record<string, any>;
-}
-
-declare module "@tiptap/core" {
-  interface Commands<ReturnType> {
-    paragraph: {
-      /**
-       * Toggle a paragraph
-       * @example editor.commands.toggleParagraph()
-       */
-      satParagraph: () => ReturnType;
-    };
-  }
-}
-
-/**
- * This extension allows you to create paragraphs.
- * @see https://www.tiptap.dev/api/nodes/paragraph
- */
-export const Paragraph = Node.create<ParagraphOptions>({
-  name: "paragraph",
-
-  priority: 1000,
-
-  addOptions() {
-    return {
-      HTMLAttributes: {},
-    };
-  },
-
-  group: "block",
-
-  content: "inline*",
-
+export const CustomParagraph = Paragraph.extend({
   addAttributes() {
     return {
       ...createIdAttribute(),
     };
-  },
-
-  parseHTML() {
-    return [{ tag: "p" }];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "p",
-      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
-      0,
-    ];
   },
 
   addNodeView() {
@@ -80,23 +30,7 @@ export const Paragraph = Node.create<ParagraphOptions>({
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("paragraph")];
-  },
-
-  addCommands() {
-    return {
-      setParagraph:
-        () =>
-        ({ commands }) => {
-          return commands.setNode(this.name);
-        },
-    };
-  },
-
-  addKeyboardShortcuts() {
-    return {
-      "Mod-Alt-0": () => this.editor.commands.setParagraph(),
-    };
+    return [createProseMirrorPlugin(Paragraph.name)];
   },
 });
 

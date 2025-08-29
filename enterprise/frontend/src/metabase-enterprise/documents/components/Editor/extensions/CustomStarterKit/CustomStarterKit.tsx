@@ -1,13 +1,19 @@
 import type { AnyExtension } from "@tiptap/core";
 import { Blockquote } from "@tiptap/extension-blockquote";
 import { Bold } from "@tiptap/extension-bold";
+import { BulletList } from "@tiptap/extension-bullet-list";
+import { CodeBlock } from "@tiptap/extension-code-block";
+import { Heading } from "@tiptap/extension-heading";
+import { OrderedList } from "@tiptap/extension-ordered-list";
+import { Paragraph } from "@tiptap/extension-paragraph";
 import { StarterKit, type StarterKitOptions } from "@tiptap/starter-kit";
 
-const CustomBlockquote = Blockquote.extend({
-  addKeyboardShortcuts() {
-    return {};
-  },
-});
+import { CustomBlockquote } from "../Blockquote";
+import { CustomBulletList } from "../BulletList";
+import { CustomCodeBlock } from "../CodeBlock";
+import { CustomHeading } from "../Heading";
+import { CustomOrderedList } from "../OrderedList";
+import { CustomParagraph } from "../Paragraph";
 
 const CustomBold = Bold.extend({
   addKeyboardShortcuts() {
@@ -46,6 +52,46 @@ export const CustomStarterKit = StarterKit.extend<StarterKitOptions>({
         extensions,
         Blockquote,
         CustomBlockquote.configure(this.options.blockquote),
+      );
+    }
+
+    if (this.options.bulletList !== false) {
+      extensions = replaceExtension(
+        extensions,
+        BulletList,
+        CustomBulletList.configure(this.options.bulletList),
+      );
+    }
+
+    if (this.options.orderedList !== false) {
+      extensions = replaceExtension(
+        extensions,
+        OrderedList,
+        CustomOrderedList.configure(this.options.orderedList),
+      );
+    }
+
+    if (this.options.heading !== false) {
+      extensions = replaceExtension(
+        extensions,
+        Heading,
+        CustomHeading.configure(this.options.heading),
+      );
+    }
+
+    if (this.options.paragraph !== false) {
+      extensions = replaceExtension(
+        extensions,
+        Paragraph,
+        CustomParagraph.configure(this.options.paragraph),
+      );
+    }
+
+    if (this.options.codeBlock !== false) {
+      extensions = replaceExtension(
+        extensions,
+        CodeBlock,
+        CustomCodeBlock.configure(this.options.codeBlock),
       );
     }
 

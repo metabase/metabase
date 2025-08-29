@@ -1,10 +1,6 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
-import {
-  Node,
-  type NodeViewProps,
-  mergeAttributes,
-  wrappingInputRule,
-} from "@tiptap/core";
+import type { NodeViewProps } from "@tiptap/core";
+import { BulletList } from "@tiptap/extension-bullet-list";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -22,95 +18,11 @@ import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 
 import S from "./BulletList.module.css";
 
-const ListItemName = "listItem";
-const TextStyleName = "textStyle";
-
-export interface BulletListOptions {
-  /**
-   * The node name for the list items
-   * @default 'listItem'
-   * @example 'paragraph'
-   */
-  itemTypeName: string;
-
-  /**
-   * HTML attributes to add to the bullet list element
-   * @default {}
-   * @example { class: 'foo' }
-   */
-  HTMLAttributes: Record<string, any>;
-
-  /**
-   * Keep the marks when splitting the list
-   * @default false
-   * @example true
-   */
-  keepMarks: boolean;
-
-  /**
-   * Keep the attributes when splitting the list
-   * @default false
-   * @example true
-   */
-  keepAttributes: boolean;
-}
-
-declare module "@tiptap/core" {
-  interface Commands<ReturnType> {
-    bulletList: {
-      /**
-       * Toggle a bullet list
-       */
-      toggleBulletList: () => ReturnType;
-    };
-  }
-}
-
-/**
- * Matches a bullet list to a dash or asterisk.
- */
-export const bulletListInputRegex = /^\s*([-+*])\s$/;
-
-/**
- * This extension allows you to create bullet lists.
- * This requires the ListItem extension
- * @see https://tiptap.dev/api/nodes/bullet-list
- * @see https://tiptap.dev/api/nodes/list-item.
- */
-export const BulletList = Node.create<BulletListOptions>({
-  name: "bulletList",
-
-  addOptions() {
-    return {
-      itemTypeName: "listItem",
-      HTMLAttributes: {},
-      keepMarks: false,
-      keepAttributes: false,
-    };
-  },
-
-  group: "block list",
-
-  content() {
-    return `${this.options.itemTypeName}+`;
-  },
-
+export const CustomBulletList = BulletList.extend({
   addAttributes() {
     return {
       ...createIdAttribute(),
     };
-  },
-
-  parseHTML() {
-    return [{ tag: "ul" }];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "ul",
-      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
-      0,
-    ];
   },
 
   addNodeView() {
@@ -118,61 +30,7 @@ export const BulletList = Node.create<BulletListOptions>({
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin("bulletList")];
-  },
-
-  addCommands() {
-    return {
-      toggleBulletList:
-        () =>
-        ({ commands, chain }) => {
-          if (this.options.keepAttributes) {
-            return chain()
-              .toggleList(
-                this.name,
-                this.options.itemTypeName,
-                this.options.keepMarks,
-              )
-              .updateAttributes(
-                ListItemName,
-                this.editor.getAttributes(TextStyleName),
-              )
-              .run();
-          }
-          return commands.toggleList(
-            this.name,
-            this.options.itemTypeName,
-            this.options.keepMarks,
-          );
-        },
-    };
-  },
-
-  addKeyboardShortcuts() {
-    return {
-      "Mod-Shift-8": () => this.editor.commands.toggleBulletList(),
-    };
-  },
-
-  addInputRules() {
-    let inputRule = wrappingInputRule({
-      find: bulletListInputRegex,
-      type: this.type,
-    });
-
-    if (this.options.keepMarks || this.options.keepAttributes) {
-      inputRule = wrappingInputRule({
-        find: bulletListInputRegex,
-        type: this.type,
-        keepMarks: this.options.keepMarks,
-        keepAttributes: this.options.keepAttributes,
-        getAttributes: () => {
-          return this.editor.getAttributes(TextStyleName);
-        },
-        editor: this.editor,
-      });
-    }
-    return [inputRule];
+    return [createProseMirrorPlugin(BulletList.name)];
   },
 });
 
