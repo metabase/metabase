@@ -849,3 +849,11 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
 };
+
+export const PLUGIN_GIT_SYNC = {
+  LibraryNav: PluginPlaceholder,
+  GitSyncSettings: NotFoundPlaceholder,
+  GitChangeList: NotFoundPlaceholder,
+  SelectBranch: PluginPlaceholder as ComponentType<{ disabled?: boolean }>,
+  ViewChangesButton: PluginPlaceholder as ComponentType,
+};

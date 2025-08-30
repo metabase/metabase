@@ -124,3 +124,12 @@
   :type         :keyword
   :default      :all
   :audit        :raw-value)
+
+(defsetting git-branch
+  (deferred-tru "The git branch of the Metabase instance.")
+  :encryption :no
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :string
+  :default    nil)

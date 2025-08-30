@@ -17,6 +17,8 @@
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
+    :model/Branch                            metabase-enterprise.branching.models.branch
+    :model/BranchModelMapping                metabase-enterprise.branching.models.branch-model-mapping
     :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.queries.models.card
     :model/CardBookmark                      metabase.bookmarks.models.bookmark

@@ -115,8 +115,10 @@
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
+  ;(derive :hook/branchable)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/git-sync-protected))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
