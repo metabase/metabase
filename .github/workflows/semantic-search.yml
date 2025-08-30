@@ -20,9 +20,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: H2 with pgvector pg16
-            junit-name: semantic-search-tests-h2-pgvector-16
-            pgvector-image: pgvector/pgvector:pg16
+          - name: H2 with pgvector pg17
+            junit-name: semantic-search-tests-h2-pgvector-17
+            pgvector-image: pgvector/pgvector:pg17
         job:
           - name: Semantic Search Tests
             build-static-viz: false
@@ -73,16 +73,16 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2 with pgvector pg16
+          - name: MariaDB 10.2 with pgvector pg17
             junit-name: semantic-search-tests-mariadb-10-2
             mariadb-image: circleci/mariadb:10.2.23
-            pgvector-image: pgvector/pgvector:pg16
+            pgvector-image: pgvector/pgvector:pg17
             env:
               enable-ssl-tests: 'false'
-          - name: MariaDB Latest with pgvector pg16
+          - name: MariaDB Latest with pgvector pg17
             junit-name: semantic-search-tests-mariadb-latest
             mariadb-image: circleci/mariadb:latest
-            pgvector-image: pgvector/pgvector:pg16
+            pgvector-image: pgvector/pgvector:pg17
             env:
               enable-ssl-tests: 'false'
         job:
@@ -149,16 +149,16 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MySQL 8.0 with pgvector pg16
+          - name: MySQL 8.0 with pgvector pg17
             junit-name: semantic-search-tests-mysql-8-0
             mysql-image: cimg/mysql:8.0
-            pgvector-image: pgvector/pgvector:pg16
+            pgvector-image: pgvector/pgvector:pg17
             env:
               enable-ssl-tests: 'false'
-          - name: MySQL Latest with pgvector pg16
+          - name: MySQL Latest with pgvector pg17
             junit-name: semantic-search-tests-mysql-latest
             mysql-image: mysql:latest
-            pgvector-image: pgvector/pgvector:pg16
+            pgvector-image: pgvector/pgvector:pg17
             env:
               enable-ssl-tests: 'true'
         job:
@@ -225,16 +225,16 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x with pgvector pg16
+          - name: Postgres 12.x with pgvector pg17
             junit-name: semantic-search-tests-postgres-12
             postgres-image: postgres:12-alpine
-            pgvector-image: pgvector/pgvector:pg16
+            pgvector-image: pgvector/pgvector:pg17
             env:
               enable-ssl-tests: 'false'
-          - name: Postgres Latest with pgvector pg16
+          - name: Postgres Latest with pgvector pg17
             junit-name: semantic-search-tests-postgres-latest
             postgres-image: postgres:latest
-            pgvector-image: pgvector/pgvector:pg16
+            pgvector-image: pgvector/pgvector:pg17
             env:
               enable-ssl-tests: 'true'
         job:
