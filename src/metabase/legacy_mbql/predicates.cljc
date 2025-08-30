@@ -4,7 +4,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.util.malli.registry :as mr]))
 
-(defn Field?
+(defn FieldOrExpressionRef?
   "Is this a valid Field clause?"
   [x]
   ((mr/validator ::mbql.s/field-or-expression-ref) x))

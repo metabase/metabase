@@ -24,9 +24,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [flatland.ordered.map :as ordered-map]))
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -1386,6 +1384,38 @@
              ::lib.field.resolution/fallback-metadata? true}
             (into (sorted-map) (lib.field.resolution/resolve-field-ref query -1 field-ref))))))
 
+(deftest ^:parallel resolve-inactive-field-ref-test
+  (testing "Should be able to resolve an INACTIVE field ref correctly."
+    (let [card-query (lib/query
+                      meta/metadata-provider
+                      (lib.tu.macros/mbql-query orders
+                        {:fields [$id $subtotal $tax $total $created-at $quantity]
+                         :joins  [{:source-table $$products
+                                   :alias        "Product"
+                                   :condition    [:=
+                                                  $orders.product-id
+                                                  [:field %products.id {:join-alias "Product"}]]
+                                   :fields       [[:field %products.id {:join-alias "Product"}]
+                                                  [:field %products.title {:join-alias "Product"}]
+                                                  [:field %products.vendor {:join-alias "Product"}]
+                                                  [:field %products.price {:join-alias "Product"}]
+                                                  [:field %products.rating {:join-alias "Product"}]]}]}))
+          mp         (-> meta/metadata-provider
+                         (lib.tu/mock-metadata-provider
+                          {:cards [{:id              1
+                                    :dataset-query   card-query
+                                    :result-metadata (lib/returned-columns card-query)}]})
+                         (lib.tu/merged-mock-metadata-provider
+                          {:fields (for [field-id [(meta/id :orders :tax) (meta/id :products :vendor)]]
+                                     {:id field-id, :active false})}))
+          query      (lib/query mp (lib.metadata/card mp 1))]
+      (is (=? {:active false
+               :id     (meta/id :orders :tax)
+               :name   "TAX"}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} "TAX"]))))))
+
 (deftest ^:parallel multiple-remaps-between-tables-test
   (testing "Should be able to resolve multiple FK remaps via different FKs from Table A to Table B in a join"
     (let [mp        (-> meta/metadata-provider
@@ -1417,12 +1447,12 @@
                                                          :fields       [[:field
                                                                          {:base-type    :type/Text
                                                                           :join-alias   "CATEGORIES__via__CATEGORY_ID"
-                                                                          :source-field (meta/id :venues :id)}
+                                                                          :source-field (meta/id :venues :category-id)}
                                                                          "NAME"]
                                                                         [:field
                                                                          {:base-type    :type/Text
                                                                           :join-alias   "CATEGORIES__via__ID"
-                                                                          :source-field (meta/id :venues :category-id)}
+                                                                          :source-field (meta/id :venues :id)}
                                                                          "NAME"]]}]
                                            :conditions [[:= {} 1 1]]
                                            :fields     :none}]}]}))
@@ -1433,31 +1463,32 @@
                                :base-type      :type/Text
                                :effective-type :type/Text}
                        (meta/id :categories :name)])]
-      (testing "ID"
-        (let [field-ref (field-ref (meta/id :venues :id))]
-          (is (=? {:display-name                 "ID → Name"
-                   :id                           (meta/id :categories :name)
-                   :semantic-type                :type/Name
-                   :source-alias                 "J"
-                   :lib/deduplicated-name        "NAME"
-                   :lib/original-fk-field-id     (meta/id :venues :id)
-                   :lib/original-join-alias      "J"
-                   :lib/original-name            "NAME"
-                   :lib/source                   :source/joins
-                   :lib/source-column-alias      "CATEGORIES__via__ID__NAME"
-                   :metabase.lib.join/join-alias "J"}
-                  (lib.field.resolution/resolve-field-ref query 0 field-ref)))))
-      (testing "CATEGORY_ID"
-        (let [field-ref (field-ref (meta/id :venues :category-id))]
-          (is (=? {:display-name                 "Category → Name"
-                   :id                           (meta/id :categories :name)
-                   :semantic-type                :type/Name
-                   :source-alias                 "J"
-                   :lib/deduplicated-name        "NAME_2"
-                   :lib/original-fk-field-id     (meta/id :venues :category-id)
-                   :lib/original-join-alias      "J"
-                   :lib/original-name            "NAME"
-                   :lib/source                   :source/joins
-                   :lib/source-column-alias      "CATEGORIES__via__CATEGORY_ID__NAME"
-                   :metabase.lib.join/join-alias "J"}
-                  (lib.field.resolution/resolve-field-ref query 0 field-ref))))))))
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (testing "ID"
+          (let [field-ref (field-ref (meta/id :venues :id))]
+            (is (=? {:display-name                 "ID → Name"
+                     :id                           (meta/id :categories :name)
+                     :semantic-type                :type/Name
+                     :source-alias                 "J"
+                     :lib/deduplicated-name        "NAME_2"
+                     :lib/original-fk-field-id    (meta/id :venues :id)
+                     :lib/original-join-alias      "J"
+                     :lib/original-name            "NAME"
+                     :lib/source                   :source/joins
+                     :lib/source-column-alias      "CATEGORIES__via__ID__NAME"
+                     :metabase.lib.join/join-alias "J"}
+                    (lib.field.resolution/resolve-field-ref query 0 field-ref)))))
+        (testing "CATEGORY_ID"
+          (let [field-ref (field-ref (meta/id :venues :category-id))]
+            (is (=? {:display-name                 "Category → Name"
+                     :id                           (meta/id :categories :name)
+                     :semantic-type                :type/Name
+                     :source-alias                 "J"
+                     :lib/deduplicated-name        "NAME"
+                     :lib/original-fk-field-id     (meta/id :venues :category-id)
+                     :lib/original-join-alias      "J"
+                     :lib/original-name            "NAME"
+                     :lib/source                   :source/joins
+                     :lib/source-column-alias      "CATEGORIES__via__CATEGORY_ID__NAME"
+                     :metabase.lib.join/join-alias "J"}
+                    (lib.field.resolution/resolve-field-ref query 0 field-ref)))))))))
