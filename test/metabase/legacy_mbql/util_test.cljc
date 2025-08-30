@@ -488,12 +488,12 @@
   (t/testing "desugaring :not-empty of emptyable base-type :type/Text"
     (t/is (= [:and
               [:!= [:field 1 {:base-type :type/Text}] nil]
-              [:!= [:field 1 {:base-type :type/Text}] ""]]
+              [:not [:= [:field 1 {:base-type :type/Text}] ""]]]
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/Text}]]))))
   (t/testing "desugaring :not-empty of string expression #41265"
     (t/is (= [:and
               [:!= [:regex-match-first "foo" "bar"] nil]
-              [:!= [:regex-match-first "foo" "bar"] ""]]
+              [:not [:= [:regex-match-first "foo" "bar"] ""]]]
              (mbql.u/desugar-filter-clause [:not-empty [:regex-match-first "foo" "bar"]]))))
   (t/testing "desugaring :not-empty of not emptyable base-type"
     (t/is (= [:!= [:field 1 {:base-type :type/DateTime}] nil]
