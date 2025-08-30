@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - master
-      - metabot-v3-main
       - internal-tools
     paths-ignore:
       # config files

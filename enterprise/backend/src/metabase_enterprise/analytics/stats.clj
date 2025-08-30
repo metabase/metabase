@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase-enterprise.scim.core :as scim]
+   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.driver :as driver]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -27,4 +28,7 @@
     :enabled   (t2/exists? :model/GroupTableAccessPolicy)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)
-    :enabled   (boolean (some? (advanced-config.settings/subscription-allowed-domains)))}])
+    :enabled   (boolean (some? (advanced-config.settings/subscription-allowed-domains)))}
+   {:name      :semantic-search
+    :available (premium-features/enable-semantic-search?)
+    :enabled   (semantic-search/supported?)}])

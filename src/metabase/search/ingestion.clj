@@ -143,7 +143,14 @@
        (eduction (map #(assoc % :model search-model)))))
 
 (defn- search-items-reducible []
-  (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
+  (let [models search.spec/search-models
+        ;; we're pushing indexed entities last in the search items reducible
+        ;; so that more important models gets indexed first, making the partial
+        ;; index more usable earlier
+        sorted-models (cond-> models
+                        (contains? models "indexed-entity")
+                        (-> (disj "indexed-entity") (concat ["indexed-entity"])))]
+    (reduce u/rconcat [] (map spec-index-reducible sorted-models))))
 
 (defn- query->documents [query-reducible]
   (->> query-reducible
@@ -159,6 +166,18 @@
   "Return all existing searchable documents from the database."
   []
   (query->documents (search-items-reducible)))
+
+(defn search-items-count
+  "Returns a count of all searchable items in the database."
+  []
+  (->> (for [model search.spec/search-models]
+         (-> (spec-index-query-where model nil)
+             (assoc :select [[:%count.* :count]])
+             t2/query
+             first
+             :count))
+       (filter some?)
+       (reduce + 0)))
 
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
