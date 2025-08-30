@@ -20,9 +20,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: pgvector pg16
-            junit-name: semantic-search-tests-pgvector-16
-            image: pgvector/pgvector:pg16
+          - name: pgvector pg17
+            junit-name: semantic-search-tests-pgvector-17
+            image: pgvector/pgvector:pg17
             env:
               enable-ssl-tests: 'false'
         job:
