@@ -330,7 +330,11 @@
    (into []
          (comp
           (map lib.field.util/update-keys-for-col-from-previous-stage)
-          (map #(column-from-join query stage-number % join-alias)))
+          (map #(column-from-join query stage-number % join-alias))
+          (if-let [fk-field-id (:fk-field-id join)]
+            (map (fn [col]
+                   (assoc col :fk-field-id fk-field-id)))
+            identity))
          (lib.metadata.calculation/returned-columns query stage-number join options))))
 
 (mu/defn join-fields-to-add-to-parent-stage :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]

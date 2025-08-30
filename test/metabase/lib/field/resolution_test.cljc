@@ -1447,12 +1447,12 @@
                                                          :fields       [[:field
                                                                          {:base-type    :type/Text
                                                                           :join-alias   "CATEGORIES__via__CATEGORY_ID"
-                                                                          :source-field (meta/id :venues :id)}
+                                                                          :source-field (meta/id :venues :category-id)}
                                                                          "NAME"]
                                                                         [:field
                                                                          {:base-type    :type/Text
                                                                           :join-alias   "CATEGORIES__via__ID"
-                                                                          :source-field (meta/id :venues :category-id)}
+                                                                          :source-field (meta/id :venues :id)}
                                                                          "NAME"]]}]
                                            :conditions [[:= {} 1 1]]
                                            :fields     :none}]}]}))
@@ -1463,31 +1463,32 @@
                                :base-type      :type/Text
                                :effective-type :type/Text}
                        (meta/id :categories :name)])]
-      (testing "ID"
-        (let [field-ref (field-ref (meta/id :venues :id))]
-          (is (=? {:display-name                 "ID → Name"
-                   :id                           (meta/id :categories :name)
-                   :semantic-type                :type/Name
-                   :source-alias                 "J"
-                   :lib/deduplicated-name        "NAME"
-                   :lib/original-fk-field-id     (meta/id :venues :id)
-                   :lib/original-join-alias      "J"
-                   :lib/original-name            "NAME"
-                   :lib/source                   :source/joins
-                   :lib/source-column-alias      "CATEGORIES__via__ID__NAME"
-                   :metabase.lib.join/join-alias "J"}
-                  (lib.field.resolution/resolve-field-ref query 0 field-ref)))))
-      (testing "CATEGORY_ID"
-        (let [field-ref (field-ref (meta/id :venues :category-id))]
-          (is (=? {:display-name                 "Category → Name"
-                   :id                           (meta/id :categories :name)
-                   :semantic-type                :type/Name
-                   :source-alias                 "J"
-                   :lib/deduplicated-name        "NAME_2"
-                   :lib/original-fk-field-id     (meta/id :venues :category-id)
-                   :lib/original-join-alias      "J"
-                   :lib/original-name            "NAME"
-                   :lib/source                   :source/joins
-                   :lib/source-column-alias      "CATEGORIES__via__CATEGORY_ID__NAME"
-                   :metabase.lib.join/join-alias "J"}
-                  (lib.field.resolution/resolve-field-ref query 0 field-ref))))))))
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (testing "ID"
+          (let [field-ref (field-ref (meta/id :venues :id))]
+            (is (=? {:display-name                 "ID → Name"
+                     :id                           (meta/id :categories :name)
+                     :semantic-type                :type/Name
+                     :source-alias                 "J"
+                     :lib/deduplicated-name        "NAME_2"
+                     :lib/original-fk-field-id    (meta/id :venues :id)
+                     :lib/original-join-alias      "J"
+                     :lib/original-name            "NAME"
+                     :lib/source                   :source/joins
+                     :lib/source-column-alias      "CATEGORIES__via__ID__NAME"
+                     :metabase.lib.join/join-alias "J"}
+                    (lib.field.resolution/resolve-field-ref query 0 field-ref)))))
+        (testing "CATEGORY_ID"
+          (let [field-ref (field-ref (meta/id :venues :category-id))]
+            (is (=? {:display-name                 "Category → Name"
+                     :id                           (meta/id :categories :name)
+                     :semantic-type                :type/Name
+                     :source-alias                 "J"
+                     :lib/deduplicated-name        "NAME"
+                     :lib/original-fk-field-id     (meta/id :venues :category-id)
+                     :lib/original-join-alias      "J"
+                     :lib/original-name            "NAME"
+                     :lib/source                   :source/joins
+                     :lib/source-column-alias      "CATEGORIES__via__CATEGORY_ID__NAME"
+                     :metabase.lib.join/join-alias "J"}
+                    (lib.field.resolution/resolve-field-ref query 0 field-ref)))))))))

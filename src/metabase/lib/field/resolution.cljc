@@ -249,9 +249,7 @@
       (:qp/stage-had-source-card stage)
       (let [card-id (:qp/stage-had-source-card stage)]
         (when-some [card (lib.metadata/card query card-id)]
-          ;; card returned columns should be the same regardless of which stage number we pass in, so always use the
-          ;; last stage so we can hit the cache more often
-          (when-some [card-cols (not-empty (cond->> (lib.metadata.calculation/returned-columns query 0 card)
+          (when-some [card-cols (not-empty (cond->> (lib.metadata.calculation/returned-columns query card)
                                              ;; if we have `id` then filter out anything that is definitely not a
                                              ;; match
                                              (:id col) (filter #(= (:id %) (:id col)))))]
@@ -297,7 +295,7 @@
                     (pr-str id-or-name)
                     (pr-str join-alias)
                     (pr-str stage-number))
-        (let [join-cols (cond->> (lib.metadata.calculation/returned-columns query stage-number join)
+        (let [join-cols (cond->> (lib.join/join-returned-columns-relative-to-parent-stage query stage-number join nil)
                           source-field (remove (fn [col]
                                                  (when-some [col-source-field ((some-fn :fk-field-id :lib/original-fk-field-id) col)]
                                                    (not= col-source-field source-field)))))]
