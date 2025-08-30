@@ -131,7 +131,8 @@
    [:max-users     {:optional true} pos-int?]
    [:company       {:optional true} [:string {:min 1}]]
    [:store-users   {:optional true} [:maybe [:sequential [:map
-                                                          [:email :string]]]]]])
+                                                          [:email :string]]]]]
+   [:quotas        {:optional true} [:sequential [:map]]]])
 
 (def ^:private ^:const token-status-cache-ttl
   "Amount of time in ms to cache the status of a valid enterprise token before forcing a re-check."
@@ -348,6 +349,14 @@
   (some-> (premium-features.settings/premium-embedding-token)
           fetch-token-status
           :plan-alias))
+
+(mu/defn quotas :- [:maybe [:sequential [:map]]]
+  "Returns a vector of maps for each quota of the subscription."
+  []
+  (memoize/memo-clear! fetch-token-and-parse-body*)
+  (some-> (premium-features.settings/premium-embedding-token)
+          fetch-token-status
+          :quotas))
 
 (defn has-any-features?
   "True if we have a valid premium features token with ANY features."

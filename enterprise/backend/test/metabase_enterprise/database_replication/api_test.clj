@@ -1,8 +1,10 @@
 (ns metabase-enterprise.database-replication.api-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.database-replication.api :as api]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
    [metabase-enterprise.harbormaster.client :as hm.client]
+   [metabase.premium-features.token-check :as tc]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -62,26 +64,85 @@
 
 (deftest lifecycle-test
   (let [hm-state (atom [])
-        db-details {:dbname "dbname", :host "host", :user "user", :password "password"}]
-    (with-redefs [hm.client/call
+        db-details {:dbname "dbname", :host "host", :user "user", :password "password"}
+        tables [{:table_schema "public",
+                 :table_name "t1",
+                 :estimated_row_count 9
+                 :has_pkey true,
+                 :has_ownership true}
+                {:table_schema "not_public",
+                 :table_name "no_schema",
+                 :estimated_row_count 11
+                 :has_pkey false,
+                 :has_ownership true}
+                {:table_schema "public",
+                 :table_name "no_pkey",
+                 :estimated_row_count 11
+                 :has_pkey false,
+                 :has_ownership true}
+                {:table_schema "public",
+                 :table_name "no_ownership",
+                 :estimated_row_count 11
+                 :has_pkey true,
+                 :has_ownership false}]]
+    (with-redefs [tc/quotas
+                  (constantly [{:usage 499990, :locked false, :updated-at "2025-08-05T08:48:11Z", :quota-type "rows", :hosting-feature "clickhouse-dwh", :soft-limit 500000}])
+
+                  api/preview-memo
+                  #'api/preview
+
+                  hm.client/call
                   (fn [op-id & {:as m}]
                     (case op-id
                       :list-connections @hm-state
+                      :preview-connection {:tables tables}
                       :create-connection (u/prog1 (into {:id (str (random-uuid))} m) (swap! hm-state conj <>))
                       :delete-connection (swap! hm-state (fn [state] (vec (remove #(-> % :id (= (:connection-id m))) state))))))]
       (mt/with-premium-features #{:attached-dwh :etl-connections :etl-connections-pg :hosting}
         (mt/with-temporary-setting-values [is-hosted? true, store-api-url "foo", api-key "foo", database-replication-connections {}]
           (mt/with-temp [:model/Database db {:engine :postgres :details db-details}]
-            (let [url (str "ee/database-replication/connection/" (:id db))]
+            (let [url (str "ee/database-replication/connection/" (:id db))
+                  body {:replicationSchemaFilters {:schema-filters-type "exclude"
+                                                   :schema-filters-patterns "not_pub*"}}]
+              (testing "previews"
+                (let [resp (mt/user-http-request :crowberto :post 200 (str url "/preview") body)]
+                  (is (= {:freeQuota 10,
+                          :totalEstimatedRowCount 9,
+                          :canSetReplication true,
+
+                          :allQuotas
+                          [{:usage 499990,
+                            :locked false,
+                            :updatedAt "2025-08-05T08:48:11Z",
+                            :quotaType "rows",
+                            :hostingFeature "clickhouse-dwh",
+                            :softLimit 500000}],
+
+                          :allTables
+                          [{:tableSchema "public", :tableName "t1", :estimatedRowCount 9, :hasPkey true, :hasOwnership true}
+                           {:tableSchema "public", :tableName "no_pkey", :estimatedRowCount 11, :hasPkey false, :hasOwnership true}
+                           {:tableSchema "public", :tableName "no_ownership", :estimatedRowCount 11, :hasPkey true, :hasOwnership false}],
+
+                          :replicatedTables
+                          [{:tableSchema "public", :tableName "t1", :estimatedRowCount 9, :hasPkey true, :hasOwnership true}],
+
+                          :tablesWithoutPk
+                          [{:tableSchema "public", :tableName "no_pkey", :estimatedRowCount 11, :hasPkey false, :hasOwnership true}],
+
+                          :tablesWithoutOwnerMatch
+                          [{:tableSchema "public", :tableName "no_ownership", :estimatedRowCount 11, :hasPkey true, :hasOwnership false}]}
+                         resp))))
               (testing "creates"
                 (is (= {} (database-replication.settings/database-replication-connections)))
-                (mt/user-http-request :crowberto :post 200 url)
+                (mt/user-http-request :crowberto :post 200 url body)
                 (is (= 1 (count @hm-state)))
                 (let [hm-conn (first @hm-state)]
                   (is (= {(-> db :id str keyword) {:connection-id (str (:id hm-conn))}}
                          (database-replication.settings/database-replication-connections)))
                   (is (= (dissoc hm-conn :id)
-                         {:type "pg_replication", :secret {:credentials (assoc db-details :port 5432 :dbtype "postgresql")}}))))
+                         {:type "pg_replication",
+                          :secret {:credentials (assoc db-details :port 5432 :dbtype "postgresql")
+                                   :schema-filters [{:type "exclude", :patterns "not_pub*"}]}}))))
               (testing "deletes"
                 (mt/user-http-request :crowberto :delete 204 url)
                 (is (= 0 (count @hm-state)))
