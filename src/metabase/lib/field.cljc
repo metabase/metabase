@@ -437,7 +437,10 @@
                                    (select-renamed-keys col field-ref-propagated-keys-for-non-inherited-columns)))
         id-or-name        (or (lib.field.util/inherited-column-name col)
                               (when (and (= lib.ref/*ref-style* :ref.style/default)
-                                         (#{:source/joins :source/implicitly-joinable} (:lib/source col)))
+                                         ;; TODO (Cam 8/29/25) -- should implicitly joined columns use name refs too?
+                                         ;; I think I determined the answer was no
+                                         ;; in [[metabase.lib.field.resolution/resolve-name-in-implicit-join-this-stage]].
+                                         (= (:lib/source col) :source/joins))
                                 ((some-fn :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) col))
                               ((some-fn :id :lib/deduplicated-name :lib/original-name :name) col))]
     [:field options id-or-name]))

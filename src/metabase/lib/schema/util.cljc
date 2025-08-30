@@ -72,14 +72,19 @@
            (every? mbql-clause? xs))))
 
 (defn- opts-distinct-key [opts]
-  ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly faster.
-  (reduce-kv (fn [acc k _v]
-               (if (or (qualified-keyword? k)
-                       (#{:base-type :effective-type} k))
-                 (dissoc acc k)
-                 acc))
-             opts
-             opts))
+  ;; if opts have join-alias they should be distinct by source field. Probably shouldn't be propagated here anyway
+  (let [opts (cond-> opts
+               (:join-alias opts)
+               (dissoc :source-field))]
+    ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly
+    ;; faster.
+    (reduce-kv (fn [acc k _v]
+                 (if (or (qualified-keyword? k)
+                         (#{:base-type :effective-type} k))
+                   (dissoc acc k)
+                   acc))
+               opts
+               opts)))
 
 (mu/defn mbql-clause-distinct-key
   "For deduplicating MBQL clauses: keep just the keys in options that are essential to distinguish one clause from

@@ -16,6 +16,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -609,12 +610,12 @@
      (-> (calculate-join-alias query a-join home-col)
          (generate-unique-name (keep :alias (:joins stage)))))))
 
-(mu/defn add-default-alias :- ::lib.schema.join/join
+(mu/defn add-default-alias :- ::lib.join.util/partial-join
   "Add a default generated `:alias` to a join clause that does not already have one or that specifically requests a
   new one."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   a-join       :- ::lib.join.util/join-with-optional-alias]
+   a-join       :- ::lib.join.util/partial-join]
   (if (and (contains? a-join :alias) (not (contains? a-join ::replace-alias)))
     ;; if the join clause comes with an alias and doesn't need a new one, keep it and assume that the condition fields
     ;; have the right join-aliases too
@@ -740,7 +741,9 @@
                                (seq suggested-conditions) (with-join-conditions suggested-conditions)
                                ;; If there are aggregations or breakouts on this stage, drop the `:fields`.
                                summaries?                 (with-join-fields nil))
-         a-join              (add-default-alias query stage-number a-join)]
+         a-join              (->> a-join
+                                  (add-default-alias query stage-number)
+                                  (lib.normalize/normalize ::lib.schema.join/join))]
      (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
                                                                      (conj (vec existing-joins) a-join))))))
 

@@ -39,6 +39,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.large-int :as large-int]
@@ -60,13 +61,6 @@
    [:or
     ::lib.schema.id/field
     :string]])
-
-(mu/defn- simplify-ref-options :- ::simplified-ref
-  [a-ref :- ::lib.schema.ref/ref]
-  (lib/update-options a-ref (fn [opts]
-                              (-> opts
-                                  (->> (m/filter-keys simple-keyword?))
-                                  (dissoc :base-type :effective-type)))))
 
 (mr/def ::external-remapping
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
@@ -162,11 +156,11 @@
    fields :- ::lib.schema/fields]
   (let [field->remapped-col (into {}
                                   (map (fn [{:keys [original-field-clause new-field-clause]}]
-                                         [(simplify-ref-options original-field-clause) new-field-clause]))
+                                         [(lib.schema.util/mbql-clause-distinct-key original-field-clause) new-field-clause]))
                                   infos)]
     (mapv
      (fn [field-ref]
-       (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name] (field->remapped-col (simplify-ref-options field-ref))]
+       (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name] (field->remapped-col (lib.schema.util/mbql-clause-distinct-key field-ref))]
          (lib/update-options field-ref assoc ::original-field-dimension-id new-field-dimension-id)
          field-ref))
      fields)))
@@ -178,12 +172,12 @@
    fields :- ::lib.schema/fields]
   (let [normalized-clause->new-options (into {}
                                              (map (juxt (fn [{a-ref :new-field-clause}]
-                                                          (simplify-ref-options a-ref))
+                                                          (lib.schema.util/mbql-clause-distinct-key a-ref))
                                                         (fn [{a-ref :new-field-clause}]
                                                           (lib/options a-ref))))
                                              infos)]
     (mapv (fn [a-ref]
-            (let [options (normalized-clause->new-options (simplify-ref-options a-ref))]
+            (let [options (normalized-clause->new-options (lib.schema.util/mbql-clause-distinct-key a-ref))]
               (cond-> a-ref
                 options (lib/update-options #(merge options %)))))
           fields)))
@@ -207,7 +201,7 @@
   (when (seq order-by-clauses)
     (into []
           (comp (map (fn [[direction opts field, :as order-by-clause]]
-                       (if-let [remapped-col (get field->remapped-col (simplify-ref-options field))]
+                       (if-let [remapped-col (get field->remapped-col (lib.schema.util/mbql-clause-distinct-key field))]
                          [direction opts (lib/fresh-uuids remapped-col)]
                          order-by-clause)))
                 (distinct))
@@ -219,7 +213,7 @@
   (when (seq breakouts)
     (into []
           (comp (mapcat (fn [a-ref]
-                          (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name  :as remapped-col] (get field->remapped-col (simplify-ref-options a-ref))]
+                          (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name  :as remapped-col] (get field->remapped-col (lib.schema.util/mbql-clause-distinct-key a-ref))]
                             [(lib/fresh-uuids remapped-col)
                              (lib/update-options a-ref assoc ::original-field-dimension-id new-field-dimension-id)]
                             [a-ref])))
@@ -238,7 +232,7 @@
     (let [existing-fields (add-fk-remaps-rewrite-existing-fields infos fields)]
       (into []
             (comp cat
-                  (m/distinct-by simplify-ref-options))
+                  (m/distinct-by lib.schema.util/mbql-clause-distinct-key))
             [existing-fields
              (map :new-field-clause infos)]))))
 
@@ -255,7 +249,7 @@
             ;; make a map of field-id-clause -> fk-clause from the tuples
             original->remapped (into {}
                                      (map (fn [{:keys [original-field-clause new-field-clause]}]
-                                            [(simplify-ref-options original-field-clause) new-field-clause]))
+                                            [(lib.schema.util/mbql-clause-distinct-key original-field-clause) new-field-clause]))
                                      infos)
             new-breakout       (add-fk-remaps-rewrite-breakout original->remapped breakout)
             new-order-by       (add-fk-remaps-rewrite-order-by original->remapped order-by)
@@ -295,8 +289,8 @@
                           ;; see [[multiple-fk-remaps-test-in-joins-e2e-test]].
                           (m/distinct-by (fn [field-ref]
                                            (-> field-ref
-                                               simplify-ref-options
-                                               (lib/update-options dissoc :source-field))))
+                                               (lib/update-options dissoc :source-field)
+                                               lib.schema.util/mbql-clause-distinct-key)))
                           (add-fk-remaps-to-fields infos fields))]
           (assoc join :fields new-fields))))))
 
