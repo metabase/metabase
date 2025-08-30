@@ -101,6 +101,14 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 There aren't (yet) any model features available for Databricks.
 
+## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
+
+When **multi-catalog is not enabled**, you can route between catalogs on the same host. If multi-catalog is enabled, then you can only route between databases on separate hosts.
+
+See [Database routing](../../permissions/database-routing.md).
+
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).

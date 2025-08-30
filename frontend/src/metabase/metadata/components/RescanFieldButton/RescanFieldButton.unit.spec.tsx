@@ -43,7 +43,7 @@ describe("RescanFieldButton", () => {
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/field/${field.id}/rescan_values`, {
+      fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
         method: "POST",
       }),
     ).toHaveLength(1);
@@ -65,7 +65,7 @@ describe("RescanFieldButton", () => {
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/field/${field.id}/rescan_values`, {
+      fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
         method: "POST",
       }),
     ).toHaveLength(1);
@@ -80,7 +80,7 @@ describe("RescanFieldButton", () => {
     expect(button).toHaveTextContent("Scan triggered!");
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/field/${field.id}/rescan_values`, {
+      fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
         method: "POST",
       }),
     ).toHaveLength(2);
@@ -101,18 +101,16 @@ describe("RescanFieldButton", () => {
   it("should show error message toast", async () => {
     const { field } = setup();
 
-    fetchMock.post(
-      `path:/api/field/${field.id}/rescan_values`,
-      { status: 500 },
-      { overwriteRoutes: true },
-    );
+    fetchMock.modifyRoute(`field-${field.id}-rescan-values`, {
+      response: { status: 500 },
+    });
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Re-scan field");
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/field/${field.id}/rescan_values`, {
+      fetchMock.callHistory.calls(`path:/api/field/${field.id}/rescan_values`, {
         method: "POST",
       }),
     ).toHaveLength(1);

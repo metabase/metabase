@@ -16,8 +16,10 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockNativeQuery,
   createMockTable,
   createMockTableColumnOrderSetting,
+  createMockTemplateTag,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import {
@@ -169,7 +171,6 @@ describe("getIsResultDirty", () => {
       const filter = [">", ["field", ORDERS.TOTAL, null], 20];
       const join = {
         alias: "Products",
-        ident: "LUso-laB06h37QT_phn2R",
         fields: "all",
         "source-table": PRODUCTS_ID,
         condition: [
@@ -258,7 +259,9 @@ describe("getIsResultDirty", () => {
 
   describe("native query", () => {
     function getCard(native) {
-      return getBaseCard({ dataset_query: { type: "native", native } });
+      return getBaseCard({
+        dataset_query: { type: "native", native },
+      });
     }
 
     function getState(lastRunCardQuery, cardQuery) {
@@ -275,8 +278,14 @@ describe("getIsResultDirty", () => {
 
     it("should be dirty if template-tags differ", () => {
       const state = getState(
-        { "template-tags": { foo: {} } },
-        { "template-tags": { bar: {} } },
+        createMockNativeQuery({
+          query: "SELECT {{foo}}",
+          "template-tags": { foo: createMockTemplateTag({ name: "foo" }) },
+        }),
+        createMockNativeQuery({
+          query: "SELECT {{bar}}",
+          "template-tags": { bar: createMockTemplateTag({ name: "bar" }) },
+        }),
       );
       expect(getIsResultDirty(state)).toBe(true);
     });

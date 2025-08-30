@@ -239,7 +239,9 @@
                                                    (meta/field-metadata :checkins :venue-id)
                                                    (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
-        columns (lib/filterable-columns query)
+        columns (into []
+                      (lib.field.util/add-source-and-desired-aliases-xform query)
+                      (lib/filterable-columns query))
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
         temporal-operators [:!= := :< :> :between :is-null :not-null]
         coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
@@ -259,10 +261,7 @@
             "Venues__PRICE"
             "CATEGORIES__via__CATEGORY_ID__via__Venues__ID"
             "CATEGORIES__via__CATEGORY_ID__via__Venues__NAME"]
-           (into []
-                 (comp (lib.field.util/add-source-and-desired-aliases-xform query)
-                       (map :lib/desired-column-alias))
-                 columns)))
+           (map :lib/desired-column-alias columns)))
     (testing "Operators are attached to proper columns"
       (is (=? {"ID" pk-operators,
                "NAME" text-operators,
@@ -974,3 +973,14 @@
                         {:lib/uuid "00000000-0000-0000-0000-000000000004"}
                         [:= {:lib/uuid "00000000-0000-0000-0000-000000000005"} 7 8]
                         [:= {:lib/uuid "00000000-0000-0000-0000-000000000006"} 9 10]]]]}))))
+
+(deftest ^:parallel filter-display-name-for-year-bucketing-test
+  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM ORDERS;")]
+    (is (= "Created At is Jan 1 – Dec 31, 2023"
+           (lib/display-name query [:= {:lib/uuid "79e513f8-af80-4c15-96b6-e72eff7f37cc"}
+                                    [:field {:effective-type :type/Integer
+                                             :base-type      :type/DateTime
+                                             :temporal-unit  :year
+                                             :lib/uuid       "1fe5dc66-54af-4368-9e4a-1e64a1fbe484"}
+                                     "CREATED_AT"]
+                                    "2023-01-01T00:00:00Z"])))))

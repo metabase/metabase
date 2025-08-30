@@ -25,6 +25,7 @@
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
+   [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.util :as sync-util]
@@ -32,9 +33,10 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
@@ -134,7 +136,7 @@
   (set (filter (fn [db-id]
                  (try
                    (when-let [db (t2/select-one :model/Database :id db-id)]
-                     (driver.u/supports? (:engine db) :nested-queries db))
+                     (driver.u/supports? (driver.u/database->driver db) :nested-queries db))
                    (catch Throwable e
                      (log/error e "Error determining whether Database supports nested queries"))))
                (t2/select-pks-set :model/Database))))
@@ -819,7 +821,7 @@
   "Add a new `Database`."
   [_route-params
    _query-params
-   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]}
+   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source provider_name]}
    :- [:map
        [:name              ms/NonBlankString]
        [:engine            DBEngineString]
@@ -829,7 +831,8 @@
        [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:auto_run_queries  {:optional true}  [:maybe :boolean]]
        [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
-       [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]]]
+       [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
+       [:provider_name     {:optional true}  [:maybe :string]]]]
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
@@ -838,7 +841,7 @@
   (let [details-or-error (test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
-      ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
+      ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
                                       :model/Database
@@ -849,6 +852,7 @@
                                         :is_full_sync is_full_sync
                                         :is_on_demand is_on_demand
                                         :cache_ttl    cache_ttl
+                                        :provider_name provider_name
                                         :creator_id   api/*current-user-id*}
                                        (when schedules
                                          (sync.schedules/schedule-map->cron-strings schedules))
@@ -914,18 +918,19 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-           auto_run_queries refingerprint cache_ttl settings]} :- [:map
-                                                                   [:name               {:optional true} [:maybe ms/NonBlankString]]
-                                                                   [:engine             {:optional true} [:maybe DBEngineString]]
-                                                                   [:refingerprint      {:optional true} [:maybe :boolean]]
-                                                                   [:details            {:optional true} [:maybe ms/Map]]
-                                                                   [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
-                                                                   [:description        {:optional true} [:maybe :string]]
-                                                                   [:caveats            {:optional true} [:maybe :string]]
-                                                                   [:points_of_interest {:optional true} [:maybe :string]]
-                                                                   [:auto_run_queries   {:optional true} [:maybe :boolean]]
-                                                                   [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
-                                                                   [:settings           {:optional true} [:maybe ms/Map]]]]
+           auto_run_queries refingerprint cache_ttl settings provider_name]} :- [:map
+                                                                                 [:name               {:optional true} [:maybe ms/NonBlankString]]
+                                                                                 [:engine             {:optional true} [:maybe DBEngineString]]
+                                                                                 [:refingerprint      {:optional true} [:maybe :boolean]]
+                                                                                 [:details            {:optional true} [:maybe ms/Map]]
+                                                                                 [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+                                                                                 [:description        {:optional true} [:maybe :string]]
+                                                                                 [:caveats            {:optional true} [:maybe :string]]
+                                                                                 [:points_of_interest {:optional true} [:maybe :string]]
+                                                                                 [:auto_run_queries   {:optional true} [:maybe :boolean]]
+                                                                                 [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
+                                                                                 [:provider_name      {:optional true} [:maybe :string]]
+                                                                                 [:settings           {:optional true} [:maybe ms/Map]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one :model/Database :id id))
         incoming-details  details
@@ -944,33 +949,41 @@
       {:status 400
        :body   conn-error}
       ;; no error, proceed with update
-      (do
-       ;; TODO - is there really a reason to let someone change the engine on an existing database?
-       ;;       that seems like the kind of thing that will almost never work in any practical way
-       ;; TODO - this means one cannot unset the description. Does that matter?
-        (t2/update! :model/Database id
-                    (merge
-                     (m/remove-vals
-                      nil?
-                      (merge
-                       {:name               name
-                        :engine             engine
-                        :details            details
-                        :refingerprint      refingerprint
-                        :is_full_sync       full-sync?
-                        :is_on_demand       on-demand?
-                        :description        description
-                        :caveats            caveats
-                        :points_of_interest points_of_interest
-                        :auto_run_queries   auto_run_queries}
-                      ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
-                       (when (seq settings)
-                         {:settings (into {}
-                                          (remove (fn [[_k v]] (nil? v)))
-                                          (merge (:settings existing-database) settings))})))
-                    ;; cache_field_values_schedule can be nil
-                     (when schedules
-                       (sync.schedules/schedule-map->cron-strings schedules))))
+      (let [pending-settings (into {}
+                                   ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                                   (remove (fn [[_k v]] (nil? v)))
+                                   (merge (:settings existing-database) settings))
+            updates    (merge
+                        ;; TODO - is there really a reason to let someone change the engine on an existing database?
+                        ;;       that seems like the kind of thing that will almost never work in any practical way
+                        ;; TODO - this means one cannot unset the description. Does that matter?
+                        (u/select-keys-when
+                         {:name               name
+                          :engine             engine
+                          :details            details
+                          :refingerprint      refingerprint
+                          :is_full_sync       full-sync?
+                          :is_on_demand       on-demand?
+                          :description        description
+                          :caveats            caveats
+                          :points_of_interest points_of_interest
+                          :auto_run_queries   auto_run_queries
+                          :settings           (when (seq settings) pending-settings)
+                          :provider_name      provider_name}
+                         :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
+                                    :description :caveats :points_of_interest :auto_run_queries :settings}
+                         :present #{:provider_name})
+                        ;; cache_field_values_schedule can be nil
+                        (when schedules
+                          (sync.schedules/schedule-map->cron-strings schedules)))
+            pending-db (merge existing-database updates)]
+        ;; pass in this predicate to break circular dependency
+        (let [driver-supports? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
+          ;; ensure we're not trying to set anything we should not be able to.
+          ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
+          (doseq [setting-kw (keys pending-settings)]
+            (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)))
+        (t2/update! :model/Database id updates)
        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
        ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
@@ -1271,3 +1284,55 @@
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map schema.table/card->virtual-table))))
+
+;;; -------------------------------- GET /api/database/:id/settings-available ------------------------------------
+
+(defn- database-local-settings
+  "Return a sorted map of all database-local settings with their enabled status for the given database.
+   Settings that require unavailable premium features are omitted entirely."
+  [database]
+  (let [settings         @setting/registered-settings
+        driver           (driver.u/database->driver database)
+        driver-supports? (fn [feature] (driver.u/supports? driver feature database))]
+    (into (sorted-map)
+          (for [[setting-name {:keys [feature database-local driver-feature enabled?] :as setting-def}] settings
+                :when (and  (not= :never database-local)
+                            (or (nil? feature) (premium-features/has-feature? feature)))]
+            [setting-name
+             (let [reasons (cond-> []
+                             (and enabled? (not (enabled?)))
+                             (conj {:key     :setting-disabled
+                                    :type    :error
+                                    :message "This setting is disabled for all databases."})
+
+                             (and driver-feature (not (driver-supports? driver-feature)))
+                             (conj {:key     :driver-feature-missing
+                                    :type    :error
+                                    :message (format "The %s driver does not support the `%s` feature"
+                                                     (driver/display-name driver)
+                                                     (name driver-feature))})
+
+                             true
+                             (into (setting/disabled-for-db-reasons setting-def database)))
+                   enabled? (every? (comp #{:warning} :type) reasons)]
+               (if (empty? reasons)
+                 {:enabled enabled?}
+                 {:enabled enabled?, :reasons reasons}))]))))
+
+(mr/def ::available-settings
+  [:map-of
+   :keyword
+   [:map
+    [:enabled :boolean]
+    [:reasons {:optional true}
+     [:sequential [:map
+                   [:key :keyword]
+                   [:type [:enum :error :warning]]
+                   [:message [:or :string [:fn i18n/localized-string?]]]]]]]])
+
+(api.macros/defendpoint :get "/:id/settings-available" :- [:map [:settings ::available-settings]]
+  "Get all database-local settings and their availability for the given database."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [database (api/read-check (get-database id))]
+    {:settings (database-local-settings database)}))

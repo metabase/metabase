@@ -253,6 +253,7 @@ export const ParameterValueWidget = ({
       onChange={toggle}
       position="bottom-start"
       trapFocus
+      middlewares={{ flip: true, shift: true }}
       {...popoverProps}
     >
       <Popover.Target>
@@ -272,6 +273,7 @@ export const ParameterValueWidget = ({
               className={className}
               ariaLabel={placeholder}
               mimicMantine={mimicMantine}
+              hasPopover
             >
               {typeIcon}
               {prefix && <div className={S.Prefix}>{prefix}</div>}

@@ -131,7 +131,8 @@
                               {:name "A" :enabled true}
                               {:name "C" :enabled false}
                               {:name "D" :enabled false}
-                              {:name "E" :enabled false}]}
+                              {:name "E" :enabled false}
+                              {:name "F" :enabled false}]}
           expected-img-cell {:type :element,
                              :attrs
                              {:src "https://example.com/image.jpg",

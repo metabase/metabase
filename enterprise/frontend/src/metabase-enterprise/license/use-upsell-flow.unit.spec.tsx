@@ -163,7 +163,7 @@ describe("useUpsellFlow", () => {
         );
       });
 
-      setupTokenStatusEndpoint(true);
+      setupTokenStatusEndpoint({ valid: true });
       view();
 
       await waitFor(() => {

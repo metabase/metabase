@@ -17,6 +17,7 @@ import {
 } from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
 import { PIE_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./use-chart-events";
@@ -30,6 +31,7 @@ export function PieChart(props: VisualizationProps) {
     settings,
     onRender,
     isDashboard,
+    isDocument,
     isFullscreen,
   } = props;
   const hoveredIndex = props.hovered?.index;
@@ -171,6 +173,7 @@ export function PieChart(props: VisualizationProps) {
   };
 
   useCloseTooltipOnScroll(chartRef);
+  useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   return (
     <ChartWithLegend
@@ -184,6 +187,7 @@ export function PieChart(props: VisualizationProps) {
       hovered={props.hovered}
       isDashboard={isDashboard}
       onToggleSeriesVisibility={handleToggleSeriesVisibility}
+      isDocument={isDocument}
     >
       <ResponsiveEChartsRenderer
         ref={containerRef}

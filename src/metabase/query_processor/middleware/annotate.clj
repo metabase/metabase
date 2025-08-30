@@ -8,7 +8,6 @@
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util :as lib.util]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -116,7 +115,7 @@
 (mu/defn- needs-type-inference?
   [query                                       :- ::lib.schema/query
    {initial-cols :cols, :as _initial-metadata} :- ::metadata]
-  (and (= (:lib/type (lib.util/query-stage query 0)) :mbql.stage/native)
+  (and (= (:lib/type (lib/query-stage query 0)) :mbql.stage/native)
        (or (empty? initial-cols)
            (every? (fn [col]
                      (let [base-type ((some-fn :base-type :base_type) col)]

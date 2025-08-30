@@ -15,8 +15,8 @@ const MockUsers = new Array(100).fill(0).map((_, index) =>
 );
 
 const setup = () => {
-  fetchMock.get("path:/api/user", (_: any, __: any, request: Request) => {
-    const params = new URL(request.url).searchParams;
+  fetchMock.get("path:/api/user", (call) => {
+    const params = new URL(call.url).searchParams;
     const limit = parseInt(params.get("limit") ?? "0");
     const offset = parseInt(params.get("offset") ?? "0");
     return { data: MockUsers.slice(offset, offset + limit) };

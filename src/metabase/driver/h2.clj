@@ -70,7 +70,8 @@
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
                               :uploads                   true
-                              :database-routing          true}]
+                              :database-routing          true
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -265,11 +266,20 @@
   (check-read-only-statements query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
-(defmethod driver/execute-write-query! :h2
-  [driver query]
+(mu/defmethod driver/execute-write-query! :h2
+  [driver :- :keyword
+   query  :- [:map
+              [:type   [:= :native]]
+              [:native [:map
+                        [:query :string]]]]]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
+
+(defmethod driver/execute-raw-queries! :h2
+  [driver connection-details queries]
+  ;; FIXME: need to check the equivalent of check-native-query-not-using-default-user and check-action-commands-allowed
+  ((get-method driver/execute-raw-queries! :sql-jdbc) driver connection-details queries))
 
 (defn- dateadd [unit amount expr]
   (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone" "date"} expr)]
@@ -297,18 +307,19 @@
     (dateadd unit amount hsql-form)))
 
 (defmethod driver/humanize-connection-error-message :h2
-  [_ message]
-  (condp re-matches message
-    #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
-    :implicitly-relative-db-file-path
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
+      :implicitly-relative-db-file-path
 
-    #"^Database .* not found, .*$"
-    :db-file-not-found
+      #"^Database .* not found, .*$"
+      :db-file-not-found
 
-    #"^Wrong user name or password .*$"
-    :username-or-password-incorrect
+      #"^Wrong user name or password .*$"
+      :username-or-password-incorrect
 
-    message))
+      message)))
 
 (defmethod driver/db-default-timezone :h2
   [_driver _database]
@@ -532,7 +543,9 @@
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
-  (apply sql-jdbc.sync/post-filtered-active-tables args))
+  ;; HACK: we assume that all h2 tables are writable
+  (eduction (map #(assoc % :is_writable true))
+            (apply sql-jdbc.sync/post-filtered-active-tables args)))
 
 (defmethod sql-jdbc.sync/excluded-schemas :h2
   [_]

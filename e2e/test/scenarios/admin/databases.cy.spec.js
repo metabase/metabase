@@ -9,7 +9,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-import { visitDatabase } from "./helpers/e2e-database-helpers";
+import { visitDatabase, waitForDbSync } from "./helpers/e2e-database-helpers";
 
 const { H } = cy;
 const { IS_ENTERPRISE } = Cypress.env();
@@ -42,7 +42,7 @@ describe(
 
 describe("admin > database > add", () => {
   function toggleFieldWithDisplayName(displayName) {
-    cy.findByLabelText(displayName).click();
+    cy.findByLabelText(new RegExp(displayName)).click({ force: true });
   }
 
   function selectFieldOption(fieldName, option) {
@@ -79,20 +79,6 @@ describe("admin > database > add", () => {
     return cy.wait("@createDatabase");
   }
 
-  // we need to check for an indefinite number of these requests because we don't know how many polls it's going to take
-  function waitForDbSync(maxRetries = 10) {
-    if (maxRetries === 0) {
-      throw new Error("Timed out waiting for database sync");
-    }
-    cy.wait("@getDatabases").then(({ response }) => {
-      if (
-        response.body.data.some((db) => db.initial_sync_status !== "complete")
-      ) {
-        waitForDbSync(maxRetries - 1);
-      }
-    });
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -124,17 +110,17 @@ describe("admin > database > add", () => {
 
         cy.findByTestId("database-form").within(() => {
           cy.findByText("Show advanced options").click();
-          cy.findByLabelText("Rerun queries for simple explorations").should(
+          cy.findByLabelText(/Rerun queries for simple explorations/).should(
             "have.attr",
-            "aria-checked",
+            "data-checked",
             "true",
           );
           // Reproduces (metabase#14334)
           cy.findByText("Additional JDBC connection string options");
           // Reproduces (metabase#17450)
-          cy.findByLabelText("Choose when syncs and scans happen")
-            .click()
-            .should("have.attr", "aria-checked", "true");
+          cy.findByLabelText(/Choose when syncs and scans happen/)
+            .click({ force: true })
+            .should("have.attr", "data-checked", "true");
 
           cy.findByLabelText(
             "Never, I'll do this manually if I need to",
@@ -168,16 +154,18 @@ describe("admin > database > add", () => {
         });
 
         const confirmSSLFields = (visible, hidden) => {
-          visible.forEach((field) => cy.findByText(field));
-          hidden.forEach((field) => cy.findByText(field).should("not.exist"));
+          visible.forEach((field) => cy.findByText(new RegExp(field)));
+          hidden.forEach((field) =>
+            cy.findByText(new RegExp(field)).should("not.exist"),
+          );
         };
 
-        const ssl = "Use a secure connection (SSL)",
+        const ssl = "Use a secure connection \\(SSL\\)",
           sslMode = "SSL Mode",
           useClientCert = "Authenticate client certificate?",
-          clientPemCert = "SSL Client Certificate (PEM)",
-          clientPkcsCert = "SSL Client Key (PKCS-8/DER)",
-          sslRootCert = "SSL Root Certificate (PEM)";
+          clientPemCert = "SSL Client Certificate \\(PEM\\)",
+          clientPkcsCert = "SSL Client Key \\(PKCS-8/DER\\)",
+          sslRootCert = "SSL Root Certificate \\(PEM\\)";
 
         // initially, all SSL sub-properties should be hidden
         confirmSSLFields(
@@ -228,16 +216,14 @@ describe("admin > database > add", () => {
       });
 
       it("should add Postgres database and redirect to db info page (metabase#12972, metabase#14334, metabase#17450)", () => {
-        cy.findByRole("dialog").within(() => {
-          cy.findByText(
-            "Your database was added! Want to configure permissions?",
-          ).should("exist");
-          cy.button("Maybe later").click();
-        });
-
         cy.findByRole("status").within(() => {
           cy.findByText("Done!");
         });
+
+        cy.findByRole("link", { name: "Manage permissions" }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
 
         cy.findByTestId("database-header-section").should(
           "contain.text",
@@ -250,9 +236,9 @@ describe("admin > database > add", () => {
           "Connected",
         );
 
-        cy.findByLabelText("Choose when syncs and scans happen").should(
+        cy.findByLabelText(/Choose when syncs and scans happen/).should(
           "have.attr",
-          "aria-checked",
+          "data-checked",
           "true",
         );
 
@@ -261,19 +247,6 @@ describe("admin > database > add", () => {
           "aria-selected",
           "true",
         );
-      });
-
-      it("should show a modal allowing you to redirect to the permissions page", () => {
-        cy.findByRole("dialog").within(() => {
-          cy.findByText(
-            "Your database was added! Want to configure permissions?",
-          ).should("exist");
-          cy.findByRole("link", { name: "Configure permissions" }).click();
-        });
-
-        cy.findByTestId("permissions-editor")
-          .findByText(/QA Postgres12/)
-          .should("exist");
       });
     });
 
@@ -304,13 +277,6 @@ describe("admin > database > add", () => {
 
         cy.url().should("match", /\/admin\/databases\/\d/);
 
-        cy.findByRole("dialog").within(() => {
-          cy.findByText(
-            "Your database was added! Want to configure permissions?",
-          ).should("exist");
-          cy.button("Maybe later").click();
-        });
-
         cy.findByTestId("database-header-section").should(
           "contain.text",
           "QA Mongo",
@@ -320,6 +286,11 @@ describe("admin > database > add", () => {
           cy.findByText("Syncing…");
           cy.findByText("Done!");
         });
+
+        cy.findByRole("link", { name: "Manage permissions" }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
       },
     );
 
@@ -368,13 +339,6 @@ describe("admin > database > add", () => {
 
         cy.url().should("match", /\/admin\/databases\/\d/);
 
-        cy.findByRole("dialog").within(() => {
-          cy.findByText(
-            "Your database was added! Want to configure permissions?",
-          ).should("exist");
-          cy.button("Maybe later").click();
-        });
-
         cy.findByTestId("database-header-section").should(
           "contain.text",
           "QA Mongo",
@@ -384,6 +348,11 @@ describe("admin > database > add", () => {
           cy.findByText("Syncing…");
           cy.findByText("Done!");
         });
+
+        cy.findByRole("link", { name: "Manage permissions" }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
       },
     );
 
@@ -416,13 +385,6 @@ describe("admin > database > add", () => {
 
       cy.url().should("match", /\/admin\/databases\/\d/);
 
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(
-          "Your database was added! Want to configure permissions?",
-        ).should("exist");
-        cy.button("Maybe later").click();
-      });
-
       cy.findByTestId("database-header-section").should(
         "contain.text",
         "QA MySQL8",
@@ -430,6 +392,11 @@ describe("admin > database > add", () => {
       cy.findByRole("status").findByText("Syncing…").should("be.visible");
       cy.findByRole("status").findByText("Syncing…").should("not.exist");
       cy.findByRole("status").findByText("Done!").should("be.visible");
+
+      cy.findByRole("link", { name: "Manage permissions" }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
     });
   });
 
@@ -606,7 +573,7 @@ describe("scenarios > admin > databases > sample database", () => {
       "should not be possible to change database type for the Sample Database (metabase#16382)",
     );
     cy.findByLabelText("Database type")
-      .should("have.text", "H2")
+      .should("have.value", "H2")
       .and("be.disabled");
 
     cy.log("should correctly display connection settings");
@@ -619,21 +586,22 @@ describe("scenarios > admin > databases > sample database", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show advanced options").click();
     // `auto_run_queries` toggle should be ON by default
-    cy.findByLabelText("Rerun queries for simple explorations")
-      .should("have.attr", "aria-checked", "true")
-      .click();
+    cy.findByLabelText(/Rerun queries for simple explorations/)
+      .should("have.attr", "data-checked", "true")
+      .click({ force: true });
     // Reported failing in v0.36.4
     cy.log(
       "should respect the settings for automatic query running (metabase#13187)",
     );
-    cy.findByLabelText("Rerun queries for simple explorations").should(
-      "have.attr",
-      "aria-checked",
-      "false",
+    cy.findByLabelText(/Rerun queries for simple explorations/).should(
+      "not.have.attr",
+      "data-checked",
     );
 
     cy.log("change the metadata_sync period");
-    cy.findByLabelText("Choose when syncs and scans happen").click();
+    cy.findByLabelText(/Choose when syncs and scans happen/).click({
+      force: true,
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Hourly").click();
     H.popover().within(() => {
@@ -687,7 +655,9 @@ describe("scenarios > admin > databases > sample database", () => {
     visitDatabase(SAMPLE_DB_ID);
     editDatabase();
     H.modal().findByText("Show advanced options").click();
-    cy.findByLabelText("Choose when syncs and scans happen").click();
+    cy.findByLabelText(/Choose when syncs and scans happen/).click({
+      force: true,
+    });
     cy.button("Save changes").click();
     cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
       expect(body.is_full_sync).to.equal(false);

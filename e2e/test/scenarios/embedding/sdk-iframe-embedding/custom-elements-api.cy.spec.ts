@@ -3,6 +3,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
+  THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -306,6 +307,85 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       H.getSimpleEmbedIframeContent()
         .findByText(/Filter by this value/)
         .should("not.exist");
+    });
+
+    it("should allow saving a question when `is-save-enabled` is true", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-question question-id="new" is-save-enabled />
+      `);
+
+      H.getSimpleEmbedIframeContent().findByText("Orders").click();
+      H.getSimpleEmbedIframeContent().findByText("Save").should("be.visible");
+    });
+
+    it("should not allow saving a question when `is-save-enabled` is false", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-question question-id="new" is-save-enabled="false" />
+      `);
+
+      H.getSimpleEmbedIframeContent().findByText("Orders").click();
+      H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
+    });
+
+    it("should set initial sql parameters with `initial-sql-parameters`", () => {
+      H.createNativeQuestion({
+        name: "SQL question with parameter",
+        native: {
+          query: "select * from orders where id = {{id}}",
+          "template-tags": {
+            id: {
+              id: "6b8b10ef-0104-1047-1e5v-2701dfc64356",
+              name: "id",
+              "display-name": "ID",
+              type: "number",
+              required: true,
+            },
+          },
+        },
+      }).then(({ body: { id: questionId } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="${questionId}" initial-sql-parameters='{"id": 123}' />
+        `);
+
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("query-visualization-root")
+          .findByText("123")
+          .should("be.visible");
+      });
+    });
+
+    it("should save a new question to a target collection when `target-collection` is set", () => {
+      cy.log("Create a new collection to save the question to");
+
+      H.visitCustomHtmlPage(`
+          ${H.getNewEmbedScriptTag()}
+          ${H.getNewEmbedConfigurationScript()}
+          <metabase-question question-id="new" drills="false" is-save-enabled target-collection="${THIRD_COLLECTION_ID}" />
+        `);
+
+      cy.intercept("POST", "/api/card").as("createCard");
+
+      cy.log("Create a new question and save it");
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByText("Orders").click();
+        cy.findByText("Save").click();
+
+        cy.findByRole("dialog").within(() => {
+          cy.findByText("Where do you want to save this?").should("not.exist");
+
+          cy.findByRole("button", { name: "Save" }).click();
+        });
+
+        cy.wait("@createCard").then(({ response }) => {
+          expect(response?.body.collection_id).to.equal(THIRD_COLLECTION_ID);
+        });
+      });
     });
   });
 

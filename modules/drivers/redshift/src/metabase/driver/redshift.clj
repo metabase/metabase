@@ -34,15 +34,17 @@
 
 (driver/register! :redshift, :parent #{:postgres})
 
-(doseq [[feature supported?] {:connection-impersonation  true
-                              :describe-fields           true
-                              :describe-fks              true
-                              :expression-literals       true
-                              :identifiers-with-spaces   false
-                              :uuid-type                 false
-                              :nested-field-columns      false
-                              :test/jvm-timezone-setting false
-                              :database-routing          true}]
+(doseq [[feature supported?] {:connection-impersonation       true
+                              :describe-fields                true
+                              :describe-fks                   true
+                              :expression-literals            true
+                              :identifiers-with-spaces        false
+                              :uuid-type                      false
+                              :nested-field-columns           false
+                              :test/jvm-timezone-setting      false
+                              :database-routing               true
+                              :metadata/table-existence-check true
+                              :transforms/table               true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -112,7 +114,7 @@
            (map #(dissoc % :type)))
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
-(defmethod driver/describe-database :redshift
+(defmethod driver/describe-database* :redshift
   [driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
   ;;
@@ -272,12 +274,13 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
+     (let [db (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
+                                                  (driver-api/database (driver-api/metadata-provider)))
+                    (u/id db-or-id-or-spec)     db-or-id-or-spec)]
+       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
-       (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
-                                                                                                (driver-api/database (driver-api/metadata-provider)))
-                                                                  (u/id db-or-id-or-spec)     db-or-id-or-spec))
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e

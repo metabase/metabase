@@ -8,7 +8,7 @@ redirect_from:
 
 This page covers how to upgrade to a new Metabase release.
 
-- [Announcement posts for major releases](https://www.)
+- [Announcement posts for major releases](https://www.metabase.com/releases)
 - [Changelogs](https://www.metabase.com/changelog).
 - [Release notes on GitHub](https://github.com/metabase/metabase/releases).
 

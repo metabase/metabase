@@ -32,9 +32,8 @@
       (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
-  [{:keys [id ::lib.join/join-alias], :as metric-metadata}]
-  (let [effective-type (or (:effective-type metric-metadata)
-                           (:base-type metric-metadata)
+  [{:keys [id], join-alias ::lib.join/join-alias, :as metric-metadata}]
+  (let [effective-type (or ((some-fn :effective-type :base-type) metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
                              (let [ag-effective-type (lib.schema.expression/type-of aggregation)]
                                (when (isa? ag-effective-type :type/*)
@@ -145,9 +144,8 @@
           inner-aggregation (first (lib.aggregation/aggregations metric-query))
           inner-meta        (lib.metadata.calculation/metadata metric-query -1 inner-aggregation)]
       (-> inner-meta
-          (assoc :display-name           (:name metric-meta) ; Metric card's name
-                 :lib/hack-original-name (:name metric-meta) ; Metric card's name
-                 :name                   (:name inner-meta)) ; Name of the inner aggregation column
+          (assoc :display-name (:name metric-meta) ; Metric card's name
+                 :name         (:name inner-meta)) ; Name of the inner aggregation column
           ;; If the :metric ref has a :name option, that overrides the metric card's name.
           (cond-> (:name opts) (assoc :name (:name opts)))))
     {:lib/type :metadata/metric

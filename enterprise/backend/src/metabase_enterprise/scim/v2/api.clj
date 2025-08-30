@@ -409,9 +409,9 @@
   any existing members."
   [group-id user-entity-ids]
   (let [user-ids (t2/select-fn-set :id :model/User {:where [:in :entity_id user-entity-ids]})]
-    (when-let [memberships (map
-                            (fn [user-id] {:group group-id :user user-id})
-                            user-ids)]
+    (when-let [memberships (not-empty (map
+                                       (fn [user-id] {:group group-id :user user-id})
+                                       user-ids))]
       (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
       (perms/add-users-to-groups! memberships))))
 

@@ -254,6 +254,16 @@
                                :native   (-> (qp.compile/compile (mt/mbql-query orders {:limit 1}))
                                              (update :query (partial driver/prettify-native-form driver/*driver*)))})))))
 
+(deftest ^:parallel table-exists-test
+  (testing "Make sure checking for table existence works"
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/table-existence-check)
+      (let [venues-table (t2/select-one :model/Table :id (mt/id :venues))
+            fake-table {:name "fake_table_xyz123" :schema (:schema venues-table)}]
+        (is (driver/table-exists? driver/*driver* (mt/db) venues-table)
+            (str "Driver " driver/*driver* " should detect that venues table exists"))
+        (is (not (driver/table-exists? driver/*driver* (mt/db) fake-table))
+            (str "Driver " driver/*driver* " should detect that fake table doesn't exist"))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Begin tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

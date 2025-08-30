@@ -32,7 +32,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newValue = event.target.value;
       if (newValue === "") {
-        setValue(nullable ? null : undefined);
+        setValue(nullable ? null : newValue);
       } else {
         setValue(newValue);
       }

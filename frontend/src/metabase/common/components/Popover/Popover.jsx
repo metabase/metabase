@@ -130,6 +130,7 @@ export default class Popover extends Component {
     }
 
     const tetherOptions = {
+      bodyElement: getPortalRootElement(),
       element: this._popoverElement,
       target: this._getTargetElement(),
     };

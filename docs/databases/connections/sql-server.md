@@ -95,6 +95,8 @@ To connect to Azure SQL, you'll need to set the port to 1433.
 
 ## Database routing
 
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
+
 See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone

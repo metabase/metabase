@@ -97,5 +97,5 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
 });
 
 function sdkRoot() {
-  return cy.get("#metabase-sdk-root");
+  return cy.get(".mb-wrapper").first();
 }

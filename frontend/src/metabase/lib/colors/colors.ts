@@ -4,6 +4,7 @@
 // frontend/src/metabase/css/core/colors.module.css
 // frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
 // frontend/src/metabase/styled-components/theme/css-variables.ts
+// NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
 export const colors = {
   brand: "#509EE3",
   summarize: "#88BF4D",

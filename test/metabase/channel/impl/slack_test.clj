@@ -67,7 +67,7 @@
                 recipient    {:type    :notification-recipient/raw-value
                               :details {:value "#foo"}}
                 processed    (with-redefs [channel.slack/header-text-limit char-limit]
-                               (channel/render-notification :channel/slack notification nil [recipient]))]
+                               (channel/render-notification :channel/slack notification {:recipients [recipient]}))]
             (-> processed first :blocks first :text :text)))]
     (are [dashboard-name rendered-text]
          (= rendered-text (render-dashboard-header dashboard-name 5))
@@ -84,7 +84,7 @@
                 recipient    {:type    :notification-recipient/raw-value
                               :details {:value "#foo"}}
                 processed    (with-redefs [channel.slack/header-text-limit char-limit]
-                               (channel/render-notification :channel/slack notification nil [recipient]))]
+                               (channel/render-notification :channel/slack notification {:recipients [recipient]}))]
             (-> processed first :blocks first :text :text)))]
     (are [card-name rendered-text]
          (= rendered-text (render-card-header card-name 8))
@@ -105,7 +105,7 @@
                       recipient    {:type    :notification-recipient/raw-value
                                     :details {:value "#foo"}}
                       processed    (with-redefs [slack/upload-file! (constantly {:url "a.com", :id "id"})]
-                                     (channel/render-notification :channel/slack notification nil [recipient]))]
+                                     (channel/render-notification :channel/slack notification {:recipients [recipient]}))]
                   (->> processed first :blocks last :fields (map :text))))))]
     (when config/ee-available?
       (testing "When whitelabeling is enabled, branding content should not be included"

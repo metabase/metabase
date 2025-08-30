@@ -51,6 +51,7 @@ export const DataConnectionStep = () => {
         onCancel={onCancel}
         showSampleDatabase={false}
         ContinueWithoutDataSlot={ContinueWithoutDataButton}
+        location="embedding_setup"
       />
     </Stack>
   );

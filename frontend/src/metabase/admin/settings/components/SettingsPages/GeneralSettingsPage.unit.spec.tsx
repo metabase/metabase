@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupDashboardEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -31,6 +32,7 @@ const generalSettings = {
   "humanization-strategy": "simple",
   "enable-xrays": false,
   "allowed-iframe-hosts": "https://cooldashboards.limo",
+  "search-engine": "appdb",
 } as const;
 
 const setup = async () => {
@@ -89,16 +91,15 @@ describe("GeneralSettingsPage", () => {
     });
   });
 
-  it("should make only 4 api calls", async () => {
+  it("should make only 5 api calls", async () => {
     await setup();
 
     await waitFor(() => {
-      const calls = fetchMock.calls();
-      const urls = calls.map((call) => call[0]);
-      expect(urls).toHaveLength(5);
+      const calls = fetchMock.callHistory.calls();
+      expect(calls).toHaveLength(5);
     });
-    const calls = fetchMock.calls();
-    const urls = calls.map((call) => call[0]);
+    const calls = fetchMock.callHistory.calls();
+    const urls = calls.map((call) => call.url);
     expect(urls).toContain("https://mysite.biz/api/health");
     expect(urls).toContainEqual(expect.stringContaining("/api/dashboard/4242"));
     expect(urls).toContainEqual(expect.stringContaining("/api/setting"));
@@ -135,13 +136,13 @@ describe("GeneralSettingsPage", () => {
     await screen.findByDisplayValue("support@mySite.biz");
 
     await waitFor(async () => {
-      const puts = await findPuts();
+      const puts = await findRequests("PUT");
       expect(puts).toHaveLength(2);
     });
 
-    const puts = await findPuts();
-    const [namePutUrl, namePutDetails] = puts[0];
-    const [emailPutUrl, emailPutDetails] = puts[1];
+    const puts = await findRequests("PUT");
+    const { url: namePutUrl, body: namePutDetails } = puts[0];
+    const { url: emailPutUrl, body: emailPutDetails } = puts[1];
 
     expect(namePutUrl).toContain("/api/setting/site-name");
     expect(namePutDetails).toEqual({ value: "Metabasey" });
@@ -155,16 +156,3 @@ describe("GeneralSettingsPage", () => {
     });
   });
 });
-
-async function findPuts() {
-  const calls = fetchMock.calls();
-  const data = calls.filter((call) => call[1]?.method === "PUT") ?? [];
-
-  const puts = data.map(async ([putUrl, putDetails]) => {
-    const body = ((await putDetails?.body) as string) ?? "{}";
-
-    return [putUrl, JSON.parse(body ?? "{}")];
-  });
-
-  return Promise.all(puts);
-}

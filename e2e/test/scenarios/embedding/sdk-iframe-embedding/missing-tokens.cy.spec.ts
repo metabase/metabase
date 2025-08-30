@@ -17,9 +17,14 @@ describe("scenarios > embedding > sdk iframe embedding > without token features"
 
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
+        element: "metabase-question",
         origin: "http://example.com",
-        template: "exploration",
-        apiKey,
+        attributes: {
+          questionId: "new",
+        },
+        metabaseConfig: {
+          apiKey,
+        },
       });
 
       frame
@@ -31,8 +36,13 @@ describe("scenarios > embedding > sdk iframe embedding > without token features"
   it("does not show an error if the token features are missing and the parent page is localhost", () => {
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
-        template: "exploration",
-        apiKey,
+        element: "metabase-question",
+        attributes: {
+          questionId: "new",
+        },
+        metabaseConfig: {
+          apiKey,
+        },
       });
 
       frame

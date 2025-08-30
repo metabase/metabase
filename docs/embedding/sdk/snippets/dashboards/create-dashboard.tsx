@@ -14,10 +14,15 @@ const ExampleHook = () => {
   };
 
   // [<snippet example-hook>]
-  const { createDashboard } = useCreateDashboardApi();
+  const hookResult = useCreateDashboardApi();
 
   const handleDashboardCreate = async () => {
-    const dashboard = await createDashboard(options);
+    // hookResult is `null` until the SDK is fully loaded and initialized
+    if (!hookResult) {
+      return;
+    }
+
+    const dashboard = await hookResult.createDashboard(options);
 
     // do something with created empty dashboard, e.g., use the dashboard in EditableDashboard component
   };

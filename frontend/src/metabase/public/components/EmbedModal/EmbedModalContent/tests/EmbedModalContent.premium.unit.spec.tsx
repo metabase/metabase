@@ -9,6 +9,7 @@ function setupPremium(opts?: Partial<SetupOpts>) {
     ...opts,
     hasEnterprisePlugins: true,
     tokenFeatures: createMockTokenFeatures({ embedding: true }),
+    isHosted: true,
   });
 }
 

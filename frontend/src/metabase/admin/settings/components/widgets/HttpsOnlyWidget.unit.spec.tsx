@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -79,13 +80,13 @@ describe("HttpsOnlyWidget", () => {
     await screen.findByLabelText("undo-list");
 
     await waitFor(() => {
-      const calls = fetchMock.calls();
+      const calls = fetchMock.callHistory.calls();
       expect(calls.length).toBe(2);
     });
 
-    const calls = fetchMock.calls();
+    const calls = fetchMock.callHistory.calls();
 
-    const urls = calls.map((call) => call[0]);
+    const urls = calls.map((call) => call.request?.url);
     expect(urls).not.toContain("http://myinsecuresite.guru/api/health");
     expect(urls).not.toContain("https://myinsecuresite.guru/api/health");
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
@@ -98,13 +99,13 @@ describe("HttpsOnlyWidget", () => {
     await screen.findByLabelText("undo-list");
 
     await waitFor(() => {
-      const calls = fetchMock.calls();
+      const calls = fetchMock.callHistory.calls();
       expect(calls.length).toBe(2);
     });
 
-    const calls = fetchMock.calls();
+    const calls = fetchMock.callHistory.calls();
 
-    const urls = calls.map((call) => call[0]);
+    const urls = calls.map((call) => call.request?.url);
     expect(urls).not.toContain("https://mysite.biz/api/health");
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(screen.queryByText(/HTTPS/i)).not.toBeInTheDocument();
@@ -144,18 +145,8 @@ describe("HttpsOnlyWidget", () => {
 
     await userEvent.click(input);
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toContain("/api/setting/redirect-all-requests-to-https");
-    expect(putDetails).toEqual({ value: true });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/redirect-all-requests-to-https");
+    expect(body).toEqual({ value: true });
   });
 });
-
-async function findPut() {
-  const calls = fetchMock.calls();
-  const [putUrl, putDetails] =
-    calls.find((call) => call[1]?.method === "PUT") ?? [];
-
-  const body = ((await putDetails?.body) as string) ?? "{}";
-
-  return [putUrl, JSON.parse(body)];
-}

@@ -1,15 +1,18 @@
 (ns metabase-enterprise.metabot-v3.client
   (:require
+   [buddy.core.hash :as buddy-hash]
+   [buddy.sign.jwt :as jwt]
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
-   [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.streaming-response :as sr]
@@ -25,6 +28,18 @@
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic ^:private *debug* false)
+
+(defn get-ai-service-token
+  "Get the token for the AI service."
+  ([]
+   (get-ai-service-token api/*current-user-id* metabot-v3.config/internal-metabot-id))
+
+  ([user-id metabot-id]
+   (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))
+         claims {:user       user-id
+                 :exp        (t/plus (t/instant) (t/seconds (metabot-v3.settings/metabot-ai-service-token-ttl)))
+                 :metabot-id metabot-id}]
+     (jwt/encrypt claims secret {:alg :dir, :enc :a128cbc-hs256}))))
 
 (defn- ->json-bytes ^bytes [x]
   (with-open [os (java.io.ByteArrayOutputStream.)
@@ -91,6 +106,12 @@
 (defn- example-question-generation-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/example-question-generation/batch"))
 
+(defn- document-generate-content-endpoint []
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/document/generate-content"))
+
+(defn- generate-embeddings-endpoint []
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
+
 (mu/defn request :- ::metabot-v3.client.schema/ai-service.response
   "Make a V2 request to the AI Service."
   [{:keys [context messages profile-id conversation-id session-id state]}
@@ -108,9 +129,9 @@
                         :context         context
                         :conversation_id conversation-id
                         :profile_id      profile-id
-                        :state           state
-                        :user_id         api/*current-user-id*}
-                       (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en))
+                        :user_id         api/*current-user-id*
+                        :state           state}
+                       (u/deep-kebab->snake-keys))
           _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Service:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "application/json"
@@ -166,9 +187,9 @@
                         :context         context
                         :conversation_id conversation-id
                         :profile_id      profile-id
-                        :state           state
-                        :user_id         api/*current-user-id*}
-                       (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en))
+                        :user_id         api/*current-user-id*
+                        :state           state}
+                       (u/deep-kebab->snake-keys))
           _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "text/event-stream"
@@ -185,11 +206,11 @@
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
         (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-                               ;; Response from the AI Service will send response parts separated by newline
+          ;; Response from the AI Service will send response parts separated by newline
           (with-open [response-lines ^BufferedReader (io/reader (:body response))]
             (loop []
-                                   ;; Grab the next line and write it to the output stream with appended newline (frontend depends on it)
-                                   ;; Immediately flush so it get's sent to the frontend as soon as possible
+              ;; Grab the next line and write it to the output stream with appended newline (frontend depends on it)
+              ;; Immediately flush so it get's sent to the frontend as soon as possible
               (when-let [line (.readLine response-lines)]
                 (.write os (.getBytes (str line "\n") "UTF-8"))
                 (.flush os)
@@ -272,6 +293,23 @@
                                                            [:description {:optional true} [:maybe :string]]]]]]]]]]
   (let [url (generate-sql-endpoint)
         options (build-request-options body)
+        response (post! url options)]
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error in request to AI service: unexpected status code: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request (assoc options :body body)
+                       :response response})))))
+
+(mu/defn document-generate-content
+  "Ask the AI service to generate a new node for a document."
+  [body :- [:map
+            [:instructions :string]]]
+  (let [url (document-generate-content-endpoint)
+        options (build-request-options body)
+        headers (merge (:headers options) {"x-metabase-session-token"  (get-ai-service-token)
+                                           "x-metabase-url"            (system/site-url)})
+        options (assoc options :headers headers)
         response (post! url options)]
     (if (= (:status response) 200)
       (:body response)
@@ -369,4 +407,20 @@
       (throw (ex-info (format "Error in generate-example-questions request to AI service: unexpected status: %d %s"
                               (:status response) (:reason-phrase response))
                       {:request (assoc options :body payload)
+                       :response response})))))
+
+(defn generate-embeddings
+  "Generate vector embeddings for a batch of inputs questions for the given models and metrics."
+  [model-name texts]
+  (let [url (generate-embeddings-endpoint)
+        body {:model model-name
+              :input texts
+              :encoding_format "base64"}
+        options (build-request-options body)
+        response (post! url options)]
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error in generate-embeddings request to AI service: unexpected status: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request (assoc options :body body)
                        :response response})))))

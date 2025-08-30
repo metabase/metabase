@@ -3,8 +3,12 @@ import {
   NORMAL_USER_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { DashboardDetails } from "e2e/support/helpers";
+import type {
+  DashboardDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { DictionaryArray } from "metabase-types/api";
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { ACCOUNTS_ID, ACCOUNTS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -19,6 +23,87 @@ import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-transla
 const { H } = cy;
 
 describe("scenarios > content translation > static embedding > dashboards", () => {
+  describe("measure names", () => {
+    before(() => {
+      cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
+        "uploadDictionary",
+      );
+
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      uploadTranslationDictionaryViaAPI([
+        ...germanFieldNames,
+        ...germanFieldValues,
+        ...frenchNames,
+        ...frenchBooleanTranslations,
+      ]);
+      H.snapshot("with-translations");
+    });
+
+    beforeEach(() => {
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+      cy.intercept("GET", "/api/embed/dashboard/**/search/*").as("searchQuery");
+      H.restore("with-translations" as any);
+    });
+
+    it("should translate pivot table measure names", () => {
+      const pivotQuestionDetails: StructuredQuestionDetails = {
+        name: "Pivot Table Test",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ["field", ORDERS.QUANTITY, null],
+          ],
+        },
+        display: "pivot",
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: [ORDERS.CREATED_AT, ORDERS.QUANTITY] as any,
+            columns: [],
+            values: ["count"],
+          },
+          column_settings: {
+            '["name","count"]': {
+              column_title: "Price",
+            },
+          },
+        },
+      };
+
+      H.createQuestionAndDashboard({
+        questionDetails: pivotQuestionDetails,
+        dashboardDetails: {
+          name: "Pivot Dashboard Test",
+          enable_embedding: true,
+          embedding_params: {},
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitEmbeddedPage(
+          {
+            resource: { dashboard: dashboard_id as number },
+            params: {},
+          },
+          {
+            additionalHashOptions: {
+              locale: "de",
+            },
+          },
+        );
+
+        cy.wait("@dashboard");
+
+        H.getDashboardCard(0).within(() => {
+          cy.findByText("Preis").should("exist");
+        });
+      });
+    });
+  });
+
   describe("filters and field values", () => {
     describe("ee", () => {
       before(() => {

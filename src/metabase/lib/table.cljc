@@ -45,9 +45,9 @@
 
 (mu/defmethod lib.metadata.calculation/returned-columns-method :metadata/table :- ::lib.metadata.calculation/returned-columns
   [query _stage-number table-metadata _options]
-  (when-let [field-metadatas (lib.metadata/fields query (:id table-metadata))]
+  (when-let [cols (lib.metadata/fields query (:id table-metadata))]
     (into []
           (comp remove-hidden-default-fields-xform
                 (map #(assoc % :lib/source :source/table-defaults))
                 (lib.field.util/add-source-and-desired-aliases-xform query))
-          (sort-default-fields field-metadatas))))
+          (sort-default-fields cols))))

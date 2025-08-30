@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -19,7 +18,7 @@
 
 (deftest ^:parallel basic-internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
-    (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                          (lib.tu/remap-metadata-provider
                                           (mt/id :venues :category_id)
                                           (qp.test-util/field-values-from-def defs/test-data "categories" "name")))
@@ -44,7 +43,7 @@
 
 (deftest ^:parallel basic-external-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-    (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                          (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
                                                                          (mt/id :categories :name)))
       (is (=? {:rows [["American" 2 8]
@@ -78,7 +77,7 @@
 
 (deftest ^:parallel nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-    (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                          (lib.tu/remap-metadata-provider
                                           (mt/id :venues :category_id)
                                           (qp.test-util/field-values-from-def defs/test-data "categories" "name")))
@@ -121,7 +120,7 @@
 
 (deftest ^:parallel foreign-keys-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-    (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                          (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
                                                                          (mt/id :categories :name)))
       (let [query         (mt/mbql-query venues
@@ -152,7 +151,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Check that we can have remappings when we include a `:fields` clause that restricts the query "
                   "fields returned")
-      (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
                                                                            (mt/id :categories :name)))
         (is (=? {:rows [["20th Century Cafe"               2 "Café"]
@@ -180,7 +179,7 @@
 (deftest ^:parallel remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
-      (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/remap-metadata-provider (mt/id :checkins :venue_id)
                                                                            (mt/id :venues :name)))
         (is (= ["Kinaree Thai Bistro" "Ruen Pair Thai Restaurant" "Yamashiro Hollywood" "Spitz Eagle Rock" "The Gumbo Pot"]
@@ -194,7 +193,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
     (testing (str "Test a remapping with conflicting names, in the case below there are two name fields, one from "
                   "Venues and the other from Categories")
-      (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
                                                                            (mt/id :categories :name)))
         (is (= ["20th Century Cafe" "25°" "33 Taps" "800 Degrees Neapolitan Pizzeria"]
@@ -220,7 +219,7 @@
   ;; handled correctly
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join ::self-referencing-fks)
     (mt/dataset test-data-self-referencing-user
-      (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/remap-metadata-provider (mt/id :users :created_by)
                                                                            (mt/id :users :name))
                                            ;; simulate this being a real FK so implicit joins work
@@ -245,7 +244,7 @@
 
 (defn- remappings-with-metadata
   [metadata]
-  (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                        (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                                        (mt/id :products :title)))
     (mt/rows
@@ -270,7 +269,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
       (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
         (mt/dataset test-data
-          (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                                (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                                                (mt/id :products :title)))
             (let [query (mt/mbql-query orders
@@ -292,7 +291,7 @@
                     {:fields   [$id $sender_id $receiver_id $text]
                      :order-by [[:asc $id]]
                      :limit    3})]
-        (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                              (lib.tu/remap-metadata-provider (mt/id :messages :sender_id)
                                                                              (mt/id :users :name)
                                                                              (mt/id :messages :receiver_id)
@@ -326,7 +325,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join ::remapped-columns-in-joined-source-queries-test)
     (testing "Remapped columns in joined source queries should work (#15578)"
       (mt/dataset test-data
-        (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                              qp.test-util/mock-fks-application-database-metadata-provider
                                              (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
           (let [query (mt/mbql-query products
@@ -369,7 +368,7 @@
     ;; this error only seems to be triggered when actually using Cards as sources (and include the source metadata)
     (mt/dataset test-data
       ;; this is only triggered when using the results metadata from the Card itself --  see #19895
-      (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                                            (mt/id :products :title))
                                            (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
@@ -378,8 +377,7 @@
                                                 :joins    [{:source-table $$products
                                                             :alias        "Products"
                                                             :condition    [:= $product_id &Products.products.id]
-                                                            :fields       [$id
-                                                                           &Products.products.title]}]
+                                                            :fields       [&Products.products.title]}]
                                                 :order-by [[:asc $id]]
                                                 :limit    3})
                                              (mt/mbql-query nil {:source-table "card__1"})
@@ -393,7 +391,7 @@
 
 (deftest ^:parallel remapped-breakout-test
   (testing "remapped columns should be accounted for in the result rows (#46919)"
-    (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                          (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                                          (mt/id :products :title)))
       (let [query (mt/mbql-query orders
@@ -410,7 +408,7 @@
 
 (deftest ^:parallel pivot-with-remapped-breakout
   (testing "remapped columns should be accounted for in the result rows (#46919)"
-    (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                          (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                                          (mt/id :products :title)))
       (let [query (merge (mt/mbql-query orders
@@ -469,19 +467,19 @@
               ;; The order of remaps is not important to the FE. If it changes in the future that is ok.
               ;;
               ;; 2 remaps from the join against `VENUES`
-              "J__NAME_2"
-              "J__NAME_3"
+              "J__CATEGORIES__via__ID__NAME"
+              "J__CATEGORIES__via__CATEGORY_ID__NAME"
               ;; 2 remaps for the top-level query
               "CATEGORIES__via__CATEGORY_ID__NAME"
               "CATEGORIES__via__ID__NAME"
               ;; BROKEN! This is a duplicate and should not be returned. Interestingly enough, both Lib and QP
               ;; incorrectly calculate the set of returned columns and both include this. (Probably because Lib and QP
               ;; use mostly the same code these days.)
-              "J__NAME_4"]
+              "J__CATEGORIES__via__ID__NAME_2"]
              (map :lib/desired-column-alias (mt/cols results))))
       ;; The extra incorrect duplicate column seems to be sorta indetermiate? I've seen it match the value of
-      ;; `J__NAME_2` and `J__NAME_3` in different test runs and I'm not sure why. Not bothering to debug since it's not
-      ;; even supposed to be returned anyway.
+      ;; `J__CATEGORIES__via__ID__NAME` and `J__CATEGORIES__via__CATEGORY_ID__NAME` in different test runs and I'm not
+      ;; sure why. Not bothering to debug since it's not even supposed to be returned anyway.
       ;;
       ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>     <incorrect duplicate>
       (is (=? [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American" string?]

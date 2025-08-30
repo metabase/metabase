@@ -210,7 +210,7 @@
                :type         :drill-thru/column-filter
                :query        query
                :stage-number 1
-               :column       (-> query lib/returned-columns second)}
+               :column       (-> query lib/returned-columns second (dissoc :lib/desired-column-alias :lib/deduplicated-name))}
               (->> {:column     count-col
                     :column-ref (lib/ref count-col)
                     :value      nil}

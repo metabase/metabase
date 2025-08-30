@@ -594,7 +594,7 @@ describe("QuestionPickerModal", () => {
   });
 
   it("should automatically switch to the search tab when a search query is provided", async () => {
-    await setupSearchEndpoints([]);
+    setupSearchEndpoints([]);
     await setupModal();
 
     const searchInput = await screen.findByPlaceholderText(/search/i);
@@ -617,7 +617,7 @@ describe("QuestionPickerModal", () => {
   });
 
   it("should switch back to the default tab when the search query is cleared", async () => {
-    await setupSearchEndpoints([]);
+    setupSearchEndpoints([]);
     await setupModal();
 
     const searchInput = await screen.findByPlaceholderText(/search/i);
@@ -649,7 +649,7 @@ describe("QuestionPickerModal", () => {
   });
 
   it("should be able to search for metrics", async () => {
-    await setupSearchEndpoints([nestedQuestion, myModel, myMetric]);
+    setupSearchEndpoints([nestedQuestion, myModel, myMetric]);
     await setupModal({ models: ["card", "dataset", "metric"] });
     const searchInput = await screen.findByPlaceholderText(/search/i);
     await userEvent.type(searchInput, myMetric.name);

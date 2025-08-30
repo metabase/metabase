@@ -43,7 +43,7 @@
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
-    (when-let [k (keyword k)]
+    (when-let [k (some-> k keyword)]
       (when-not (some
                  (partial isa? k)
                  ancestor-types)

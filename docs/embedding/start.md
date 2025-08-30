@@ -26,6 +26,10 @@ Customize the UI components in your interactive embed by adding parameters to th
 
 With the Embedded analytics SDK, you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
 
+## [Embedded analytics JS](./embedded-analytics-js.md)
+
+Embed dashboards, questions, or the query builder in your app with JavaScript (no React required). Built on the Embedded analytics SDK with per-component controls and theming.
+
 ## [Embedded analytics SDK quickstart](./sdk/quickstart.md)
 
 Jump to a SDK quickstart with a sample React application.

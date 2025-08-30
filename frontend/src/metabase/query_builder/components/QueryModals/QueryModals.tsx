@@ -1,4 +1,3 @@
-import type React from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
@@ -64,7 +63,7 @@ export function QueryModals({
   setQueryBuilderMode,
   originalQuestion,
   onChangeLocation,
-}: QueryModalsProps): React.JSX.Element {
+}: QueryModalsProps) {
   const dispatch = useDispatch();
 
   const initialCollectionId = useGetDefaultCollectionId();

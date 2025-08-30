@@ -6,12 +6,9 @@ import type { CollectionItem, Dashboard } from "metabase-types/api";
 import {
   assertAllResultsAndValuesAreSandboxed,
   assertNoResultsOrValuesAreSandboxed,
-  assertResponseFailsClosed,
   assignAttributeToUser,
   configureSandboxPolicy,
   createSandboxingDashboardAndQuestions,
-  getFieldValuesForProductCategories,
-  getParameterValuesForProductCategories,
   gizmoViewer,
   modelCustomView,
   questionCustomView,
@@ -161,8 +158,8 @@ describe(
       });
     });
 
-    // Custom columns currently don't work. These tests ensure that the sandboxing policy fails closed.
-    describe("we expect an error - and no data to be shown - when applying a sandbox policy...", () => {
+    // Custom columns currently DO work.
+    describe("should work when applying a sandbox policy...", () => {
       (
         [
           ["Question", "booleanExpr", "true"],
@@ -192,24 +189,20 @@ describe(
             filterColumn: `my_${customColumnType}`,
           });
           signInAs(gizmoViewer);
+
           H.visitDashboard(checkNotNull(dashboard).id);
 
-          cy.log("Should not return any data, and return an error");
-          cy.wait(
-            new Array(sandboxableQuestions.length).fill("@dashcardQuery"),
-          ).then((interceptions) => {
-            interceptions.forEach(({ response }) => {
-              assertResponseFailsClosed(response);
+          H.getDashboardCard(0).within(() => {
+            cy.findByText("Question showing all products").should("be.visible");
+            cy.findByText("20 rows").should("be.visible");
+          });
+
+          H.getDashboardCard(1)
+            .scrollIntoView()
+            .within(() => {
+              cy.findByText("Model showing all products").should("be.visible");
+              cy.findByText("20 rows").should("be.visible");
             });
-          });
-
-          getFieldValuesForProductCategories().then((response) => {
-            expect(response.body.values).to.have.length(0);
-          });
-
-          getParameterValuesForProductCategories().then((response) => {
-            expect(response.body.values).to.have.length(0);
-          });
         });
       });
     });

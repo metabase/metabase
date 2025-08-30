@@ -147,10 +147,11 @@ export function setup(
     users: [user],
   });
 
-  fetchMock.get(
-    { url: `path:/api/pulse`, query: { dashboard_id: dashboard.id } },
-    [],
-  );
+  fetchMock.get({
+    url: `path:/api/pulse`,
+    query: { dashboard_id: dashboard.id },
+    response: [],
+  });
 
   fetchMock.post("path:/api/pulse/test", 200);
 

@@ -11,16 +11,16 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 
 import Markdown from "metabase/common/components/Markdown";
-import { Box } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
 export type EditableTextAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
-  "onChange" | "onFocus" | "onBlur"
+  "style" | "onChange" | "onFocus" | "onBlur"
 >;
 
-export interface EditableTextProps extends EditableTextAttributes {
+export interface EditableTextProps extends BoxProps, EditableTextAttributes {
   initialValue?: string | null;
   placeholder?: string;
   maxLength?: number;

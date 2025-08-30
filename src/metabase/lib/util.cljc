@@ -23,8 +23,10 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -45,7 +47,7 @@
   [clause]
   (and (vector? clause)
        (keyword? (first clause))
-       (let [opts (get clause 1)]
+       (let [opts (second clause)]
          (and (map? opts)
               (contains? opts :lib/uuid)))))
 
@@ -53,7 +55,9 @@
   "Returns true if this is a clause."
   [clause clause-type]
   (and (clause? clause)
-       (= (first clause) clause-type)))
+       (if (set? clause-type)
+         (clause-type (first clause))
+         (= (first clause) clause-type))))
 
 (defn field-clause?
   "Returns true if this is a field clause."
@@ -78,13 +82,15 @@
   (and (clause? clause)
        (lib.hierarchy/isa? (first clause) ::lib.schema.ref/metric)))
 
+;;; TODO (Cam 8/28/25) -- base type is the original effective type!!! We shouldn't need a separate
+;;; `:metabase.lib.field/original-effective-type` key.
 (defn original-isa?
   "Returns whether the type of `expression` isa? `typ`.
    If the expression has an original-effective-type due to bucketing, check that."
   [expression typ]
   (isa?
    (or (and (clause? expression)
-            (:metabase.lib.field/original-effective-type (second expression)))
+            ((some-fn :metabase.lib.field/original-effective-type :base-type) (lib.options/options expression)))
        (lib.schema.expression/type-of expression))
    typ))
 
@@ -210,16 +216,20 @@
   "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
   [source-metadata]
   (when source-metadata
-    (-> (if (seqable? source-metadata)
-          {:columns source-metadata}
-          source-metadata)
-        (update :columns (fn [columns]
-                           (mapv (fn [column]
-                                   (-> column
-                                       (update-keys u/->kebab-case-en)
-                                       (assoc :lib/type :metadata/column)))
-                                 columns)))
-        (assoc :lib/type :metadata/results))))
+    (when-let [m (cond
+                   (seqable? source-metadata) {:columns source-metadata}
+                   (map? source-metadata)     source-metadata
+                   :else                      (do
+                                                (log/warnf "Ignoring invalid source metadata: expected sequence of columns, got %s" (pr-str (type source-metadata)))
+                                                nil))]
+      (-> m
+          (update :columns (fn [columns]
+                             (mapv (fn [column]
+                                     (-> column
+                                         (perf/update-keys u/->kebab-case-en)
+                                         (assoc :lib/type :metadata/column)))
+                                   columns)))
+          (assoc :lib/type :metadata/results)))))
 
 (defn- join->pipeline [join]
   (let [stages (inner-query->stages (or (:source-query join)
@@ -584,15 +594,6 @@
   results metadata."
   (unique-name-generator-factory {::truncate? false}))
 
-(mu/defn identity-generator :- ::unique-name-generator
-  "Identity unique name generator that just returns strings as-is."
-  ([]
-   identity-generator)
-  ([s]
-   s)
-  ([_id s]
-   s))
-
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
      ;; `(?i)` is JVM-specific magic to turn on the `i` case-insensitive flag.
@@ -629,9 +630,7 @@
           (update-query-stage
            stage-number
            (fn [stage]
-             (-> stage
-                 (dissoc :order-by :fields)
-                 (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
+             (dissoc stage :order-by)))
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
 
@@ -704,8 +703,9 @@
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:maybe :map]]
   (when (map? query)
-    (when-let [query-type (keyword (some #(get query %)
-                                         [:lib/type :type "lib/type" "type"]))]
+    (when-let [query-type (some-> (some #(get query %)
+                                        [:lib/type :type "lib/type" "type"])
+                                  keyword)]
       (when (#{:mbql/query :query :native :internal} query-type)
         query-type))))
 

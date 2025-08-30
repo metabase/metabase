@@ -53,7 +53,7 @@ export async function setup({
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
-    setupTokenStatusEndpoint(true);
+    setupTokenStatusEndpoint({ valid: true });
   }
 
   setupPropertiesEndpoints(settings);

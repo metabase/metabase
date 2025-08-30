@@ -4,8 +4,8 @@ import ExternalLink from "metabase/common/components/ExternalLink";
 import { UnstyledButton } from "metabase/ui";
 
 import { UpsellGem } from "./UpsellGem";
+import S from "./UpsellPill.module.css";
 import { UpsellWrapper } from "./UpsellWrapper";
-import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 

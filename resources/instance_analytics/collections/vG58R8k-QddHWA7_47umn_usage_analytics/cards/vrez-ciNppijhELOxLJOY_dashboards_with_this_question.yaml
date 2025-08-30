@@ -48,7 +48,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Content - Card Qualified
       fields: none
-      ident: join_vrez-ciNppijhELOxLJOY@0__Content - Card Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Content - Dashboard Qualified
@@ -82,7 +81,6 @@ dataset_query:
           - name
         - base-type: type/Text
           join-alias: Content - Dashboard Qualified
-      ident: join_vrez-ciNppijhELOxLJOY@0__Content - Dashboard Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     order-by:

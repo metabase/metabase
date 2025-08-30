@@ -74,7 +74,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
       await setupEnterprise({ hash: { locale: expectedLocale } });
 
       expect(
-        fetchMock.calls(`path:/app/locales/${expectedLocale}.json`),
+        fetchMock.callHistory.calls(`path:/app/locales/${expectedLocale}.json`),
       ).toHaveLength(0);
     });
   });

@@ -42,9 +42,12 @@ describe("DiscardTableFieldValuesButton", () => {
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/discard_values`, {
-        method: "POST",
-      }),
+      fetchMock.callHistory.calls(
+        `path:/api/table/${table.id}/discard_values`,
+        {
+          method: "POST",
+        },
+      ),
     ).toHaveLength(1);
     await waitFor(() => {
       expect(button).toHaveTextContent("Discard triggered!");
@@ -64,9 +67,12 @@ describe("DiscardTableFieldValuesButton", () => {
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/discard_values`, {
-        method: "POST",
-      }),
+      fetchMock.callHistory.calls(
+        `path:/api/table/${table.id}/discard_values`,
+        {
+          method: "POST",
+        },
+      ),
     ).toHaveLength(1);
     await waitFor(() => {
       expect(button).toHaveTextContent("Discard triggered!");
@@ -79,9 +85,12 @@ describe("DiscardTableFieldValuesButton", () => {
     expect(button).toHaveTextContent("Discard triggered!");
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/discard_values`, {
-        method: "POST",
-      }),
+      fetchMock.callHistory.calls(
+        `path:/api/table/${table.id}/discard_values`,
+        {
+          method: "POST",
+        },
+      ),
     ).toHaveLength(2);
 
     await act(() => {
@@ -100,20 +109,21 @@ describe("DiscardTableFieldValuesButton", () => {
   it("should show error message toast", async () => {
     const { table } = setup();
 
-    fetchMock.post(
-      `path:/api/table/${table.id}/discard_values`,
-      { status: 500 },
-      { overwriteRoutes: true },
-    );
+    fetchMock.modifyRoute(`table-${table.id}-discard-values`, {
+      response: { status: 500 },
+    });
 
     const button = screen.getByRole("button");
     expect(button).toHaveTextContent("Discard cached field values");
 
     await userEvent.click(button);
     expect(
-      fetchMock.calls(`path:/api/table/${table.id}/discard_values`, {
-        method: "POST",
-      }),
+      fetchMock.callHistory.calls(
+        `path:/api/table/${table.id}/discard_values`,
+        {
+          method: "POST",
+        },
+      ),
     ).toHaveLength(1);
     await waitFor(() => {
       expect(button).toHaveTextContent("Discard cached field values");

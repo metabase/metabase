@@ -7,12 +7,33 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(def ^:private strip-namespace-hack (comp keyword name))
+
+(mr/def ::input-type
+  ;; TODO this is a clumsy workaround due to the api encoders not being run for some reason
+  (mapv
+   #(if (keyword? %) (strip-namespace-hack %) %)
+
+   [:enum
+    {:encode/api name
+     :decode/api #(keyword "input" %)}
+
+    :input/boolean
+    :input/date
+    :input/datetime
+    :input/dropdown
+    :input/float
+    :input/integer
+    :input/text
+    :input/textarea
+    :input/time]))
+
 (mr/def ::describe-param
   [:map #_{:closed true}
    [:id                                :string]
    [:display_name                      :string]
    [:field_id         {:optional true} pos-int?]
-   [:input_type                        [:enum "dropdown" "textarea" "date" "datetime" "text"]]
+   [:input_type                        ::input-type]
    [:semantic_type    {:optional true} :keyword]
    [:optional                          :boolean]
    ;; TODO in practice this should never be null (and we strip nils current)
@@ -33,18 +54,35 @@
    [:title :string]
    [:parameters [:sequential ::describe-param]]])
 
+(defn- field-input-type-ignoring-semantics [create? field field-values]
+  (condp #(isa? %2 %1) (:base_type field)
+    :type/Boolean    :input/boolean
+    :type/Integer    :input/integer
+    :type/BigInteger :input/integer
+    :type/Float      :input/float
+    :type/Decimal    :input/float
+    :type/Date       :input/date
+    :type/DateTime   :input/datetime
+    :type/Time       :input/time
+    (if (and (not create?) (#{:list :auto-list :search} (:type field-values)))
+      :input/dropdown
+      :input/text)))
+
 (defn- field-input-type
-  [field field-values]
-  (case (:type field-values)
-    (:list :auto-list :search) "dropdown"
-    (condp #(isa? %2 %1) (:semantic_type field)
-      :type/Description "textarea"
-      :type/Category    "dropdown"
-      :type/FK          "dropdown"
-      (condp #(isa? %2 %1) (:base_type field)
-        :type/Date     "date"
-        :type/DateTime "datetime"
-        "text"))))
+  [create? field field-values]
+  (condp #(isa? %2 %1) (:semantic_type field)
+    :type/Name        :input/text
+    :type/Title       :input/text
+    :type/Source      :input/text
+    :type/Description :input/textarea
+    :type/Category    :input/dropdown
+    :type/FK          :input/dropdown
+    :type/PK (if create?
+               ;; Unless it's a compound PK, we need to provide a unique value for the column, so use the base_type
+               (field-input-type-ignoring-semantics create? field field-values)
+               ;; For updating and deleting, we must pick an existing row
+               :input/dropdown)
+    (field-input-type-ignoring-semantics create? field field-values)))
 
 (defn- describe-table-action
   [{:keys [action-kw
@@ -76,7 +114,8 @@
                                   param-setting          (get param-map (keyword (:name field)))
                                   ;; TODO get this from action configuration, when we add it, or inherit from table conf
                                   column-settings        nil
-                                  auto-inc?              (:database_is_auto_increment field pk?)]
+                                  auto-inc?              (:database_is_auto_increment field pk?)
+                                  create?                (contains? #{:table.row/create :data-grid.row/create} action-kw)]
                             :when (case action-kw
                                     ;; create does not take pk cols if auto increment, todo generated cols?
                                     (:table.row/create :data-grid.row/create) (not auto-inc?)
@@ -96,7 +135,8 @@
                          {:id                      (:name field)
                           :display_name            (:display_name field)
                           :semantic_type           (:semantic_type field)
-                          :input_type              (field-input-type field field-values)
+                          ;; TODO we are manually removing the namespace due to an issue with encoder/api not running
+                          :input_type              (strip-namespace-hack (field-input-type create? field field-values))
                           :field_id                (:id field)
                           :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
                           :optional                (not required)
@@ -123,8 +163,8 @@
     ;; TODO remove assumption that all primitives are table actions
     (:action-kw action-def)
     (describe-table-action
-     {:action-kw    (:action-kw action-def)
-      :table-id     (:table-id partial-input)
-      :param-map    (:param-map action-def)})
+     {:action-kw (:action-kw action-def)
+      :table-id  (:table-id partial-input)
+      :param-map (:param-map action-def)})
     :else
     (throw (ex-info "Not able to execute given action yet" {:status-code 500 :scope scope :action-def action-def}))))

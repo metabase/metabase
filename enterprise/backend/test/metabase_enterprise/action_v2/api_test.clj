@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [flatland.ordered.map :refer [ordered-map]]
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.action-v2.coerce :as coerce]
    [metabase-enterprise.action-v2.data-editing :as data-editing]
@@ -13,7 +14,6 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -250,6 +250,9 @@
                                                                                    :filter        [:in (mt/$ids $orders.product_id) 1 2]}}))]
                                  (zipmap (map first result) (map second result))))]
 
+          ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+          (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
           (testing "sanity check that we have children rows"
             (is (= {1 93
                     2 98}
@@ -257,12 +260,12 @@
           (testing "delete without delete-children param will return errors with children count"
             (is (=? {:errors [{:index       0
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {}
                                :status-code 400}
                               {:index       1,
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {},
                                :status-code 400}]}
                     (mt/user-http-request :crowberto :post 400 execute-bulk-url
@@ -311,10 +314,13 @@
           (is (= 1 (children-count 2)))
           (is (= 1 (children-count 3))))
 
+        ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+        (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
         (testing "delete parent with self-referential children should return error without delete-children param"
           (is (=? {:errors [{:index       0
                              :type        "metabase.actions.error/violate-foreign-key-constraint",
-                             :message     "Other tables rely on this row so it cannot be deleted.",
+                             :message     "Other rows refer to this row so it cannot be deleted.",
                              :errors      {}
                              :status-code 400}]}
                   (mt/user-http-request :crowberto :post 400 execute-bulk-url body))))
@@ -360,7 +366,10 @@
                                           {:table-name "user"}
                                           {:fk :team :field-name "team_id"})
                        {:transaction? false})
-        (sync/sync-database! (mt/db))
+
+        ;; TODO waiting on https://github.com/metabase/metabase/pull/62485
+        (t2/update! :model/Table {:db_id (mt/id)} {:is_writable true})
+
         (let [users-table-id (mt/id :user)
               #_teams-table-id #_(mt/id :team)
               delete-user-body {:action "data-grid.row/delete"
@@ -370,7 +379,7 @@
           (testing "delete user involved in mutual recursion should return error without delete-children param"
             (is (=? {:errors [{:index       0
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {}
                                :status-code 400}]}
                     (mt/user-http-request :crowberto :post 400 execute-bulk-url delete-user-body))))
@@ -576,12 +585,16 @@
                       [:message])))))))
 
       (testing "Non auto-incrementing pk"
-        (action-v2.tu/with-test-tables! [table-id [{:id        [:int]
+        (action-v2.tu/with-test-tables! [table-id [(ordered-map
+                                                    :id        [:int]
                                                     :text      [:text]
                                                     :int       [:int]
+                                                    :bool      [:boolean]
+                                                    :float_val [:float]
                                                     :timestamp [:timestamp]
                                                     :date      [:date]
-                                                    :inactive  [:text]}
+                                                    :time_val  [:time]
+                                                    :inactive  [:text])
                                                    {:primary-key [:id]}]]
           ;; This inactive field should not show up
           (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
@@ -592,38 +605,48 @@
                   scope               {:table-id table-id}]
 
               (testing "create"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"     :optional false :readonly false}
-                                      {:id "text"      :display_name "Text"      :input_type "text"     :optional true  :readonly false}
-                                      {:id "int"       :display_name "Int"       :input_type "text"     :optional true  :readonly false}
-                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime" :optional true  :readonly false}
-                                      {:id "date"      :display_name "Date"      :input_type "date"     :optional true  :readonly false}]}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "integer"  :optional false :readonly false}
+                                      {:id "text"      :display_name "Text"       :input_type "text"     :optional true  :readonly false}
+                                      {:id "int"       :display_name "Int"        :input_type "integer"  :optional true  :readonly false}
+                                      {:id "bool"      :display_name "Bool"       :input_type "boolean"  :optional true  :readonly false}
+                                      {:id "float_val" :display_name "Float Val"  :input_type "float"    :optional true  :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp"  :input_type "datetime" :optional true  :readonly false}
+                                      {:id "date"      :display_name "Date"       :input_type "date"     :optional true  :readonly false}
+                                      {:id "time_val"  :display_name "Time Val"   :input_type "time"     :optional true  :readonly false}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action create-id}))))
 
               (testing "update"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"     :optional false :readonly true}
-                                      {:id "text"      :display_name "Text"      :input_type "text"     :optional true  :readonly false}
-                                      {:id "int"       :display_name "Int"       :input_type "text"     :optional true  :readonly false}
-                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime" :optional true  :readonly false}
-                                      {:id "date"      :display_name "Date"      :input_type "date"     :optional true  :readonly false}]}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown" :optional false :readonly true}
+                                      {:id "text"      :display_name "Text"       :input_type "text"     :optional true  :readonly false}
+                                      {:id "int"       :display_name "Int"        :input_type "integer"  :optional true  :readonly false}
+                                      {:id "bool"      :display_name "Bool"       :input_type "boolean"  :optional true  :readonly false}
+                                      {:id "float_val" :display_name "Float Val"  :input_type "float"    :optional true  :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp"  :input_type "datetime" :optional true  :readonly false}
+                                      {:id "date"      :display_name "Date"       :input_type "date"     :optional true  :readonly false}
+                                      {:id "time_val"  :display_name "Time Val"   :input_type "time"     :optional true  :readonly false}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action update-id}))))
 
               (testing "delete"
-                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text" :optional false :readonly true}]}
+                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "dropdown" :optional false :readonly true}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action delete-id}))))))))
 
       (testing "Auto incrementing pk"
-        (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
+        (action-v2.tu/with-test-tables! [table-id [(ordered-map
+                                                    :id        'auto-inc-type
                                                     :text      [:text]
                                                     :int       [:int]
+                                                    :bool      [:boolean]
+                                                    :float_val [:float]
                                                     :timestamp [:timestamp]
-                                                    :date [:date]
-                                                    :inactive [:text]}
+                                                    :date      [:date]
+                                                    :time_val  [:time]
+                                                    :inactive  [:text])
                                                    {:primary-key [:id]}]]
           ;; This inactive field should not show up
           (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
@@ -634,26 +657,75 @@
                   scope               {:table-id table-id}]
 
               (testing "create"
-                (is (=? {:parameters [{:id "text"      :display_name "Text"      :input_type "text",     :optional true, :readonly false}
-                                      {:id "int"       :display_name "Int"       :input_type "text",     :optional true, :readonly false}
-                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :optional true, :readonly false}
-                                      {:id "date"      :display_name "Date"      :input_type "date",     :optional true, :readonly false}]}
+                (is (=? {:parameters [{:id "text"      :display_name "Text"       :input_type "text",     :optional true, :readonly false}
+                                      {:id "int"       :display_name "Int"        :input_type "integer",  :optional true, :readonly false}
+                                      {:id "bool"      :display_name "Bool"       :input_type "boolean",  :optional true, :readonly false}
+                                      {:id "float_val" :display_name "Float Val"  :input_type "float",    :optional true, :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp"  :input_type "datetime", :optional true, :readonly false}
+                                      {:id "date"      :display_name "Date"       :input_type "date",     :optional true, :readonly false}
+                                      {:id "time_val"  :display_name "Time Val"   :input_type "time",     :optional true, :readonly false}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action create-id}))))
 
               (testing "update"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text",     :optional false, :readonly true}
-                                      {:id "text"      :display_name "Text"      :input_type "text",     :optional true, :readonly false}
-                                      {:id "int"       :display_name "Int"       :input_type "text",     :optional true, :readonly false}
-                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :optional true, :readonly false}
-                                      {:id "date"      :display_name "Date"      :input_type "date",     :optional true, :readonly false}]}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown", :optional false, :readonly true}
+                                      {:id "text"      :display_name "Text"       :input_type "text",     :optional true, :readonly false}
+                                      {:id "int"       :display_name "Int"        :input_type "integer",  :optional true, :readonly false}
+                                      {:id "bool"      :display_name "Bool"       :input_type "boolean",  :optional true, :readonly false}
+                                      {:id "float_val" :display_name "Float Val"  :input_type "float",    :optional true, :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp"  :input_type "datetime", :optional true, :readonly false}
+                                      {:id "date"      :display_name "Date"       :input_type "date",     :optional true, :readonly false}
+                                      {:id "time_val"  :display_name "Time Val"   :input_type "time",     :optional true, :readonly false}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action update-id}))))
 
               (testing "delete"
-                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text", :optional false, :readonly true}]}
+                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "dropdown", :optional false, :readonly true}]}
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action delete-id})))))))))))
+
+(deftest validate-inputs-api-test
+  (testing "Validation via bulk execute endpoint"
+    (mt/with-premium-features #{actions-feature-flag}
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+        (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
+                                                    :name [:text :not-null]
+                                                    :price [:int]
+                                                    :active [:boolean]
+                                                    :created_at [:timestamp]}
+                                                   {:primary-key [:id]}]]
+
+          (testing "Valid inputs return no errors"
+            (let [result (action-v2.tu/create-rows! table-id [{"name"       "Test Product"
+                                                               "price"      "123"
+                                                               "active"     (if (= driver/*driver* :postgres) "true" "1")
+                                                               "created_at" "2024-03-15T14:30:00"}])]
+              (is (nil? (:errors result)))
+              (is (seq (:outputs result)))))
+
+          (testing "Invalid inputs return validation errors"
+            (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name"       "Test Product"
+                                                                              "price"      "not-a-number"
+                                                                              "active"     "yes"
+                                                                              "created_at" "2024-03-15T14:30:00"}])]
+              (is (= {table-id [{:price  "Must be an integer"
+                                 :active "Must be true, false, 0, or 1"}]} (:errors result)))))
+
+          (testing "Required field validation"
+            (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name" nil
+                                                                              "price" "123"}])]
+              (is (= {table-id [{:name "This field is required"}]} (:errors result)))))
+
+          (testing "Multiple rows with mixed validity"
+            (let [result (action-v2.tu/create-rows! table-id :crowberto 400 [{"name"  "Valid Product"
+                                                                              "price" "100"}
+                                                                             {"name"  "Invalid Product"
+                                                                              "price" "abc"}
+                                                                             {"name"  nil
+                                                                              "price" "200"}])]
+              (is (= {table-id [nil
+                                {:price "Must be an integer"}
+                                {:name  "This field is required"}]} (:errors result))))))))))

@@ -1,4 +1,8 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.connection-test
+  {:clj-kondo/config '{:linters
+                       ;; allowing this for now since we sorta need to put real DBs in the app DB to test the DB ID
+                       ;; -> connection pool stuff
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -119,18 +123,18 @@
               :databricks
               (assoc details :log-level 0)
 
-              (cond-> details
+              (cond
                 ;; swap localhost and 127.0.0.1
                 (and (string? (:host details))
                      (str/includes? (:host details) "localhost"))
-                (update :host str/replace "localhost" "127.0.0.1")
+                (update details :host str/replace "localhost" "127.0.0.1")
 
                 (and (string? (:host details))
                      (str/includes? (:host details) "127.0.0.1"))
-                (update :host str/replace "127.0.0.1" "localhost")
+                (update details :host str/replace "127.0.0.1" "localhost")
 
                 :else
-                (assoc :new-config "something"))))))
+                (assoc details :new-config "something"))))))
 
 (deftest connection-pool-invalidated-on-details-change
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
@@ -140,11 +144,21 @@
             hash-change-fn           (fn [db-id]
                                        (is (= (u/the-id db) db-id))
                                        (swap! hash-change-called-times inc)
-                                       nil)]
+                                       nil)
+            ;; HACK: The ClickHouse driver also calls `db->pooled-connection-spec` to answer
+            ;; `driver-supports? :connection-impersonation`. That perturbs the call count, so add a special case
+            ;; to [[driver.u/supports?]].
+            original-supports?       driver.u/supports?
+            supports?-fn             (fn [driver feature database]
+                                       (if (and #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+                                            (= driver :clickhouse)
+                                                (= feature :connection-impersonation))
+                                         true
+                                         (original-supports? driver feature database)))]
         (try
           (sql-jdbc.conn/invalidate-pool-for-db! db)
-          ;; a little bit hacky to redefine the log fn, but it's the most direct way to test
-          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn]
+          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
+                        driver.u/supports?                           supports?-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
                   db-hash-1   (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]
               (testing "hash value calculated correctly for new pooled conn"

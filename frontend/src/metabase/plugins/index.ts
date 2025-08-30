@@ -67,8 +67,12 @@ import type {
   DashCardId,
   Dashboard,
   DashboardId,
+  DatabaseData,
+  DatabaseId,
+  DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
+  Document,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -452,11 +456,13 @@ export const PLUGIN_REDUCERS: {
   sandboxingPlugin: any;
   shared: any;
   metabotPlugin: any;
+  documents: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
   metabotPlugin: () => null,
+  documents: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -721,8 +727,8 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
-  adminNavItem: [] as AdminPath[],
-  AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
+  getAdminPaths: () => [] as AdminPath[],
+  getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null as React.ReactElement | null,
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
@@ -803,4 +809,43 @@ export const PLUGIN_SMTP_OVERRIDE: {
 } = {
   CloudSMTPConnectionCard: PluginPlaceholder,
   SMTPOverrideConnectionForm: PluginPlaceholder,
+};
+
+export const PLUGIN_TABLE_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
+  getRoutes: () => null as React.ReactElement | null,
+  getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
+  AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+    settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
+    updateDatabase: (
+      database: { id: DatabaseId } & Partial<DatabaseData>,
+    ) => Promise<void>;
+  }>,
+};
+
+export const PLUGIN_DOCUMENTS = {
+  getRoutes: () => null as React.ReactElement | null,
+  shouldShowDocumentInNewItemMenu: () => false,
+  getCurrentDocument: (_state: any) => null as Document | null,
+  getSidebarOpen: (_state: any) => false,
+};
+
+export const PLUGIN_ENTITIES = {
+  entities: {} as Record<string, any>,
+};
+
+export const PLUGIN_SEMANTIC_SEARCH = {
+  SearchSettingsWidget: PluginPlaceholder,
+};
+
+export type TransformsPlugin = {
+  getAdminPaths(): AdminPath[];
+  getAdminRoutes(): ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  getAdminPaths: () => [],
+  getAdminRoutes: () => null,
 };

@@ -28,7 +28,8 @@
   log-enabled?
   max-users-allowed
   plan-alias
-  TokenStatus]
+  TokenStatus
+  clear-cache]
 
  (metabase.premium-features.settings
   active-users-count
@@ -50,6 +51,7 @@
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
+  enable-documents?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
@@ -61,6 +63,7 @@
   enable-query-reference-validation?
   enable-sandboxes?
   enable-scim?
+  enable-semantic-search?
   enable-serialization?
   enable-session-timeout-config?
   enable-snippet-collections?
@@ -68,11 +71,13 @@
   enable-sso-jwt?
   enable-sso-ldap?
   enable-sso-saml?
+  enable-transforms?
   enable-upload-management?
   enable-whitelabeling?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
+  offer-metabase-ai?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
   table-data-editing?

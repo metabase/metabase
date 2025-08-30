@@ -105,7 +105,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Content - Card Qualified
       fields: none
-      ident: join_YiHMsA2dv3iQob11DLTIz@0__Content - Card Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: People - Creator
@@ -125,7 +124,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: People - Creator
       fields: none
-      ident: join_YiHMsA2dv3iQob11DLTIz@0__People - Creator
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     source-table: skoPT2xiuEcUV8vFkHE6S

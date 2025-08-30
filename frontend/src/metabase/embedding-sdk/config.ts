@@ -1,6 +1,5 @@
 import type { SettingKey, TokenFeature } from "metabase-types/api";
 
-export const EMBEDDING_SDK_ROOT_ELEMENT_ID = "metabase-sdk-root";
 export const EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID = "metabase-sdk-portal-root";
 
 type InternalSdkConfig = {

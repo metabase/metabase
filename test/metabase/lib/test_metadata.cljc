@@ -7,6 +7,8 @@
   will not be reflected here, for example if we add new information to the metadata. We'll have to manually update
   these things if that happens and Metabase lib is meant to consume it."
   (:require
+   #?@(:clj
+       ([flatland.ordered.set :as ordered-set]))
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.util.malli :as mu]))
@@ -3029,11 +3031,15 @@
   [table-name :- :keyword]
   (assert ((tables) table-name)
           (str "Invalid table: " table-name))
-  (into #{}
-        (keep (fn [[a-table-name a-field-name]]
-                (when (= a-table-name table-name)
-                  a-field-name)))
-        (keys (methods field-metadata-method))))
+  (let [field-names (keep (fn [[a-table-name a-field-name]]
+                            (when (= a-table-name table-name)
+                              a-field-name))
+                          (keys (methods field-metadata-method)))]
+    (into
+     #?(:clj (ordered-set/ordered-set) :cljs #{})
+     (sort-by (fn [field]
+                (:position (field-metadata-method table-name field)))
+              field-names))))
 
 (mu/defn table-metadata :- ::lib.schema.metadata/table
   "Get Table metadata for a one of the `test-data` Tables in the test metadata, e.g. `:venues`. This is here so you can

@@ -7,9 +7,6 @@ import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import { BaseItemsTable } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Box, Portal } from "metabase/ui";
 
-// NOTE: our version of react-hot-loader doesn't play nice with react-dnd's DragLayer,
-// so we exclude files named `*DragLayer.jsx` in webpack.config.js
-
 class ItemsDragLayerInner extends Component {
   render() {
     const {

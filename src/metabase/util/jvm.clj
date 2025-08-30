@@ -14,9 +14,12 @@
     Base64$Encoder
     Locale
     PriorityQueue)
-   (java.util.concurrent TimeoutException)))
+   (java.util.concurrent Executors ExecutorService TimeoutException)))
 
 (set! *warn-on-reflection* true)
+
+(defonce ^:private ^ExecutorService virtual-thread-executor
+  (Executors/newVirtualThreadPerTaskExecutor))
 
 (defmacro varargs
   "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
@@ -145,6 +148,17 @@
      (merge (ex-data e) data))
    nil
    (full-exception-chain e)))
+
+(defn all-ex-messages
+  "Returns a list of all non-nil messages in an exception, starting from the outermost and working inward.
+  If no messages are found, returns nil."
+  [^Throwable e]
+  (loop [ex e
+         messages []]
+    (if ex
+      (recur (.getCause ex)
+             (conj messages (.getMessage ex)))
+      (seq (remove nil? messages)))))
 
 (defn do-with-auto-retries
   "Execute `f`, a function that takes no arguments, and return the results.
@@ -334,3 +348,13 @@
        [#","                  "."]
        ;; move minus sign at end to front
        [#"(^[^-]+)-$"         "-$1"]]))))
+
+(defn run-in-virtual-thread
+  "Run `thunk` in a virtual thread. Returns the j.u.concurrent.Future immediately. The Future will contain the return value."
+  [thunk]
+  (.submit virtual-thread-executor ^Runnable thunk))
+
+(defmacro in-virtual-thread*
+  "Run body once in a virtual thread. Uses ^:once metadata and `bound-fn*` to define the function."
+  [& body]
+  `(run-in-virtual-thread (bound-fn* (^:once fn [] ~@body))))

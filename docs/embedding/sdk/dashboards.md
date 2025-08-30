@@ -137,6 +137,8 @@ Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateD
 
 Use this hook if you'd like to have total control over the UI and settings.
 
+Until the Embedded analytics SDK is fully loaded and initialized, the hook returns `null`.
+
 #### API Reference
 
 - [Hook](./api/useCreateDashboardApi.html)

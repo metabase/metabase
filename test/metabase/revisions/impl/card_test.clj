@@ -2,6 +2,8 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as card]
    [metabase.revisions.impl.card :as impl.card]
    [metabase.revisions.init]
    [metabase.revisions.models.revision :as revision]
@@ -165,3 +167,45 @@
                        :model/Dashboard
                        before
                        changes)))))))))
+
+(deftest load-old-revision-without-card-schema-test
+  (testing "Old revisions without :card_schema should be loadable (regression test for #61555)"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Test Card"
+                                              :dataset_query (mt/mbql-query venues)
+                                              :display       :table}]
+      ;; Get the full card and serialize it
+      (let [full-card       (t2/select-one :model/Card :id card-id)
+            serialized-card (revision/serialize-instance :model/Card card-id full-card)
+            ;; Remove card_schema to simulate pre-v0.55 revision
+            old-card-data   (dissoc serialized-card :card_schema)]
+
+        ;; Manually create a revision without :card_schema to simulate pre-v0.55 data
+        (t2/insert! :model/Revision
+                    {:model    "Card"
+                     :model_id card-id
+                     :user_id  (mt/user->id :rasta)
+                     :object   old-card-data
+                     :message  "Test revision without card_schema"})
+
+        (testing "Can fetch revisions without error through API"
+          (let [revisions (revision/revisions+details :model/Card card-id)]
+            (is (seq revisions))
+            (is (= "Test revision without card_schema"
+                   (-> revisions first :message)))))
+
+        (testing "Revision object has card_schema added with legacy default after after-select"
+          (let [revision     (t2/select-one :model/Revision
+                                            :model "Card"
+                                            :model_id card-id
+                                            {:order-by [[:id :desc]]})
+                ;; The after-select should have added `:card_schema`
+                revision-obj (:object revision)]
+            (is (= queries/starting-card-schema-version (:card_schema revision-obj)))))
+
+        (testing "Card object from revision can go through upgrade-card-schema-to-latest"
+          ;; Actual regression test; this used to throw:
+          ;; "Cannot SELECT a Card without including :card_schema"
+          (let [revision (first (revision/revisions :model/Card card-id))
+                card-obj (:object revision)]
+            (is (some? (#'card/upgrade-card-schema-to-latest card-obj)))
+            (is (= queries/starting-card-schema-version (:card_schema card-obj)))))))))

@@ -38,6 +38,7 @@
    [metabase.collections.models.collection.root :as root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -79,20 +80,24 @@
 
 (def rv-models
   "These are models for which we will retrieve recency."
-  [:card :dataset :metric
-   ;; n.b.: `:card`, `metric` and `:model` are stored in recent_views as "card", and a join with report_card is
-   ;; needed to distinguish between them.
-   :dashboard :table :collection])
+  (cond->
+   [:card :dataset :metric
+       ;; n.b.: `:card`, `metric` and `:model` are stored in recent_views as "card", and a join with report_card is
+       ;; needed to distinguish between them.
+    :dashboard :table :collection]
+    config/ee-available? (conj :document)))
 
 (mu/defn rv-model->model
   "Given a rv-model, returns the toucan model identifier for it."
   [rvm :- (into [:enum] rv-models)]
-  (get {:dataset    :model/Card
-        :card       :model/Card
-        :dashboard  :model/Dashboard
-        :table      :model/Table
-        :collection :model/Collection}
-       rvm))
+  (let [base-mapping {:dataset :model/Card
+                      :card       :model/Card
+                      :dashboard  :model/Dashboard
+                      :table      :model/Table
+                      :collection :model/Collection}
+        document-mapping (when config/ee-available?
+                           {:document :model/Document})]
+    (get (merge base-mapping document-mapping) rvm)))
 
 (defn- ids-to-prune-for-user+model [user-id model context]
   (t2/select-fn-set :id
@@ -131,7 +136,7 @@
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
   [user-id :- [:maybe ms/PositiveInt]
-   model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
+   model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]
    model-id :- ms/PositiveInt
    context :- [:enum :view :selection]]
   (when user-id
@@ -172,7 +177,7 @@
      [:id [:int {:min 1}]]
      [:name :string]
      [:description [:maybe :string]]
-     [:model [:enum :dataset :card :metric :dashboard :collection :table]]
+     [:model [:enum :dataset :card :metric :dashboard :collection :table :document]]
      [:can_write :boolean]
      [:timestamp :string]]
     ;; database_id was commented out below because this schema was not actually being used correctly
@@ -206,7 +211,9 @@
      [:collection [:map
                    [:parent_collection ::pc]
                    [:effective_location :string]
-                   [:authority_level ::official]]]]]))
+                   [:authority_level ::official]]]
+     [:document [:map
+                 [:parent_collection ::pc]]]]]))
 
 (defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object, returns [[Item]].
@@ -443,6 +450,14 @@
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
 
+ ;; ================== Recent Documents ==================
+
+(defenterprise select-documents-for-recents
+  "Returns empty when not running in enterprise mode."
+  metabase-enterprise.documents.recent-views
+  [_document-ids]
+  [])
+
 (defmethod fill-recent-view-info :table [{:keys [_model model_id timestamp model_object]}]
   (let [table model_object]
     (when (and (not= "hidden" (:visibility_type table))
@@ -517,13 +532,15 @@
   (let [{card-ids       :card
          dashboard-ids  :dashboard
          collection-ids :collection
-         table-ids      :table} (as-> views views
-                                  (group-by (comp keyword :model) views)
-                                  (update-vals views #(mapv :model_id %)))]
+         table-ids :table
+         document-ids :document} (as-> views views
+                                   (group-by (comp keyword :model) views)
+                                   (update-vals views #(mapv :model_id %)))]
     {:card       (m/index-by :id (card-recents card-ids))
      :dashboard  (m/index-by :id (dashboard-recents dashboard-ids))
      :collection (m/index-by :id (collection-recents collection-ids))
-     :table      (m/index-by :id (table-recents table-ids))}))
+     :table      (m/index-by :id (table-recents table-ids))
+     :document   (m/index-by :id (select-documents-for-recents document-ids))}))
 
 (def ^:private ItemValidator (mr/validator Item))
 

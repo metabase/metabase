@@ -479,32 +479,36 @@ describe("issue 17160", () => {
     assertMultipleValuesFilterState();
   });
 
-  it.skip("should pass multiple filter values to public questions and dashboards (metabase#17160-2)", () => {
-    // FIXME: setup public dashboards
-    setup();
+  it(
+    "should pass multiple filter values to public questions and dashboards (metabase#17160-2)",
+    { tags: "@skip" },
+    () => {
+      // FIXME: setup public dashboards
+      setup();
 
-    // 1. Check click behavior connected to a public question
-    visitPublicSourceDashboard();
+      // 1. Check click behavior connected to a public question
+      visitPublicSourceDashboard();
 
-    cy.findAllByText("click-behavior-question-label").eq(0).click();
+      cy.findAllByText("click-behavior-question-label").eq(0).click();
 
-    cy.url().should("include", "/public/question");
+      cy.url().should("include", "/public/question");
 
-    assertMultipleValuesFilterState();
+      assertMultipleValuesFilterState();
 
-    // 2. Check click behavior connected to a publicdashboard
-    visitPublicSourceDashboard();
+      // 2. Check click behavior connected to a publicdashboard
+      visitPublicSourceDashboard();
 
-    cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
+      cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
 
-    cy.url().should("include", "/public/dashboard");
-    cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
+      cy.url().should("include", "/public/dashboard");
+      cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(TARGET_DASHBOARD_NAME);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(TARGET_DASHBOARD_NAME);
 
-    assertMultipleValuesFilterState();
-  });
+      assertMultipleValuesFilterState();
+    },
+  );
 });
 
 describe("issue 18454", () => {

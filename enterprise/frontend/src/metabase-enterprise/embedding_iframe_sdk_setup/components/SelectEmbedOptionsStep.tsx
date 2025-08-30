@@ -1,22 +1,17 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { ColorPillPicker } from "metabase/common/components/ColorPicker";
-import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { colors as defaultMetabaseColors } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
-import { Card, Checkbox, Divider, Group, Stack, Text } from "metabase/ui";
+import { Card, Checkbox, Divider, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
+import { ColorCustomizationSection } from "./ColorCustomizationSection";
 import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => {
   const { experience, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
-
-  const applicationColors = useSetting("application-colors");
 
   const { theme } = settings;
 
@@ -25,8 +20,9 @@ export const SelectEmbedOptionsStep = () => {
     (experience === "chart" && settings.questionId);
 
   const isExplorationEmbed = settings.template === "exploration";
+  const isBrowserEmbed = settings.componentName === "metabase-browser";
 
-  const updateColor = useCallback(
+  const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
       updateSettings({
         theme: { ...theme, colors: { ...theme?.colors, ...nextColors } },
@@ -35,8 +31,7 @@ export const SelectEmbedOptionsStep = () => {
     [theme, updateSettings],
   );
 
-  const isDashboardOrInteractiveQuestion =
-    settings.dashboardId || (settings.questionId && settings.drills);
+  const isDashboardOrQuestion = settings.dashboardId || settings.questionId;
 
   return (
     <Stack gap="md">
@@ -53,7 +48,7 @@ export const SelectEmbedOptionsStep = () => {
             />
           )}
 
-          {isDashboardOrInteractiveQuestion && (
+          {isDashboardOrQuestion && (
             <Checkbox
               label={t`Allow downloads`}
               checked={settings.withDownloads}
@@ -72,6 +67,14 @@ export const SelectEmbedOptionsStep = () => {
               }
             />
           )}
+
+          {isBrowserEmbed && (
+            <Checkbox
+              label={t`Allow editing dashboards and questions`}
+              checked={!settings.readOnly}
+              onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
+            />
+          )}
         </Stack>
       </Card>
 
@@ -82,7 +85,9 @@ export const SelectEmbedOptionsStep = () => {
           </Text>
 
           <Text size="sm" c="text-medium" mb="lg">
-            {t`Set default values and control visibility`}
+            {experience === "dashboard"
+              ? t`Set default values and control visibility`
+              : t`Set default values for parameters`}
           </Text>
 
           <ParameterSettings />
@@ -90,39 +95,15 @@ export const SelectEmbedOptionsStep = () => {
       )}
 
       <Card p="md">
-        <Text size="lg" fw="bold" mb="lg">
-          {t`Appearance`}
-        </Text>
-
-        <Group align="start" gap="xl" mb="lg">
-          {getConfigurableThemeColors().map(
-            ({ key, name, originalColorKey }) => {
-              // Use the default from appearance settings.
-              // If not set, use the default Metabase color.
-              const originalColor =
-                applicationColors?.[originalColorKey] ??
-                defaultMetabaseColors[originalColorKey];
-
-              return (
-                <Stack gap="xs" align="start" key={key}>
-                  <Text size="sm" fw="bold">
-                    {name}
-                  </Text>
-
-                  <ColorPillPicker
-                    onChange={(color) => updateColor({ [key]: color })}
-                    initialColor={theme?.colors?.[key]}
-                    originalColor={originalColor}
-                  />
-                </Stack>
-              );
-            },
-          )}
-        </Group>
+        <ColorCustomizationSection
+          theme={theme}
+          onColorChange={updateColors}
+          onColorReset={() => updateSettings({ theme: undefined })}
+        />
 
         {isQuestionOrDashboardEmbed && (
           <>
-            <Divider mb="md" />
+            <Divider mt="lg" mb="md" />
 
             <Checkbox
               label={t`Show ${experience} title`}
@@ -135,28 +116,3 @@ export const SelectEmbedOptionsStep = () => {
     </Stack>
   );
 };
-
-const getConfigurableThemeColors = () =>
-  [
-    {
-      name: t`Brand Color`,
-      key: "brand",
-      originalColorKey: "brand",
-    },
-    {
-      name: t`Text Color`,
-      key: "text-primary",
-      originalColorKey: "text-dark",
-    },
-    {
-      name: t`Background Color`,
-      key: "background",
-      originalColorKey: "bg-white",
-    },
-  ] as const satisfies {
-    name: string;
-    key: keyof MetabaseColors;
-
-    // Populate colors from appearance settings.
-    originalColorKey: ColorName;
-  }[];

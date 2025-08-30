@@ -44,7 +44,7 @@
   [:map
    {:closed true} ; closed because it is used as a map key
    [:fk-field-id   ::lib.schema.id/field]
-   [:fk-field-name {:optional true} ::lib.schema.common/non-blank-string]
+   [:fk-field-name {:optional true} :string]
    [:fk-join-alias {:optional true} ::lib.schema.join/alias]])
 
 (mr/def ::join
@@ -55,7 +55,7 @@
     [:strategy      [:= :left-join]]
     [:conditions    [:tuple :mbql.clause/=]] ; exactly one condition
     [:fk-field-id   ::lib.schema.id/field]
-    [:fk-field-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    [:fk-field-name {:optional true} [:maybe :string]]
     [:fk-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]]])
 
 (mu/defn- fk-field-infos->joins :- [:maybe [:sequential ::join]]
@@ -244,7 +244,6 @@
                                                              (lib/visible-columns
                                                               query
                                                               stage-number
-                                                              (lib/query-stage query stage-number)
                                                               {:include-joined?                              true
                                                                :include-expressions?                         false
                                                                :include-implicitly-joinable?                 false

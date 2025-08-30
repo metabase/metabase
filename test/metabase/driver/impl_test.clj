@@ -1,13 +1,14 @@
 (ns metabase.driver.impl-test
   (:require
    [clojure.core.async :as a]
+   [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.tools.namespace.find :as ns.find]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
-   [metabase.test.util.async :as tu.async]
-   [metabase.test.util.namespace :as test.namespace])
+   [metabase.test.util.async :as tu.async])
   (:import
    (com.vladsch.flexmark.ast Heading)
    (com.vladsch.flexmark.parser Parser)
@@ -52,18 +53,18 @@
   version 0.42.0 onwards, as prior to this version, this information was stored at github wiki. Output has a following
   shape {\"0.47.0\" \"...insert-into!...\" ...}."
   []
-  (let [changelog     (slurp (io/file "docs/developers-guide/driver-changelog.md"))
-        parser        (.build (Parser/builder))
-        document      (.parse ^Parser parser ^String changelog)]
+  (let [changelog (slurp (io/file "docs/developers-guide/driver-changelog.md"))
+        parser (.build (Parser/builder))
+        document (.parse ^Parser parser ^String changelog)]
     (loop [[child & children] (.getChildren ^Document document)
-           version->text      {}
-           last-version       nil]
+           version->text {}
+           last-version nil]
       (cond (nil? child)
             version->text
 
             (and (instance? Heading child)
                  (= 2 (.getLevel ^Heading child)))
-            (let [heading-str      (str (.getChars ^Node child))
+            (let [heading-str (str (.getChars ^Node child))
                   new-last-version (re-find #"(?<=## Metabase )\d+\.\d+\.\d+" heading-str)]
               (if (some? new-last-version)
                 (recur children version->text new-last-version)
@@ -80,9 +81,13 @@
 (defn- collect-metadatas
   "List metadata for all defmultis of driver namespaces."
   []
-  (let [nss (filter #(str/starts-with? % "metabase.driver") #_{:clj-kondo/ignore [:deprecated-var]} test.namespace/metabase-namespace-symbols)]
-    (apply require nss)
-    (->> (map ns-publics nss)
+  ;; Dynamically find all driver namespaces using tools.namespace
+  (let [all-namespaces (ns.find/find-namespaces (classpath/system-classpath))
+        driver-namespaces (filter #(and (str/starts-with? % "metabase.driver")
+                                        (not (str/includes? % "test")))
+                                  all-namespaces)]
+    (apply require driver-namespaces)
+    (->> (map ns-publics driver-namespaces)
          (mapcat vals)
          (filter #(instance? clojure.lang.MultiFn (deref %)))
          (map meta)
@@ -90,13 +95,13 @@
 
 (defn- older-than-42?
   [version]
-  (when-let [version (drop 1 (re-find #"(\d+)\.(\d+)\.(\d+)" (str version)))]
+  (when-let [version (not-empty (drop 1 (re-find #"(\d+)\.(\d+)\.(\d+)" (str version))))]
     (< (compare (mapv #(Integer/parseInt %) version)
                 [0 42 0])
        0)))
 
 (deftest driver-multimethods-in-changelog-test
-  (let [metadatas             (collect-metadatas)
+  (let [metadatas (collect-metadatas)
         version->section-text (parse-drivers-changelog)]
     (doseq [m metadatas]
       (when-not (:changelog-test/ignore m)

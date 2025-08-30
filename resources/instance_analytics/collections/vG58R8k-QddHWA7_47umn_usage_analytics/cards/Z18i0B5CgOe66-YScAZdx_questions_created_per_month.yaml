@@ -58,7 +58,6 @@ dataset_query:
           - user_id
         - join-alias: Question 1
       fields: all
-      ident: join_Z18i0B5CgOe66-YScAZdx@0__Question 1
       source-table: 0wVIfjBJWclD0lKeABYYl
     source-table: -lNDM3tJmuL5ltGbX0oyT
   type: query
