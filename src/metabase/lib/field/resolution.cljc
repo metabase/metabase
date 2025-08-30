@@ -299,7 +299,8 @@
                     (pr-str stage-number))
         (let [join-cols (cond->> (lib.metadata.calculation/returned-columns query stage-number join)
                           source-field (remove (fn [col]
-                                                 (not= ((some-fn :fk-field-id :lib/original-fk-field-id) col) source-field))))]
+                                                 (when-some [col-source-field ((some-fn :fk-field-id :lib/original-fk-field-id) col)]
+                                                   (not= col-source-field source-field)))))]
           (when-some [col (resolve-in-previous-stage-metadata-and-update-keys query join-cols id-or-name)]
             (-> col
                 (as-> $col (lib.join/column-from-join query stage-number $col join-alias))
