@@ -193,6 +193,15 @@ export function EmbeddingSdkSettings() {
 
             {isSimpleEmbedFeatureEnabled ? (
               <Group gap="md">
+                <LinkButton
+                  size="compact-xs"
+                  variant="outline"
+                  to="/embed-js"
+                  fz="sm"
+                >
+                  {t`Try it out`}
+                </LinkButton>
+
                 <Button
                   size="compact-xs"
                   variant="outline"
@@ -203,15 +212,6 @@ export function EmbeddingSdkSettings() {
                 >
                   {t`Documentation`}
                 </Button>
-
-                <LinkButton
-                  size="compact-xs"
-                  variant="outline"
-                  to="/embed-js"
-                  fz="sm"
-                >
-                  {t`Try it out`}
-                </LinkButton>
               </Group>
             ) : (
               <UpsellEmbeddingButton
