@@ -47,7 +47,7 @@
   [clause]
   (and (vector? clause)
        (keyword? (first clause))
-       (let [opts (get clause 1)]
+       (let [opts (second clause)]
          (and (map? opts)
               (contains? opts :lib/uuid)))))
 
@@ -55,7 +55,9 @@
   "Returns true if this is a clause."
   [clause clause-type]
   (and (clause? clause)
-       (= (first clause) clause-type)))
+       (if (set? clause-type)
+         (clause-type (first clause))
+         (= (first clause) clause-type))))
 
 (defn field-clause?
   "Returns true if this is a field clause."
@@ -80,13 +82,15 @@
   (and (clause? clause)
        (lib.hierarchy/isa? (first clause) ::lib.schema.ref/metric)))
 
+;;; TODO (Cam 8/28/25) -- base type is the original effective type!!! We shouldn't need a separate
+;;; `:metabase.lib.field/original-effective-type` key.
 (defn original-isa?
   "Returns whether the type of `expression` isa? `typ`.
    If the expression has an original-effective-type due to bucketing, check that."
   [expression typ]
   (isa?
    (or (and (clause? expression)
-            (:metabase.lib.field/original-effective-type (second expression)))
+            ((some-fn :metabase.lib.field/original-effective-type :base-type) (lib.options/options expression)))
        (lib.schema.expression/type-of expression))
    typ))
 
@@ -626,9 +630,7 @@
           (update-query-stage
            stage-number
            (fn [stage]
-             (-> stage
-                 (dissoc :order-by :fields)
-                 (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
+             (dissoc stage :order-by)))
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
 

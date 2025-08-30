@@ -627,6 +627,7 @@
 
 ;; For `and`/`or`/`not` compound filters, recurse on the arg(s), then simplify the whole thing.
 (defn- canonicalize-compound-filter-clause [[filter-name & args]]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/simplify-compound-filter
    (into [filter-name]
          ;; we need to canonicalize any other mbql clauses that might show up in args here because

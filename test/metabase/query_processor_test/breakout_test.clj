@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -83,7 +82,7 @@
 (deftest ^:parallel internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       (mt/id :venues :category_id)
                                       (qp.test-util/field-values-from-def defs/test-data :categories :name))
       (let [{:keys [rows cols]} (qp.test-util/rows-and-cols
@@ -107,7 +106,7 @@
 (deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       (mt/id :venues :category_id)
                                       (mt/id :categories :name))
       (doseq [[sort-order expected] {:desc ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse"
@@ -248,7 +247,7 @@
 (deftest ^:parallel binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:fields [{:id          (mt/id :venues :latitude)
                                                  :fingerprint {:type {:type/Number {:min nil, :max nil}}}}]})
       (is (=? {:status :failed
@@ -363,3 +362,33 @@
                       [-100.0 11345]
                       [-80.0  2275]]
                      (mt/formatted-rows [1.0 int] (qp/process-query query)))))))))))
+
+(deftest ^:parallel breakout-and-fields-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "adding a breakout to a query with fields works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [[2] [3] [4]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :venues :name)))])
+                   (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))
+                   (lib/limit 3)
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [int])))))))))
+
+(deftest ^:parallel breakout-and-join-fields-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (testing "adding a breakout to a query with fields from joins works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [["Doohickey"] ["Gadget"] ["Gizmo"]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :orders :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :orders :total)))])
+                   (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                              [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                      (-> (lib.metadata/field mp (mt/id :products :id))
+                                                          (lib/with-join-alias "Products")))]))
+                   (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
+                   (lib/limit 3)
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [str])))))))))

@@ -10,9 +10,7 @@
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -44,25 +42,20 @@
   "Create a query filtering products by category, using shared utility.
    Returns a legacy MBQL query structure for API compatibility."
   [category]
-  (mt/dataset transforms-dataset/transforms-test
-    (let [query (query-test-util/make-query
-                 {:source-table  "products"
-                  :source-column "category"
-                  :filter-fn     lib/=
-                  :filter-values [category]})]
+  (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+        query (query-test-util/make-query
+               {:source-table  table-name
+                :source-column "category"
+                :filter-fn     lib/=
+                :filter-values [category]})]
       ;; Convert to legacy MBQL which the transform API expects
-      (lib.convert/->legacy-MBQL query))))
+    (lib.convert/->legacy-MBQL query)))
 
 (defn- get-test-schema
   "Get the schema from the products table in the test dataset.
    This is needed for databases like BigQuery that require a schema/dataset."
   []
-  (t2/select-one-fn :schema :model/Table (mt/id :products)))
-
-(comment
-  (binding [driver/*driver* :clickhouse]
-    (make-query "Gadget"))
-  -)
+  (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -231,7 +224,7 @@
      category - The category filter used (e.g., \"Gadget\" or \"Doohickey\")"
   [table-name ids category]
   ;; Use the metadata provider to find the table
-  (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp    (mt/metadata-provider)
         ;; Find the table by name
         table (m/find-first (comp #{table-name} :name)
                             (lib.metadata/tables mp))]
@@ -251,7 +244,7 @@
                             base-query)
           count-query     (lib/aggregate filtered-query (lib/count))
           result          (qp/process-query count-query)
-          actual-count    (-> result :data :rows first first)]
+          actual-count   (-> (mt/formatted-rows [int] result) first first)]
       ;; Verify we got the expected number of rows
       (is (= (count ids) actual-count)
           (str "Expected " (count ids) " rows with category " category
@@ -261,7 +254,7 @@
   "Wait for a table to appear in metadata, with timeout.
    Copied from execute_test.clj - will consolidate later."
   [table-name timeout-ms]
-  (let [mp    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp    (mt/metadata-provider)
         limit (+ (System/currentTimeMillis) timeout-ms)]
     (loop []
       (Thread/sleep 200)
@@ -275,7 +268,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table1-name :name :as target1} {:type   "table"
                                                                        :schema schema
                                                                        :name   "gadget_products"}

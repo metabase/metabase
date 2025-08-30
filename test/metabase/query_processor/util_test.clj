@@ -4,12 +4,15 @@
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
    [metabase.query-processor.util :as qp.util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 (defn- query-hash-hex [query]
-  (codecs/bytes->hex (qp.util/query-hash query)))
+  (codecs/bytes->hex
+   (mu/disable-enforcement
+     (qp.util/query-hash query))))
 
 (deftest ^:parallel query-hash-test
   (testing "qp.util/query-hash"

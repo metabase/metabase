@@ -128,6 +128,7 @@
       (let [no-value? (= (:value v) params/no-value)]
         (cond
           (params.ops/operator? (get-in v [:value :type]))
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (let [param (:value v)
                 compiled-clause (-> (assoc param
                                            :target

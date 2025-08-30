@@ -260,12 +260,12 @@
           (testing "delete without delete-children param will return errors with children count"
             (is (=? {:errors [{:index       0
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {}
                                :status-code 400}
                               {:index       1,
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {},
                                :status-code 400}]}
                     (mt/user-http-request :crowberto :post 400 execute-bulk-url
@@ -320,7 +320,7 @@
         (testing "delete parent with self-referential children should return error without delete-children param"
           (is (=? {:errors [{:index       0
                              :type        "metabase.actions.error/violate-foreign-key-constraint",
-                             :message     "Other tables rely on this row so it cannot be deleted.",
+                             :message     "Other rows refer to this row so it cannot be deleted.",
                              :errors      {}
                              :status-code 400}]}
                   (mt/user-http-request :crowberto :post 400 execute-bulk-url body))))
@@ -379,7 +379,7 @@
           (testing "delete user involved in mutual recursion should return error without delete-children param"
             (is (=? {:errors [{:index       0
                                :type        "metabase.actions.error/violate-foreign-key-constraint",
-                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :message     "Other rows refer to this row so it cannot be deleted.",
                                :errors      {}
                                :status-code 400}]}
                     (mt/user-http-request :crowberto :post 400 execute-bulk-url delete-user-body))))
@@ -605,7 +605,7 @@
                   scope               {:table-id table-id}]
 
               (testing "create"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown" :optional false :readonly false}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "integer"  :optional false :readonly false}
                                       {:id "text"      :display_name "Text"       :input_type "text"     :optional true  :readonly false}
                                       {:id "int"       :display_name "Int"        :input_type "integer"  :optional true  :readonly false}
                                       {:id "bool"      :display_name "Bool"       :input_type "boolean"  :optional true  :readonly false}

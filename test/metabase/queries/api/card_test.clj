@@ -12,6 +12,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.driver :as driver]
@@ -607,7 +608,7 @@
 
 (deftest series-are-compatible-test
   (mt/dataset test-data
-    (let [database-id->metadata-provider {(mt/id) (lib.metadata.jvm/application-database-metadata-provider (mt/id))}]
+    (let [database-id->metadata-provider {(mt/id) (mt/metadata-provider)}]
       (testing "area-line-bar charts"
         (mt/with-temp
           [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
@@ -1314,6 +1315,26 @@
                :type    "metric"}
               (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
                                     {:dataset_query (mbql-count-query (mt/id) (mt/id :checkins))}))))))
+
+(deftest card-referencing-card-without-permission-should-fail
+  (testing "POST /api/card"
+    (testing "Make sure if we don't have access to table, creatings a query on query on the table should fail"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                             :dataset_query {:query    {:source-table (mt/id :venues)}
+                                                             :type     :query
+                                                             :database (mt/id)}}]
+              (mt/user-http-request :rasta :post 403 (format "card/%d/query" (u/the-id card)))
+              (mt/user-http-request :rasta :post 403 "card" {:name "DUPLICATE"
+                                                             :display "table"
+                                                             :visualization_settings {}
+                                                             :database_id (mt/id)
+                                                             :dataset_query {:query    {:source-table (format "card__%s" (u/the-id card))}
+                                                                             :type     :query
+                                                                             :database (mt/id)}
+                                                             :collection_id (-> :rasta mt/user->id collection/user->personal-collection u/the-id)}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
@@ -3469,7 +3490,7 @@
   (testing "POST /api/card"
     (testing "Should be able to save a Card with an MLv2 query (#39024)"
       (mt/with-model-cleanup [:model/Card]
-        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [metadata-provider (mt/metadata-provider)
               venues            (lib.metadata/table metadata-provider (mt/id :venues))
               query             (lib/query metadata-provider venues)
               response          (mt/user-http-request :crowberto :post 200 "card"
@@ -3487,7 +3508,7 @@
 (deftest ^:parallel run-mlv2-card-query-test
   (testing "POST /api/card/:id/query"
     (testing "Should be able to run a query for a Card with an MLv2 query (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
@@ -3558,7 +3579,7 @@
     (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))))
 
 (deftest ^:parallel can-run-adhoc-query-test
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [metadata-provider (mt/metadata-provider)
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
     (mt/with-temp [:model/Card card {:dataset_query query}

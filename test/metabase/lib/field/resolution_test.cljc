@@ -250,13 +250,13 @@
                        :database     (meta/id)
                        :stages       [{:lib/type                     :mbql.stage/native
                                        :lib/stage-metadata           {:lib/type :metadata/results
-                                                                      :columns  (lib.card/card-metadata-columns mp (lib.metadata/card mp 1))}
+                                                                      :columns  (lib.card/card-returned-columns mp (lib.metadata/card mp 1))}
                                        :native                       "SELECT * FROM some_table;"
                                        ;; `:qp` and `:source-query` keys get added by QP middleware during preprocessing.
                                        :qp/stage-is-from-source-card 1}
                                       {:lib/type                     :mbql.stage/mbql
                                        :lib/stage-metadata           {:lib/type :metadata/results
-                                                                      :columns  (lib.card/card-metadata-columns mp (lib.metadata/card mp 2))}
+                                                                      :columns  (lib.card/card-returned-columns mp (lib.metadata/card mp 2))}
                                        :fields                       [[:field {:base-type :type/DateTime, :lib/uuid "48052020-59e3-47e7-bfdc-38ab12c27292"}
                                                                        "EXAMPLE_TIMESTAMP"]
                                                                       [:field {:base-type :type/DateTime, :temporal-unit :week, :lib/uuid "dd9bdda4-688c-4a14-8ff6-88d4e2de6628"}
@@ -386,7 +386,7 @@
                               :strategy     :left-join
                               :fk-field-id  %category-id}]}))
           col   (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1)))]
-      (is (=? {:lib/original-ref [:field {:join-alias "Category"} pos-int?]}
+      (is (=? {:lib/original-ref-for-result-metadata-purposes-only [:field {:join-alias "Category"} pos-int?]}
               col))
       (is (=? [:field
                {:lib/uuid       string?
@@ -1325,7 +1325,7 @@
                    query
                    -1
                    [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)])
-                  (dissoc :lib/original-ref :lib/original-display-name))
+                  (dissoc :lib/original-ref-for-result-metadata-purposes-only :lib/original-display-name))
               (lib.field.resolution/resolve-field-ref
                query
                -1

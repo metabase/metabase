@@ -23,6 +23,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
@@ -42,6 +43,14 @@
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
 
+(mr/def ::data-authority-write
+  "Schema for writing a valid table data authority."
+  (into [:enum] (map name table/writable-data-authority-types)))
+
+(mr/def ::data-authority-read
+  "Schema for returning a table data authority type."
+  (into [:enum] table/readable-data-authority-types))
+
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
   []
@@ -58,6 +67,9 @@
    {:keys [include_editable_data_model]}
    :- [:map
        [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
+  ;; partial schema only
+  :- [:map {:closed false}
+      [:data_authority ::data-authority-read]]
   (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
@@ -100,7 +112,7 @@
    body]
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                                    :present [:description :caveats :points_of_interest :visibility_type]))]
+                                                    :present [:description :caveats :points_of_interest :visibility_type :data_authority]))]
     (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -152,7 +164,8 @@
             [:caveats                 {:optional true} [:maybe :string]]
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]
-            [:field_order             {:optional true} [:maybe FieldOrder]]]]
+            [:field_order             {:optional true} [:maybe FieldOrder]]
+            [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
   (first (update-tables! [id] body)))
 
 (api.macros/defendpoint :put "/"
@@ -167,7 +180,8 @@
                                [:description             {:optional true} [:maybe :string]]
                                [:caveats                 {:optional true} [:maybe :string]]
                                [:points_of_interest      {:optional true} [:maybe :string]]
-                               [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
+                               [:show_in_getting_started {:optional true} [:maybe :boolean]]
+                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
   (update-tables! ids body))
 
 (api.macros/defendpoint :get "/:id/query_metadata"

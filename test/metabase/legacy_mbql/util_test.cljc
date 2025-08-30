@@ -1,6 +1,7 @@
 (ns metabase.legacy-mbql.util-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
-   #?@(:clj  (^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
+   #?@(:clj  ([metabase.test.util.i18n])
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :as t]
@@ -534,12 +535,12 @@
 
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
-    (doseq [[[op mode] unit] mbql.u/temporal-extract-ops->unit]
+    (doseq [[[op mode] unit] @#'mbql.u/temporal-extract-ops->unit]
       (t/is (= [:temporal-extract [:field 1 nil] unit]
-               (mbql.u/desugar-temporal-extract [op [:field 1 nil] mode])))
+               (#'mbql.u/desugar-temporal-extract [op [:field 1 nil] mode])))
 
       (t/is (= [:+ [:temporal-extract [:field 1 nil] unit] 1]
-               (mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil] mode] 1]))))))
+               (#'mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil] mode] 1]))))))
 
 (t/deftest ^:parallel desugar-divide-with-extra-args-test
   (t/testing `mbql.u/desugar-expression
@@ -699,107 +700,6 @@
                   "those without exploding")
     (t/is (= ["" "_2"]
              (mbql.u/uniquify-names ["" ""])))))
-
-(t/deftest ^:parallel uniquify-named-aggregations-test
-  (t/is (= [[:aggregation-options [:count] {:name "count"}]
-            [:aggregation-options [:sum [:field 1 nil]] {:name "sum"}]
-            [:aggregation-options [:count] {:name "count_2"}]
-            [:aggregation-options [:count] {:name "count_3"}]]
-           (mbql.u/uniquify-named-aggregations
-            [[:aggregation-options [:count] {:name "count"}]
-             [:aggregation-options [:sum [:field 1 nil]] {:name "sum"}]
-             [:aggregation-options [:count] {:name "count"}]
-             [:aggregation-options [:count] {:name "count"}]])))
-
-  (t/testing "what if we try to trick it by using a name it would have generated?"
-    (t/is (= [[:aggregation-options [:count] {:name "count"}]
-              [:aggregation-options [:count] {:name "count_2"}]
-              [:aggregation-options [:count] {:name "count_2_2"}]]
-             (mbql.u/uniquify-named-aggregations
-              [[:aggregation-options [:count] {:name "count"}]
-               [:aggregation-options [:count] {:name "count"}]
-               [:aggregation-options [:count] {:name "count_2"}]])))))
-
-(t/deftest ^:parallel pre-alias-aggregations-test
-  (letfn [(simple-ag->name [[ag-name]]
-            (name ag-name))]
-    (t/testing "can we wrap all of our aggregation clauses in `:named` clauses?"
-      (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
-                [:aggregation-options [:count [:field 1 nil]] {:name "count"}]
-                [:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
-                [:aggregation-options [:avg [:field 1 nil]]   {:name "avg"}]
-                [:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
-                [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
-               (mbql.u/pre-alias-aggregations simple-ag->name
-                                              [[:sum [:field 1 nil]]
-                                               [:count [:field 1 nil]]
-                                               [:sum [:field 1 nil]]
-                                               [:avg [:field 1 nil]]
-                                               [:sum [:field 1 nil]]
-                                               [:min [:field 1 nil]]]))))
-
-    (t/testing "we shouldn't change the name of ones that are already named"
-      (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
-                [:aggregation-options [:count [:field 1 nil]] {:name "count"}]
-                [:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
-                [:aggregation-options [:avg [:field 1 nil]]   {:name "avg"}]
-                [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_2"}]
-                [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
-               (mbql.u/pre-alias-aggregations simple-ag->name
-                                              [[:sum [:field 1 nil]]
-                                               [:count [:field 1 nil]]
-                                               [:sum [:field 1 nil]]
-                                               [:avg [:field 1 nil]]
-                                               [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
-                                               [:min [:field 1 nil]]]))))
-
-    (t/testing "ok, can we do the same thing as the tests above but make those names *unique* at the same time?"
-      (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
-                [:aggregation-options [:count [:field 1 nil]] {:name "count"}]
-                [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_2"}]
-                [:aggregation-options [:avg [:field 1 nil]]   {:name "avg"}]
-                [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_3"}]
-                [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
-               (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                                                           [[:sum [:field 1 nil]]
-                                                            [:count [:field 1 nil]]
-                                                            [:sum [:field 1 nil]]
-                                                            [:avg [:field 1 nil]]
-                                                            [:sum [:field 1 nil]]
-                                                            [:min [:field 1 nil]]])))
-
-      (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
-                [:aggregation-options [:count [:field 1 nil]] {:name "count"}]
-                [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_2"}]
-                [:aggregation-options [:avg [:field 1 nil]]   {:name "avg"}]
-                [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_2_2"}]
-                [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
-               (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                                                           [[:sum [:field 1 nil]]
-                                                            [:count [:field 1 nil]]
-                                                            [:sum [:field 1 nil]]
-                                                            [:avg [:field 1 nil]]
-                                                            [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
-                                                            [:min [:field 1 nil]]]))))
-
-    (t/testing (str "if `:aggregation-options` only specifies `:display-name` it should still a new `:name`. "
-                    "`pre-alias-and-uniquify-aggregations` shouldn't stomp over display name")
-      (t/is (= [[:aggregation-options [:sum [:field 1 nil]] {:name "sum"}]
-                [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
-                [:aggregation-options [:sum [:field 1 nil]] {:display-name "Sum of Field 1", :name "sum_3"}]]
-               (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                                                           [[:sum [:field 1 nil]]
-                                                            [:sum [:field 1 nil]]
-                                                            [:aggregation-options [:sum [:field 1 nil]] {:display-name "Sum of Field 1"}]])))
-
-      (t/testing "if both are specified, `display-name` should still be propagated"
-        (t/is (= [[:aggregation-options [:sum [:field 1 nil]] {:name "sum"}]
-                  [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
-                  [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2_2", :display-name "Sum of Field 1"}]]
-                 (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                                                             [[:sum [:field 1 nil]]
-                                                              [:sum [:field 1 nil]]
-                                                              [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2", :display-name "Sum of Field 1"}]])))))))
 
 (t/deftest ^:parallel unique-name-generator-test
   (t/testing "Can we get a simple unique name generator"
@@ -988,7 +888,7 @@
   (t/is (= [:=
             [:expression "Date" {:temporal-unit :quarter}]
             [:relative-datetime 0 :quarter]]
-           (mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
+           (#'mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
 
 (t/deftest ^:parallel desugar-month-quarter-day-name-test
   (t/is (= [:case [[[:= [:field 1 nil] 1]  "Jan"]
@@ -1026,7 +926,7 @@
 
 #?(:clj
    (t/deftest ^:synchronized desugar-month-quarter-day-name-i18n-test
-     (mt/with-user-locale "es"
+     (metabase.test.util.i18n/with-user-locale "es"
        ;; JVM versions 17 and older for some languages (including Spanish) use eg. "oct.", while in JVMs 18+ they
        ;; use "oct". I wish I were joking, but I'm not. These tests were passing on 21 and failing on 17 and 11
        ;; before I made them flexible about the dot.
