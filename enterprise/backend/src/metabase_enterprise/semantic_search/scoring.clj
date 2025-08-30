@@ -179,11 +179,11 @@
   "The appdb-based scorers for search ranking results. Like `base-scorers`, but for scorers that need to query the appdb."
   [{:keys [limit-int] :as search-ctx}]
   (when-not (and limit-int (zero? limit-int))
-    (merge {:bookmarked search.scoring/bookmark-score-expr}
-           (when-not (= :mysql (mdb/db-type))
-             ;; The :user-recency scorer needs to be modified to work with mysql / mariadb (BOT-360)
-             {:user-recency (search.scoring/inverse-duration
-                             (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)}))))
+    (when-not (= :mysql (mdb/db-type))
+      ;; The appdb scorers need to be modified to work with mysql / mariadb (BOT-360)
+      {:bookmarked search.scoring/bookmark-score-expr
+       :user-recency (search.scoring/inverse-duration
+                      (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)})))
 
 (defn with-appdb-scores
   "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.

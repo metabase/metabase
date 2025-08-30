@@ -608,14 +608,18 @@
        :limit    search.config/*db-max-results*})))
 
 ;; Return a reducible-query corresponding to searching the entities without an index.
-(defmethod search.engine/results
-  :search.engine/in-place
+(defn- results
   [search-ctx]
   (let [search-query (full-search-query search-ctx)]
     (log/tracef "Searching with query:\n%s\n%s"
                 (u/pprint-to-str search-query)
                 (mdb/format-sql (first (mdb/compile search-query))))
     (t2/reducible-query search-query)))
+
+(defmethod search.engine/results
+  :search.engine/in-place
+  [search-ctx]
+  (results search-ctx))
 
 (defmethod search.engine/score :search.engine/in-place [search-ctx result]
   (scoring/score-and-result result search-ctx))
