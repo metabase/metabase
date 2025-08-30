@@ -1,6 +1,7 @@
 (ns metabase-enterprise.audit-app.permissions-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase-enterprise.audit-app.permissions :as audit-app.permissions]
@@ -12,8 +13,10 @@
    [metabase.permissions.models.collection.graph-test :refer [graph]]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -31,6 +34,8 @@
   (mt/test-drivers #{:postgres :h2 :mysql}
     (audit-test/with-audit-db-restoration
       (mt/with-premium-features #{:audit-app}
+        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id audit/audit-db-id))
+            "The sync status should be completed by this point. (In test it is synchronous!)")
         (mt/with-test-user :crowberto
           (testing "A query using a saved audit model as the source table runs succesfully"
             (let [audit-card (t2/select-one :model/Card :database_id audit/audit-db-id :type :model)]
@@ -42,7 +47,9 @@
                      :query    {:source-table (str "card__" (u/the-id audit-card))}})))))
 
           (testing "A non-native query can be run on views in the audit DB"
-            (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id)]
+            (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})]
+              (when-not (str/starts-with? (u/lower-case-en (:name audit-view)) "v_")
+                (sync/sync-database! (t2/select-one :model/Database audit/audit-db-id)))
               (is (partial=
                    {:status :completed}
                    (qp/process-query
@@ -83,7 +90,8 @@
             (mt/with-full-data-perms-for-all-users!
               (mt/with-test-user :rasta
                 (binding [api/*current-user-permissions-set* (delay #{})]
-                  (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id)]
+                  (let [audit-view (->> (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})
+                                        (tu/poll-until 5000))]
                     (is (thrown-with-msg?
                          clojure.lang.ExceptionInfo
                          #"You do not have access to the audit database"

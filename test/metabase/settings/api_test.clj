@@ -363,24 +363,28 @@
                                                          :test-setting-1               "PQR"})
         (is (= "DEF" (mt/with-current-user (mt/user->id :rasta)
                        (models.setting-test/test-user-local-only-setting))))
-        (is (= "ABC" (models.setting-test/test-setting-1)))))
+        (is (= "ABC" (models.setting-test/test-setting-1)))))))
 
-    (deftest user-local-settings-underscored-test
-      (mt/with-temporary-setting-values [test-setting-1 nil
-                                         test-setting-2 nil]
-        (testing "setting names can use snake case instead of kebab case: "
-          (testing "GET /api/setting/:key"
-            (models.setting-test/test-setting-1! "ABC")
-            (is (= "ABC" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1"))))
+(deftest user-local-settings-underscored-test
+  (mt/with-temporary-setting-values [test-setting-1 nil
+                                     test-setting-2 nil]
+    (testing "setting names can use snake case instead of kebab case: "
+      (testing "GET /api/setting/:key"
+        (models.setting-test/test-setting-1! "ABC")
+        (is (= "ABC" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1")))
+        (is (= (mt/user-http-request :crowberto :get 200 "setting/test-setting-1")
+               (mt/user-http-request :crowberto :get 200 "setting/test_setting_1"))))
 
-          (testing "PUT /api/setting/:key"
-            (mt/user-http-request :crowberto :put 204 "setting/test_setting_1" {:value "DEF"})
-            (is (= "DEF" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1"))))
+      (testing "PUT /api/setting/:key"
+        (mt/user-http-request :crowberto :put 204 "setting/test_setting_1" {:value "DEF"})
+        (is (= "DEF" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1")))
+        (is (= (mt/user-http-request :crowberto :get 200 "setting/test-setting-1")
+               (mt/user-http-request :crowberto :get 200 "setting/test_setting_1"))))
 
-          (testing "PUT /api/setting"
-            (mt/user-http-request :crowberto :put 204 "setting" {:test_setting_1 "GHI", :test_setting_2 "JKL"})
-            (is (= "GHI" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1")))
-            (is (= "JKL" (mt/user-http-request :crowberto :get 200 "setting/test_setting_2")))))))))
+      (testing "PUT /api/setting"
+        (mt/user-http-request :crowberto :put 204 "setting" {:test_setting_1 "GHI", :test_setting_2 "JKL"})
+        (is (= "GHI" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1")))
+        (is (= "JKL" (mt/user-http-request :crowberto :get 200 "setting/test_setting_2")))))))
 
 (defsetting test-deprecated-setting
   (deferred-tru "Setting to test deprecation warning.")
