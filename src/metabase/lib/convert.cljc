@@ -634,10 +634,14 @@
 (defmethod ->legacy-MBQL :field [[_ opts id]]
   ;; Fields are not like the normal clauses - they need that options field even if it's null.
   ;; TODO: Sometimes the given field is in the legacy order - that seems wrong.
-  (let [[opts id] (if ((some-fn nil? map?) opts)
-                    [opts id]
-                    [id opts])]
-    (clause-with-options->legacy-MBQL [:field opts id])))
+  (let [[opts id]        (if ((some-fn nil? map?) opts)
+                           [opts id]
+                           [id opts])
+        ensure-base-type (fn [[tag field-name legacy-opts, :as _legacy-ref]]
+                           [tag field-name (merge (select-keys opts [:base-type]) legacy-opts)])
+        legacy-ref       (clause-with-options->legacy-MBQL [:field opts id])]
+    (cond-> legacy-ref
+      (string? id) ensure-base-type)))
 
 (defn- update-list->legacy-boolean-expression
   [m pMBQL-key legacy-key]

@@ -25,7 +25,7 @@
                                                  :dataset-query)
                            resolved-query   (qp.fetch-source-query/resolve-source-cards referenced-query)]]
     (qp.resolve-source-table/resolve-source-tables resolved-query)
-    (qp.resolve-fields/resolve-fields resolved-query)))
+    (qp.resolve-fields/bulk-fetch-fields resolved-query)))
 
 (mu/defn- card-subquery-graph
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
