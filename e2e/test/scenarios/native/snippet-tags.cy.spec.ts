@@ -5,7 +5,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 describe("scenarios > native > snippet tags", () => {
   beforeEach(() => {
     H.restore();
-    cy.signInAsNormalUser();
+    cy.signInAsAdmin();
   });
 
   it("should be able to create a snippet with variable tags", () => {
@@ -310,6 +310,29 @@ describe("scenarios > native > snippet tags", () => {
       cy.findByText("Cannot save card with cycles.").should("be.visible");
     });
   });
+
+  it("should work for a public or embedded question", () => {
+    createQuestionAndSnippet().then(({ card }) => {
+      cy.log("public question - no parameter value");
+      H.visitPublicQuestion(card.id);
+      H.assertTableRowsCount(200);
+
+      cy.log("public question - with parameter value");
+      H.filterWidget().findByLabelText("Filter").type("Gadget{enter}");
+      H.assertTableRowsCount(53);
+
+      cy.log("embedded question - no parameter value");
+      H.visitEmbeddedPage({
+        resource: { question: card.id },
+        params: {},
+      });
+      H.assertTableRowsCount(200);
+
+      cy.log("embedded question - with parameter value");
+      H.filterWidget().findByLabelText("Filter").type("Gadget{enter}");
+      H.assertTableRowsCount(53);
+    });
+  });
 });
 
 function getEditorSidebar() {
@@ -347,7 +370,7 @@ function createQuestionAndSnippet({
   }).then(({ body: snippet }) => {
     return H.createNativeQuestion({
       native: {
-        query: "select id from products where {{snippet: filter-snippet}}",
+        query: "select id from products [[where {{snippet: filter-snippet}}]]",
         "template-tags": {
           "snippet: filter-snippet": {
             id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
@@ -364,6 +387,10 @@ function createQuestionAndSnippet({
             type: "text",
           },
         },
+      },
+      enable_embedding: true,
+      embedding_params: {
+        filter: "enabled",
       },
     }).then(({ body: card }) => {
       return { card, snippet };
