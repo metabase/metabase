@@ -275,7 +275,7 @@
                        col
                        (when-not remove-join-alias?
                          (when-let [previous-join-alias (:lib/original-join-alias col)]
-                           {:metabase.lib.join/join-alias previous-join-alias})))
+                           {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
                       lib.ref/ref))))
            lib.convert/->legacy-MBQL
            (fe-friendly-expression-ref col)))))
