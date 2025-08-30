@@ -13,13 +13,11 @@
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.json :as json])
-  (:import
-   [jakarta.servlet ServletOutputStream AsyncContext]
-   [jakarta.servlet.http HttpServletResponse]))
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -292,7 +290,7 @@
                        {:name "PRICE",       :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
                       (mt/cols (run-query-for-card card-id)))))))))))
 
-(def fun-card-name-cases
+(def card-download-filename-cases
   [["My Public Report" "my_public_report"]
    ["Sales Report!@#$%" "sales_report_____"]
    ["Vendas São Paulo" "vendas_sao_paulo"]
@@ -316,33 +314,20 @@
    ;; Mixed
    ["混合 Report αβγ" "%E6%B7%B7%E5%90%88_report_%CE%B1%CE%B2%CE%B3"]])
 
-(deftest ^:parallel process-query-for-card-default-run-fn-filename-test
-  (testing "process-query-for-card-default-run-fn generates correct filenames"
-    (let [test-cases fun-card-name-cases]
-      (doseq [[card-name expected-slug] test-cases]
-        (testing (str "card name: " card-name)
-          (with-open [os (java.io.ByteArrayOutputStream.)]
-            (let [complete-promise (promise)
-                  mock-streaming-qp (fn [_query _rff]
-                                      {:status :completed})
-                  run-fn (qp.card/process-query-for-card-default-run-fn mock-streaming-qp :csv)
-                  info {:card-name card-name}]
-              (server.protocols/respond (run-fn {} info)
-                                        {:response      (reify HttpServletResponse
-                                                          (setStatus [_ _])
-                                                          (setHeader [_ _ x]
-                                                            (when (str/includes? x "attachment;")
-                                                              (is (str/includes? x (str expected-slug "_")))))
-                                                          (setContentType [_ _])
-                                                          (getOutputStream [_]
-                                                            (proxy [ServletOutputStream] []
-                                                              (write
-                                                                ([byytes]
-                                                                 (.write os ^bytes byytes))
-                                                                ([byytes offset length]
-                                                                 (.write os ^bytes byytes offset length))))))
-                                         :async-context (reify AsyncContext
-                                                          (complete [_]
-                                                            (deliver complete-promise true)))})
-              (is (true?
-                   (deref complete-promise 1000 ::timed-out))))))))))
+(deftest ^:parallel downloaded-card-filenames-test
+  (testing "Card downloads generate correct filenames"
+    (doseq [[card-name expected-slug] card-download-filename-cases]
+      (testing (str "card name: " card-name)
+        (mt/with-temp [:model/Card card {:name card-name
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (doseq [export-format [:csv :json :xlsx]]
+            (testing (str "format: " export-format)
+              (let [response (client/client-full-response
+                              (test.users/username->token :crowberto)
+                              :post 200
+                              (format "card/%d/query/%s" (:id card) (name export-format))
+                              {})]
+                (is (str/includes?
+                     (get-in response [:headers "Content-Disposition"])
+                     (str expected-slug "_"))
+                    (str "Expected filename to contain: " expected-slug))))))))))

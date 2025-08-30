@@ -320,18 +320,17 @@
   (testing "GET /api/public/card/:uuid/query - filename generation"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (testing "with various card names"
-        (let [test-cases qp.card-test/fun-card-name-cases]
-          (doseq [[card-name expected-slug] test-cases]
-            (testing (str "card name: " card-name)
-              (mt/with-temp [:model/Card card {:name card-name
-                                               :public_uuid (str (random-uuid))
-                                               :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-                (let [response (client/client-full-response
-                                :get 200
-                                (str "public/card/" (:public_uuid card) "/query/csv"))]
-                  (is (str/includes?
-                       (get-in response [:headers "Content-Disposition"])
-                       (str expected-slug "_"))))))))))))
+        (doseq [[card-name expected-slug] qp.card-test/card-download-filename-cases]
+          (testing (str "card name: " card-name)
+            (mt/with-temp [:model/Card card {:name card-name
+                                             :public_uuid (str (random-uuid))
+                                             :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+              (let [response (client/client-full-response
+                              :get 200
+                              (str "public/card/" (:public_uuid card) "/query/csv"))]
+                (is (str/includes?
+                     (get-in response [:headers "Content-Disposition"])
+                     (str expected-slug "_")))))))))))
 
 (deftest execute-public-card-as-user-without-perms-test
   (testing "A user that doesn't have permissions to run the query normally should still be able to run a public Card as if they weren't logged in"
