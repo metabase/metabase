@@ -238,6 +238,11 @@ export type VisualizationPassThroughProps = {
   // Public & Embedded questions, needed for pin maps to generate the correct tile URL
   uuid?: string;
   token?: string;
+
+  /**
+   * Extra buttons to be shown in the table footer (if the visualization is a table)
+   */
+  tableFooterExtraButtons?: React.ReactNode;
 };
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
