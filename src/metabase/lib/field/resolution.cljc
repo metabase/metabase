@@ -284,6 +284,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    join-alias   :- ::lib.schema.join/alias
+   source-field :- [:maybe ::lib.schema.id/field]
    id-or-name   :- ::id-or-name]
   (log/debugf "Resolving %s (join alias = %s) in joins in stage %s" (pr-str id-or-name) (pr-str join-alias) (pr-str stage-number))
   ;; find the matching join.
@@ -296,7 +297,9 @@
                     (pr-str id-or-name)
                     (pr-str join-alias)
                     (pr-str stage-number))
-        (let [join-cols (lib.metadata.calculation/returned-columns query stage-number join)]
+        (let [join-cols (cond->> (lib.metadata.calculation/returned-columns query stage-number join)
+                          source-field (remove (fn [col]
+                                                 (not= ((some-fn :fk-field-id :lib/original-fk-field-id) col) source-field))))]
           (when-some [col (resolve-in-previous-stage-metadata-and-update-keys query join-cols id-or-name)]
             (-> col
                 (as-> $col (lib.join/column-from-join query stage-number $col join-alias))
@@ -540,10 +543,10 @@
           (when (= (count parts) 2)
             (let [[join-alias field-name] parts]
               (log/debugf "Split field name into join alias %s and field name %s" (pr-str join-alias) (pr-str field-name))
-              (resolve-in-join query stage-number join-alias field-name)))))
+              (resolve-in-join query stage-number join-alias nil field-name)))))
       (some (fn [join]
               (log/debugf "Looking for match in join %s" (pr-str (:alias join)))
-              (resolve-in-join query stage-number (:alias join) id-or-name))
+              (resolve-in-join query stage-number (:alias join) nil id-or-name))
             (:joins (lib.util/query-stage query stage-number)))
       (do
         (log/debugf "Failed to find a match in one of the query's joins in stage %s" (pr-str stage-number))
@@ -605,7 +608,7 @@
     (u/prog1 (-> (merge-metadata
                   {:lib/type :metadata/column}
                   (or (when join-alias
-                        (resolve-in-join query stage-number join-alias id-or-name))
+                        (resolve-in-join query stage-number join-alias source-field id-or-name))
                       (when source-field
                         (resolve-in-implicit-join query stage-number source-field id-or-name))
                       (resolve-from-previous-stage-or-source query stage-number id-or-name)
@@ -640,4 +643,9 @@
            (when (and (pos-int? stage-number)
                       (#{:source/table-defaults :source/native} (:lib/source <>)))
              (throw (ex-info "A column can only come from a :source-table or native query in the first stage of a query"
-                             {:query query, :stage-number stage-number, :field-ref field-ref, :col <>}))))))))
+                             {:query query, :stage-number stage-number, :field-ref field-ref, :col <>})))
+           (when-let [source-field (:source-field opts)]
+             (when-let [resolved-source-field ((some-fn :fk-field-id :lib/original-fk-field-id) <>)]
+               (when-not (= resolved-source-field source-field)
+                 (throw (ex-info "Resolved column has different :source-field"
+                                 {:query query, :stage-number stage-number, :field-ref field-ref, :col <>}))))))))))

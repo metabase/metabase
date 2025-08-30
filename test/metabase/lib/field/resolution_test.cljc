@@ -24,7 +24,9 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [flatland.ordered.map :as ordered-map]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -1415,3 +1417,79 @@
               (lib.field.resolution/resolve-field-ref
                query -1
                [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float} "TAX"]))))))
+
+(deftest ^:parallel multiple-remaps-between-tables-test
+  (testing "Should be able to resolve multiple FK remaps via different FKs from Table A to Table B in a join"
+    (let [mp        (-> meta/metadata-provider
+                        (lib.tu/remap-metadata-provider (meta/id :venues :category-id) (meta/id :categories :name)
+                                                        (meta/id :venues :id)          (meta/id :categories :name))
+                        ;; mock VENUES.ID being an FK to CATEGORIES.ID (required for implicit joins to work)
+                        (lib.tu/merged-mock-metadata-provider
+                         {:fields [{:id                 (meta/id :venues :id)
+                                    :fk-target-field-id (meta/id :categories :id)}]}))
+          query     (lib/query
+                     mp
+                     (lib.tu.macros/mbql-5-query venues
+                       {:stages [{:joins [{:alias      "J"
+                                           :stages     [{:source-table (meta/id :venues)
+                                                         :joins        [{:alias       "CATEGORIES__via__ID"
+                                                                         :fk-field-id (meta/id :venues :category-id)
+                                                                         :stages      [{:source-table (meta/id :categories)
+                                                                                        :fields       [[:field {} (meta/id :categories :id)]
+                                                                                                       [:field {} (meta/id :categories :name)]]}]
+                                                                         :conditions  [[:= {} 1 1]]
+                                                                         :fields      :none}
+                                                                        {:alias       "CATEGORIES__via__CATEGORY_ID"
+                                                                         :fk-field-id (meta/id :venues :id)
+                                                                         :stages      [{:source-table (meta/id :categories)
+                                                                                        :fields       [[:field {} (meta/id :categories :id)]
+                                                                                                       [:field {} (meta/id :categories :name)]]}]
+                                                                         :conditions  [[:= {} 1 1]]
+                                                                         :fields      :none}]
+                                                         :fields       [[:field
+                                                                         {:base-type    :type/Text
+                                                                          :join-alias   "CATEGORIES__via__CATEGORY_ID"
+                                                                          :source-field (meta/id :venues :id)}
+                                                                         "NAME"]
+                                                                        [:field
+                                                                         {:base-type    :type/Text
+                                                                          :join-alias   "CATEGORIES__via__ID"
+                                                                          :source-field (meta/id :venues :category-id)}
+                                                                         "NAME"]]}]
+                                           :conditions [[:= {} 1 1]]
+                                           :fields     :none}]}]}))
+          field-ref (fn [source-field]
+                      [:field {:source-field   source-field
+                               :join-alias     "J"
+                               :lib/uuid       "c8c84aba-8f84-4ebc-ba0d-6dcdec206538"
+                               :base-type      :type/Text
+                               :effective-type :type/Text}
+                       (meta/id :categories :name)])]
+      (testing "ID"
+        (let [field-ref (field-ref (meta/id :venues :id))]
+          (is (=? {:display-name                 "ID → Name"
+                   :id                           (meta/id :categories :name)
+                   :semantic-type                :type/Name
+                   :source-alias                 "J"
+                   :lib/deduplicated-name        "NAME"
+                   :lib/original-fk-field-id     (meta/id :venues :id)
+                   :lib/original-join-alias      "J"
+                   :lib/original-name            "NAME"
+                   :lib/source                   :source/joins
+                   :lib/source-column-alias      "CATEGORIES__via__ID__NAME"
+                   :metabase.lib.join/join-alias "J"}
+                  (lib.field.resolution/resolve-field-ref query 0 field-ref)))))
+      (testing "CATEGORY_ID"
+        (let [field-ref (field-ref (meta/id :venues :category-id))]
+          (is (=? {:display-name                 "Category → Name"
+                   :id                           (meta/id :categories :name)
+                   :semantic-type                :type/Name
+                   :source-alias                 "J"
+                   :lib/deduplicated-name        "NAME_2"
+                   :lib/original-fk-field-id     (meta/id :venues :category-id)
+                   :lib/original-join-alias      "J"
+                   :lib/original-name            "NAME"
+                   :lib/source                   :source/joins
+                   :lib/source-column-alias      "CATEGORIES__via__CATEGORY_ID__NAME"
+                   :metabase.lib.join/join-alias "J"}
+                  (lib.field.resolution/resolve-field-ref query 0 field-ref))))))))
