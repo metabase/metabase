@@ -280,7 +280,7 @@ describe("scenarios > native > snippet tags", () => {
       cy.button("Save").click();
     });
 
-    cy.log("try to run a query with a snippet cycle and verify we detect it");
+    cy.log("run the query and verify that we detect a cycle");
     H.NativeEditor.type("select {{snippet: snippet1}}");
     H.runNativeQuery();
     H.queryBuilderMain()
@@ -293,6 +293,19 @@ describe("scenarios > native > snippet tags", () => {
     H.queryBuilderHeader().findByText("Save").click();
     H.modal().within(() => {
       cy.findByLabelText("Name").type("SQL");
+      cy.button("Save").click();
+      cy.findByText("Cannot save card with cycles.").should("be.visible");
+      cy.button("Cancel").click();
+    });
+
+    cy.log(
+      "remove a cycle, save the card, add a cycle again and verify that we detect it on update",
+    );
+    H.NativeEditor.clear().type("select 1");
+    H.saveQuestion("SQL");
+    H.NativeEditor.clear().type("select {{snippet: snippet1}}");
+    H.queryBuilderHeader().button("Save").click();
+    H.modal().within(() => {
       cy.button("Save").click();
       cy.findByText("Cannot save card with cycles.").should("be.visible");
     });
