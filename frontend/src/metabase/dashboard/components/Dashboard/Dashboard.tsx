@@ -66,7 +66,9 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   }
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
-  const isFullHeight = isEditing || isSharing;
+
+  // Embedding SDK has parent containers that requires dashboard to be full height to avoid double scrollbars.
+  const isFullHeight = isEditing || isSharing || isEmbeddingSdk();
 
   return (
     <Flex
