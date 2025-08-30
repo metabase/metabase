@@ -59,6 +59,8 @@
     nil)
   (metadatas [_this metadata-type ids]
     (bootstrap-metadatas metadata-type ids))
+  (metadatas-by-name [_this _metadata-type _names]
+    nil)
   (tables [_this]
     nil)
   (metadatas-for-table [_this _metadata-type _table-id]

@@ -1,6 +1,8 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
@@ -19,17 +21,34 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(t2/deftransforms :model/NativeQuerySnippet
+  {:template_tags {:in mi/json-in
+                   :out (comp (mi/catch-normalization-exceptions
+                               #(lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map %))
+                              mi/json-out-without-keywordization)}})
+
 (defmethod collection/allowed-namespaces :model/NativeQuerySnippet
   [_]
   #{:snippets})
 
+(defn- add-template-tags [snippet]
+  (assoc snippet :template_tags
+         (-> (:content snippet)
+             lib/recognize-template-tags
+             (update-vals (fn [{:keys [type snippet-name] :as tag}]
+                            (cond-> tag
+                              (= type :snippet) (assoc :snippet-id
+                                                       (t2/select-one-fn :id :model/NativeQuerySnippet
+                                                                         :name snippet-name))))))))
+
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
-  (u/prog1 snippet
+  (u/prog1 (add-template-tags snippet)
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
-  (u/prog1 snippet
+  (u/prog1 (cond-> snippet
+             (:content snippet) add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? (t2/changes <>) :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))
@@ -74,10 +93,10 @@
   (serdes/extract-query-collections :model/NativeQuerySnippet opts))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :content :description :entity_id :name]
-   :transform {:created_at    (serdes/date)
+  {:copy [:archived :content :description :entity_id :name :template_tags]
+   :transform {:created_at (serdes/date)
                :collection_id (serdes/fk :model/Collection)
-               :creator_id    (serdes/fk :model/User)}})
+               :creator_id (serdes/fk :model/User)}})
 
 (defmethod serdes/dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
@@ -89,9 +108,9 @@
   ;; Intended path here is ["snippets" "<nested ... collections>" "<snippet_eid_and_slug>"]
   ;; We just the default path, then pull it apart.
   ;; The default is ["collections" "<nested ... collections>" "nativequerysnippets" "<base_name>"]
-  (let [basis  (serdes/storage-default-collection-path snippet ctx)
-        file   (last basis)
-        colls  (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
+  (let [basis (serdes/storage-default-collection-path snippet ctx)
+        file  (last basis)
+        colls (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
     (concat ["snippets"] colls [file])))
 
 (defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
