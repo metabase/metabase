@@ -209,6 +209,46 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     });
   });
 
+  const idTypes = [
+    { idType: "numeric id", dashboardIdAlias: "@dashboardId" },
+    { idType: "entity id", dashboardIdAlias: "@dashboardEntityId" },
+  ];
+
+  idTypes.forEach(({ idType, dashboardIdAlias }) => {
+    it(`can go to dashcard and go back using a ${idType} dashboard (EMB-773)`, () => {
+      cy.get(dashboardIdAlias).then((dashboardId) => {
+        mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+      });
+
+      getSdkRoot().within(() => {
+        H.getDashboardCard().findByText("Orders").click();
+
+        cy.findByTestId("interactive-question-result-toolbar").should(
+          "be.visible",
+        );
+
+        cy.findByLabelText("Back to Orders in a dashboard").click();
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Back to Orders in a dashboard").should("not.exist");
+      });
+    });
+
+    it(`can drill a question and go back using a ${idType} dashboard (EMB-773)`, () => {
+      cy.get(dashboardIdAlias).then((dashboardId) => {
+        mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("123").first().click();
+        H.popover().findByText("View this Product's Orders").click();
+
+        cy.findByLabelText("Back to Orders in a dashboard").click();
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Back to Orders in a dashboard").should("not.exist");
+      });
+    });
+  });
+
   it("should only call POST /dataset once when parent component re-renders (EMB-288)", () => {
     cy.intercept("POST", "/api/dataset").as("datasetQuery");
 
