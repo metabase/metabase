@@ -1,0 +1,88 @@
+.spoilerControl {
+  height: auto;
+  z-index: 1;
+  color: var(--mb-color-text-secondary);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+
+  & + .spoilerContent {
+    overflow: hidden;
+    pointer-events: none;
+  }
+}
+
+.spoilerRoot[data-has-spoiler] .spoilerContent {
+  /* mask: linear-gradient(0deg, transparent 0, rgb(0, 0, 0) 60px),
+    linear-gradient(270deg, transparent 0, transparent 50px, rgb(0, 0, 0) 100px); */
+  mask: linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 20px,
+      rgb(0, 0, 0) 20px
+    ),
+    linear-gradient(270deg, transparent 0, transparent 48px, rgb(0, 0, 0) 96px);
+}
+
+.commentRoot {
+  position: relative;
+  margin-top: 1.25rem;
+}
+
+.target {
+  --padding-v: 16px;
+  --padding-h: 24px;
+
+  &:before {
+    content: "";
+    display: block;
+    position: absolute;
+    margin-left: -12px;
+    margin-top: -4px;
+    left: calc(-1 * var(--padding-h) / 2);
+    top: calc(-1 * var(--padding-v) / 2);
+    width: calc(100% + var(--padding-h) + 12.5px);
+    height: calc(100% + var(--padding-v) + 4px);
+    background-color: var(--mb-color-brand-alpha-04);
+    border: 1px solid var(--mb-color-brand) !important;
+    border-radius: 8px;
+    pointer-events: none;
+  }
+}
+
+.discussionRoot {
+  position: relative;
+}
+
+.actionPanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  /* Center the action panel vertically */
+  transform: translateY(-25%);
+  border: 1px solid var(--mb-color-border);
+  visibility: hidden;
+}
+
+.visible {
+  visibility: visible;
+}
+
+.visibleOnCommentHover {
+  .commentRoot:hover & {
+    visibility: visible;
+  }
+}
+
+.visibleOnDiscussionHover {
+  .discussionRoot:hover & {
+    visibility: visible;
+  }
+}
+
+.commentBulletDeleted {
+  background-color: var(--mb-color-background);
+  color: var(--mb-color-text-disabled);
+}

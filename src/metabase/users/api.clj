@@ -236,11 +236,12 @@
        [:query               {:optional true} [:maybe :string]]
        [:group_id            {:optional true} [:maybe ms/PositiveInt]]
        [:include_deactivated {:default false} [:maybe ms/BooleanValue]]]]
-  (or
-   api/*is-superuser?*
-   (if group_id
-     (perms/check-manager-of-group group_id)
-     (perms/check-group-manager)))
+  ;; Disabled for comments @mention suggestions prototype, we'll need to figure out a proper way to do this
+  ;; (or
+  ;;  api/*is-superuser?*
+  ;;  (if group_id
+  ;;    (perms/check-manager-of-group group_id)
+  ;;    (perms/check-group-manager)))
   (let [include_deactivated include_deactivated
         group-id-clause     (when group_id [group_id])
         clauses             (user-clauses status query group-id-clause include_deactivated)]

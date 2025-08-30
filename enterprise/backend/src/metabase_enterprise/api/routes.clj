@@ -15,6 +15,7 @@
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.cloud-add-ons.api]
+   [metabase-enterprise.comments.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.database-replication.api :as database-replication.api]
@@ -93,6 +94,7 @@
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
+   "/comment"                      (premium-handler metabase-enterprise.comments.api/routes :documents)
    "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections)

@@ -4,3 +4,5 @@ export * from "./Card";
 export * from "./Image";
 export * from "./Indicator";
 export * from "./Kbd";
+export * from "./Spoiler";
+export * from "./Timeline";

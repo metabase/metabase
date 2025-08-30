@@ -34,7 +34,6 @@ import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
-
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
   MetabotNode.name,

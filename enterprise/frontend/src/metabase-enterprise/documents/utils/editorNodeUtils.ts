@@ -1,5 +1,5 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import type { Editor } from "@tiptap/react";
+import type { Editor, NodeViewProps } from "@tiptap/react";
 
 /**
  * Updates a card embed node's ID in the ProseMirror editor
@@ -38,4 +38,22 @@ export function updateCardEmbedNodeId(
   if (tr.docChanged) {
     editorInstance.view.dispatch(tr);
   }
+}
+
+export function isTopLevel({
+  editor,
+  getPos,
+}: Pick<NodeViewProps, "editor" | "getPos">) {
+  if (!editor || !getPos) {
+    return true;
+  }
+
+  const pos = getPos();
+
+  if (pos === null || pos === undefined) {
+    return true;
+  }
+
+  const resolvedPos = editor.state.doc.resolve(pos);
+  return resolvedPos.depth === 0;
 }
