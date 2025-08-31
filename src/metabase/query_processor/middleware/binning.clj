@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.binning
   "Middleware that handles `:binning` strategy in `:field` clauses. This adds extra info to the `:binning` options maps
   that contain the information Query Processors will need in order to perform binning."
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.core :as lib]
@@ -13,7 +14,8 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 (mr/def ::field-id-or-name->filters
   [:map-of [:or ::lib.schema.id/field :string] ::lib.schema/filters])

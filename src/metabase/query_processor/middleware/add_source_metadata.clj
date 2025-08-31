@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.add-source-metadata
+  (:refer-clojure :exclude [every?])
   (:require
-   [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -9,7 +9,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [every?]]))
 
 (defn- has-same-fields-as-nested-source?
   "Whether this source query itself has a nested source query, and will have the exact same fields in the results as its
@@ -116,7 +117,7 @@
     x))
 
 (defn- add-source-metadata-at-all-levels [inner-query]
-  (walk/postwalk maybe-add-source-metadata inner-query))
+  (perf/postwalk maybe-add-source-metadata inner-query))
 
 (mu/defn add-source-metadata-for-source-queries :- ::mbql.s/Query
   "Middleware that attempts to recursively add `:source-metadata`, if not already present, to any maps with a

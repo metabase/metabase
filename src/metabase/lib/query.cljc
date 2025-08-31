@@ -1,5 +1,5 @@
 (ns metabase.lib.query
-  (:refer-clojure :exclude [remove])
+  (:refer-clojure :exclude [remove some select-keys mapv])
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -27,6 +27,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some select-keys mapv]]
    [weavejester.dependency :as dep]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query

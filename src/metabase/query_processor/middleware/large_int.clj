@@ -1,8 +1,9 @@
 (ns metabase.query-processor.middleware.large-int
   "Middleware for handling conversion of integers to strings for proper display of large numbers"
+  (:refer-clojure :exclude [mapv])
   (:require
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf :refer [mapv]])
   (:import
    (clojure.lang BigInt)
    (java.math BigDecimal BigInteger)))

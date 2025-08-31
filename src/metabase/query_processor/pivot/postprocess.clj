@@ -4,14 +4,14 @@
   The shape returned by the pivot qp is not the same visually as what a pivot table looks like in the app.
   It's all of the same data, but some post-processing logic needs to run on the rows to be able to present them
   visually in the same way as in the app."
-  (:refer-clojure :exclude [run!])
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.set :as set]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf :refer [mapv]]))
 
 (set! *warn-on-reflection* true)
 

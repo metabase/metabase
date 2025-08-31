@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
+  (:refer-clojure :exclude [mapv every?])
   (:require
-   [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -12,7 +12,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [mapv every?]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Add Implicit Fields                                               |
@@ -206,7 +207,7 @@
 (defn add-implicit-mbql-clauses
   "Add implicit clauses such as `:fields` and `:order-by` to an 'inner' MBQL query as needed."
   [form]
-  (walk/postwalk
+  (perf/postwalk
    (fn [form]
      ;; add implicit clauses to any 'inner query', except for joins themselves (we should still add implicit clauses
      ;; like `:fields` to source queries *inside* joins)
