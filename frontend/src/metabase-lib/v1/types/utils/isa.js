@@ -182,6 +182,9 @@ export const isCurrency = (field) =>
 export const isPercentage = (field) =>
   field && isa(field.semantic_type, TYPE.Percentage);
 
+export const isFileSize = (field) =>
+  field && isa(field.semantic_type, TYPE.FileSize);
+
 export const isID = (field) => isFK(field) || isPK(field);
 
 export const isURL = (field) => field && isa(field.semantic_type, TYPE.URL);

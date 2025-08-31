@@ -14,7 +14,20 @@
                             ["lat"           :type/Float]   :type/Latitude
                             ["latitude"      :type/Float]   :type/Latitude
                             ["foo_latitude"  :type/Float]   :type/Latitude
-                            ["foo_lat"       :type/Float]   :type/Latitude}]
+                            ["foo_lat"       :type/Float]   :type/Latitude
+                            ;; FileSize semantic type tests
+                            ["file_size"     :type/Integer] :type/FileSize
+                            ["total_bytes"   :type/Integer] :type/FileSize
+                            ["download_size" :type/Integer] :type/FileSize
+                            ["upload_data"   :type/Integer] :type/FileSize
+                            ["bandwidth"     :type/Integer] :type/Bandwidth
+                            ["network_traffic" :type/Integer] :type/DataTransfer
+                            ["data_transfer" :type/Integer] :type/DataTransfer
+                            ["storage_used"  :type/Integer] :type/StorageCapacity
+                            ["disk_capacity" :type/Integer] :type/StorageCapacity
+                            ;; Shouldn't match if wrong type
+                            ["file_size"     :type/Text]    nil
+                            ["bandwidth"     :type/Float]   nil}]
     (testing (pr-str (cons 'semantic-type-for-name-and-base-type input))
       (is (= expected
              (apply #'classifiers.name/semantic-type-for-name-and-base-type input))))))

@@ -109,7 +109,17 @@
    [#"birthda(?:te|y)"             date-type        :type/Birthdate]
    [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
    [#"(?:te|y)(?:_?)of(?:_?)birth" date-type        :type/Birthdate]
-   [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]])
+   [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]
+   ;; File size related patterns
+   [#"byte"                        int-type         :type/FileSize]
+   [#"_size$"                      int-type         :type/FileSize]
+   [#"file_?size"                  int-type         :type/FileSize]
+   [#"_data$"                      int-type         :type/FileSize]
+   [#"bandwidth"                   int-type         :type/Bandwidth]
+   [#"traffic"                     int-type         :type/DataTransfer]
+   [#"data_?transfer"              int-type         :type/DataTransfer]
+   [#"storage"                     int-type         :type/StorageCapacity]
+   [#"capacity"                    int-type         :type/StorageCapacity]])
 
 ;; Check that all the pattern tuples are valid
 (when-not config/is-prod?

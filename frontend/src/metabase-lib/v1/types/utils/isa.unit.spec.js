@@ -12,6 +12,7 @@ import {
 import {
   getFieldType,
   isDimension,
+  isFileSize,
   isInteger,
   isMetric,
   isNumber,
@@ -204,6 +205,24 @@ describe("isa", () => {
       expect(
         isNumber({ base_type: TYPE.Integer, semantic_type: TYPE.PK }),
       ).toBe(false);
+    });
+  });
+
+  describe("isFileSize", () => {
+    it("should detect file size semantic type", () => {
+      expect(isFileSize({ semantic_type: TYPE.FileSize })).toBe(true);
+      expect(isFileSize({ semantic_type: TYPE.Bandwidth })).toBe(true);
+      expect(isFileSize({ semantic_type: TYPE.DataTransfer })).toBe(true);
+      expect(isFileSize({ semantic_type: TYPE.StorageCapacity })).toBe(true);
+    });
+
+    it("should return false for non-file-size types", () => {
+      expect(isFileSize({ semantic_type: TYPE.Text })).toBe(false);
+      expect(isFileSize({ semantic_type: TYPE.Integer })).toBe(false);
+      expect(isFileSize({ semantic_type: TYPE.Currency })).toBe(false);
+      expect(isFileSize({})).toBe(false);
+      // Following the existing pattern in the codebase, null returns null (falsy)
+      expect(isFileSize(null)).toBeFalsy();
     });
   });
 });

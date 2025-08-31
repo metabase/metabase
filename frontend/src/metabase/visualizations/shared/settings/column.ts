@@ -1,4 +1,8 @@
-import { isCurrency, isPercentage } from "metabase-lib/v1/types/utils/isa";
+import {
+  isCurrency,
+  isFileSize,
+  isPercentage,
+} from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
 export function getDefaultNumberStyle(
@@ -13,18 +17,7 @@ export function getDefaultNumberStyle(
     return "percent";
   }
 
-  // Auto-detect file size columns
-  const columnName = column.name?.toLowerCase() || "";
-  const bytesIndicators = [
-    "byte",
-    "size",
-    "bandwidth",
-    "traffic",
-    "data_transfer",
-    "file_size",
-  ];
-
-  if (bytesIndicators.some((indicator) => columnName.includes(indicator))) {
+  if (isFileSize(column)) {
     return "filesize";
   }
 
