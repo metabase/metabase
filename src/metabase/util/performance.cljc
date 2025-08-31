@@ -38,6 +38,10 @@
   (cond-> coll
     (transient? coll) persistent!))
 
+(defn- add-original-meta [coll og-form]
+  (when-not (nil? coll)
+    (with-meta coll (meta og-form))))
+
 ;; Collection functions
 
 #?(:clj
@@ -288,7 +292,7 @@
                                        (assoc+ k' v)))))
                              m m)
                   maybe-persistent!
-                  (with-meta (meta m)))))
+                  (add-original-meta m))))
 
 ;; clojure.walk reimplementation. Partially adapted from https://github.com/tonsky/clojure-plus.
 
@@ -313,7 +317,7 @@
                                  (-> m (dissoc+ k) (assoc+ k' v')))))))
                      form form)
           maybe-persistent!
-          (with-meta (meta form))
+          (add-original-meta form)
           outer))
 
     (vector? form)
@@ -324,12 +328,12 @@
                          (assoc+ v idx el'))))
                    form form)
         maybe-persistent!
-        (with-meta (meta form))
+        (add-original-meta form)
         outer)
 
     ;; Don't care much about optimizing seq and generic coll cases. When efficiency is required, use vectors.
-    (seq? form) (outer (with-meta (seq (mapv inner form)) (meta form))) ;;
-    (coll? form) (outer (with-meta (into (empty form) (map inner) form) (meta form)))
+    (seq? form) (outer (add-original-meta (seq (mapv inner form)) form)) ;;
+    (coll? form) (outer (add-original-meta (into (empty form) (map inner) form) form))
     :else (outer form)))
 
 (defn prewalk
@@ -355,7 +359,7 @@
                           m))
                       form form)
            maybe-persistent!
-           (with-meta (meta form)))
+           (add-original-meta form))
        form))
    m))
 
