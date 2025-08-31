@@ -25,7 +25,7 @@ const PRECISION_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
 export type FileSizeUnitSystem = "binary" | "decimal";
 
 export type FormatNumberOptions = {
-  _numberFormatter?: Intl.NumberFormat;
+  _numberFormatter?: Intl.NumberFormat | null;
   compact?: boolean;
   currency?: string;
   currency_in_header?: boolean;
@@ -137,6 +137,14 @@ export function formatNumber(
         nf = numberFormatterForOptions(options);
       }
 
+      // Handle null formatter (e.g., for filesize which doesn't use Intl.NumberFormat)
+      if (!nf) {
+        // For filesize and other custom formats that don't use Intl.NumberFormat,
+        // just return the raw number as a string - the filesize formatting
+        // is handled elsewhere in the function
+        return String(number);
+      }
+
       let formatted = nf.format(number);
 
       // extract number portion of currency if we're formatting a cell
@@ -192,11 +200,20 @@ export function formatChangeWithSign(
   return change > 0 ? `+${formattedNumber}` : formattedNumber;
 }
 
-export function numberFormatterForOptions(options: FormatNumberOptions) {
+export function numberFormatterForOptions(
+  options: FormatNumberOptions,
+): Intl.NumberFormat | null {
   options = {
     ...getDefaultNumberOptions(options),
     ...options,
   };
+
+  // filesize is a custom format, not supported by Intl.NumberFormat
+  // Return null for filesize - formatNumber will handle it specially
+  if (options.number_style === "filesize") {
+    return null;
+  }
+
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
   return new Intl.NumberFormat("en", {
@@ -226,6 +243,11 @@ function formatNumberCompact(
         ...options,
         ...COMPACT_CURRENCY_OPTIONS,
       });
+
+      // nf should never be null for currency formatting, but TypeScript needs the check
+      if (!nf) {
+        return String(value);
+      }
 
       if (abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
         return nf.format(value);
@@ -258,23 +280,30 @@ function formatNumberFileSize(
   options: FormatNumberJsxOptions,
 ): string {
   const unitSystem = options.filesize_unit_system || "binary";
-  const units = unitSystem === "binary" ? FILESIZE_UNITS_BINARY : FILESIZE_UNITS_DECIMAL;
-  const base = unitSystem === "binary" ? FILESIZE_BASE_BINARY : FILESIZE_BASE_DECIMAL;
-  
+  const units =
+    unitSystem === "binary" ? FILESIZE_UNITS_BINARY : FILESIZE_UNITS_DECIMAL;
+  const base =
+    unitSystem === "binary" ? FILESIZE_BASE_BINARY : FILESIZE_BASE_DECIMAL;
+
   const absValue = abs(value);
   let unitIndex = 0;
   let scaledValue = Number(absValue);
-  
+
   // Find appropriate unit
   while (scaledValue >= base && unitIndex < units.length - 1) {
     scaledValue /= base;
     unitIndex++;
   }
-  
+
   // Format the number part using basic formatter without grouping
-  const maxDecimals = unitIndex === 0 ? 0 : (typeof options.decimals === "number" ? options.decimals : 2);
+  const maxDecimals =
+    unitIndex === 0
+      ? 0
+      : typeof options.decimals === "number"
+        ? options.decimals
+        : 2;
   let formatted: string;
-  
+
   if (maxDecimals === 0) {
     // No decimals for bytes
     formatted = Math.round(scaledValue).toString();
@@ -285,14 +314,14 @@ function formatNumberFileSize(
     // Default behavior - show up to 2 decimals but remove trailing zeros
     formatted = parseFloat(scaledValue.toFixed(2)).toString();
   }
-  
+
   // Handle unit display
   const unit = units[unitIndex];
   if (options.type === "cell" && options.filesize_unit_in_header) {
     // Unit will be shown in header, just return the number
     return (value < 0 ? "-" : "") + formatted;
   }
-  
+
   return (value < 0 ? "-" : "") + formatted + " " + unit;
 }
 

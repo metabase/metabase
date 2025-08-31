@@ -1,5 +1,6 @@
 (ns metabase.util.formatting.numbers
   (:require
+   [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.formatting.internal.numbers :as internal]
    [metabase.util.formatting.internal.numbers-core :as core]))
@@ -76,25 +77,59 @@
         units (if binary? filesize-units-binary filesize-units-decimal)
         abs-value (abs number)
         [threshold unit] (first (filter #(>= abs-value (first %)) units))
+        ; Default to Bytes if no unit found (for values < 1)
+        unit (or unit "B")
         scaled-value (if threshold (/ number threshold) number)
-        decimals (if (= unit "B") 0 (:decimals options 2))]
-    (str (if (= unit "B")
-           ; Always round bytes to integers using proper rounding
-           (max 0 (long (+ scaled-value 0.5)))
-           ; For other units, handle decimals properly
-           (if (= decimals 0)
-             ; User wants no decimals - round to integer
-             (long (+ scaled-value 0.5))
-             ; User wants decimals - format with exact precision when specified
-             (let [factor (Math/pow 10 decimals)
-                   rounded (/ (long (* scaled-value factor)) factor)]
-               (if (= rounded (long rounded))
-                 ; Whole number result - just show integer
-                 (long rounded)
-                 ; Otherwise show decimal
-                 rounded))))
+        abs-scaled (abs scaled-value)]
+    (str (cond
+           ; Bytes are always shown as integers (including fractional bytes)
+           (= unit "B")
+           (long (#?(:clj Math/round :cljs js/Math.round) (double scaled-value)))
+           
+           ; User explicitly specified decimals = 0, round to nearest integer
+           (= (:decimals options) 0)
+           (long (#?(:clj Math/round :cljs js/Math.round) (double scaled-value)))
+           
+           ; Otherwise, show with appropriate precision
+           :else
+           (let [; When no decimals specified, default behavior is:
+                 ; - Show up to 2 decimal places
+                 ; - Don't show trailing zeros
+                 ; - Don't show unnecessary .0
+                 max-decimals (or (:decimals options) 2)
+                 ; For values very close to the next unit, show more precision
+                 ; e.g. 1048575 bytes = 1023.9990234375 KiB, should show as 1023.99
+                 factor (#?(:clj Math/pow :cljs js/Math.pow) 10 max-decimals)
+                 ; Use floor for positive values, ceil for negative values (to truncate towards zero)
+                 truncated (if (>= scaled-value 0)
+                             (* (#?(:clj Math/floor :cljs js/Math.floor) (* abs-scaled factor)) (/ 1 factor))
+                             (* (- (#?(:clj Math/floor :cljs js/Math.floor) (* abs-scaled factor))) (/ 1 factor)))]
+             ; Format the number without thousand separators
+             (if (= truncated (long truncated))
+               ; Whole number - just show the integer part
+               (str (long truncated))
+               ; Has decimal part - format appropriately
+               ; Create decimal string manually to avoid cross-platform issues
+               (let [abs-truncated (abs truncated)
+                     int-part (long abs-truncated)
+                     decimal-part (- abs-truncated int-part)
+                     ; Convert decimal part to string with proper precision
+                     dec-factor (#?(:clj Math/pow :cljs js/Math.pow) 10 max-decimals)
+                     dec-value (long (#?(:clj Math/round :cljs js/Math.round) (double (* decimal-part dec-factor))))
+                     dec-str (str dec-value)
+                     ; Pad with zeros if needed
+                     padded (if (< (count dec-str) max-decimals)
+                              (str (apply str (repeat (- max-decimals (count dec-str)) "0")) dec-str)
+                              dec-str)
+                     ; Remove trailing zeros
+                     trimmed (str/replace padded #"0+$" "")
+                     ; Add negative sign if needed
+                     sign (if (< truncated 0) "-" "")]
+                 (if (empty? trimmed)
+                   (str sign int-part)
+                   (str sign int-part "." trimmed))))))
          " "
-         (or unit "B"))))
+         unit)))
 
 (defn- format-number-compact [number options]
   (format-number-compact* number (-> options
@@ -159,5 +194,5 @@
       compact                        (format-number-compact number options)
       (= (keyword number-style)
          :scientific)                (internal/format-number-scientific number options)
-      (= number-style "filesize")    (format-number-compact* number (core/prep-options options))
+      (= number-style "filesize")    (format-number-compact* number options)
       :else                          (format-number-standard   number options))))

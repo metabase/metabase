@@ -15,9 +15,16 @@ export function getDefaultNumberStyle(
 
   // Auto-detect file size columns
   const columnName = column.name?.toLowerCase() || "";
-  const bytesIndicators = ["byte", "size", "bandwidth", "traffic", "data_transfer", "file_size"];
-  
-  if (bytesIndicators.some(indicator => columnName.includes(indicator))) {
+  const bytesIndicators = [
+    "byte",
+    "size",
+    "bandwidth",
+    "traffic",
+    "data_transfer",
+    "file_size",
+  ];
+
+  if (bytesIndicators.some((indicator) => columnName.includes(indicator))) {
     return "filesize";
   }
 

@@ -329,11 +329,13 @@ export const NUMBER_COLUMN_SETTINGS = {
       return t`Unit system`;
     },
     widget: "radio",
-    props: {
-      options: [
-        { name: t`Binary (1 KiB = 1024 bytes)`, value: "binary" },
-        { name: t`Decimal (1 KB = 1000 bytes)`, value: "decimal" },
-      ],
+    get props() {
+      return {
+        options: [
+          { name: t`Binary (1 KiB = 1024 bytes)`, value: "binary" },
+          { name: t`Decimal (1 KB = 1000 bytes)`, value: "decimal" },
+        ],
+      };
     },
     getDefault: getDefaultFileSizeUnitSystem,
     getHidden: (column, settings) => settings["number_style"] !== "filesize",
@@ -426,7 +428,13 @@ export const NUMBER_COLUMN_SETTINGS = {
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
-    getValue: (column, settings) => numberFormatterForOptions(settings),
+    getValue: (column, settings) => {
+      // filesize doesn't use Intl.NumberFormat, so return null
+      if (settings["number_style"] === "filesize") {
+        return null;
+      }
+      return numberFormatterForOptions(settings);
+    },
     // NOTE: make sure to include every setting that affects the number formatter here
     readDependencies: [
       "number_style",
@@ -449,7 +457,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         settings["number_style"] === "filesize" &&
         settings["filesize_unit_in_header"]
       ) {
-        return "Bytes";
+        return t`Bytes`;
       }
       return null;
     },
