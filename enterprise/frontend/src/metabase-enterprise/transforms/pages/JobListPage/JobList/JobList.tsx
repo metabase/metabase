@@ -12,7 +12,6 @@ import {
 import type { TransformJob } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getJobUrl } from "../../../urls";
 import { parseLocalTimestamp } from "../../../utils";
@@ -49,7 +48,13 @@ export function JobList() {
   return (
     <Card p={0} shadow="none" withBorder>
       <AdminContentTable
-        columnTitles={[t`Job`, t`Last run at`, t`Last run status`, t`Tags`]}
+        columnTitles={[
+          t`Job`,
+          t`Last run at`,
+          t`Next run`,
+          t`Transforms`,
+          t`Tags`,
+        ]}
       >
         {jobs.map((job) => (
           <tr
@@ -63,19 +68,8 @@ export function JobList() {
                 ? parseLocalTimestamp(job.last_run?.start_time).format("lll")
                 : null}
             </td>
-            <td className={S.nowrap}>
-              {job.last_run != null ? (
-                <RunStatusInfo
-                  status={job.last_run.status}
-                  message={job.last_run.message}
-                  endTime={
-                    job.last_run.end_time != null
-                      ? parseLocalTimestamp(job.last_run.end_time).toDate()
-                      : null
-                  }
-                />
-              ) : null}
-            </td>
+            <td className={S.nowrap}>{/* TODO: add next run  */}</td>
+            <td className={S.nowrap}>{/* TODO: add number of transforms */}</td>
             <td>
               <TagList tags={tags} tagIds={job.tag_ids ?? []} />
             </td>
