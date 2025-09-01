@@ -1,29 +1,26 @@
 .PHONY: build run stop test clean rebuild logs status help
 
-# Docker image and container names
-IMAGE_NAME = python-exec-server
-CONTAINER_NAME = python-exec-test
+# Configuration
 PORT = 5001
-
-# Mount path for shared directory
 MOUNT_PATH = /tmp/python-exec-work
 
 # Default target
 build:
-	docker build -t $(IMAGE_NAME) .
+	docker compose build python-runner
 
 # Run the server
 run: build stop
 	@mkdir -p $(MOUNT_PATH)
-	docker run -d -p $(PORT):5000 --name $(CONTAINER_NAME) \
-		-v $(MOUNT_PATH):$(MOUNT_PATH) \
-		--add-host host.docker.internal:host-gateway \
-		$(IMAGE_NAME)
+	PYTHON_RUNNER_PORT=$(PORT) PYTHON_RUNNER_MOUNT_PATH=$(MOUNT_PATH) docker compose up -d
 	@echo "Server starting on http://localhost:$(PORT)"
 	@echo "Mount path: $(MOUNT_PATH)"
 	@echo "Network: Container can reach host at host.docker.internal"
-	@echo "Waiting for server to be ready..."
-	@sleep 2
+	@echo "Waiting for services to be ready..."
+	@sleep 3
+	@echo "Creating S3 bucket in LocalStack..."
+	@AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 \
+		aws --endpoint-url=http://localhost:4566 s3 mb s3://metabase-python-runner 2>/dev/null || \
+		echo "  Bucket already exists or LocalStack still starting"
 	@curl -s http://localhost:$(PORT)/status > /dev/null && \
 		echo "✅ Server is ready!" && \
 		echo "" && \
@@ -35,8 +32,7 @@ run: build stop
 
 # Stop and remove the container
 stop:
-	@docker stop $(CONTAINER_NAME) 2>/dev/null || true
-	@docker rm $(CONTAINER_NAME) 2>/dev/null || true
+	@docker compose down
 
 # Run the test suite
 test: build
@@ -53,7 +49,7 @@ smoke-test: run
 
 # View server logs
 logs:
-	docker logs -f $(CONTAINER_NAME)
+	docker compose logs -f python-runner
 
 # Check server status
 status:
@@ -61,28 +57,49 @@ status:
 
 # Remove the Docker image
 clean: stop
-	docker rmi $(IMAGE_NAME) 2>/dev/null || true
+	docker compose down --rmi all --volumes 2>/dev/null || true
 	rm -rf venv 2>/dev/null || true
 	rm -rf $(MOUNT_PATH) 2>/dev/null || true
 
 # Rebuild from scratch (no cache)
 rebuild: clean
-	docker build --no-cache -t $(IMAGE_NAME) .
+	docker compose build --no-cache python-runner
 
 # Setup development environment
 dev-setup:
 	python3 -m venv venv
 	./venv/bin/pip install requests
 
+# Run all services (python-runner + localstack)
+run-all: build
+	@mkdir -p $(MOUNT_PATH)
+	PYTHON_RUNNER_PORT=$(PORT) PYTHON_RUNNER_MOUNT_PATH=$(MOUNT_PATH) docker compose up -d
+	@echo "All services starting..."
+	@echo "Python runner: http://localhost:$(PORT)"
+	@echo "LocalStack: http://localhost:4566"
+	@echo "Mount path: $(MOUNT_PATH)"
+	@echo "Waiting for services to be ready..."
+	@sleep 3
+	@echo "Creating S3 bucket in LocalStack..."
+	@AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 \
+		aws --endpoint-url=http://localhost:4566 s3 mb s3://metabase-python-runner 2>/dev/null || \
+		echo "  Bucket already exists or LocalStack still starting"
+
+# Stop all services
+stop-all:
+	@docker compose down
+
 # Show help
 help:
 	@echo "Available targets:"
-	@echo "  build      - Build the Docker image"
-	@echo "  run        - Run the server container"
-	@echo "  stop       - Stop and remove the container"
+	@echo "  build      - Build the python-runner image"
+	@echo "  run        - Run the python-runner container only"
+	@echo "  run-all    - Run all services (python-runner + localstack)"
+	@echo "  stop       - Stop and remove the python-runner container"
+	@echo "  stop-all   - Stop all services"
 	@echo "  test       - Run the full test suite"
 	@echo "  smoke-test - Quick test to verify server works"
-	@echo "  logs       - View server logs"
+	@echo "  logs       - View python-runner logs"
 	@echo "  status     - Check server status and metrics"
 	@echo "  clean      - Remove container, image, and temp files"
 	@echo "  rebuild    - Clean and rebuild without cache"

@@ -11,8 +11,14 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
-   (java.io BufferedWriter OutputStream OutputStreamWriter File)
+   (com.amazonaws.auth BasicAWSCredentials)
+   (com.amazonaws.client.builder AwsClientBuilder$EndpointConfiguration)
+   (com.amazonaws.services.s3 AmazonS3 AmazonS3ClientBuilder)
+   (com.amazonaws.services.s3.model GeneratePresignedUrlRequest ObjectMetadata PutObjectRequest)
+   (java.io BufferedWriter ByteArrayInputStream ByteArrayOutputStream File OutputStream OutputStreamWriter)
+   (java.net URL)
    (java.nio.charset StandardCharsets)
+   (java.util Date)
    (java.util.concurrent CancellationException)))
 
 (set! *warn-on-reflection* true)
@@ -64,6 +70,68 @@
                             (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
                         cancel-chan)))
 
+(defn- write-table-data-to-stream! [id cancel-chan]
+  (let [db-id (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
+        driver (t2/select-one-fn :engine :model/Database db-id)
+        ;; TODO: limit
+        query {:source-table id}
+        baos (ByteArrayOutputStream.)]
+    (execute-mbql-query driver db-id query
+                        (fn [{cols-meta :cols} reducible-rows]
+                          (write-to-stream! baos (mapv :name cols-meta) reducible-rows))
+                        cancel-chan)
+    (.toByteArray baos)))
+
+(defn- create-s3-client ^com.amazonaws.services.s3.AmazonS3 []
+  (let [builder (AmazonS3ClientBuilder/standard)]
+    (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
+      (.withEndpointConfiguration
+       (AwsClientBuilder$EndpointConfiguration. "http://localhost:4566" "us-east-1"))
+      (.withCredentials
+       (reify com.amazonaws.auth.AWSCredentialsProvider
+         (getCredentials [_]
+           (BasicAWSCredentials. "test" "test"))
+         (refresh [_])))
+      (.withPathStyleAccessEnabled true))
+    (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder)))
+
+(defn- upload-to-s3-and-get-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^bytes data]
+  (let [metadata     (ObjectMetadata.)
+        _            (.setContentLength metadata (alength data))
+        input-stream (ByteArrayInputStream. data)
+        put-request  (PutObjectRequest. bucket-name key input-stream metadata)]
+    (.putObject s3-client put-request)
+
+    (let [one-hour    (* 60 60 1000)
+          expiration  (Date. ^Long (+ (System/currentTimeMillis) one-hour))
+          url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
+                          (.withExpiration expiration)
+                          (.withMethod com.amazonaws.HttpMethod/GET))]
+      ;; Replace localhost with localstack so the URL works from within Docker containers
+      (-> (.generatePresignedUrl s3-client url-request)
+          (.toString)
+          (clojure.string/replace "http://localhost:4566" "http://localstack:4566")))))
+
+(defn- generate-presigned-put-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key]
+  (let [one-hour    (* 60 60 1000)
+        expiration  (Date. ^Long (+ (System/currentTimeMillis) one-hour))
+        url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
+                        (.withExpiration expiration)
+                        (.withMethod com.amazonaws.HttpMethod/PUT))]
+    ;; Replace localhost with localstack so the URL works from within Docker containers
+    (-> (.generatePresignedUrl s3-client url-request)
+        (.toString)
+        (clojure.string/replace "http://localhost:4566" "http://localstack:4566"))))
+
+(defn- read-from-s3 [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key]
+  (try
+    (let [object (.getObject s3-client bucket-name key)]
+      (slurp (.getObjectContent object)))
+    (catch com.amazonaws.services.s3.model.AmazonS3Exception e
+      (if (= 404 (.getStatusCode e))
+        ""
+        (throw e)))))
+
 (defn execute-python-code
   "Execute Python code using the Python execution server."
   [run-id code table-name->id cancel-chan]
@@ -78,21 +146,30 @@
     (.mkdirs work-dir-file)
 
     (try
-      (let [server-url       (transforms.settings/python-execution-server-url)
-            table-name->file (into {} (map (fn [[table-name id]]
-                                             (let [file-name (gensym)
-                                                   file      (io/file (str work-dir "/" file-name ".jsonl"))]
-                                               (write-table-data! id file cancel-chan)
-                                               [table-name (.getAbsolutePath file)])))
-                                   table-name->id)
-
+      (let [server-url (transforms.settings/python-execution-server-url)
+            s3-client (create-s3-client)
+            bucket-name "metabase-python-runner"
+            ;; Generate S3 keys for output files
+            output-key (str work-dir-name "/output.csv")
+            stdout-key (str work-dir-name "/stdout.txt")
+            stderr-key (str work-dir-name "/stderr.txt")
+            ;; Generate presigned URLs for writing
+            output-url (generate-presigned-put-url s3-client bucket-name output-key)
+            stdout-url (generate-presigned-put-url s3-client bucket-name stdout-key)
+            stderr-url (generate-presigned-put-url s3-client bucket-name stderr-key)
+            ;; Upload input table data
+            table-name->url (into {} (map (fn [[table-name id]]
+                                            (let [s3-key (str work-dir-name "/" (gensym) ".jsonl")
+                                                  data (write-table-data-to-stream! id cancel-chan)
+                                                  url (upload-to-s3-and-get-url s3-client bucket-name s3-key data)]
+                                              [table-name url])))
+                                  table-name->id)
             canc (a/go (when (a/<! cancel-chan)
                          (http/post (str server-url "/cancel")
                                     {:content-type :json
                                      :body         (json/encode {:request_id run-id})
                                      :async?       true}
                                     identity identity)))
-
             response (http/post (str server-url "/execute")
                                 {:content-type     :json
                                  :accept           :json
@@ -100,7 +177,10 @@
                                                                  :working_dir   work-dir
                                                                  :timeout       30
                                                                  :request_id    run-id
-                                                                 :table_mapping table-name->file})
+                                                                 :output_url    output-url
+                                                                 :stdout_url    stdout-url
+                                                                 :stderr_url    stderr-url
+                                                                 :table_mapping table-name->url})
                                  :throw-exceptions false
                                  :as               :json})
             _        (a/close! canc)
@@ -112,25 +192,29 @@
         (try
           (if (and (= 200 (:status response))
                    (zero? (:exit_code result)))
-            ;; Success - read the output CSV if it exists
-            (let [output-path (:output_file result)]
-              (if (and output-path (.exists (io/file output-path)))
+            ;; Success - read the output from S3
+            (let [output-content (read-from-s3 s3-client bucket-name output-key)
+                  stdout-content (read-from-s3 s3-client bucket-name stdout-key)
+                  stderr-content (read-from-s3 s3-client bucket-name stderr-key)]
+              (if (not (clojure.string/blank? output-content))
                 {:status 200
-                 :body   {:output (slurp output-path)
-                          :stdout (safe-slurp (:stdout_file result))
-                          :stderr (safe-slurp (:stderr_file result))}}
+                 :body   {:output output-content
+                          :stdout stdout-content
+                          :stderr stderr-content}}
                 {:status 500
                  :body   {:error  "Transform did not produce output CSV"
-                          :stdout (safe-slurp (:stdout_file result))
-                          :stderr (safe-slurp (:stderr_file result))}}))
-            ;; Error from execution server
-            {:status 500
-             :body
-             {:error     (or (:error result) "Execution failed")
-              :exit-code (:exit_code result)
-              :timeout   (:timeout result)
-              :stdout    (safe-slurp (:stdout_file result))
-              :stderr    (safe-slurp (:stderr_file result))}})
+                          :stdout stdout-content
+                          :stderr stderr-content}}))
+            ;; Error from execution server - read stderr/stdout from S3
+            (let [stdout-content (read-from-s3 s3-client bucket-name stdout-key)
+                  stderr-content (read-from-s3 s3-client bucket-name stderr-key)]
+              {:status 500
+               :body
+               {:error     (or (:error result) "Execution failed")
+                :exit-code (:exit_code result)
+                :timeout   (:timeout result)
+                :stdout    stdout-content
+                :stderr    stderr-content}}))
           (finally
             ;; Clean up working directory after use
             (try
