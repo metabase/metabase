@@ -85,7 +85,7 @@ export const OrderedListNodeView = ({
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
-        <NodeViewContent as="ol" />
+        <NodeViewContent<"ol"> as="ol" />
       </NodeViewWrapper>
 
       {document && rendered && isTopLevel({ editor, getPos }) && (

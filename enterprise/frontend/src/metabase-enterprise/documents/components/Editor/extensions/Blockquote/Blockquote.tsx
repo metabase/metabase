@@ -71,7 +71,7 @@ export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
-        <NodeViewContent as="blockquote" />
+        <NodeViewContent<"blockquote"> as="blockquote" />
       </NodeViewWrapper>
 
       {document && rendered && (

@@ -37,9 +37,11 @@ export const CustomHeading = Heading.extend({
   },
 });
 
-export type Level = 1 | 2 | 3 | 4 | 5 | 6;
+type Level = 1 | 2 | 3 | 4 | 5 | 6;
 
-const levelNodeMap: Record<Level, keyof JSX.IntrinsicElements> = {
+type ElementType = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+
+const levelNodeMap: Record<Level, ElementType> = {
   1: "h1",
   2: "h2",
   3: "h3",
@@ -82,7 +84,9 @@ export const HeadingNodeView = ({ node }: NodeViewProps) => {
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
-        <NodeViewContent as={levelNodeMap[level] ?? "h1"} />
+        <NodeViewContent<ElementType>
+          as={levelNodeMap[level as Level] ?? "h1"}
+        />
       </NodeViewWrapper>
 
       {document && rendered && (

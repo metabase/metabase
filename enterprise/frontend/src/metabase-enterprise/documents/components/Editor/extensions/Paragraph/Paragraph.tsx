@@ -68,7 +68,7 @@ export const ParagraphNodeView = ({ node, editor, getPos }: NodeViewProps) => {
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
-        <NodeViewContent as="p" />
+        <NodeViewContent<"p"> as="p" />
       </NodeViewWrapper>
 
       {document && rendered && isTopLevel({ editor, getPos }) && (

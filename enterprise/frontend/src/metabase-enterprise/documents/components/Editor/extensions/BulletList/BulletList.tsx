@@ -69,7 +69,7 @@ export const BulletListNodeView = ({ node, editor, getPos }: NodeViewProps) => {
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
-        <NodeViewContent as="ul" />
+        <NodeViewContent<"ul"> as="ul" />
       </NodeViewWrapper>
 
       {document && rendered && isTopLevel({ editor, getPos }) && (

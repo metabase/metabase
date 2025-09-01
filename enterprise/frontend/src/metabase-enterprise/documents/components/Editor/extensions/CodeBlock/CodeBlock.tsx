@@ -145,12 +145,12 @@ export const CodeBlockNodeView = ({ node }: NodeViewProps) => {
         onMouseOut={() => setHovered(false)}
       >
         <pre>
-          <NodeViewContent
+          <NodeViewContent<"code">
             as="code"
             className={
               node.attrs.language
                 ? languageClassPrefix + node.attrs.language
-                : null
+                : undefined
             }
           />
         </pre>
