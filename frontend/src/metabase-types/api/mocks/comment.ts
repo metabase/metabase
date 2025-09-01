@@ -2,7 +2,7 @@ import { getNextId } from "__support__/utils";
 
 import type { Comment } from "../comments";
 
-import { createMockDocument } from "./document";
+import { createMockDocumentContent } from "./document";
 import { createMockUser } from "./user";
 
 export function createMockComment(comment?: Partial<Comment>): Comment {
@@ -12,12 +12,12 @@ export function createMockComment(comment?: Partial<Comment>): Comment {
     id: getNextId(),
     parent_comment_id: null,
 
-    entity_type: "document",
-    entity_id: 1,
-    child_entity_id: 1,
+    target_type: "document",
+    target_id: 1,
+    child_target_id: 1,
 
-    document: createMockDocument(),
     creator: createMockUser(),
+    content: createMockDocumentContent(),
 
     is_deleted: false,
     is_resolved: false,

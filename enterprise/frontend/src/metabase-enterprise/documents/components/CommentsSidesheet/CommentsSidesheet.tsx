@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
@@ -19,9 +20,16 @@ interface Props {
 
 export const CommentsSidesheet = ({ params, onClose }: Props) => {
   const childTargetId = params?.childTargetId;
+  const location = useLocation();
 
   const [activeTab, setActiveTab] = useState<string | null>("open");
   const { comments, document } = useDocumentContext();
+
+  // Check if we should auto-open the new comment form
+  const shouldAutoOpenNewComment = useMemo(() => {
+    const searchParams = new URLSearchParams(location.search);
+    return searchParams.get("new") === "true";
+  }, [location.search]);
 
   const targetComments = useMemo(() => {
     if (!comments) {
@@ -49,6 +57,28 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     [targetComments],
   );
 
+  // Determine which tab should be active based on available comments
+  const availableTabs = useMemo(() => {
+    const tabs = [];
+    // Only show tabs if there are resolved comments
+    if (resolvedComments.length > 0) {
+      tabs.push("open");
+      tabs.push("resolved");
+    }
+    return tabs;
+  }, [resolvedComments.length]);
+
+  // Update active tab if current tab is not available
+  useEffect(() => {
+    if (
+      availableTabs.length > 0 &&
+      activeTab &&
+      !availableTabs.includes(activeTab)
+    ) {
+      setActiveTab(availableTabs[0]);
+    }
+  }, [availableTabs, activeTab]);
+
   if (!childTargetId || !document) {
     return null;
   }
@@ -70,22 +100,27 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         transitionProps={{ duration: 0 }}
         w={rem(400)}
       >
-        <Modal.Header px="xl" className={S.header}>
-          <Modal.Title>{t`Discussions`}</Modal.Title>
+        <Modal.Header px="xl">
+          <Modal.Title>{t`Comments`}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
         <Modal.Body className={S.body} p={0}>
           <Tabs value={activeTab} onChange={setActiveTab}>
-            <Tabs.List px="1.625rem" className={S.tabsList}>
-              <Tabs.Tab value="open">{t`Active`}</Tabs.Tab>
-              <Tabs.Tab value="resolved">{t`Resolved`}</Tabs.Tab>
-            </Tabs.List>
+            {availableTabs.length > 0 ? (
+              <Tabs.List px="1.625rem" className={S.tabsList}>
+                <Tabs.Tab value="open">{t`Open`}</Tabs.Tab>
+                <Tabs.Tab value="resolved">
+                  {t`Resolved (${resolvedComments.length})`}
+                </Tabs.Tab>
+              </Tabs.List>
+            ) : null}
             <Tabs.Panel value="open">
               <Discussions
                 childTargetId={childTargetId}
                 comments={activeComments}
                 targetId={document.id}
                 targetType="document"
+                autoOpenNewComment={shouldAutoOpenNewComment}
               />
             </Tabs.Panel>
             <Tabs.Panel value="resolved">

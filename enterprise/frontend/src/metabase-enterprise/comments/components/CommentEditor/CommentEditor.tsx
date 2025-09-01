@@ -1,6 +1,11 @@
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { EditorContent, type Extension, useEditor } from "@tiptap/react";
+import {
+  type Editor,
+  EditorContent,
+  type Extension,
+  useEditor,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
@@ -29,21 +34,25 @@ const ALLOWED_FORMATTING = {
 } as const;
 
 interface Props {
-  readonly?: boolean;
   active?: boolean;
+  autoFocus?: boolean;
   initialContent?: DocumentContent | null;
+  placeholder?: string;
+  readonly?: boolean;
+  onBlur?: (content: DocumentContent, editor: Editor) => void;
   onChange?: (content: DocumentContent) => void;
   onSubmit?: (content: DocumentContent) => void;
-  onBlur?: (content: DocumentContent, editor: Editor) => void;
 }
 
 export const CommentEditor = ({
-  readonly = false,
   active = true,
+  autoFocus = false,
   initialContent,
+  placeholder = t`Reply…`,
+  readonly = false,
+  onBlur,
   onChange,
   onSubmit,
-  onBlur,
 }: Props) => {
   const currentUser = useSelector(getUser);
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
@@ -62,20 +71,17 @@ export const CommentEditor = ({
           HTMLAttributes: { class: CS.link },
         }),
         configureMentionExtension({ currentUser, dispatch }),
-        !readonly &&
-          Placeholder.configure({
-            placeholder: t`Add a comment…`,
-          }),
+        !readonly && Placeholder.configure({ placeholder }),
         !readonly && DisableMetabotSidebar,
       ].filter(Boolean) as Extension[],
-    [siteUrl, currentUser, dispatch, readonly],
+    [siteUrl, currentUser, dispatch, readonly, placeholder],
   );
 
   const editor = useEditor(
     {
       extensions,
       content: initialContent || "",
-      autofocus: false,
+      autofocus: autoFocus,
       editable: !readonly,
       immediatelyRender: true,
       onUpdate: ({ editor }) => {
@@ -91,7 +97,7 @@ export const CommentEditor = ({
         }
       },
     },
-    [readonly],
+    [readonly, autoFocus],
   );
 
   useEffect(() => {
