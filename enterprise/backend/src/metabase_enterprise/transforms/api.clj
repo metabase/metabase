@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
+   [metabase-enterprise.transforms.canceling :as trasnforms.canceling]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -209,7 +210,8 @@
   (log/info "canceling transform " id)
   (api/check-superuser)
   (let [run (api/check-404 (transform-run/running-run-for-transform-id id))]
-    (transform-run-cancelation/mark-cancel-started-run! (:id run)))
+    (transform-run-cancelation/mark-cancel-started-run! (:id run))
+    (trasnforms.canceling/cancel-run! (:id run)))
   nil)
 
 (api.macros/defendpoint :post "/:id/run"
