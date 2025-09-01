@@ -2,6 +2,7 @@
   "`/api/ee/comment/` routes"
   (:require
    [metabase-enterprise.comments.models.comment :as m.comment]
+   [metabase-enterprise.comments.models.comment-reaction :as m.comment-reaction]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -70,6 +71,17 @@
          ;; Remove deleted comments that have no replies
          (remove #(and (:is_deleted %) (not (has-replies? (:id %))))))))
 
+(defn- hydrate-reactions
+  "Add reactions to comments"
+  [comments current-user-id]
+  (if (seq comments)
+    (let [comment-ids (map :id comments)
+          reactions-map (m.comment-reaction/get-reactions-for-comments comment-ids current-user-id)]
+      (map (fn [comment]
+             (assoc comment :reactions (get reactions-map (:id comment) [])))
+           comments))
+    comments))
+
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params
@@ -84,8 +96,10 @@
                                         [:= :target_type target_type]
                                         [:= :target_id target_id]]
                                  :order-by [[:created_at :asc]]})
-                      :creator)]
-    {:comments (process-deleted-comments all-comments)}))
+                      :creator)
+        processed-comments (process-deleted-comments all-comments)
+        comments-with-reactions (hydrate-reactions processed-comments api/*current-user-id*)]
+    {:comments comments-with-reactions}))
 
 (api.macros/defendpoint :post "/"
   "Create a new comment"
@@ -110,8 +124,10 @@
                                             :parent_comment_id parent_comment_id
                                             :content (json/encode content)
                                             :creator_id api/*current-user-id*})]
-    (let [new-comment (t2/hydrate (t2/select-one :model/Comment :id comment-id) :creator)]
-      (update new-comment :content decode-comment-content))))
+    (let [new-comment (t2/hydrate (t2/select-one :model/Comment :id comment-id) :creator)
+          comment-with-content (update new-comment :content decode-comment-content)]
+      ;; New comments always have empty reactions array
+      (assoc comment-with-content :reactions []))))
 
 (api.macros/defendpoint :put "/:comment-id"
   "Update a comment"
@@ -143,8 +159,11 @@
       (when (seq updates)
         (t2/update! :model/Comment comment-id updates)))
 
-    (let [updated-comment (t2/hydrate (t2/select-one :model/Comment :id comment-id) :creator)]
-      (update updated-comment :content decode-comment-content))))
+    (let [updated-comment (t2/hydrate (t2/select-one :model/Comment :id comment-id) :creator)
+          comment-with-content (update updated-comment :content decode-comment-content)
+          ;; Include current reactions in response
+          reactions-map (m.comment-reaction/get-reactions-for-comments [comment-id] api/*current-user-id*)]
+      (assoc comment-with-content :reactions (get reactions-map comment-id [])))))
 
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"
@@ -166,6 +185,39 @@
     (t2/update! :model/Comment comment-id {:is_deleted true})
 
     ;; Return 204 No Content
+    api/generic-204-no-content))
+
+(api.macros/defendpoint :post "/:comment-id/reaction"
+  "Set a reaction on a comment (replaces any existing reaction)"
+  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
+   _query-params
+   {:keys [emoji]} :- [:map [:emoji [:string {:min 1 :max 10}]]]]
+  (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
+    ;; Check if user can read the target entity
+    (api/check-403 (can-read-entity? (:target_type comment) (:target_id comment)))
+
+    ;; Cannot react to deleted comments
+    (api/check-400 (not (:is_deleted comment))
+                   "Cannot react to deleted comments")
+
+    ;; Cannot react to comments on archived entities
+    (api/check-400 (not (entity-archived? (:target_type comment) (:target_id comment)))
+                   "Cannot react to comments on archived entities")
+
+    ;; Set the reaction (replaces any existing)
+    (m.comment-reaction/set-reaction! comment-id api/*current-user-id* emoji)
+    api/generic-204-no-content))
+
+(api.macros/defendpoint :delete "/:comment-id/reaction"
+  "Remove user's reaction from a comment"
+  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
+   _query-params]
+  (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
+    ;; Check if user can read the target entity
+    (api/check-403 (can-read-entity? (:target_type comment) (:target_id comment)))
+
+    ;; Remove the reaction (no error if it doesn't exist)
+    (m.comment-reaction/delete-reaction! comment-id api/*current-user-id*)
     api/generic-204-no-content))
 
 

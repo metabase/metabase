@@ -1233,6 +1233,75 @@ databaseChangeLog:
               WHERE content IS NOT NULL;
             dbms: "h2"
 
+  - changeSet:
+      id: v57.2025-09-01T17:15:00
+      author: anton
+      comment: Create comment_reaction table for comment reactions feature
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: comment_reaction
+      changes:
+        - createTable:
+            tableName: comment_reaction
+            remarks: Store reactions (emojis) on comments
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: comment_id
+                  type: int
+                  remarks: ID of the comment being reacted to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: User who added this reaction
+                  constraints:
+                    nullable: false
+              - column:
+                  name: emoji
+                  type: varchar(10)
+                  remarks: Unicode emoji (supports compound emojis)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: comment_reaction
+            baseColumnNames: comment_id
+            referencedTableName: comment
+            referencedColumnNames: id
+            constraintName: fk_comment_reaction_comment_id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: comment_reaction
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_comment_reaction_user_id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: comment_reaction
+            columnNames: comment_id, user_id
+            constraintName: unique_user_comment_reaction
+        - createIndex:
+            tableName: comment_reaction
+            indexName: idx_comment_reaction_comment_id
+            columns:
+              - column:
+                  name: comment_id
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
