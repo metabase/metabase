@@ -4,7 +4,7 @@
    [metabase-enterprise.database-replication.api :as api]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
    [metabase-enterprise.harbormaster.client :as hm.client]
-   [metabase.premium-features.token-check :as tc]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -85,7 +85,7 @@
                  :estimated_row_count 11
                  :has_pkey true,
                  :has_ownership false}]]
-    (with-redefs [tc/quotas
+    (with-redefs [token-check/quotas
                   (constantly [{:usage 499990, :locked false, :updated-at "2025-08-05T08:48:11Z", :quota-type "rows", :hosting-feature "clickhouse-dwh", :soft-limit 500000}])
 
                   api/preview-memo
