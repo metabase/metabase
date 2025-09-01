@@ -60,3 +60,10 @@ x.com")
   :default    true
   :visibility :internal
   :export?    false)
+
+(defsetting disallow-cors-on-localhost
+  (deferred-tru "Disallow CORS requests from localhost origins.")
+  :type       :boolean
+  :default    false
+  :visibility :internal
+  :export?    true)
