@@ -123,11 +123,11 @@
     (api/check-400 (not (entity-archived? (:target_type comment) (:target_id comment)))
                    "Cannot edit comments on archived entities")
 
-    (api/check-400 (not (:is_deleted comment))
-                   "Cannot edit a deleted comment")
-
     ;; Check permissions based on what's being updated
     (when content
+      ;; Cannot edit content of deleted comments
+      (api/check-400 (not (:is_deleted comment))
+                     "Cannot edit content of a deleted comment")
       ;; Only creator or admin can edit comment content
       (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
                           (:is_superuser @api/*current-user*))))
