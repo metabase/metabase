@@ -26,8 +26,8 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
     const unresolvedCommentsCount = useMemo(
       () =>
         threads
-          .flatMap((thread) => thread.comments)
-          .filter((comment) => !comment.is_resolved).length,
+          .filter((thread) => !thread.comments[0]?.is_resolved)
+          .flatMap((thread) => thread.comments).length,
       [threads],
     );
     const hasUnresolvedComments = unresolvedCommentsCount > 0;
