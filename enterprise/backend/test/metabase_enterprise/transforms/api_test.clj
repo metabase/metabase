@@ -420,7 +420,12 @@
                     (transform-runs our-run-pred :start_time "2025-08-26~")))
             (let [our-runs (transform-runs our-run-pred :start_time "~2025-08-25")]
               (is (= 6 (count our-runs)))
-              (is (every? (comp neg-int? #(compare % "2025-08-26") :start_time) our-runs))))
+              (is (every? (comp neg-int? #(compare % "2025-08-26") :start_time) our-runs)))
+            (let [our-runs (transform-runs our-run-pred :start_time "2025-08-22~2025-08-23")]
+              (is (= 2 (count our-runs)))
+              (is (every? (every-pred (comp nat-int? #(compare % "2025-08-22") :start_time)
+                                      (comp neg-int? #(compare % "2025-08-24") :start_time))
+                          our-runs))))
           (testing "Filter by 'end_time'"
             (is (=? t0-runs
                     (transform-runs our-run-pred :end_time "2025-08-26~")))
