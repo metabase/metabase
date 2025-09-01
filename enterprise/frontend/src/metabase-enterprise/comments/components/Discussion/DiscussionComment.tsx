@@ -1,19 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import dayjs from "dayjs";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import {
-  Group,
-  Icon,
-  Spoiler,
-  Text,
-  Timeline,
-  Tooltip,
-  rem,
-} from "metabase/ui";
+import { Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
 import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
@@ -37,8 +29,6 @@ type DiscussionCommentProps = {
   onCopyLink?: (comment: Comment) => unknown;
 };
 
-const lineHeightPx = 17;
-
 export function DiscussionComment({
   comment,
   actionPanelVariant,
@@ -50,14 +40,12 @@ export function DiscussionComment({
   onCopyLink,
 }: DiscussionCommentProps) {
   const [isEditing, editingHandler] = useDisclosure(false);
-  const [expanded, setExpanded] = useState(false);
   const location = useLocation();
   const hash = location.hash?.substring(1);
   const isTarget = hash === getCommentNodeId(comment);
 
   const handleEditClick = useCallback(() => {
     editingHandler.open();
-    setExpanded(true);
   }, [editingHandler]);
 
   const handleEditingSubmit = (document: DocumentContent) => {
@@ -124,33 +112,11 @@ export function DiscussionComment({
         </Tooltip>
       </Group>
 
-      <Spoiler
-        mb="0"
-        // TODO: remove +14. Currently it's related to Paragraph margin style, which is 14px
-        maxHeight={lineHeightPx * 3 + 14}
-        showLabel={t`... more`}
-        hideLabel={null}
-        classNames={{
-          root: S.spoilerRoot,
-          content: S.spoilerContent,
-          control: S.spoilerControl,
-        }}
-        expanded={expanded}
-        onExpandedChange={setExpanded}
-        // We can't move this to CSS since control position is set via style attribute
-        styles={{
-          control: {
-            inset: "auto 0px 0px auto",
-            lineHeight: rem(lineHeightPx),
-          },
-        }}
-      >
-        <CommentEditor
-          initialContent={comment.content}
-          onSubmit={handleEditingSubmit}
-          readonly={!isEditing}
-        />
-      </Spoiler>
+      <CommentEditor
+        initialContent={comment.content}
+        onSubmit={handleEditingSubmit}
+        readonly={!isEditing}
+      />
     </Timeline.Item>
   );
 }
