@@ -20,104 +20,6 @@ on:
         type: boolean
 
 jobs:
-  check-employee-and-issue:
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    permissions:
-      contents: read
-      issues: read
-    if: |
-      (github.event_name == 'issues' && github.event.label.name == 'Claude Bug Fix' && github.event.issue.state == 'open') ||
-      (github.event_name == 'workflow_dispatch') ||
-      (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested' && startsWith(github.event.pull_request.head.ref, 'claude-fix/'))
-    outputs:
-      is_employee: ${{ steps.check_employee.outputs.is_employee }}
-      issue_number: ${{ steps.get_issue.outputs.issue_number }}
-      issue_data: ${{ steps.get_issue.outputs.issue_data }}
-      issue_comments: ${{ steps.get_issue.outputs.issue_comments }}
-      pr_reviews: ${{ steps.get_issue.outputs.pr_reviews }}
-      trigger_type: ${{ steps.get_issue.outputs.trigger_type }}
-    steps:
-      - name: Generate GitHub App Token
-        uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-
-      - name: Get issue data
-        id: get_issue
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            const { getIssueData } = require('${{ github.workspace }}/.github/scripts/get-issue-data.js');
-            
-            try {
-              const result = await getIssueData({
-                context,
-                github,
-                manualIssueNumber: '${{ github.event.inputs.issue_number }}'
-              });
-              
-              const { issueNumber, issueData, employeeComments, prReviews, triggerType } = result;
-              
-              core.setOutput('issue_number', issueNumber);
-              core.setOutput('issue_data', JSON.stringify(issueData));
-              core.setOutput('issue_comments', JSON.stringify(employeeComments));
-              core.setOutput('pr_reviews', JSON.stringify(prReviews));
-              core.setOutput('trigger_type', triggerType);
-
-              console.log(`Trigger type: ${triggerType}`);
-              console.log(`Issue #${issueNumber}: ${issueData.title}`);
-              console.log(`Issue author: ${issueData.user.login}`);
-              console.log(`Issue has ${employeeComments.length} comments from employees`);
-              if (prReviews.length > 0) {
-                console.log(`Found ${prReviews.length} reviews requesting changes from employees`);
-              }
-            } catch (error) {
-              core.setFailed(error.message);
-            }
-
-      - name: Check if issue creator is a Metabase employee
-        id: check_employee
-        uses: actions/github-script@v7
-        env:
-          ISSUE_DATA: ${{ steps.get_issue.outputs.issue_data }}
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            const issueData = JSON.parse(process.env.ISSUE_DATA);
-            const issueAuthor = issueData.user.login;
-
-            // Log if override is active (but still check actual employee status)
-            if (context.eventName === 'workflow_dispatch' && '${{ github.event.inputs.override_employee_check }}' === 'true') {
-              console.log(`Employee check override is active - will proceed regardless of ${issueAuthor}'s membership status.`);
-            }
-
-            try {
-              // Check if user is a member of the metabase organization (including private members)
-              const { data: membership } = await github.rest.orgs.getMembershipForUser({
-                org: 'metabase',
-                username: issueAuthor
-              });
-
-              if (membership.state === 'active') {
-                console.log(`User ${issueAuthor} is an active member of the Metabase organization. Proceeding with bug fix automation.`);
-                core.setOutput('is_employee', 'true');
-              } else {
-                console.log(`User ${issueAuthor} is not an active member of the Metabase organization. Skipping bug fix automation.`);
-                core.setOutput('is_employee', 'false');
-              }
-            } catch (error) {
-              if (error.status === 404) {
-                console.log(`User ${issueAuthor} is not a member of the Metabase organization. Skipping bug fix automation.`);
-              } else {
-                console.error('Error checking organization membership:', error);
-              }
-              core.setOutput('is_employee', 'false');
-            }
-
   auto-fix-bug:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -126,9 +28,49 @@ jobs:
       issues: write
       pull-requests: write
       id-token: write
-    needs: check-employee-and-issue
-    if: needs.check-employee-and-issue.outputs.is_employee == 'true' || github.event.inputs.override_employee_check == 'true'
+    if: |
+      (github.event_name == 'issues' && github.event.label.name == 'Claude Bug Fix' && github.event.issue.state == 'open') ||
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested' && startsWith(github.event.pull_request.head.ref, 'claude-fix/'))
     steps:
+      - name: Generate GitHub App Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
+      - name: Get issue data and check employee status
+        id: get_issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { getIssueData } = require('${{ github.workspace }}/.github/scripts/get-issue-data.js');
+
+            try {
+              const result = await getIssueData({
+                context,
+                github,
+                manualIssueNumber: '${{ github.event.inputs.issue_number }}'
+              });
+              
+              const { issueNumber, issueData, employeeComments, prReviews, triggerType, isIssueAuthorEmployee } = result;
+
+              // Check employee status and fail if not authorized
+              if (!result.isIssueAuthorEmployee && '${{ github.event.inputs.override_employee_check }}' !== 'true') {
+                  core.setFailed(`User ${result.issueData.user.login} is not a Metabase employee. Skipping bug fix automation.`);
+              } 
+              
+              core.setOutput('issue_number', issueNumber);
+              core.setOutput('issue_data', JSON.stringify(issueData));
+              core.setOutput('issue_comments', JSON.stringify(employeeComments));
+              core.setOutput('pr_reviews', JSON.stringify(prReviews));
+              core.setOutput('trigger_type', triggerType);
+            } catch (error) {
+              core.setFailed(error.message);
+            }
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -140,67 +82,117 @@ jobs:
           git config --global user.name "Claude Code[bot]"
           git config --global user.email "noreply@anthropic.com"
 
-      - name: Prepare dynamic issue info
-        id: prepare_issue_info
+      - name: Prepare issue context and bug fix prompt
+        id: prepare_prompt
         uses: actions/github-script@v7
         env:
-          ISSUE_DATA: ${{ needs.check-employee-and-issue.outputs.issue_data }}
-          ISSUE_COMMENTS: ${{ needs.check-employee-and-issue.outputs.issue_comments }}
-          PR_REVIEWS: ${{ needs.check-employee-and-issue.outputs.pr_reviews }}
-          TRIGGER_TYPE: ${{ needs.check-employee-and-issue.outputs.trigger_type }}
+          ISSUE_DATA: ${{ steps.get_issue.outputs.issue_data }}
+          ISSUE_COMMENTS: ${{ steps.get_issue.outputs.issue_comments }}
+          PR_REVIEWS: ${{ steps.get_issue.outputs.pr_reviews }}
+          TRIGGER_TYPE: ${{ steps.get_issue.outputs.trigger_type }}
         with:
           script: |
             const issueData = JSON.parse(process.env.ISSUE_DATA);
             const issueComments = JSON.parse(process.env.ISSUE_COMMENTS);
             const prReviews = JSON.parse(process.env.PR_REVIEWS);
             const triggerType = process.env.TRIGGER_TYPE;
-            const issueNumber = '${{ needs.check-employee-and-issue.outputs.issue_number }}';
+            const issueNumber = '${{ steps.get_issue.outputs.issue_number }}';
 
-            // Convert issue title to kebab case
+            // Convert issue title to kebab case and create branch name
             const issueTitle = issueData.title || 'untitled';
             const kebabTitle = issueTitle
               .toLowerCase()
               .replace(/[^a-z0-9]+/g, '-')
               .replace(/^-+|-+$/g, '')
               .replace(/-+/g, '-')
-              .substring(0, 50); // Limit length
+              .substring(0, 50);
+            const branchName = `claude-fix/issue-${issueNumber}-${kebabTitle}`;
 
-            // Create base branch name
-            const baseBranchName = `claude-fix/issue-${issueNumber}-${kebabTitle}`;
-            core.exportVariable('BASE_BRANCH_NAME', baseBranchName);
+            // Format data for bash environment
+            const formattedComments = issueComments.length > 0 
+              ? issueComments.map(comment => 
+                  `**Comment by @${comment.user.login} on ${comment.created_at}:**\n${comment.body}`
+                ).join('\n\n---\n\n')
+              : '';
+            const formattedReviews = prReviews.length > 0 
+              ? prReviews.map(review => 
+                  `**Review by @${review.user.login} on ${review.submitted_at} (Changes Requested):**\n${review.body || 'No review comment provided'}`
+                ).join('\n\n---\n\n')
+              : '';
 
-            // Export issue info for the prompt
+            core.exportVariable('BRANCH_NAME', branchName);
             core.exportVariable('ISSUE_NUMBER', issueNumber);
             core.exportVariable('ISSUE_TITLE', issueData.title);
             core.exportVariable('ISSUE_AUTHOR', issueData.user.login);
             core.exportVariable('ISSUE_CREATED', issueData.created_at);
             core.exportVariable('ISSUE_BODY', issueData.body || 'No description provided');
+            core.exportVariable('ISSUE_COMMENTS_FORMATTED', formattedComments);
+            core.exportVariable('PR_REVIEWS_FORMATTED', formattedReviews);
             core.exportVariable('TRIGGER_TYPE', triggerType);
 
-            // Format comments for the prompt
-            let commentsText = '';
-            if (issueComments.length > 0) {
-              commentsText = issueComments.map(comment => 
-                `**Comment by @${comment.user.login} on ${comment.created_at}:**\n${comment.body}`
-              ).join('\n\n---\n\n');
-            }
-            core.exportVariable('ISSUE_COMMENTS_FORMATTED', commentsText);
+      - name: Generate bug fix prompt
+        run: |
+          cat << 'EOF' >> $GITHUB_ENV
+          BUG_FIX_PROMPT<<PROMPT_END
+          You are helping to fix a bug reported in GitHub issue #${{ env.ISSUE_NUMBER }}.
 
-            // Format PR reviews for the prompt
-            let reviewsText = '';
-            if (prReviews.length > 0) {
-              reviewsText = prReviews.map(review => 
-                `**Review by @${review.user.login} on ${review.submitted_at} (Changes Requested):**\n${review.body || 'No review comment provided'}`
-              ).join('\n\n---\n\n');
-            }
-            core.exportVariable('PR_REVIEWS_FORMATTED', reviewsText);
+          ## Bug Report Details
+          **Title:** ${{ env.ISSUE_TITLE }}
+          **Reporter:** ${{ env.ISSUE_AUTHOR }}
+          **Created:** ${{ env.ISSUE_CREATED }}
+
+          **Description:**
+          ${{ env.ISSUE_BODY }}
+
+          **Comments:**
+          ${{ env.ISSUE_COMMENTS_FORMATTED }}
+          EOF
+
+          # Add review feedback section only if this is a review trigger
+          if [ "${{ env.TRIGGER_TYPE }}" = "pull_request_review" ]; then
+            cat << 'EOF' >> $GITHUB_ENV
+
+          ## Previous Fix Attempt - Review Feedback (MUST ADDRESS)
+          Your previous automated fix attempt received the following feedback that needs to be addressed:
+
+          ${{ env.PR_REVIEWS_FORMATTED }}
+          EOF
+          fi
+
+          # Add the rest of the prompt (always the same)
+          cat << 'EOF' >> $GITHUB_ENV
+
+          ## Instructions
+          1. **Analyze the issue description and comments** - Understand what the issue is describing
+             a. Pay particular attention to reproduction steps and if there's an agreed upon fix.
+          2. **Search the codebase** - Use Grep and Glob tools to find relevant files
+          3. **Implement a fix** - Follow existing code patterns and conventions
+          4. **Test the fix** - Run appropriate tests using the commands in CLAUDE.md:
+             - JavaScript/TypeScript: `yarn test-unit path/to/file.unit.spec.js`
+             - Clojure: `clojure -X:dev:test :only namespace/test-name`
+             - Lint: `yarn lint-eslint-pure` for JS/TS, `./bin/mage kondo <file>` for Clojure
+          5. **Verify the fix** - Ensure tests pass and code follows conventions
+
+          ## Important Guidelines
+          - Follow the development patterns in CLAUDE.md
+          - Write failing tests first, then fix them
+          - Work in small, testable increments
+          - Don't commit changes - leave that for the workflow
+          - IMPORTANT: Focus only on fixing the reported bug, don't make unrelated changes
+
+          ## Scratchpad Directory
+          A `.claude-scratchpad/` directory has been created for your temporary files:
+          - Use this directory for ALL temporary verification files. However, prefer using production test files rather than adhoc ones.
+          - Only modify actual production code in the main repository directories
+          - The scratchpad will be cleaned up automatically - nothing from it will be committed
+
+          Start by understanding the bug and then systematically work toward a solution.
+          PROMPT_END
+          EOF
 
       - name: Determine branch strategy
         run: |
-          # Use the base branch name (no counters)
-          BRANCH_NAME="${{ env.BASE_BRANCH_NAME }}"
-
-          # Check if this exact branch already exists
+          BRANCH_NAME="${{ env.BRANCH_NAME }}"
           if git branch -r --list "origin/${BRANCH_NAME}" | grep -q .; then
             echo "Branch already exists: $BRANCH_NAME"
             echo "Will push to existing branch and skip PR creation"
@@ -213,82 +205,6 @@ jobs:
 
           # Export the branch name
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
-
-      - name: Prepare bug fix prompt
-        id: prepare_prompt
-        run: |
-          # Set context-specific variables
-          if [ "${{ env.TRIGGER_TYPE }}" = "pull_request_review" ]; then
-            CONTEXT_INTRO="You are helping to improve an automated bug fix based on reviewer feedback for GitHub issue #${{ env.ISSUE_NUMBER }}."
-            CONTEXT_SECTIONS="
-            ## Previous Fix Attempt - NEEDS IMPROVEMENT
-            A previous automated fix was attempted for this issue, but reviewers have requested changes.
-
-            ## Reviewer Feedback (MUST ADDRESS)
-            ${{ env.PR_REVIEWS_FORMATTED }}"
-            STEP_1="1. **Review the current PR branch** - Examine the existing fix attempt on branch \`${{ env.BRANCH_NAME }}\`"
-            STEP_2="2. **Understand reviewer feedback** - Carefully read all review comments above"
-            STEP_3="3. **Address specific concerns** - Modify the existing fix to address reviewer feedback"
-            PRIORITY_GUIDELINE="- **PRIORITY**: Address reviewer feedback first and foremost"
-            FINAL_MESSAGE="Start by examining the current fix and understanding exactly what reviewers want changed."
-            PR_UPDATE_NOTE="- The existing PR will be updated with your improvements"
-            SCRATCHPAD_NOTE="- Use this directory for ALL temporary verification files"
-          else
-            CONTEXT_INTRO="You are helping to automatically fix a bug reported in GitHub issue #${{ env.ISSUE_NUMBER }}."
-            CONTEXT_SECTIONS=""
-            STEP_1="1. **Analyze the issue description and comments** - Understand what the issue is describing"
-            STEP_2="  a. Pay particular attention to reproduction steps and if there's an agreed upon fix."
-            STEP_3="2. **Search the codebase** - Use Grep and Glob tools to find relevant files"
-            PRIORITY_GUIDELINE="- **IMPORTANT**: Focus only on fixing the reported bug, don't make unrelated changes"
-            FINAL_MESSAGE="Start by understanding the bug and then systematically work toward a solution."
-            PR_UPDATE_NOTE=""
-            SCRATCHPAD_NOTE="- Use this directory for ALL temporary verification files. However, prefer using production test files rather than adhoc ones."
-          fi
-
-          # Generate the unified prompt
-          cat << EOF >> $GITHUB_ENV
-          BUG_FIX_PROMPT<<PROMPT_END
-          $CONTEXT_INTRO
-
-          ## Bug Report Details
-          **Title:** ${{ env.ISSUE_TITLE }}
-          **Reporter:** ${{ env.ISSUE_AUTHOR }}
-          **Created:** ${{ env.ISSUE_CREATED }}
-
-          **Description:**
-          ${{ env.ISSUE_BODY }}
-
-          **Comments:**
-          ${{ env.ISSUE_COMMENTS_FORMATTED }}$CONTEXT_SECTIONS
-
-          ## Instructions
-          $STEP_1
-          $STEP_2
-          $STEP_3
-          $(if [ "${{ env.TRIGGER_TYPE }}" != "pull_request_review" ]; then echo "3. **Implement a fix** - Follow existing code patterns and conventions"; fi)
-          $(if [ "${{ env.TRIGGER_TYPE }}" = "pull_request_review" ]; then echo "4"; else echo "4"; fi). **Test thoroughly** - Run tests using commands in CLAUDE.md:
-             - JavaScript/TypeScript: \`yarn test-unit path/to/file.unit.spec.js\`
-             - Clojure: \`clojure -X:dev:test :only namespace/test-name\`
-             - Lint: \`yarn lint-eslint-pure\` for JS/TS, \`./bin/mage kondo <file>\` for Clojure
-          $(if [ "${{ env.TRIGGER_TYPE }}" != "pull_request_review" ]; then echo "5. **Verify the fix** - Ensure tests pass and code follows conventions"; fi)
-
-          ## Important Guidelines
-          $PRIORITY_GUIDELINE
-          - Follow the development patterns in CLAUDE.md
-          $(if [ "${{ env.TRIGGER_TYPE }}" != "pull_request_review" ]; then echo "- Write failing tests first, then fix them"; fi)
-          $(if [ "${{ env.TRIGGER_TYPE }}" != "pull_request_review" ]; then echo "- Work in small, testable increments"; fi)
-          $(if [ "${{ env.TRIGGER_TYPE }}" = "pull_request_review" ]; then echo "- Keep changes minimal and focused on reviewer concerns"; fi)
-          - Don't commit changes - leave that for the workflow$PR_UPDATE_NOTE
-
-          ## Scratchpad Directory
-          A \`.claude-scratchpad/\` directory has been created for your temporary files:
-          $SCRATCHPAD_NOTE
-          - Only modify actual production code in the main repository directories
-          - The scratchpad will be cleaned up automatically$(if [ "${{ env.TRIGGER_TYPE }}" != "pull_request_review" ]; then echo " - nothing from it will be committed"; fi)
-
-          $FINAL_MESSAGE
-          PROMPT_END
-          EOF
 
       - name: Create scratchpad directory for Claude
         run: |
@@ -340,24 +256,15 @@ jobs:
         id: prepare_reviewers
         uses: actions/github-script@v7
         env:
-          ISSUE_DATA: ${{ needs.check-employee-and-issue.outputs.issue_data }}
+          ISSUE_DATA: ${{ steps.get_issue.outputs.issue_data }}
         with:
           script: |
-            // Get existing team labels from the issue
             const issueData = JSON.parse(process.env.ISSUE_DATA);
             const issueLabels = issueData.labels.map(label => label.name);
             const teamLabels = issueLabels.filter(label => label.startsWith('.Team/'));
-
-            console.log('Issue labels:', issueLabels);
-            console.log('Team labels found:', teamLabels);
-
-            // Add issue creator as reviewer
             const issueCreator = issueData.user.login;
-
             core.setOutput('team_labels', teamLabels.join(','));
             core.setOutput('reviewers', issueCreator);
-
-            console.log('Reviewer:', issueCreator);
 
       - name: Create Pull Request
         if: steps.check_changes.outputs.has_changes == 'true'
