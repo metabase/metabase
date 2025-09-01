@@ -19,10 +19,7 @@ export const getCollectionIdValueFromReference = createSelector(
     return match(collectionReference)
       .with("personal", () => personalCollectionId as RegularCollectionId)
       .with("root", () => null)
-      .with(
-        P.union(P.number, P.string),
-        () => collectionReference as RegularCollectionId,
-      )
+      .with(P.union(P.number, P.string), (id) => id)
       .otherwise(() => {
         throw new Error(
           "Invalid collection id, expected `number | string | 'root' | 'personal'`",
@@ -35,7 +32,7 @@ export const getCollectionIdValueFromReference = createSelector(
  * This return an "id"/"slug" that can be used in `/api/collection/{:id}`
  * There are extra handlers for "root" and "trash" so unlike when
  * creating a dashboard, we have to pass "root" for the root collection
- * instead of null.
+ * instead of null
  */
 export const getCollectionIdSlugFromReference = createSelector(
   [
@@ -46,10 +43,7 @@ export const getCollectionIdSlugFromReference = createSelector(
     return match(collectionReference)
       .with("personal", () => personalCollectionId as RegularCollectionId)
       .with("root", () => "root" as const)
-      .with(
-        P.union(P.number, P.string),
-        () => collectionReference as RegularCollectionId,
-      )
+      .with(P.union(P.number, P.string), (id) => id)
       .otherwise(() => {
         throw new Error(
           "Invalid collection id, expected `number | string | 'root' | 'personal'`",

@@ -73,10 +73,9 @@ export const SaveQuestionProvider = ({
   const currentUser = useSelector(getCurrentUser);
 
   const targetCollection =
-    userTargetCollection ??
-    (currentUser && userTargetCollection === "personal"
+    userTargetCollection === "personal" && currentUser
       ? currentUser.personal_collection_id
-      : userTargetCollection);
+      : userTargetCollection;
 
   const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
   const { data: recentItems, isLoading } = useListRecentsQuery(
