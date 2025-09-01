@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
-import { Alert, Box, Button, Group, Text } from "metabase/ui";
+import { Alert, Box, Button, Group, Text, Loader } from "metabase/ui";
 
 import { useExecutePythonMutation, useCancelPythonMutation } from "../../../api/python-runner";
 
@@ -233,13 +233,14 @@ export function PythonEditor({
         <Group gap="sm">
           <Button
             variant="filled"
+            style={isRunning ? { backgroundColor: '#dc2626', color: 'white' } : undefined}
             leftSection={isRunning ? undefined : <span>▶</span>}
             onClick={isRunning ? handleCancelScript : handleRunScript}
             disabled={!isRunnable && !isRunning}
-            loading={isRunning}
           >
             {isRunning ? t`Cancel` : t`Run Python Script`}
           </Button>
+          {isRunning && <Loader size="sm" />}
         </Group>
       </Box>
     </Box>
