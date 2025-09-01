@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type CSSProperties, forwardRef } from "react";
+import { type CSSProperties, forwardRef, useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -23,9 +23,14 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
     { active, disabled, href, show, style, threads }: Props,
     ref,
   ) {
-    const hasUnresolvedComments = threads
-      .flatMap((thread) => thread.comments)
-      .some((comment) => !comment.is_resolved);
+    const unresolvedCommentsCount = useMemo(
+      () =>
+        threads
+          .flatMap((thread) => thread.comments)
+          .filter((comment) => !comment.is_resolved).length,
+      [threads],
+    );
+    const hasUnresolvedComments = unresolvedCommentsCount > 0;
 
     return (
       <Portal>
@@ -42,27 +47,31 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
           ref={ref}
           style={style}
         >
-          <Button
-            disabled={disabled}
-            leftSection={<Icon name="message" />}
-            px="sm"
-            size="xs"
-            variant={active ? "filled" : "default"}
-            {...(disabled
-              ? undefined
-              : {
-                  component: Link,
-                  // If no existing comments, add query param to auto-open new comment form
-                  to: threads.length === 0 ? `${href}?new=true` : href,
-                })}
-          >
-            {(() => {
-              const unresolvedCount = threads
-                .flatMap((thread) => thread.comments)
-                .filter((comment) => !comment.is_resolved).length;
-              return unresolvedCount > 0 ? t`${unresolvedCount}` : "";
-            })()}
-          </Button>
+          {disabled ? (
+            <Button
+              disabled
+              leftSection={<Icon name="message" />}
+              px="sm"
+              size="xs"
+              aria-label={t`Comments`}
+              variant={active ? "filled" : "default"}
+            >
+              {unresolvedCommentsCount > 0 ? unresolvedCommentsCount : null}
+            </Button>
+          ) : (
+            <Button
+              component={Link}
+              // If no existing comments, add query param to auto-open new comment form
+              to={threads.length === 0 ? `${href}?new=true` : href}
+              leftSection={<Icon name="message" />}
+              px="sm"
+              size="xs"
+              aria-label={t`Comments`}
+              variant={active ? "filled" : "default"}
+            >
+              {unresolvedCommentsCount > 0 ? unresolvedCommentsCount : null}
+            </Button>
+          )}
         </Box>
       </Portal>
     );
