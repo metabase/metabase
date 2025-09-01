@@ -10,8 +10,14 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
-   (java.io BufferedWriter OutputStream OutputStreamWriter File)
-   (java.nio.charset StandardCharsets)))
+   (com.amazonaws.auth BasicAWSCredentials)
+   (com.amazonaws.client.builder AwsClientBuilder$EndpointConfiguration)
+   (com.amazonaws.services.s3 AmazonS3 AmazonS3ClientBuilder)
+   (com.amazonaws.services.s3.model GeneratePresignedUrlRequest ObjectMetadata PutObjectRequest)
+   (java.io BufferedWriter ByteArrayInputStream ByteArrayOutputStream File OutputStream OutputStreamWriter)
+   (java.net URL)
+   (java.nio.charset StandardCharsets)
+   (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -61,6 +67,47 @@
                           (with-open [os (io/output-stream file)]
                             (write-to-stream! os (mapv :name cols-meta) reducible-rows))))))
 
+(defn- write-table-data-to-stream! [id]
+  (let [db-id (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
+        driver (t2/select-one-fn :engine :model/Database db-id)
+        ;; TODO: limit
+        query {:source-table id}
+        baos (ByteArrayOutputStream.)]
+    (execute-mbql-query driver db-id query
+                        (fn [{cols-meta :cols} reducible-rows]
+                          (write-to-stream! baos (mapv :name cols-meta) reducible-rows)))
+    (.toByteArray baos)))
+
+(defn- create-s3-client ^com.amazonaws.services.s3.AmazonS3 []
+  (let [builder (AmazonS3ClientBuilder/standard)]
+    (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
+      (.withEndpointConfiguration
+       (AwsClientBuilder$EndpointConfiguration. "http://localhost:4566" "us-east-1"))
+      (.withCredentials
+       (reify com.amazonaws.auth.AWSCredentialsProvider
+         (getCredentials [_]
+           (BasicAWSCredentials. "test" "test"))
+         (refresh [_])))
+      (.withPathStyleAccessEnabled true))
+    (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder)))
+
+(defn- upload-to-s3-and-get-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^bytes data]
+  (let [metadata     (ObjectMetadata.)
+        _            (.setContentLength metadata (alength data))
+        input-stream (ByteArrayInputStream. data)
+        put-request  (PutObjectRequest. bucket-name key input-stream metadata)]
+    (.putObject s3-client put-request)
+
+    (let [one-hour    (* 60 60 1000)
+          expiration  (Date. ^Long (+ (System/currentTimeMillis) one-hour))
+          url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
+                          (.withExpiration expiration)
+                          (.withMethod com.amazonaws.HttpMethod/GET))]
+      ;; Replace localhost with localstack so the URL works from within Docker containers
+      (-> (.generatePresignedUrl s3-client url-request)
+          (.toString)
+          (clojure.string/replace "http://localhost:4566" "http://localstack:4566")))))
+
 (defn execute-python-code
   "Execute Python code using the Python execution server."
   [code table-name->id]
@@ -76,19 +123,21 @@
 
     (try
       (let [server-url (transforms.settings/python-execution-server-url)
-            table-name->file (into {} (map (fn [[table-name id]]
-                                             (let [file-name (gensym)
-                                                   file (io/file (str work-dir "/" file-name ".jsonl"))]
-                                               (write-table-data! id file)
-                                               [table-name (.getAbsolutePath file)])))
-                                   table-name->id)
+            s3-client (create-s3-client)
+            bucket-name "metabase-python-runner"
+            table-name->url (into {} (map (fn [[table-name id]]
+                                            (let [s3-key (str work-dir-name "/" (gensym) ".jsonl")
+                                                  data (write-table-data-to-stream! id)
+                                                  url (upload-to-s3-and-get-url s3-client bucket-name s3-key data)]
+                                              [table-name url])))
+                                  table-name->id)
             response (http/post (str server-url "/execute")
                                 {:content-type     :json
                                  :accept           :json
                                  :body             (json/encode {:code          code
                                                                  :working_dir   work-dir
                                                                  :timeout       30
-                                                                 :table_mapping table-name->file})
+                                                                 :table_mapping table-name->url})
                                  :throw-exceptions false
                                  :as               :json})
 

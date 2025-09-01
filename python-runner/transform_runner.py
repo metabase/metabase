@@ -15,28 +15,51 @@ import pandas as pd
 import json
 from pathlib import Path
 
-def read_jsonl_to_array(filepath):
+def read_jsonl_to_array(source):
+    """
+    Read JSONL data from either a file path or URL.
+    
+    Args:
+        source: Either a file path or URL string
+        
+    Returns:
+        List of parsed JSON objects
+    """
     data_array = []
-    with open(filepath, 'r', encoding='utf-8') as f:
-        for line in f:
-            data_array.append(json.loads(line.strip()))
+    
+    # Check if source is a URL (starts with http:// or https://)
+    if source.startswith(('http://', 'https://')):
+        # Read directly from URL using pandas
+        import urllib.request
+        with urllib.request.urlopen(source) as response:
+            for line in response:
+                line = line.decode('utf-8').strip()
+                if line:
+                    data_array.append(json.loads(line))
+    else:
+        # Read from local file
+        with open(source, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    data_array.append(json.loads(line))
+    
     return data_array
 
-def read_table(table_file, limit=None):
+def read_table(table_source, limit=None):
     """
-        Read a table from Metabase using the API and return as a pandas DataFrame.
+    Read a table from either a local file or S3 URL and return as a pandas DataFrame.
 
-        Args:
-            table_id: A table ID
-            limit: Optional row limit (defaults to API's default limit)
+    Args:
+        table_source: Either a file path or S3 presigned URL
+        limit: Optional row limit (defaults to API's default limit)
 
-        Returns:
-            pandas.DataFrame: The table data
+    Returns:
+        pandas.DataFrame: The table data
     """
 
     try:
-
-        rows = read_jsonl_to_array(table_file)
+        rows = read_jsonl_to_array(table_source)
 
         if not rows:
             # Empty table
@@ -49,7 +72,7 @@ def read_table(table_file, limit=None):
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Failed to parse JSON response for table: {e}")
     except Exception as e:
-        raise RuntimeError(f"Failed to read table: {e}")
+        raise RuntimeError(f"Failed to read table from {table_source}: {e}")
 
 
 def main():
@@ -60,6 +83,7 @@ def main():
             print("ERROR: OUTPUT_FILE environment variable not set", file=sys.stderr)
             sys.exit(1)
 
+        # TABLE_FILE_MAPPING contains either file paths or S3 presigned URLs
         table_file_mapping_json = os.environ.get('TABLE_FILE_MAPPING', '{}')
         table_file_mapping = json.loads(table_file_mapping_json)
 
@@ -88,8 +112,8 @@ def main():
                 kwargs = {}
                 for param_name in sig.parameters:
                     if param_name in table_file_mapping:
-                        table_file = table_file_mapping[param_name]
-                        kwargs[param_name] = read_table(table_file)
+                        table_source = table_file_mapping[param_name]
+                        kwargs[param_name] = read_table(table_source)
 
                 # Call transform with named arguments
                 result = script.transform(**kwargs)
