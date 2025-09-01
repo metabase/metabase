@@ -15,7 +15,7 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { ActionIcon, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
 import { configureMentionExtension } from "metabase-enterprise/comments/mentions/extension";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
@@ -139,7 +139,10 @@ export const CommentEditor = ({
       })}
       onKeyDownCapture={handleKeyDown}
     >
-      <EditorContent editor={editor} className={S.content} />
+      <Box className={S.contentWrapper}>
+        <EditorContent editor={editor} className={S.content} />
+      </Box>
+
       {readonly ? null : (
         <ActionIcon
           variant="subtle"
