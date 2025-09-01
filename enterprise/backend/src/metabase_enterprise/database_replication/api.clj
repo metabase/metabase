@@ -40,12 +40,13 @@
   (fn [table-schema]
     (or (= type "all")
         (try
-          (-> patterns
-              driver.s/schema-pattern->re-pattern
-              (re-matches table-schema)
-              ((case type
-                 "include" identity
-                 "exclude" nil?)))
+          (let [xform (case type
+                        "include" identity
+                        "exclude" nil?)]
+            (-> patterns
+                driver.s/schema-pattern->re-pattern
+                (re-matches table-schema)
+                xform))
           (catch PatternSyntaxException _
             (api/check-400 false "Invalid schema pattern"))))))
 
