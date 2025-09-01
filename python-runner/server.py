@@ -48,12 +48,18 @@ execution_id_lock = threading.Lock()
 
 class ExecutionRequest:
     def __init__(self, code: str, working_dir: str, timeout: int, request_id: str,
-                 table_mapping: Optional[Dict[str, str]] = None):
+                 table_mapping: Optional[Dict[str, str]] = None,
+                 output_url: Optional[str] = None,
+                 stdout_url: Optional[str] = None,
+                 stderr_url: Optional[str] = None):
         self.code = code
         self.working_dir = working_dir
         self.timeout = timeout
         self.request_id = request_id
         self.table_mapping = table_mapping
+        self.output_url = output_url
+        self.stdout_url = stdout_url
+        self.stderr_url = stderr_url
         self.result_event = threading.Event()
         self.result = None
         self.queued_at = time.time()
@@ -68,7 +74,10 @@ def set_resource_limits():
 
 
 def execute_code(code: str, working_dir: str, timeout: int,
-                 table_mapping: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+                 table_mapping: Optional[Dict[str, str]] = None,
+                 output_url: Optional[str] = None,
+                 stdout_url: Optional[str] = None,
+                 stderr_url: Optional[str] = None) -> Dict[str, Any]:
     start_time = time.time()
 
     work_path = Path(working_dir)
@@ -88,7 +97,17 @@ def execute_code(code: str, working_dir: str, timeout: int,
 
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
-    env["OUTPUT_FILE"] = str(output_file)
+    
+    # Set S3 URLs if provided, otherwise use file paths
+    if output_url:
+        env["OUTPUT_URL"] = output_url
+    else:
+        env["OUTPUT_FILE"] = str(output_file)
+    
+    if stdout_url:
+        env["STDOUT_URL"] = stdout_url
+    if stderr_url:
+        env["STDERR_URL"] = stderr_url
 
     if table_mapping:
         import json
@@ -184,7 +203,10 @@ def worker_thread():
                     req.code,
                     req.working_dir,
                     req.timeout,
-                    req.table_mapping
+                    req.table_mapping,
+                    req.output_url,
+                    req.stdout_url,
+                    req.stderr_url
                 )
                 result["request_id"] = req.request_id
 
@@ -236,12 +258,15 @@ def execute():
     working_dir = data["working_dir"]
     timeout = data.get("timeout", DEFAULT_TIMEOUT)
     table_mapping = data.get("table_mapping")
+    output_url = data.get("output_url")
+    stdout_url = data.get("stdout_url")
+    stderr_url = data.get("stderr_url")
 
     import uuid
     request_id = str(uuid.uuid4())
 
     req = ExecutionRequest(code, working_dir, timeout, request_id,
-                           table_mapping)
+                           table_mapping, output_url, stdout_url, stderr_url)
 
     try:
         request_queue.put_nowait(req)
