@@ -145,19 +145,6 @@ describe("DatabaseReplicationForm", () => {
     });
   });
 
-  it("disables submit when insufficient storage", async () => {
-    const previewResponse = {
-      ...mockPreviewResponse,
-      canSetReplication: false,
-    };
-    await setup({ previewResponse });
-
-    const submitButton = screen.getByRole("button", {
-      name: "Start replication",
-    });
-    expect(submitButton).toBeDisabled();
-  });
-
   it("displays table information cards", async () => {
     await setup();
 
@@ -211,5 +198,88 @@ describe("DatabaseReplicationForm", () => {
     });
 
     expect(screen.getByText("Replication setup failed")).toBeInTheDocument();
+  });
+
+  it("shows invalid schema filters pattern error message", async () => {
+    const previewResponseWithError = {
+      ...mockPreviewResponse,
+      canSetReplication: false,
+      errors: {
+        invalidSchemaFiltersPattern: true,
+      },
+    };
+
+    const { user } = await setup({ previewResponse: previewResponseWithError });
+
+    // Change to "include" to show textarea
+    const select = screen.getByLabelText("Select schemas to replicate");
+    await user.click(select);
+    await user.click(screen.getByText("Only these…"));
+
+    // Wait for error message to appear
+    await waitFor(() => {
+      expect(
+        screen.getByText("Invalid schema filters pattern"),
+      ).toBeInTheDocument();
+    });
+
+    const submitButton = screen.getByRole("button", {
+      name: "Start replication",
+    });
+    expect(submitButton).toBeDisabled();
+  });
+
+  it("shows nothing to replicate error message", async () => {
+    const previewResponseWithError = {
+      ...mockPreviewResponse,
+      canSetReplication: false,
+      errors: {
+        noTables: true,
+      },
+    };
+
+    await setup({ previewResponse: previewResponseWithError });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Nothing to replicate. Please select schemas containing at least one table to be replicated.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    const submitButton = screen.getByRole("button", {
+      name: "Start replication",
+    });
+    expect(submitButton).toBeDisabled();
+  });
+
+  it("shows not enough storage error message", async () => {
+    const previewResponseWithError = {
+      ...mockPreviewResponse,
+      canSetReplication: false,
+      errors: {
+        noQuota: true,
+      },
+    };
+
+    await setup({ previewResponse: previewResponseWithError });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Not enough storage. Please upgrade your plan or modify the replication scope by excluding schemas.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Get more storage")).toBeInTheDocument();
+    });
+
+    const submitButton = screen.getByRole("button", {
+      name: "Start replication",
+    });
+    expect(submitButton).toBeDisabled();
   });
 });
