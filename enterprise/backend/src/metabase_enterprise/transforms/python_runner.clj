@@ -124,15 +124,7 @@
 (defn execute-python-code
   "Execute Python code using the Python execution server."
   [run-id code table-name->id cancel-chan]
-  (let [mount-path    (transforms.settings/python-execution-mount-path)
-        work-dir-name (str "run-" (System/currentTimeMillis) "-" (rand-int 10000))
-        work-dir      (str mount-path "/" work-dir-name)
-        work-dir-file (io/file work-dir)]
-
-    ;; Ensure mount base path exists
-    (.mkdirs (io/file mount-path))
-    ;; Create working directory
-    (.mkdirs work-dir-file)
+  (let [work-dir-name (str "run-" (System/currentTimeMillis) "-" (rand-int 10000))]
 
     (try
       (let [server-url      (transforms.settings/python-execution-server-url)
@@ -150,18 +142,17 @@
             ;; Upload input table data (write to disk first, then upload to S3)
             table-results   (for [[table-name id] table-name->id]
                               (let [temp-file (File/createTempFile
-                                               (str "table-" table-name "-" id)
-                                               ".jsonl"
-                                               work-dir-file)
+                                               (str work-dir-name "-table-" (name table-name) "-" id)
+                                               ".jsonl")
                                     s3-key (str work-dir-name "/" (.getName temp-file))]
                                 (try
                                   ;; Write table data to temporary file (closes DB connection quickly)
                                   (write-table-data-to-file! id temp-file cancel-chan)
                                   ;; Upload file to S3 and get URL
                                   (let [url (upload-file-to-s3-and-get-url s3-client bucket-name s3-key temp-file storage-config)]
-                                    {:table-name table-name
-                                     :url url
-                                     :s3-key s3-key})
+                                    {:table-name (name table-name)
+                                     :url        url
+                                     :s3-key     s3-key})
                                   (finally
                                     ;; Clean up temporary file
                                     (safe-delete temp-file)))))
@@ -177,7 +168,6 @@
                                        {:content-type     :json
                                         :accept           :json
                                         :body             (json/encode {:code          code
-                                                                        :working_dir   work-dir
                                                                         :timeout       30
                                                                         :request_id    run-id
                                                                         :output_url    output-url
@@ -222,12 +212,6 @@
             ;; Clean up S3 objects
             (try
               (cleanup-s3-objects s3-client bucket-name all-s3-keys)
-              (catch Exception _))
-            ;; Clean up working directory after use
-            (try
-              (when (.exists work-dir-file)
-                ;; Delete directory and all contents
-                (run! safe-delete (reverse (file-seq work-dir-file))))
               (catch Exception _)))))
 
       (catch CancellationException _

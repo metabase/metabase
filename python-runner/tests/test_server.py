@@ -13,43 +13,126 @@ from pathlib import Path
 from typing import Dict, Any
 
 import requests
+import boto3
+from botocore.config import Config
 
 
 class PythonServerTester:
-    def __init__(self, server_url: str = "http://localhost:5001"):
+    def __init__(self, server_url: str = "http://localhost:5001", s3_endpoint: str = "http://localhost:4566"):
         self.server_url = server_url.rstrip("/")
+        self.s3_endpoint = s3_endpoint
         self.session = requests.Session()
         self.test_dir = None
         self.test_subdir = None
+        self.bucket_name = "metabase-python-runner"
+        self.s3_client = None
         
     def setup(self):
         """Setup test environment."""
-        # Use the mounted test directory from environment variable
-        self.test_dir = os.environ.get("TEST_DIR", "/tmp/python-exec-tests")
-        # Create a unique subdirectory for this test run
+        # Setup S3 client for LocalStack
+        self.s3_client = boto3.client(
+            's3',
+            endpoint_url=self.s3_endpoint,
+            aws_access_key_id='test',
+            aws_secret_access_key='test',
+            region_name='us-east-1',
+            config=Config(s3={'addressing_style': 'path'})
+        )
+        
+        # Create bucket if it doesn't exist
+        try:
+            self.s3_client.create_bucket(Bucket=self.bucket_name)
+            print(f"Created S3 bucket: {self.bucket_name}")
+        except self.s3_client.exceptions.BucketAlreadyOwnedByYou:
+            print(f"S3 bucket already exists: {self.bucket_name}")
+        
+        # Generate unique test run ID
         import uuid
-        self.test_subdir = os.path.join(self.test_dir, str(uuid.uuid4())[:8])
-        os.makedirs(self.test_subdir, exist_ok=True)
-        print(f"Test directory: {self.test_subdir}")
+        self.test_run_id = str(uuid.uuid4())[:8]
+        print(f"Test run ID: {self.test_run_id}")
         
     def teardown(self):
         """Cleanup test environment."""
-        # Clean up the test subdirectory
-        if self.test_subdir and Path(self.test_subdir).exists():
-            import shutil
-            shutil.rmtree(self.test_subdir)
+        # Clean up S3 objects from this test run
+        if self.s3_client:
+            try:
+                # List and delete objects with our test run prefix
+                response = self.s3_client.list_objects_v2(
+                    Bucket=self.bucket_name,
+                    Prefix=self.test_run_id
+                )
+                if 'Contents' in response:
+                    for obj in response['Contents']:
+                        self.s3_client.delete_object(Bucket=self.bucket_name, Key=obj['Key'])
+                        print(f"Cleaned up S3 object: {obj['Key']}")
+            except Exception as e:
+                print(f"Error cleaning up S3: {e}")
+                
+    def generate_presigned_urls(self, request_id: str):
+        """Generate presigned URLs for S3 upload."""
+        output_key = f"{self.test_run_id}/{request_id}/output.csv"
+        stdout_key = f"{self.test_run_id}/{request_id}/stdout.txt"
+        stderr_key = f"{self.test_run_id}/{request_id}/stderr.txt"
+        
+        output_url = self.s3_client.generate_presigned_url(
+            'put_object',
+            Params={'Bucket': self.bucket_name, 'Key': output_key},
+            ExpiresIn=3600
+        )
+        stdout_url = self.s3_client.generate_presigned_url(
+            'put_object',
+            Params={'Bucket': self.bucket_name, 'Key': stdout_key},
+            ExpiresIn=3600
+        )
+        stderr_url = self.s3_client.generate_presigned_url(
+            'put_object',
+            Params={'Bucket': self.bucket_name, 'Key': stderr_key},
+            ExpiresIn=3600
+        )
+        
+        # Replace localhost with localstack for container access
+        output_url = output_url.replace('localhost:4566', 'localstack:4566')
+        stdout_url = stdout_url.replace('localhost:4566', 'localstack:4566')
+        stderr_url = stderr_url.replace('localhost:4566', 'localstack:4566')
+        
+        return {
+            'output_url': output_url,
+            'stdout_url': stdout_url,
+            'stderr_url': stderr_url,
+            'output_key': output_key,
+            'stdout_key': stdout_key,
+            'stderr_key': stderr_key
+        }
+        
+    def read_s3_file(self, key: str) -> str:
+        """Read a file from S3."""
+        try:
+            response = self.s3_client.get_object(Bucket=self.bucket_name, Key=key)
+            return response['Body'].read().decode('utf-8')
+        except Exception as e:
+            return f"Error reading S3 object {key}: {e}"
     
     def load_fixture(self, fixture_name: str) -> str:
         """Load a test fixture file."""
         fixture_path = Path(__file__).parent / "fixtures" / f"{fixture_name}.py"
         return fixture_path.read_text()
     
-    def execute_code(self, code: str, timeout: int = 10) -> Dict[str, Any]:
+    def execute_code(self, code: str, timeout: int = 10, request_id: str = None) -> Dict[str, Any]:
         """Execute code on the server."""
+        import uuid
+        if request_id is None:
+            request_id = str(uuid.uuid4())
+        
+        # Generate S3 URLs for output files
+        s3_urls = self.generate_presigned_urls(request_id)
+            
         payload = {
             "code": code,
-            "working_dir": self.test_subdir,
-            "timeout": timeout
+            "request_id": request_id,
+            "timeout": timeout,
+            "output_url": s3_urls['output_url'],
+            "stdout_url": s3_urls['stdout_url'],
+            "stderr_url": s3_urls['stderr_url']
         }
         
         try:
@@ -58,7 +141,14 @@ class PythonServerTester:
                 json=payload,
                 timeout=timeout + 5
             )
-            return response.json()
+            result = response.json()
+            # Add S3 keys to result so tests can read from S3
+            result['s3_keys'] = {
+                'output_key': s3_urls['output_key'],
+                'stdout_key': s3_urls['stdout_key'],
+                'stderr_key': s3_urls['stderr_key']
+            }
+            return result
         except Exception as e:
             return {"error": f"Request failed: {e}", "exit_code": -1}
     
@@ -70,12 +160,6 @@ class PythonServerTester:
         except Exception as e:
             return {"error": f"Status request failed: {e}"}
     
-    def read_file(self, filename: str) -> str:
-        """Read a file from the test directory."""
-        try:
-            return (Path(self.test_subdir) / filename).read_text()
-        except Exception as e:
-            return f"Error reading {filename}: {e}"
     
     def test_server_health(self) -> bool:
         """Test server health check."""
@@ -104,13 +188,13 @@ class PythonServerTester:
             print(f"❌ Basic execution failed: {result}")
             return False
         
-        # Check if CSV output was created
-        if "output_file" not in result:
-            print(f"❌ No output CSV file created: {result}")
+        # Check if S3 keys are available in result
+        if "s3_keys" not in result:
+            print(f"❌ No S3 keys in result: {result}")
             return False
         
-        # Read and verify CSV output
-        csv_content = self.read_file("output.csv")
+        # Read and verify CSV output from S3
+        csv_content = self.read_s3_file(result['s3_keys']['output_key'])
         if "Test successful!" not in csv_content:
             print(f"❌ CSV content incorrect: {csv_content}")
             return False
@@ -239,11 +323,11 @@ class PythonServerTester:
             print(f"❌ Transform with parameters failed: {result}")
             return False
         
-        if "output_file" not in result:
-            print(f"❌ No CSV output from transform: {result}")
+        if "s3_keys" not in result:
+            print(f"❌ No S3 keys in transform result: {result}")
             return False
             
-        csv_content = self.read_file("output.csv")
+        csv_content = self.read_s3_file(result['s3_keys']['output_key'])
         if "doubled" not in csv_content:
             print(f"❌ CSV missing expected column: {csv_content}")
             return False

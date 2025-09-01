@@ -3,7 +3,7 @@
 Transform Runner - Executes user-defined transform functions and saves results as CSV.
 
 This script:
-1. Imports the user's code from /sandbox/script.py
+1. Imports the user's code from script.py in the current working directory
 2. Creates a db object with read_table method using Metabase API
 3. Calls the transform() function defined by the user with db parameter
 4. Saves the returned DataFrame as CSV to the output file
@@ -63,12 +63,19 @@ def write_to_s3_url(url, content):
     
     req = urllib.request.Request(url, data=content, method='PUT')
     req.add_header('Content-Type', 'text/plain')
+    req.add_header('Content-Length', str(len(content)))
     
     try:
         with urllib.request.urlopen(req) as response:
             return response.read()
     except urllib.error.HTTPError as e:
         print(f"Failed to write to S3: {e.code} {e.reason}", file=sys.stderr)
+        print(f"S3 URL was: {url}", file=sys.stderr)
+        print(f"Content length: {len(content)}", file=sys.stderr)
+        raise
+    except Exception as e:
+        print(f"Unexpected error writing to S3: {e}", file=sys.stderr)
+        print(f"S3 URL was: {url}", file=sys.stderr)
         raise
 
 def read_table(table_source, limit=None):

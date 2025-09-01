@@ -47,13 +47,12 @@ execution_lock = threading.Lock()
 
 
 class ExecutionRequest:
-    def __init__(self, code: str, working_dir: str, timeout: int, request_id: str,
+    def __init__(self, code: str, timeout: int, request_id: str,
                  table_mapping: Optional[Dict[str, str]] = None,
                  output_url: Optional[str] = None,
                  stdout_url: Optional[str] = None,
                  stderr_url: Optional[str] = None):
         self.code = code
-        self.working_dir = working_dir
         self.timeout = timeout
         self.request_id = request_id
         self.table_mapping = table_mapping
@@ -99,6 +98,7 @@ def set_resource_limits():
     resource.setrlimit(resource.RLIMIT_NPROC, (MAX_PROCESSES, MAX_PROCESSES))
 
 def execute_code(req: ExecutionRequest) -> Dict[str, Any]:
+    import tempfile
 
     start_time = time.time()
 
@@ -111,14 +111,14 @@ def execute_code(req: ExecutionRequest) -> Dict[str, Any]:
             "cancelled": True
         }
 
-    work_path = Path(req.working_dir)
-    if not work_path.exists():
-        return {
-            "exit_code": -1,
-            "execution_time": 0,
-            "error": f"Working directory does not exist: {req.working_dir}"
-        }
+    # Always use a temporary directory for execution
+    with tempfile.TemporaryDirectory(prefix=f"python-exec-{req.request_id}-") as temp_dir:
+        work_path = Path(temp_dir)
+        return _execute_in_directory(req, work_path, start_time)
 
+
+def _execute_in_directory(req: ExecutionRequest, work_path: Path, start_time: float) -> Dict[str, Any]:
+    """Execute code in the specified directory."""
     stdout_file = work_path / "stdout.log"
     stderr_file = work_path / "stderr.log"
     script_file = work_path / "script.py"
@@ -291,11 +291,10 @@ def execute():
         metrics["total_requests"] += 1
 
     data = request.get_json()
-    if not data or "code" not in data or "working_dir" not in data or "request_id" not in data:
-        return jsonify({"error": "code, working_dir, and request_id are required"}), 400
+    if not data or "code" not in data or "request_id" not in data:
+        return jsonify({"error": "code and request_id are required"}), 400
 
     code = data["code"]
-    working_dir = data["working_dir"]
     request_id = data["request_id"]
     timeout = data.get("timeout", DEFAULT_TIMEOUT)
     table_mapping = data.get("table_mapping")
@@ -303,7 +302,7 @@ def execute():
     stdout_url = data.get("stdout_url")
     stderr_url = data.get("stderr_url")
 
-    req = ExecutionRequest(code, working_dir, timeout, request_id,
+    req = ExecutionRequest(code, timeout, request_id,
                            table_mapping, output_url, stdout_url, stderr_url)
 
     try:

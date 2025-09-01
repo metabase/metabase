@@ -19,19 +19,8 @@
 (setting/defsetting python-execution-server-url
   (deferred-tru "URL for the Python execution server that runs transform functions.")
   :type       :string
-  :visibility :internal
+  :visibility :admin
   :default    "http://localhost:5001"
-  :feature    :transforms
-  :doc        false
-  :export?    false
-  :encryption :no
-  :audit      :getter)
-
-(setting/defsetting python-execution-mount-path
-  (deferred-tru "Base path for mounted directory shared between Metabase and Python execution container.")
-  :type       :string
-  :visibility :internal
-  :default    "/tmp/python-exec-work"
   :feature    :transforms
   :doc        false
   :export?    false
@@ -42,7 +31,7 @@
 (setting/defsetting python-storage-config
   (deferred-tru "Storage configuration for Python execution artifacts. JSON format with type, endpoint, credentials, etc.")
   :type       :json
-  :visibility :internal
+  :visibility :admin
   :default    {:type "s3"
                :endpoint "http://localhost:4566"
                :region "us-east-1"
@@ -52,6 +41,17 @@
                :path-style-access true
                ;; Optional: different endpoint accessible from containers
                :container-endpoint "http://localstack:4566"}
+  :feature    :transforms
+  :doc        false
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :never)
+
+(setting/defsetting python-runner-api-key
+  (deferred-tru "API key for authenticating with the Python runner service.")
+  :type       :string
+  :visibility :public
+  :default    nil
   :feature    :transforms
   :doc        false
   :export?    false
