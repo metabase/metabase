@@ -68,11 +68,22 @@ jobs:
           return buildInfo.platforms;
     - name: Move the Uberjar to the context dir
       run: mv ./metabase.jar bin/docker/.
-    - name: Login to Docker Hub
+
+    - id: auth
+      name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        project_id: "by-the-way-377808"
+        credentials_json: "${{ secrets.GOOGLE_CONTAINER_REGISTRY_SERVICE_ACCOUNT }}"
+        token_format: access_token
+
+    - name: Login to GCP artifact registry
       uses: docker/login-action@v3
       with:
-        username: ${{ inputs.release == 'true' && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
-        password: ${{ inputs.release == 'true' && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
+        registry: "https://${{ vars.GOOGLE_CONTAINER_REGISTRY_REGION }}-docker.pkg.dev/${{ vars.GOOGLE_CONTAINER_REGISTRY_PROJECT_ID_BTW }}/${{ vars.GOOGLE_CONTAINER_REGISTRY_DOCKER_BTW }}"
+        username: oauth2accesstoken
+        password: "${{ steps.auth.outputs.access_token }}"
+
     - name: Set up QEMU
       if: contains(steps.platforms.outputs.result, 'arm')
       uses: docker/setup-qemu-action@v3
@@ -86,7 +97,8 @@ jobs:
         context: bin/docker/.
         platforms: ${{ steps.platforms.outputs.result }}
         network: host
-        tags: ${{ inputs.repo }}:${{ inputs.tag }}
+        # tags: ${{ inputs.repo }}:${{ inputs.tag }}
+        tags: "${{ vars.GOOGLE_CONTAINER_REGISTRY_REGION }}-docker.pkg.dev/${{ vars.GOOGLE_CONTAINER_REGISTRY_PROJECT_ID_BTW }}/${{ vars.GOOGLE_CONTAINER_REGISTRY_DOCKER_BTW }}/${{ github.event.repository.name }}:${{ inputs.tag }}"
         no-cache: true
         push: true
         build-args: ${{ inputs.build-args }}
