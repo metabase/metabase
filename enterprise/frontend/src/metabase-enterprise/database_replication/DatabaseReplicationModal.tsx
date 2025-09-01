@@ -80,25 +80,22 @@ export const DatabaseReplicationModal = ({
     [previewDatabaseReplication, database.id],
   );
 
-  const onSubmit = useCallback(
-    async ({
-      schemaFiltersType,
-      schemaFiltersPatterns,
-    }: DatabaseReplicationFormFields) => {
-      setSetupStep("setting-up");
-      createDatabaseReplication({
-        databaseId: database.id,
-        replicationSchemaFilters: transformSchemaFilters(
-          schemaFiltersType,
-          schemaFiltersPatterns,
-        ),
-      })
-        .unwrap()
-        .then(() => setSetupStep("success"))
-        .catch(handleError);
-    },
-    [createDatabaseReplication, database.id, setSetupStep],
-  );
+  async function onSubmit({
+    schemaFiltersType,
+    schemaFiltersPatterns,
+  }: DatabaseReplicationFormFields) {
+    setSetupStep("setting-up");
+    createDatabaseReplication({
+      databaseId: database.id,
+      replicationSchemaFilters: transformSchemaFilters(
+        schemaFiltersType,
+        schemaFiltersPatterns,
+      ),
+    })
+      .unwrap()
+      .then(() => setSetupStep("success"))
+      .catch(handleError);
+  }
 
   const isProgressStep = setupStep === "setting-up" || setupStep === "success";
   const isErrorStep = setupStep === "error";
