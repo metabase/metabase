@@ -1205,20 +1205,26 @@
 
 (deftest ^:parallel nested-literal-boolean-expression-with-name-collisions-test
   (testing "Don't resolve a `:field` ref to an expression if it has a conflicting name"
-    (let [true-value  [:value {:base-type :type/Boolean, :effective-type :type/Boolean, :lib/expression-name "T"} true]
-          false-value [:value {:base-type :type/Boolean, :effective-type :type/Boolean, :lib/expression-name "F"} false]
-          query       (lib.tu.macros/mbql-5-query nil
-                        {:stages [{:source-table $$orders
-                                   :expressions  [true-value
-                                                  false-value]
-                                   :fields       [[:expression {} "T"]
-                                                  [:expression {} "F"]]}
-                                  {:expressions [true-value
-                                                 false-value]
-                                   :fields      [[:expression {} "T"]
-                                                 [:expression {} "F"]
-                                                 [:field {:base-type :type/Boolean} "T"]
-                                                 [:field {:base-type :type/Boolean} "F"]]}]})]
+    (let [true-value  (fn []
+                        [:value {:lib/uuid (str (random-uuid)), :base-type :type/Boolean, :effective-type :type/Boolean, :lib/expression-name "T"} true])
+          false-value (fn []
+                        [:value {:lib/uuid (str (random-uuid)), :base-type :type/Boolean, :effective-type :type/Boolean, :lib/expression-name "F"} false])
+          query       (lib/query
+                       meta/metadata-provider
+                       (lib.tu.macros/mbql-5-query nil
+                         {:stages [{:lib/type     :mbql.stage/mbql
+                                    :source-table $$orders
+                                    :expressions  [(true-value)
+                                                   (false-value)]
+                                    :fields       [[:expression {:lib/uuid (str (random-uuid))} "T"]
+                                                   [:expression {:lib/uuid (str (random-uuid))} "F"]]}
+                                   {:lib/type    :mbql.stage/mbql
+                                    :expressions [(true-value)
+                                                  (false-value)]
+                                    :fields      [[:expression {:lib/uuid (str (random-uuid))} "T"]
+                                                  [:expression {:lib/uuid (str (random-uuid))} "F"]
+                                                  [:field {:lib/uuid (str (random-uuid)), :base-type :type/Boolean} "T"]
+                                                  [:field {:lib/uuid (str (random-uuid)), :base-type :type/Boolean} "F"]]}]}))]
       (is (=? {:lib/source                   :source/previous-stage
                :lib/source-column-alias      "T"
                :lib/expression-name          (symbol "nil #_\"key is not present.\"")
@@ -1254,17 +1260,20 @@
                   :database (meta/id)
                   :stages   [{:lib/type     :mbql.stage/mbql
                               :source-table (meta/id :products)
-                              :fields       [[:field {} (meta/id :products :id)]
-                                             [:field {} (meta/id :products :title)]]
+                              :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)]
+                                             [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} (meta/id :products :title)]]
                               :filters      [[:=
-                                              {}
-                                              [:field {:base-type :type/BigInteger} "ID"]
-                                              [:value {:base-type :type/BigInteger} 144]]]}]})]
+                                              {:lib/uuid "00000000-0000-0000-0000-000000000002"}
+                                              [:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :base-type :type/BigInteger} "ID"]
+                                              [:value {:lib/uuid       "00000000-0000-0000-0000-000000000004"
+                                                       :base-type      :type/BigInteger
+                                                       :effective-type :type/BigInteger}
+                                               144]]]}]})]
       (is (=? (-> (lib.field.resolution/resolve-field-ref
                    query
                    -1
                    [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)])
-                  (dissoc :lib/original-ref-for-result-metadata-purposes-only :lib/original-display-name))
+                  (dissoc :lib/original-ref :lib/original-display-name))
               (lib.field.resolution/resolve-field-ref
                query
                -1
