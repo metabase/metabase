@@ -21,18 +21,30 @@ class PythonServerTester:
     def __init__(self, server_url: str = "http://localhost:5001", s3_endpoint: str = "http://localhost:4566"):
         self.server_url = server_url.rstrip("/")
         self.s3_endpoint = s3_endpoint
+        self.s3_container_endpoint = "http://localstack:4566"  # Container network endpoint
         self.session = requests.Session()
         self.test_dir = None
         self.test_subdir = None
         self.bucket_name = "metabase-python-runner"
         self.s3_client = None
+        self.container_s3_client = None
         
     def setup(self):
         """Setup test environment."""
-        # Setup S3 client for LocalStack
+        # Setup S3 client for host operations (test reads/writes)
         self.s3_client = boto3.client(
             's3',
             endpoint_url=self.s3_endpoint,
+            aws_access_key_id='test',
+            aws_secret_access_key='test',
+            region_name='us-east-1',
+            config=Config(s3={'addressing_style': 'path'})
+        )
+        
+        # Setup S3 client for container operations (presigned URLs)
+        self.container_s3_client = boto3.client(
+            's3',
+            endpoint_url=self.s3_container_endpoint,
             aws_access_key_id='test',
             aws_secret_access_key='test',
             region_name='us-east-1',
@@ -69,31 +81,28 @@ class PythonServerTester:
                 print(f"Error cleaning up S3: {e}")
                 
     def generate_presigned_urls(self, request_id: str):
-        """Generate presigned URLs for S3 upload."""
+        """Generate presigned URLs for S3 upload using container client."""
         output_key = f"{self.test_run_id}/{request_id}/output.csv"
         stdout_key = f"{self.test_run_id}/{request_id}/stdout.txt"
         stderr_key = f"{self.test_run_id}/{request_id}/stderr.txt"
         
-        output_url = self.s3_client.generate_presigned_url(
+        # Generate URLs using container S3 client (already has correct endpoint)
+        output_url = self.container_s3_client.generate_presigned_url(
             'put_object',
             Params={'Bucket': self.bucket_name, 'Key': output_key},
             ExpiresIn=3600
         )
-        stdout_url = self.s3_client.generate_presigned_url(
+        stdout_url = self.container_s3_client.generate_presigned_url(
             'put_object',
             Params={'Bucket': self.bucket_name, 'Key': stdout_key},
             ExpiresIn=3600
         )
-        stderr_url = self.s3_client.generate_presigned_url(
+        stderr_url = self.container_s3_client.generate_presigned_url(
             'put_object',
             Params={'Bucket': self.bucket_name, 'Key': stderr_key},
             ExpiresIn=3600
         )
         
-        # Replace localhost with localstack for container access
-        output_url = output_url.replace('localhost:4566', 'localstack:4566')
-        stdout_url = stdout_url.replace('localhost:4566', 'localstack:4566')
-        stderr_url = stderr_url.replace('localhost:4566', 'localstack:4566')
         
         return {
             'output_url': output_url,

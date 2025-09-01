@@ -65,7 +65,9 @@
                             (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
                         cancel-chan)))
 
-(defn- create-s3-client ^com.amazonaws.services.s3.AmazonS3 []
+(defn- create-s3-client
+  "Create S3 client for host operations (uploads, reads)"
+  ^com.amazonaws.services.s3.AmazonS3 []
   (let [config (transforms.settings/python-storage-config)
         builder (AmazonS3ClientBuilder/standard)]
     (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
@@ -79,28 +81,47 @@
       (.withPathStyleAccessEnabled (:path-style-access config)))
     (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder)))
 
-(defn- fix-s3-url-for-container [url config]
-  (if-let [container-endpoint (:container-endpoint config)]
-    (str/replace url (:endpoint config) container-endpoint)
-    url))
+(defn- create-s3-client-for-container
+  "Create S3 client for container operations (presigned URLs).
+   Uses container-endpoint if different from host endpoint, otherwise reuses host client."
+  ^com.amazonaws.services.s3.AmazonS3 [^com.amazonaws.services.s3.AmazonS3 host-client]
+  (let [config (transforms.settings/python-storage-config)
+        container-endpoint (:container-endpoint config)
+        host-endpoint (:endpoint config)]
+    (if (and container-endpoint (not= container-endpoint host-endpoint))
+      ;; Create separate client for container endpoint
+      (let [builder (AmazonS3ClientBuilder/standard)]
+        (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
+          (.withEndpointConfiguration
+           (AwsClientBuilder$EndpointConfiguration. container-endpoint (:region config)))
+          (.withCredentials
+           (reify com.amazonaws.auth.AWSCredentialsProvider
+             (getCredentials [_]
+               (BasicAWSCredentials. (:access-key-id config) (:secret-access-key config)))
+             (refresh [_])))
+          (.withPathStyleAccessEnabled (:path-style-access config)))
+        (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder))
+      ;; Use the same client if endpoints are the same
+      host-client)))
 
-(defn- generate-presigned-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key method config]
+(defn- generate-presigned-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key method]
+  "Generate presigned URL using the provided S3 client (no post-processing needed)"
   (let [one-hour    (* 60 60 1000)
         expiration  (Date. ^Long (+ (System/currentTimeMillis) one-hour))
         url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
                         (.withExpiration expiration)
                         (.withMethod method))]
-    (-> (.generatePresignedUrl s3-client url-request)
-        (.toString)
-        (fix-s3-url-for-container config))))
+    (.toString (.generatePresignedUrl s3-client url-request))))
 
-(defn- upload-file-to-s3-and-get-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^File file config]
+(defn- upload-file-to-s3-and-get-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^File file container-s3-client]
+  "Upload file using host client, return GET URL using container client"
   (let [put-request (PutObjectRequest. ^String bucket-name ^String key file)]
     (.putObject s3-client put-request)
-    (generate-presigned-url s3-client bucket-name key com.amazonaws.HttpMethod/GET config)))
+    (generate-presigned-url container-s3-client bucket-name key com.amazonaws.HttpMethod/GET)))
 
-(defn- generate-presigned-put-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key config]
-  (generate-presigned-url s3-client bucket-name key com.amazonaws.HttpMethod/PUT config))
+(defn- generate-presigned-put-url [^com.amazonaws.services.s3.AmazonS3 container-s3-client bucket-name key]
+  "Generate PUT URL using container client"
+  (generate-presigned-url container-s3-client bucket-name key com.amazonaws.HttpMethod/PUT))
 
 (defn- delete-s3-object [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key]
   (try
@@ -127,18 +148,19 @@
   (let [work-dir-name (str "run-" (System/currentTimeMillis) "-" (rand-int 10000))]
 
     (try
-      (let [server-url      (transforms.settings/python-execution-server-url)
-            storage-config  (transforms.settings/python-storage-config)
-            s3-client       (create-s3-client)
-            bucket-name     (:bucket storage-config)
+      (let [server-url         (transforms.settings/python-execution-server-url)
+            storage-config     (transforms.settings/python-storage-config)
+            s3-client          (create-s3-client)
+            container-s3-client (create-s3-client-for-container s3-client)
+            bucket-name        (:bucket storage-config)
             ;; Generate S3 keys for output files
-            output-key      (str work-dir-name "/output.csv")
-            stdout-key      (str work-dir-name "/stdout.txt")
-            stderr-key      (str work-dir-name "/stderr.txt")
-            ;; Generate presigned URLs for writing
-            output-url      (generate-presigned-put-url s3-client bucket-name output-key storage-config)
-            stdout-url      (generate-presigned-put-url s3-client bucket-name stdout-key storage-config)
-            stderr-url      (generate-presigned-put-url s3-client bucket-name stderr-key storage-config)
+            output-key         (str work-dir-name "/output.csv")
+            stdout-key         (str work-dir-name "/stdout.txt")
+            stderr-key         (str work-dir-name "/stderr.txt")
+            ;; Generate presigned URLs for writing (using container client)
+            output-url         (generate-presigned-put-url container-s3-client bucket-name output-key)
+            stdout-url         (generate-presigned-put-url container-s3-client bucket-name stdout-key)
+            stderr-url         (generate-presigned-put-url container-s3-client bucket-name stderr-key)
             ;; Upload input table data (write to disk first, then upload to S3)
             table-results   (for [[table-name id] table-name->id]
                               (let [temp-file (File/createTempFile
@@ -148,8 +170,8 @@
                                 (try
                                   ;; Write table data to temporary file (closes DB connection quickly)
                                   (write-table-data-to-file! id temp-file cancel-chan)
-                                  ;; Upload file to S3 and get URL
-                                  (let [url (upload-file-to-s3-and-get-url s3-client bucket-name s3-key temp-file storage-config)]
+                                  ;; Upload file to S3 and get URL (using container client for GET URL)
+                                  (let [url (upload-file-to-s3-and-get-url s3-client bucket-name s3-key temp-file container-s3-client)]
                                     {:table-name (name table-name)
                                      :url        url
                                      :s3-key     s3-key})
