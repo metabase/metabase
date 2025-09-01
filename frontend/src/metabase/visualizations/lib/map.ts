@@ -1,3 +1,4 @@
+import { isUuid } from "metabase/lib/uuid";
 import type { Dataset, JsonQuery } from "metabase-types/api";
 
 interface TileCoordinate {
@@ -44,8 +45,8 @@ export function getTileUrl(params: TileUrlParams): string {
       return adhocQueryTileUrl(zoom, coord, latField, lonField, datasetQuery);
     }
 
-    if (typeof dashboardId === "string") {
-      throw Error("dashboardId must be an int");
+    if (typeof dashboardId === "string" && !isUuid(dashboardId)) {
+      throw Error("dashboardId must be an int or a uuid");
     }
     const isPublicDashboard = uuid;
 
@@ -159,7 +160,7 @@ function savedQuestionTileUrl(
 }
 
 function dashboardTileUrl(
-  dashboardId: number,
+  dashboardId: number | string,
   dashcardId: number,
   cardId: number,
   zoom: string | number,
