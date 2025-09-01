@@ -30,7 +30,13 @@ export const configureMentionExtension = ({ dispatch }: ExtensionProps) =>
   CustomMentionExtension.configure({
     suggestion: {
       char: "@",
-      allowSpaces: true,
+      allowSpaces: false,
+      allow: ({ state, range }) => {
+        const textAfter = state.doc.textBetween(range.from, range.to);
+
+        // allows adding @ symbol without showing mention list
+        return !textAfter.includes(" ");
+      },
       items: async ({ query }) => {
         const [userResult, searchResult] = await Promise.all([
           dispatch(userApi.endpoints.listUsers.initiate({ query })),
