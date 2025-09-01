@@ -15,8 +15,12 @@ run: build stop
 	@echo "Server starting on http://localhost:$(PORT)"
 	@echo "Mount path: $(MOUNT_PATH)"
 	@echo "Network: Container can reach host at host.docker.internal"
-	@echo "Waiting for server to be ready..."
-	@sleep 2
+	@echo "Waiting for services to be ready..."
+	@sleep 3
+	@echo "Creating S3 bucket in LocalStack..."
+	@AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 \
+		aws --endpoint-url=http://localhost:4566 s3 mb s3://metabase-python-runner 2>/dev/null || \
+		echo "  Bucket already exists or LocalStack still starting"
 	@curl -s http://localhost:$(PORT)/status > /dev/null && \
 		echo "✅ Server is ready!" && \
 		echo "" && \
@@ -74,6 +78,12 @@ run-all: build
 	@echo "Python runner: http://localhost:$(PORT)"
 	@echo "LocalStack: http://localhost:4566"
 	@echo "Mount path: $(MOUNT_PATH)"
+	@echo "Waiting for services to be ready..."
+	@sleep 3
+	@echo "Creating S3 bucket in LocalStack..."
+	@AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 \
+		aws --endpoint-url=http://localhost:4566 s3 mb s3://metabase-python-runner 2>/dev/null || \
+		echo "  Bucket already exists or LocalStack still starting"
 
 # Stop all services
 stop-all:
