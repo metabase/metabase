@@ -15,8 +15,8 @@
    (com.amazonaws.auth BasicAWSCredentials)
    (com.amazonaws.client.builder AwsClientBuilder$EndpointConfiguration)
    (com.amazonaws.services.s3 AmazonS3ClientBuilder)
-   (com.amazonaws.services.s3.model GeneratePresignedUrlRequest ObjectMetadata PutObjectRequest)
-   (java.io BufferedWriter ByteArrayInputStream ByteArrayOutputStream File OutputStream OutputStreamWriter)
+   (com.amazonaws.services.s3.model GeneratePresignedUrlRequest PutObjectRequest)
+   (java.io BufferedWriter File OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)
    (java.util Date)
    (java.util.concurrent CancellationException)))
@@ -54,17 +54,16 @@
       (qp.store/with-metadata-provider db-id
         (driver/execute-reducible-query driver query {:canceled-chan cancel-chan} respond)))))
 
-(defn- write-table-data-to-stream! [id cancel-chan]
-  (let [db-id (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
+(defn- write-table-data-to-file! [id temp-file cancel-chan]
+  (let [db-id  (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
         driver (t2/select-one-fn :engine :model/Database db-id)
         ;; TODO: limit
-        query  {:source-table id}
-        baos   (ByteArrayOutputStream.)]
+        query  {:source-table id}]
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
-                          (write-to-stream! baos (mapv :name cols-meta) reducible-rows))
-                        cancel-chan)
-    (.toByteArray baos)))
+                          (with-open [os (io/output-stream temp-file)]
+                            (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
+                        cancel-chan)))
 
 (defn- create-s3-client ^com.amazonaws.services.s3.AmazonS3 []
   (let [config (transforms.settings/python-storage-config)
@@ -86,11 +85,8 @@
       (str/replace url (:endpoint config) container-endpoint)
       url)))
 
-(defn- upload-to-s3-and-get-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^bytes data]
-  (let [metadata     (ObjectMetadata.)
-        _            (.setContentLength metadata (alength data))
-        input-stream (ByteArrayInputStream. data)
-        put-request  (PutObjectRequest. bucket-name key input-stream metadata)]
+(defn- upload-file-to-s3-and-get-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^File file]
+  (let [put-request (PutObjectRequest. ^String bucket-name ^String key file)]
     (.putObject s3-client put-request)
 
     (let [one-hour    (* 60 60 1000)
@@ -147,13 +143,26 @@
             output-url      (generate-presigned-put-url s3-client bucket-name output-key)
             stdout-url      (generate-presigned-put-url s3-client bucket-name stdout-key)
             stderr-url      (generate-presigned-put-url s3-client bucket-name stderr-key)
-            ;; Upload input table data
-            table-name->url (into {} (map (fn [[table-name id]]
-                                            (let [s3-key (str work-dir-name "/" (gensym) ".jsonl")
-                                                  data   (write-table-data-to-stream! id cancel-chan)
-                                                  url    (upload-to-s3-and-get-url s3-client bucket-name s3-key data)]
-                                              [table-name url])))
-                                  table-name->id)
+            ;; Upload input table data (write to disk first, then upload to S3)
+            table-results   (for [[table-name id] table-name->id]
+                              (let [temp-file (File/createTempFile
+                                               (str "table-" table-name "-" id)
+                                               ".jsonl"
+                                               work-dir-file)
+                                    s3-key (str work-dir-name "/" (.getName temp-file))]
+                                (try
+                                  ;; Write table data to temporary file (closes DB connection quickly)
+                                  (write-table-data-to-file! id temp-file cancel-chan)
+                                  ;; Upload file to S3 and get URL
+                                  (let [url (upload-file-to-s3-and-get-url s3-client bucket-name s3-key temp-file)]
+                                    {:table-name table-name
+                                     :url url
+                                     :s3-key s3-key})
+                                  (finally
+                                    ;; Clean up temporary file
+                                    (safe-delete temp-file)))))
+            table-name->url (into {} (map (juxt :table-name :url) table-results))
+            all-s3-keys     (concat [output-key stdout-key stderr-key] (map :s3-key table-results))
             canc            (a/go (when (a/<! cancel-chan)
                                     (http/post (str server-url "/cancel")
                                                {:content-type :json
