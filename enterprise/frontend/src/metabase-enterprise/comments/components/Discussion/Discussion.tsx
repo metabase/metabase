@@ -104,16 +104,18 @@ export const Discussion = ({
             onCopyLink={handleCopyLink}
           />
         ))}
-        <Timeline.Item
-          className={S.commentRoot}
-          bullet={<DiscussionAvatar user={currentUser} />}
-        >
-          <CommentEditor
-            active={false}
-            onChange={(document) => setNewComment(document)}
-            onSubmit={handleSubmit}
-          />
-        </Timeline.Item>
+        {!comments[0]?.is_resolved && (
+          <Timeline.Item
+            className={S.commentRoot}
+            bullet={<DiscussionAvatar user={currentUser} />}
+          >
+            <CommentEditor
+              active={false}
+              onChange={(document) => setNewComment(document)}
+              onSubmit={handleSubmit}
+            />
+          </Timeline.Item>
+        )}
       </Timeline>
     </Stack>
   );
