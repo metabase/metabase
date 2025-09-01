@@ -209,9 +209,11 @@
                     [:id ms/PositiveInt]]]
   (log/info "canceling transform " id)
   (api/check-superuser)
-  (let [run (api/check-404 (transform-run/running-run-for-transform-id id))]
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        run (api/check-404 (transform-run/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
-    (trasnforms.canceling/cancel-run! (:id run)))
+    (when (transforms.util/python-transform? transform)
+      (trasnforms.canceling/cancel-run! (:id run))))
   nil)
 
 (api.macros/defendpoint :post "/:id/run"
