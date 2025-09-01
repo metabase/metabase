@@ -14,20 +14,19 @@ import traceback
 import pandas as pd
 import json
 from pathlib import Path
-import io
 
 def read_jsonl_to_array(source):
     """
     Read JSONL data from either a file path or URL.
-    
+
     Args:
         source: Either a file path or URL string
-        
+
     Returns:
         List of parsed JSON objects
     """
     data_array = []
-    
+
     # Check if source is a URL (starts with http:// or https://)
     if source.startswith(('http://', 'https://')):
         # Read directly from URL using urllib
@@ -44,27 +43,27 @@ def read_jsonl_to_array(source):
                 line = line.strip()
                 if line:
                     data_array.append(json.loads(line))
-    
+
     return data_array
 
 def write_to_s3_url(url, content):
     """
     Write content to S3 using a presigned PUT URL.
-    
+
     Args:
         url: Presigned S3 PUT URL
         content: String or bytes content to write
     """
     import urllib.request
     import urllib.error
-    
+
     if isinstance(content, str):
         content = content.encode('utf-8')
-    
+
     req = urllib.request.Request(url, data=content, method='PUT')
     req.add_header('Content-Type', 'text/plain')
     req.add_header('Content-Length', str(len(content)))
-    
+
     try:
         with urllib.request.urlopen(req) as response:
             return response.read()
@@ -108,36 +107,24 @@ def read_table(table_source, limit=None):
 
 
 def main():
-    # Capture stdout and stderr
-    stdout_capture = io.StringIO()
-    stderr_capture = io.StringIO()
-    original_stdout = sys.stdout
-    original_stderr = sys.stderr
-    
+    # Get output URLs from environment variables
+    output_url = os.environ.get('OUTPUT_URL')
+
+    # For backward compatibility, support OUTPUT_FILE as well
+    output_file = os.environ.get('OUTPUT_FILE')
+
+    if not output_url and not output_file:
+        print("ERROR: Neither OUTPUT_URL nor OUTPUT_FILE environment variable set", file=sys.stderr)
+        sys.exit(1)
+
+    # TABLE_FILE_MAPPING contains either file paths or S3 presigned URLs
+    table_file_mapping_json = os.environ.get('TABLE_FILE_MAPPING', '{}')
+    table_file_mapping = json.loads(table_file_mapping_json)
+
+    # Import the user's script
+    sys.path.insert(0, '.')
+
     try:
-        # Redirect stdout and stderr to capture
-        sys.stdout = stdout_capture
-        sys.stderr = stderr_capture
-        
-        # Get output URLs from environment variables
-        output_url = os.environ.get('OUTPUT_URL')
-        stdout_url = os.environ.get('STDOUT_URL')
-        stderr_url = os.environ.get('STDERR_URL')
-        
-        # For backward compatibility, support OUTPUT_FILE as well
-        output_file = os.environ.get('OUTPUT_FILE')
-        
-        if not output_url and not output_file:
-            print("ERROR: Neither OUTPUT_URL nor OUTPUT_FILE environment variable set", file=original_stderr)
-            sys.exit(1)
-
-        # TABLE_FILE_MAPPING contains either file paths or S3 presigned URLs
-        table_file_mapping_json = os.environ.get('TABLE_FILE_MAPPING', '{}')
-        table_file_mapping = json.loads(table_file_mapping_json)
-
-        # Import the user's script
-        sys.path.insert(0, '.')
-
         # Import and execute the user's code
         try:
             import script
@@ -180,10 +167,8 @@ def main():
 
         # Save the DataFrame as CSV
         try:
-            csv_buffer = io.StringIO()
-            result.to_csv(csv_buffer, index=False)
-            csv_content = csv_buffer.getvalue()
-            
+            csv_content = result.to_csv(index=False)
+
             # Write to S3 URL if provided, otherwise to file
             if output_url:
                 write_to_s3_url(output_url, csv_content)
@@ -193,37 +178,14 @@ def main():
                 result.to_csv(output_file, index=False)
                 print(f"Successfully saved {len(result)} rows to CSV")
         except Exception as e:
-            print(f"ERROR: Failed to save DataFrame as CSV: {e}")
-            traceback.print_exc()
+            print(f"ERROR: Failed to save DataFrame as CSV: {e}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
             sys.exit(1)
 
     except Exception as e:
-        print(f"FATAL ERROR: {e}")
-        traceback.print_exc()
+        print(f"FATAL ERROR: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
-    finally:
-        # Restore original stdout/stderr
-        sys.stdout = original_stdout
-        sys.stderr = original_stderr
-        
-        # Get captured output
-        stdout_content = stdout_capture.getvalue()
-        stderr_content = stderr_capture.getvalue()
-        
-        # Write captured output to S3 if URLs provided (always write, even if empty)
-        try:
-            if stdout_url:
-                write_to_s3_url(stdout_url, stdout_content)
-            if stderr_url:
-                write_to_s3_url(stderr_url, stderr_content)
-        except Exception as e:
-            print(f"Failed to write logs to S3: {e}", file=original_stderr)
-        
-        # Also print to original stdout/stderr for local debugging
-        if stdout_content:
-            print(stdout_content, file=original_stdout, end='')
-        if stderr_content:
-            print(stderr_content, file=original_stderr, end='')
 
 if __name__ == "__main__":
     main()

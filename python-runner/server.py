@@ -66,6 +66,29 @@ class ExecutionRequest:
         self.cancelled = False
 
 
+def upload_file_to_s3(file_path: str, s3_url: str):
+    """Upload a local file to S3 using a presigned PUT URL."""
+    if not s3_url or not Path(file_path).exists():
+        return
+        
+    try:
+        import urllib.request
+        import urllib.error
+        
+        content = Path(file_path).read_text()
+        if isinstance(content, str):
+            content = content.encode('utf-8')
+        
+        req = urllib.request.Request(s3_url, data=content, method='PUT')
+        req.add_header('Content-Type', 'text/plain')
+        req.add_header('Content-Length', str(len(content)))
+        
+        with urllib.request.urlopen(req) as response:
+            return response.read()
+    except Exception as e:
+        app.logger.warning(f"Failed to upload {file_path} to S3: {e}")
+
+
 def terminate_subprocess(process, timeout_seconds=5):
     """Terminate a subprocess gracefully, falling back to SIGKILL if needed."""
     if not process or process.poll() is not None:
@@ -144,15 +167,16 @@ def _execute_in_directory(req: ExecutionRequest, work_path: Path, start_time: fl
         import json
         env["TABLE_FILE_MAPPING"] = json.dumps(req.table_mapping)
 
-    # Use transform_runner.py if it exists, otherwise run script directly
+    # Use transform_runner.py if it exists AND we have S3 URLs, otherwise run script directly
     runner_path = Path(__file__).parent / "transform_runner.py"
-    if runner_path.exists():
+    use_transform_runner = runner_path.exists() and (req.output_url or req.stdout_url or req.stderr_url)
+    if use_transform_runner:
         cmd = [sys.executable, str(runner_path)]
     else:
         cmd = [sys.executable, str(script_file)]
 
     try:
-        with open(stdout_file, "w") as stdout, open(stderr_file, "w") as stderr:
+        with open(stdout_file, "w", buffering=1) as stdout, open(stderr_file, "w", buffering=1) as stderr:
             process = subprocess.Popen(
                 cmd,
                 stdout=stdout,
@@ -160,11 +184,23 @@ def _execute_in_directory(req: ExecutionRequest, work_path: Path, start_time: fl
                 cwd=str(work_path),
                 env=env,
                 preexec_fn=set_resource_limits,
-                start_new_session=True
+                start_new_session=True,
+                universal_newlines=True
             )
 
-            # Store process reference for cancellation
+            # Store process reference for cancellation and log file paths
             req.process = process
+            req.log_files = {
+                'stdout': str(stdout_file),
+                'stderr': str(stderr_file)
+            }
+            req.execution_info = {
+                'cmd': cmd,
+                'use_transform_runner': use_transform_runner,
+                'has_output_url': bool(req.output_url),
+                'has_stdout_url': bool(req.stdout_url),
+                'has_stderr_url': bool(req.stderr_url),
+            }
 
             try:
                 exit_code = process.wait(timeout=req.timeout)
@@ -193,6 +229,10 @@ def _execute_in_directory(req: ExecutionRequest, work_path: Path, start_time: fl
                 if output_file.exists():
                     result["output_file"] = str(output_file)
 
+                # Upload log files to S3 if URLs are provided
+                upload_file_to_s3(str(stdout_file), req.stdout_url)
+                upload_file_to_s3(str(stderr_file), req.stderr_url)
+
                 return result
 
             except subprocess.TimeoutExpired:
@@ -200,6 +240,10 @@ def _execute_in_directory(req: ExecutionRequest, work_path: Path, start_time: fl
 
                 with metrics_lock:
                     metrics["timeouts"] += 1
+
+                # Upload log files to S3 even on timeout
+                upload_file_to_s3(str(stdout_file), req.stdout_url)
+                upload_file_to_s3(str(stderr_file), req.stderr_url)
 
                 return {
                     "exit_code": -1,
@@ -382,6 +426,64 @@ def cancel_execution():
             terminate_subprocess(current_execution_request.process)
 
     return jsonify({"message": f"Cancellation requested for {request_id}"})
+
+
+@app.route("/logs", methods=["GET"])
+def get_logs():
+    """Get current stdout/stderr content for the running execution."""
+    with execution_lock:
+        if not current_execution_request:
+            return jsonify({
+                "stdout": "",
+                "stderr": "",
+                "execution_id": None,
+                "status": "no_execution"
+            })
+
+        # Read current log files if they exist
+        stdout_content = ""
+        stderr_content = ""
+        debug_info = {}
+        
+        # Try to find the log files from the current execution
+        if hasattr(current_execution_request, 'log_files'):
+            stdout_file = current_execution_request.log_files.get('stdout')
+            stderr_file = current_execution_request.log_files.get('stderr')
+            
+            debug_info['stdout_file'] = stdout_file
+            debug_info['stderr_file'] = stderr_file
+            debug_info['stdout_exists'] = stdout_file and Path(stdout_file).exists()
+            debug_info['stderr_exists'] = stderr_file and Path(stderr_file).exists()
+            
+            if stdout_file and Path(stdout_file).exists():
+                try:
+                    stdout_content = Path(stdout_file).read_text()
+                    debug_info['stdout_size'] = len(stdout_content)
+                except Exception as e:
+                    app.logger.warning(f"Error reading stdout file: {e}")
+                    debug_info['stdout_error'] = str(e)
+            
+            if stderr_file and Path(stderr_file).exists():
+                try:
+                    stderr_content = Path(stderr_file).read_text()
+                    debug_info['stderr_size'] = len(stderr_content)
+                except Exception as e:
+                    app.logger.warning(f"Error reading stderr file: {e}")
+                    debug_info['stderr_error'] = str(e)
+        else:
+            debug_info['has_log_files'] = False
+
+        # Add execution info if available
+        if hasattr(current_execution_request, 'execution_info'):
+            debug_info.update(current_execution_request.execution_info)
+
+        return jsonify({
+            "stdout": stdout_content,
+            "stderr": stderr_content,
+            "execution_id": current_execution_request.request_id,
+            "status": "executing",
+            "debug": debug_info
+        })
 
 
 @app.errorhandler(Exception)
