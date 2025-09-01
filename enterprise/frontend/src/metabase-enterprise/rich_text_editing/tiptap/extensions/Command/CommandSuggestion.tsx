@@ -355,6 +355,13 @@ export const CommandSuggestion = forwardRef<
     searchMenuItems.length,
   ]);
 
+  // Auto-open modal when switching to embed mode with no recents
+  useEffect(() => {
+    if (showEmbedSearch && !query && searchMenuItems.length === 0) {
+      entityHandlers.openModal();
+    }
+  }, [showEmbedSearch, query, searchMenuItems.length, entityHandlers.openModal]);
+
   useEffect(() => {
     const selectedItem = itemRefs.current[selectedIndex];
     if (selectedItem) {
