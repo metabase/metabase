@@ -4,12 +4,14 @@ import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
+import { useSelector } from "metabase/lib/redux";
 import { Modal, Tabs, rem } from "metabase/ui";
+import { useListCommentsQuery } from "metabase-enterprise/api";
 import { Discussions } from "metabase-enterprise/comments/components/Discussions";
 import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import { useDocumentState } from "metabase-enterprise/documents/hooks/use-document-state";
-
-import { useDocumentContext } from "../DocumentContext";
+import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
+import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 
 import S from "./CommentsSidesheet.module.css";
 
@@ -26,9 +28,12 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
   const childTargetId = params?.childTargetId;
   const location = useLocation();
   const { openCommentSidebar, closeCommentSidebar } = useDocumentState();
-
   const [activeTab, setActiveTab] = useState<SidesheetTab | null>("open");
-  const { comments, document } = useDocumentContext();
+  const document = useSelector(getCurrentDocument);
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery(document),
+  );
+  const comments = commentsData?.comments;
 
   // Check if we should auto-open the new comment form
   const shouldAutoOpenNewComment = useMemo(() => {

@@ -9,8 +9,15 @@ import {
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
+import { useSelector } from "metabase/lib/redux";
+import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
-import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
+import {
+  getChildTargetId,
+  getCurrentDocument,
+  getHasUnsavedChanges,
+} from "metabase-enterprise/documents/selectors";
+import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 
 import { CommentsMenu } from "../../CommentsMenu";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
@@ -38,8 +45,13 @@ export const CustomBlockquote = Blockquote.extend({
 });
 
 export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
-  const { childTargetId, comments, document, hasUnsavedChanges } =
-    useDocumentContext();
+  const childTargetId = useSelector(getChildTargetId);
+  const document = useSelector(getCurrentDocument);
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery(document),
+  );
+  const comments = commentsData?.comments;
+  const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
   const [hovered, setHovered] = useState(false);
   const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const { _id } = node.attrs;

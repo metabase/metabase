@@ -18,11 +18,16 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
+import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { navigateToCardFromDocument } from "metabase-enterprise/documents/actions";
 import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
-import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
-import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
+import {
+  getChildTargetId,
+  getCurrentDocument,
+  getHasUnsavedChanges,
+} from "metabase-enterprise/documents/selectors";
+import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
@@ -130,7 +135,13 @@ export const CardEmbed: Node<{
 
 export const CardEmbedComponent = memo(
   ({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) => {
-    const { childTargetId, comments, hasUnsavedChanges } = useDocumentContext();
+    const childTargetId = useSelector(getChildTargetId);
+    const document = useSelector(getCurrentDocument);
+    const { data: commentsData } = useListCommentsQuery(
+      getListCommentsQuery(document),
+    );
+    const comments = commentsData?.comments;
+    const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const [hovered, setHovered] = useState(false);
     const { _id } = node.attrs;
     const isOpen = childTargetId === _id;
@@ -170,7 +181,6 @@ export const CardEmbedComponent = memo(
     const { card, dataset, isLoading, series, error } = useCardData({ id });
 
     const metadata = useSelector(getMetadata);
-    const document = useSelector(getCurrentDocument);
     const datasetError = dataset && getDatasetError(dataset);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
