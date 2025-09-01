@@ -60,7 +60,9 @@ export function EmojiPicker({
       )}
       <Picker.Search className={S.pickerSearch} value={searchValue} />
       <Picker.Viewport className={S.pickerViewport}>
-        <Picker.Loading>{t`Loading…`}</Picker.Loading>
+        <Picker.Loading
+          className={S.pickerMessage}
+        >{t`Loading…`}</Picker.Loading>
         <Picker.Empty
           className={S.pickerMessage}
         >{t`No emoji found.`}</Picker.Empty>
