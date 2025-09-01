@@ -112,6 +112,12 @@ export type UpdateTransformTagRequest = {
   name?: string;
 };
 
+export type ListTransformJobsRequest = {
+  last_run_start_time?: string;
+  next_run_start_time?: string;
+  transform_tag_ids?: TransformTagId[];
+};
+
 export type ListTransformRunsRequest = {
   statuses?: TransformRunStatus[];
   transform_ids?: TransformId[];
