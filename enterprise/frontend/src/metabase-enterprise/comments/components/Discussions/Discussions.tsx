@@ -48,7 +48,6 @@ export const Discussions = ({
             <Discussion
               childTargetId={childTargetId}
               comments={thread.comments}
-              key={thread.id}
               targetId={targetId}
               targetType={targetType}
             />
