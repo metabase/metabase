@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.python-runner
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
@@ -11,7 +12,8 @@
    [toucan2.core :as t2])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter File)
-   (java.nio.charset StandardCharsets)))
+   (java.nio.charset StandardCharsets)
+   (java.util.concurrent CancellationException)))
 
 (set! *warn-on-reflection* true)
 
@@ -65,10 +67,11 @@
 (defn execute-python-code
   "Execute Python code using the Python execution server."
   [code table-name->id cancel-chan]
-  (let [mount-path (transforms.settings/python-execution-mount-path)
+  (let [mount-path    (transforms.settings/python-execution-mount-path)
         work-dir-name (str "run-" (System/currentTimeMillis) "-" (rand-int 10000))
-        work-dir (str mount-path "/" work-dir-name)
-        work-dir-file (io/file work-dir)]
+        work-dir      (str mount-path "/" work-dir-name)
+        work-dir-file (io/file work-dir)
+        job-id        (str (java.util.UUID/randomUUID))]
 
     ;; Ensure mount base path exists
     (.mkdirs (io/file mount-path))
@@ -76,24 +79,37 @@
     (.mkdirs work-dir-file)
 
     (try
-      (let [server-url (transforms.settings/python-execution-server-url)
+      (let [server-url       (transforms.settings/python-execution-server-url)
             table-name->file (into {} (map (fn [[table-name id]]
                                              (let [file-name (gensym)
-                                                   file (io/file (str work-dir "/" file-name ".jsonl"))]
+                                                   file      (io/file (str work-dir "/" file-name ".jsonl"))]
                                                (write-table-data! id file cancel-chan)
                                                [table-name (.getAbsolutePath file)])))
                                    table-name->id)
-            response (http/post (str server-url "/execute")
-                                {:content-type     :json
-                                 :accept           :json
-                                 :body             (json/encode {:code          code
-                                                                 :working_dir   work-dir
-                                                                 :timeout       30
-                                                                 :table_mapping table-name->file})
-                                 :throw-exceptions false
-                                 :as               :json})
 
-            result  (:body response)
+            response-fut (http/post (str server-url "/execute")
+                                    {:content-type     :json
+                                     :accept           :json
+                                     :body             (json/encode {:code          code
+                                                                     :working_dir   work-dir
+                                                                     :timeout       30
+                                                                     :request_id    job-id
+                                                                     :table_mapping table-name->file})
+                                     :async?           true
+                                     :throw-exceptions false
+                                     :as               :json}
+                                    identity identity)
+
+            canc     (a/go (when (a/<! cancel-chan)
+                             (http/post (str server-url "/cancel")
+                                        {:content-type :json
+                                         :body         (json/encode {:request_id job-id})}
+                                        :async? true identity identity)
+                             (future-cancel response-fut)))
+            response @response-fut
+            _        (a/close! canc)
+
+            result (:body response)
             ;; TODO look into why some tests return json and others strings
             result (if (string? result) (json/decode result keyword) result)]
 
@@ -127,6 +143,10 @@
                 (run! safe-delete (reverse (file-seq work-dir-file))))
               (catch Exception _)))))
 
+      (catch CancellationException _
+        {:status 408
+         :body   {:error "Interrupted"}})
+
       (catch Exception e
         {:status 500
-         :body {:error (str "Failed to connect to Python execution server: " (.getMessage e))}}))))
+         :body   {:error (str "Failed to connect to Python execution server: " (.getMessage e))}}))))
