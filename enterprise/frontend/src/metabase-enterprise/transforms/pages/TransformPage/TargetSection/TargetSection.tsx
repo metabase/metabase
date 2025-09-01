@@ -109,6 +109,11 @@ function TargetInfo({ transform }: TargetInfoProps) {
                 ? getBrowseSchemaUrl(database.id, target.schema)
                 : undefined
             }
+            tooltip={
+              targetSchemaExists
+                ? undefined
+                : t`This schema will be created when the transform runs`
+            }
             data-testid="schema-link"
           />
           <TargetItemDivider />
@@ -130,6 +135,7 @@ type TargetItemLinkProps = {
   label: string;
   icon: IconName;
   to?: string;
+  tooltip?: string;
   "data-testid"?: string;
 };
 
@@ -137,6 +143,7 @@ function TargetItemLink({
   label,
   icon,
   to,
+  tooltip,
   "data-testid": dataTestId,
 }: TargetItemLinkProps) {
   return (
@@ -145,6 +152,7 @@ function TargetItemLink({
       to={to ?? ""}
       disabled={to == null}
       data-testid={dataTestId}
+      tooltip={tooltip}
     >
       <Group gap="xs">
         <Icon name={icon} />
