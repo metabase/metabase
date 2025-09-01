@@ -139,6 +139,21 @@ export const DatabaseReplicationForm = ({
         ? t`(owner mismatch)`
         : undefined;
 
+  const errorSection =
+    previewResponse && !previewResponse.canSetReplication ? (
+      <>
+        <Divider />
+        {previewResponse.errors?.noTables ? (
+          <Text>{t`Nothing to replicate. Please select schemas containing at least one table to be replicated.`}</Text>
+        ) : previewResponse.errors?.noQuota ? (
+          <>
+            <Text>{t`Not enough storage. Please upgrade your plan or modify the replication scope by excluding schemas.`}</Text>
+            <ExternalLink href={storeUrl}>{t`Get more storage`}</ExternalLink>
+          </>
+        ) : null}
+      </>
+    ) : null;
+
   return (
     <Stack>
       <FormProvider
@@ -179,6 +194,11 @@ export const DatabaseReplicationForm = ({
                       setSchemaFiltersPatterns(value)
                     }
                   />
+                  {previewResponse?.errors?.invalidSchemaFiltersPattern && (
+                    <Text c="error" fz="sm" mt="xs">
+                      {t`Invalid schema filters pattern`}
+                    </Text>
+                  )}
                 </Box>
               )}
 
@@ -417,21 +437,7 @@ export const DatabaseReplicationForm = ({
                     <Skeleton height="1em" width="100%" />
                   )}
 
-                  {previewResponse && !previewResponse.canSetReplication && (
-                    <>
-                      <Divider />
-                      {replicatedTables.length === 0 ? (
-                        <Text>{t`Nothing to replicate. Please select schemas containing at least one table to be replicated.`}</Text>
-                      ) : (
-                        <>
-                          <Text>{t`Not enough storage. Please upgrade your plan or modify the replication scope by excluding schemas.`}</Text>
-                          <ExternalLink
-                            href={storeUrl}
-                          >{t`Get more storage`}</ExternalLink>
-                        </>
-                      )}
-                    </>
-                  )}
+                  {errorSection}
                 </Stack>
               </Card>
 

@@ -9,7 +9,6 @@ import { createMockDatabase } from "metabase-types/api/mocks";
 import { DatabaseReplicationModal } from "./DatabaseReplicationModal";
 
 const mockPreviewResponse: PreviewDatabaseReplicationResponse = {
-  allQuotas: [],
   canSetReplication: true,
   freeQuota: 1000000,
   replicatedTables: [

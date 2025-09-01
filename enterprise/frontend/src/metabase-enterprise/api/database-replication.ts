@@ -24,6 +24,11 @@ export interface PreviewDatabaseReplicationResponse {
   tablesWithoutPk: TableInfo[];
   tablesWithoutOwnerMatch: TableInfo[];
   totalEstimatedRowCount: number;
+  errors?: {
+    noTables?: boolean;
+    noQuota?: boolean;
+    invalidSchemaFiltersPattern?: boolean;
+  };
 }
 
 export interface ReplicationSchemaFilters {

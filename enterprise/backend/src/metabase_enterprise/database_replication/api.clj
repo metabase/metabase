@@ -39,16 +39,13 @@
 (defn- schema-filter->fn [{:keys [type patterns]}]
   (fn [table-schema]
     (or (= type "all")
-        (try
-          (let [xform (case type
-                        "include" identity
-                        "exclude" nil?)]
-            (-> patterns
-                driver.s/schema-pattern->re-pattern
-                (re-matches table-schema)
-                xform))
-          (catch PatternSyntaxException _
-            (api/check-400 false "Invalid schema pattern"))))))
+        (let [xform (case type
+                      "include" identity
+                      "exclude" nil?)]
+          (-> patterns
+              driver.s/schema-pattern->re-pattern
+              (re-matches table-schema)
+              xform)))))
 
 (defn- schema-filters->fn [schema-filters]
   (if (seq schema-filters)
@@ -58,13 +55,27 @@
            (every? #(% table-schema))))
     (constantly true)))
 
-(defn- preview [secret]
+(defn- hm-preview [secret]
   (hm.client/call :preview-connection, :connection-id "preview", :type "pg_replication", :secret secret))
 
-(def ^:private preview-memo
-  (memoize/ttl preview :ttl/threshold (u/minutes->ms 5)))
+(def ^:private hm-preview-memo
+  (memoize/ttl hm-preview :ttl/threshold (u/minutes->ms 5)))
 
-(defn- free-quota [quotas]
+(defn- preview-tables
+  [secret & replication-schema-filters]
+  (try
+    ;; realize this lazy seq here to catch the regex error, if any
+    (doall
+     (->> secret
+          ;; memo the slow preview call without replication-schema-filters, then
+          ;; apply filter over the memoized result for snappy UI
+          hm-preview-memo
+          :tables
+          (filter (comp (schema-filters->fn replication-schema-filters) :table_schema))))
+    (catch PatternSyntaxException _
+      {:error "Invalid schema pattern"})))
+
+(defn- get-free-quota [quotas]
   (or
    (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) quotas)
             ((juxt :soft-limit :usage))
@@ -76,31 +87,30 @@
 
    This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
   replicated."
-  [secret & {:as replication-schema-filters}]
-  (let [free-quota'                (free-quota (premium-features/quotas))
-        all-tables                 (->> secret
-                                        ;; memo the slow preview call without replication-schema-filters, then
-                                        ;; apply filter over the memoized result for snappy UI
-                                        preview-memo
-                                        :tables
-                                        (filter (comp (schema-filters->fn [replication-schema-filters]) :table_schema)))
-        replicated-tables          (->> all-tables
+  [quotas tables]
+  (let [tables-error               (:error tables)
+        tables                     (if tables-error [] tables)
+        free-quota                 (get-free-quota quotas)
+        replicated-tables          (->> tables
                                         (filter :has_pkey)
                                         (filter :has_ownership))
-        tables-without-pk          (filter (comp not :has_pkey) all-tables)
-        tables-without-owner-match (filter (comp not :has_ownership) all-tables)
+        tables-without-pk          (filter (comp not :has_pkey) tables)
+        tables-without-owner-match (filter (comp not :has_ownership) tables)
         total-estimated-row-count  (or
                                     (some->>
                                      replicated-tables
                                      (map :estimated_row_count)
                                      (remove nil?)
                                      (reduce +))
-                                    0)]
+                                    0)
+        errors                     {:no-tables                      (empty? replicated-tables)
+                                    :no-quota                       (> total-estimated-row-count free-quota)
+                                    :invalid-schema-filters-pattern (boolean tables-error)}]
     (log/infof "Quota left: %s. Estimate db row count: %s" free-quota total-estimated-row-count)
-    {:free-quota                 free-quota'
+    {:free-quota                 free-quota
      :total-estimated-row-count  total-estimated-row-count
-     :can-set-replication        (and (not-empty replicated-tables)
-                                      (< total-estimated-row-count free-quota'))
+     :errors                     errors
+     :can-set-replication        (not (some second errors))
      :replicated-tables          replicated-tables
      :tables-without-pk          tables-without-pk
      :tables-without-owner-match tables-without-owner-match}))
@@ -135,7 +145,7 @@
   (let [database (t2/select-one :model/Database :id database-id)
         secret (->secret database)
         replication-schema-filters (m->schema-filter replicationSchemaFilters)]
-    (u/recursive-map-keys u/->camelCaseEn (preview-replication secret replication-schema-filters))))
+    (u/recursive-map-keys u/->camelCaseEn (preview-replication (premium-features/quotas) (preview-tables secret replication-schema-filters)))))
 
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
@@ -151,7 +161,7 @@
     (let [conns (pruned-database-replication-connections)]
       (api/check-400 (not (database-id->connection-id conns database-id)) "Database already has an active replication connection.")
       (let [secret (->secret database replicationSchemaFilters)]
-        (if (:can-set-replication (preview-replication secret))
+        (if (:can-set-replication (preview-replication (premium-features/quotas) (preview-tables secret)))
           (let [{:keys [id]} (try
                                (hm.client/call :create-connection, :type "pg_replication", :secret secret)
                                (catch Exception e
