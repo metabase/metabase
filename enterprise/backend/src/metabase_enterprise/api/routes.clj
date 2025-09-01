@@ -31,6 +31,7 @@
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
+   [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
    [metabase.api.macros :as api.macros]
@@ -61,7 +62,8 @@
    :transforms                 (deferred-tru "Transforms")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
-   :cloud-custom-smtp          (deferred-tru "Custom SMTP")})
+   :cloud-custom-smtp          (deferred-tru "Custom SMTP")
+   :embedding                  (deferred-tru "Embedding")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -100,6 +102,7 @@
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))

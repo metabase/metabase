@@ -17,7 +17,7 @@ import { EmbeddingHubXrayPickerModal } from "./EmbeddingHubXrayPickerModal";
 
 export const EmbeddingHub = () => {
   const embeddingSteps = useMemo(() => getEmbeddingHubSteps(), []);
-  const completedSteps = useCompletedEmbeddingHubSteps();
+  const { data: completedSteps } = useCompletedEmbeddingHubSteps();
 
   const [openedModal, setOpenedModal] =
     useState<EmbeddingHubModalToTrigger | null>(null);

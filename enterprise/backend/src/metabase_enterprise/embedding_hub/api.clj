@@ -1,22 +1,24 @@
-(ns metabase.embedding-hub.api
+(ns metabase-enterprise.embedding-hub.api
   (:require
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.audit-app.core :as audit]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.appearance.settings :as appearance.settings]
+   [metabase.audit-app.core :as audit]
+   [metabase.embedding.settings :as embedding.settings]
    [metabase.premium-features.core :as premium-features]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]
+   [metabase-enterprise.sso.settings :as sso]))
 
 (set! *warn-on-reflection* true)
 
 (defn- has-user-added-database? []
-  "Check if there are any databases other than the sample database and internal audit database."
   (t2/exists? :model/Database {:where [:and
                                        [:= :is_sample false]
                                        [:= :is_audit false]]}))
 
 (defn- has-user-created-dashboard? []
-  "Check if there are any dashboards other than the example dashboard and audit dashboards."
   (let [example-dashboard-id (appearance.settings/example-dashboard-id)
         audit-collection-ids (filter some? [(when-let [audit-coll (audit/default-audit-collection)] (:id audit-coll))
                                             (when-let [custom-coll (audit/default-custom-reports-collection)] (:id custom-coll))])
@@ -28,7 +30,6 @@
     (t2/exists? :model/Dashboard {:where where-clause})))
 
 (defn- has-configured-sandboxes? []
-  "Return true if at least one sandbox (row-level policy) exists. Safe on OSS."
   (boolean
    (and (premium-features/has-feature? :sandboxes)
         (try
@@ -36,12 +37,19 @@
           (catch Throwable _ false)))))
 
 (defn- embedding-hub-checklist []
-  "Return checklist of embedding hub steps and their completion status."
   { "add-data" (has-user-added-database?)
     "create-dashboard" (has-user-created-dashboard?)
-    "configure-row-column-security" (has-configured-sandboxes?)})
+    "configure-row-column-security" (has-configured-sandboxes?)
+    "create-test-embed" (boolean (embedding.settings/embedding-hub-test-embed-snippet-created))
+    "embed-production" (boolean (embedding.settings/embedding-hub-production-embed-snippet-created))
+    "secure-embeds" (boolean (or (sso/jwt-enabled) (sso/saml-enabled)))})
 
 (api.macros/defendpoint :get "/checklist"
-  "Return embedding hub checklist steps and whether they've been completed."
   []
   (embedding-hub-checklist))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/embedding-hub` routes."
+  (api.macros/ns-handler *ns* +auth))
+
+
