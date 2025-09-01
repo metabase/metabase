@@ -64,17 +64,24 @@
     (.toByteArray baos)))
 
 (defn- create-s3-client ^com.amazonaws.services.s3.AmazonS3 []
-  (let [builder (AmazonS3ClientBuilder/standard)]
+  (let [config (transforms.settings/python-storage-config)
+        builder (AmazonS3ClientBuilder/standard)]
     (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
       (.withEndpointConfiguration
-       (AwsClientBuilder$EndpointConfiguration. "http://localhost:4566" "us-east-1"))
+       (AwsClientBuilder$EndpointConfiguration. (:endpoint config) (:region config)))
       (.withCredentials
        (reify com.amazonaws.auth.AWSCredentialsProvider
          (getCredentials [_]
-           (BasicAWSCredentials. "test" "test"))
+           (BasicAWSCredentials. (:access-key-id config) (:secret-access-key config)))
          (refresh [_])))
-      (.withPathStyleAccessEnabled true))
+      (.withPathStyleAccessEnabled (:path-style-access config)))
     (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder)))
+
+(defn- fix-s3-url-for-container [url]
+  (let [config (transforms.settings/python-storage-config)]
+    (if-let [container-endpoint (:container-endpoint config)]
+      (str/replace url (:endpoint config) container-endpoint)
+      url)))
 
 (defn- upload-to-s3-and-get-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^bytes data]
   (let [metadata     (ObjectMetadata.)
@@ -88,10 +95,9 @@
           url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
                           (.withExpiration expiration)
                           (.withMethod com.amazonaws.HttpMethod/GET))]
-      ;; Replace localhost with localstack so the URL works from within Docker containers
       (-> (.generatePresignedUrl s3-client url-request)
           (.toString)
-          (str/replace "http://localhost:4566" "http://localstack:4566")))))
+          (fix-s3-url-for-container)))))
 
 (defn- generate-presigned-put-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key]
   (let [one-hour    (* 60 60 1000)
@@ -99,10 +105,9 @@
         url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
                         (.withExpiration expiration)
                         (.withMethod com.amazonaws.HttpMethod/PUT))]
-    ;; Replace localhost with localstack so the URL works from within Docker containers
     (-> (.generatePresignedUrl s3-client url-request)
         (.toString)
-        (str/replace "http://localhost:4566" "http://localstack:4566"))))
+        (fix-s3-url-for-container))))
 
 (defn- read-from-s3 [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key]
   (try
@@ -128,8 +133,9 @@
 
     (try
       (let [server-url      (transforms.settings/python-execution-server-url)
+            storage-config  (transforms.settings/python-storage-config)
             s3-client       (create-s3-client)
-            bucket-name     "metabase-python-runner"
+            bucket-name     (:bucket storage-config)
             ;; Generate S3 keys for output files
             output-key      (str work-dir-name "/output.csv")
             stdout-key      (str work-dir-name "/stdout.txt")
