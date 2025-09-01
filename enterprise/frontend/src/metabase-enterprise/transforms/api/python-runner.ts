@@ -54,8 +54,14 @@ export const pythonRunnerApi = Api.injectEndpoints({
         };
       },
     }),
+    cancelPython: builder.mutation<void, void>({
+      query: () => ({
+        url: "/api/ee/transform/test-python/cancel",
+        method: "POST",
+      }),
+    }),
   }),
   overrideExisting: true,
 });
 
-export const { useExecutePythonMutation } = pythonRunnerApi;
+export const { useExecutePythonMutation, useCancelPythonMutation } = pythonRunnerApi;

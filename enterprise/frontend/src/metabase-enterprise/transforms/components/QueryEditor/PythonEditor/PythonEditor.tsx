@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { Alert, Box, Button, Group, Text } from "metabase/ui";
 
-import { useExecutePythonMutation } from "../../../api/python-runner";
+import { useExecutePythonMutation, useCancelPythonMutation } from "../../../api/python-runner";
 
 type PythonEditorProps = {
   script: string;
@@ -47,6 +47,7 @@ export function PythonEditor({
   const [isRunning, setIsRunning] = useState(false);
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [executePython] = useExecutePythonMutation();
+  const [cancelPython] = useCancelPythonMutation();
   const handleScriptChange = (newScript: string) => {
     onChange(newScript);
     // Don't clear results on every keystroke - keep them visible for reference
@@ -96,8 +97,21 @@ export function PythonEditor({
     }
   };
 
-  const handleCancelScript = () => {
-    // Cancel functionality can be implemented if needed
+  const handleCancelScript = async () => {
+    try {
+      await cancelPython().unwrap();
+      setIsRunning(false);
+      setExecutionResult({
+        error: t`Python script execution was canceled`,
+      });
+    } catch (error) {
+      console.error("Failed to cancel Python script:", error);
+      // Still set running to false since the cancel might have worked on the server
+      setIsRunning(false);
+      setExecutionResult({
+        error: t`Python script execution was canceled (cancel request may have failed)`,
+      });
+    }
   };
 
   const { headers, rows } = parseCSV(executionResult?.output || "");
