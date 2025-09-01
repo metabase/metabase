@@ -2,8 +2,6 @@
 set -e
 
 SERVER_URL="http://localhost:5001"
-CONTAINER_NAME="python-exec-test"
-DOCKER_IMAGE="python-exec-server"
 # Use same mount path as Makefile for consistency
 TEST_DIR="/tmp/python-exec-work"
 
@@ -14,24 +12,14 @@ echo "===================================="
 echo "📁 Creating test directory: $TEST_DIR"
 mkdir -p "$TEST_DIR"
 
-# Check if server is already running
-if curl -s "$SERVER_URL/status" > /dev/null 2>&1; then
-    echo "⚠️  Stopping existing server..."
-    docker stop "$CONTAINER_NAME" 2>/dev/null || true
-    docker rm "$CONTAINER_NAME" 2>/dev/null || true
-fi
+echo "🚀 Starting Python execution server with docker compose..."
 
-echo "🚀 Starting Python execution server with mounted test directory..."
+# Stop any existing services
+docker compose down 2>/dev/null || true
 
-# Stop and remove existing container if it exists
-docker stop "$CONTAINER_NAME" 2>/dev/null || true
-docker rm "$CONTAINER_NAME" 2>/dev/null || true
+# Start services with environment variables
+PYTHON_RUNNER_PORT=5001 PYTHON_RUNNER_MOUNT_PATH="$TEST_DIR" docker compose up -d
 
-# Start new container with mounted volume
-docker run -d -p 5001:5000 --name "$CONTAINER_NAME" \
-    -v "$TEST_DIR:$TEST_DIR" \
-    "$DOCKER_IMAGE"
-    
 # Wait for server to be ready
 echo "⏳ Waiting for server to start..."
 for i in {1..30}; do
@@ -41,7 +29,7 @@ for i in {1..30}; do
     fi
     if [ $i -eq 30 ]; then
         echo "❌ Server failed to start within 30 seconds"
-        docker logs "$CONTAINER_NAME"
+        docker compose logs python-runner
         exit 1
     fi
     sleep 1

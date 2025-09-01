@@ -1,0 +1,25 @@
+name: python-runner
+services:
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+    environment:
+      - DEBUG=${DEBUG:-0}
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-/tmp/python-exec-localstack}:/var/lib/localstack"
+  python-runner:
+    build: .
+    ports:
+      - "127.0.0.1:${PYTHON_RUNNER_PORT:-5001}:5000"
+    volumes:
+      - "${PYTHON_RUNNER_MOUNT_PATH:-/tmp/python-exec-work}:${PYTHON_RUNNER_MOUNT_PATH:-/tmp/python-exec-work}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
+    depends_on:
+      - localstack
