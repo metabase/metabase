@@ -166,6 +166,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
                 comments={resolvedComments}
                 targetId={document.id}
                 targetType="document"
+                allowNewThreads={false}
               />
             </Tabs.Panel>
           </Tabs>
