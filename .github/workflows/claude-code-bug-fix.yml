@@ -33,6 +33,12 @@ jobs:
       (github.event_name == 'workflow_dispatch') ||
       (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested' && startsWith(github.event.pull_request.head.ref, 'claude-fix/'))
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
         id: app-token
@@ -70,12 +76,6 @@ jobs:
             } catch (error) {
               core.setFailed(error.message);
             }
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up git configuration
         run: |
