@@ -46,9 +46,15 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
     }
   };
 
+  const title = addingNewDatabase
+    ? t`Add a database`
+    : t`Edit connection details`;
+
   return (
     <Box w="100%" maw="54rem" mx="auto" p="xl">
-      <Title order={1} mb="lg">{t`Add database`}</Title>
+      <Title order={1} mb="lg">
+        {title}
+      </Title>
       <DatabaseEditConnectionForm
         database={database}
         isAttachedDWH={database?.is_attached_dwh ?? false}
