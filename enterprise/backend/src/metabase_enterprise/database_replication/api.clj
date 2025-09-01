@@ -102,8 +102,6 @@
      :total-estimated-row-count  total-estimated-row-count
      :can-set-replication        (and (not-empty replicated-tables)
                                       (< total-estimated-row-count free-quota))
-     :all-quotas                 all-quotas
-     :all-tables                 all-tables
      :replicated-tables          replicated-tables
      :tables-without-pk          tables-without-pk
      :tables-without-owner-match tables-without-owner-match}))

@@ -18,14 +18,6 @@ export interface TableInfo {
 }
 
 export interface PreviewDatabaseReplicationResponse {
-  allQuotas: {
-    hostingFeature: string;
-    locked: boolean;
-    quotaType: string;
-    softLimit: number;
-    updatedAt: string;
-    usage: number;
-  }[];
   canSetReplication: boolean;
   freeQuota: number;
   replicatedTables: TableInfo[];
