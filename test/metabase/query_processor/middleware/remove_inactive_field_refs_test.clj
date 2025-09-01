@@ -312,8 +312,10 @@
               "Card__Product__ID" "Card__TOTAL"]
              (mapv :lib/desired-column-alias
                    (lib.metadata.result-metadata/returned-columns
-                    (qp.preprocess/preprocess
-                     (lib/query @deleted-columns-metadata-provider (join-query))))))))))
+                    (lib/query
+                     @deleted-columns-metadata-provider
+                     (qp.preprocess/preprocess
+                      (lib/query @deleted-columns-metadata-provider (join-query)))))))))))
 
 (deftest ^:parallel deleted-columns-test-5c
   (testing "Additional level of nesting is OK"
