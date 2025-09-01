@@ -50,14 +50,18 @@ execution_lock = threading.Lock()
 class ExecutionRequest:
     def __init__(self, code: str, timeout: int, request_id: str,
                  table_mapping: Optional[Dict[str, str]] = None,
+                 manifest_mapping: Optional[Dict[str, str]] = None,
                  output_url: Optional[str] = None,
+                 output_manifest_url: Optional[str] = None,
                  stdout_url: Optional[str] = None,
                  stderr_url: Optional[str] = None):
         self.code = code
         self.timeout = timeout
         self.request_id = request_id
         self.table_mapping = table_mapping
+        self.manifest_mapping = manifest_mapping
         self.output_url = output_url
+        self.output_manifest_url = output_manifest_url
         self.stdout_url = stdout_url
         self.stderr_url = stderr_url
         self.result_event = threading.Event()
@@ -171,6 +175,8 @@ def _execute_in_directory(req: ExecutionRequest, work_path: Path, start_time: fl
     else:
         env["OUTPUT_FILE"] = str(output_file)
 
+    if req.output_manifest_url:
+        env["OUTPUT_MANIFEST_URL"] = req.output_manifest_url
     if req.stdout_url:
         env["STDOUT_URL"] = req.stdout_url
     if req.stderr_url:
@@ -179,6 +185,10 @@ def _execute_in_directory(req: ExecutionRequest, work_path: Path, start_time: fl
     if req.table_mapping:
         import json
         env["TABLE_FILE_MAPPING"] = json.dumps(req.table_mapping)
+    
+    if req.manifest_mapping:
+        import json
+        env["TABLE_MANIFEST_MAPPING"] = json.dumps(req.manifest_mapping)
 
     # Use transform_runner.py if it exists AND we have S3 URLs, otherwise run script directly
     runner_path = Path(__file__).parent / "transform_runner.py"
@@ -358,12 +368,15 @@ def execute():
     request_id = data["request_id"]
     timeout = data.get("timeout", DEFAULT_TIMEOUT)
     table_mapping = data.get("table_mapping")
+    manifest_mapping = data.get("manifest_mapping")
     output_url = data.get("output_url")
+    output_manifest_url = data.get("output_manifest_url")
     stdout_url = data.get("stdout_url")
     stderr_url = data.get("stderr_url")
 
     req = ExecutionRequest(code, timeout, request_id,
-                           table_mapping, output_url, stdout_url, stderr_url)
+                           table_mapping, manifest_mapping, output_url, output_manifest_url,
+                           stdout_url, stderr_url)
 
     try:
         request_queue.put_nowait(req)

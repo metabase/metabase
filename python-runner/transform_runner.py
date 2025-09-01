@@ -14,6 +14,31 @@ import traceback
 import pandas as pd
 import json
 from pathlib import Path
+import io
+import numpy as np
+
+def generate_output_manifest(dataframe):
+    """
+    Generate a metadata manifest for a pandas DataFrame.
+
+    Args:
+        dataframe: pandas DataFrame
+
+    Returns:
+        dict: Manifest dictionary
+    """
+    fields = []
+    for column_name, dtype in dataframe.dtypes.items():
+        fields.append({
+            "name": column_name,
+            "dtype": str(dtype)
+        })
+
+    return {
+        "version": "0.1.0",
+        "fields": fields,
+        "table_metadata": {}
+    }
 
 def read_jsonl_to_array(source):
     """
@@ -77,16 +102,17 @@ def write_to_s3_url(url, content):
         print(f"S3 URL was: {url}", file=sys.stderr)
         raise
 
-def read_table(table_source, limit=None):
+def read_table(table_source, manifest_source=None, limit=None):
     """
     Read a table from either a local file or S3 URL and return as a pandas DataFrame.
 
     Args:
         table_source: Either a file path or S3 presigned URL
+        manifest_source: Optional manifest file path or S3 URL containing table metadata
         limit: Optional row limit (defaults to API's default limit)
 
     Returns:
-        pandas.DataFrame: The table data
+        pandas.DataFrame: The table data with optional metadata in attrs
     """
 
     try:
@@ -98,6 +124,27 @@ def read_table(table_source, limit=None):
 
         # Convert to DataFrame
         df = pd.DataFrame(rows)
+
+        # Load and attach manifest metadata if provided
+        if manifest_source:
+            try:
+                import urllib.request
+                import urllib.error
+
+                if manifest_source.startswith(('http://', 'https://')):
+                    # Read manifest from URL
+                    with urllib.request.urlopen(manifest_source) as response:
+                        manifest_content = response.read().decode('utf-8')
+                else:
+                    # Read manifest from local file
+                    with open(manifest_source, 'r', encoding='utf-8') as f:
+                        manifest_content = f.read()
+
+                manifest_data = json.loads(manifest_content)
+                df.attrs['metabase_manifest'] = manifest_data
+            except Exception as e:
+                print(f"WARNING: Failed to load manifest from {manifest_source}: {e}", file=sys.stderr)
+
         return df
 
     except json.JSONDecodeError as e:
@@ -109,22 +156,21 @@ def read_table(table_source, limit=None):
 def main():
     # Get output URLs from environment variables
     output_url = os.environ.get('OUTPUT_URL')
-
-    # For backward compatibility, support OUTPUT_FILE as well
-    output_file = os.environ.get('OUTPUT_FILE')
-
-    if not output_url and not output_file:
-        print("ERROR: Neither OUTPUT_URL nor OUTPUT_FILE environment variable set", file=sys.stderr)
-        sys.exit(1)
+    output_manifest_url = os.environ.get('OUTPUT_MANIFEST_URL')
 
     # TABLE_FILE_MAPPING contains either file paths or S3 presigned URLs
     table_file_mapping_json = os.environ.get('TABLE_FILE_MAPPING', '{}')
     table_file_mapping = json.loads(table_file_mapping_json)
 
+    # TABLE_MANIFEST_MAPPING contains manifest file paths or S3 presigned URLs
+    table_manifest_mapping_json = os.environ.get('TABLE_MANIFEST_MAPPING', '{}')
+    table_manifest_mapping = json.loads(table_manifest_mapping_json)
+
     # Import the user's script
     sys.path.insert(0, '.')
 
     try:
+
         # Import and execute the user's code
         try:
             import script
@@ -148,7 +194,8 @@ def main():
                 for param_name in sig.parameters:
                     if param_name in table_file_mapping:
                         table_source = table_file_mapping[param_name]
-                        kwargs[param_name] = read_table(table_source)
+                        manifest_source = table_manifest_mapping.get(param_name)
+                        kwargs[param_name] = read_table(table_source, manifest_source)
 
                 # Call transform with named arguments
                 result = script.transform(**kwargs)
@@ -169,14 +216,19 @@ def main():
         try:
             csv_content = result.to_csv(index=False)
 
-            # Write to S3 URL if provided, otherwise to file
-            if output_url:
-                write_to_s3_url(output_url, csv_content)
-                print(f"Successfully saved {len(result)} rows to CSV")
-            else:
-                # Fallback to file for backward compatibility
-                result.to_csv(output_file, index=False)
-                print(f"Successfully saved {len(result)} rows to CSV")
+            # Write to S3 URL
+            write_to_s3_url(output_url, csv_content)
+            print(f"Successfully saved {len(result)} rows to CSV")
+
+            # Generate and upload output manifest if URL is provided
+            if output_manifest_url:
+                try:
+                    output_manifest = generate_output_manifest(result)
+                    manifest_content = json.dumps(output_manifest, indent=2)
+                    write_to_s3_url(output_manifest_url, manifest_content)
+                    print(f"Successfully saved output manifest with {len(output_manifest['fields'])} fields")
+                except Exception as e:
+                    print(f"WARNING: Failed to save output manifest: {e}", file=sys.stderr)
         except Exception as e:
             print(f"ERROR: Failed to save DataFrame as CSV: {e}", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)

@@ -147,6 +147,8 @@
                                        :tables {"students" (mt/id :students)}})]
 
           (is (=? {:output "student_count,average_score\n4,88.75\n"
-                   :stdout "Successfully saved 1 rows to CSV\n"
+                   :metadata "{\n  \"version\": \"0.1.0\",\n  \"fields\": [\n    {\n      \"name\": \"student_count\",\n      \"dtype\": \"int64\"\n    },\n    {\n      \"name\": \"average_score\",\n      \"dtype\": \"float64\"\n    }\n  ],\n  \"table_metadata\": {}\n}"
+                   :stdout (str "Successfully saved 1 rows to CSV\n"
+                                "Successfully saved output manifest with 2 fields\n")
                    :stderr ""}
                   result)))))))
