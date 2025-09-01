@@ -42,8 +42,8 @@ metrics = {
 metrics_lock = threading.Lock()
 
 request_queue = Queue(maxsize=MAX_QUEUE_SIZE)
-current_execution_id = None
-execution_id_lock = threading.Lock()
+current_execution_request = None
+execution_lock = threading.Lock()
 
 
 class ExecutionRequest:
@@ -57,6 +57,32 @@ class ExecutionRequest:
         self.result_event = threading.Event()
         self.result = None
         self.queued_at = time.time()
+        self.process = None
+        self.cancelled = False
+
+
+def terminate_subprocess(process, timeout_seconds=5):
+    """Terminate a subprocess gracefully, falling back to SIGKILL if needed."""
+    if not process or process.poll() is not None:
+        return
+
+    try:
+        # Try graceful termination first
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+
+        # Wait for graceful termination
+        try:
+            process.wait(timeout=timeout_seconds)
+            return
+        except subprocess.TimeoutExpired:
+            pass
+
+        # Force kill if graceful termination failed
+        os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        process.wait()
+
+    except (OSError, subprocess.SubprocessError) as e:
+        app.logger.warning(f"Error terminating subprocess: {e}")
 
 
 def set_resource_limits():
@@ -67,16 +93,24 @@ def set_resource_limits():
     resource.setrlimit(resource.RLIMIT_NPROC, (MAX_PROCESSES, MAX_PROCESSES))
 
 
-def execute_code(code: str, working_dir: str, timeout: int,
-                 table_mapping: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+def execute_code(req: ExecutionRequest) -> Dict[str, Any]:
     start_time = time.time()
 
-    work_path = Path(working_dir)
+    # Check if cancelled before starting
+    if req.cancelled:
+        return {
+            "exit_code": -1,
+            "execution_time": 0,
+            "error": "Execution was cancelled",
+            "cancelled": True
+        }
+
+    work_path = Path(req.working_dir)
     if not work_path.exists():
         return {
             "exit_code": -1,
             "execution_time": 0,
-            "error": f"Working directory does not exist: {working_dir}"
+            "error": f"Working directory does not exist: {req.working_dir}"
         }
 
     stdout_file = work_path / "stdout.log"
@@ -84,15 +118,15 @@ def execute_code(code: str, working_dir: str, timeout: int,
     script_file = work_path / "script.py"
     output_file = work_path / "output.csv"
 
-    script_file.write_text(code)
+    script_file.write_text(req.code)
 
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
     env["OUTPUT_FILE"] = str(output_file)
 
-    if table_mapping:
+    if req.table_mapping:
         import json
-        env["TABLE_FILE_MAPPING"] = json.dumps(table_mapping)
+        env["TABLE_FILE_MAPPING"] = json.dumps(req.table_mapping)
 
     # Use transform_runner.py if it exists, otherwise run script directly
     runner_path = Path(__file__).parent / "transform_runner.py"
@@ -113,9 +147,23 @@ def execute_code(code: str, working_dir: str, timeout: int,
                 start_new_session=True
             )
 
+            # Store process reference for cancellation
+            req.process = process
+
             try:
-                exit_code = process.wait(timeout=timeout)
+                exit_code = process.wait(timeout=req.timeout)
                 execution_time = time.time() - start_time
+
+                # Check if cancelled during execution
+                if req.cancelled:
+                    return {
+                        "exit_code": -1,
+                        "execution_time": execution_time,
+                        "error": "Execution was cancelled",
+                        "cancelled": True,
+                        "stdout_file": str(stdout_file),
+                        "stderr_file": str(stderr_file),
+                    }
 
                 result = {
                     "exit_code": exit_code,
@@ -132,20 +180,23 @@ def execute_code(code: str, working_dir: str, timeout: int,
                 return result
 
             except subprocess.TimeoutExpired:
-                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-                process.wait()
+                terminate_subprocess(process)
 
                 with metrics_lock:
                     metrics["timeouts"] += 1
 
                 return {
                     "exit_code": -1,
-                    "execution_time": timeout,
+                    "execution_time": req.timeout,
                     "timeout": True,
-                    "error": f"Script execution timed out after {timeout} seconds",
+                    "error": f"Script execution timed out after {req.timeout} seconds",
                     "stdout_file": str(stdout_file),
                     "stderr_file": str(stderr_file),
                 }
+
+            finally:
+                # Clear process reference
+                req.process = None
 
     except Exception as e:
         app.logger.error(f"Error executing script: {e}")
@@ -158,7 +209,7 @@ def execute_code(code: str, working_dir: str, timeout: int,
 
 
 def worker_thread():
-    global current_execution_id
+    global current_execution_request
 
     while True:
         try:
@@ -173,19 +224,14 @@ def worker_thread():
                 req.result_event.set()
                 continue
 
-            with execution_id_lock:
-                current_execution_id = req.request_id
+            with execution_lock:
+                current_execution_request = req
 
             with metrics_lock:
                 metrics["current_queue_size"] = request_queue.qsize()
 
             try:
-                result = execute_code(
-                    req.code,
-                    req.working_dir,
-                    req.timeout,
-                    req.table_mapping
-                )
+                result = execute_code(req)
                 result["request_id"] = req.request_id
 
                 with metrics_lock:
@@ -212,8 +258,8 @@ def worker_thread():
                 }
 
             finally:
-                with execution_id_lock:
-                    current_execution_id = None
+                with execution_lock:
+                    current_execution_request = None
 
                 req.result_event.set()
 
@@ -229,16 +275,14 @@ def execute():
         metrics["total_requests"] += 1
 
     data = request.get_json()
-    if not data or "code" not in data or "working_dir" not in data:
-        return jsonify({"error": "code and working_dir are required"}), 400
+    if not data or "code" not in data or "working_dir" not in data or "request_id" not in data:
+        return jsonify({"error": "code, working_dir, and request_id are required"}), 400
 
     code = data["code"]
     working_dir = data["working_dir"]
+    request_id = data["request_id"]
     timeout = data.get("timeout", DEFAULT_TIMEOUT)
     table_mapping = data.get("table_mapping")
-
-    import uuid
-    request_id = str(uuid.uuid4())
 
     req = ExecutionRequest(code, working_dir, timeout, request_id,
                            table_mapping)
@@ -269,9 +313,9 @@ def execute():
 
 @app.route("/status", methods=["GET"])
 def status():
-    with execution_id_lock:
-        is_executing = current_execution_id is not None
-        exec_id = current_execution_id
+    with execution_lock:
+        is_executing = current_execution_request is not None
+        exec_id = current_execution_request.request_id if current_execution_request else None
 
     with metrics_lock:
         success_count = metrics["successful_executions"]
@@ -295,6 +339,31 @@ def status():
         }
 
     return jsonify(status_data)
+
+
+@app.route("/cancel", methods=["POST"])
+def cancel_execution():
+    data = request.get_json()
+    if not data or "request_id" not in data:
+        return jsonify({"error": "request_id is required"}), 400
+
+    request_id = data["request_id"]
+
+    with execution_lock:
+        if not current_execution_request:
+            return jsonify({"error": "No execution currently running"}), 404
+
+        if current_execution_request.request_id != request_id:
+            return jsonify({"error": f"Request ID {current_execution_request.request} does not match current execution {request_id}"}), 404
+
+        # Mark as cancelled
+        current_execution_request.cancelled = True
+
+        # Terminate subprocess if running
+        if current_execution_request.process:
+            terminate_subprocess(current_execution_request.process)
+
+    return jsonify({"message": f"Cancellation requested for {request_id}"})
 
 
 @app.errorhandler(Exception)
