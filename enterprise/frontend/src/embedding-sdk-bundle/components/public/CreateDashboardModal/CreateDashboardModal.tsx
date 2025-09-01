@@ -1,7 +1,12 @@
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import {
+  getCollectionIdSlugFromReference,
+  getCollectionIdValueFromReference,
+} from "embedding-sdk-bundle/store/collections";
 import type { MetabaseDashboard, SdkCollectionId } from "embedding-sdk-package";
 import { useCollectionQuery, useLocale } from "metabase/common/hooks";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
+import { useSelector } from "metabase/lib/redux";
 
 /**
  * @expand
@@ -37,8 +42,16 @@ const CreateDashboardModalInner = ({
 }: CreateDashboardModalProps) => {
   const { isLocaleLoading } = useLocale();
 
+  const collectionId = useSelector((state) =>
+    getCollectionIdValueFromReference(state, initialCollectionId),
+  );
+
+  const collectionIdSlug = useSelector((state) =>
+    getCollectionIdSlugFromReference(state, initialCollectionId),
+  );
+
   const { isLoading: isCollectionQueryLoading } = useCollectionQuery({
-    id: initialCollectionId,
+    id: collectionIdSlug,
   });
 
   if (isLocaleLoading || isCollectionQueryLoading) {
@@ -50,7 +63,7 @@ const CreateDashboardModalInner = ({
       opened={!isCollectionQueryLoading && isOpen}
       onCreate={onCreate}
       onClose={() => onClose?.()}
-      collectionId={initialCollectionId}
+      collectionId={collectionId}
     />
   );
 };
