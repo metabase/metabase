@@ -201,7 +201,7 @@
   (testing "Should handle invalid origins"
     (is (mw.security/approved-origin? "http://example.com" "  fpt://something ://123 4 http://example.com"))))
 
-(deftest ^:parallel test-disallow-cors-on-localhost-approved-origin
+(deftest test-disallow-cors-on-localhost-approved-origin
   (testing "Should approve localhost origins when disallow-cors-on-localhost is false"
     (mt/with-temporary-setting-values [disallow-cors-on-localhost false]
       (is (mw.security/approved-origin? "http://localhost" ""))
@@ -454,7 +454,7 @@
                   response (wrapped-handler {:headers {"origin" request-origin} :uri request-uri} identity identity)]
               [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri (-> response :headers (get "Access-Control-Allow-Origin"))])))))
 
-(deftest ^:parallel add-cors-headers-for-auth-sso-test
+(deftest add-cors-headers-for-auth-sso-test
   (testing "Should add CORS headers for /auth/sso endpoint with 402 status (embedding disabled errors)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
