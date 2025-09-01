@@ -1,11 +1,12 @@
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
 import { Modal, Tabs, rem } from "metabase/ui";
 import { Discussions } from "metabase-enterprise/comments/components/Discussions";
+import { useDocumentState } from "metabase-enterprise/documents/hooks/use-document-state";
 
 import { useDocumentContext } from "../DocumentContext";
 
@@ -21,6 +22,7 @@ interface Props {
 export const CommentsSidesheet = ({ params, onClose }: Props) => {
   const childTargetId = params?.childTargetId;
   const location = useLocation();
+  const { openCommentSidebar, closeCommentSidebar } = useDocumentState();
 
   const [activeTab, setActiveTab] = useState<string | null>("open");
   const { comments, document } = useDocumentContext();
@@ -41,11 +43,18 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     );
   }, [comments, childTargetId]);
 
+  const closeSidebar = useCallback(() => {
+    closeCommentSidebar();
+    onClose();
+  }, [closeCommentSidebar, onClose]);
+
   useEffect(() => {
     if (childTargetId == null) {
-      onClose();
+      closeSidebar();
+      return;
     }
-  }, [childTargetId, onClose]);
+    openCommentSidebar();
+  }, [childTargetId, closeSidebar, openCommentSidebar]);
 
   const resolvedComments = useMemo(
     () => targetComments?.filter((comment) => comment.is_resolved) ?? [],
@@ -89,7 +98,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       lockScroll={false}
       opened
       variant="sidesheet"
-      onClose={onClose}
+      onClose={closeSidebar}
     >
       <Modal.Content
         classNames={{
@@ -102,7 +111,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       >
         <Modal.Header px="xl">
           <Modal.Title>{t`Comments`}</Modal.Title>
-          <Modal.CloseButton />
+          <Modal.CloseButton onClick={closeSidebar} />
         </Modal.Header>
         <Modal.Body className={S.body} p={0}>
           <Tabs value={activeTab} onChange={setActiveTab}>

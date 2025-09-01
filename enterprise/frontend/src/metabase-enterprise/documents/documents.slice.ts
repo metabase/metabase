@@ -38,6 +38,7 @@ export interface DocumentsState {
   currentDocument: Document | null;
   draftCards: Record<number, Card>;
   mentionsCache: Record<string, MentionCacheItem>;
+  isCommentSidebarOpen: boolean;
 }
 
 export const initialState: DocumentsState = {
@@ -46,6 +47,7 @@ export const initialState: DocumentsState = {
   currentDocument: null,
   draftCards: {},
   mentionsCache: {},
+  isCommentSidebarOpen: false,
 };
 
 const documentsSlice = createSlice({
@@ -118,6 +120,9 @@ const documentsSlice = createSlice({
     ) => {
       state.mentionsCache[getMentionsCacheKey(payload)] = payload;
     },
+    setIsCommentSidebarOpen: (state, action: PayloadAction<boolean>) => {
+      state.isCommentSidebarOpen = action.payload;
+    },
   },
 });
 
@@ -132,6 +137,7 @@ export const {
   createDraftCard,
   clearDraftCards,
   updateMentionsCache,
+  setIsCommentSidebarOpen,
 } = documentsSlice.actions;
 
 export const generateDraftCardId = (): number => {
