@@ -1706,6 +1706,18 @@
            settings
            util}}
 
+
+  enterprise/embedding-hub
+  {:team "Embedding"
+   :api  #{metabase-enterprise.embedding-hub.api}
+   :uses #{api
+           appearance
+           audit-app
+           embedding
+           premium-features
+           util
+           enterprise/sso}}
+
   enterprise/gsheets
   {:team "Cloud"
    :api  #{metabase-enterprise.gsheets.api

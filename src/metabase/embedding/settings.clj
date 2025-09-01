@@ -288,11 +288,11 @@
   :type       :boolean
   :default    false
   :export?    true
-  :visibility :internal)
+  :visibility :admin)
 
 (defsetting embedding-hub-production-embed-snippet-created
   (deferred-tru "Indicates if a production embed snippet has been created for tracking in the embedding hub")
   :type       :boolean
   :default    false
   :export?    true
-  :visibility :internal)
+  :visibility :admin)

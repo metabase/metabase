@@ -5,6 +5,7 @@ describe("scenarios - embedding hub", () => {
     beforeEach(() => {
       H.restore("setup");
       cy.signInAsAdmin();
+      H.activateToken("pro-cloud");
     });
 
     it('"Create a dashboard" step should work correctly', () => {
