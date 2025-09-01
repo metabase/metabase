@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
@@ -13,20 +14,14 @@
   (:import
    (com.amazonaws.auth BasicAWSCredentials)
    (com.amazonaws.client.builder AwsClientBuilder$EndpointConfiguration)
-   (com.amazonaws.services.s3 AmazonS3 AmazonS3ClientBuilder)
+   (com.amazonaws.services.s3 AmazonS3ClientBuilder)
    (com.amazonaws.services.s3.model GeneratePresignedUrlRequest ObjectMetadata PutObjectRequest)
    (java.io BufferedWriter ByteArrayInputStream ByteArrayOutputStream File OutputStream OutputStreamWriter)
-   (java.net URL)
    (java.nio.charset StandardCharsets)
    (java.util Date)
    (java.util.concurrent CancellationException)))
 
 (set! *warn-on-reflection* true)
-
-(defn- safe-slurp
-  "Safely slurp a file, returning empty string on error."
-  [file]
-  (try (slurp file) (catch Exception _ "")))
 
 (defn- safe-delete
   "Safely delete a file."
@@ -53,29 +48,18 @@
   (driver/with-driver driver
     (let [native (qp.compile/compile {:type :query, :database db-id :query query})
 
-          query {:database db-id
-                 :type :native
-                 :native native}]
+          query  {:database db-id
+                  :type     :native
+                  :native   native}]
       (qp.store/with-metadata-provider db-id
         (driver/execute-reducible-query driver query {:canceled-chan cancel-chan} respond)))))
-
-(defn- write-table-data! [id file cancel-chan]
-  (let [db-id (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
-        driver (t2/select-one-fn :engine :model/Database db-id)
-        ;; TODO: limit
-        query {:source-table id}]
-    (execute-mbql-query driver db-id query
-                        (fn [{cols-meta :cols} reducible-rows]
-                          (with-open [os (io/output-stream file)]
-                            (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
-                        cancel-chan)))
 
 (defn- write-table-data-to-stream! [id cancel-chan]
   (let [db-id (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
         driver (t2/select-one-fn :engine :model/Database db-id)
         ;; TODO: limit
-        query {:source-table id}
-        baos (ByteArrayOutputStream.)]
+        query  {:source-table id}
+        baos   (ByteArrayOutputStream.)]
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
                           (write-to-stream! baos (mapv :name cols-meta) reducible-rows))
@@ -83,17 +67,24 @@
     (.toByteArray baos)))
 
 (defn- create-s3-client ^com.amazonaws.services.s3.AmazonS3 []
-  (let [builder (AmazonS3ClientBuilder/standard)]
+  (let [config (transforms.settings/python-storage-config)
+        builder (AmazonS3ClientBuilder/standard)]
     (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
       (.withEndpointConfiguration
-       (AwsClientBuilder$EndpointConfiguration. "http://localhost:4566" "us-east-1"))
+       (AwsClientBuilder$EndpointConfiguration. (:endpoint config) (:region config)))
       (.withCredentials
        (reify com.amazonaws.auth.AWSCredentialsProvider
          (getCredentials [_]
-           (BasicAWSCredentials. "test" "test"))
+           (BasicAWSCredentials. (:access-key-id config) (:secret-access-key config)))
          (refresh [_])))
-      (.withPathStyleAccessEnabled true))
+      (.withPathStyleAccessEnabled (:path-style-access config)))
     (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder)))
+
+(defn- fix-s3-url-for-container [url]
+  (let [config (transforms.settings/python-storage-config)]
+    (if-let [container-endpoint (:container-endpoint config)]
+      (str/replace url (:endpoint config) container-endpoint)
+      url)))
 
 (defn- upload-to-s3-and-get-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^bytes data]
   (let [metadata     (ObjectMetadata.)
@@ -107,10 +98,9 @@
           url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
                           (.withExpiration expiration)
                           (.withMethod com.amazonaws.HttpMethod/GET))]
-      ;; Replace localhost with localstack so the URL works from within Docker containers
       (-> (.generatePresignedUrl s3-client url-request)
           (.toString)
-          (clojure.string/replace "http://localhost:4566" "http://localstack:4566")))))
+          (fix-s3-url-for-container)))))
 
 (defn- generate-presigned-put-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key]
   (let [one-hour    (* 60 60 1000)
@@ -118,14 +108,13 @@
         url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
                         (.withExpiration expiration)
                         (.withMethod com.amazonaws.HttpMethod/PUT))]
-    ;; Replace localhost with localstack so the URL works from within Docker containers
     (-> (.generatePresignedUrl s3-client url-request)
         (.toString)
-        (clojure.string/replace "http://localhost:4566" "http://localstack:4566"))))
+        (fix-s3-url-for-container))))
 
 (defn- read-from-s3 [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key]
   (try
-    (let [object (.getObject s3-client bucket-name key)]
+    (let [object (.getObject s3-client ^String bucket-name ^String key)]
       (slurp (.getObjectContent object)))
     (catch com.amazonaws.services.s3.model.AmazonS3Exception e
       (if (= 404 (.getStatusCode e))
@@ -146,44 +135,45 @@
     (.mkdirs work-dir-file)
 
     (try
-      (let [server-url (transforms.settings/python-execution-server-url)
-            s3-client (create-s3-client)
-            bucket-name "metabase-python-runner"
+      (let [server-url      (transforms.settings/python-execution-server-url)
+            storage-config  (transforms.settings/python-storage-config)
+            s3-client       (create-s3-client)
+            bucket-name     (:bucket storage-config)
             ;; Generate S3 keys for output files
-            output-key (str work-dir-name "/output.csv")
-            stdout-key (str work-dir-name "/stdout.txt")
-            stderr-key (str work-dir-name "/stderr.txt")
+            output-key      (str work-dir-name "/output.csv")
+            stdout-key      (str work-dir-name "/stdout.txt")
+            stderr-key      (str work-dir-name "/stderr.txt")
             ;; Generate presigned URLs for writing
-            output-url (generate-presigned-put-url s3-client bucket-name output-key)
-            stdout-url (generate-presigned-put-url s3-client bucket-name stdout-key)
-            stderr-url (generate-presigned-put-url s3-client bucket-name stderr-key)
+            output-url      (generate-presigned-put-url s3-client bucket-name output-key)
+            stdout-url      (generate-presigned-put-url s3-client bucket-name stdout-key)
+            stderr-url      (generate-presigned-put-url s3-client bucket-name stderr-key)
             ;; Upload input table data
             table-name->url (into {} (map (fn [[table-name id]]
                                             (let [s3-key (str work-dir-name "/" (gensym) ".jsonl")
-                                                  data (write-table-data-to-stream! id cancel-chan)
-                                                  url (upload-to-s3-and-get-url s3-client bucket-name s3-key data)]
+                                                  data   (write-table-data-to-stream! id cancel-chan)
+                                                  url    (upload-to-s3-and-get-url s3-client bucket-name s3-key data)]
                                               [table-name url])))
                                   table-name->id)
-            canc (a/go (when (a/<! cancel-chan)
-                         (http/post (str server-url "/cancel")
-                                    {:content-type :json
-                                     :body         (json/encode {:request_id run-id})
-                                     :async?       true}
-                                    identity identity)))
-            response (http/post (str server-url "/execute")
-                                {:content-type     :json
-                                 :accept           :json
-                                 :body             (json/encode {:code          code
-                                                                 :working_dir   work-dir
-                                                                 :timeout       30
-                                                                 :request_id    run-id
-                                                                 :output_url    output-url
-                                                                 :stdout_url    stdout-url
-                                                                 :stderr_url    stderr-url
-                                                                 :table_mapping table-name->url})
-                                 :throw-exceptions false
-                                 :as               :json})
-            _        (a/close! canc)
+            canc            (a/go (when (a/<! cancel-chan)
+                                    (http/post (str server-url "/cancel")
+                                               {:content-type :json
+                                                :body         (json/encode {:request_id run-id})
+                                                :async?       true}
+                                               identity identity)))
+            response        (http/post (str server-url "/execute")
+                                       {:content-type     :json
+                                        :accept           :json
+                                        :body             (json/encode {:code          code
+                                                                        :working_dir   work-dir
+                                                                        :timeout       30
+                                                                        :request_id    run-id
+                                                                        :output_url    output-url
+                                                                        :stdout_url    stdout-url
+                                                                        :stderr_url    stderr-url
+                                                                        :table_mapping table-name->url})
+                                        :throw-exceptions false
+                                        :as               :json})
+            _               (a/close! canc)
 
             result (:body response)
             ;; TODO look into why some tests return json and others strings
@@ -196,7 +186,7 @@
             (let [output-content (read-from-s3 s3-client bucket-name output-key)
                   stdout-content (read-from-s3 s3-client bucket-name stdout-key)
                   stderr-content (read-from-s3 s3-client bucket-name stderr-key)]
-              (if (not (clojure.string/blank? output-content))
+              (if (not (str/blank? output-content))
                 {:status 200
                  :body   {:output output-content
                           :stdout stdout-content

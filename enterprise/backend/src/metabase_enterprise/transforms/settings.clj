@@ -37,3 +37,23 @@
   :export?    false
   :encryption :no
   :audit      :getter)
+
+;; TODO break this out to narrower settings to make the UX better?
+(setting/defsetting python-storage-config
+  (deferred-tru "Storage configuration for Python execution artifacts. JSON format with type, endpoint, credentials, etc.")
+  :type       :json
+  :visibility :internal
+  :default    {:type "s3"
+               :endpoint "http://localhost:4566"
+               :region "us-east-1"
+               :bucket "metabase-python-runner"
+               :access-key-id "test"
+               :secret-access-key "test"
+               :path-style-access true
+               ;; Optional: different endpoint accessible from containers
+               :container-endpoint "http://localstack:4566"}
+  :feature    :transforms
+  :doc        false
+  :export?    false
+  :encryption :when-encryption-key-set
+  :audit      :never)
