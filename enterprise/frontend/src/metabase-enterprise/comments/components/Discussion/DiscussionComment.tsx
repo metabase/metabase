@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import dayjs from "dayjs";
 import { useCallback, useState } from "react";
+import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -37,6 +38,7 @@ type DiscussionCommentProps = {
 };
 
 const lineHeightPx = 17;
+
 export function DiscussionComment({
   comment,
   actionPanelVariant,
@@ -49,6 +51,9 @@ export function DiscussionComment({
 }: DiscussionCommentProps) {
   const [isEditing, editingHandler] = useDisclosure(false);
   const [expanded, setExpanded] = useState(false);
+  const location = useLocation();
+  const hash = location.hash?.substring(1);
+  const isTarget = hash === getCommentNodeId(comment);
 
   const handleEditClick = useCallback(() => {
     editingHandler.open();
@@ -59,9 +64,6 @@ export function DiscussionComment({
     onEdit?.(comment, document);
     editingHandler.close();
   };
-
-  const isTarget =
-    document.location.hash.substring(1) === getCommentNodeId(comment);
 
   if (comment.is_deleted) {
     return (
