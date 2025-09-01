@@ -9,6 +9,7 @@ import {
   useDeleteCommentMutation,
   useUpdateCommentMutation,
 } from "metabase-enterprise/api";
+import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import type {
   Comment,
   CommentEntityType,
@@ -131,11 +132,13 @@ function getUrl({
 }) {
   return match(targetType)
     .with("document", () => {
+      const childTargetUrl = `/document/${targetId}/comments/${childTargetId}`;
+
       if (comment) {
-        return `/document/${targetId}/comments/${childTargetId}#comment-${comment.id}`;
+        return `${childTargetUrl}#${getCommentNodeId(comment)}`;
       }
 
-      return `/document/${targetId}/comments/${childTargetId}`;
+      return childTargetUrl;
     })
     .exhaustive();
 }

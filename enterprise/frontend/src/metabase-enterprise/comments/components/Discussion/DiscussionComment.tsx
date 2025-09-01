@@ -13,6 +13,7 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
+import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
@@ -34,10 +35,6 @@ type DiscussionCommentProps = {
   onEdit?: (comment: Comment, newContent: DocumentContent) => unknown;
   onCopyLink?: (comment: Comment) => unknown;
 };
-
-function getCommentNodeId(comment: Comment) {
-  return `comment-${comment.id}`;
-}
 
 const lineHeightPx = 17;
 export function DiscussionComment({
