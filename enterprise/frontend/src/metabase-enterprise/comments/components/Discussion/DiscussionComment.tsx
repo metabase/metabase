@@ -5,7 +5,7 @@ import { useCallback } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import { Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
+import { Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
 import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
@@ -112,11 +112,13 @@ export function DiscussionComment({
         </Tooltip>
       </Group>
 
-      <CommentEditor
-        initialContent={comment.content}
-        onSubmit={handleEditingSubmit}
-        readonly={!isEditing}
-      />
+      <Box mt={isEditing ? "sm" : 0}>
+        <CommentEditor
+          initialContent={comment.content}
+          onSubmit={handleEditingSubmit}
+          readonly={!isEditing}
+        />
+      </Box>
     </Timeline.Item>
   );
 }
