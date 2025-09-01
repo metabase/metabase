@@ -189,16 +189,17 @@
                                                 :body         (json/encode {:request_id run-id})
                                                 :async?       true}
                                                identity identity)))
+            payload         {:code          code
+                             :timeout       30
+                             :request_id    run-id
+                             :output_url    output-url
+                             :stdout_url    stdout-url
+                             :stderr_url    stderr-url
+                             :table_mapping table-name->url}
             response        (http/post (str server-url "/execute")
                                        {:content-type     :json
                                         :accept           :json
-                                        :body             (json/encode {:code          code
-                                                                        :timeout       30
-                                                                        :request_id    run-id
-                                                                        :output_url    output-url
-                                                                        :stdout_url    stdout-url
-                                                                        :stderr_url    stderr-url
-                                                                        :table_mapping table-name->url})
+                                        :body             (json/encode payload)
                                         :throw-exceptions false
                                         :as               :json})
             _               (a/close! canc)
