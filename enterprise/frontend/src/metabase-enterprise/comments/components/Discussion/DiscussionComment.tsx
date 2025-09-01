@@ -69,6 +69,12 @@ export function DiscussionComment({
         <Text size="md" c="text-disabled" fs="italic">
           {t`This comment was deleted.`}
         </Text>
+        <DiscussionActionPanel
+          variant={actionPanelVariant}
+          comment={comment}
+          onResolve={onResolve}
+          onCopyLink={onCopyLink}
+        />
       </Timeline.Item>
     );
   }

@@ -46,6 +46,7 @@ export function DiscussionActionPanel({
   onCopyLink,
 }: DiscussionActionPanelProps) {
   const [popoverOpened, setPopoverOpened] = useState(false);
+  const hasMoreActions = Boolean(onReopen || onDelete || onEdit || onCopyLink);
 
   return (
     <Paper
@@ -80,57 +81,65 @@ export function DiscussionActionPanel({
             </ActionIcon>
           </Tooltip>
         )}
-        <Popover
-          opened={popoverOpened}
-          onChange={setPopoverOpened}
-          width={rem(140)}
-          position="bottom-end"
-        >
-          <Popover.Target>
-            <Tooltip label={t`More actions`} disabled={popoverOpened}>
-              <ActionIcon
-                size={ACTION_ICON_SIZE}
-                onClick={() => setPopoverOpened((opened) => !opened)}
-              >
-                <Icon name="ellipsis" />
-              </ActionIcon>
-            </Tooltip>
-          </Popover.Target>
-          <Popover.Dropdown>
-            <Paper p="0.25rem">
-              <Button
-                {...ACTION_BUTTON_STYLE_PROPS}
-                leftSection={<Icon name="link" c="text-primary" />}
-                onClick={() => {
-                  onCopyLink?.(comment);
-                  setPopoverOpened(false);
-                }}
-              >
-                {t`Copy link`}
-              </Button>
-              <Button
-                {...ACTION_BUTTON_STYLE_PROPS}
-                leftSection={<Icon name="pencil" c="text-primary" />}
-                onClick={() => {
-                  onEdit?.(comment);
-                  setPopoverOpened(false);
-                }}
-              >
-                {t`Edit`}
-              </Button>
-              <Button
-                {...ACTION_BUTTON_STYLE_PROPS}
-                leftSection={<Icon name="trash" c="text-primary" />}
-                onClick={() => {
-                  onDelete?.(comment);
-                  setPopoverOpened(false);
-                }}
-              >
-                {t`Delete`}
-              </Button>
-            </Paper>
-          </Popover.Dropdown>
-        </Popover>
+        {hasMoreActions && (
+          <Popover
+            opened={popoverOpened}
+            onChange={setPopoverOpened}
+            width={rem(140)}
+            position="bottom-end"
+          >
+            <Popover.Target>
+              <Tooltip label={t`More actions`} disabled={popoverOpened}>
+                <ActionIcon
+                  size={ACTION_ICON_SIZE}
+                  onClick={() => setPopoverOpened((opened) => !opened)}
+                >
+                  <Icon name="ellipsis" />
+                </ActionIcon>
+              </Tooltip>
+            </Popover.Target>
+            <Popover.Dropdown>
+              <Paper p="0.25rem">
+                {onCopyLink && (
+                  <Button
+                    {...ACTION_BUTTON_STYLE_PROPS}
+                    leftSection={<Icon name="link" c="text-primary" />}
+                    onClick={() => {
+                      onCopyLink?.(comment);
+                      setPopoverOpened(false);
+                    }}
+                  >
+                    {t`Copy link`}
+                  </Button>
+                )}
+                {onEdit && (
+                  <Button
+                    {...ACTION_BUTTON_STYLE_PROPS}
+                    leftSection={<Icon name="pencil" c="text-primary" />}
+                    onClick={() => {
+                      onEdit?.(comment);
+                      setPopoverOpened(false);
+                    }}
+                  >
+                    {t`Edit`}
+                  </Button>
+                )}
+                {onDelete && (
+                  <Button
+                    {...ACTION_BUTTON_STYLE_PROPS}
+                    leftSection={<Icon name="trash" c="text-primary" />}
+                    onClick={() => {
+                      onDelete?.(comment);
+                      setPopoverOpened(false);
+                    }}
+                  >
+                    {t`Delete`}
+                  </Button>
+                )}
+              </Paper>
+            </Popover.Dropdown>
+          </Popover>
+        )}
       </Group>
     </Paper>
   );
