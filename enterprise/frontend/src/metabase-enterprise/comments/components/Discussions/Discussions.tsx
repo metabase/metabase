@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Divider, Stack } from "metabase/ui";
@@ -43,8 +43,8 @@ export const Discussions = ({
   return (
     <Stack gap="0">
       {threads.map((thread) => (
-        <>
-          <Box key={thread.id} px="xl" mb="md">
+        <Fragment key={thread.id}>
+          <Box px="xl" mb="md">
             <Discussion
               childTargetId={childTargetId}
               comments={thread.comments}
@@ -54,7 +54,7 @@ export const Discussions = ({
             />
           </Box>
           <Divider />
-        </>
+        </Fragment>
       ))}
 
       <Box p="xl">
