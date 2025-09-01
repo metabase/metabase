@@ -1,11 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetDatabaseQuery,
-  useListDatabaseSchemasQuery,
-} from "metabase/api";
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -60,31 +56,15 @@ function TargetInfo({ transform }: TargetInfoProps) {
   const { source, target, table } = transform;
   const { database: databaseId } = source.query;
 
-  const { data: databaseFromApi, isLoading: databaseIsLoading } =
-    useGetDatabaseQuery(
-      table == null && databaseId != null ? { id: databaseId } : skipToken,
-    );
-  const { data: schemas, isLoading: schemaIsLoading } =
-    useListDatabaseSchemasQuery(
-      databaseId != null
-        ? {
-            id: databaseId,
-            include_hidden: true,
-          }
-        : skipToken,
-    );
+  const { data, isLoading } = useGetDatabaseQuery(
+    table == null && databaseId != null ? { id: databaseId } : skipToken,
+  );
 
-  const database = table?.db ?? databaseFromApi;
-
-  const isLoading = databaseIsLoading || schemaIsLoading;
+  const database = table?.db ?? data;
 
   if (isLoading) {
     return <Loader size="sm" />;
   }
-
-  const targetSchemaExists = schemas?.some(
-    (schemaFromApi) => schemaFromApi === target.schema,
-  );
 
   return (
     <Group gap="sm">
@@ -105,12 +85,10 @@ function TargetInfo({ transform }: TargetInfoProps) {
             label={target.schema}
             icon="folder"
             to={
-              targetSchemaExists
-                ? getBrowseSchemaUrl(database.id, target.schema)
-                : undefined
+              table ? getBrowseSchemaUrl(database.id, table.schema) : undefined
             }
             tooltip={
-              targetSchemaExists
+              table?.schema
                 ? undefined
                 : t`This schema will be created when the transform runs`
             }
