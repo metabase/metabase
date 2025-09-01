@@ -204,8 +204,8 @@
                            (some? end_time)
                            (conj (timestamp-constraint :end_time end_time))
 
-                           (some? run_method)
-                           (conj [:= :run_method run_method])
+                           (seq run_method)
+                           (conj [:in :run_method (set run_method)])
 
                            (seq transform_ids)
                            (conj [:in :transform_id transform_ids])
@@ -216,7 +216,7 @@
                                                      :where  [:in :tag_id transform_tag_ids]}])
 
                            (seq statuses)
-                           (conj [:in :status statuses])
+                           (conj [:in :status (set statuses)])
 
                            ;; optimization: is_active condition for started status
                            (and (= (first statuses) "started")

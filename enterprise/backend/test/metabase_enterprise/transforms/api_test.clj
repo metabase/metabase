@@ -426,12 +426,14 @@
                     (transform-runs our-run-pred :end_time "2025-08-26~")))
             (is (empty? (transform-runs our-run-pred :end_time "~2025-08-21"))))
           (testing "Filter by 'run_method'"
-            (let [our-runs (transform-runs our-run-pred :run_method "manual")]
+            (let [our-runs (transform-runs our-run-pred :run_method ["manual"])]
               (is (= 3 (count our-runs)))
               (is (every? (comp #{"manual"} :run_method) our-runs)))
-            (let [our-runs (transform-runs our-run-pred :run_method "cron")]
+            (let [our-runs (transform-runs our-run-pred :run_method ["cron"])]
               (is (= 4 (count our-runs)))
-              (is (every? (comp #{"cron"} :run_method) our-runs))))
+              (is (every? (comp #{"cron"} :run_method) our-runs)))
+            (let [our-runs (transform-runs our-run-pred :run_method ["cron" "manual"])]
+              (is (= 7 (count our-runs)))))
           (testing "Filter by a combination"
             (is (=? [{:id r3-id
                       :status "succeeded"
