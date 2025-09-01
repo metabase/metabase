@@ -98,18 +98,19 @@
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :next_run_start_time "2025-08-26~")]
                 (is (= #{} (returned-job-ids response)))))
             (testing "filtering by last_run_end_time with scheduled job"
-              (transforms.schedule/initialize-job! {:id j1-id, :schedule at-5-second-schedule})
-              (try
-                (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :next_run_start_time "2025-08-27~")]
-                  (is (=? [{:id j1-id
-                            :last_run {:job_id j1-id, :run_method "cron"}
-                            :name "Job 1"
-                            :next_run {:start_time (every-pred string? u.date/parse)}
-                            :schedule at-5-second-schedule
-                            :tag_ids [t1-id]}]
-                          (returned-jobs response))))
-                (finally
-                  (transforms.schedule/delete-job! j1-id))))))))))
+              (mt/with-temp-scheduler!
+                (transforms.schedule/initialize-job! {:id j1-id, :schedule at-5-second-schedule})
+                (try
+                  (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :next_run_start_time "2025-08-27~")]
+                    (is (=? [{:id j1-id
+                              :last_run {:job_id j1-id, :run_method "cron"}
+                              :name "Job 1"
+                              :next_run {:start_time (every-pred string? u.date/parse)}
+                              :schedule at-5-second-schedule
+                              :tag_ids [t1-id]}]
+                            (returned-jobs response))))
+                  (finally
+                    (transforms.schedule/delete-job! j1-id)))))))))))
 
 (deftest update-job-test
   (testing "PUT /api/ee/transform-job/:id"
