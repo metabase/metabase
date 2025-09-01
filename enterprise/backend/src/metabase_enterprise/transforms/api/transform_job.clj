@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms.api.transform-job
   (:require
-   [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.transforms.jobs :as transforms.jobs]
@@ -18,7 +17,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId)))
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId)
+   (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -146,8 +146,10 @@
   (when t
     (condp instance? t
       Instant        t
+      Date           (.toInstant ^Date t)
       OffsetDateTime (.toInstant ^OffsetDateTime t)
       ZonedDateTime  (.toInstant ^ZonedDateTime t)
+      String         (recur (u.date/parse t))
       LocalDateTime  (recur (.atZone ^LocalDateTime t (report-zone-id)))
       LocalTime      (recur (.atDate ^LocalTime t (report-local-date)))
       OffsetTime     (recur (.atDate ^OffsetTime t (report-local-date)))
@@ -186,7 +188,7 @@
    [:map
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:next_run_start_time {:optional true} [:maybe ms/NonBlankString]]
-    [:transform_tag_ids   {:optional true} [:maybe [:sequential :string]]]]]
+    [:transform_tag_ids   {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
   (api/check-superuser)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})
@@ -196,7 +198,7 @@
                 (->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (->date-field-filter-xf [:next_run :start_time] next_run_start_time)
                 (if transform-tag-ids
-                  (filter #(seq (set/intersection transform-tag-ids (:tag-_ids %))))
+                  (filter #(some transform-tag-ids (:tag_ids %)))
                   identity))
           (t2/hydrate jobs :tag_ids :last_run))))
 
