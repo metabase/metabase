@@ -249,23 +249,23 @@
             [:tables [:map-of :string :int]]]]
   (log/info "test python code execution")
   (api/check-superuser)
-  (try
-    (let [run-id (str (java.util.UUID/randomUUID))
-          cancel-chan (a/promise-chan)
-          result (transforms.execute/call-python-runner-api! run-id (:code body) (:tables body) cancel-chan)]
-      (log/info "Python test execution succeeded")
-      (-> (response/response {:message (deferred-tru "Python code executed successfully")
-                              :result result})
-          (assoc :status 200)))
-    (catch Exception e
-      (log/error e "Error executing Python test code")
-      (let [ex-data (ex-data e)]
+  (let [run-id (str (java.util.UUID/randomUUID))
+        cancel-chan (a/promise-chan)
+        {:keys [body status]} (transforms.execute/call-python-runner-api! (:code body) (:tables body) run-id cancel-chan)]
+    (if (= status 200)
+      (do
+        (log/info "Python test execution succeeded")
+        (-> (response/response {:message (deferred-tru "Python code executed successfully")
+                                :result body})
+            (assoc :status 200)))
+      (do
+        (log/error "Error executing Python test code")
         (-> (response/response {:message (deferred-tru "Python code execution failed")
-                                :error (.getMessage e)
-                                :stdout (:stdout ex-data)
-                                :stderr (:stderr ex-data)
-                                :exit_code (:exit-code ex-data)})
-            (assoc :status (or (:status-code ex-data) 500)))))))
+                                :error (:error body)
+                                :stdout (:stdout body)
+                                :stderr (:stderr body)
+                                :exit_code (:exit-code body)})
+            (assoc :status status))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."
