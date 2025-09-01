@@ -14,7 +14,6 @@ import type {
 
 import { searchApi, userApi } from "metabase/api";
 import type { DispatchFn } from "metabase/lib/redux";
-import type { User } from "metabase-types/api";
 
 import { CustomMentionExtension } from "./CustomMentionExtension";
 import {
@@ -24,14 +23,10 @@ import {
 } from "./MentionList";
 
 type ExtensionProps = {
-  currentUser?: User | null;
   dispatch: DispatchFn;
 };
 
-export const configureMentionExtension = ({
-  currentUser,
-  dispatch,
-}: ExtensionProps) =>
+export const configureMentionExtension = ({ dispatch }: ExtensionProps) =>
   CustomMentionExtension.configure({
     suggestion: {
       char: "@",
@@ -59,7 +54,6 @@ export const configureMentionExtension = ({
               label: user.common_name,
               type: "user" as const,
             }))
-            .filter((user) => user.entityId !== currentUser?.id)
             .slice(0, 5);
 
           items.push(...users);
