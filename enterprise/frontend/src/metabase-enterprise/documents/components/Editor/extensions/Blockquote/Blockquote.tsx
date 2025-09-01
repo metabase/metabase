@@ -81,8 +81,8 @@ export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
           href={`/document/${document.id}/comments/${_id}`}
           ref={refs.setFloating}
           show={isOpen || hovered}
-          threads={threads}
           style={floatingStyles}
+          threads={threads}
         />
       )}
     </>
