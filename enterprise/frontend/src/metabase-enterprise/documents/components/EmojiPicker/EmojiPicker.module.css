@@ -1,0 +1,25 @@
+.root {
+  padding: var(--mantine-spacing-sm);
+  display: flex;
+  flex-direction: column;
+  height: 18rem;
+  width: 18rem;
+}
+
+.pickerSearch {
+  display: none;
+}
+
+.pickerViewport {
+  overflow: auto;
+  flex-grow: 1;
+}
+
+.pickerMessage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mb-color-text-secondary);
+}

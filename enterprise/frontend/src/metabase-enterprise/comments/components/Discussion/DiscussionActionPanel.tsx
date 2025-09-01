@@ -12,6 +12,7 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
+import { EmojiPicker } from "metabase-enterprise/documents/components/EmojiPicker/EmojiPicker";
 import type { Comment } from "metabase-types/api";
 
 import S from "./Discussion.module.css";
@@ -45,6 +46,7 @@ export function DiscussionActionPanel({
   onEdit,
   onCopyLink,
 }: DiscussionActionPanelProps) {
+  const [emojiPickerOpened, setEmojiPickerOpened] = useState(false);
   const [popoverOpened, setPopoverOpened] = useState(false);
 
   return (
@@ -53,21 +55,31 @@ export function DiscussionActionPanel({
         // [S.visibleOnCommentHover]: variant === "comment",
         // [S.visibleOnDiscussionHover]: variant === "discussion",
         [S.visibleOnCommentHover]: true,
-        [S.visible]: popoverOpened,
+        [S.visible]: popoverOpened || emojiPickerOpened,
       })}
       p="0.125rem"
     >
       <Group gap="0">
-        {/*<Tooltip label={t`Add reaction`}>
-           TODO: add emoji picker
-          <ActionIcon
-            size={ACTION_ICON_SIZE}
-            onClick={() => onReaction?.(comment, "👍")}
-          >
-             TODO: add reaction icon
-            <Icon name="bolt" />
-          </ActionIcon>
-        </Tooltip> */}
+        <Popover
+          position="bottom-end"
+          opened={emojiPickerOpened}
+          onChange={setEmojiPickerOpened}
+        >
+          <Popover.Target>
+            <Tooltip label={t`Add reaction`} disabled={emojiPickerOpened}>
+              <ActionIcon
+                size={ACTION_ICON_SIZE}
+                onClick={() => setEmojiPickerOpened((opened) => !opened)}
+              >
+                {/* TODO: add reaction icon */}
+                <Icon name="bolt" />
+              </ActionIcon>
+            </Tooltip>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <EmojiPicker onEmojiSelect={(emoji) => alert(emoji.emoji)} />
+          </Popover.Dropdown>
+        </Popover>
         {variant === "discussion" && (
           <Tooltip label={comment.is_resolved ? t`Re-open` : t`Resolve`}>
             <ActionIcon
