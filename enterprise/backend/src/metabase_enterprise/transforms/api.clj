@@ -240,7 +240,7 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
-(api.macros/defendpoint :post "/test"
+(api.macros/defendpoint :post "/test-python"
   "Test Python code execution without creating a transform."
   [_route-params
    _query-params
