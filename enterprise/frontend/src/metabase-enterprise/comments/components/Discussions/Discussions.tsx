@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { Box, Divider, Stack } from "metabase/ui";
 import { useCreateCommentMutation } from "metabase-enterprise/api";
@@ -16,10 +17,6 @@ export interface DiscussionProps {
   autoOpenNewComment?: boolean;
 }
 
-/**
- * TODO: implement me
- * This component should not fetch any data (except version history) but it should use mutations.
- */
 export const Discussions = ({
   childTargetId,
   comments,
@@ -62,12 +59,10 @@ export const Discussions = ({
 
       <Box p="xl">
         <CommentEditor
-          isNewThread={true}
           autoFocus={autoOpenNewComment}
+          placeholder={t`Add a comment…`}
           onChange={(document) => setNewComment(document)}
-          onSubmit={(doc) => {
-            handleSubmit(doc);
-          }}
+          onSubmit={handleSubmit}
         />
       </Box>
     </Stack>

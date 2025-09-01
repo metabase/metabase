@@ -34,25 +34,25 @@ const ALLOWED_FORMATTING = {
 } as const;
 
 interface Props {
-  readonly?: boolean;
   active?: boolean;
+  autoFocus?: boolean;
   initialContent?: DocumentContent | null;
+  placeholder?: string;
+  readonly?: boolean;
+  onBlur?: (content: DocumentContent, editor: Editor) => void;
   onChange?: (content: DocumentContent) => void;
   onSubmit?: (content: DocumentContent) => void;
-  onBlur?: (content: DocumentContent, editor: Editor) => void;
-  isNewThread?: boolean;
-  autoFocus?: boolean;
 }
 
 export const CommentEditor = ({
-  readonly = false,
   active = true,
+  autoFocus = false,
   initialContent,
+  placeholder = t`Reply…`,
+  readonly = false,
+  onBlur,
   onChange,
   onSubmit,
-  onBlur,
-  isNewThread = false,
-  autoFocus = false,
 }: Props) => {
   const currentUser = useSelector(getUser);
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
@@ -71,13 +71,10 @@ export const CommentEditor = ({
           HTMLAttributes: { class: CS.link },
         }),
         configureMentionExtension({ currentUser, dispatch }),
-        !readonly &&
-          Placeholder.configure({
-            placeholder: isNewThread ? t`Add a comment…` : t`Reply…`,
-          }),
+        !readonly && Placeholder.configure({ placeholder }),
         !readonly && DisableMetabotSidebar,
       ].filter(Boolean) as Extension[],
-    [siteUrl, currentUser, dispatch, readonly, isNewThread],
+    [siteUrl, currentUser, dispatch, readonly, placeholder],
   );
 
   const editor = useEditor(
