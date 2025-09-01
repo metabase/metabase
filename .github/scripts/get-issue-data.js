@@ -1,4 +1,3 @@
-const { getLinkedIssues } = require("../../release/src/linked-issues");
 const githubSlackMap = require("../../release/github-slack-map.json");
 
 async function getIssueData({ context, github, manualIssueNumber }) {
@@ -26,12 +25,15 @@ async function getIssueData({ context, github, manualIssueNumber }) {
       pull_number: prNumber,
     });
 
-    const linkedIssues = getLinkedIssues(prData.body || "");
-    if (!linkedIssues || linkedIssues.length === 0) {
-      throw new Error("Could not extract issue number from PR body");
+    // Extract issue number from branch name (e.g., "claude-fix/issue-12345-some-title")
+    const branchMatch = prData.head.ref.match(/claude-fix\/issue-(\d+)/);
+    if (!branchMatch) {
+      throw new Error(
+        `Could not extract issue number from branch name: ${prData.head.ref}`,
+      );
     }
 
-    issueNumber = parseInt(linkedIssues[0]);
+    issueNumber = parseInt(branchMatch[1]);
 
     const { data } = await github.rest.issues.get({
       owner: context.repo.owner,
