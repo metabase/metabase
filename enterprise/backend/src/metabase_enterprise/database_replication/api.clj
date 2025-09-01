@@ -144,9 +144,13 @@
   "Create a new PG replication connection for the specified database."
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
-  (let [database (t2/select-one :model/Database :id database-id)]
+  (let [database   (t2/select-one :model/Database :id database-id)
+        db-details (:details database)]
     (api/check-404 database)
     (api/check-400 (= :postgres (:engine database)) "PG replication is only supported for PostgreSQL databases.")
+    (api/check-400 (not (:tunnel-enabled db-details)) "PG replication is not supported with SSH Tunnel.")
+    (api/check-400 (not (or (:ssl-client-cert db-details) (:ssl-root-cert db-details)))
+                   "PG replication is not supported with root or client certificates.")
     (let [conns (pruned-database-replication-connections)]
       (api/check-400 (not (database-id->connection-id conns database-id)) "Database already has an active replication connection.")
       (let [secret (->secret database replicationSchemaFilters)]
