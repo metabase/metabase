@@ -41,7 +41,7 @@
       (.close))))
 
 (defn- execute-mbql-query
-  [driver db-id query respond]
+  [driver db-id query respond cancel-chan]
   (driver/with-driver driver
     (let [native (qp.compile/compile {:type :query, :database db-id :query query})
 
@@ -49,9 +49,9 @@
                  :type :native
                  :native native}]
       (qp.store/with-metadata-provider db-id
-        (driver/execute-reducible-query driver query {} respond)))))
+        (driver/execute-reducible-query driver query {:canceled-chan cancel-chan} respond)))))
 
-(defn- write-table-data! [id file]
+(defn- write-table-data! [id file cancel-chan]
   (let [db-id (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
         driver (t2/select-one-fn :engine :model/Database db-id)
         ;; TODO: limit
@@ -59,11 +59,12 @@
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
                           (with-open [os (io/output-stream file)]
-                            (write-to-stream! os (mapv :name cols-meta) reducible-rows))))))
+                            (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
+                        cancel-chan)))
 
 (defn execute-python-code
   "Execute Python code using the Python execution server."
-  [code table-name->id]
+  [code table-name->id cancel-chan]
   (let [mount-path (transforms.settings/python-execution-mount-path)
         work-dir-name (str "run-" (System/currentTimeMillis) "-" (rand-int 10000))
         work-dir (str mount-path "/" work-dir-name)
@@ -79,7 +80,7 @@
             table-name->file (into {} (map (fn [[table-name id]]
                                              (let [file-name (gensym)
                                                    file (io/file (str work-dir "/" file-name ".jsonl"))]
-                                               (write-table-data! id file)
+                                               (write-table-data! id file cancel-chan)
                                                [table-name (.getAbsolutePath file)])))
                                    table-name->id)
             response (http/post (str server-url "/execute")
