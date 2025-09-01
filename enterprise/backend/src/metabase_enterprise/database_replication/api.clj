@@ -64,18 +64,20 @@
 (def ^:private preview-memo
   (memoize/ttl preview :ttl/threshold (u/minutes->ms 5)))
 
+(defn- free-quota [quotas]
+  (or
+   (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) quotas)
+            ((juxt :soft-limit :usage))
+            (apply -))
+   -1))
+
 (defn- preview-replication
   "Predicate that signals if replication looks right from the quota perspective.
 
    This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
   replicated."
   [secret & {:as replication-schema-filters}]
-  (let [all-quotas                 (premium-features/quotas)
-        free-quota                 (or
-                                    (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) all-quotas)
-                                             ((juxt :soft-limit :usage))
-                                             (apply -))
-                                    -1)
+  (let [free-quota'                (free-quota (premium-features/quotas))
         all-tables                 (->> secret
                                         ;; memo the slow preview call without replication-schema-filters, then
                                         ;; apply filter over the memoized result for snappy UI
@@ -98,10 +100,10 @@
                                      (reduce +))
                                     0)]
     (log/infof "Quota left: %s. Estimate db row count: %s" free-quota total-estimated-row-count)
-    {:free-quota                 free-quota
+    {:free-quota                 free-quota'
      :total-estimated-row-count  total-estimated-row-count
      :can-set-replication        (and (not-empty replicated-tables)
-                                      (< total-estimated-row-count free-quota))
+                                      (< total-estimated-row-count free-quota'))
      :replicated-tables          replicated-tables
      :tables-without-pk          tables-without-pk
      :tables-without-owner-match tables-without-owner-match}))
