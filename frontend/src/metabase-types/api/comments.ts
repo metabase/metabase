@@ -17,8 +17,6 @@ export interface Comment {
 
   creator: BaseUser;
   content: DocumentContent;
-  // TODO: remove this once we have real data in the database
-  content_str_stup: string;
 
   is_deleted: boolean;
   is_resolved: boolean;

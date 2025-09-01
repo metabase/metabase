@@ -2,6 +2,7 @@ import { getNextId } from "__support__/utils";
 
 import type { Comment } from "../comments";
 
+import { createMockDocumentContent } from "./document";
 import { createMockUser } from "./user";
 
 export function createMockComment(comment?: Partial<Comment>): Comment {
@@ -16,8 +17,7 @@ export function createMockComment(comment?: Partial<Comment>): Comment {
     child_target_id: 1,
 
     creator: createMockUser(),
-    content: { type: "doc", content: [] },
-    content_str_stup: "Mock comment content",
+    content: createMockDocumentContent(),
 
     is_deleted: false,
     is_resolved: false,
