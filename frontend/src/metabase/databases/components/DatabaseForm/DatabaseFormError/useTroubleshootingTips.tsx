@@ -46,9 +46,9 @@ export const useTroubleshootingTips = (count?: number): TipProps[] => {
           <>
             {jt`If the database is behind a firewall or VPN, you may need to allow connections from the ${cloudIPLinkContent}.`}
             <Code display="block" p="0.75rem" mt="sm" component="ul" lh="1rem">
-              <li>18.207.81.126</li>
-              <li>3.211.20.157</li>
-              <li>50.17.234.169</li>
+              {metabaseIPAddresses.map((ip) => (
+                <li key={ip}>{ip}</li>
+              ))}
             </Code>
           </>
         ),
@@ -93,3 +93,5 @@ const renderDocsLinkMaybe = (
 
   return linkContent;
 };
+
+const metabaseIPAddresses = ["18.207.81.126", "3.211.20.157", "50.17.234.169"];
