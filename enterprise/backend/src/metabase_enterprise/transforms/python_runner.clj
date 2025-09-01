@@ -86,26 +86,23 @@
                                                [table-name (.getAbsolutePath file)])))
                                    table-name->id)
 
-            response-fut (http/post (str server-url "/execute")
-                                    {:content-type     :json
-                                     :accept           :json
-                                     :body             (json/encode {:code          code
-                                                                     :working_dir   work-dir
-                                                                     :timeout       30
-                                                                     :request_id    run-id
-                                                                     :table_mapping table-name->file})
-                                     :async?           true
-                                     :throw-exceptions false
-                                     :as               :json}
-                                    identity identity)
+            canc (a/go (when (a/<! cancel-chan)
+                         (http/post (str server-url "/cancel")
+                                    {:content-type :json
+                                     :body         (json/encode {:request_id run-id})
+                                     :async?       true}
+                                    identity identity)))
 
-            canc     (a/go (when (a/<! cancel-chan)
-                             (http/post (str server-url "/cancel")
-                                        {:content-type :json
-                                         :body         (json/encode {:request_id run-id})}
-                                        :async? true identity identity)
-                             (future-cancel response-fut)))
-            response @response-fut
+            response (http/post (str server-url "/execute")
+                                {:content-type     :json
+                                 :accept           :json
+                                 :body             (json/encode {:code          code
+                                                                 :working_dir   work-dir
+                                                                 :timeout       30
+                                                                 :request_id    run-id
+                                                                 :table_mapping table-name->file})
+                                 :throw-exceptions false
+                                 :as               :json})
             _        (a/close! canc)
 
             result (:body response)
