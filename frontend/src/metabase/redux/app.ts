@@ -12,6 +12,7 @@ import {
 } from "metabase/lib/dom";
 import { combineReducers, handleActions } from "metabase/lib/redux";
 import type {
+  DetailViewState,
   Dispatch,
   TempStorage,
   TempStorageKey,
@@ -125,6 +126,21 @@ const isErrorDiagnosticsOpen = handleActions(
   false,
 );
 
+export const SET_DETAIL_VIEW = "metabase/app/SET_DETAIL_VIEW";
+
+export const setDetailView = createAction<DetailViewState | null>(
+  SET_DETAIL_VIEW,
+);
+
+const detailView = handleActions(
+  {
+    [SET_DETAIL_VIEW]: {
+      next: (_oldState, { payload: newState }) => newState,
+    },
+  },
+  null,
+);
+
 const tempStorageSlice = createSlice({
   name: "tempStorage",
   initialState: {} as TempStorage,
@@ -145,6 +161,7 @@ export const { setTempSetting } = tempStorageSlice.actions;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
+  detailView,
   errorPage,
   isNavbarOpen,
   isDndAvailable: (initValue: unknown) => {

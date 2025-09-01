@@ -297,7 +297,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         const { history } = await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          initialRoute: `/model/${TEST_MODEL_CARD.id}/columns`,
         });
 
         await triggerMetadataChange();
@@ -314,7 +314,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         const { history } = await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          initialRoute: `/model/${TEST_MODEL_CARD.id}/columns`,
         });
 
         act(() => {
@@ -330,7 +330,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          initialRoute: `/model/${TEST_MODEL_CARD.id}/columns`,
         });
 
         await waitForLoaderToBeRemoved();
@@ -346,7 +346,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          initialRoute: `/model/${TEST_MODEL_CARD.id}/columns`,
         });
 
         await triggerMetadataChange();
@@ -370,11 +370,11 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await waitForLoaderToBeRemoved();
 
         /**
-         * When initialRoute is `/model/${TEST_MODEL_CARD.id}/metadata`,
+         * When initialRoute is `/model/${TEST_MODEL_CARD.id}/columns`,
          * the QueryBuilder gets incompletely intialized.
          * This seems to affect only tests.
          */
-        await userEvent.click(await screen.findByText("Metadata"));
+        await userEvent.click(await screen.findByText("Columns"));
 
         await triggerMetadataChange();
         await waitForSaveChangesToBeEnabled();
@@ -413,7 +413,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerNotebookQueryChange();
       await waitForSaveChangesToBeEnabled();
 
-      await userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
+      await userEvent.click(screen.getByTestId("editor-tabs-columns-name"));
 
       expect(
         screen.queryByTestId("leave-confirmation"),

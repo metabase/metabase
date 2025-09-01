@@ -35,6 +35,9 @@ export function SearchResult({
   className,
   index,
   context = "search-app",
+  searchEngine,
+  searchRequestId,
+  searchTerm,
 }: {
   result: WrappedResult;
   compact?: boolean;
@@ -44,6 +47,9 @@ export function SearchResult({
   className?: string;
   index: number;
   context?: SearchContext;
+  searchEngine?: string;
+  searchRequestId?: string;
+  searchTerm?: string;
 }) {
   const { name, model, description, moderated_status }: WrappedResult = result;
 
@@ -84,7 +90,15 @@ export function SearchResult({
       onClick(result);
       return;
     }
-    trackSearchClick("item", index, context);
+    trackSearchClick({
+      itemType: "item",
+      position: index,
+      context,
+      searchEngine: searchEngine || "unknown",
+      requestId: searchRequestId,
+      entityModel: result.model,
+      searchTerm,
+    });
     onChangeLocation(result.getUrl());
   };
 

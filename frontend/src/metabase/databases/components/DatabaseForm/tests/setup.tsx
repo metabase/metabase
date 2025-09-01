@@ -1,7 +1,12 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { DatabaseData, Engine, Settings } from "metabase-types/api";
+import type {
+  DatabaseData,
+  Engine,
+  EngineKey,
+  Settings,
+} from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabaseForm } from "../DatabaseForm";
@@ -96,7 +101,7 @@ export interface SetupOpts {
   settings?: Settings;
   hasEnterprisePlugins?: boolean;
   engines?: Record<string, Engine>;
-  initialValues?: Partial<DatabaseData>;
+  initialValues?: Partial<DatabaseData> & { engine?: EngineKey };
 }
 
 export const setup = ({

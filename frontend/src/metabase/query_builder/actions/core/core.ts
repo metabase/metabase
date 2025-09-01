@@ -36,6 +36,7 @@ import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
   getIsResultDirty,
+  getIsShowingRawTable,
   getOriginalQuestion,
   getParameters,
   getQuestion,
@@ -152,19 +153,33 @@ export const navigateToNewCardInsideQB = createThunkAction(
           ),
         );
       } else {
-        const card = getCardAfterVisualizationClick(nextCard, previousCard);
-        const url = Urls.serializedQuestion(card);
+        // when navigating in the "raw" table mode, preserve the original viz settings
+        const isRawTable = getIsShowingRawTable(getState());
+        const currentCard = getCard(getState());
+        const adjustedNextCard =
+          isRawTable && currentCard != null
+            ? {
+                ...nextCard,
+                display: currentCard.display,
+                visualization_settings: currentCard.visualization_settings,
+              }
+            : nextCard;
+        const cardAfterClick = getCardAfterVisualizationClick(
+          adjustedNextCard,
+          previousCard,
+        );
+        const url = Urls.serializedQuestion(cardAfterClick);
         if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
           dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());
-          if (!cardQueryIsEquivalent(previousCard, nextCard)) {
+          if (!cardQueryIsEquivalent(previousCard, adjustedNextCard)) {
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
           // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(setCardAndRun({ ...card, type: "question" }));
+          dispatch(setCardAndRun({ ...cardAfterClick, type: "question" }));
         }
 
         if (objectId !== undefined) {
@@ -202,7 +217,15 @@ export const apiCreateQuestion = (
   options?: OnCreateOptions,
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
-    const submittableQuestion = getSubmittableQuestion(getState(), question);
+    let submittableQuestion = getSubmittableQuestion(getState(), question);
+    // Saving models with list view setting as a question in not allowed for now,
+    // so we change it back to table.
+    if (
+      question.type() === "question" &&
+      submittableQuestion.display() === "list"
+    ) {
+      submittableQuestion = submittableQuestion.setDisplay("table");
+    }
     const createdQuestion = await reduxCreateQuestion(
       submittableQuestion,
       dispatch,
