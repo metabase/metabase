@@ -97,6 +97,7 @@ export const configureMentionExtension = ({ dispatch }: ExtensionProps) =>
               model: item.type,
             },
           })
+          .insertContent(" ")
           .run();
       },
     },
