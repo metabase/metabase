@@ -23,7 +23,7 @@ export const CustomOrderedList = OrderedList.extend({
     return {
       start: {
         default: 1,
-        parseHTML: (element) => {
+        parseHTML: (element: HTMLElement) => {
           return element.hasAttribute("start")
             ? parseInt(element.getAttribute("start") || "", 10)
             : 1;
@@ -31,7 +31,7 @@ export const CustomOrderedList = OrderedList.extend({
       },
       type: {
         default: null,
-        parseHTML: (element) => element.getAttribute("type"),
+        parseHTML: (element: HTMLElement) => element.getAttribute("type"),
       },
       ...createIdAttribute(),
     };

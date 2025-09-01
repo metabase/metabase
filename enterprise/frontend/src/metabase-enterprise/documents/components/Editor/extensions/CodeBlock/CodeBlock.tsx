@@ -25,7 +25,7 @@ export const CustomCodeBlock = CodeBlock.extend({
     return {
       language: {
         default: this.options.defaultLanguage,
-        parseHTML: (element) => {
+        parseHTML: (element: HTMLElement) => {
           const { languageClassPrefix } = this.options;
           const classNames = [...(element.firstElementChild?.classList || [])];
           const languages = classNames
