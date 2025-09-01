@@ -68,7 +68,7 @@ rebuild: clean
 # Setup development environment
 dev-setup:
 	python3 -m venv venv
-	./venv/bin/pip install requests
+	./venv/bin/pip install requests boto3
 
 # Run all services (python-runner + localstack)
 run-all: build
