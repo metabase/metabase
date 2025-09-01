@@ -655,7 +655,7 @@ describe("scenarios > admin > databases > sample database", () => {
   it("allows to save the default schedule (metabase#57198)", () => {
     visitDatabase(SAMPLE_DB_ID);
     editDatabase();
-    H.modal().findByText("Show advanced options").click();
+    cy.findByRole("button", { name: /Show advanced options/ }).click();
     cy.findByLabelText(/Choose when syncs and scans happen/).click({
       force: true,
     });
