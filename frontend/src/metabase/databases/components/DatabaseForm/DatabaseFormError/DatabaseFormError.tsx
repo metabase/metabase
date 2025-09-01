@@ -99,7 +99,7 @@ export const DatabaseFormError = () => {
   );
 };
 
-export const useDatabaseErrorDetails = () => {
+const useDatabaseErrorDetails = () => {
   const { errors } = useFormikContext<DatabaseData>();
   const originalErrorMessage = useFormErrorMessage();
   const isHostAndPortError =

@@ -1,25 +1,38 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getDocsUrl } from "metabase/selectors/settings";
+import {
+  getApplicationName,
+  getShowMetabaseLinks,
+} from "metabase/selectors/whitelabel";
 import { Button, Divider, Flex, Icon } from "metabase/ui";
 
 import { TroubleshootingTip } from "./TroubleshootingTip";
 
 export const AdditionalHelpButtonGroup = () => {
   const applicationName = useSelector(getApplicationName);
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const docsUrl = useSelector((state) => getDocsUrl(state, { page: "" }));
 
   return (
     <>
-      <Divider variant="dashed" mb="lg" />
-      <Button
-        variant="subtle"
-        leftSection={<Icon name="document" />}
-        className={CS.link}
-      >
-        {t`Read the docs`}
-      </Button>
+      {showMetabaseLinks && (
+        <>
+          <Divider variant="dashed" mb="lg" />
+          <Button
+            variant="subtle"
+            leftSection={<Icon name="reference" />}
+            className={CS.link}
+            component={Link}
+            to={docsUrl}
+          >
+            {t`Read the docs`}
+          </Button>
+        </>
+      )}
       <Divider variant="dashed" />
       <Button
         variant="subtle"

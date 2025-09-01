@@ -5,7 +5,7 @@ import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
 
-import type { DatabaseFormConfig } from "../DatabaseForm";
+import type { DatabaseFormConfig } from "../DatabaseForm/utils";
 
 export interface DatabaseNameFieldProps {
   engine: Engine;
