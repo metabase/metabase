@@ -10,6 +10,7 @@ import {
   useListTransformJobsQuery,
   useListTransformTagsQuery,
 } from "metabase-enterprise/api";
+import type { JobListParams } from "metabase-enterprise/transforms/types";
 import type { TransformJob } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
@@ -18,12 +19,16 @@ import { getJobUrl } from "../../../urls";
 
 import S from "./JobList.module.css";
 
-export function JobList() {
+export function JobList({ params }: { params: JobListParams }) {
   const {
     data: jobs = [],
     isLoading: isLoadingJobs,
     error: jobsError,
-  } = useListTransformJobsQuery();
+  } = useListTransformJobsQuery({
+    last_run_start_time: params.lastRunStartTime,
+    next_run_start_time: params.nextRunStartTime,
+    transform_tag_ids: params.transformTagIds,
+  });
   const {
     data: tags = [],
     isLoading: isLoadingTags,
