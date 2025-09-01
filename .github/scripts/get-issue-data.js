@@ -1,12 +1,6 @@
 const { getLinkedIssues } = require("../../release/src/linked-issues");
 const githubSlackMap = require("../../release/github-slack-map.json");
 
-/**
- * Gets issue data and related information based on the trigger type
- * @param {Object} context - GitHub Actions context
- * @param {Object} github - GitHub API client
- * @returns {Promise<Object>} Issue data and metadata
- */
 async function getIssueData({ context, github, manualIssueNumber }) {
   let issueNumber;
   let issueData;
@@ -79,11 +73,6 @@ async function getIssueData({ context, github, manualIssueNumber }) {
   };
 }
 
-/**
- * Checks if a user is a Metabase employee using the github-slack-map
- * @param {string} username - GitHub username
- * @returns {boolean} True if user is an employee
- */
 function isMetabaseMember(username) {
   return username in githubSlackMap;
 }
