@@ -114,6 +114,14 @@ const renderMentionList = () => {
         editor: props.editor,
       });
 
+      // Mark mention popup as open in extension storage
+      try {
+        const storage = (props.editor.storage as any).mention;
+        if (storage) {
+          storage.isMentionPopupOpen = true;
+        }
+      } catch {}
+
       popup = document.createElement("div");
       popup.style.position = "absolute";
       popup.style.zIndex = "9999";
@@ -218,7 +226,14 @@ const renderMentionList = () => {
       return component.ref?.onKeyDown(props) || false;
     },
 
-    onExit: () => {
+    onExit: (props: SuggestionProps) => {
+      // Mark mention popup as closed in extension storage
+      try {
+        const storage = (props.editor.storage as any).mention;
+        if (storage) {
+          storage.isMentionPopupOpen = false;
+        }
+      } catch {}
       if (cleanup) {
         cleanup();
       }

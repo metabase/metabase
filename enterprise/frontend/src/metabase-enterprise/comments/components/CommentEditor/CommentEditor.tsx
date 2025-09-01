@@ -121,6 +121,12 @@ export const CommentEditor = ({
       return;
     }
     if (e.key === "Enter" && !e.shiftKey) {
+      // see CustomMentionExtension
+      const isMentionOpen = (editor.storage as any)?.mention
+        ?.isMentionPopupOpen;
+      if (isMentionOpen) {
+        return;
+      }
       e.preventDefault();
       if (!onSubmit) {
         return;
