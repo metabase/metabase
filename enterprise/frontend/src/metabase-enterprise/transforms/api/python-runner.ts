@@ -21,7 +21,7 @@ export const pythonRunnerApi = Api.injectEndpoints({
       ExecutePythonRequest
     >({
       query: ({ code, tables }) => ({
-        url: "/api/ee/transform/test",
+        url: "/api/ee/transform/test-python",
         method: "POST",
         body: {
           code,
