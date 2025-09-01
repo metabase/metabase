@@ -88,8 +88,8 @@
     (with-redefs [token-check/quotas
                   (constantly [{:usage 499990, :locked false, :updated-at "2025-08-05T08:48:11Z", :quota-type "rows", :hosting-feature "clickhouse-dwh", :soft-limit 500000}])
 
-                  api/preview-memo
-                  #'api/preview
+                  api/hm-preview-memo
+                  #'api/hm-preview
 
                   hm.client/call
                   (fn [op-id & {:as m}]
