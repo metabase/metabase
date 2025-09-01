@@ -1,9 +1,8 @@
 .root {
-  padding: var(--mantine-spacing-sm);
   display: flex;
   flex-direction: column;
-  height: 18rem;
-  width: 18rem;
+  height: 17rem;
+  width: 17rem;
 }
 
 .pickerSearch {

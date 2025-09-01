@@ -40,12 +40,23 @@ export function EmojiPicker({
       onEmojiSelect={(emoji) => onEmojiSelect?.(emoji)}
     >
       {!hideSearch && (
-        <TextInput
-          placeholder={t`Search...`}
-          value={searchValue}
-          onChange={handleSearchChange}
-          leftSection={<Icon name="search" />}
-        />
+        <Box p="sm" pb="0rem">
+          <TextInput
+            placeholder={t`Search...`}
+            value={searchValue}
+            onChange={handleSearchChange}
+            leftSection={<Icon name="search" />}
+            rightSectionPointerEvents="all"
+            rightSection={
+              <Icon
+                cursor="pointer"
+                name="close"
+                visibility={searchValue ? "visible" : "hidden"}
+                onClick={() => setSearch("")}
+              />
+            }
+          />
+        </Box>
       )}
       <Picker.Search className={S.pickerSearch} value={searchValue} />
       <Picker.Viewport className={S.pickerViewport}>
@@ -53,7 +64,9 @@ export function EmojiPicker({
         <Picker.Empty
           className={S.pickerMessage}
         >{t`No emoji found.`}</Picker.Empty>
-        <Picker.List components={{ CategoryHeader, Emoji }} />
+        <Box px="sm" pb="sm">
+          <Picker.List components={{ CategoryHeader, Emoji }} />
+        </Box>
       </Picker.Viewport>
     </Picker.Root>
   );
@@ -61,7 +74,7 @@ export function EmojiPicker({
 
 function CategoryHeader({ category }: EmojiPickerListCategoryHeaderProps) {
   return (
-    <Box pb="xs" pt="sm" pos="sticky" top={0} bg="var(--mb-color-bg-white)">
+    <Box py="xs" pos="sticky" top={0} bg="var(--mb-color-bg-white)">
       <Text fz="sm" c="text-secondary" tt="uppercase">
         {category.label}
       </Text>
@@ -71,7 +84,7 @@ function CategoryHeader({ category }: EmojiPickerListCategoryHeaderProps) {
 
 function Emoji({ emoji, onClick }: EmojiPickerListEmojiProps) {
   return (
-    <ActionIcon component="button" flex="1" fz="1.25rem" onClick={onClick}>
+    <ActionIcon component="button" w="2rem" fz="1.25rem" onClick={onClick}>
       {emoji.emoji}
     </ActionIcon>
   );
