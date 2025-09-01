@@ -105,42 +105,33 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
           <Modal.CloseButton />
         </Modal.Header>
         <Modal.Body className={S.body} p={0}>
-          {availableTabs.length > 0 ? (
-            <Tabs value={activeTab} onChange={setActiveTab}>
+          <Tabs value={activeTab} onChange={setActiveTab}>
+            {availableTabs.length > 0 ? (
               <Tabs.List px="1.625rem" className={S.tabsList}>
                 <Tabs.Tab value="open">{t`Open`}</Tabs.Tab>
                 <Tabs.Tab value="resolved">
                   {t`Resolved (${resolvedComments.length})`}
                 </Tabs.Tab>
               </Tabs.List>
-              <Tabs.Panel value="open">
-                <Discussions
-                  childTargetId={childTargetId}
-                  comments={activeComments}
-                  targetId={document.id}
-                  targetType="document"
-                  autoOpenNewComment={shouldAutoOpenNewComment}
-                />
-              </Tabs.Panel>
-              <Tabs.Panel value="resolved">
-                <Discussions
-                  childTargetId={childTargetId}
-                  comments={resolvedComments}
-                  targetId={document.id}
-                  targetType="document"
-                />
-              </Tabs.Panel>
-            </Tabs>
-          ) : (
-            // No resolved comments, show Open tab content directly (without tabs)
-            <Discussions
-              childTargetId={childTargetId}
-              comments={activeComments}
-              targetId={document.id}
-              targetType="document"
-              autoOpenNewComment={shouldAutoOpenNewComment}
-            />
-          )}
+            ) : null}
+            <Tabs.Panel value="open">
+              <Discussions
+                childTargetId={childTargetId}
+                comments={activeComments}
+                targetId={document.id}
+                targetType="document"
+                autoOpenNewComment={shouldAutoOpenNewComment}
+              />
+            </Tabs.Panel>
+            <Tabs.Panel value="resolved">
+              <Discussions
+                childTargetId={childTargetId}
+                comments={resolvedComments}
+                targetId={document.id}
+                targetType="document"
+              />
+            </Tabs.Panel>
+          </Tabs>
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>
