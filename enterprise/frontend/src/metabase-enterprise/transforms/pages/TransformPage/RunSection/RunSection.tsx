@@ -5,6 +5,8 @@ import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
+  useCancelTransformMutation,
+  useLazyGetTransformQuery,
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
@@ -141,7 +143,8 @@ type RunButtonSectionProps = {
 
 function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
-  const { sendErrorToast } = useMetadataToasts();
+  const [cancelTransform] = useCancelTransformMutation();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleRun = async () => {
     trackTranformTriggerManualRun({
@@ -156,7 +159,22 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
     return { error };
   };
 
-  return <RunButton run={transform.last_run} onRun={handleRun} />;
+  const handleCancel = async () => {
+    const { error } = await cancelTransform(transform.id);
+    if (error) {
+      sendErrorToast(t`Failed to cancel transform`);
+    } else {
+      sendSuccessToast(t`Transform cancellation requested`);
+    }
+  };
+
+  return (
+    <RunButton
+      run={transform.last_run}
+      onRun={handleRun}
+      onCancel={handleCancel}
+    />
+  );
 }
 
 type TagSectionProps = {

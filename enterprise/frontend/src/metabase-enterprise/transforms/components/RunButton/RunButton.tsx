@@ -2,7 +2,7 @@ import { type ReactNode, type Ref, forwardRef, useState } from "react";
 import { useUpdateEffect } from "react-use";
 import { t } from "ttag";
 
-import { Button, Icon, Loader } from "metabase/ui";
+import { Button, Group, Icon, Loader } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
 const RECENT_TIMEOUT = 5000;
@@ -11,10 +11,16 @@ type RunButtonProps = {
   run: TransformRun | null | undefined;
   isDisabled?: boolean;
   onRun: () => void;
+  onCancel?: () => void;
 };
 
 export const RunButton = forwardRef(function RunButton(
-  { run, isDisabled: isExternallyDisabled = false, onRun }: RunButtonProps,
+  {
+    run,
+    isDisabled: isExternallyDisabled = false,
+    onRun,
+    onCancel,
+  }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
   const [isRecent, setIsRecent] = useState(false);
@@ -29,6 +35,34 @@ export const RunButton = forwardRef(function RunButton(
     const timeoutId = setTimeout(() => setIsRecent(false), RECENT_TIMEOUT);
     return () => clearTimeout(timeoutId);
   }, [run]);
+
+  const showCancelButton = run?.status === "started" && onCancel;
+
+  if (showCancelButton) {
+    return (
+      <Group gap="sm">
+        <Button
+          ref={ref}
+          variant="filled"
+          color={color}
+          leftSection={leftSection}
+          disabled={isDisabled}
+          data-testid="run-button"
+          onClick={onRun}
+        >
+          {label}
+        </Button>
+        <Button
+          variant="outline"
+          color="error"
+          data-testid="cancel-button"
+          onClick={onCancel}
+        >
+          {t`Cancel`}
+        </Button>
+      </Group>
+    );
+  }
 
   return (
     <Button
