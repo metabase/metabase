@@ -1,8 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { merge } from "icepick";
-import PropTypes from "prop-types";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -12,12 +17,14 @@ import Button from "metabase/common/components/Button";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import EditBar from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { useToggle } from "metabase/common/hooks/use-toggle";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
+import { connect, useDispatch } from "metabase/lib/redux";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { setDatasetEditorTab } from "metabase/query_builder/actions";
+import {
+  setDatasetEditorTab,
+  setUIControls,
+} from "metabase/query_builder/actions";
 import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
@@ -27,6 +34,7 @@ import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
+  getIsListViewConfigurationShown,
   getIsResultDirty,
   getMetadataDiff,
   getResultsMetadata,
@@ -37,57 +45,82 @@ import { getWritableColumnProperties } from "metabase/query_builder/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   checkCanBeModel,
   getSortedModelFields,
 } from "metabase-lib/v1/metadata/utils/models";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type {
+  DatasetColumn,
+  Field,
+  RawSeries,
+  ResultsMetadata,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
+import {
+  DatasetEditorSettingsSidebar,
+  type ModelSettings,
+} from "./DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
-import { TabHintToast } from "./TabHintToast";
 import { EDITOR_TAB_INDEXES } from "./constants";
 
-const propTypes = {
-  question: PropTypes.object.isRequired,
-  visualizationSettings: PropTypes.object,
-  datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
-  metadata: PropTypes.object,
-  metadataDiff: PropTypes.object.isRequired,
-  resultsMetadata: PropTypes.shape({ columns: PropTypes.array }),
-  isMetadataDirty: PropTypes.bool.isRequired,
-  result: PropTypes.object,
-  height: PropTypes.number,
-  isDirty: PropTypes.bool.isRequired,
-  isResultDirty: PropTypes.bool.isRequired,
-  isRunning: PropTypes.bool.isRequired,
-  setQueryBuilderMode: PropTypes.func.isRequired,
-  runDirtyQuestionQuery: PropTypes.func.isRequired,
-  setDatasetEditorTab: PropTypes.func.isRequired,
-  setMetadataDiff: PropTypes.func.isRequired,
-  onSave: PropTypes.func.isRequired,
-  onCancelCreateNewModel: PropTypes.func.isRequired,
-  cancelQuestionChanges: PropTypes.func.isRequired,
-  handleResize: PropTypes.func.isRequired,
-  updateQuestion: PropTypes.func.isRequired,
-  runQuestionQuery: PropTypes.func.isRequired,
-  onOpenModal: PropTypes.func.isRequired,
+type MetadataDiff = Record<string, Partial<Field>>;
 
-  // Native editor sidebars
-  isShowingTemplateTagsEditor: PropTypes.bool.isRequired,
-  isShowingDataReference: PropTypes.bool.isRequired,
-  isShowingSnippetSidebar: PropTypes.bool.isRequired,
-  toggleTemplateTagsEditor: PropTypes.func.isRequired,
-  toggleDataReference: PropTypes.func.isRequired,
-  toggleSnippetSidebar: PropTypes.func.isRequired,
-  forwardedRef: PropTypes.oneOf([PropTypes.func, PropTypes.object]),
+export type DatasetEditorInnerProps = {
+  question: Question;
+  rawSeries: RawSeries | null;
+  visualizationSettings?: VisualizationSettings | null;
+  datasetEditorTab: DatasetEditorTab;
+  metadata?: Metadata;
+  metadataDiff: MetadataDiff;
+  resultsMetadata?: ResultsMetadata | null;
+  isMetadataDirty: boolean;
+  result?: { error?: unknown } | null;
+  height?: number;
+  isDirty: boolean;
+  isResultDirty: boolean;
+  isRunning: boolean;
+  setQueryBuilderMode: (
+    mode: QueryBuilderMode,
+    opts?: unknown,
+  ) => Promise<void> | void;
+  runDirtyQuestionQuery: () => void;
+  setDatasetEditorTab: (tab: DatasetEditorTab) => void;
+  setMetadataDiff: (diff: {
+    name: string;
+    changes: Partial<DatasetColumn>;
+  }) => void;
+  onSave: (
+    q: Question,
+    opts?: { rerunQuery?: boolean },
+  ) => Promise<void> | void;
+  onCancelCreateNewModel: () => void;
+  cancelQuestionChanges: () => void;
+  handleResize: (...args: any[]) => void;
+  updateQuestion: (q: Question, opts?: unknown) => Promise<void> | void;
+  runQuestionQuery: () => void;
+  onOpenModal: (type: string) => void;
+  isShowingTemplateTagsEditor: boolean;
+  isShowingDataReference: boolean;
+  isShowingSnippetSidebar: boolean;
+  isShowingListViewConfiguration: boolean;
+  toggleTemplateTagsEditor: () => void;
+  toggleDataReference: () => void;
+  toggleSnippetSidebar: () => void;
+  forwardedRef?: React.Ref<HTMLDivElement>;
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
 const TABLE_HEADER_HEIGHT = 45;
 
-function mapStateToProps(state) {
+function mapStateToProps(state: any) {
   return {
     metadata: getMetadata(state),
     metadataDiff: getMetadataDiff(state),
@@ -96,13 +129,14 @@ function mapStateToProps(state) {
     isMetadataDirty: isResultsMetadataDirty(state),
     resultsMetadata: getResultsMetadata(state),
     isResultDirty: getIsResultDirty(state),
+    isShowingListViewConfiguration: getIsListViewConfigurationShown(state),
   };
 }
 
 const mapDispatchToProps = { setDatasetEditorTab };
 
 function getSidebar(
-  props,
+  props: DatasetEditorInnerProps & { modelIndexes?: unknown },
   {
     datasetEditorTab,
     isQueryError,
@@ -111,8 +145,20 @@ function getSidebar(
     focusFirstField,
     onFieldMetadataChange,
     onMappedDatabaseColumnChange,
+    onUpdateModelSettings,
+    modelSettings,
+  }: {
+    datasetEditorTab: DatasetEditorTab;
+    isQueryError?: unknown;
+    focusedField?: DatasetColumn;
+    focusedFieldIndex: number;
+    focusFirstField: () => void;
+    onFieldMetadataChange: (values: Partial<DatasetColumn>) => void;
+    onMappedDatabaseColumnChange: (value: number) => void;
+    onUpdateModelSettings: (settings: ModelSettings) => void;
+    modelSettings: ModelSettings;
   },
-) {
+): ReactNode {
   const {
     question,
     isShowingTemplateTagsEditor,
@@ -124,7 +170,7 @@ function getSidebar(
     modelIndexes,
   } = props;
 
-  if (datasetEditorTab === "metadata") {
+  if (datasetEditorTab === "columns") {
     if (isQueryError) {
       return null;
     }
@@ -148,6 +194,23 @@ function getSidebar(
     );
   }
 
+  if (datasetEditorTab === "metadata") {
+    if (isQueryError || !props.rawSeries) {
+      return null;
+    }
+    if (!focusedField) {
+      // Returning a div, so the sidebar is visible while the data is loading.
+      return <div />;
+    }
+    return (
+      <DatasetEditorSettingsSidebar
+        display={modelSettings.display}
+        visualizationSettings={question.settings()}
+        onUpdateModelSettings={onUpdateModelSettings}
+      />
+    );
+  }
+
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   if (!isNative) {
@@ -156,9 +219,10 @@ function getSidebar(
 
   if (isShowingTemplateTagsEditor) {
     return (
+      // @ts-expect-error Multiple types missing, but handled inside TagEditorSidebar
       <TagEditorSidebar
         {...props}
-        query={question.legacyNativeQuery()}
+        query={question.legacyNativeQuery() as NativeQuery}
         onClose={toggleTemplateTagsEditor}
       />
     );
@@ -173,15 +237,17 @@ function getSidebar(
   return null;
 }
 
-function getColumnTabIndex(columnIndex, focusedFieldIndex) {
-  return columnIndex === focusedFieldIndex
-    ? EDITOR_TAB_INDEXES.FOCUSED_FIELD
-    : columnIndex > focusedFieldIndex
-      ? EDITOR_TAB_INDEXES.NEXT_FIELDS
-      : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
+function getColumnTabIndex(columnIndex: number, focusedFieldIndex: number) {
+  return Number(
+    columnIndex === focusedFieldIndex
+      ? EDITOR_TAB_INDEXES.FOCUSED_FIELD
+      : columnIndex > focusedFieldIndex
+        ? EDITOR_TAB_INDEXES.NEXT_FIELDS
+        : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS,
+  );
 }
 
-const _DatasetEditorInner = (props) => {
+const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   const {
     question,
     visualizationSettings,
@@ -205,19 +271,54 @@ const _DatasetEditorInner = (props) => {
     updateQuestion,
     handleResize,
     onOpenModal,
+    isShowingListViewConfiguration,
+    rawSeries,
   } = props;
 
+  const dispatch = useDispatch();
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
-  const isDirty = isModelQueryDirty || isMetadataDirty;
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
+
   const fields = useMemo(
     () =>
       getSortedModelFields(
-        resultsMetadata?.columns ?? [],
+        (resultsMetadata?.columns as unknown as Field[]) ?? [],
         visualizationSettings ?? {},
       ),
     [resultsMetadata, visualizationSettings],
   );
+
+  /**
+   * tempModelSettings and tempRawSeries are introduced as a workaround to support new "list" display type for models.
+   * - `tempModelSettings` stores local state for currently selected display and allows to switch between 'Columns'/'Settings' tabs
+   * without triggering question changes detection, because otherwise updating `display` property would open LeaveConfirmationModal.
+   * 'Columns' tab works only for "table" display type, so when user opens 'Settings' for Model saved with "list" display type,
+   *  and wants to see 'Columns' tab, we need to update `display` property to "table".
+   * - `tempRawSeries` is introduced for the same reason. It patches `rawSeries` property inside nested `VisualizationResult` component,
+   *  so that it renders correct visualization for 'Columns' tab.
+   */
+  const [tempModelSettings, setTempModelSettings] = useState<ModelSettings>(
+    () => {
+      return {
+        display: question.display(),
+      };
+    },
+  );
+  const tempRawSeries = useMemo(() => {
+    if (!rawSeries || !rawSeries.length) {
+      return rawSeries;
+    }
+
+    return [
+      {
+        ...rawSeries[0],
+        card: { ...rawSeries[0].card, display: tempModelSettings.display },
+      },
+    ];
+  }, [tempModelSettings, rawSeries]);
+
+  const [isSettingsDirty, setSettingsDirty] = useState(false);
+  const isDirty = isSettingsDirty || isModelQueryDirty || isMetadataDirty;
 
   const { data: modelIndexes } = useListModelIndexesQuery(
     {
@@ -229,7 +330,7 @@ const _DatasetEditorInner = (props) => {
   );
 
   const isEditingQuery = datasetEditorTab === "query";
-  const isEditingMetadata = datasetEditorTab === "metadata";
+  const isEditingColumns = datasetEditorTab === "columns";
 
   const initialEditorHeight = useMemo(() => {
     const { isNative } = Lib.queryDisplayInfo(question.query());
@@ -239,13 +340,15 @@ const _DatasetEditorInner = (props) => {
     }
     return calcInitialEditorHeight({
       query: question.legacyNativeQuery(),
-      viewHeight: height,
+      viewHeight: height ?? "full",
     });
   }, [question, height]);
 
   const [editorHeight, setEditorHeight] = useState(initialEditorHeight);
 
-  const [focusedFieldName, setFocusedFieldName] = useState();
+  const [focusedFieldName, setFocusedFieldName] = useState<
+    string | undefined
+  >();
 
   useMount(() => {
     if (question.isSaved() && Lib.canRun(question.query(), question.type())) {
@@ -257,12 +360,12 @@ const _DatasetEditorInner = (props) => {
     if (!focusedFieldName) {
       return -1;
     }
-    return fields.findIndex((field) => field.name === focusedFieldName);
+    return fields.findIndex((field: Field) => field.name === focusedFieldName);
   }, [focusedFieldName, fields]);
 
   const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
 
-  const focusedField = fields[focusedFieldIndex];
+  const focusedField = fields[focusedFieldIndex] as unknown as DatasetColumn;
 
   const focusFirstField = useCallback(() => {
     const [firstField] = fields;
@@ -279,8 +382,8 @@ const _DatasetEditorInner = (props) => {
   }, [result, focusedFieldName, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
-    (changes) => {
-      const mappedField = metadata.field?.(changes.id)?.getPlainObject();
+    (changes: { id: number } & Partial<DatasetColumn>) => {
+      const mappedField = metadata?.field?.(changes.id)?.getPlainObject();
       const inheritedProperties =
         mappedField && getWritableColumnProperties(mappedField);
       return mappedField ? merge(inheritedProperties, changes) : changes;
@@ -289,44 +392,73 @@ const _DatasetEditorInner = (props) => {
   );
 
   const onFieldMetadataChange = useCallback(
-    (values) => {
-      setMetadataDiff({ name: focusedFieldName, changes: values });
+    (values: Partial<DatasetColumn>) => {
+      if (!focusedFieldName) {
+        return;
+      }
+      setMetadataDiff({ name: focusedFieldName!, changes: values });
     },
     [focusedFieldName, setMetadataDiff],
   );
 
   const onMappedDatabaseColumnChange = useCallback(
-    (value) => {
+    (value: number) => {
+      if (!focusedFieldName) {
+        return;
+      }
       const changes = inheritMappedFieldProperties({ id: value });
-      setMetadataDiff({ name: focusedFieldName, changes });
+      setMetadataDiff({ name: focusedFieldName!, changes });
     },
     [focusedFieldName, setMetadataDiff, inheritMappedFieldProperties],
   );
 
-  const [isTabHintVisible, { turnOn: showTabHint, turnOff: hideTabHint }] =
-    useToggle(false);
-
-  useEffect(() => {
-    let timeoutId;
-    if (result) {
-      timeoutId = setTimeout(() => showTabHint(), 500);
-    }
-    return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result]);
-
   const onChangeEditorTab = useCallback(
-    (tab) => {
+    (tab: DatasetEditorTab) => {
       setDatasetEditorTab(tab);
       setEditorHeight(tab === "query" ? initialEditorHeight : 0);
+      /**
+       * The only way to properly display interface for "Columns" tab is to
+       * set model's display type to "table".
+       * We use local `tempModelSettings` to store unsaved changes to avoid
+       * affecting the `question` object in store, which triggers unwanted
+       * `dirty` checks.
+       */
+      const display = question.display();
+      const tempDisplay = tempModelSettings.display;
+      const hasListViewSelected = display === "list" || tempDisplay === "list";
+      if (hasListViewSelected) {
+        if (tab !== "metadata") {
+          setTempModelSettings({
+            display: "table",
+          });
+        }
+      }
+      if (tab === "metadata") {
+        setTempModelSettings({
+          display: question.display(),
+        });
+      }
+      if (hasListViewSelected && isShowingListViewConfiguration) {
+        dispatch(setUIControls({ isShowingListViewConfiguration: false }));
+      }
     },
-    [initialEditorHeight, setDatasetEditorTab],
+    [
+      initialEditorHeight,
+      setDatasetEditorTab,
+      question,
+      dispatch,
+      isShowingListViewConfiguration,
+      tempModelSettings,
+    ],
   );
 
   const handleCancelEdit = () => {
     closeModal();
     cancelQuestionChanges();
     setQueryBuilderMode("view");
+    if (isShowingListViewConfiguration) {
+      dispatch(setUIControls({ isShowingListViewConfiguration: false }));
+    }
     runDirtyQuestionQuery();
   };
 
@@ -345,10 +477,22 @@ const _DatasetEditorInner = (props) => {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
-    const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
+    let questionWithUpdatedSettings = question;
+    if (tempModelSettings?.display !== question.display()) {
+      questionWithUpdatedSettings = question.setDisplay(
+        tempModelSettings.display,
+      );
+    }
+    const questionWithMetadata =
+      questionWithUpdatedSettings.setResultMetadataDiff(metadataDiff);
+    if (isShowingListViewConfiguration) {
+      dispatch(setUIControls({ isShowingListViewConfiguration: false }));
+    }
 
     if (canBeDataset && isBrandNewDataset) {
-      await updateQuestion(questionWithMetadata, { rerunQuery: false });
+      await updateQuestion(questionWithMetadata, {
+        rerunQuery: false,
+      });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
       await onSave(questionWithMetadata, { rerunQuery: true });
@@ -360,35 +504,44 @@ const _DatasetEditorInner = (props) => {
     }
   }, [
     question,
+    tempModelSettings.display,
     metadataDiff,
+    isShowingListViewConfiguration,
+    dispatch,
     updateQuestion,
+    onOpenModal,
     onSave,
     setQueryBuilderMode,
     runQuestionQuery,
-    onOpenModal,
   ]);
 
   const handleColumnSelect = useCallback(
-    (column) => {
+    (column: DatasetColumn) => {
       setFocusedFieldName(column.name);
     },
     [setFocusedFieldName],
   );
 
   const handleTableElementClick = useCallback(
-    ({ element, ...clickedObject }) => {
+    ({
+      element,
+      ...clickedObject
+    }: {
+      element?: unknown;
+      column?: DatasetColumn;
+    }) => {
       const isColumnClick =
         clickedObject?.column && Object.keys(clickedObject)?.length === 1;
 
       if (isColumnClick) {
-        setFocusedFieldName(clickedObject.column.name);
+        setFocusedFieldName((clickedObject.column as DatasetColumn).name);
       }
     },
     [setFocusedFieldName],
   );
 
   const handleHeaderColumnReorder = useCallback(
-    (dragColIndex) => {
+    (dragColIndex: number) => {
       const field = fields[dragColIndex];
 
       if (!field) {
@@ -413,12 +566,14 @@ const _DatasetEditorInner = (props) => {
     if (focusedFieldIndex === 0) {
       return 0;
     }
-    const isGoingForward = focusedFieldIndex >= previousFocusedFieldIndex;
+    const isGoingForward =
+      typeof previousFocusedFieldIndex !== "undefined" &&
+      focusedFieldIndex >= previousFocusedFieldIndex;
     return isGoingForward ? 1 : -1;
   }, [focusedFieldIndex, previousFocusedFieldIndex]);
 
   const renderSelectableTableColumnHeader = useCallback(
-    (column, columnIndex) => {
+    (column: DatasetColumn, columnIndex: number) => {
       const isSelected = columnIndex === focusedFieldIndex;
       return (
         <Flex
@@ -445,7 +600,7 @@ const _DatasetEditorInner = (props) => {
 
   const renderTableHeader = useMemo(
     () =>
-      datasetEditorTab === "metadata"
+      datasetEditorTab === "columns"
         ? renderSelectableTableColumnHeader
         : undefined,
     [datasetEditorTab, renderSelectableTableColumnHeader],
@@ -478,6 +633,13 @@ const _DatasetEditorInner = (props) => {
       focusFirstField,
       onFieldMetadataChange,
       onMappedDatabaseColumnChange,
+      onUpdateModelSettings: (settings: ModelSettings) => {
+        setSettingsDirty(settings.display !== question.display());
+        if (settings.display) {
+          setTempModelSettings({ display: settings.display });
+        }
+      },
+      modelSettings: tempModelSettings,
     },
   );
 
@@ -486,12 +648,12 @@ const _DatasetEditorInner = (props) => {
       <EditBar
         className={DatasetEditorS.DatasetEditBar}
         data-testid="dataset-edit-bar"
-        title={question.displayName()}
+        title={question.displayName() as string}
         center={
           <EditorTabs
             currentTab={datasetEditorTab}
             disabledQuery={!isEditable}
-            disabledMetadata={!resultsMetadata}
+            disabledColumns={!resultsMetadata}
             onChange={onChangeEditorTab}
           />
         }
@@ -538,6 +700,7 @@ const _DatasetEditorInner = (props) => {
              * @see https://github.com/metabase/metabase/pull/31142/files#r1211352364
              */}
             {isEditingQuery && editorHeight > 0 && (
+              // @ts-expect-error TODO: Fix types in DatasetQueryEditor
               <DatasetQueryEditor
                 {...props}
                 isActive={isEditingQuery}
@@ -555,27 +718,20 @@ const _DatasetEditorInner = (props) => {
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
               <QueryVisualization
                 {...props}
+                rawSeries={tempRawSeries}
                 className={CS.spread}
                 noHeader
                 queryBuilderMode="dataset"
                 onHeaderColumnReorder={handleHeaderColumnReorder}
-                isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
+                isShowingDetailsOnlyColumns={datasetEditorTab === "columns"}
                 hasMetadataPopovers={false}
                 handleVisualizationClick={handleTableElementClick}
-                tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
+                tableHeaderHeight={isEditingColumns && TABLE_HEADER_HEIGHT}
                 renderTableHeader={renderTableHeader}
                 scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
-                renderEmptyMessage={isEditingMetadata}
+                renderEmptyMessage={isEditingColumns}
               />
             </DebouncedFrame>
-            <Box
-              className={cx(DatasetEditorS.TabHintToastContainer, {
-                [DatasetEditorS.isVisible]:
-                  isEditingMetadata && isTabHintVisible && !result.error,
-              })}
-            >
-              <TabHintToast onClose={hideTabHint} />
-            </Box>
           </Box>
         </Flex>
         <ViewSidebar side="right" isOpen={!!sidebar}>
@@ -591,8 +747,6 @@ const _DatasetEditorInner = (props) => {
     </>
   );
 };
-
-_DatasetEditorInner.propTypes = propTypes;
 
 export const DatasetEditorInner = connect(
   mapStateToProps,

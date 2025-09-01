@@ -576,6 +576,11 @@ export type ZoomTimeseriesDrillThruInfo =
     displayName?: string;
   };
 
+export type ZoomGeographicDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/zoom-in.geographic"> & {
+    displayName: string;
+  };
+
 export type DrillThruDisplayInfo =
   | ColumnExtractDrillThruInfo
   | CombineColumnsDrillThruInfo
@@ -591,7 +596,8 @@ export type DrillThruDisplayInfo =
   | SummarizeColumnByTimeDrillThruInfo
   | ColumnFilterDrillThruInfo
   | UnderlyingRecordsDrillThruInfo
-  | ZoomTimeseriesDrillThruInfo;
+  | ZoomTimeseriesDrillThruInfo
+  | ZoomGeographicDrillThruInfo;
 
 export type FilterDrillDetails = {
   query: Query;

@@ -564,6 +564,18 @@ describe("QB Actions > initializeQB", () => {
           expect(result.uiControls.datasetEditorTab).toBe("query");
         });
 
+        it("sets UI state correctly for /columns route", async () => {
+          const baseUrl = Urls.question(card);
+          const location = getLocationForCard(card, {
+            pathname: `${baseUrl}/columns`,
+          });
+
+          const { result } = await setup({ card, location });
+
+          expect(result.uiControls.queryBuilderMode).toBe("dataset");
+          expect(result.uiControls.datasetEditorTab).toBe("columns");
+        });
+
         it("sets UI state correctly for /metadata route", async () => {
           const baseUrl = Urls.question(card);
           const location = getLocationForCard(card, {
