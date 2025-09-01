@@ -115,14 +115,9 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO Although these methods are implemented here, in fact they only work for sql-jdbc drivers, because
-;; execute-raw-queries! is not in implemented for plain sql drivers.
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [connection-details query output-table]} {:keys [overwrite?]}]
-  (let [driver (keyword driver)
-        queries (cond->> [(driver/compile-transform driver
-                                                    {:query query
-                                                     :output-table output-table})]
+  [driver {:keys [connection-details output-table] :as transform-details} {:keys [overwrite?]}]
+  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
     {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
 
@@ -139,23 +134,20 @@
   ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
   (driver/drop-table! driver (:id database) (qualified-name target)))
 
-(defmulti normalize-name
+(defn normalize-name
   "Normalizes the (primarily table/column) name passed in.
-
-  Should return a value that matches the name listed in the appdb. Drivers that support any of the `:transforms/...`
-  features must implement this method."
-  {:added "0.57.0" :arglists '([driver name-str])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod normalize-name :sql
-  [_driver name-str]
-  (if (and (= (first name-str) \")
-           (= (last name-str) \"))
-    (-> name-str
-        (subs 1 (dec (count name-str)))
-        (str/replace #"\"\"" "\""))
-    (u/lower-case-en name-str)))
+  Should return a value that matches the name listed in the appdb."
+  [driver name-str]
+  (let [quote-style (sql.qp/quote-style driver)
+        quote-char (if (= quote-style :mysql) \` \")]
+    (if (and (= (first name-str) quote-char)
+             (= (last name-str) quote-char))
+      (let [quote-quote (str quote-char quote-char)
+            quote (str quote-char)]
+        (-> name-str
+            (subs 1 (dec (count name-str)))
+            (str/replace quote-quote quote)))
+      (u/lower-case-en name-str))))
 
 (defmulti default-schema
   "Returns the default schema for a given database driver.
