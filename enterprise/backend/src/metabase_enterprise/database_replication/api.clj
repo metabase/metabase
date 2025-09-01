@@ -83,10 +83,7 @@
                                         ;; apply filter over the memoized result for snappy UI
                                         preview-memo
                                         :tables
-                                        (filter (comp (schema-filters->fn
-                                                       (when (not-empty replication-schema-filters)
-                                                         [replication-schema-filters]))
-                                                      :table_schema)))
+                                        (filter (comp (schema-filters->fn [replication-schema-filters]) :table_schema)))
         replicated-tables          (->> all-tables
                                         (filter :has_pkey)
                                         (filter :has_ownership))
