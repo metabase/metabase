@@ -63,13 +63,13 @@
                      :model/TransformJob {j2-id :id} {:name "Job 2" :schedule "0 0 */4 * * ?"}
                      :model/TransformJobTransformTag _ {:job_id j1-id :tag_id (:id tag) :position 0}
                      :model/TransformJobTransformTag _ {:job_id j2-id :tag_id (:id tag) :position 1}
-                     :model/TransformJobRun {r0-id :id} {:job_id j1-id :status "timeout" :run_method "cron"
-                                                         :start_time #t "2025-08-25T10:12:11Z"
-                                                         :end_time #t "2025-08-26T10:52:17Z"}
-                     :model/TransformJobRun {r1-id :id} {:job_id j2-id :status "started" :run_method "manual"
-                                                         :start_time #t "2025-08-26T10:12:11Z"
-                                                         :end_time nil
-                                                         :is_active true}]
+                     :model/TransformJobRun _ {:job_id j1-id :status "timeout" :run_method "cron"
+                                               :start_time #t "2025-08-25T10:12:11Z"
+                                               :end_time #t "2025-08-26T10:52:17Z"}
+                     :model/TransformJobRun _ {:job_id j2-id :status "started" :run_method "manual"
+                                               :start_time #t "2025-08-26T10:12:11Z"
+                                               :end_time nil
+                                               :is_active true}]
         (testing "listing without filtering"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job")
                 our-job-ids #{j1-id j2-id}
@@ -81,11 +81,11 @@
                 our-job-ids #{j1-id j2-id}
                 our-jobs (into [] (filter (comp our-job-ids :id)) response)]
             (is (=? #{j2-id} (into #{} (map :id) our-jobs)))))
-        #_(testing "filtering by last_run_end_time"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :next_run_start_time "2025-08-26~")
-                  our-job-ids #{j1-id j2-id}
-                  our-jobs (into [] (filter (comp our-job-ids :id)) response)]
-              (is (=? #{j1-id} (into #{} (map :id) our-jobs)))))))))
+        (testing "filtering by last_run_end_time"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :next_run_start_time "2025-08-26~")
+                our-job-ids #{j1-id j2-id}
+                our-jobs (into [] (filter (comp our-job-ids :id)) response)]
+            (is (=? #{j1-id} (into #{} (map :id) our-jobs)))))))))
 
 (deftest update-job-test
   (testing "PUT /api/ee/transform-job/:id"
