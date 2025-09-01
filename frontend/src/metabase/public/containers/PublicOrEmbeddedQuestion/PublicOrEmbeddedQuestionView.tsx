@@ -72,9 +72,9 @@ export function PublicOrEmbeddedQuestionView({
       <PublicOrEmbeddedQuestionDownloadPopover
         className={cx(
           CS.m1,
-          downloadInFooter ? "" : CS.textMediumHover,
-          downloadInFooter ? "" : CS.hoverChild,
-          downloadInFooter ? "" : CS.hoverChildSmooth,
+          downloadInFooter && CS.textMediumHover,
+          downloadInFooter && CS.hoverChild,
+          downloadInFooter && CS.hoverChildSmooth,
         )}
         question={question}
         result={result}
