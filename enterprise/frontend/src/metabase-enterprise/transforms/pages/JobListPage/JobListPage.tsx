@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -6,8 +7,14 @@ import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import { getNewJobUrl } from "../../urls";
 
 import { JobList } from "./JobList";
+import { getParsedParams } from "./utils";
 
-export function JobListPage() {
+type JobListPageProps = {
+  location: Location;
+};
+
+export function JobListPage({ location }: JobListPageProps) {
+  const params = getParsedParams(location);
   return (
     <Stack gap="xl" data-testid="job-list-page">
       <Group justify="space-between">
@@ -24,7 +31,7 @@ export function JobListPage() {
           {t`Create a job`}
         </Button>
       </Group>
-      <JobList />
+      <JobList params={params} />
     </Stack>
   );
 }
