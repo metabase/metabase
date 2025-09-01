@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.python-runner-test
   (:require
+   [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -35,7 +36,7 @@
       re-pattern))
 
 (defn- execute [{:keys [code tables]}]
-  (:body (python-runner/execute-python-code code (or tables {}))))
+  (:body (python-runner/execute-python-code code (or tables {}) (a/promise-chan))))
 
 (deftest ^:parallel transform-function-basic-test
   (testing "executes transform function and returns CSV output"
