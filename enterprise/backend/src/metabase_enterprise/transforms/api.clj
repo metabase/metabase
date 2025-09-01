@@ -240,6 +240,8 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
+(def ^:private python-test-run-id "python-test")
+
 (api.macros/defendpoint :post "/test-python"
   "Test Python code execution without creating a transform."
   [_route-params
@@ -249,23 +251,39 @@
             [:tables [:map-of :string :int]]]]
   (log/info "test python code execution")
   (api/check-superuser)
-  (let [run-id (str (java.util.UUID/randomUUID))
-        cancel-chan (a/promise-chan)
-        {:keys [body status]} (transforms.execute/call-python-runner-api! (:code body) (:tables body) run-id cancel-chan)]
-    (if (= status 200)
-      (do
-        (log/info "Python test execution succeeded")
-        (-> (response/response {:message (deferred-tru "Python code executed successfully")
-                                :result body})
-            (assoc :status 200)))
-      (do
-        (log/error "Error executing Python test code")
-        (-> (response/response {:message (deferred-tru "Python code execution failed")
-                                :error (:error body)
-                                :stdout (:stdout body)
-                                :stderr (:stderr body)
-                                :exit_code (:exit-code body)})
-            (assoc :status status))))))
+  (let [run-id python-test-run-id
+        cancel-chan (a/promise-chan)]
+    (trasnforms.canceling/chan-start-run! run-id cancel-chan)
+    (try
+      (let [{:keys [body status]} (transforms.execute/call-python-runner-api! (:code body) (:tables body) run-id cancel-chan)]
+        (if (= status 200)
+          (do
+            (log/info "Python test execution succeeded")
+            (-> (response/response {:message (deferred-tru "Python code executed successfully")
+                                    :result {:body body}})
+                (assoc :status 200)))
+          (do
+            (log/error "Error executing Python test code")
+            (-> (response/response {:message (deferred-tru "Python code execution failed")
+                                    :error (:error body)
+                                    :stdout (:stdout body)
+                                    :stderr (:stderr body)
+                                    :exit_code (:exit-code body)})
+                (assoc :status status)))))
+      (finally
+        (trasnforms.canceling/chan-end-run! run-id)))))
+
+(api.macros/defendpoint :post "/test-python/cancel"
+  "Cancel the current test-python execution."
+  [_route-params
+   _query-params]
+  (log/info "canceling test python execution")
+  (api/check-superuser)
+  (if (trasnforms.canceling/chan-signal-cancel! python-test-run-id)
+    (-> (response/response {:message (deferred-tru "Python test canceled")})
+        (assoc :status 200))
+    (-> (response/response {:message (deferred-tru "No running Python test to cancel")})
+        (assoc :status 404))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."
