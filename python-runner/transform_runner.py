@@ -210,11 +210,11 @@ def main():
         stdout_content = stdout_capture.getvalue()
         stderr_content = stderr_capture.getvalue()
         
-        # Write captured output to S3 if URLs provided
+        # Write captured output to S3 if URLs provided (always write, even if empty)
         try:
-            if stdout_url and stdout_content:
+            if stdout_url:
                 write_to_s3_url(stdout_url, stdout_content)
-            if stderr_url and stderr_content:
+            if stderr_url:
                 write_to_s3_url(stderr_url, stderr_content)
         except Exception as e:
             print(f"Failed to write logs to S3: {e}", file=original_stderr)

@@ -133,13 +133,13 @@
 (defn- cleanup-s3-objects [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name s3-keys]
   (run! (partial delete-s3-object s3-client bucket-name) s3-keys))
 
-(defn- read-from-s3 [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key]
+(defn- read-from-s3 [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key & [fallback-content]]
   (try
     (let [object (.getObject s3-client ^String bucket-name ^String key)]
       (slurp (.getObjectContent object)))
     (catch com.amazonaws.services.s3.model.AmazonS3Exception e
-      (if (= 404 (.getStatusCode e))
-        ""
+      (if (and (= 404 (.getStatusCode e)) fallback-content)
+        fallback-content
         (throw e)))))
 
 (defn execute-python-code
@@ -209,8 +209,8 @@
                    (zero? (:exit_code result)))
             ;; Success - read the output from S3
             (let [output-content (read-from-s3 s3-client bucket-name output-key)
-                  stdout-content (read-from-s3 s3-client bucket-name stdout-key)
-                  stderr-content (read-from-s3 s3-client bucket-name stderr-key)]
+                  stdout-content (read-from-s3 s3-client bucket-name stdout-key "stdout missing")
+                  stderr-content (read-from-s3 s3-client bucket-name stderr-key "stderr missing")]
               (if (not (str/blank? output-content))
                 {:status 200
                  :body   {:output output-content
@@ -221,8 +221,8 @@
                           :stdout stdout-content
                           :stderr stderr-content}}))
             ;; Error from execution server - read stderr/stdout from S3
-            (let [stdout-content (read-from-s3 s3-client bucket-name stdout-key)
-                  stderr-content (read-from-s3 s3-client bucket-name stderr-key)]
+            (let [stdout-content (read-from-s3 s3-client bucket-name stdout-key "stdout missing")
+                  stderr-content (read-from-s3 s3-client bucket-name stderr-key "stderr missing")]
               {:status 500
                :body
                {:error     (or (:error result) "Execution failed")
