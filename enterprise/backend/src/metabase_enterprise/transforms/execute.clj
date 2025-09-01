@@ -131,9 +131,9 @@
 (defn call-python-runner-api!
   "Call the Python runner API endpoint to execute Python code.
    Returns the result map or throws on error."
-  [code table-name->id cancel-chan]
+  [code table-name->id run-id cancel-chan]
   ;; TODO probably don't need this hack anymore, double check
-  (update (python-runner/execute-python-code code table-name->id cancel-chan)
+  (update (python-runner/execute-python-code run-id code table-name->id cancel-chan)
           :body #(if (string? %) json/decode+kw %)))
 
 (defn- debug-info-str [{:keys [exit-code stdout stderr]}]
@@ -147,9 +147,9 @@
              "======"
              stderr]))
 
-(defn- run-python-transform! [{:keys [schema name]} {:keys [source-tables body]} db cancel-chan]
+(defn- run-python-transform! [{:keys [schema name]} {:keys [source-tables body]} db run-id cancel-chan]
   (let [driver (:engine db)
-        {:keys [body status] :as result} (call-python-runner-api! body source-tables cancel-chan)]
+        {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id cancel-chan)]
     (if (not= 200 status)
       (throw (ex-info (debug-info-str body)
                       {:status-code 400
@@ -203,7 +203,7 @@
              {run-id :id} (try-start-unless-already-running transform-id run-method)]
          (some-> start-promise (deliver [:started run-id]))
          (log/info "Executing Python transform" transform-id "with target" (pr-str target))
-         (let [result (run-cancelable-transform! run-id (fn [cancel-chan] (run-python-transform! target source db cancel-chan)))]
+         (let [result (run-cancelable-transform! run-id (fn [cancel-chan] (run-python-transform! target source db run-id cancel-chan)))]
            {:run_id run-id
             :result result}))
        (catch Throwable t

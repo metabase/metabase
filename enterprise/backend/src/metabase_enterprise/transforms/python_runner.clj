@@ -66,12 +66,11 @@
 
 (defn execute-python-code
   "Execute Python code using the Python execution server."
-  [code table-name->id cancel-chan]
+  [run-id code table-name->id cancel-chan]
   (let [mount-path    (transforms.settings/python-execution-mount-path)
         work-dir-name (str "run-" (System/currentTimeMillis) "-" (rand-int 10000))
         work-dir      (str mount-path "/" work-dir-name)
-        work-dir-file (io/file work-dir)
-        job-id        (str (java.util.UUID/randomUUID))]
+        work-dir-file (io/file work-dir)]
 
     ;; Ensure mount base path exists
     (.mkdirs (io/file mount-path))
@@ -93,7 +92,7 @@
                                      :body             (json/encode {:code          code
                                                                      :working_dir   work-dir
                                                                      :timeout       30
-                                                                     :request_id    job-id
+                                                                     :request_id    run-id
                                                                      :table_mapping table-name->file})
                                      :async?           true
                                      :throw-exceptions false
@@ -103,7 +102,7 @@
             canc     (a/go (when (a/<! cancel-chan)
                              (http/post (str server-url "/cancel")
                                         {:content-type :json
-                                         :body         (json/encode {:request_id job-id})}
+                                         :body         (json/encode {:request_id run-id})}
                                         :async? true identity identity)
                              (future-cancel response-fut)))
             response @response-fut

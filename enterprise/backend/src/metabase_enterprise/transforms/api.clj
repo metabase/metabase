@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [clojure.core.async :as a]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.execute :as transforms.execute]
@@ -245,7 +246,9 @@
   (log/info "test python code execution")
   (api/check-superuser)
   (try
-    (let [result (transforms.execute/call-python-runner-api! (:code body) (:tables body))]
+    (let [run-id (str (java.util.UUID/randomUUID))
+          cancel-chan (a/promise-chan)
+          result (transforms.execute/call-python-runner-api! run-id (:code body) (:tables body) cancel-chan)]
       (log/info "Python test execution succeeded")
       (-> (response/response {:message (deferred-tru "Python code executed successfully")
                               :result result})

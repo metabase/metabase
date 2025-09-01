@@ -36,7 +36,7 @@
       re-pattern))
 
 (defn- execute [{:keys [code tables]}]
-  (:body (python-runner/execute-python-code code (or tables {}) (a/promise-chan))))
+  (:body (python-runner/execute-python-code "test-id" code (or tables {}) (a/promise-chan))))
 
 (deftest ^:parallel transform-function-basic-test
   (testing "executes transform function and returns CSV output"
