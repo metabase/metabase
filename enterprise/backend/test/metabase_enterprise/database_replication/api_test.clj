@@ -110,19 +110,6 @@
                           :totalEstimatedRowCount 9,
                           :canSetReplication true,
 
-                          :allQuotas
-                          [{:usage 499990,
-                            :locked false,
-                            :updatedAt "2025-08-05T08:48:11Z",
-                            :quotaType "rows",
-                            :hostingFeature "clickhouse-dwh",
-                            :softLimit 500000}],
-
-                          :allTables
-                          [{:tableSchema "public", :tableName "t1", :estimatedRowCount 9, :hasPkey true, :hasOwnership true}
-                           {:tableSchema "public", :tableName "no_pkey", :estimatedRowCount 11, :hasPkey false, :hasOwnership true}
-                           {:tableSchema "public", :tableName "no_ownership", :estimatedRowCount 11, :hasPkey true, :hasOwnership false}],
-
                           :replicatedTables
                           [{:tableSchema "public", :tableName "t1", :estimatedRowCount 9, :hasPkey true, :hasOwnership true}],
 
@@ -130,7 +117,10 @@
                           [{:tableSchema "public", :tableName "no_pkey", :estimatedRowCount 11, :hasPkey false, :hasOwnership true}],
 
                           :tablesWithoutOwnerMatch
-                          [{:tableSchema "public", :tableName "no_ownership", :estimatedRowCount 11, :hasPkey true, :hasOwnership false}]}
+                          [{:tableSchema "public", :tableName "no_ownership", :estimatedRowCount 11, :hasPkey true, :hasOwnership false}]
+
+                          :errors
+                          {:noTables false, :noQuota false, :invalidSchemaFiltersPattern false}}
                          resp))))
               (testing "creates"
                 (is (= {} (database-replication.settings/database-replication-connections)))

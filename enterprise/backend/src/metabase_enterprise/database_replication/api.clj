@@ -82,7 +82,7 @@
             (apply -))
    -1))
 
-(defn- preview-replication
+(defn preview-replication
   "Predicate that signals if replication looks right from the quota perspective.
 
    This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
