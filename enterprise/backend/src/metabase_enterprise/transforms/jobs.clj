@@ -60,7 +60,7 @@
            in-progress nil]
       (when-let [{transform-id :id :as current-transform} (next-transform plan complete)]
         (cond
-          (transform-run/running-run-for-run-id transform-id)
+          (transform-run/running-run-for-transform-id transform-id)
           (do
             (log/info "Transform" (pr-str transform-id) "already running, sleeping")
             (Thread/sleep 2000)
