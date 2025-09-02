@@ -3,13 +3,7 @@ import cx from "classnames";
 import dayjs from "dayjs";
 import type { HTMLAttributes } from "react";
 
-import { getEmbeddingSdkBundleBuildData } from "embedding-sdk-bundle/lib/get-embedding-sdk-bundle-build-data";
-import {
-  EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
-  getEmbeddingSdkPackageBuildData,
-} from "embedding-sdk-bundle/lib/get-embedding-sdk-package-build-data";
-import { useSdkSelector } from "embedding-sdk-bundle/store";
-import { getMetabaseInstanceVersion } from "embedding-sdk-bundle/store/selectors";
+import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import type { BuildInfo } from "metabase/embedding-sdk/types/build-info";
 
 import S from "./SdkDebugInfo.module.css";
@@ -38,19 +32,19 @@ type DebugTableProps = {
   titlePrefix: string;
   version: string | null | undefined;
   gitBranch: string | null | undefined;
-  gitCommit: string | null | undefined;
+  gitCommitSha: string | null | undefined;
   buildTimeData: BuildTimeData;
 };
 
 type DebugInfoData = Omit<DebugTableProps, "titlePrefix">;
 
 const getDebugInfoData = (buildInfo: BuildInfo): DebugInfoData => {
-  const { version, gitBranch, gitCommit: fullCommit, buildTime } = buildInfo;
+  const { version, gitBranch, gitCommitSha, buildTime } = buildInfo;
 
   return {
     version,
     gitBranch,
-    gitCommit: fullCommit?.slice(0, 7),
+    gitCommitSha,
     buildTimeData: getFormattedBuildTimeData(buildTime),
   };
 };
@@ -60,14 +54,14 @@ const DebugTable = ({
   version,
   buildTimeData,
   gitBranch,
-  gitCommit,
+  gitCommitSha,
 }: DebugTableProps) => (
   <table>
     <tbody>
       <tr>
         <td>{titlePrefix} version:</td>
         <td>
-          <b>{version ?? EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION}</b>
+          <b>{version ?? "unknown"}</b>
         </td>
       </tr>
 
@@ -82,11 +76,11 @@ const DebugTable = ({
         </tr>
       )}
 
-      {(gitBranch || gitCommit) && (
+      {(gitBranch || gitCommitSha) && (
         <tr>
           <td>{titlePrefix} from branch:</td>
           <td>
-            <b>{gitBranch}</b> {gitCommit && `(${gitCommit})`}
+            <b>{gitBranch}</b> {gitCommitSha && `(${gitCommitSha})`}
           </td>
         </tr>
       )}
@@ -96,12 +90,11 @@ const DebugTable = ({
 
 export const SdkDebugInfo = (props: HTMLAttributes<HTMLDivElement>) => {
   const sdkPackageDebugInfoData = getDebugInfoData(
-    getEmbeddingSdkPackageBuildData(),
+    getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO"),
   );
 
-  const sdkBundleVersion = useSdkSelector(getMetabaseInstanceVersion);
   const sdkBundleDebugInfoData = getDebugInfoData(
-    getEmbeddingSdkBundleBuildData(sdkBundleVersion ?? undefined),
+    getBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO"),
   );
 
   return (

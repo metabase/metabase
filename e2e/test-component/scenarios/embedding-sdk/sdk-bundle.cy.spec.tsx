@@ -353,7 +353,7 @@ describe(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             {
               sdkProviderProps: {
-                errorComponent: ({ message }) => (
+                errorComponent: ({ message }: { message: string }) => (
                   <div>Custom error: {message}</div>
                 ),
               },
