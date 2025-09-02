@@ -326,9 +326,7 @@ describe(
       beforeEach(() => {
         sdkBundleCleanup();
 
-        cy.then(() => {
-          H.clearBrowserCache();
-        });
+        H.clearBrowserCache().wait(100);
       });
 
       describe("when the SDK bundle can't be loaded", () => {
