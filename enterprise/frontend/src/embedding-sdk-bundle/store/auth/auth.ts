@@ -1,3 +1,4 @@
+import { EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
 import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
@@ -10,10 +11,7 @@ import { getIsLocalhost } from "embedding-sdk-bundle/lib/is-localhost";
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
-import {
-  EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
-  getBuildInfo,
-} from "embedding-sdk-shared/lib/get-build-info";
+import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";

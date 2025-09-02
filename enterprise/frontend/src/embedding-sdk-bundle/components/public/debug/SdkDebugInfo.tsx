@@ -3,10 +3,7 @@ import cx from "classnames";
 import dayjs from "dayjs";
 import type { HTMLAttributes } from "react";
 
-import {
-  EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
-  getBuildInfo,
-} from "embedding-sdk-shared/lib/get-build-info";
+import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import type { BuildInfo } from "metabase/embedding-sdk/types/build-info";
 
 import S from "./SdkDebugInfo.module.css";
@@ -64,7 +61,7 @@ const DebugTable = ({
       <tr>
         <td>{titlePrefix} version:</td>
         <td>
-          <b>{version ?? EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION}</b>
+          <b>{version ?? "unknown"}</b>
         </td>
       </tr>
 

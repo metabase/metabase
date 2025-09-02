@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import "embedding-sdk-bundle";
 
+import { EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 
@@ -74,7 +75,7 @@ describe("useLogVersionInfo", () => {
     it("should not show the warning when the sdk bundle is unknown", async () => {
       await setup({
         sdkPackageVersion: "0.55.10",
-        sdkBundleVersion: "vUNKNOWN",
+        sdkBundleVersion: EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION,
       });
 
       expect(
