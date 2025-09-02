@@ -162,7 +162,7 @@
   Returns a count of rows actually updated/inserted."
   [pgvector index-metadata gate-document-batch]
   {:pre [(seqable? gate-document-batch)]}
-  (let [input-bounded-count (bounded-count max-batch-size gate-document-batch)
+  (let [input-bounded-count (bounded-count (semantic.settings/ee-search-gate-max-batch-size) gate-document-batch)
         start-time          (u/start-timer)
         update-count        (gate-documents!* pgvector index-metadata gate-document-batch)
         write-duration-ms   (u/since-ms start-time)]
