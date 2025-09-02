@@ -18,7 +18,9 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time LocalDateTime ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
 
@@ -370,36 +372,57 @@
   (let [response (apply mt/user-http-request :crowberto :get 200 "ee/transform/run" filters)]
     (filter our-pred (:data response))))
 
+(defn- parse-timestamp
+  ^ZonedDateTime [timestamp-string]
+  (-> timestamp-string
+      LocalDateTime/parse
+      (.atZone (ZoneId/systemDefault))))
+
+(defn- parse-instant
+  [timestamp-string]
+  (-> timestamp-string parse-timestamp .toInstant))
+
+(defn- zoned-timestamp
+  [timestamp-string]
+  (-> timestamp-string parse-timestamp str))
+
 (deftest get-runs-filter-by-multiple-statuses-test
   (testing "GET /api/ee/transform/run - filter by multiple statuses"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform {t0-id :id} {}
                      :model/Transform {t1-id :id} {}
                      :model/TransformRun {r0-id  :id} {:transform_id t0-id :status "timeout" :run_method "cron"
-                                                       :start_time #t "2025-08-25T10:12:11Z" :end_time #t "2025-08-26T10:52:17Z"}
+                                                       :start_time (parse-instant "2025-08-25T10:12:11")
+                                                       :end_time (parse-instant "2025-08-26T10:52:17")}
                      :model/TransformRun {r1-id  :id} {:transform_id t0-id :status "succeeded" :run_method "manual"
-                                                       :start_time #t "2025-08-26T10:12:11Z" :end_time #t "2025-08-27T10:52:17Z"}
+                                                       :start_time (parse-instant "2025-08-26T10:12:11")
+                                                       :end_time (parse-instant "2025-08-27T10:52:17")}
                      :model/TransformRun {_r2-id :id} {:transform_id t1-id :status "succeeded" :run_method "cron"
-                                                       :start_time #t "2025-08-22T10:12:11Z" :end_time #t "2025-08-22T10:12:17Z"}
+                                                       :start_time (parse-instant "2025-08-22T10:12:11")
+                                                       :end_time (parse-instant "2025-08-22T10:12:17")}
                      :model/TransformRun {r3-id :id} {:transform_id t1-id :status "succeeded" :run_method "manual"
-                                                      :start_time #t "2025-08-22T23:57:34Z" :end_time #t "2025-08-23T00:17:41Z"}
+                                                      :start_time (parse-instant "2025-08-22T23:57:34")
+                                                      :end_time (parse-instant "2025-08-23T00:17:41")}
                      :model/TransformRun {_r4-id :id} {:transform_id t1-id :status "failed" :run_method "cron"
-                                                       :start_time #t "2025-08-25T15:22:18Z" :end_time #t "2025-08-25T19:12:17Z"}
+                                                       :start_time (parse-instant "2025-08-25T15:22:18")
+                                                       :end_time (parse-instant "2025-08-25T19:12:17")}
                      :model/TransformRun {_r5-id :id} {:transform_id t1-id :status "timeout" :run_method "manual"
-                                                       :start_time #t "2025-08-25T20:29:58Z" :end_time #t "2025-08-25T22:12:17Z"}
+                                                       :start_time (parse-instant "2025-08-25T20:29:58")
+                                                       :end_time (parse-instant "2025-08-25T22:12:17")}
                      :model/TransformRun {_r6-id :id} {:transform_id t1-id :status "started" :run_method "cron"
-                                                       :start_time #t "2025-08-25T23:56:04Z" :end_time nil :is_active true}]
+                                                       :start_time (parse-instant "2025-08-25T23:56:04")
+                                                       :end_time nil :is_active true}]
         (let [our-run-pred (comp #{t0-id t1-id} :transform_id)
               t0-runs [{:id r1-id
-                        :start_time "2025-08-26T10:12:11Z"
-                        :end_time "2025-08-27T10:52:17Z"
+                        :start_time (zoned-timestamp "2025-08-26T10:12:11")
+                        :end_time (zoned-timestamp "2025-08-27T10:52:17")
                         :run_method "manual"
                         :status "succeeded"
                         :transform {:id t0-id}
                         :transform_id t0-id}
                        {:id r0-id
-                        :start_time "2025-08-25T10:12:11Z"
-                        :end_time "2025-08-26T10:52:17Z"
+                        :start_time (zoned-timestamp "2025-08-25T10:12:11")
+                        :end_time (zoned-timestamp "2025-08-26T10:52:17")
                         :run_method "cron"
                         :status "timeout"
                         :transform {:id t0-id}
@@ -411,8 +434,8 @@
               (is (every? #(contains? statuses (:status %)) our-runs))))
           (testing "Filter by 'start_time'"
             (is (=? [{:id r1-id
-                      :start_time "2025-08-26T10:12:11Z"
-                      :end_time "2025-08-27T10:52:17Z"
+                      :start_time (zoned-timestamp "2025-08-26T10:12:11")
+                      :end_time (zoned-timestamp "2025-08-27T10:52:17")
                       :run_method "manual"
                       :status "succeeded"
                       :transform {:id t0-id}
@@ -443,11 +466,11 @@
             (is (=? [{:id r3-id
                       :status "succeeded"
                       :run_method "manual"
-                      :start_time "2025-08-22T23:57:34Z"
-                      :end_time "2025-08-23T00:17:41Z"
+                      :start_time (zoned-timestamp "2025-08-22T23:57:34")
+                      :end_time (zoned-timestamp "2025-08-23T00:17:41")
                       :transform {:id t1-id}
                       :transform_id t1-id}]
-                    (transform-runs our-run-pred :run_methods ["manual"] :start_time "~2025-08-25" :end_time "2025-08-23")))))))))
+                    (transform-runs our-run-pred :run_methods ["manual"] :start_time "~2025-08-25" :end_time "~2025-08-23")))))))))
 
 (deftest get-runs-filter-by-single-tag-test
   (testing "GET /api/ee/transform/run - filter by single tag"
