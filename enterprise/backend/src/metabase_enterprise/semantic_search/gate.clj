@@ -100,7 +100,12 @@
   (let [{:keys [^PGobject document]} gate-doc]
     (json/decode (.getValue document) keyword)))
 
-(defn gate-documents!*
+(defn execute-upsert!
+  "Wrap execute-one! so upsert execution can be redefined for testing purposes."
+  [tx upsert-sql]
+  (jdbc/execute-one! tx upsert-sql))
+
+(defn- gate-documents!*
   [pgvector index-metadata gate-document-batch]
   {:pre [;; countable only
          (seqable? gate-document-batch)]}
@@ -148,9 +153,9 @@
         (jdbc/execute! tx [(format "SET LOCAL statement_timeout = %d" (.toMillis gate-write-timeout))]) ; note pg cannot accept a parameter here
         (let [stmt-start (u/start-timer)]
           (try
-            (::jdbc/update-count (jdbc/execute-one! tx upsert-sql))
+            (::jdbc/update-count (execute-upsert! tx upsert-sql))
             (catch PSQLException pg-ex
-              (when (= "57014" "ERROR: canceling statement due to statement timeout" (ex-message pg-ex))
+              (when (= "57014" (.getSQLState pg-ex))
                 (analytics/observe! :metabase-search/semantic-gate-timeout-ms (u/since-ms stmt-start)))
               (throw pg-ex))))))))
 
