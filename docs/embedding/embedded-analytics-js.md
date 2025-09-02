@@ -370,5 +370,5 @@ To render a collection browser so people can navigate a collection and open dash
 
 **Optional parameters:**
 
-- `read-only` (default is true) – if true, people can only view and explore. If false, they can create and edit dashboards and questions in the collection.
+- `read-only` (default is true) – if true, people can only view and explore. If false, they can create and edit items in the collection.
 
