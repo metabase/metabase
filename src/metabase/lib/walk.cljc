@@ -2,6 +2,8 @@
   "Tools for walking and transforming a query."
   (:require
    [medley.core :as m]
+   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -251,30 +253,88 @@
                  [:lib/type [:= :mbql/join]]]]
   (into (vec join-path) [:stages (dec (count (:stages join)))]))
 
-(declare walk-clauses*)
+(declare walk-clause* walk-clauses*)
 
 ;;; [[clojure.core.walk]] functions generally have the form `(walk f x)` but reversing the args is more natural and
 ;;; lets you use these functions in `->` or with things like [[update]]. I went back and forth on this but decided
 ;;; this is better -- your BFF Cam
+
+(defmulti ^:private walk-subclauses-method
+  "Impl for [[walk-clause]]; walk the subclauses of an MBQL clause calling `f` on each one."
+  {:arglists '([clause f])}
+  (fn [clause _f]
+    (lib.dispatch/dispatch-value clause))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(mu/defmethod walk-subclauses-method :default
+  [clause f]
+  (let [[tag opts & subclauses] clause
+        subclauses'             (walk-clauses* subclauses f)]
+    (when-not (= subclauses' subclauses)
+      (into [tag opts] subclauses'))))
+
+;; `:case` and `:if` have the same (messed up/weird) syntax.
+(lib.hierarchy/derive :case ::case)
+(lib.hierarchy/derive :if ::case)
+
+(mu/defmethod walk-subclauses-method ::case
+  [[tag opts if-then-pairs default :as clause] f]
+  (let [if-then-pairs' (mapv (fn [[if-expr then-expr]]
+                               [(walk-clause* if-expr f) (walk-clause* then-expr f)])
+                             if-then-pairs)]
+    (case (count clause)
+      ;; no default value
+      3
+      [tag opts if-then-pairs']
+      ;; has default value
+      4
+      (let [default' (walk-clause* default f)]
+        [tag opts if-then-pairs' default']))))
+
+(defn- walk-subclauses [clause f]
+  (let [clause' (walk-subclauses-method clause f)]
+    (cond
+      (nil? clause')     clause
+      (= clause' clause) clause
+      :else              clause')))
+
+(defn- walk-clause-wrap-f
+  "Wrap `f` so it
+
+  1. Returns the original value if the wrapped function returns `nil`
+
+  2. Returns the original value if the wrapped function returns a value that is `=` to it (this is so we can return
+     an [[identical?]] clause if `f` does not make any changes)."
+  [f]
+  (fn f* [clause]
+    (let [clause' (f clause)]
+      (cond
+        (nil? clause')     clause
+        (= clause' clause) clause
+        :else              clause'))))
+
+(defn- walk-clause* [clause f]
+  (if-not (lib.util/clause? clause)
+    ;; not a clause -- an atomic value like a number or string literal. Call `f` but do not recurse.
+    (f clause)
+    ;; MBQL clause -- recurse into subclauses first then call `f` on the result.
+    (let [clause' (walk-subclauses clause f)]
+      (f clause'))))
 
 (mu/defn walk-clause
   "Impl for [[walk-clauses]]. You can call this directly if you are a psycho who needs to walk some clauses but don't
   have `query` for some
   reason (e.g. [[metabase.query-processor.middleware.wrap-value-literals/wrap-value-literals-in-mbql]]).
 
-  Walks `clause` in a depth-first manner and calls
+  Walks `clause` in a depth-first postorder manner and calls
 
     (f clause)
 
-  on every MBQL clause. (Also includes non-clause arguments like the `1` and `2` in `[:= {} [:field {} 1] 2]`.)"
+  on every MBQL subclause of `clause`, then on `clause` itself. (Also includes non-clause arguments like the `1` and
+  `2` in `[:= {} [:field {} 1] 2]`.)"
   [clause :- :any
    f      :- [:=> [:cat :any] :any]]
-  (or (when (lib.util/clause? clause)
-        (let [[tag opts & subclauses] clause
-              subclauses'             (walk-clauses* subclauses f)]
-          (when-not (= subclauses' subclauses)
-            (into [tag opts] subclauses'))))
-      clause))
+  (walk-clause* clause (walk-clause-wrap-f f)))
 
 (mu/defn walk-clauses*
   "Impl for [[walk-clauses]].
@@ -291,13 +351,11 @@
   (when clauses
     (reduce
      (fn [clauses i]
-       (let [clause   (nth clauses i)
-             clause'  (walk-clause clause f)
-             clause'' (or (f clause')
-                          clause')]
-         (if (= clause'' clause)
+       (let [clause  (nth clauses i)
+             clause' (walk-clause clause f)]
+         (if (= clause' clause)
            clauses
-           (assoc (vec clauses) i clause''))))
+           (assoc (vec clauses) i clause'))))
      clauses
      (range (count clauses)))))
 

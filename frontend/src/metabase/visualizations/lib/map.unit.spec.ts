@@ -179,7 +179,8 @@ describe("map", () => {
     describe("public dashboard", () => {
       it("should generate url for public dashboard without parameters", () => {
         const url = getTileUrl({
-          dashboardId: 10,
+          // public dashboards have a uuid instead of an id
+          dashboardId: "621efc8c-9fd9-42db-a39a-1abdbfe23937",
           dashcardId: 20,
           cardId: 30,
           zoom,
@@ -202,7 +203,8 @@ describe("map", () => {
         });
 
         const url = getTileUrl({
-          dashboardId: 10,
+          // public dashboards have a uuid instead of an id
+          dashboardId: "621efc8c-9fd9-42db-a39a-1abdbfe23937",
           dashcardId: 20,
           cardId: 30,
           zoom,

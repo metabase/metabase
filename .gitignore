@@ -98,6 +98,13 @@ xcuserdata
 dev/src/dev/nocommit/
 dev/serialization_deltas/
 *~
+
+# TypeScript compilation artifacts
+/build/
+*.tsbuildinfo
+/trace-output/
+/temp-types/
+
 **/cypress_sample_database.json
 **/cypress_sample_instance_data.json
 /frontend/src/cljs

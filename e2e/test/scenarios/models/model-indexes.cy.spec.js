@@ -220,7 +220,7 @@ describe("scenarios > model indexes", () => {
 function editTitleMetadata() {
   H.openQuestionActions();
   H.popover().findByText("Edit metadata").click();
-  cy.url().should("include", "/metadata");
+  cy.url().should("include", "/columns");
   H.tableInteractive().findByTextEnsureVisible("Title");
 
   H.openColumnOptions("Title");
