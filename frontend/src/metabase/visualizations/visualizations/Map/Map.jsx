@@ -18,6 +18,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
@@ -152,7 +153,7 @@ export class Map extends Component {
           ? "heat"
           : vizSettings["map.type"] === "grid"
             ? "grid"
-            : data.rows.length >= 1000
+            : data.rows.length > HARD_ROW_LIMIT
               ? "tiles"
               : "markers",
       getHidden: (series, vizSettings) =>
