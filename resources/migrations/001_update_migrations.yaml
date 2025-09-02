@@ -12154,6 +12154,54 @@ databaseChangeLog:
             where: base_type = 'type/Boolean' AND semantic_type = 'type/Category'
       rollback: # not necessary
 
+  - changeSet:
+      id: v56.2025-09-03T17:15:00
+      author: piranha
+      comment: Added 0.55.0 -- add metabot_usage
+      changes:
+        - createTable:
+            tableName: metabot_usage
+            remarks: Table to store metabot messages
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_usage_user_id
+              - column:
+                  name: usage
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: '{"<model-name>": {"prompt": 1, "completion": 2}}'
+              - column:
+                  name: total
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: 'Just a sum of all prompt+completion from `usage`'
+              - column:
+                  name: conversation_id
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
