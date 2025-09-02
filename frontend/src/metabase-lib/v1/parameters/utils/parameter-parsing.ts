@@ -22,11 +22,14 @@ import type {
 
 export function getParameterValueFromQueryParams(
   parameter: Parameter,
-  queryParams: Query = {},
-  lastUsedParametersValues: ParameterValuesMap = {},
-) {
-  const maybeParameterValue = queryParams[parameter.slug || parameter.id];
-  const hasQueryParams = Object.keys(queryParams).length > 0;
+  queryParams: Query,
+  lastUsedParametersValues?: ParameterValuesMap,
+): ParameterValueOrArray | null {
+  const params: Query = queryParams || {};
+  const lastUsedValues: ParameterValuesMap = lastUsedParametersValues || {};
+
+  const maybeParameterValue = params[parameter.slug || parameter.id];
+  const hasQueryParams = Object.keys(params).length > 0;
 
   // don't use the default with "param=" because it indicates an unset/cleared parameter value
   if (maybeParameterValue === "") {
@@ -38,13 +41,15 @@ export function getParameterValueFromQueryParams(
     if (hasQueryParams) {
       return parameter.default ?? null;
     } else {
-      return (
-        lastUsedParametersValues[parameter.id] ?? parameter.default ?? null
-      );
+      return lastUsedValues[parameter.id] ?? parameter.default ?? null;
     }
   }
 
   const parsedValue = parseParameterValue(maybeParameterValue, parameter);
+
+  // @ts-expect-error: normalizeParameterValueForWidget returns more than just
+  // ParameterValueOrArray, which is probably a mistake.
+  // This case was previously hidden by an any type.
   return normalizeParameterValueForWidget(parsedValue, parameter);
 }
 
