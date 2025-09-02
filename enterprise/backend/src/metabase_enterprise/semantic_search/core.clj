@@ -121,11 +121,9 @@
     (if-not (index-active? pgvector index-metadata)
       (log/warn "repair-index! called prior to init!")
       (let [{:keys [metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)
-            active-index-name      (:table_name metadata-row)
-            index-version          (:index_version metadata-row)]
+            active-index-name      (:table_name metadata-row)]
         (semantic.repair/with-repair-table!
           pgvector
-          index-version
           (fn [repair-table-name]
             ;; Re-gate all provided documents, populating the repair table as we go
             (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents

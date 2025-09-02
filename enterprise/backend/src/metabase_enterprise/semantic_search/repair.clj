@@ -1,10 +1,12 @@
 (ns metabase-enterprise.semantic-search.repair
   "Index repair functionality for detecting and fixing lost deletes in semantic search."
   (:require
+   [clojure.set :as set]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.util.log :as log]
+   [nano-id.core :as nano-id]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
@@ -15,8 +17,8 @@
   This creates a whitelist of documents that should exist in the index, to detect lost deletes."
   [pgvector repair-table-name documents]
   (when (seq documents)
-    (let [repair-records (map (fn [{:keys [model id]}]
-                                {:model model :model_id (str id)})
+    (let [repair-records (map #(-> (select-keys % [:model :id])
+                                   (set/rename-keys {:id :model_id}))
                               documents)
           insert-sql (-> (sql.helpers/insert-into (keyword repair-table-name))
                          (sql.helpers/values repair-records)
@@ -46,7 +48,7 @@
     results))
 
 (defn- create-repair-table!
-  "Creates a temporary table for tracking documents during index repair."
+  "Creates an empty temporary table for tracking documents during index repair."
   [pgvector repair-table-name]
   (let [repair-table-ddl (-> (sql.helpers/create-table :unlogged (keyword repair-table-name) :if-not-exists)
                              (sql.helpers/with-columns [[:model :text :not-null]
@@ -58,20 +60,28 @@
 
 (defn- drop-repair-table!
   [pgvector repair-table-name]
-  (jdbc/execute! pgvector (-> (sql.helpers/drop-table :if-exists (keyword repair-table-name))
-                              (sql/format :quoted true)))
-  (log/infof "Cleaned up repair table: %s" repair-table-name))
+  (try
+    (jdbc/execute! pgvector (-> (sql.helpers/drop-table :if-exists (keyword repair-table-name))
+                                (sql/format :quoted true)))
+    (log/infof "Cleaned up repair table: %s" repair-table-name)
+    (catch Exception e
+      (log/warnf e "Failed to drop repair table: %s" repair-table-name))))
+
+(defn- repair-table-name
+  "Generates a unique name for a repair table. Useful to redefine in tests."
+  []
+  (format "index_repair_%s" (nano-id/nano-id)))
 
 (defn with-repair-table!
   "Creates a repair table, executes a function with the table name, and ensures cleanup.
   Returns the result of calling f with the repair table name."
-  [pgvector index-version f]
-  (let [repair-table-name (str "index_repair_" index-version)]
+  [pgvector f]
+  (let [repair-table (repair-table-name)]
     (try
-      (create-repair-table! pgvector repair-table-name)
-      (f repair-table-name)
+      (create-repair-table! pgvector repair-table)
+      (f repair-table)
       (finally
-        (drop-repair-table! pgvector repair-table-name)))))
+        (drop-repair-table! pgvector repair-table)))))
 
 (defn find-lost-deletes-by-model
   "Finds lost deletes and groups them by model for easier processing.
