@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
-   [metabase.server.lib.etag-cache :as lib.etag-cache]
-   [ring.util.response :as response]))
+   [metabase.server.lib.etag-cache :as lib.etag-cache]))
 
 (set! *warn-on-reflection* true)
 

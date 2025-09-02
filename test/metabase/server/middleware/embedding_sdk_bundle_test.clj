@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.server.lib.etag-cache :as lib.etag-cache]
    [metabase.server.middleware.embedding-sdk-bundle :as bund]
-   [metabase.server.middleware.etag-cache :as mw.etag-cache]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -16,10 +16,10 @@
     (with-redefs [config/is-prod? true
                   response/resource-response (constantly {:status 200 :headers {} :body "dummy"})
                          ;; with-etag returns a 304 response with an ETag
-                  mw.etag-cache/with-etag (fn [_base _req]
-                                            {:status 304
-                                             :headers {"ETag" "\"abc\""}
-                                             :body ""})]
+                  lib.etag-cache/with-etag (fn [_base _req]
+                                             {:status 304
+                                              :headers {"ETag" "\"abc\""}
+                                              :body ""})]
       (let [handler (bund/serve-bundle-handler)
             resp    (handler {:headers {"if-none-match" "\"abc\""}})]
         (is (= 304 (:status resp)))
@@ -34,8 +34,8 @@
     (with-redefs [config/is-prod? true
                   response/resource-response (constantly {:status 200 :headers {} :body "dummy"})
                                 ;; with-etag returns a 200 response with an ETag applied
-                  mw.etag-cache/with-etag (fn [base _req]
-                                            (update base :headers assoc "ETag" "\"abc\""))]
+                  lib.etag-cache/with-etag (fn [base _req]
+                                             (update base :headers assoc "ETag" "\"abc\""))]
       (let [handler (bund/serve-bundle-handler)
             resp    (handler {:headers {}})]
         (is (= 200 (:status resp)))
@@ -50,8 +50,8 @@
       (with-redefs [config/is-prod? false
                     response/resource-response (constantly {:status 200 :headers {} :body "dummy"})
                                          ;; If it were called in dev, we’d see this exception
-                    mw.etag-cache/with-etag (fn [& _]
-                                              (throw (ex-info "with-etag should not be called in dev" {})))]
+                    lib.etag-cache/with-etag (fn [& _]
+                                               (throw (ex-info "with-etag should not be called in dev" {})))]
         (let [handler (bund/serve-bundle-handler)
               resp    (handler {:headers {}})]
           (is (= 200 (:status resp)))
@@ -64,7 +64,7 @@
       (testing "Missing resource → 404 with no-store; no prod-only headers"
         (with-redefs [config/is-prod? true
                       response/resource-response (constantly nil)
-                      mw.etag-cache/with-etag (fn [& args] (throw (ex-info "Not expected for 404" {:args args})))]
+                      lib.etag-cache/with-etag (fn [& args] (throw (ex-info "Not expected for 404" {:args args})))]
           (let [handler (bund/serve-bundle-handler)
                 resp    (handler {:headers {}})]
             (is (= 404 (:status resp)))
