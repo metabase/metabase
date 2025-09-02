@@ -153,7 +153,8 @@
                                                  post-python))})))
 
 (defn- log-loop! [run-id message-log]
-  (let [poll (fn [] (python-runner/get-logs))]
+  ;; TODO ensure we poll only for this run-id
+  (let [poll python-runner/get-logs]
     (try
       (loop []
         (if (.isInterrupted (Thread/currentThread))
@@ -176,7 +177,7 @@
       (catch Throwable e
         (log/errorf e "An exception was caught during msg update loop, run-id: %s" run-id)))))
 
-(defn open-log-thread! ^Closeable [run-id message-log]
+(defn- open-log-thread! ^Closeable [run-id message-log]
   (let [log-thread-promise (promise)
         cleanup (fn []
                   (let [^Thread log-thread (deref log-thread-promise 1000 nil)]
