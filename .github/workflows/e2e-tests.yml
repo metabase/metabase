@@ -133,7 +133,7 @@ jobs:
         if: steps.merge.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: merged-e2e-timings-${{ github.run_id }}
+          name: merged-e2e-timings
           path: e2e/support/mergedTimings.json
           retention-days: 7
 

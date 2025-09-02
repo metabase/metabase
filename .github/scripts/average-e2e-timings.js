@@ -13,7 +13,6 @@ const collectAndAverageTimings = async ({
     const artifacts = await findMergedTimingArtifacts({
       github,
       context,
-      branch,
       daysBack,
     });
 
@@ -35,9 +34,9 @@ const collectAndAverageTimings = async ({
       JSON.stringify(averagedTimings, null, 2),
     );
     console.log(`✅ Updated ${existingTimingsPath} with new timing data`);
-    
+
     return {
-      artifactCount: timingData.length
+      artifactCount: timingData.length,
     };
   } catch (error) {
     console.error("❌ Error in collectAndAverageTimings:", error.message);
@@ -45,59 +44,50 @@ const collectAndAverageTimings = async ({
   }
 };
 
-const findMergedTimingArtifacts = async ({
-  github,
-  context,
-  branch,
-  daysBack,
-}) => {
+const findMergedTimingArtifacts = async ({ github, context, daysBack }) => {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysBack);
 
-  const runTestsRuns = await github.rest.actions.listWorkflowRuns({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    workflow_id: "run-tests.yml",
-    branch,
-    per_page: 100,
-  });
-
-  const allRuns = runTestsRuns.data.workflow_runs.filter(
-    (run) => new Date(run.created_at) > cutoffDate,
+  console.log(
+    `Searching for merged timing artifacts created after ${cutoffDate.toISOString()}`,
   );
 
-  console.log(`Found ${allRuns.length} recent workflow runs to check`);
-
   const artifacts = [];
+  let page = 1;
+  let hasMorePages = true;
 
-  for (const run of allRuns) {
-    const expectedName = `merged-e2e-timings-${run.id}`;
-
+  while (hasMorePages) {
     try {
-      const runArtifacts = await github.rest.actions.listWorkflowRunArtifacts({
+      const response = await github.rest.actions.listArtifactsForRepo({
         owner: context.repo.owner,
         repo: context.repo.repo,
-        run_id: run.id,
+        name: "merged-e2e-timings",
         per_page: 100,
+        page: page,
       });
 
-      const mergedArtifact = runArtifacts.data.artifacts.find(
-        (artifact) => artifact.name === expectedName && !artifact.expired,
+      const recentArtifacts = response.data.artifacts.filter(
+        (artifact) =>
+          new Date(artifact.created_at) > cutoffDate && !artifact.expired,
       );
 
-      if (mergedArtifact) {
-        artifacts.push({
-          name: mergedArtifact.name,
-          created_at: mergedArtifact.created_at,
-          archive_download_url: mergedArtifact.archive_download_url,
-        });
-      }
+      artifacts.push(
+        ...recentArtifacts.map((artifact) => ({
+          name: artifact.name,
+          created_at: artifact.created_at,
+          archive_download_url: artifact.archive_download_url,
+        })),
+      );
+
+      hasMorePages = response.data.artifacts.length === 100;
+      page++;
     } catch (error) {
-      console.log(`Error checking run ${run.id}: ${error.message}`);
+      console.log(`Error fetching artifacts page ${page}: ${error.message}`);
+      break;
     }
   }
 
-  console.log(`Found ${artifacts.length} merged timing artifacts`);
+  console.log(`Found ${artifacts.length} merged timing artifacts total`);
   return artifacts;
 };
 

@@ -42,7 +42,6 @@ jobs:
               github,
               context,
               token: '${{ secrets.GITHUB_TOKEN }}',
-              branch: 'master',
               daysBack: ${{ env.DAYS_BACK }},
               existingTimingsPath: 'e2e/support/timings.json'
             });
