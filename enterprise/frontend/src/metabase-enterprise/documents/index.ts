@@ -6,10 +6,10 @@ import {
 import Documents from "metabase-enterprise/entities/document";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { DocumentCopyForm } from "./components/DocumentCopyForm/DocumentCopyForm";
 import { documentsReducer } from "./documents.slice";
 import { getRoutes } from "./routes";
 import { getCurrentDocument, getSidebarOpen } from "./selectors";
-import { DocumentCopyForm } from "./components/DocumentCopyForm/DocumentCopyForm";
 
 if (hasPremiumFeature("documents")) {
   PLUGIN_DOCUMENTS.getRoutes = getRoutes;
