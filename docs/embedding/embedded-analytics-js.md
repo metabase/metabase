@@ -366,7 +366,7 @@ To render a collection browser so people can navigate a collection and open dash
 
 **Required parameters:**
 
-- `initial-collection` - This can be a collection ID or "root". Use a collection ID (e.g. 14) to start in a specific collection. Use "root" to start at the top level with all collections.
+- `initial-collection` - This can be a collection ID or `root`. Use a collection ID (e.g., `14`) to start in a specific collection. Use `root` to start at the top-level, "Our Analytics" collection.
 
 **Optional parameters:**
 
