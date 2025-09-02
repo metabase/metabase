@@ -26,14 +26,15 @@
 
 (defn request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [{:keys [metabot_id message context history conversation_id state]
-    :or {metabot_id metabot-v3.config/internal-metabot-id}}]
+  [{:keys [metabot_id profile_id message context history conversation_id state]}]
   (let [initial-message (metabot-v3.envelope/user-message message)
         history         (conj (vec history) initial-message)
+        metabot-id      (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
+        profile-id      (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
         env             (metabot-v3.tools.api/handle-envelope
                          {:context         (metabot-v3.context/create-context context)
-                          :metabot-id      metabot_id
-                          :profile-id      (metabot-v3.config/metabot-profile-id metabot_id)
+                          :metabot-id      metabot-id
+                          :profile-id      profile-id
                           :conversation-id conversation_id
                           :messages        history
                           :state           state})
@@ -48,6 +49,7 @@
    _query-params
    {:keys [conversation_id] :as body} :- [:map
                                           [:metabot_id {:optional true} :string]
+                                          [:profile_id {:optional true} :string]
                                           [:message ms/NonBlankString]
                                           [:context ::metabot-v3.context/context]
                                           [:conversation_id ms/UUIDString]
@@ -61,14 +63,15 @@
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [{:keys [metabot_id message context history conversation_id state]
-    :or {metabot_id metabot-v3.config/internal-metabot-id}}]
+  [{:keys [metabot_id profile_id message context history conversation_id state]}]
   (let [initial-message (metabot-v3.envelope/user-message message)
-        history         (conj (vec history) initial-message)]
+        history         (conj (vec history) initial-message)
+        metabot-id      (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
+        profile-id      (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)]
     (metabot-v3.tools.api/streaming-handle-envelope
      {:context         (metabot-v3.context/create-context context)
-      :metabot-id      metabot_id
-      :profile-id      (get-in metabot-v3.config/metabot-config [metabot_id :profile-id])
+      :metabot-id      metabot-id
+      :profile-id      profile-id
       :conversation-id conversation_id
       :messages        history
       :state           state})))
@@ -79,6 +82,7 @@
    _query-params
 
    body :- [:map
+            [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]
             [:message ms/NonBlankString]
             [:context ::metabot-v3.context/context]

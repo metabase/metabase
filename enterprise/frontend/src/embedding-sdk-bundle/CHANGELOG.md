@@ -1,3 +1,18 @@
+## [0.56.3](https://github.com/metabase/metabase/compare/embedding-sdk-0.56.2...embedding-sdk-0.56.3) (2025-08-29)
+
+
+### Bug Fixes
+
+* **sdk:** Add background-light to derived colors for the new embed ([#62522](https://github.com/metabase/metabase/issues/62522)) ([#62586](https://github.com/metabase/metabase/issues/62586)) ([c906f5e](https://github.com/metabase/metabase/commit/c906f5e948c8647ac1422d0fd107eb2e35082aac))
+* **sdk:** Properly calculate the `dirty` state for the `InteractiveQuestion.SaveButton` button ([#62423](https://github.com/metabase/metabase/issues/62423)) ([#62681](https://github.com/metabase/metabase/issues/62681)) ([1e854fd](https://github.com/metabase/metabase/commit/1e854fdacd5d9be4a04bf992078e331fd446d5ac))
+
+
+### Features
+
+* **sdk:** Fix and improve Metabot for SDK ([#62886](https://github.com/metabase/metabase/issues/62886)) ([46c899b](https://github.com/metabase/metabase/commit/46c899b8bbb767ee74a31b07f4a684602663ec4a))
+
+
+
 ## [0.56.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.56.1-nightly...embedding-sdk-0.56.2) (2025-08-08)
 
 

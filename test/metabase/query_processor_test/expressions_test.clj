@@ -1194,3 +1194,31 @@
              (-> (mt/native-query {:query (tx/native-null-array-query driver/*driver*)})
                  mt/process-query
                  mt/rows))))))
+
+(deftest ^:parallel invalid-field-ref-for-an-expression-test
+  (testing "#62663"
+    (is (= [[1
+             "1018947080336"
+             "Rustic Paper Wallet"
+             "Gizmo"
+             "Swaniawski, Casper and Hilll"
+             29.46
+             4.6
+             "2017-07-19T19:44:56.582Z"
+             "Gizmo111"]
+            [10
+             "1807963902339"
+             "Mediocre Wooden Table"
+             "Gizmo"
+             "Larson, Pfeffer and Klocko"
+             31.79
+             4.3
+             "2017-01-09T09:51:20.352Z"
+             "Gizmo111"]]
+           (mt/rows
+            (qp/process-query
+             (mt/mbql-query products
+               {:expressions {"Cat_1" [:concat $category "111"]}
+                :filter      [:= [:field "Cat_1" {:base-type :type/Text}] "Gizmo111"]
+                :order-by    [[:asc $id]]
+                :limit       2})))))))

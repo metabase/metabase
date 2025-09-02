@@ -54,6 +54,7 @@ export interface DataGridProps<TData>
   showRowsCount?: boolean;
   isColumnReorderingDisabled?: boolean;
   theme?: DataGridTheme;
+  tableFooterExtraButtons?: React.ReactNode;
 }
 
 export const DataGrid = function DataGrid<TData>({
@@ -76,6 +77,7 @@ export const DataGrid = function DataGrid<TData>({
   onHeaderCellClick,
   onAddColumnClick,
   onWheel,
+  tableFooterExtraButtons,
 }: DataGridProps<TData>) {
   const {
     virtualColumns,
@@ -389,6 +391,7 @@ export const DataGrid = function DataGrid<TData>({
             showRowsCount={showRowsCount}
             style={styles?.footer}
             className={classNames?.footer}
+            tableFooterExtraButtons={tableFooterExtraButtons}
           />
         </div>
         {measureRoot}
