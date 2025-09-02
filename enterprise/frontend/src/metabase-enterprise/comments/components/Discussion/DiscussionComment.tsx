@@ -17,12 +17,12 @@ import { DiscussionActionPanel } from "./DiscussionActionPanel";
 type DiscussionCommentProps = {
   canResolve?: boolean;
   comment: Comment;
-  onResolve?: (comment: Comment) => unknown;
-  onReopen?: (comment: Comment) => unknown;
-  onReaction?: (comment: Comment, emoji: string) => unknown;
-  onDelete?: (comment: Comment) => unknown;
-  onEdit?: (comment: Comment, newContent: DocumentContent) => unknown;
-  onCopyLink?: (comment: Comment) => unknown;
+  onResolve?: (comment: Comment) => void;
+  onReopen?: (comment: Comment) => void;
+  onReaction?: (comment: Comment, emoji: string) => void;
+  onDelete?: (comment: Comment) => void;
+  onEdit?: (comment: Comment, newContent: DocumentContent) => void;
+  onCopyLink?: (comment: Comment) => void;
 };
 
 export function DiscussionComment({
