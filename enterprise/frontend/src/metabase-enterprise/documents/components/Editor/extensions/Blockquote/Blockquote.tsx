@@ -20,9 +20,8 @@ import {
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 
 import { CommentsMenu } from "../../CommentsMenu";
+import S from "../../shared/Comments.module.css";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
-
-import S from "./Blockquote.module.css";
 
 export const CustomBlockquote = Blockquote.extend({
   addAttributes() {
@@ -76,7 +75,7 @@ export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
   return (
     <>
       <NodeViewWrapper
-        className={cx(S.blockquote, {
+        className={cx(S.root, {
           [S.open]: isOpen,
         })}
         ref={refs.setReference}

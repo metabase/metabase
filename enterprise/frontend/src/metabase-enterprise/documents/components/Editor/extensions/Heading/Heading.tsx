@@ -20,9 +20,8 @@ import {
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 
 import { CommentsMenu } from "../../CommentsMenu";
+import S from "../../shared/Comments.module.css";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
-
-import S from "./Heading.module.css";
 
 export const CustomHeading = Heading.extend({
   addAttributes() {
@@ -89,7 +88,7 @@ export const HeadingNodeView = ({ node }: NodeViewProps) => {
   return (
     <>
       <NodeViewWrapper
-        className={cx(S.heading, {
+        className={cx(S.root, {
           [S.open]: isOpen,
         })}
         ref={refs.setReference}
