@@ -134,26 +134,6 @@
                 (log/infof "Repairing lost deletes for model %s: deleting %d documents" model (count ids))
                 (semantic.pgvector-api/gate-deletes! pgvector index-metadata model ids)))))))))
 
-;; TODO: Explicitly disable
-(defenterprise reindex!
-  "Reindex the semantic search index."
-  :feature :semantic-search
-  [searchable-documents opts]
-  (let [pgvector        (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)
-        embedding-model (semantic.env/get-configured-embedding-model)]
-    ;; TODO: once we have liquidbase-based migrations, this call should be to `initialize-index!` instead
-    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)
-    (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
-    nil))
-
-;; TODO: Explicitly disable
-(defenterprise reset-tracking!
-  "Enterprise implementation of semantic search tracking reset."
-  :feature :semantic-search
-  []
-  nil)
-
 (comment
   (update-index! [{:model "card"
                    :id "1"
