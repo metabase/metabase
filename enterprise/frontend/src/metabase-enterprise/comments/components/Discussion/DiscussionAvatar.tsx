@@ -22,11 +22,11 @@ const avatarColors = [
 export function DiscussionAvatar({ user }: DiscussionAvatarProps) {
   return (
     <Avatar
-      variant="filled"
-      size={rem(24)}
-      name={user.common_name}
-      color="initials"
       allowedInitialsColors={avatarColors}
+      color="initials"
+      name={user.common_name}
+      size={rem(24)}
+      variant="filled"
     />
   );
 }

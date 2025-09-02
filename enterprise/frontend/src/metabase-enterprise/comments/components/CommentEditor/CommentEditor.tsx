@@ -138,6 +138,7 @@ export const CommentEditor = ({
 
   return (
     <Flex
+      align="center"
       className={cx(S.container, {
         [S.readonly]: readonly,
         [S.active]: active,
@@ -148,15 +149,16 @@ export const CommentEditor = ({
         <EditorContent editor={editor} className={S.content} />
       </Box>
 
-      {readonly ? null : (
+      {!readonly && (
         <ActionIcon
+          className={cx(S.submitBtn, { [S.canSubmit]: content })}
           variant="subtle"
-          className={cx(S.submitBtn, { [S.canSubmit]: !!content })}
           onClick={submitDoc}
         >
           <Icon name="arrow_up" />
         </ActionIcon>
       )}
+
       {!readonly && (
         <EditorBubbleMenu
           editor={editor}

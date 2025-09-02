@@ -104,6 +104,7 @@ export function DiscussionComment({
         <Text fw={700} lh={1.3} truncate>
           {comment.creator.common_name}
         </Text>
+
         <Tooltip
           label={dayjs(comment.created_at).format("MMM D, YYYY, h:mm A")}
         >
@@ -118,7 +119,7 @@ export function DiscussionComment({
         </Tooltip>
       </Group>
 
-      <Box mt={isEditing ? "sm" : 0}>
+      <Box mt={isEditing ? "sm" : "xs"}>
         <CommentEditor
           initialContent={comment.content}
           onSubmit={handleEditingSubmit}

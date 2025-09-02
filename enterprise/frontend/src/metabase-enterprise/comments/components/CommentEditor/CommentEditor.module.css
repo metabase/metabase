@@ -12,10 +12,6 @@
     box-shadow: none;
     padding: 0;
 
-    .content :global(.ProseMirror) {
-      padding-block: var(--mantine-spacing-xs);
-    }
-
     .submitBtn {
       visibility: hidden;
       pointer-events: none;
@@ -59,7 +55,6 @@
   line-height: 1.5;
   color: var(--mb-color-text-dark);
   font-size: var(--mantine-font-size-md);
-  padding-block: var(--mantine-spacing-sm);
   white-space: pre-wrap;
   word-break: break-word;
 
@@ -82,10 +77,13 @@
 }
 
 .submitBtn {
-  width: 2rem;
-  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
   margin-top: auto;
-  margin-bottom: 0.25rem;
+  border: none;
   transition: color ease 200ms;
 
   &.canSubmit,
