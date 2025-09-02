@@ -118,3 +118,10 @@
       (throw (ex-info "Forbidden access to Router Database without `with-database-routing-off`" {})))
     (when (is-disallowed-destination-db-access? db-id)
       (throw (ex-info "Forbidden access to Destination Database without `with-database-routing-on`" {})))))
+
+(defn db-routing-enabled?
+  "Returns whether or not the given database is either a router or a destination database."
+  [db-or-id]
+  (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
+      (and (:router-database-id db-or-id)
+           (t2/exists? :model/DatabaseRouter :database_id (u/the-id (:router-database-id db-or-id))))))
