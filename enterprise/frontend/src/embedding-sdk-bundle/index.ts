@@ -40,6 +40,9 @@ import { getUser } from "metabase/selectors/user";
 import { useInitData } from "./hooks/private/use-init-data";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
+import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
+
+defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");
 
 /**
  * IMPORTANT!

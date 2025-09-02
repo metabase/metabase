@@ -26,8 +26,8 @@ describe("Add data modal (EE with token)", () => {
         canUpload: true,
       });
 
-      expect(screen.getByText("Manage uploads")).toBeInTheDocument();
-      expect(screen.getByText("Enable uploads")).toBeInTheDocument();
+      expect(await screen.findByText("Manage uploads")).toBeInTheDocument();
+      expect(await screen.findByText("Enable uploads")).toBeInTheDocument();
     });
 
     it("should offer a setting manager to manage (csv) uploads", async () => {
@@ -38,7 +38,7 @@ describe("Add data modal (EE with token)", () => {
         canUpload: true,
       });
 
-      expect(screen.getByText("Manage uploads")).toBeInTheDocument();
+      expect(await screen.findByText("Manage uploads")).toBeInTheDocument();
     });
 
     /**
@@ -57,7 +57,7 @@ describe("Add data modal (EE with token)", () => {
         canUpload: false,
       });
 
-      expect(screen.getByText("Manage uploads")).toBeInTheDocument();
+      expect(await screen.findByText("Manage uploads")).toBeInTheDocument();
     });
   });
 });
