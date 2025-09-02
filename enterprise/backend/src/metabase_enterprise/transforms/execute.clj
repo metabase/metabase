@@ -223,6 +223,8 @@
       (if (not= 200 status)
         (throw (ex-info (debug-info-str body)
                         {:status-code 400
+                         :api-status-code status
+                         :body        body
                          :error       (or stderr (:error body))
                          :stdout      stdout
                          :stderr      stderr}))
