@@ -26,6 +26,7 @@ MAX_QUEUE_SIZE = 10
 QUEUE_TIMEOUT = 60  # seconds to wait in queue
 MAX_FILE_DESCRIPTORS = 256
 MAX_PROCESSES = 50
+MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024
 
 app = Flask(__name__)
 
@@ -70,19 +71,19 @@ def upload_file_to_s3(file_path: str, s3_url: str):
     """Upload a local file to S3 using a presigned PUT URL."""
     if not s3_url or not Path(file_path).exists():
         return
-        
+
     try:
         import urllib.request
         import urllib.error
-        
+
         content = Path(file_path).read_text()
         if isinstance(content, str):
             content = content.encode('utf-8')
-        
+
         req = urllib.request.Request(s3_url, data=content, method='PUT')
         req.add_header('Content-Type', 'text/plain')
         req.add_header('Content-Length', str(len(content)))
-        
+
         with urllib.request.urlopen(req) as response:
             return response.read()
     except Exception as e:
@@ -119,6 +120,8 @@ def set_resource_limits():
     resource.setrlimit(resource.RLIMIT_CPU, (MAX_CPU_TIME_SECONDS, MAX_CPU_TIME_SECONDS))
     resource.setrlimit(resource.RLIMIT_NOFILE, (MAX_FILE_DESCRIPTORS, MAX_FILE_DESCRIPTORS))
     resource.setrlimit(resource.RLIMIT_NPROC, (MAX_PROCESSES, MAX_PROCESSES))
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))  # No core dumps
+    resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_BYTES))
 
 def execute_code(req: ExecutionRequest) -> Dict[str, Any]:
     import tempfile
@@ -149,10 +152,20 @@ def _execute_in_directory(req: ExecutionRequest, work_path: Path, start_time: fl
 
     script_file.write_text(req.code)
 
-    env = os.environ.copy()
-    env["PYTHONUNBUFFERED"] = "1"
+    # Start with minimal, safe environment
+    env = {
+        "PATH": "/usr/local/bin:/usr/bin:/bin",
+        "PYTHONPATH": "",
+        "PYTHONUNBUFFERED": "1",
+        "HOME": str(work_path),
+        "TMPDIR": str(work_path),
+        "TEMP": str(work_path),
+        "TMP": str(work_path),
+        "LC_ALL": "C.UTF-8",
+        "LANG": "C.UTF-8",
+    }
 
-    # Set S3 URLs if provided, otherwise use file paths
+    # Only add necessary environment variables
     if req.output_url:
         env["OUTPUT_URL"] = req.output_url
     else:
@@ -185,7 +198,10 @@ def _execute_in_directory(req: ExecutionRequest, work_path: Path, start_time: fl
                 env=env,
                 preexec_fn=set_resource_limits,
                 start_new_session=True,
-                universal_newlines=True
+                universal_newlines=True,
+                # Additional security options
+                restore_signals=True,  # Reset signal handlers to default
+                pass_fds=()  # Don't inherit any file descriptors
             )
 
             # Store process reference for cancellation and log file paths
@@ -444,17 +460,17 @@ def get_logs():
         stdout_content = ""
         stderr_content = ""
         debug_info = {}
-        
+
         # Try to find the log files from the current execution
         if hasattr(current_execution_request, 'log_files'):
             stdout_file = current_execution_request.log_files.get('stdout')
             stderr_file = current_execution_request.log_files.get('stderr')
-            
+
             debug_info['stdout_file'] = stdout_file
             debug_info['stderr_file'] = stderr_file
             debug_info['stdout_exists'] = stdout_file and Path(stdout_file).exists()
             debug_info['stderr_exists'] = stderr_file and Path(stderr_file).exists()
-            
+
             if stdout_file and Path(stdout_file).exists():
                 try:
                     stdout_content = Path(stdout_file).read_text()
@@ -462,7 +478,7 @@ def get_logs():
                 except Exception as e:
                     app.logger.warning(f"Error reading stdout file: {e}")
                     debug_info['stdout_error'] = str(e)
-            
+
             if stderr_file and Path(stderr_file).exists():
                 try:
                     stderr_content = Path(stderr_file).read_text()

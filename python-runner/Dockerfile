@@ -16,7 +16,7 @@ RUN groupadd -r pyexec && \
 
 COPY server.py transform_runner.py ./
 RUN chown -R pyexec:pyexec /app
-#USER pyexec
+USER pyexec
 
 ENV PYTHONUNBUFFERED=1
 
