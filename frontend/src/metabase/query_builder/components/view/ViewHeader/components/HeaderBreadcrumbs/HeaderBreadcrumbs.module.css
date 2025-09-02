@@ -1,5 +1,5 @@
 .Container {
-  width: 100%;
+  max-width: 100%;
 
   &.headVariant {
     .HeaderBadge {
