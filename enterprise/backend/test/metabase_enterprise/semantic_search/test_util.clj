@@ -10,12 +10,12 @@
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.util :as semantic.util]
-   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -331,7 +331,9 @@
        (with-open [_# (open-temp-index-and-metadata!)]
          (binding [search.ingestion/*force-sync* true]
            (blocking-index!
-            (semantic/init! (search.ingestion/searchable-documents) {:force-reset? true}))
+            (semantic.pgvector-api/gate-updates! (semantic.env/get-pgvector-datasource!)
+                                                 mock-index-metadata
+                                                 (search.ingestion/searchable-documents)))
            ~@body)))))
 
 (defn table-exists-in-db?
