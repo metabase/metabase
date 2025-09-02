@@ -23,6 +23,8 @@ import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import PivotTable from "metabase/visualizations/visualizations/PivotTable";
 import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
+import Table from "metabase/visualizations/visualizations/Table/Table";
+import * as TABLE_MOCK_DATA from "metabase/visualizations/visualizations/Table/stories-data";
 import {
   createMockCard,
   createMockColumn,
@@ -45,6 +47,8 @@ registerVisualization(PivotTable);
 registerVisualization(SmartScalar);
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(Table);
 
 export default {
   title: "App/Embed/PublicOrEmbeddedQuestionView",
@@ -343,6 +347,25 @@ export const SmartScalarDarkThemeTooltip = {
 
   decorators: [NarrowContainer],
   play: SmartScalarLightThemeTooltip.play,
+};
+
+export const TableLightTheme = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    titled: false,
+    card: createMockCard({
+      id: getNextId(),
+      display: "table",
+      ...(TABLE_MOCK_DATA.variousColumnSettings[0].card as any),
+    }),
+    result: createMockDataset({
+      data: createMockDatasetData(
+        TABLE_MOCK_DATA.variousColumnSettings[0].data as any,
+      ),
+    }),
+  },
 };
 
 function NarrowContainer(Story: StoryFn) {

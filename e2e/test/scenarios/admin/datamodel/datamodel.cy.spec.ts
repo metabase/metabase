@@ -38,6 +38,7 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     cy.intercept("GET", "/api/database/*/schema/*").as("schema");
     cy.intercept("POST", "/api/dataset*").as("dataset");
+    cy.intercept("GET", "/api/field/*/values").as("fieldValues");
     cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
       "updateField",
     );
@@ -1599,6 +1600,24 @@ describe("scenarios > admin > datamodel", () => {
 
         cy.realPress("Escape");
         H.modal().should("not.exist");
+      });
+
+      it("should not automatically re-fetch field values when they are discarded unless 'Custom mapping' is used (metabase#62626)", () => {
+        H.DataModel.visit({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: PRODUCTS_ID,
+          fieldId: PRODUCTS.CATEGORY,
+        });
+
+        FieldSection.getFieldValuesButton().click();
+        H.modal().within(() => {
+          cy.button("Discard cached field values").click();
+          cy.button("Discard triggered!").should("be.visible");
+          cy.button("Discard triggered!").should("not.exist");
+        });
+
+        cy.get("@fieldValues.all").should("have.length", 0);
       });
     });
 
