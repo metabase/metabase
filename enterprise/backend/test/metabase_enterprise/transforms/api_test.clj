@@ -78,8 +78,10 @@
       (with-transform-cleanup! [table-name "gadget_products"]
         (let [schema    (get-test-schema)
               transform-payload {:name   "My beautiful python runner"
-                                 :source {:type "python"
-                                          :body "print('hello world')"}
+                                 :source {:type            "python"
+                                          :body            "print('hello world')"
+                                          :source-tables   {}
+                                          :target-database (mt/id)}
                                  :target {:type   "table"
                                           :schema schema
                                           :name   table-name}}
