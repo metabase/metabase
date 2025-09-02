@@ -71,7 +71,7 @@ export const CommentEditor = ({
         configureMentionExtension({ dispatch }),
         !readonly && Placeholder.configure({ placeholder }),
         !readonly && DisableMetabotSidebar,
-      ].filter(Boolean) as Extension[],
+      ].filter((extension): extension is Extension => extension != null),
     [siteUrl, dispatch, readonly, placeholder],
   );
 
