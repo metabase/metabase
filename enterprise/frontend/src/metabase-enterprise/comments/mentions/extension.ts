@@ -225,6 +225,8 @@ const renderMentionList = () => {
         props.event.stopPropagation();
         return true;
       }
+
+      return component.ref?.onKeyDown(props) || false;
     },
 
     onExit: ({ editor }: SuggestionProps) => {
