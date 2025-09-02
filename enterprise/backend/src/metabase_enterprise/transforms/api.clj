@@ -254,11 +254,12 @@
             [:tables [:map-of :string :int]]]]
   (log/info "test python code execution")
   (api/check-superuser)
-  (let [run-id python-test-run-id
+  (let [;; hack
+        run-id python-test-run-id
         cancel-chan (a/promise-chan)]
     (trasnforms.canceling/chan-start-run! run-id cancel-chan)
     (try
-      (let [{:keys [body status]} (transforms.execute/call-python-runner-api! (:code body) (:tables body) run-id cancel-chan)]
+      (let [{:keys [body status]} (transforms.execute/call-python-runner-api! (:code body) (:tables body) run-id :test cancel-chan)]
         (if (= status 200)
           (do
             (log/info "Python test execution succeeded")
