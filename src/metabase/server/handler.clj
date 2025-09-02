@@ -3,6 +3,7 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
+   [metabase.branching.core :as branching]
    [metabase.config.core :as config]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
@@ -66,6 +67,7 @@
         #'mw.security/add-security-headers           ; Add HTTP headers to API responses to prevent them from being cached
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
         #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
+        #'branching/handle-current-branch            ; binds per-request branch parameters to handle getting branchable models
         #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
         #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
         #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params

@@ -559,6 +559,7 @@ export type UserSettings = {
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
+  "git-branch"?: string | null;
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
@@ -619,9 +620,26 @@ export type DatabaseReplicationConnections = Record<
   { connection_id: string }
 >;
 
+export type SyncableEntity =
+  | "transform"
+  | "snippet"
+  | "dataset"
+  | "metric"
+  | "segment"
+  | "dashboard"
+  | "question";
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
+  "git-sync-token"?: string | null;
+  "git-sync-url"?: string | null;
+  "git-sync-default-branch"?: string | null;
+  "git-sync-import-branch"?: string | null; // import branch
+  "git-sync-export-branch"?: string | null;
+  "git-sync-entities"?: Partial<Record<SyncableEntity, boolean>> | null;
+  "git-sync-configured"?: boolean | null;
+  "git-sync-read-only"?: boolean;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

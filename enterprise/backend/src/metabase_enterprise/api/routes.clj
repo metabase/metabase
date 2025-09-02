@@ -14,6 +14,7 @@
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
+   [metabase-enterprise.branching.api]
    [metabase-enterprise.cloud-add-ons.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
@@ -21,6 +22,7 @@
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.documents.api]
    [metabase-enterprise.email.api]
+   [metabase-enterprise.git-source-of-truth.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
@@ -91,6 +93,7 @@
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"                 (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
+   "/branch"                       metabase-enterprise.branching.api/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
    "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
@@ -100,6 +103,7 @@
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/git-source-of-truth"          (premium-handler metabase-enterprise.git-source-of-truth.api/routes :serialization)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))

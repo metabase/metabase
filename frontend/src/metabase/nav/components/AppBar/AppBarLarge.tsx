@@ -58,7 +58,6 @@ const AppBarLarge = ({
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
-
   return (
     <AppBarRoot
       hasSidebarOpen={

@@ -121,6 +121,13 @@
    :model/Action
    (fn [_] {:creator_id (rasta-id)})
 
+   :model/Branch
+   (fn [_] (default-timestamped
+            (let [name (u.random/random-name)]
+              {:name name
+               :slug (u/slugify name)
+               :creator_id (rasta-id)})))
+
    :model/Channel
    (fn [_] (default-timestamped
             {:name (u.random/random-name)
