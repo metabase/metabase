@@ -104,8 +104,9 @@
       ;; Use the same client if endpoints are the same
       host-client)))
 
-(defn- generate-presigned-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key method]
+(defn- generate-presigned-url
   "Generate presigned URL using the provided S3 client (no post-processing needed)"
+  [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key method]
   (let [one-hour    (* 60 60 1000)
         expiration  (Date. ^Long (+ (System/currentTimeMillis) one-hour))
         url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
@@ -113,14 +114,16 @@
                         (.withMethod method))]
     (.toString (.generatePresignedUrl s3-client url-request))))
 
-(defn- upload-file-to-s3-and-get-url [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^File file container-s3-client]
+(defn- upload-file-to-s3-and-get-url
   "Upload file using host client, return GET URL using container client"
+  [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^File file container-s3-client]
   (let [put-request (PutObjectRequest. ^String bucket-name ^String key file)]
     (.putObject s3-client put-request)
     (generate-presigned-url container-s3-client bucket-name key com.amazonaws.HttpMethod/GET)))
 
-(defn- generate-presigned-put-url [^com.amazonaws.services.s3.AmazonS3 container-s3-client bucket-name key]
+(defn- generate-presigned-put-url
   "Generate PUT URL using container client"
+  [^com.amazonaws.services.s3.AmazonS3 container-s3-client bucket-name key]
   (generate-presigned-url container-s3-client bucket-name key com.amazonaws.HttpMethod/PUT))
 
 (defn- delete-s3-object [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key]
