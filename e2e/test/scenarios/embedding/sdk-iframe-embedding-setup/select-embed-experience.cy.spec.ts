@@ -179,4 +179,19 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
     },
   );
+
+  it("should show a fake loading indicator in embed preview", () => {
+    cy.visit("/embed-js");
+
+    cy.get("#iframe-embed-container")
+      .findByTestId("preview-loading-indicator", { timeout: 20_000 })
+      .should("be.visible");
+
+    cy.get("[data-iframe-loaded]", { timeout: 20_000 }).should(
+      "have.length",
+      1,
+    );
+
+    cy.findByTestId("preview-loading-indicator").should("not.exist");
+  });
 });
