@@ -68,7 +68,7 @@ export function PythonRunnerSettingsPage() {
           title={t`S3 Access Key ID`}
           description={t`AWS access key ID for S3 authentication.`}
           placeholder="test"
-          inputType="text"
+          inputType="password"
         />
         <AdminSettingInput
           name="python-storage-s3-secret-key"
@@ -83,6 +83,12 @@ export function PythonRunnerSettingsPage() {
           description={t`Alternative S3 endpoint accessible from containers. Leave empty if same as main endpoint.`}
           placeholder="http://localstack:4566"
           inputType="text"
+        />
+        <AdminSettingInput
+          name="python-storage-s3-path-style-access"
+          title={t`Use Path-Style Access`}
+          description={t`Use path-style access for S3 requests (required for LocalStack and some S3-compatible services).`}
+          inputType="boolean"
         />
       </SettingsSection>
     </SettingsPageWrapper>

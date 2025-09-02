@@ -7,42 +7,99 @@
 
 (setting/defsetting transform-timeout
   (deferred-tru "The timeout for a transform job, in minutes.")
-  :type       :integer
+  :type :integer
   :visibility :internal
-  :default    (* 4 60)
-  :feature    :transforms
-  :doc        false
-  :export?    false
+  :default (* 4 60)
+  :feature :transforms
+  :doc false
+  :export? false
   :encryption :no
-  :audit      :getter)
+  :audit :getter)
 
 (setting/defsetting python-execution-server-url
   (deferred-tru "URL for the Python execution server that runs transform functions.")
-  :type       :string
+  :type :string
   :visibility :admin
-  :default    "http://localhost:5001"
-  :feature    :transforms
-  :doc        false
-  :export?    false
+  :default "http://localhost:5001"
+  :feature :transforms
+  :doc false
+  :export? false
   :encryption :no
-  :audit      :getter)
+  :audit :getter)
 
-;; TODO break this out to narrower settings to make the UX better?
-(setting/defsetting python-storage-config
-  (deferred-tru "Storage configuration for Python execution artifacts. JSON format with type, endpoint, credentials, etc.")
-  :type       :json
+(setting/defsetting python-storage-s3-endpoint
+  (deferred-tru "S3 endpoint URL for storing Python execution artifacts.")
+  :type :string
   :visibility :admin
-  :default    {:type "s3"
-               :endpoint "http://localhost:4566"
-               :region "us-east-1"
-               :bucket "metabase-python-runner"
-               :access-key-id "test"
-               :secret-access-key "test"
-               :path-style-access true
-               ;; Optional: different endpoint accessible from containers
-               :container-endpoint "http://localstack:4566"}
-  :feature    :transforms
-  :doc        false
-  :export?    false
+  :default "http://localhost:4566"
+  :feature :transforms
+  :doc false
+  :export? false
+  :encryption :no
+  :audit :getter)
+
+(setting/defsetting python-storage-s3-region
+  (deferred-tru "AWS region for S3 storage.")
+  :type :string
+  :visibility :admin
+  :default "us-east-1"
+  :feature :transforms
+  :doc false
+  :export? false
+  :encryption :no
+  :audit :getter)
+
+(setting/defsetting python-storage-s3-bucket
+  (deferred-tru "S3 bucket name for storing Python execution artifacts.")
+  :type :string
+  :visibility :admin
+  :default "metabase-python-runner"
+  :feature :transforms
+  :doc false
+  :export? false
+  :encryption :no
+  :audit :getter)
+
+(setting/defsetting python-storage-s3-access-key
+  (deferred-tru "AWS access key ID for S3 authentication.")
+  :type :string
+  :visibility :admin
+  :default "test"
+  :feature :transforms
+  :doc false
+  :export? false
+  :encryption :no
+  :audit :getter)
+
+(setting/defsetting python-storage-s3-secret-key
+  (deferred-tru "AWS secret access key for S3 authentication.")
+  :type :string
+  :visibility :admin
+  :default "test"
+  :feature :transforms
+  :doc false
+  :export? false
   :encryption :when-encryption-key-set
-  :audit      :never)
+  :audit :never)
+
+(setting/defsetting python-storage-s3-container-endpoint
+  (deferred-tru "Alternative S3 endpoint accessible from containers. Leave empty if same as main endpoint.")
+  :type :string
+  :visibility :admin
+  :default "http://localstack:4566"
+  :feature :transforms
+  :doc false
+  :export? false
+  :encryption :no
+  :audit :getter)
+
+(setting/defsetting python-storage-s3-path-style-access
+  (deferred-tru "Use path-style access for S3 requests (required for LocalStack and some S3-compatible services).")
+  :type :boolean
+  :visibility :admin
+  :default true
+  :feature :transforms
+  :doc false
+  :export? false
+  :encryption :no
+  :audit :getter)
