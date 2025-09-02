@@ -4,9 +4,9 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
-  Button,
   Group,
   Icon,
+  Menu,
   Paper,
   Popover,
   Tooltip,
@@ -28,13 +28,6 @@ export type DiscussionActionPanelProps = {
 };
 
 const ACTION_ICON_SIZE = "md";
-const ACTION_BUTTON_STYLE_PROPS = {
-  w: "100%",
-  p: "0.25rem",
-  variant: "inverse",
-  size: "xs",
-  radius: "xs",
-} as const;
 
 export function DiscussionActionPanel({
   canResolve,
@@ -98,47 +91,44 @@ export function DiscussionActionPanel({
               </Tooltip>
             </Popover.Target>
 
-            <Popover.Dropdown>
-              <Paper p="0.25rem">
+            <Popover.Dropdown p="xs">
+              <Menu>
                 {onCopyLink && (
-                  <Button
-                    {...ACTION_BUTTON_STYLE_PROPS}
-                    leftSection={<Icon name="link" c="text-primary" />}
+                  <Menu.Item
+                    leftSection={<Icon name="link" />}
                     onClick={() => {
                       onCopyLink?.(comment);
                       setPopoverOpened(false);
                     }}
                   >
                     {t`Copy link`}
-                  </Button>
+                  </Menu.Item>
                 )}
 
                 {onEdit && (
-                  <Button
-                    {...ACTION_BUTTON_STYLE_PROPS}
-                    leftSection={<Icon name="pencil" c="text-primary" />}
+                  <Menu.Item
+                    leftSection={<Icon name="pencil" />}
                     onClick={() => {
                       onEdit?.(comment);
                       setPopoverOpened(false);
                     }}
                   >
                     {t`Edit`}
-                  </Button>
+                  </Menu.Item>
                 )}
 
                 {onDelete && (
-                  <Button
-                    {...ACTION_BUTTON_STYLE_PROPS}
-                    leftSection={<Icon name="trash" c="text-primary" />}
+                  <Menu.Item
+                    leftSection={<Icon name="trash" />}
                     onClick={() => {
                       onDelete?.(comment);
                       setPopoverOpened(false);
                     }}
                   >
                     {t`Delete`}
-                  </Button>
+                  </Menu.Item>
                 )}
-              </Paper>
+              </Menu>
             </Popover.Dropdown>
           </Popover>
         )}
