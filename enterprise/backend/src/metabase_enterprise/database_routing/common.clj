@@ -12,7 +12,7 @@
   [db-or-id]
   (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
 
-(def ^:dynamic ^:private *database-routing-on* :unset)
+(def ^:dynamic *database-routing-on* :unset)
 
 (defn router-db-or-id->destination-db-id
   "Given a user and a database (or id), returns the ID of the destination database that the user's query should ultimately be

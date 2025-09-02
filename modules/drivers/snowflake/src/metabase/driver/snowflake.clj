@@ -871,10 +871,9 @@
            (.next rs)))))))
 
 (defmethod driver/set-database-used! :snowflake [_driver conn db]
-  (when (driver-api/db-routing-enabled? db)
-    (let [sql (format "USE DATABASE \"%s\"" (db-name db))]
-      (with-open [stmt (.createStatement ^java.sql.Connection conn)]
-        (.execute stmt sql)))))
+  (let [sql (format "USE DATABASE \"%s\"" (db-name db))]
+    (with-open [stmt (.createStatement ^java.sql.Connection conn)]
+      (.execute stmt sql))))
 
 (defmethod driver/run-transform! [:snowflake :table]
   [driver {:keys [connection-details query output-table]} opts]

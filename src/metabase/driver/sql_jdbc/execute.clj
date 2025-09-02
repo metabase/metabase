@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.database-routing.common :as db-routing.common]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.settings :as driver.settings]
@@ -372,7 +373,9 @@
                   ;; otherwise it's a spec and we can't get the db
                   :else nil)]
     (set-role-if-supported! driver conn db)
-    (driver/set-database-used! driver conn db))
+    (when (and (= :on db-routing.common/*database-routing-on*)
+               (driver-api/db-routing-enabled? db))
+      (driver/set-database-used! driver conn db)))
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
