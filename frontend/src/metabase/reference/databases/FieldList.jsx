@@ -107,6 +107,7 @@ const FieldList = (props) => {
     description: getFormField(`${id}.description`),
     semantic_type: getFormField(`${id}.semantic_type`),
     fk_target_field_id: getFormField(`${id}.fk_target_field_id`),
+    settings: getFormField(`${id}.settings`),
   });
 
   return (

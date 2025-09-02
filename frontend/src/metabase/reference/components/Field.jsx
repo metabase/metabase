@@ -10,9 +10,13 @@ import { t } from "ttag";
 import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
-import { SemanticTypePicker } from "metabase/metadata/components";
-import { Icon } from "metabase/ui";
-import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import {
+  CurrencyPicker,
+  SemanticTypePicker,
+} from "metabase/metadata/components";
+import { getFieldCurrency } from "metabase/metadata/utils/field";
+import { Box, Icon } from "metabase/ui";
+import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
 import F from "./Field.module.css";
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
@@ -96,10 +100,9 @@ const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
           <div className={F.fieldDataType}>{field.database_type}</div>
         </div>
         <div className={S.itemSubtitle}>
-          <div className={F.fieldForeignKey}>
-            {isEditing && isTypeFK(semanticType) && (
+          {isEditing && isTypeFK(semanticType) && (
+            <Box mt="sm">
               <FieldFkTargetPicker
-                className={CS.mt1}
                 databaseId={databaseId}
                 field={field}
                 value={
@@ -114,8 +117,27 @@ const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
                   });
                 }}
               />
-            )}
-          </div>
+            </Box>
+          )}
+
+          {isEditing && isTypeCurrency(semanticType) && (
+            <Box Box mt="sm">
+              <CurrencyPicker
+                value={getFieldCurrency(
+                  formField.settings.value ?? field.settings,
+                )}
+                fw="bold"
+                onChange={(currency) => {
+                  formField.settings.onChange({
+                    target: {
+                      name: formField.settings.name,
+                      value: { ...field.settings, currency },
+                    },
+                  });
+                }}
+              />
+            </Box>
+          )}
 
           {match({ description: field.description, isEditing })
             .with({ isEditing: true }, () => {
