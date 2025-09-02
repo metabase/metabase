@@ -251,7 +251,7 @@
                   (with-open [writer (io/writer temp-file)]
                     (.write writer ^String csv-data)))
                 (let [file-size (.length temp-file)]
-                  (transforms.instrumentation/record-data-transfer! run-id transform-id :python-output :file-to-dwh file-size nil)
+                  (transforms.instrumentation/record-data-transfer! run-id transform-id :file-to-dwh file-size nil)
                   (transforms.instrumentation/with-stage-timing [run-id transform-id :data-transfer :file-to-dwh]
                     (upload/create-from-csv-and-sync! {:db         db
                                                        :filename   (.getName temp-file)

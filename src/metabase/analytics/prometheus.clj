@@ -394,7 +394,7 @@
                           :buckets [10 100 500 1000 5000 10000 30000 60000 300000 600000]})
    (prometheus/histogram :metabase-transforms/data-transfer-bytes
                          {:description "Size in bytes of data transferred during transform stages."
-                          :labels [:job-run-id :transform-id :stage-label :direction]
+                          :labels [:job-run-id :transform-id :stage-label]
                           ;; 1KB -> 10GB
                           :buckets [1000 10000 100000 1000000 10000000 100000000 1000000000 10000000000]})
    (prometheus/histogram :metabase-transforms/data-transfer-rows

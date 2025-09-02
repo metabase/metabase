@@ -28,9 +28,6 @@
    ;; File operations
    :csv-write])
 
-(mr/def ::data-direction
-  [:enum :dwh-to-file :file-to-s3 :file-to-dwh])
-
 (mu/defn record-stage-start!
   "Record the start of a transform stage."
   [job-run-id      :- pos-int?
@@ -97,16 +94,13 @@
   [job-run-id      :- pos-int?
    transform-id    :- pos-int?
    stage-label     :- ::stage-label
-   direction       :- ::data-direction
    bytes           :- [:maybe pos-int?]
    rows            :- [:maybe pos-int?]]
   (let [labels {:job-run-id (str job-run-id)
                 :transform-id (str transform-id)
                 :stage-label (name stage-label)}]
     (when bytes
-      (prometheus/observe! :metabase-transforms/data-transfer-bytes
-                           (assoc labels :direction (name direction))
-                           bytes))
+      (prometheus/observe! :metabase-transforms/data-transfer-bytes labels bytes))
     (when rows
       (prometheus/observe! :metabase-transforms/data-transfer-rows labels rows))))
 
@@ -168,7 +162,6 @@
                      (assoc labels :status (name status)))
     (prometheus/observe! :metabase-transforms/python-api-call-duration-ms labels duration-ms)))
 
-
 (defmacro with-python-api-timing
   "Execute body while timing a Python API call."
   [[job-run-id transform-id] & body]
@@ -197,12 +190,7 @@
   "Execute body while timing a CSV file write operation."
   [[job-run-id transform-id] & body]
   `(let [start-time# (System/currentTimeMillis)]
-     (try
-       (let [result# (do ~@body)]
-         (record-csv-write-operation! ~job-run-id ~transform-id
-                                      (- (System/currentTimeMillis) start-time#))
-         result#)
-       (catch Throwable t#
-         (record-csv-write-operation! ~job-run-id ~transform-id
-                                      (- (System/currentTimeMillis) start-time#))
-         (throw t#)))))
+     (let [result# (do ~@body)]
+       (record-csv-write-operation! ~job-run-id ~transform-id
+                                    (- (System/currentTimeMillis) start-time#))
+       result#)))
