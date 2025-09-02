@@ -4,7 +4,6 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-// our Portal in metabase/ui does not work here, so we're using the originnal Mantine one
 import { Box, Button, Icon, rem } from "metabase/ui";
 import type { CommentThread } from "metabase-enterprise/comments/types";
 
