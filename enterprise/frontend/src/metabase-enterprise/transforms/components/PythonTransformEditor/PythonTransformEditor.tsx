@@ -60,10 +60,10 @@ export function PythonTransformEditor({
       let updatedScript = script.replace(transformRegex, newSignature + "\n");
 
       const argsRegex =
-        /(\s+"""[\s\S]*?)\s+Args:\s*\n([\s\S]*?)(\n\s+Returns:|\n\s+""")/;
+        /(\s+"""[\s\S]*?)\s*Args:\s*\n([\s\S]*?)\s*(\n\s+Returns:|\n\s+""")/;
       const argsMatch = updatedScript.match(argsRegex);
 
-      if (argsMatch && tableAliases.length > 0) {
+      if (tableAliases.length > 0) {
         const maxAliasLength = Math.max(...tableAliases.map((a) => a.length));
         const newArgsSection = tableAliases
           .map((alias) => {
@@ -76,14 +76,50 @@ export function PythonTransformEditor({
           })
           .join("\n");
 
-        updatedScript = updatedScript.replace(
-          argsRegex,
-          `$1
+        if (argsMatch) {
+          // Replace existing Args section
+          updatedScript = updatedScript.replace(
+            argsRegex,
+            `$1
 
     Args:
-${newArgsSection}$3`,
-        );
-      } else if (argsMatch && tableAliases.length === 0) {
+${newArgsSection}
+$3`,
+          );
+        } else {
+          // No Args section exists, look for the pattern before Returns and insert Args
+          // Also remove the instructional text about selecting tables
+          const insertRegex =
+            /(\s+"""[\s\S]*?)\s*Select tables above to add them as function parameters\.\s*(\n\s+Returns:|\n\s+""")/;
+          const insertMatch = updatedScript.match(insertRegex);
+          if (insertMatch) {
+            updatedScript = updatedScript.replace(
+              insertRegex,
+              `$1
+
+    Args:
+${newArgsSection}
+$2`,
+            );
+          } else {
+            // Fallback: just look for Returns section without the specific text
+            // Remove any extra whitespace before Returns and ensure single blank line
+            const fallbackRegex = /(\s+"""[\s\S]*?)\s*(\n\s+Returns:|\n\s+""")/;
+            const fallbackMatch = updatedScript.match(fallbackRegex);
+            if (fallbackMatch) {
+              updatedScript = updatedScript.replace(
+                fallbackRegex,
+                `$1
+
+    Args:
+${newArgsSection}
+$2`,
+              );
+            }
+          }
+        }
+      } else if (argsMatch) {
+        // Remove existing Args section when no tables
         updatedScript = updatedScript.replace(argsRegex, "$1$3");
       }
 
