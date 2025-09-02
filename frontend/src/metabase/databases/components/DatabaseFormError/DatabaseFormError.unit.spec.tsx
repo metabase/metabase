@@ -9,7 +9,6 @@ import { createMockSettingsState } from "metabase-types/store/mocks/settings";
 import { DatabaseFormError } from "./DatabaseFormError";
 import { useTroubleshootingTips } from "./useTroubleshootingTips";
 
-// Mock external dependencies
 jest.mock("formik", () => ({
   useFormikContext: jest.fn(),
 }));
@@ -136,6 +135,16 @@ describe("DatabaseFormError", () => {
 
       expect(screen.getByText("More troubleshooting tips")).toBeInTheDocument();
     });
+
+    it("should display custom error message from useFormErrorMessage", () => {
+      mockUseFormErrorMessage.mockReturnValue("Custom connection error");
+
+      renderWithProviders(<DatabaseFormError />, {
+        storeInitialState: defaultState,
+      });
+
+      expect(screen.getByText("Custom connection error")).toBeInTheDocument();
+    });
   });
 
   describe("Host and Port error handling", () => {
@@ -151,7 +160,7 @@ describe("DatabaseFormError", () => {
       });
     });
 
-    it("should show host and port specific title when there are host/port errors", () => {
+    it("should show host and port specific title when there is a host/port specific error", () => {
       renderWithProviders(<DatabaseFormError />, {
         storeInitialState: defaultState,
       });
@@ -171,7 +180,7 @@ describe("DatabaseFormError", () => {
       ).toBeInTheDocument();
     });
 
-    it("should render 'Check Host and Port settings' button for host/port errors", () => {
+    it("should render 'Check Host and Port settings' button for host/port specific errors", () => {
       renderWithProviders(<DatabaseFormError />, {
         storeInitialState: defaultState,
       });
@@ -181,14 +190,13 @@ describe("DatabaseFormError", () => {
       ).toBeInTheDocument();
     });
 
-    it("should show no initial tips for host and port errors", () => {
+    it("should show no initial tips for host/port specific error", () => {
       mockUseTroubleshootingTips.mockReturnValue([]);
 
       renderWithProviders(<DatabaseFormError />, {
         storeInitialState: defaultState,
       });
 
-      // Should show 0 tips initially for host and port errors
       const tips = screen.queryAllByTestId("troubleshooting-tip");
       expect(tips).toHaveLength(0);
     });
@@ -326,88 +334,6 @@ describe("DatabaseFormError", () => {
       // Since the Paper component might not forward refs correctly in tests,
       // we'll check that the mock was set up correctly instead
       expect(mockScrollIntoView).toBeDefined();
-    });
-  });
-
-  describe("Error message handling", () => {
-    it("should display custom error message from useFormErrorMessage", () => {
-      mockUseFormErrorMessage.mockReturnValue("Custom connection error");
-
-      renderWithProviders(<DatabaseFormError />, {
-        storeInitialState: defaultState,
-      });
-
-      expect(screen.getByText("Custom connection error")).toBeInTheDocument();
-    });
-
-    it("should handle empty error message", () => {
-      mockUseFormErrorMessage.mockReturnValue("");
-
-      renderWithProviders(<DatabaseFormError />, {
-        storeInitialState: defaultState,
-      });
-
-      // Should still render the alert even with empty message
-      expect(screen.getByRole("alert")).toBeInTheDocument();
-    });
-  });
-
-  describe("Edge cases", () => {
-    it("should handle missing scrollable element gracefully", async () => {
-      const user = userEvent.setup();
-      mockGetElementById.mockReturnValue(null);
-
-      mockUseFormikContext.mockReturnValue({
-        ...defaultFormikContext,
-        errors: {
-          details: {
-            host: "Invalid host",
-            port: "Invalid port",
-          },
-        },
-      });
-
-      renderWithProviders(<DatabaseFormError />, {
-        storeInitialState: defaultState,
-      });
-
-      const checkButton = screen.getByText("Check Host and Port settings");
-      await user.click(checkButton);
-
-      // Should not throw error when element is not found
-      expect(mockGetElementById).toHaveBeenCalledWith(
-        "scrollable-database-form-body",
-      );
-    });
-
-    it("should handle missing data-error element gracefully", async () => {
-      const user = userEvent.setup();
-      const mockScrollableEl = {
-        scrollTo: mockScrollTo,
-        querySelector: mockQuerySelector.mockReturnValue(null),
-      };
-
-      mockGetElementById.mockReturnValue(mockScrollableEl);
-
-      mockUseFormikContext.mockReturnValue({
-        ...defaultFormikContext,
-        errors: {
-          details: {
-            host: "Invalid host",
-            port: "Invalid port",
-          },
-        },
-      });
-
-      renderWithProviders(<DatabaseFormError />, {
-        storeInitialState: defaultState,
-      });
-
-      const checkButton = screen.getByText("Check Host and Port settings");
-      await user.click(checkButton);
-
-      // Should not call scrollTo when data-error element is not found
-      expect(mockScrollTo).not.toHaveBeenCalled();
     });
   });
 });

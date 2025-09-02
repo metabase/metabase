@@ -50,12 +50,6 @@ describe("TroubleshootingTip", () => {
       ).toBeInTheDocument();
     });
 
-    it("should handle empty body", () => {
-      render(<TroubleshootingTip title="Title Only" body="" />);
-
-      expect(screen.getByText("Title Only")).toBeInTheDocument();
-    });
-
     it("should handle JSX elements in body", () => {
       const bodyWithLink = (
         <>

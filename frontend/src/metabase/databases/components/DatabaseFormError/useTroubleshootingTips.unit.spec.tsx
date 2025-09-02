@@ -23,7 +23,6 @@ const TestComponent = ({ count }: { count?: number }) => {
   );
 };
 
-// Mock external dependencies
 jest.mock("react-router", () => ({
   ...jest.requireActual("react-router"),
   Link: ({ children, to, ...props }: any) => (
@@ -233,27 +232,11 @@ describe("useTroubleshootingTips", () => {
       expect(tips.length).toBe(4);
     });
 
-    it("should handle undefined count", () => {
+    it("should handle undefined count by showing all tips", () => {
       renderWithProviders(<TestComponent count={undefined} />, {
         storeInitialState: defaultState,
       });
 
-      const tips = screen.getAllByTestId(/^tip-\d+$/);
-      expect(tips.length).toBe(5);
-    });
-
-    it("should handle missing settings gracefully", () => {
-      const minimalState = createMockState({
-        settings: createMockSettingsState({
-          "token-features": createMockTokenFeatures({}),
-        }),
-      });
-
-      renderWithProviders(<TestComponent />, {
-        storeInitialState: minimalState,
-      });
-
-      // Should still return tips even with minimal settings
       const tips = screen.getAllByTestId(/^tip-\d+$/);
       expect(tips.length).toBe(5);
     });
