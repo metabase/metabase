@@ -9,7 +9,7 @@ export const getEmbeddingSdkPackageBuildData = (): BuildInfo => {
   return {
     version: buildInfo?.version,
     gitBranch: buildInfo?.gitBranch,
-    gitCommit: buildInfo?.gitCommit,
+    gitCommitSha: buildInfo?.gitCommitSha,
     buildTime: buildInfo?.buildTime,
   };
 };
