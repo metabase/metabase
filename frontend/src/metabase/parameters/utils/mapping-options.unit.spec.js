@@ -520,6 +520,56 @@ describe("parameters/utils/mapping-options", () => {
 
       expect(options.length).toBeGreaterThan(0);
     });
+
+    it("should return empty array when inline parameter on question card tries to map to different card", () => {
+      const card = structured({ "source-table": ORDERS_ID });
+      const question = new Question(card, metadata);
+      const dashcard = createMockDashboardCard({
+        id: 1,
+        dashboard_tab_id: 1,
+        card_id: 123,
+      });
+      const parameterDashcard = createMockDashboardCard({
+        id: 2,
+        dashboard_tab_id: 1,
+        card_id: 456,
+      });
+
+      const options = getParameterMappingOptions(
+        question,
+        { type: "date/single" },
+        card,
+        dashcard,
+        parameterDashcard,
+      );
+
+      expect(options).toEqual([]);
+    });
+
+    it("should return normal options when inline parameter on question card maps to its own card", () => {
+      const card = structured({ "source-table": ORDERS_ID });
+      const question = new Question(card, metadata);
+      const dashcard = createMockDashboardCard({
+        id: 1,
+        dashboard_tab_id: 1,
+        card_id: 123,
+      });
+      const parameterDashcard = createMockDashboardCard({
+        id: 1,
+        dashboard_tab_id: 1,
+        card_id: 123,
+      });
+
+      const options = getParameterMappingOptions(
+        question,
+        { type: "date/single" },
+        card,
+        dashcard,
+        parameterDashcard,
+      );
+
+      expect(options.length).toBeGreaterThan(0);
+    });
   });
 });
 

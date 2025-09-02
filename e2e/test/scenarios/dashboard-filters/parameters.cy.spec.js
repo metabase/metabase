@@ -2433,6 +2433,133 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
+    it("should allow connecting inline parameters only to their own card", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+      }).then(({ body: dashcard }) => {
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+
+        // Add a second card
+        H.openQuestionsSidebar();
+        H.sidebar().findByText("Orders, Count").click();
+        H.getDashboardCard(1).findByText("Count").should("exist");
+
+        // Add a filter to the first card
+        H.setDashCardFilter(0, "Text or Category", null, "Category");
+        H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+
+        // Ensure the filter can't be connected to the second card
+        H.getDashboardCard(1)
+          .findByText("This filter can only connect to its own card.")
+          .should("be.visible");
+
+        // Disconnect the filter from the first card
+        H.sidebar().findByText("Disconnect from card").click();
+
+        // Ensure it still can't be connected to the second card
+        H.getDashboardCard(1)
+          .findByText("This filter can only connect to its own card.")
+          .should("be.visible");
+      });
+    });
+
+    it("should show all inline parameters when editing one parameter mapping", () => {
+      const categoryFilter = createMockParameter({
+        id: "category123",
+        name: "Category",
+        type: "string/=",
+        slug: "category",
+        sectionId: "string",
+      });
+
+      const countFilter = createMockParameter({
+        id: "count456",
+        name: "Count",
+        type: "number/=",
+        slug: "count",
+        sectionId: "number",
+      });
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryFilter, countFilter],
+        },
+      }).then(({ body: dashcard }) => {
+        // Update the dashcard to have inline parameters
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            {
+              id: dashcard.id,
+              inline_parameters: [categoryFilter.id, countFilter.id],
+              parameter_mappings: [
+                {
+                  parameter_id: categoryFilter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+
+        // Both filters should be visible
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget({ isEditing: true, name: "Category" }).should(
+            "be.visible",
+          );
+          H.filterWidget({ isEditing: true, name: "Count" }).should(
+            "be.visible",
+          );
+        });
+
+        // Click on Category filter to open its mapping sidebar
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget({ isEditing: true, name: "Category" }).click();
+        });
+
+        // Verify the sidebar opened for Category parameter
+        H.sidebar().findByLabelText("Label").should("have.value", "Category");
+
+        // Both filters should still be visible during mapping mode
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget({ isEditing: true, name: "Category" }).should(
+            "be.visible",
+          );
+          H.filterWidget({ isEditing: true, name: "Count" }).should(
+            "be.visible",
+          );
+        });
+
+        // Should be able to click on Count filter while Category mapping is open
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget({ isEditing: true, name: "Count" }).click();
+        });
+
+        // The sidebar should now show Count parameter settings
+        H.sidebar().findByLabelText("Label").should("have.value", "Count");
+
+        // Both filters should still be visible
+        H.getDashboardCard(0).within(() => {
+          H.filterWidget({ isEditing: true, name: "Category" }).should(
+            "be.visible",
+          );
+          H.filterWidget({ isEditing: true, name: "Count" }).should(
+            "be.visible",
+          );
+        });
+      });
+    });
+
     it("should not show add filter button for users with no data editing permissions", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,

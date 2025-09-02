@@ -3,7 +3,11 @@ import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { isActionDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
+import {
+  isActionDashCard,
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/dashboard/utils";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
@@ -138,6 +142,14 @@ export function getParameterMappingOptions(
     parameterDashcard != null &&
     parameterDashcard.dashboard_tab_id !== dashcard?.dashboard_tab_id;
   if (isInlineParameterOnCardFromOtherTab) {
+    return [];
+  }
+
+  const isInlineParameterOfAnotherQuestionCard =
+    parameterDashcard != null &&
+    isQuestionDashCard(parameterDashcard) &&
+    parameterDashcard.id !== dashcard?.id;
+  if (isInlineParameterOfAnotherQuestionCard) {
     return [];
   }
 
