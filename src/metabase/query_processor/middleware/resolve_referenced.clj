@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.resolve-referenced
   (:require
-   [clojure.set :as set]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
