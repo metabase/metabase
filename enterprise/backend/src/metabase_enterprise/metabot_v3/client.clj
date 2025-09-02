@@ -22,12 +22,22 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.o11y :refer [with-span]]
+   [toucan2.core :as t2])
   (:import (java.io BufferedReader)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic ^:private *debug* false)
+
+(def TYPE-PREFIX
+  "AI-SDK type prefix"
+  {:text        "0:"
+   :data        "2:"
+   :error       "3:"
+   :finish      "d:"
+   :tool-call   "9:"
+   :tool-result "a:"})
 
 (defn get-ai-service-token
   "Get the token for the AI service."
@@ -47,15 +57,11 @@
     (json/encode-to x w nil)
     (.toByteArray os)))
 
-(defn- request-headers
-  []
-  {"Accept"                    "application/json"
-   "Content-Type"              "application/json;charset=UTF-8"
-   "x-metabase-instance-token" (premium-features/premium-embedding-token)})
-
 (defn- build-request-options [body]
   (merge
-   {:headers          (request-headers)
+   {:headers          {"Accept"                    "application/json"
+                       "Content-Type"              "application/json;charset=UTF-8"
+                       "x-metabase-instance-token" (premium-features/premium-embedding-token)}
     :body             (->json-bytes body)
     :follow-redirects true
     :throw-exceptions false}
@@ -79,11 +85,8 @@
         (deliver response-metadata (some-> <> :body :metadata))
         (deliver response-status (some-> <> :status))))))
 
-(defn- agent-v2-endpoint-url []
-  (str (metabot-v3.settings/ai-service-base-url) "/v2/agent"))
-
-(defn- agent-v2-streaming-endpoint-url []
-  (str (metabot-v3.settings/ai-service-base-url) "/v2/agent/stream"))
+(defn- ai-url [path]
+  (str (metabot-v3.settings/ai-service-base-url) path))
 
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
@@ -112,6 +115,19 @@
 (defn- generate-embeddings-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
 
+(defn- store-usage! [conversation-id usage]
+  (t2/insert! :model/MetabotUsage
+              {:user_id         api/*current-user-id*
+               :conversation_id conversation-id
+               :usage           usage
+               :total           (->> (vals usage)
+                                     (map #(+ (:prompt %) (:completion %)))
+                                     (apply +))}))
+
+(defn- handle-finish [conversation-id data]
+  (let [data (json/decode+kw data)]
+    (some->> (:usage data) (store-usage! conversation-id))))
+
 (mu/defn request :- ::metabot-v3.client.schema/ai-service.response
   "Make a V2 request to the AI Service."
   [{:keys [context messages profile-id conversation-id session-id state]}
@@ -124,7 +140,7 @@
        [:state :map]]]
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
-    (let [url      (agent-v2-endpoint-url)
+    (let [url      (ai-url "/v2/agent")
           body     (-> {:messages        messages
                         :context         context
                         :conversation_id conversation-id
@@ -149,7 +165,8 @@
         (u/prog1 (mc/decode ::metabot-v3.client.schema/ai-service.response
                             (:body response)
                             (mtx/transformer {:name :api-response}))
-          (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
+          (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>))
+          (some->> (:usage <>) (store-usage! conversation-id)))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
@@ -182,7 +199,7 @@
        [:state :map]]]
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
-    (let [url      (agent-v2-streaming-endpoint-url)
+    (let [url      (ai-url "/v2/agent/stream")
           body     (-> {:messages        messages
                         :context         context
                         :conversation_id conversation-id
@@ -209,10 +226,14 @@
           ;; Response from the AI Service will send response parts separated by newline
           (with-open [response-lines ^BufferedReader (io/reader (:body response))]
             (loop []
-              ;; Grab the next line and write it to the output stream with appended newline (frontend depends on it)
-              ;; Immediately flush so it get's sent to the frontend as soon as possible
+              ;; https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
+              ;; Format is text chunks separated by 2 newlines, so for each line we append another newline
+              ;; Immediately flush so it feels fluid on the frontend
               (when-let [line (.readLine response-lines)]
-                (.write os (.getBytes (str line "\n") "UTF-8"))
+                (when (str/starts-with? line (:finish TYPE-PREFIX))
+                  (handle-finish conversation-id (subs line 2)))
+                (.write os (.getBytes line "UTF-8"))
+                (.write os (.getBytes "\n"))
                 (.flush os)
                 (recur)))))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))

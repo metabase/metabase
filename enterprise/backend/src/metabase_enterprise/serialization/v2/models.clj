@@ -64,6 +64,7 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "MetabotUsage"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"

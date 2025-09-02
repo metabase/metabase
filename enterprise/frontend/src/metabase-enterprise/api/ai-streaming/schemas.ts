@@ -35,8 +35,4 @@ export const finishPartSchema = Yup.object({
       "unknown",
     ])
     .required(),
-  usage: Yup.object({
-    promptTokens: Yup.number().required(),
-    completionTokens: Yup.number().required(),
-  }),
 });
