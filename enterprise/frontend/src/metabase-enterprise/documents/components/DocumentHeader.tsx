@@ -42,6 +42,7 @@ interface DocumentHeaderProps {
   onMove: () => void;
   onToggleBookmark: () => void;
   onArchive: () => void;
+  onToggleComments: () => void;
 }
 
 export const DocumentHeader = ({
@@ -56,6 +57,7 @@ export const DocumentHeader = ({
   onMove,
   onToggleBookmark,
   onArchive,
+  onToggleComments,
 }: DocumentHeaderProps) => {
   const handlePrint = useCallback(() => {
     window.print();
@@ -128,6 +130,19 @@ export const DocumentHeader = ({
             </Box>
           )}
         </Transition>
+        {!isNewDocument && (
+          <Tooltip label={t`Show all comments`}>
+            <ActionIcon
+              variant="subtle"
+              size="md"
+              aria-label={t`Show comments`}
+              onClick={onToggleComments}
+              data-hide-on-print
+            >
+              <Icon name="message" />
+            </ActionIcon>
+          </Tooltip>
+        )}
         {!document?.archived && (
           <Menu position="bottom-end">
             <Menu.Target>

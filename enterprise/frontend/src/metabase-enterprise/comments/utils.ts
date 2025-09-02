@@ -6,6 +6,7 @@ import type { CommentThread } from "./types";
 
 export function getCommentThreads(
   comments: Comment[] | undefined,
+  childTargetId?: Comment["child_target_id"],
 ): CommentThread[] {
   if (!comments) {
     return [];
@@ -15,7 +16,17 @@ export function getCommentThreads(
     (comment) => comment.parent_comment_id == null,
   );
 
-  return threadStartingComments.map((parent) => ({
+  let sortedThreadStartingComments = threadStartingComments;
+
+  const isAllComments = childTargetId === null;
+  if (isAllComments) {
+    sortedThreadStartingComments = threadStartingComments.toSorted(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+  }
+
+  return sortedThreadStartingComments.map((parent) => ({
     id: parent.id,
     comments: [
       parent,

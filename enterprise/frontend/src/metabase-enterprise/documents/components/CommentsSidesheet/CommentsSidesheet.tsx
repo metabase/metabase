@@ -52,6 +52,10 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       return [];
     }
 
+    if (childTargetId === "all") {
+      return comments;
+    }
+
     return comments.filter(
       (comment) => comment.child_target_id === childTargetId,
     );
@@ -157,7 +161,9 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         w={rem(400)}
       >
         <Modal.Header px="xl">
-          <Modal.Title>{t`Comments`}</Modal.Title>
+          <Modal.Title>
+            {childTargetId === "all" ? t`All Comments` : t`Comments`}
+          </Modal.Title>
           <Modal.CloseButton onClick={closeSidebar} />
         </Modal.Header>
 
@@ -179,26 +185,28 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
 
             <Tabs.Panel value="open">
               <Discussions
-                childTargetId={childTargetId}
+                childTargetId={childTargetId === "all" ? null : childTargetId}
                 comments={activeComments}
                 showLastDivider
                 targetId={document.id}
                 targetType="document"
               />
 
-              <Box p="xl">
-                <CommentEditor
-                  autoFocus={shouldAutoOpenNewComment}
-                  placeholder={t`Add a comment…`}
-                  onChange={(document) => setNewComment(document)}
-                  onSubmit={handleSubmit}
-                />
-              </Box>
+              {childTargetId !== "all" && (
+                <Box p="xl">
+                  <CommentEditor
+                    autoFocus={shouldAutoOpenNewComment}
+                    placeholder={t`Add a comment…`}
+                    onChange={(document) => setNewComment(document)}
+                    onSubmit={handleSubmit}
+                  />
+                </Box>
+              )}
             </Tabs.Panel>
 
             <Tabs.Panel value="resolved">
               <Discussions
-                childTargetId={childTargetId}
+                childTargetId={childTargetId === "all" ? null : childTargetId}
                 comments={resolvedComments}
                 targetId={document.id}
                 targetType="document"

@@ -144,6 +144,7 @@ export const DocumentPage = ({
     documentContent,
     setDocumentContent,
     updateCardEmbeds,
+    closeCommentSidebar,
   } = useDocumentState(documentData);
 
   // This is important as it will affect collection breadcrumbs in the appbar
@@ -407,6 +408,27 @@ export const DocumentPage = ({
     [dispatch, selectedEmbedIndex],
   );
 
+  const handleToggleComments = useCallback(() => {
+    if (commentSidebarOpen) {
+      closeCommentSidebar();
+
+      if (location.pathname.includes("/comments/")) {
+        dispatch(push(`/document/${documentData?.id || documentId}`));
+      }
+    } else {
+      dispatch(
+        push(`/document/${documentData?.id || documentId}/comments/all`),
+      );
+    }
+  }, [
+    commentSidebarOpen,
+    closeCommentSidebar,
+    location.pathname,
+    dispatch,
+    documentData?.id,
+    documentId,
+  ]);
+
   return (
     <>
       <Box className={styles.documentPage}>
@@ -431,6 +453,7 @@ export const DocumentPage = ({
                 onMove={() => setCollectionPickerMode("move")}
                 onToggleBookmark={handleToggleBookmark}
                 onArchive={() => handleUpdate({ archived: true })}
+                onToggleComments={handleToggleComments}
               />
               <Editor
                 onEditorReady={setEditorInstance}

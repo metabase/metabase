@@ -44,8 +44,10 @@ export const Discussion = ({
   const [deleteComment] = useDeleteCommentMutation();
 
   const handleSubmit = (doc: DocumentContent) => {
+    const effectiveChildTargetId =
+      childTargetId || comments[0]?.child_target_id;
     createComment({
-      child_target_id: childTargetId,
+      child_target_id: effectiveChildTargetId,
       target_id: targetId,
       target_type: targetType,
       content: doc,
@@ -70,8 +72,10 @@ export const Discussion = ({
   };
 
   const handleCopyLink = (comment: Comment) => {
+    const effectiveChildTargetId =
+      childTargetId || comments[0]?.child_target_id;
     const url = getCommentsUrl({
-      childTargetId,
+      childTargetId: effectiveChildTargetId,
       targetId,
       targetType,
       comment,

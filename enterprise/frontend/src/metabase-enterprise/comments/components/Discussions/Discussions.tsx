@@ -21,7 +21,10 @@ export const Discussions = ({
   targetId,
   targetType,
 }: DiscussionProps) => {
-  const threads = useMemo(() => getCommentThreads(comments), [comments]);
+  const threads = useMemo(
+    () => getCommentThreads(comments, childTargetId),
+    [comments, childTargetId],
+  );
 
   return (
     <Stack gap={0}>
