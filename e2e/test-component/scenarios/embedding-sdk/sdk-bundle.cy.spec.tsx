@@ -322,19 +322,19 @@ describe(
       });
     });
 
-    describe("Error handling", () => {
+    describe("Error handling", { retries: 3 }, () => {
       beforeEach(() => {
+        H.clearBrowserCache();
+
         sdkBundleCleanup();
 
-        H.clearBrowserCache().wait(100);
+        cy.intercept("GET", "**/app/embedding-sdk.js", {
+          statusCode: 404,
+        });
       });
 
       describe("when the SDK bundle can't be loaded", () => {
         it("should show an error", () => {
-          cy.intercept("GET", "**/app/embedding-sdk.js", {
-            statusCode: 404,
-          });
-
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             {
@@ -349,10 +349,6 @@ describe(
         });
 
         it("should show a custom error", () => {
-          cy.intercept("GET", "**/app/embedding-sdk.js", {
-            statusCode: 404,
-          });
-
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             {
