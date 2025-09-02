@@ -225,23 +225,23 @@ const renderMentionList = () => {
         props.event.stopPropagation();
         return true;
       }
-      return component.ref?.onKeyDown(props) || false;
     },
 
-    onExit: (props: SuggestionProps) => {
+    onExit: ({ editor }: SuggestionProps) => {
       // Mark mention popup as closed in extension storage
-      try {
-        const storage = (props.editor.storage as any).mention;
-        if (storage) {
-          storage.isMentionPopupOpen = false;
-        }
-      } catch {}
+
+      if (isCommentsStorage(editor.storage)) {
+        editor.storage.mention.isMentionPopupOpen = false;
+      }
+
       if (cleanup) {
         cleanup();
       }
+
       if (popup && popup.parentNode) {
         popup.parentNode.removeChild(popup);
       }
+
       component.destroy();
     },
   };
