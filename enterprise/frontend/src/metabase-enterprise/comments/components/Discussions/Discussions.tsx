@@ -1,12 +1,9 @@
-import { Fragment, useMemo, useState } from "react";
-import { t } from "ttag";
+import { Fragment, useMemo } from "react";
 
 import { Box, Divider, Stack } from "metabase/ui";
-import { useCreateCommentMutation } from "metabase-enterprise/api";
 import { getCommentThreads } from "metabase-enterprise/comments/utils";
-import type { Comment, DocumentContent } from "metabase-types/api";
+import type { Comment } from "metabase-types/api";
 
-import { CommentEditor } from "../CommentEditor";
 import { Discussion } from "../Discussion";
 
 export interface DiscussionProps {
@@ -14,8 +11,6 @@ export interface DiscussionProps {
   comments: Comment[];
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
-  autoOpenNewComment?: boolean;
-  allowNewThreads?: boolean;
 }
 
 export const Discussions = ({
@@ -23,30 +18,14 @@ export const Discussions = ({
   comments,
   targetId,
   targetType,
-  autoOpenNewComment = false,
-  allowNewThreads = true,
 }: DiscussionProps) => {
-  const [, setNewComment] = useState<DocumentContent>();
-
-  const [createComment] = useCreateCommentMutation();
-
   const threads = useMemo(() => getCommentThreads(comments), [comments]);
 
-  const handleSubmit = (doc: DocumentContent) => {
-    createComment({
-      child_target_id: childTargetId,
-      target_id: targetId,
-      target_type: targetType,
-      content: doc,
-      parent_comment_id: null,
-    });
-  };
-
   return (
-    <Stack gap="0">
+    <Stack gap={0}>
       {threads.map((thread) => (
         <Fragment key={thread.id}>
-          <Box px="xl" mb="md">
+          <Box px="xl" py="md">
             <Discussion
               childTargetId={childTargetId}
               comments={thread.comments}
@@ -54,20 +33,10 @@ export const Discussions = ({
               targetType={targetType}
             />
           </Box>
+
           <Divider />
         </Fragment>
       ))}
-
-      {allowNewThreads && (
-        <Box p="xl">
-          <CommentEditor
-            autoFocus={autoOpenNewComment}
-            placeholder={t`Add a comment…`}
-            onChange={(document) => setNewComment(document)}
-            onSubmit={handleSubmit}
-          />
-        </Box>
-      )}
     </Stack>
   );
 };
