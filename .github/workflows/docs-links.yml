@@ -10,14 +10,22 @@ jobs:
   link-checker:
     name: Check documentation links
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          sparse-checkout: |
+            docs
+            .lychee
+
+      - name: Cache lychee
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/lychee
+          key: lychee-${{ runner.os }}-${{ hashFiles('.lychee/config.toml') }}
 
       - name: Run link checker
         id: link-check
