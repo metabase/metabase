@@ -1,10 +1,10 @@
 name: Check doc links
 
 on:
-  repository_dispatch:
+  pull_request:
+    paths:
+      - 'docs/**'
   workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * 0"  # Weekly on Sundays at midnight UTC
 
 jobs:
   link-checker:
@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      issues: write
       contents: read
     steps:
       - name: Checkout repository
@@ -24,22 +23,9 @@ jobs:
         id: link-check
         uses: lycheeverse/lychee-action@v2
         with:
-          fail: false
+          fail: true
           args: docs --config ./.lychee/config.toml --offline
           format: markdown
-
-      - name: Create issue for broken links
-        if: steps.link-check.outputs.exit_code != 0
-        uses: peter-evans/create-issue@v5
-        with:
-          title: "Documentation Link Checker Report - $(date +'%Y-%m-%d')"
-          body: |
-            The documentation link checker found broken or problematic links in
-            the docs directory.
-
-            ${{ steps.link-check.outputs.stdout }}
-          labels: "Type:Documentation"
-          assignees: jeff-bruemmer
 
       - name: Workflow summary
         if: always()
@@ -53,10 +39,9 @@ jobs:
             echo "The link checker found broken or problematic links in the" >> \
               $GITHUB_STEP_SUMMARY
             echo "documentation." >> $GITHUB_STEP_SUMMARY
-            echo "A GitHub issue has been created to track the problems." >> \
-              $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Check the issue for details on which links need to be" >> \
-              $GITHUB_STEP_SUMMARY
-            echo "fixed.**" >> $GITHUB_STEP_SUMMARY
+            echo "**Broken links:**" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.link-check.outputs.stdout }}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
           fi
