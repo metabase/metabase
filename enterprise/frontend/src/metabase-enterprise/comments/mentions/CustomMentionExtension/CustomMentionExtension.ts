@@ -14,9 +14,14 @@ export interface CustomMentionAttributes extends MentionNodeAttrs {
   mentionSuggestionChar?: string;
 }
 
+// Storage state for the Mention extension (accessed via editor.storage.mention)
+export interface MentionStorage {
+  isMentionPopupOpen: boolean;
+}
+
 export const CustomMentionExtension = Mention.extend<
   MentionOptions,
-  CustomMentionAttributes
+  MentionStorage
 >({
   name: "mention",
 
@@ -55,6 +60,12 @@ export const CustomMentionExtension = Mention.extend<
         parseHTML: (element: HTMLElement) =>
           element.getAttribute("data-mention-model") || "user",
       },
+    };
+  },
+
+  addStorage() {
+    return {
+      isMentionPopupOpen: false,
     };
   },
 

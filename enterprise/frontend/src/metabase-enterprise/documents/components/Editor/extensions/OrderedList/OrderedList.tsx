@@ -9,8 +9,15 @@ import {
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
+import { useSelector } from "metabase/lib/redux";
+import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
-import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
+import {
+  getChildTargetId,
+  getCurrentDocument,
+  getHasUnsavedChanges,
+} from "metabase-enterprise/documents/selectors";
+import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 import { isTopLevel } from "metabase-enterprise/documents/utils/editorNodeUtils";
 
 import { CommentsMenu } from "../../CommentsMenu";
@@ -23,7 +30,7 @@ export const CustomOrderedList = OrderedList.extend({
     return {
       start: {
         default: 1,
-        parseHTML: (element) => {
+        parseHTML: (element: HTMLElement) => {
           return element.hasAttribute("start")
             ? parseInt(element.getAttribute("start") || "", 10)
             : 1;
@@ -31,7 +38,7 @@ export const CustomOrderedList = OrderedList.extend({
       },
       type: {
         default: null,
-        parseHTML: (element) => element.getAttribute("type"),
+        parseHTML: (element: HTMLElement) => element.getAttribute("type"),
       },
       ...createIdAttribute(),
     };
@@ -51,8 +58,13 @@ export const OrderedListNodeView = ({
   editor,
   getPos,
 }: NodeViewProps) => {
-  const { childTargetId, comments, document, hasUnsavedChanges } =
-    useDocumentContext();
+  const childTargetId = useSelector(getChildTargetId);
+  const document = useSelector(getCurrentDocument);
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery(document),
+  );
+  const comments = commentsData?.comments;
+  const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
   const [hovered, setHovered] = useState(false);
   const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const { _id } = node.attrs;
@@ -85,7 +97,7 @@ export const OrderedListNodeView = ({
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
-        <NodeViewContent as="ol" />
+        <NodeViewContent<"ol"> as="ol" />
       </NodeViewWrapper>
 
       {document && rendered && isTopLevel({ editor, getPos }) && (

@@ -9,8 +9,15 @@ import {
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
+import { useSelector } from "metabase/lib/redux";
+import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
-import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
+import {
+  getChildTargetId,
+  getCurrentDocument,
+  getHasUnsavedChanges,
+} from "metabase-enterprise/documents/selectors";
+import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 import { isTopLevel } from "metabase-enterprise/documents/utils/editorNodeUtils";
 
 import { CommentsMenu } from "../../CommentsMenu";
@@ -35,8 +42,13 @@ export const CustomParagraph = Paragraph.extend({
 });
 
 export const ParagraphNodeView = ({ node, editor, getPos }: NodeViewProps) => {
-  const { childTargetId, comments, document, hasUnsavedChanges } =
-    useDocumentContext();
+  const childTargetId = useSelector(getChildTargetId);
+  const document = useSelector(getCurrentDocument);
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery(document),
+  );
+  const comments = commentsData?.comments;
+  const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
   const [hovered, setHovered] = useState(false);
   const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const { _id } = node.attrs;
@@ -68,7 +80,7 @@ export const ParagraphNodeView = ({ node, editor, getPos }: NodeViewProps) => {
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
-        <NodeViewContent as="p" />
+        <NodeViewContent<"p"> as="p" />
       </NodeViewWrapper>
 
       {document && rendered && isTopLevel({ editor, getPos }) && (

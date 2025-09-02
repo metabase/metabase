@@ -11,9 +11,8 @@ export const getRoutes = () => (
       modal={CommentsSidesheet}
       noWrap
       modalProps={{
-        // wide: true,
         enableTransition: false,
-        closeOnClickOutside: false, // logic in component is reversed, so false is true.
+        closeOnClickOutside: false,
       }}
     />
   </Route>

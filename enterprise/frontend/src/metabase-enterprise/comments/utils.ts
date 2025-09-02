@@ -38,3 +38,7 @@ export function getTargetChildCommentThreads(
 
   return getCommentThreads(targetComments);
 }
+
+export function getCommentNodeId(comment: Comment) {
+  return `comment-${comment.id}`;
+}

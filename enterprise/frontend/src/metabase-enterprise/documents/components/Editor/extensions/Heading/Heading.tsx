@@ -9,8 +9,15 @@ import {
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
+import { useSelector } from "metabase/lib/redux";
+import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
-import { useDocumentContext } from "metabase-enterprise/documents/components/DocumentContext";
+import {
+  getChildTargetId,
+  getCurrentDocument,
+  getHasUnsavedChanges,
+} from "metabase-enterprise/documents/selectors";
+import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 
 import { CommentsMenu } from "../../CommentsMenu";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
@@ -37,9 +44,11 @@ export const CustomHeading = Heading.extend({
   },
 });
 
-export type Level = 1 | 2 | 3 | 4 | 5 | 6;
+type Level = 1 | 2 | 3 | 4 | 5 | 6;
 
-const levelNodeMap: Record<Level, keyof JSX.IntrinsicElements> = {
+type ElementType = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+
+const levelNodeMap: Record<Level, ElementType> = {
   1: "h1",
   2: "h2",
   3: "h3",
@@ -49,8 +58,13 @@ const levelNodeMap: Record<Level, keyof JSX.IntrinsicElements> = {
 };
 
 export const HeadingNodeView = ({ node }: NodeViewProps) => {
-  const { childTargetId, comments, document, hasUnsavedChanges } =
-    useDocumentContext();
+  const childTargetId = useSelector(getChildTargetId);
+  const document = useSelector(getCurrentDocument);
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery(document),
+  );
+  const comments = commentsData?.comments;
+  const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
   const [hovered, setHovered] = useState(false);
   const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const { _id, level } = node.attrs;
@@ -82,7 +96,9 @@ export const HeadingNodeView = ({ node }: NodeViewProps) => {
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
-        <NodeViewContent as={levelNodeMap[level] ?? "h1"} />
+        <NodeViewContent<ElementType>
+          as={levelNodeMap[level as Level] ?? "h1"}
+        />
       </NodeViewWrapper>
 
       {document && rendered && (

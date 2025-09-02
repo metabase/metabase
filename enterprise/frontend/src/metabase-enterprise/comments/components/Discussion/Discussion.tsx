@@ -9,6 +9,7 @@ import {
   useDeleteCommentMutation,
   useUpdateCommentMutation,
 } from "metabase-enterprise/api";
+import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import type {
   Comment,
   CommentEntityType,
@@ -29,10 +30,6 @@ export interface DiscussionProps {
   targetType: CommentEntityType;
 }
 
-/**
- * TODO: implement me
- * This component should not fetch any data (except version history) but it should use mutations.
- */
 export const Discussion = ({
   childTargetId,
   comments,
@@ -103,16 +100,18 @@ export const Discussion = ({
             onCopyLink={handleCopyLink}
           />
         ))}
-        <Timeline.Item
-          className={S.commentRoot}
-          bullet={<DiscussionAvatar user={currentUser} />}
-        >
-          <CommentEditor
-            active={false}
-            onChange={(document) => setNewComment(document)}
-            onSubmit={handleSubmit}
-          />
-        </Timeline.Item>
+        {!comments[0]?.is_resolved && (
+          <Timeline.Item
+            className={S.commentRoot}
+            bullet={<DiscussionAvatar user={currentUser} />}
+          >
+            <CommentEditor
+              active={false}
+              onChange={(document) => setNewComment(document)}
+              onSubmit={handleSubmit}
+            />
+          </Timeline.Item>
+        )}
       </Timeline>
     </Stack>
   );
@@ -131,11 +130,13 @@ function getUrl({
 }) {
   return match(targetType)
     .with("document", () => {
+      const childTargetUrl = `/document/${targetId}/comments/${childTargetId}`;
+
       if (comment) {
-        return `/document/${targetId}/comments/${childTargetId}#comment-${comment.id}`;
+        return `${childTargetUrl}#${getCommentNodeId(comment)}`;
       }
 
-      return `/document/${targetId}/comments/${childTargetId}`;
+      return childTargetUrl;
     })
     .exhaustive();
 }

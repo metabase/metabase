@@ -71,3 +71,13 @@ export const getMentionsCache = createSelector(
   getDocumentsState,
   (documents) => documents.mentionsCache,
 );
+
+export const getChildTargetId = createSelector(
+  getDocumentsState,
+  (documents) => documents.childTargetId,
+);
+
+export const getHasUnsavedChanges = createSelector(
+  getDocumentsState,
+  (documents) => documents.hasUnsavedChanges,
+);

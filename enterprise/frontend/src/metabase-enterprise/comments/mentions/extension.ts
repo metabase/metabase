@@ -14,7 +14,6 @@ import type {
 
 import { searchApi, userApi } from "metabase/api";
 import type { DispatchFn } from "metabase/lib/redux";
-import type { User } from "metabase-types/api";
 
 import { CustomMentionExtension } from "./CustomMentionExtension";
 import {
@@ -24,18 +23,20 @@ import {
 } from "./MentionList";
 
 type ExtensionProps = {
-  currentUser?: User | null;
   dispatch: DispatchFn;
 };
 
-export const configureMentionExtension = ({
-  currentUser,
-  dispatch,
-}: ExtensionProps) =>
+export const configureMentionExtension = ({ dispatch }: ExtensionProps) =>
   CustomMentionExtension.configure({
     suggestion: {
       char: "@",
-      allowSpaces: true,
+      allowSpaces: false,
+      allow: ({ state, range }) => {
+        const textAfter = state.doc.textBetween(range.from, range.to);
+
+        // allows adding @ symbol without showing mention list
+        return !textAfter.includes(" ");
+      },
       items: async ({ query }) => {
         const [userResult, searchResult] = await Promise.all([
           dispatch(userApi.endpoints.listUsers.initiate({ query })),
@@ -59,7 +60,6 @@ export const configureMentionExtension = ({
               label: user.common_name,
               type: "user" as const,
             }))
-            .filter((user) => user.entityId !== currentUser?.id)
             .slice(0, 5);
 
           items.push(...users);
@@ -97,6 +97,7 @@ export const configureMentionExtension = ({
               model: item.type,
             },
           })
+          .insertContent(" ")
           .run();
       },
     },
@@ -113,6 +114,14 @@ const renderMentionList = () => {
         props,
         editor: props.editor,
       });
+
+      // Mark mention popup as open in extension storage
+      try {
+        const storage = (props.editor.storage as any).mention;
+        if (storage) {
+          storage.isMentionPopupOpen = true;
+        }
+      } catch {}
 
       popup = document.createElement("div");
       popup.style.position = "absolute";
@@ -218,7 +227,14 @@ const renderMentionList = () => {
       return component.ref?.onKeyDown(props) || false;
     },
 
-    onExit: () => {
+    onExit: (props: SuggestionProps) => {
+      // Mark mention popup as closed in extension storage
+      try {
+        const storage = (props.editor.storage as any).mention;
+        if (storage) {
+          storage.isMentionPopupOpen = false;
+        }
+      } catch {}
       if (cleanup) {
         cleanup();
       }

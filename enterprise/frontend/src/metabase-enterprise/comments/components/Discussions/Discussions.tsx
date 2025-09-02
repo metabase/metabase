@@ -15,6 +15,7 @@ export interface DiscussionProps {
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
   autoOpenNewComment?: boolean;
+  allowNewThreads?: boolean;
 }
 
 export const Discussions = ({
@@ -23,6 +24,7 @@ export const Discussions = ({
   targetId,
   targetType,
   autoOpenNewComment = false,
+  allowNewThreads = true,
 }: DiscussionProps) => {
   const [, setNewComment] = useState<DocumentContent>();
 
@@ -56,14 +58,16 @@ export const Discussions = ({
         </Fragment>
       ))}
 
-      <Box p="xl">
-        <CommentEditor
-          autoFocus={autoOpenNewComment}
-          placeholder={t`Add a comment…`}
-          onChange={(document) => setNewComment(document)}
-          onSubmit={handleSubmit}
-        />
-      </Box>
+      {allowNewThreads && (
+        <Box p="xl">
+          <CommentEditor
+            autoFocus={autoOpenNewComment}
+            placeholder={t`Add a comment…`}
+            onChange={(document) => setNewComment(document)}
+            onSubmit={handleSubmit}
+          />
+        </Box>
+      )}
     </Stack>
   );
 };

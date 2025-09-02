@@ -1,16 +1,21 @@
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-use";
+import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
+import { useSelector } from "metabase/lib/redux";
 import { Modal, Tabs, rem } from "metabase/ui";
+import { useListCommentsQuery } from "metabase-enterprise/api";
 import { Discussions } from "metabase-enterprise/comments/components/Discussions";
+import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import { useDocumentState } from "metabase-enterprise/documents/hooks/use-document-state";
-
-import { useDocumentContext } from "../DocumentContext";
+import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
+import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 
 import S from "./CommentsSidesheet.module.css";
+
+type SidesheetTab = "open" | "resolved";
 
 interface Props {
   params?: {
@@ -23,9 +28,12 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
   const childTargetId = params?.childTargetId;
   const location = useLocation();
   const { openCommentSidebar, closeCommentSidebar } = useDocumentState();
-
-  const [activeTab, setActiveTab] = useState<string | null>("open");
-  const { comments, document } = useDocumentContext();
+  const [activeTab, setActiveTab] = useState<SidesheetTab | null>("open");
+  const document = useSelector(getCurrentDocument);
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery(document),
+  );
+  const comments = commentsData?.comments;
 
   // Check if we should auto-open the new comment form
   const shouldAutoOpenNewComment = useMemo(() => {
@@ -66,15 +74,13 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     [targetComments],
   );
 
-  // Determine which tab should be active based on available comments
-  const availableTabs = useMemo(() => {
-    const tabs = [];
+  const availableTabs = useMemo<SidesheetTab[]>(() => {
     // Only show tabs if there are resolved comments
     if (resolvedComments.length > 0) {
-      tabs.push("open");
-      tabs.push("resolved");
+      return ["open", "resolved"];
     }
-    return tabs;
+
+    return [];
   }, [resolvedComments.length]);
 
   // Update active tab if current tab is not available
@@ -87,6 +93,25 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       setActiveTab(availableTabs[0]);
     }
   }, [availableTabs, activeTab]);
+
+  const hash = location.hash?.substring(1);
+  const isHashCommentResolved = resolvedComments.some((comment) => {
+    return getCommentNodeId(comment) === hash;
+  });
+  const isHashCommentUnresolved = activeComments.some((comment) => {
+    return getCommentNodeId(comment) === hash;
+  });
+  const activeTabRef = useLatest(activeTab);
+
+  useEffect(() => {
+    const activeTab = activeTabRef.current;
+
+    if (activeTab === "open" && isHashCommentResolved) {
+      setActiveTab("resolved");
+    } else if (activeTab === "resolved" && isHashCommentUnresolved) {
+      setActiveTab("open");
+    }
+  }, [hash, activeTabRef, isHashCommentResolved, isHashCommentUnresolved]);
 
   if (!childTargetId || !document) {
     return null;
@@ -113,16 +138,23 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
           <Modal.Title>{t`Comments`}</Modal.Title>
           <Modal.CloseButton onClick={closeSidebar} />
         </Modal.Header>
+
         <Modal.Body className={S.body} p={0}>
-          <Tabs value={activeTab} onChange={setActiveTab}>
-            {availableTabs.length > 0 ? (
+          <Tabs
+            value={activeTab}
+            onChange={(value) => {
+              setActiveTab(value as SidesheetTab);
+            }}
+          >
+            {availableTabs.length > 0 && (
               <Tabs.List px="1.625rem" className={S.tabsList}>
                 <Tabs.Tab value="open">{t`Open`}</Tabs.Tab>
                 <Tabs.Tab value="resolved">
                   {t`Resolved (${resolvedComments.length})`}
                 </Tabs.Tab>
               </Tabs.List>
-            ) : null}
+            )}
+
             <Tabs.Panel value="open">
               <Discussions
                 childTargetId={childTargetId}
@@ -132,12 +164,14 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
                 autoOpenNewComment={shouldAutoOpenNewComment}
               />
             </Tabs.Panel>
+
             <Tabs.Panel value="resolved">
               <Discussions
                 childTargetId={childTargetId}
                 comments={resolvedComments}
                 targetId={document.id}
                 targetType="document"
+                allowNewThreads={false}
               />
             </Tabs.Panel>
           </Tabs>

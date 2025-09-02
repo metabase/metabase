@@ -14,8 +14,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { getUser } from "metabase/selectors/user";
-import { ActionIcon, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
 import { configureMentionExtension } from "metabase-enterprise/comments/mentions/extension";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
@@ -54,7 +53,6 @@ export const CommentEditor = ({
   onChange,
   onSubmit,
 }: Props) => {
-  const currentUser = useSelector(getUser);
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const [content, setContent] = useState<string | null>(null);
   const dispatch = useDispatch();
@@ -70,11 +68,11 @@ export const CommentEditor = ({
         Link.configure({
           HTMLAttributes: { class: CS.link },
         }),
-        configureMentionExtension({ currentUser, dispatch }),
+        configureMentionExtension({ dispatch }),
         !readonly && Placeholder.configure({ placeholder }),
         !readonly && DisableMetabotSidebar,
       ].filter(Boolean) as Extension[],
-    [siteUrl, currentUser, dispatch, readonly, placeholder],
+    [siteUrl, dispatch, readonly, placeholder],
   );
 
   const editor = useEditor(
@@ -123,6 +121,12 @@ export const CommentEditor = ({
       return;
     }
     if (e.key === "Enter" && !e.shiftKey) {
+      // see CustomMentionExtension
+      const isMentionOpen = (editor.storage as any)?.mention
+        ?.isMentionPopupOpen;
+      if (isMentionOpen) {
+        return;
+      }
       e.preventDefault();
       if (!onSubmit) {
         return;
@@ -139,7 +143,10 @@ export const CommentEditor = ({
       })}
       onKeyDownCapture={handleKeyDown}
     >
-      <EditorContent editor={editor} className={S.content} />
+      <Box className={S.contentWrapper}>
+        <EditorContent editor={editor} className={S.content} />
+      </Box>
+
       {readonly ? null : (
         <ActionIcon
           variant="subtle"

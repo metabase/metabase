@@ -1,30 +1,3 @@
-.spoilerControl {
-  height: auto;
-  z-index: 1;
-  color: var(--mb-color-text-secondary);
-
-  &:hover {
-    color: var(--mb-color-brand);
-  }
-
-  & + .spoilerContent {
-    overflow: hidden;
-    pointer-events: none;
-  }
-}
-
-.spoilerRoot[data-has-spoiler] .spoilerContent {
-  /* mask: linear-gradient(0deg, transparent 0, rgb(0, 0, 0) 60px),
-    linear-gradient(270deg, transparent 0, transparent 50px, rgb(0, 0, 0) 100px); */
-  mask: linear-gradient(
-      0deg,
-      transparent 0,
-      transparent 20px,
-      rgb(0, 0, 0) 20px
-    ),
-    linear-gradient(270deg, transparent 0, transparent 48px, rgb(0, 0, 0) 96px);
-}
-
 .commentRoot {
   position: relative;
   margin-top: 1.25rem;
