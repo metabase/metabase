@@ -1,6 +1,9 @@
 .paper {
   border: 1px solid var(--mb-base-color-orion-alpha-20);
-  margin-top: 2rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  width: 100%;
+  display: block;
 
   .alertTitle {
     color: var(--mb-base-color-orion-80);
@@ -13,4 +16,8 @@
     font-size: var(--mantine-font-size-md);
     line-height: 1.25rem;
   }
+}
+
+:global(#scrollable-database-form-body) > .paper {
+  margin-top: 2rem;
 }
