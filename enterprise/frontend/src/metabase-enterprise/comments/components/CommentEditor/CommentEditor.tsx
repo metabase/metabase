@@ -16,6 +16,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
 import { configureMentionExtension } from "metabase-enterprise/comments/mentions/extension";
+import { isCommentsStorage } from "metabase-enterprise/comments/types";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
@@ -111,6 +112,7 @@ export const CommentEditor = ({
   const submitDoc = () => {
     const content = editor.getJSON() as DocumentContent;
     const isEmpty = editor.isEmpty;
+
     if (!isEmpty && onSubmit) {
       onSubmit(trimTrailingEmptyParagraphsJSON(content));
       editor.commands.clearContent(true);
@@ -121,12 +123,14 @@ export const CommentEditor = ({
       return;
     }
 
-    if (event.key === "Enter" && !event.shiftKey) {
-      // see CustomMentionExtension
-      const isMentionOpen = (editor.storage as any)?.mention
-        ?.isMentionPopupOpen;
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      isCommentsStorage(editor.storage)
+    ) {
+      const { isMentionPopupOpen } = editor.storage.mention; // see CustomMentionExtension
 
-      if (!isMentionOpen) {
+      if (!isMentionPopupOpen) {
         event.preventDefault();
         submitDoc();
       }
