@@ -1605,6 +1605,7 @@
   {:team "Cloud"
    :api  #{metabase-enterprise.cloud-add-ons.api}
    :uses #{api
+           events
            premium-features
            util
            enterprise/harbormaster}}
