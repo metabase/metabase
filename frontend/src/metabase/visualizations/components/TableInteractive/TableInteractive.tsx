@@ -116,6 +116,7 @@ interface TableProps extends VisualizationProps {
   renderTableHeader: HeaderCellWithColumnInfoProps["renderTableHeader"];
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onZoomRow?: (objectId: number | string) => void;
+  tableFooterExtraButtons?: React.ReactNode;
 }
 
 const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
@@ -174,6 +175,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     getColumnSortDirection: getServerColumnSortDirection,
     onVisualizationClick,
     onUpdateVisualizationSettings,
+    tableFooterExtraButtons,
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -813,6 +815,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onAddColumnClick={handleAddColumnButtonClick}
         onHeaderCellClick={handleHeaderCellClick}
         onWheel={handleWheel}
+        tableFooterExtraButtons={tableFooterExtraButtons}
       />
     </div>
   );
