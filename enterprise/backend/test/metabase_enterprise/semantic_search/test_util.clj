@@ -5,7 +5,6 @@
    [environ.core :refer [env]]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.semantic-search.core :as semantic]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
