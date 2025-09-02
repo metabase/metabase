@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { match } from "ts-pattern";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -9,7 +8,7 @@ import {
   useDeleteCommentMutation,
   useUpdateCommentMutation,
 } from "metabase-enterprise/api";
-import { getCommentNodeId } from "metabase-enterprise/comments/utils";
+import { getCommentsUrl } from "metabase-enterprise/comments/utils";
 import type {
   Comment,
   CommentEntityType,
@@ -72,7 +71,12 @@ export const Discussion = ({
   };
 
   const handleCopyLink = (comment: Comment) => {
-    const url = getUrl({ childTargetId, targetId, targetType, comment });
+    const url = getCommentsUrl({
+      childTargetId,
+      targetId,
+      targetType,
+      comment,
+    });
 
     navigator.clipboard.writeText(`${window.location.origin}${url}`);
     setLinkCopied(true);
@@ -116,27 +120,3 @@ export const Discussion = ({
     </Stack>
   );
 };
-
-function getUrl({
-  childTargetId,
-  targetId,
-  targetType,
-  comment,
-}: {
-  childTargetId: EntityId | null;
-  targetId: EntityId;
-  targetType: CommentEntityType;
-  comment: Comment | undefined;
-}) {
-  return match(targetType)
-    .with("document", () => {
-      const childTargetUrl = `/document/${targetId}/comments/${childTargetId}`;
-
-      if (comment) {
-        return `${childTargetUrl}#${getCommentNodeId(comment)}`;
-      }
-
-      return childTargetUrl;
-    })
-    .exhaustive();
-}

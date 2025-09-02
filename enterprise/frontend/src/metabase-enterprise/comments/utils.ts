@@ -1,4 +1,6 @@
-import type { Comment } from "metabase-types/api";
+import { match } from "ts-pattern";
+
+import type { Comment, CommentEntityType, EntityId } from "metabase-types/api";
 
 import type { CommentThread } from "./types";
 
@@ -41,4 +43,28 @@ export function getTargetChildCommentThreads(
 
 export function getCommentNodeId(comment: Comment) {
   return `comment-${comment.id}`;
+}
+
+export function getCommentsUrl({
+  childTargetId,
+  targetId,
+  targetType,
+  comment,
+}: {
+  childTargetId: EntityId | null;
+  targetId: EntityId;
+  targetType: CommentEntityType;
+  comment: Comment | undefined;
+}) {
+  return match(targetType)
+    .with("document", () => {
+      const childTargetUrl = `/document/${targetId}/comments/${childTargetId}`;
+
+      if (comment) {
+        return `${childTargetUrl}#${getCommentNodeId(comment)}`;
+      }
+
+      return childTargetUrl;
+    })
+    .exhaustive();
 }
