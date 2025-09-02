@@ -29,11 +29,9 @@
 
 .actionPanel {
   position: absolute;
-  top: 0;
+  top: -8px;
   right: 0;
   z-index: 1;
-  /* Center the action panel vertically */
-  transform: translateY(-25%);
   border: 1px solid var(--mb-color-border);
   visibility: hidden;
 }
