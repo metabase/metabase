@@ -840,9 +840,6 @@ describe("scenarios > question > custom column", () => {
 
     H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 });
 
-    // Wait for error check to render, it should not affect the state of the snippets
-    cy.wait(1300);
-
     H.CustomExpressionEditor.type("[Tax]{tab}[User ID]", {
       focus: false,
       delay: 50,
