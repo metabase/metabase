@@ -21,8 +21,8 @@ const {
   getBuildInfoValues,
 } = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
 const {
-  getSdkVersionFromPackageJson,
-} = require("./frontend/build/embedding-sdk/lib/get-sdk-version-from-package-json");
+  getSdkPackageVersionFromPackageJson,
+} = require("./frontend/build/embedding-sdk/lib/get-sdk-package-version-from-package-json");
 
 const SDK_PACKAGE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-package";
@@ -76,7 +76,7 @@ const config = {
     new rspack.EnvironmentPlugin({
       IS_EMBEDDING_SDK: "true",
       EMBEDDING_SDK_BUNDLE_HOST,
-      ...getBuildInfoValues({ version: getSdkVersionFromPackageJson() }),
+      ...getBuildInfoValues({ version: getSdkPackageVersionFromPackageJson() }),
     }),
     new rspack.optimize.LimitChunkCountPlugin({
       maxChunks: 1,

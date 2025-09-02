@@ -40,6 +40,7 @@ class ChartWithLegend extends Component {
       width,
       showLegend,
       isDashboard,
+      isDocument,
       onToggleSeriesVisibility,
     } = this.props;
 
@@ -145,7 +146,7 @@ class ChartWithLegend extends Component {
           <div
             className={cx(styles.LegendSpacer)}
             // don't center the chart on dashboards
-            style={isDashboard ? { flexBasis: 0 } : {}}
+            style={isDashboard || isDocument ? { flexBasis: 0 } : {}}
             data-testid="chart-legend-spacer"
           >
             {legend}

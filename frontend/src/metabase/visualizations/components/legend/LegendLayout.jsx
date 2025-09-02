@@ -1,3 +1,4 @@
+
 import PropTypes from "prop-types";
 
 import Legend from "./Legend";

@@ -219,6 +219,7 @@ const DatabaseFormBody = ({
             autoFocus={autofocusFieldName === field.name}
             data-kek={field.name}
             engineKey={engineKey}
+            engine={engine}
           />
         ))}
       </Box>
