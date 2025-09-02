@@ -284,7 +284,7 @@ describe("scenarios > native > snippet tags", () => {
     H.NativeEditor.type("select {{snippet: snippet1}}");
     H.runNativeQuery();
     H.queryBuilderMain()
-      .findByText("Snippet to snippet cycle detected!")
+      .findByText("This query has circular referencing sub-queries.")
       .should("be.visible");
 
     cy.log(
