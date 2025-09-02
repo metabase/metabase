@@ -7,7 +7,7 @@ import {
 import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Box, Icon, Text, TextInput } from "metabase/ui";
+import { ActionIcon, Box, Icon, Paper, Text, TextInput } from "metabase/ui";
 
 import S from "./EmojiPicker.module.css";
 
@@ -33,44 +33,46 @@ export function EmojiPicker({
   const searchValue = controlledSearch ?? search;
 
   return (
-    <Picker.Root
-      className={S.root}
-      emojibaseUrl={EMOJIBASE_URL}
-      locale="en"
-      onEmojiSelect={(emoji) => onEmojiSelect?.(emoji)}
-    >
-      {!hideSearch && (
-        <Box p="sm" pb="0rem">
-          <TextInput
-            placeholder={t`Search...`}
-            value={searchValue}
-            onChange={handleSearchChange}
-            leftSection={<Icon name="search" />}
-            rightSectionPointerEvents="all"
-            rightSection={
-              <Icon
-                cursor="pointer"
-                name="close"
-                visibility={searchValue ? "visible" : "hidden"}
-                onClick={() => setSearch("")}
-              />
-            }
-          />
-        </Box>
-      )}
-      <Picker.Search className={S.pickerSearch} value={searchValue} />
-      <Picker.Viewport className={S.pickerViewport}>
-        <Picker.Loading
-          className={S.pickerMessage}
-        >{t`Loading…`}</Picker.Loading>
-        <Picker.Empty
-          className={S.pickerMessage}
-        >{t`No emoji found.`}</Picker.Empty>
-        <Box px="sm" pb="sm">
-          <Picker.List components={{ CategoryHeader, Emoji }} />
-        </Box>
-      </Picker.Viewport>
-    </Picker.Root>
+    <Paper tabIndex={0}>
+      <Picker.Root
+        className={S.root}
+        emojibaseUrl={EMOJIBASE_URL}
+        locale="en"
+        onEmojiSelect={(emoji) => onEmojiSelect?.(emoji)}
+      >
+        {!hideSearch && (
+          <Box p="sm" pb="0rem">
+            <TextInput
+              placeholder={t`Search...`}
+              value={searchValue}
+              onChange={handleSearchChange}
+              leftSection={<Icon name="search" />}
+              rightSectionPointerEvents="all"
+              rightSection={
+                <Icon
+                  cursor="pointer"
+                  name="close"
+                  visibility={searchValue ? "visible" : "hidden"}
+                  onClick={() => setSearch("")}
+                />
+              }
+            />
+          </Box>
+        )}
+        <Picker.Search className={S.pickerSearch} value={searchValue} />
+        <Picker.Viewport className={S.pickerViewport}>
+          <Picker.Loading
+            className={S.pickerMessage}
+          >{t`Loading…`}</Picker.Loading>
+          <Picker.Empty
+            className={S.pickerMessage}
+          >{t`No emoji found.`}</Picker.Empty>
+          <Box px="sm" pb="sm">
+            <Picker.List components={{ CategoryHeader, Emoji }} />
+          </Box>
+        </Picker.Viewport>
+      </Picker.Root>
+    </Paper>
   );
 }
 
@@ -84,9 +86,15 @@ function CategoryHeader({ category }: EmojiPickerListCategoryHeaderProps) {
   );
 }
 
-function Emoji({ emoji, onClick }: EmojiPickerListEmojiProps) {
+function Emoji({ emoji, ref, ...props }: EmojiPickerListEmojiProps) {
   return (
-    <ActionIcon component="button" w="2rem" fz="1.25rem" onClick={onClick}>
+    <ActionIcon
+      component="button"
+      w="2rem"
+      fz="1.25rem"
+      ref={ref as React.RefObject<HTMLButtonElement>}
+      {...props}
+    >
       {emoji.emoji}
     </ActionIcon>
   );

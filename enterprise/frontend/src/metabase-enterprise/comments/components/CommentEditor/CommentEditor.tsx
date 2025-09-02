@@ -18,6 +18,7 @@ import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
 import { configureMentionExtension } from "metabase-enterprise/comments/mentions/extension";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
+import { EmojiSuggestionExtension } from "metabase-enterprise/documents/components/Editor/extensions/Emoji/EmojiSuggestionExtension";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
 import type { DocumentContent } from "metabase-types/api";
 
@@ -69,6 +70,7 @@ export const CommentEditor = ({
           HTMLAttributes: { class: CS.link },
         }),
         configureMentionExtension({ dispatch }),
+        EmojiSuggestionExtension,
         !readonly && Placeholder.configure({ placeholder }),
         !readonly && DisableMetabotSidebar,
       ].filter(Boolean) as Extension[],
@@ -124,7 +126,9 @@ export const CommentEditor = ({
       // see CustomMentionExtension
       const isMentionOpen = (editor.storage as any)?.mention
         ?.isMentionPopupOpen;
-      if (isMentionOpen) {
+      const isEmojiOpen = (editor.storage as any)?.emojiSuggestion
+        ?.isEmojiPopupOpen;
+      if (isMentionOpen || isEmojiOpen) {
         return;
       }
       e.preventDefault();
