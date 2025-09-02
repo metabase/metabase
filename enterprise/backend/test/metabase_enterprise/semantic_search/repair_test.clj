@@ -46,55 +46,55 @@
   [gate-contents id]
   (some #(when (= (:id %) id) %) gate-contents))
 
-#_(deftest repair-index-integration-test
-    (testing "repair-index! properly handles document additions and deletions via gate table"
-      (mt/with-premium-features #{:semantic-search}
-        (semantic.tu/with-index!
-          (let [pgvector       semantic.tu/db
-                index-metadata semantic.tu/mock-index-metadata
-                gate-table     (:gate-table-name index-metadata)
-                initial-docs   [(create-test-document "card" 1 "Dog Training Guide")
-                                (create-test-document "card" 2 "Cat Behavior Study")
-                                (create-test-document "dashboard" 3 "Animal Stats")]]
-            (semantic.core/update-index! initial-docs)
-            (semantic.tu/index-all!)
+(deftest repair-index-integration-test
+  (testing "repair-index! properly handles document additions and deletions via gate table"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-index!
+        (let [pgvector       semantic.tu/db
+              index-metadata semantic.tu/mock-index-metadata
+              gate-table     (:gate-table-name index-metadata)
+              initial-docs   [(create-test-document "card" 1 "Dog Training Guide")
+                              (create-test-document "card" 2 "Cat Behavior Study")
+                              (create-test-document "dashboard" 3 "Animal Stats")]]
+          (semantic.core/update-index! initial-docs)
+          (semantic.tu/index-all!)
 
-              ;; Ensure repair-index! brings index into consistency with new documents et.
-              ;; Note: card 2 and dashboard 3 are missing - should be deleted
-            (let [modified-docs [(create-test-document "card" 1 "Dog Training Guide")        ; existing - should remain
-                                 (create-test-document "card" 4 "Bird Watching Tips")        ; new - should be added
-                                 (create-test-document "dashboard" 5 "Wildlife Dashboard")]] ; new - should be added
-              (semantic.core/repair-index! modified-docs)
+            ;; Ensure repair-index! brings index into consistency with new documents et.
+            ;; Note: card 2 and dashboard 3 are missing - should be deleted
+          (let [modified-docs [(create-test-document "card" 1 "Dog Training Guide")        ; existing - should remain
+                               (create-test-document "card" 4 "Bird Watching Tips")        ; new - should be added
+                               (create-test-document "dashboard" 5 "Wildlife Dashboard")]] ; new - should be added
+            (semantic.core/repair-index! modified-docs)
 
-              (let [gate-contents       (gate-table-contents pgvector gate-table)
-                    new-card-entry      (gate-entry-by-id gate-contents "card_4")
-                    new-dashboard-entry (gate-entry-by-id gate-contents "dashboard_5")]
-                (testing "new documents should be gated for insertion"
-                  (is (some? (:document new-card-entry)) "New card should exist in gate table")
-                  (is (some? (:document new-dashboard-entry)) "New dashboard should exist in gate table"))
+            (let [gate-contents       (gate-table-contents pgvector gate-table)
+                  new-card-entry      (gate-entry-by-id gate-contents "card_4")
+                  new-dashboard-entry (gate-entry-by-id gate-contents "dashboard_5")]
+              (testing "new documents should be gated for insertion"
+                (is (some? (:document new-card-entry)) "New card should exist in gate table")
+                (is (some? (:document new-dashboard-entry)) "New dashboard should exist in gate table"))
 
-                (testing "missing documents should be gated for deletion"
-                  (let [deleted-card-entry      (gate-entry-by-id gate-contents "card_2")
-                        deleted-dashboard-entry (gate-entry-by-id gate-contents "dashboard_3")]
-                    (is (tombstone? deleted-card-entry) "Deleted card should be a tombstone in gate table")
-                    (is (tombstone? deleted-dashboard-entry) "Deleted dashboard should be a tombstone in gate table"))))))))))
+              (testing "missing documents should be gated for deletion"
+                (let [deleted-card-entry      (gate-entry-by-id gate-contents "card_2")
+                      deleted-dashboard-entry (gate-entry-by-id gate-contents "dashboard_3")]
+                  (is (tombstone? deleted-card-entry) "Deleted card should be a tombstone in gate table")
+                  (is (tombstone? deleted-dashboard-entry) "Deleted dashboard should be a tombstone in gate table"))))))))))
 
-#_(deftest repair-table-cleanup-test
-    (testing "The repair table gets cleaned up properly at the end of a repair-index! job"
-      (mt/with-premium-features #{:semantic-search}
-        (semantic.tu/with-index!
-          (let [pgvector       semantic.tu/db
-                index-metadata semantic.tu/mock-index-metadata
-                gate-table     (:gate-table-name index-metadata)
-                initial-docs   [(create-test-document "card" 1 "Dog Training Guide")]]
-            (semantic.core/update-index! initial-docs)
-            (semantic.tu/index-all!)
+(deftest repair-table-cleanup-test
+  (testing "The repair table gets cleaned up properly at the end of a repair-index! job"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-index!
+        (let [pgvector       semantic.tu/db
+              index-metadata semantic.tu/mock-index-metadata
+              gate-table     (:gate-table-name index-metadata)
+              initial-docs   [(create-test-document "card" 1 "Dog Training Guide")]]
+          (semantic.core/update-index! initial-docs)
+          (semantic.tu/index-all!)
 
-            (testing "repair table is cleaned up after successful repair"
-              (let [test-repair-table-name "repair_table_cleanup_test"]
-                (with-redefs [semantic.repair/repair-table-name (constantly test-repair-table-name)]
-                  (semantic.core/repair-index! [(create-test-document "card" 2 "New Test Card")])
+          (testing "repair table is cleaned up after successful repair"
+            (let [test-repair-table-name "repair_table_cleanup_test"]
+              (with-redefs [semantic.repair/repair-table-name (constantly test-repair-table-name)]
+                (semantic.core/repair-index! [(create-test-document "card" 2 "New Test Card")])
 
-                  (let [gate-contents (gate-table-contents pgvector gate-table)]
-                    (is (tombstone? (gate-entry-by-id gate-contents "card_1")))
-                    (is (some? (gate-entry-by-id gate-contents "card_2"))))))))))))
+                (let [gate-contents (gate-table-contents pgvector gate-table)]
+                  (is (tombstone? (gate-entry-by-id gate-contents "card_1")))
+                  (is (some? (gate-entry-by-id gate-contents "card_2"))))))))))))
