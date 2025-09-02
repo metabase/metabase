@@ -41,3 +41,9 @@
   metabase-enterprise.database-routing.model
   [_db-id]
   nil)
+
+(defenterprise db-routing-enabled?
+  "OSS version, does nothing"
+  metabase-enterprise.database-routing.common
+  [_db-or-id]
+  nil)

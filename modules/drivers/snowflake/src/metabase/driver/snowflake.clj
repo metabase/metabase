@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase-enterprise.database-routing.common :as db-routing.common]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
@@ -513,7 +512,7 @@
 (defn- qualify-identifier [[_identifier identifier-type components, :as identifier]]
   {:pre [(h2x/identifier? identifier)]}
   (let [db-routing? (when (driver-api/initialized?)
-                      (db-routing.common/db-routing-enabled? (driver-api/database (driver-api/metadata-provider))))]
+                      (driver-api/db-routing-enabled? (driver-api/database (driver-api/metadata-provider))))]
     (apply h2x/identifier identifier-type (when-not db-routing? (query-db-name)) components)))
 
 (defmethod sql.qp/->honeysql [:snowflake ::h2x/identifier]
@@ -872,7 +871,7 @@
            (.next rs)))))))
 
 (defmethod driver/set-database-used! :snowflake [_driver conn db]
-  (when (db-routing.common/db-routing-enabled? db)
+  (when (driver-api/db-routing-enabled? db)
     (let [sql (format "USE DATABASE \"%s\"" (db-name db))]
       (with-open [stmt (.createStatement ^java.sql.Connection conn)]
         (.execute stmt sql)))))

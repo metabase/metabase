@@ -119,8 +119,9 @@
     (when (is-disallowed-destination-db-access? db-id)
       (throw (ex-info "Forbidden access to Destination Database without `with-database-routing-on`" {})))))
 
-(defn db-routing-enabled?
+(defenterprise db-routing-enabled?
   "Returns whether or not the given database is either a router or a destination database."
+  :feature :database-routing
   [db-or-id]
   (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
       (and (:router-database-id db-or-id)
