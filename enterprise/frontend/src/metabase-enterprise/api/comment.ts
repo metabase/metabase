@@ -52,15 +52,6 @@ export const commentApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
     }),
-
-    getCommentHistory: builder.query<Comment[], CommentId>({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/comment/${id}/history`,
-      }),
-      providesTags: (response) =>
-        response && response.length > 0 ? provideCommentListTags(response) : [],
-    }),
   }),
 });
 
@@ -69,5 +60,4 @@ export const {
   useCreateCommentMutation,
   useUpdateCommentMutation,
   useDeleteCommentMutation,
-  useGetCommentHistoryQuery,
 } = commentApi;
