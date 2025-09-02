@@ -434,6 +434,30 @@ describe("issue 55619", () => {
       cy.button(/Save/).click();
       cy.button(/Edit/).should("be.visible");
     });
+
+    cy.log("model metadata");
+    H.navigationSidebar().findByText("Models").click();
+    H.main().within(() => {
+      cy.findByLabelText("Create a new model").click();
+      cy.findByText("Use the notebook editor").click();
+    });
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    H.runButtonOverlay().click();
+    cy.findByTestId("editor-tabs-columns-name").click();
+    H.openColumnOptions("Discount");
+    cy.findByTestId("sidebar-content")
+      .findByDisplayValue("Australian Dollar")
+      .click();
+    H.popover().findByText("Euro").click();
+    cy.findByTestId("sidebar-content")
+      .findByDisplayValue("Euro")
+      .should("be.visible");
+    H.datasetEditBar().button("Save").click();
+    H.modal().button("Save").click();
+    H.tableHeaderColumn("Discount (€)").should("be.visible");
   });
 });
 
