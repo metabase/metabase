@@ -68,38 +68,44 @@
 (defn- create-s3-client
   "Create S3 client for host operations (uploads, reads)"
   ^com.amazonaws.services.s3.AmazonS3 []
-  (let [config (transforms.settings/python-storage-config)
-        builder (AmazonS3ClientBuilder/standard)]
+  (let [builder (AmazonS3ClientBuilder/standard)]
     (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
       (.withEndpointConfiguration
-       (AwsClientBuilder$EndpointConfiguration. (:endpoint config) (:region config)))
+       (AwsClientBuilder$EndpointConfiguration.
+        (transforms.settings/python-storage-s3-endpoint)
+        (transforms.settings/python-storage-s3-region)))
       (.withCredentials
        (reify com.amazonaws.auth.AWSCredentialsProvider
          (getCredentials [_]
-           (BasicAWSCredentials. (:access-key-id config) (:secret-access-key config)))
+           (BasicAWSCredentials.
+            (transforms.settings/python-storage-s3-access-key)
+            (transforms.settings/python-storage-s3-secret-key)))
          (refresh [_])))
-      (.withPathStyleAccessEnabled (:path-style-access config)))
+      (.withPathStyleAccessEnabled (transforms.settings/python-storage-s3-path-style-access)))
     (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder)))
 
 (defn- create-s3-client-for-container
   "Create S3 client for container operations (presigned URLs).
    Uses container-endpoint if different from host endpoint, otherwise reuses host client."
   ^com.amazonaws.services.s3.AmazonS3 [^com.amazonaws.services.s3.AmazonS3 host-client]
-  (let [config (transforms.settings/python-storage-config)
-        container-endpoint (:container-endpoint config)
-        host-endpoint (:endpoint config)]
+  (let [container-endpoint (transforms.settings/python-storage-s3-container-endpoint)
+        host-endpoint (transforms.settings/python-storage-s3-endpoint)]
     (if (and container-endpoint (not= container-endpoint host-endpoint))
       ;; Create separate client for container endpoint
       (let [builder (AmazonS3ClientBuilder/standard)]
         (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
           (.withEndpointConfiguration
-           (AwsClientBuilder$EndpointConfiguration. container-endpoint (:region config)))
+           (AwsClientBuilder$EndpointConfiguration.
+            container-endpoint
+            (transforms.settings/python-storage-s3-region)))
           (.withCredentials
            (reify com.amazonaws.auth.AWSCredentialsProvider
              (getCredentials [_]
-               (BasicAWSCredentials. (:access-key-id config) (:secret-access-key config)))
+               (BasicAWSCredentials.
+                (transforms.settings/python-storage-s3-access-key)
+                (transforms.settings/python-storage-s3-secret-key)))
              (refresh [_])))
-          (.withPathStyleAccessEnabled (:path-style-access config)))
+          (.withPathStyleAccessEnabled (transforms.settings/python-storage-s3-path-style-access)))
         (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder))
       ;; Use the same client if endpoints are the same
       host-client)))
@@ -151,25 +157,25 @@
   (let [work-dir-name (str "run-" (System/currentTimeMillis) "-" (rand-int 10000))]
 
     (try
-      (let [server-url         (transforms.settings/python-execution-server-url)
-            storage-config     (transforms.settings/python-storage-config)
-            s3-client          (create-s3-client)
+      (let [server-url          (transforms.settings/python-execution-server-url)
+            bucket-name         (transforms.settings/python-storage-s3-bucket)
+            s3-client           (create-s3-client)
             container-s3-client (create-s3-client-for-container s3-client)
-            bucket-name        (:bucket storage-config)
+
             ;; Generate S3 keys for output files
-            output-key         (str work-dir-name "/output.csv")
-            stdout-key         (str work-dir-name "/stdout.txt")
-            stderr-key         (str work-dir-name "/stderr.txt")
+            output-key      (str work-dir-name "/output.csv")
+            stdout-key      (str work-dir-name "/stdout.txt")
+            stderr-key      (str work-dir-name "/stderr.txt")
             ;; Generate presigned URLs for writing (using container client)
-            output-url         (generate-presigned-put-url container-s3-client bucket-name output-key)
-            stdout-url         (generate-presigned-put-url container-s3-client bucket-name stdout-key)
-            stderr-url         (generate-presigned-put-url container-s3-client bucket-name stderr-key)
+            output-url      (generate-presigned-put-url container-s3-client bucket-name output-key)
+            stdout-url      (generate-presigned-put-url container-s3-client bucket-name stdout-key)
+            stderr-url      (generate-presigned-put-url container-s3-client bucket-name stderr-key)
             ;; Upload input table data (write to disk first, then upload to S3)
             table-results   (for [[table-name id] table-name->id]
                               (let [temp-file (File/createTempFile
                                                (str work-dir-name "-table-" (name table-name) "-" id)
                                                ".jsonl")
-                                    s3-key (str work-dir-name "/" (.getName temp-file))]
+                                    s3-key    (str work-dir-name "/" (.getName temp-file))]
                                 (try
                                   ;; Write table data to temporary file (closes DB connection quickly)
                                   (write-table-data-to-file! id temp-file cancel-chan)
