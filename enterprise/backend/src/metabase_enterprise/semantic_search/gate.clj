@@ -20,7 +20,6 @@
   but are not coordinated with any gated updates and therefore might race if gate indexers are also running."
   (:require
    [buddy.core.hash :as buddy-hash]
-   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.analytics.core :as analytics]
