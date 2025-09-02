@@ -92,6 +92,7 @@
 (defn- json-config->edn-ignored
   "Convert JSON config to hawk's EDN ignored format. Right now we only support individually ignored vars. In the future
   will extend to namespaces, drivers. Ideally e2e tests as well. Example config:
+  ```javascript
      {
        \"ignore\": {
          \"vars\": [
@@ -99,12 +100,16 @@
            \"metabase.util.queue-test/take-batch-test\"
          ]
        }
-     }"
+     }
+  ```"
   [json-config]
-  (let [{:keys [ignored] :as _config} (json/parse-string (slurp json-config) true)]
-    (cond-> {}
-      (seq (:vars ignored))
-      (assoc :vars (-> ignored :vars set)))))
+  (try
+    (let [{:keys [ignored] :as _config} (json/parse-string (slurp json-config) true)]
+      (cond-> {}
+        (seq (:vars ignored))
+        (assoc :vars (-> ignored :vars set))))
+    (catch Exception e
+      (log/warnf "Error parsing json config: %s '%s'" json-config (ex-message e)))))
 
 (defn- default-options
   "Default options for test runner, with optional CI config integration."
@@ -115,13 +120,16 @@
    (let [base-options {:namespace-pattern #"^(?:(?:metabase.*)|(?:hooks\..*))" ; anything starting with `metabase*` (including `metabase-enterprise`) or `hooks.*`
                        :exclude-directories excluded-directories
                        :test-warn-time 3000}]
-     (if ci-config-file
-       (do
-         (when (not (.exists (io/file ci-config-file)))
-           (throw (ex-info "Ignore config file provided but does not exist" {:file ci-config-file})))
-         (log/info "Loaded CI test config from" ci-config-file)
-         (assoc base-options :ignored (json-config->edn-ignored ci-config-file)))
-       base-options))))
+     (cond (and ci-config-file (.exists (io/file ci-config-file)))
+           (do
+             #_{:clj-kondo/ignore [:discouraged-var]}
+             (println (format "Loading CI config file from %s" ci-config-file))
+             (assoc base-options :ignored (json-config->edn-ignored ci-config-file)))
+           ci-config-file
+           (do (log/warnf "CI config file was specified but does not exist: %s" ci-config-file)
+               base-options)
+           :else
+           base-options))))
 
 (defn- build-final-options
   "Build final options by merging defaults, CI config, and runtime options.
