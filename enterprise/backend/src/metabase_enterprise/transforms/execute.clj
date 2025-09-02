@@ -242,8 +242,9 @@
                                             :db_id (:id db))]
               (upload/delete-upload! table)
               ;; TODO shouldn't this be handled in upload?
+              ;; NO - because we don't delete these records typically, we just mark them as inactive (chris)
+              ;;      this hack here actually breaks links - we'll want the :model/Table id to be stable in prod
               (t2/delete! :model/Table (:id table)))
-            ;; Create temporary CSV file from output data
             (let [temp-file (File/createTempFile "transform-output-" ".csv")
                   csv-data  (:output body)]
               (try
@@ -259,7 +260,6 @@
                                                        :schema     schema
                                                        :table-name name})))
                 (finally
-                  ;; Clean up temp file
                   (.delete temp-file))))
             result)
           (catch Exception e

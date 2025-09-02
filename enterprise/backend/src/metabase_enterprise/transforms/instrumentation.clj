@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.instrumentation
   (:require
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -71,16 +72,14 @@
      ;; stage implementation
      result)"
   [[job-run-id stage-type stage-label] & body]
-  `(let [start-time# (System/currentTimeMillis)]
+  `(let [start-time# (u/start-timer)]
      (record-stage-start! ~job-run-id ~stage-type ~stage-label)
      (try
        (let [result# (do ~@body)]
-         (record-stage-completion! ~job-run-id ~stage-type ~stage-label
-                                   (- (System/currentTimeMillis) start-time#))
+         (record-stage-completion! ~job-run-id ~stage-type ~stage-label (long (u/since-ms start-time#)))
          result#)
        (catch Throwable t#
-         (record-stage-failure! ~job-run-id ~stage-type ~stage-label
-                                (- (System/currentTimeMillis) start-time#))
+         (record-stage-failure! ~job-run-id ~stage-type ~stage-label (long (u/since-ms start-time#)))
          (throw t#)))))
 
 (mu/defn record-data-transfer!

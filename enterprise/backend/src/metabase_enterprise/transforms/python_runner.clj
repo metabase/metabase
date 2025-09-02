@@ -14,10 +14,11 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (com.amazonaws.auth BasicAWSCredentials)
+   (com.amazonaws HttpMethod)
+   (com.amazonaws.auth AWSCredentialsProvider BasicAWSCredentials)
    (com.amazonaws.client.builder AwsClientBuilder$EndpointConfiguration)
-   (com.amazonaws.services.s3 AmazonS3ClientBuilder)
-   (com.amazonaws.services.s3.model GeneratePresignedUrlRequest PutObjectRequest)
+   (com.amazonaws.services.s3 AmazonS3 AmazonS3ClientBuilder)
+   (com.amazonaws.services.s3.model AmazonS3Exception GeneratePresignedUrlRequest PutObjectRequest)
    (java.io BufferedWriter File OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)
    (java.util Date)
@@ -67,55 +68,62 @@
                             (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
                         cancel-chan)))
 
+(defn- maybe-with-endpoint [^AmazonS3ClientBuilder builder endpoint]
+  (let [region (transforms.settings/python-storage-s-3-region)]
+    (when (or endpoint region)
+      (if-not (and endpoint region)
+        (log/warnf "Ignoring %s because %s is not defined"
+                   (if endpoint "endpoint" "region")
+                   (if (not endpoint) "endpoint" "region"))
+        (.withEndpointConfiguration builder (AwsClientBuilder$EndpointConfiguration. endpoint region))))))
+
+(defn- maybe-with-credentials [^AmazonS3ClientBuilder builder]
+  (let [access-key (transforms.settings/python-storage-s-3-access-key)
+        secret-key (transforms.settings/python-storage-s-3-secret-key)]
+    (when (or access-key secret-key)
+      (if-not (and access-key secret-key)
+        (log/warnf "Ignoring %s because %s is not defined"
+                   (if access-key "access-key" "secret-key")
+                   (if (not access-key) "access-key" "secret-key"))
+        (doto builder
+          (.withCredentials
+           (reify AWSCredentialsProvider
+             (getCredentials [_] (BasicAWSCredentials. access-key secret-key))
+             (refresh [_]))))))))
+
+;; We just recreate the client every time, to keep things simple if config is changed.
 (defn- create-s3-client
   "Create S3 client for host operations (uploads, reads)"
-  ^com.amazonaws.services.s3.AmazonS3 []
+  ^AmazonS3 []
   (let [builder (AmazonS3ClientBuilder/standard)]
-    (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
-      (.withEndpointConfiguration
-       (AwsClientBuilder$EndpointConfiguration.
-        (transforms.settings/python-storage-s-3-endpoint)
-        (transforms.settings/python-storage-s-3-region)))
-      ;; for now, we rely on system credentials being picked up automatically
-      #_(.withCredentials
-         (reify com.amazonaws.auth.AWSCredentialsProvider
-           (getCredentials [_]
-             (BasicAWSCredentials.
-              (transforms.settings/python-storage-s-3-access-key)
-              (transforms.settings/python-storage-s-3-secret-key)))
-           (refresh [_])))
+    (doto ^AmazonS3ClientBuilder builder
+      (maybe-with-endpoint (transforms.settings/python-storage-s-3-endpoint))
+      maybe-with-credentials
       (.withPathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access)))
-    (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder)))
+    (.build ^AmazonS3ClientBuilder builder)))
+
+(create-s3-client)
 
 (defn- create-s3-client-for-container
   "Create S3 client for container operations (presigned URLs).
    Uses container-endpoint if different from host endpoint, otherwise reuses host client."
-  ^com.amazonaws.services.s3.AmazonS3 [^com.amazonaws.services.s3.AmazonS3 host-client]
+  ^AmazonS3 [^AmazonS3 host-client]
   (let [container-endpoint (transforms.settings/python-storage-s-3-container-endpoint)
-        host-endpoint (transforms.settings/python-storage-s-3-endpoint)]
-    (if (and container-endpoint (not= container-endpoint host-endpoint))
-      ;; Create separate client for container endpoint
-      (let [builder (AmazonS3ClientBuilder/standard)]
-        (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
-          (.withEndpointConfiguration
-           (AwsClientBuilder$EndpointConfiguration.
-            container-endpoint
-            (transforms.settings/python-storage-s-3-region)))
-          (.withCredentials
-           (reify com.amazonaws.auth.AWSCredentialsProvider
-             (getCredentials [_]
-               (BasicAWSCredentials.
-                (transforms.settings/python-storage-s-3-access-key)
-                (transforms.settings/python-storage-s-3-secret-key)))
-             (refresh [_])))
-          (.withPathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access)))
-        (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder))
+        host-endpoint      (transforms.settings/python-storage-s-3-endpoint)
+        path-style-access? (transforms.settings/python-storage-s-3-path-style-access)]
+    (if (= container-endpoint host-endpoint)
       ;; Use the same client if endpoints are the same
-      host-client)))
+      host-client
+      ;; Create a separate client to sign modified links that the container can use
+      (.build
+       (doto ^AmazonS3ClientBuilder (AmazonS3ClientBuilder/standard)
+         (maybe-with-endpoint container-endpoint)
+         maybe-with-credentials
+         (.withPathStyleAccessEnabled path-style-access?))))))
 
-(defn- generate-presigned-url
+(defn- generate-presigned-url*
   "Generate presigned URL using the provided S3 client (no post-processing needed)"
-  [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key method]
+  [^AmazonS3 s3-client bucket-name key method]
   (let [one-hour    (* 60 60 1000)
         expiration  (Date. ^Long (+ (System/currentTimeMillis) one-hour))
         url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
@@ -123,38 +131,45 @@
                         (.withMethod method))]
     (.toString (.generatePresignedUrl s3-client url-request))))
 
-(defn- upload-file-to-s3-and-get-url
+(defn- upload-file-to-s3
   "Upload file using host client, return GET URL using container client"
-  [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key ^File file container-s3-client]
-  (let [put-request (PutObjectRequest. ^String bucket-name ^String key file)]
-    (.putObject s3-client put-request)
-    (generate-presigned-url container-s3-client bucket-name key com.amazonaws.HttpMethod/GET)))
+  [^AmazonS3 s3-client ^String bucket-name ^String key ^File file]
+  (.putObject s3-client (PutObjectRequest. bucket-name key file)))
+
+(defn- generate-presigned-get-url
+  "Generate GET URL using container client"
+  [^AmazonS3 container-s3-client bucket-name key]
+  (generate-presigned-url* container-s3-client bucket-name key HttpMethod/GET))
 
 (defn- generate-presigned-put-url
   "Generate PUT URL using container client"
-  [^com.amazonaws.services.s3.AmazonS3 container-s3-client bucket-name key]
-  (generate-presigned-url container-s3-client bucket-name key com.amazonaws.HttpMethod/PUT))
+  [^AmazonS3 container-s3-client bucket-name key]
+  (generate-presigned-url* container-s3-client bucket-name key HttpMethod/PUT))
 
-(defn- delete-s3-object [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key]
+(defn- delete-s3-object [^AmazonS3 s3-client bucket-name key]
   (try
     (.deleteObject s3-client ^String bucket-name ^String key)
     (catch Exception _
       ;; Ignore deletion errors - object might not exist or we might not have permissions
       nil)))
 
-(defn- cleanup-s3-objects [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name s3-keys]
+(defn- cleanup-s3-objects [^AmazonS3 s3-client bucket-name s3-keys]
   (run! (partial delete-s3-object s3-client bucket-name) s3-keys))
 
-(defn- read-from-s3 [^com.amazonaws.services.s3.AmazonS3 s3-client bucket-name key & [fallback-content]]
+(defn- read-from-s3 [^AmazonS3 s3-client bucket-name key & [fallback-content]]
   (try
     (let [object (.getObject s3-client ^String bucket-name ^String key)]
       (slurp (.getObjectContent object)))
-    (catch com.amazonaws.services.s3.model.AmazonS3Exception e
+    (catch AmazonS3Exception e
       (if (and (= 404 (.getStatusCode e)) fallback-content)
         fallback-content
         (throw e)))))
 
-(defn get-logs []
+(defn get-logs
+  "Return the logs of the current running python process"
+  ;; TODO: we should be given an id for the expected job, se we don't return unrelated logs
+  ;;       if the job has already finished, we could fethc the logs from the db instead
+  []
   (let [server-url (transforms.settings/python-execution-server-url)]
     (http/get (str server-url "/logs")
               {:content-type     :json
@@ -165,7 +180,8 @@
 (defn execute-python-code
   "Execute Python code using the Python execution server."
   [run-id code table-name->id cancel-chan]
-  (let [work-dir-name (str "run-" (System/currentTimeMillis) "-" (rand-int 10000))]
+  (let [prefix        (some-> (transforms.settings/python-storage-s-3-prefix) (str "/"))
+        work-dir-name (str prefix "run-" (System/nanoTime) "-" (rand-int 10000))]
 
     (try
       (let [server-url          (transforms.settings/python-execution-server-url)
@@ -183,29 +199,25 @@
             stderr-url      (generate-presigned-put-url container-s3-client bucket-name stderr-key)
             ;; Upload input table data (write to disk first, then upload to S3)
             table-results   (for [[table-name id] table-name->id]
+                              ;; Write table data to temporary local file first (closes DB connection quickly)
                               (let [temp-file (File/createTempFile
                                                (str work-dir-name "-table-" (name table-name) "-" id)
                                                ".jsonl")
                                     s3-key    (str work-dir-name "/" (.getName temp-file))]
                                 (try
-                                  ;; Write table data to temporary file (closes DB connection quickly)
                                   (transforms.instrumentation/with-stage-timing [run-id :data-transfer :dwh-to-file]
                                     (write-table-data-to-file! id temp-file cancel-chan))
-
                                   (let [file-size (.length temp-file)]
-                                    (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file file-size nil))
+                                    (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file file-size nil)
 
-                                  ;; Upload file to S3 and get URL (using container client for GET URL)
-                                  (let [url (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-s3]
-                                              (upload-file-to-s3-and-get-url s3-client bucket-name s3-key temp-file container-s3-client))
-                                        file-size (.length temp-file)]
-                                    ;; Record S3 upload metrics
-                                    (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 file-size nil)
-                                    {:table-name (name table-name)
-                                     :url        url
-                                     :s3-key     s3-key})
+                                    (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-s3]
+                                      (upload-file-to-s3 s3-client bucket-name s3-key temp-file))
+                                    (let [url (generate-presigned-get-url container-s3-client bucket-name s3-key)]
+                                      (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 file-size nil)
+                                      {:table-name (name table-name)
+                                       :url        url
+                                       :s3-key     s3-key}))
                                   (finally
-                                    ;; Clean up temporary file
                                     (safe-delete temp-file)))))
             table-name->url (into {} (map (juxt :table-name :url) table-results))
             all-s3-keys     (concat [output-key stdout-key stderr-key] (map :s3-key table-results))
@@ -255,11 +267,12 @@
                   stderr-content (read-from-s3 s3-client bucket-name stderr-key "stderr missing")]
               {:status 500
                :body
-               {:error     (or (:error result) "Execution failed")
-                :exit-code (:exit_code result)
-                :timeout   (:timeout result)
-                :stdout    stdout-content
-                :stderr    stderr-content}}))
+               {:error       (or (:error result) "Execution failed")
+                :exit-code   (:exit_code result)
+                :status-code (:status response)
+                :timeout     (:timeout result)
+                :stdout      stdout-content
+                :stderr      stderr-content}}))
           (finally
             ;; Clean up S3 objects
             (try
@@ -271,5 +284,6 @@
          :body   {:error "Interrupted"}})
 
       (catch Exception e
+        (.printStackTrace e)
         {:status 500
          :body   {:error (str "Failed to connect to Python execution server: " (.getMessage e))}}))))
