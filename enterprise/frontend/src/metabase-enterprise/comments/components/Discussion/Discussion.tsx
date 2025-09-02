@@ -30,10 +30,6 @@ export interface DiscussionProps {
   targetType: CommentEntityType;
 }
 
-/**
- * TODO: implement me
- * This component should not fetch any data (except version history) but it should use mutations.
- */
 export const Discussion = ({
   childTargetId,
   comments,
