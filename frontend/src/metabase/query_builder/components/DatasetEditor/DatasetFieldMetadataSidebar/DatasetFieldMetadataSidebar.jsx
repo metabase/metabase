@@ -24,10 +24,11 @@ import ColumnSettings, {
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
-import { isFK } from "metabase-lib/v1/types/utils/isa";
+import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 
+import { DatasetFieldMetadataCurrencyPicker } from "./DatasetFieldMetadataCurrencyPicker";
 import { DatasetFieldMetadataFkTargetPicker } from "./DatasetFieldMetadataFkTargetPicker";
 import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSemanticTypePicker";
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
@@ -110,6 +111,7 @@ function DatasetFieldMetadataSidebar({
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
       should_index: field.should_index ?? fieldHasIndex(modelIndexes, field),
+      settings: field.settings,
     };
     const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
@@ -283,6 +285,13 @@ function DatasetFieldMetadataSidebar({
                     onKeyDown={onLastEssentialFieldKeyDown}
                   />
                 </Box>
+                {isCurrency(formFieldValues) && (
+                  <Box mb="1.5rem">
+                    <DatasetFieldMetadataCurrencyPicker
+                      onChange={handleFormattingSettingsChange}
+                    />
+                  </Box>
+                )}
                 {isFK(formFieldValues) && (
                   <Box mb="1.5rem">
                     <DatasetFieldMetadataFkTargetPicker
