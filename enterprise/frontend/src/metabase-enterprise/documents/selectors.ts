@@ -19,11 +19,15 @@ export const getSelectedQuestionId = createSelector(
   },
 );
 
-export const getSidebarOpen = (state: DocumentsStoreState) =>
-  state.plugins?.documents?.selectedEmbedIndex !== null;
+export const getSidebarOpen = createSelector(
+  getDocumentsState,
+  (state) => state.selectedEmbedIndex !== null,
+);
 
-export const getCommentSidebarOpen = (state: DocumentsStoreState) =>
-  state.plugins?.documents?.isCommentSidebarOpen;
+export const getCommentSidebarOpen = createSelector(
+  getDocumentsState,
+  (state) => state.isCommentSidebarOpen,
+);
 
 export const getCardEmbeds = createSelector(
   getDocumentsState,
