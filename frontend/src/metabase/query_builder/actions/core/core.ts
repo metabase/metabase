@@ -257,8 +257,13 @@ export const apiCreateQuestion = (
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
     if (isModel || isMetric) {
+      // composeQuestionAdhoc() returns a question with a 'table' display by default
       const composedQuestion =
-        createdQuestionWithMetadata.composeQuestionAdhoc();
+        isModel && question.display() === "list"
+          ? createdQuestionWithMetadata.composeQuestionAdhoc({
+              display: "list",
+            })
+          : createdQuestionWithMetadata.composeQuestionAdhoc();
       dispatch(runQuestionQuery({ overrideWithQuestion: composedQuestion }));
     }
 
