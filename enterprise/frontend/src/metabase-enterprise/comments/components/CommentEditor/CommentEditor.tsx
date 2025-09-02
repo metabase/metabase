@@ -20,17 +20,19 @@ import { isCommentsStorage } from "metabase-enterprise/comments/types";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
+import type { FormattingOptions } from "metabase-enterprise/documents/types";
 import type { DocumentContent } from "metabase-types/api";
 
 import S from "./CommentEditor.module.css";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [SmartLink.name];
-// TODO: Other formats require to update editor styling.
-const ALLOWED_FORMATTING = {
+
+const ALLOWED_FORMATTING: FormattingOptions = {
   bold: true,
   italic: true,
   strikethrough: true,
-} as const;
+  inline_code: true,
+};
 
 interface Props {
   active?: boolean;

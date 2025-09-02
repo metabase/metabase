@@ -67,6 +67,18 @@
   margin: 0;
 }
 
+.content
+  :global(.ProseMirror)
+  :global(code):not(:global(.editor-style-boundary) *) {
+  background-color: var(--mb-base-color-orion-5);
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--mantine-radius-xs);
+  font-family: var(--mb-default-monospace-font-family, monospace);
+  font-size: 0.875rem;
+  color: var(--mb-color-text-dark);
+  border: 1px solid var(--mb-base-color-orion-10);
+}
+
 /* Placeholder styling */
 .content :global(.is-empty:first-child:before) {
   color: var(--mb-color-text-light);
