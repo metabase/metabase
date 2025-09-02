@@ -10,16 +10,17 @@
 (defn- current-etag-header []
   {"ETag" (format "\"%s\"" config/mb-version-hash)})
 
-(defn- parse-if-none-match [s]
-  (when s
-    (->> (str/split s #"\s*,\s*")
-         (map #(-> %
-                   (str/replace-first #"^W/" "")
-                   (str/replace #"^\"|\"$" "")))
-         set)))
+(defn- parse-if-none-match [if-none-match]
+  (->> (some-> if-none-match (str/split #"\s*,\s*"))
+       (map #(-> %
+                 (str/replace-first #"^W/" "")
+                 (str/replace #"^\"|\"$" "")))
+       set))
 
 (defn- etag-matches? [if-none-match]
-  (contains? (parse-if-none-match if-none-match) config/mb-version-hash))
+  (let [normalized-if-none-match (some-> if-none-match str/trim)]
+    (or (= "*" normalized-if-none-match)
+        (contains? (parse-if-none-match normalized-if-none-match) config/mb-version-hash))))
 
 (defn with-etag
   "Return 304 + ETag if If-None-Match matches; else 200 base + ETag.

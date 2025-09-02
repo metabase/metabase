@@ -60,3 +60,15 @@
       (is (nil? (get-in resp [:headers "Cache-Control"])))
       (is (nil? (get-in resp [:headers "Content-Type"]))))))
 
+(deftest with-etag-returns-304-on-wildcard
+  (testing "If-None-Match: * (or with whitespace) returns 304 and only adds ETag"
+    (doseq [if-none-match-values ["*" "   *   "]]
+      (let [resp (lib.etag-cache/with-etag
+                   {:status 200 :headers {} :body "dummy js"}
+                   {:headers {"if-none-match" if-none-match-values}})]
+        (is (= 304 (:status resp)))
+        (is (= "" (:body resp)))
+        (is (= (format "\"%s\"" config/mb-version-hash)
+               (get-in resp [:headers "ETag"])))
+        (is (nil? (get-in resp [:headers "Cache-Control"])))
+        (is (nil? (get-in resp [:headers "Content-Type"])))))))
