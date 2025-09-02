@@ -179,12 +179,7 @@
   "Execute body while timing a CSV file write operation."
   [[job-run-id] & body]
   `(let [start-time# (System/currentTimeMillis)]
-     (try
-       (let [result# (do ~@body)]
-         (record-csv-write-operation! ~job-run-id
-                                      (- (System/currentTimeMillis) start-time#))
-         result#)
-       (catch Throwable t#
-         (record-csv-write-operation! ~job-run-id
-                                      (- (System/currentTimeMillis) start-time#))
-         (throw t#)))))
+     (let [result# (do ~@body)]
+       (record-csv-write-operation! ~job-run-id
+                                    (- (System/currentTimeMillis) start-time#))
+       result#)))
