@@ -284,7 +284,9 @@ describe("scenarios > native > snippet tags", () => {
     H.NativeEditor.type("select {{snippet: snippet1}}");
     H.runNativeQuery();
     H.queryBuilderMain()
-      .findByText("This query has circular referencing sub-queries.")
+      .findByText(
+        'This query has circular referencing sub-queries. The snippet "snippet2" and the snippet "snippet1" seem to be part of the problem.',
+      )
       .should("be.visible");
 
     cy.log(
