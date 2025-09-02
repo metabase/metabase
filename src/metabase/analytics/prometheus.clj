@@ -411,14 +411,9 @@
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
                         :labels [:job-run-id :transform-id :status]})
-   (prometheus/histogram :metabase-transforms/python-queue-wait-ms
-                         {:description "Time spent waiting in Python service queue before execution."
+   (prometheus/histogram :metabase-transforms/csv-write-duration-ms
+                         {:description "Duration of CSV file write operations during transforms."
                           :labels [:job-run-id :transform-id]
-                          ;; 10ms -> 10 minutes
-                          :buckets [10 100 500 1000 5000 10000 30000 60000 300000 600000]})
-   (prometheus/histogram :metabase-transforms/file-operation-duration-ms
-                         {:description "Duration of file system operations during transforms."
-                          :labels [:job-run-id :transform-id :operation-type]
                           ;; 10ms -> 5 minutes
                           :buckets [10 100 500 1000 5000 10000 30000 60000 300000]})])
 
