@@ -104,7 +104,10 @@
   ```"
   [json-config]
   (try
-    (let [{:keys [ignored] :as _config} (json/parse-string (slurp json-config) true)]
+    (let [{:keys [ignored] :as config} (json/parse-string (slurp json-config) true)]
+      (when (seq ignored)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println (format "using config file: \n%s\n" config)))
       (cond-> {}
         (seq (:vars ignored))
         (assoc :vars (-> ignored :vars set))))
