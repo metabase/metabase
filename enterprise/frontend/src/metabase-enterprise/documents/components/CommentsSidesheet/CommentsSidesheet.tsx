@@ -181,6 +181,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
               <Discussions
                 childTargetId={childTargetId}
                 comments={activeComments}
+                showLastDivider
                 targetId={document.id}
                 targetType="document"
               />

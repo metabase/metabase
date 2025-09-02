@@ -9,6 +9,7 @@ import { Discussion } from "../Discussion";
 export interface DiscussionProps {
   childTargetId: Comment["child_target_id"];
   comments: Comment[];
+  showLastDivider?: boolean;
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
 }
@@ -16,6 +17,7 @@ export interface DiscussionProps {
 export const Discussions = ({
   childTargetId,
   comments,
+  showLastDivider,
   targetId,
   targetType,
 }: DiscussionProps) => {
@@ -23,7 +25,7 @@ export const Discussions = ({
 
   return (
     <Stack gap={0}>
-      {threads.map((thread) => (
+      {threads.map((thread, index) => (
         <Fragment key={thread.id}>
           <Box px="xl" py="md">
             <Discussion
@@ -34,7 +36,7 @@ export const Discussions = ({
             />
           </Box>
 
-          <Divider />
+          {(index !== threads.length - 1 || showLastDivider) && <Divider />}
         </Fragment>
       ))}
     </Stack>
