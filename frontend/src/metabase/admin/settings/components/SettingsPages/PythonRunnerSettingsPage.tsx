@@ -46,42 +46,36 @@ export function PythonRunnerSettingsPage() {
           name="python-storage-s3-endpoint"
           title={t`S3 Endpoint`}
           description={t`S3 endpoint URL for storing Python execution artifacts.`}
-          placeholder="http://localhost:4566"
           inputType="text"
         />
         <AdminSettingInput
           name="python-storage-s3-region"
           title={t`S3 Region`}
           description={t`AWS region for S3 storage.`}
-          placeholder="us-east-1"
           inputType="text"
         />
         <AdminSettingInput
           name="python-storage-s3-bucket"
           title={t`S3 Bucket`}
           description={t`S3 bucket name for storing Python execution artifacts.`}
-          placeholder="metabase-python-runner"
           inputType="text"
         />
         <AdminSettingInput
           name="python-storage-s3-access-key"
           title={t`S3 Access Key ID`}
           description={t`AWS access key ID for S3 authentication.`}
-          placeholder="test"
           inputType="password"
         />
         <AdminSettingInput
           name="python-storage-s3-secret-key"
           title={t`S3 Secret Access Key`}
           description={t`AWS secret access key for S3 authentication.`}
-          placeholder="test"
           inputType="password"
         />
         <AdminSettingInput
           name="python-storage-s3-container-endpoint"
           title={t`S3 Container Endpoint (Optional)`}
           description={t`Alternative S3 endpoint accessible from containers. Leave empty if same as main endpoint.`}
-          placeholder="http://localstack:4566"
           inputType="text"
         />
         <AdminSettingInput
