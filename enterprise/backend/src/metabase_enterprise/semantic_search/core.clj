@@ -97,7 +97,7 @@
        ids))))
 
 ;; NOTE:
-;; we're currently not returning stats from `init!` and `reindex!` as the async nature means
+;; we're currently not returning stats from `init!` as the async nature means
 ;; we'd report skewed values for the `metabase-search` metrics.
 
 (defenterprise init!
@@ -146,12 +146,7 @@
                    :searchable_text "This is a test dashboard"}])
   (delete-from-index! "card" ["1" "2"])
 
-  ;; reindex! testing
+  ;; repair-index! testing
   (require '[metabase.search.ingestion :as search.ingestion])
   (def all-docs (search.ingestion/searchable-documents))
-  (def subset-docs (eduction (take 2000) all-docs))
-  (reindex! subset-docs {})
-  (reindex! all-docs {})
-
-  ;; repair-index! testing
   (repair-index! all-docs))
