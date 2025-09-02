@@ -199,34 +199,59 @@ function getShowLabelFn(
     return () => true;
   }
 
-  const maxNumberOfLabels = Math.floor(
+  const maxLabelsPerSeries = Math.floor(
     chartWidth / (averageLabelWidth + MIN_LABEL_SPACING_PX),
   );
-  if (totalNumberOfLabels <= maxNumberOfLabels) {
-    return () => true;
+
+  if (chartDataDensity.type === "combo") {
+    const { seriesDataKeysWithLabels, stackedDisplayWithLabels } =
+      chartDataDensity;
+    const numOfSeries =
+      seriesDataKeysWithLabels.length + stackedDisplayWithLabels.length;
+
+    const avgLabelsPerSeries =
+      numOfSeries > 0 ? totalNumberOfLabels / numOfSeries : totalNumberOfLabels;
+
+    if (avgLabelsPerSeries <= maxLabelsPerSeries) {
+      return () => true;
+    }
+
+    const { selectionFrequency, selectionOffset } = getSelectionFrequency(
+      chartDataDensity,
+      maxLabelsPerSeries,
+      dataKey,
+    );
+
+    return (params: CallbackDataParams) => {
+      return (params.dataIndex + selectionOffset) % selectionFrequency === 0;
+    };
+  } else {
+    if (totalNumberOfLabels <= maxLabelsPerSeries) {
+      return () => true;
+    }
+
+    const { selectionFrequency, selectionOffset } = getSelectionFrequency(
+      chartDataDensity,
+      maxLabelsPerSeries,
+      dataKey,
+    );
+
+    return (params: CallbackDataParams) => {
+      return (params.dataIndex + selectionOffset) % selectionFrequency === 0;
+    };
   }
-
-  const { selectionFrequency, selectionOffset } = getSelectionFrequency(
-    chartDataDensity,
-    maxNumberOfLabels,
-    dataKey,
-  );
-
-  return (params: CallbackDataParams) => {
-    return (params.dataIndex + selectionOffset) % selectionFrequency === 0;
-  };
 }
 
 function getSelectionFrequency(
   chartDataDensity: ChartDataDensity,
-  maxNumberOfLabels: number,
+  maxLabelsPerSeries: number,
   dataKey: DataKey,
 ) {
   if (chartDataDensity.type === "waterfall") {
     const { totalNumberOfLabels } = chartDataDensity;
 
     const selectionFrequency = Math.ceil(
-      totalNumberOfLabels / maxNumberOfLabels,
+      totalNumberOfLabels / maxLabelsPerSeries,
     );
 
     return { selectionFrequency, selectionOffset: 0 };
@@ -238,19 +263,19 @@ function getSelectionFrequency(
     stackedDisplayWithLabels,
   } = chartDataDensity;
 
-  const selectionFrequency = Math.ceil(totalNumberOfLabels / maxNumberOfLabels);
-
-  const numOfDifferentSeriesWithLabels =
+  const numOfSeries =
     seriesDataKeysWithLabels.length + stackedDisplayWithLabels.length;
-  const stepOffset = Math.floor(
-    selectionFrequency / numOfDifferentSeriesWithLabels,
-  );
 
-  const seriesIndex = _.findIndex(
-    seriesDataKeysWithLabels,
+  const avgLabelsPerSeries =
+    numOfSeries > 0 ? totalNumberOfLabels / numOfSeries : totalNumberOfLabels;
+
+  const selectionFrequency = Math.ceil(avgLabelsPerSeries / maxLabelsPerSeries);
+
+  const seriesIndex = seriesDataKeysWithLabels.findIndex(
     (seriesDataKey) => seriesDataKey === dataKey,
   );
-  const selectionOffset = seriesIndex * stepOffset;
+
+  const selectionOffset = seriesIndex % selectionFrequency;
 
   return { selectionFrequency, selectionOffset };
 }
@@ -745,16 +770,24 @@ function getShowStackedLabelFn(
     return () => true;
   }
 
-  const maxNumberOfLabels = Math.floor(
+  const maxLabelsPerSeries = Math.floor(
     chartWidth / (averageLabelWidth + MIN_LABEL_SPACING_PX),
   );
-  if (totalNumberOfLabels <= maxNumberOfLabels) {
+
+  const { stackedDisplayWithLabels, seriesDataKeysWithLabels } =
+    chartDataDensity;
+  const numOfSeries =
+    seriesDataKeysWithLabels.length + stackedDisplayWithLabels.length;
+  const avgLabelsPerSeries =
+    numOfSeries > 0 ? totalNumberOfLabels / numOfSeries : totalNumberOfLabels;
+
+  if (avgLabelsPerSeries <= maxLabelsPerSeries) {
     return () => true;
   }
 
   const { selectionFrequency, selectionOffset } = getStackedSelectionFrequency(
     chartDataDensity,
-    maxNumberOfLabels,
+    maxLabelsPerSeries,
     stackName,
   );
 
@@ -765,7 +798,7 @@ function getShowStackedLabelFn(
 
 function getStackedSelectionFrequency(
   chartDataDensity: ComboChartDataDensity,
-  maxNumberOfLabels: number,
+  maxLabelsPerSeries: number,
   stackName: string | undefined,
 ) {
   const {
@@ -774,20 +807,20 @@ function getStackedSelectionFrequency(
     stackedDisplayWithLabels,
   } = chartDataDensity;
 
-  const selectionFrequency = Math.ceil(totalNumberOfLabels / maxNumberOfLabels);
-
-  const numOfDifferentSeriesWithLabels =
+  const numOfSeries =
     seriesDataKeysWithLabels.length + stackedDisplayWithLabels.length;
-  const stepOffset = Math.floor(
-    selectionFrequency / numOfDifferentSeriesWithLabels,
-  );
 
-  const stackedIndex = _.findIndex(
-    stackedDisplayWithLabels,
+  const avgLabelsPerSeries =
+    numOfSeries > 0 ? totalNumberOfLabels / numOfSeries : totalNumberOfLabels;
+
+  const selectionFrequency = Math.ceil(avgLabelsPerSeries / maxLabelsPerSeries);
+
+  const stackedIndex = stackedDisplayWithLabels.findIndex(
     (stackDisplay) => stackDisplay === stackName,
   );
-  const selectionOffset =
-    (stackedIndex + seriesDataKeysWithLabels.length) * stepOffset;
+
+  const totalIndex = stackedIndex + seriesDataKeysWithLabels.length;
+  const selectionOffset = totalIndex % selectionFrequency;
 
   return { selectionFrequency, selectionOffset };
 }
