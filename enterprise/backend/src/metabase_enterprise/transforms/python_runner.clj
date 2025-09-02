@@ -10,6 +10,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (com.amazonaws.auth BasicAWSCredentials)
@@ -150,6 +151,14 @@
       (if (and (= 404 (.getStatusCode e)) fallback-content)
         fallback-content
         (throw e)))))
+
+(defn get-logs []
+  (let [server-url (transforms.settings/python-execution-server-url)]
+    (http/get (str server-url "/logs")
+              {:content-type     :json
+               :accept           :json
+               :throw-exceptions false
+               :as               :json})))
 
 (defn execute-python-code
   "Execute Python code using the Python execution server."

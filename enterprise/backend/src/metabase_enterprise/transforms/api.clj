@@ -227,6 +227,9 @@
     (if (transforms.util/python-transform? transform)
       (u.jvm/in-virtual-thread*
        (transforms.execute/execute-python-transform! transform {:start-promise start-promise
+                                                                :message-log   (atom {:pre-python  []
+                                                                                      :python      nil
+                                                                                      :post-python []})
                                                                 :run-method :manual}))
       (u.jvm/in-virtual-thread*
        (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
@@ -260,14 +263,14 @@
           (do
             (log/info "Python test execution succeeded")
             (-> (response/response {:message (deferred-tru "Python code executed successfully")
-                                    :result {:body body}})
+                                    :result  {:body body}})
                 (assoc :status 200)))
           (do
             (log/error "Error executing Python test code")
-            (-> (response/response {:message (deferred-tru "Python code execution failed")
-                                    :error (:error body)
-                                    :stdout (:stdout body)
-                                    :stderr (:stderr body)
+            (-> (response/response {:message   (deferred-tru "Python code execution failed")
+                                    :error     (:error body)
+                                    :stdout    (:stdout body)
+                                    :stderr    (:stderr body)
                                     :exit_code (:exit-code body)})
                 (assoc :status status)))))
       (finally

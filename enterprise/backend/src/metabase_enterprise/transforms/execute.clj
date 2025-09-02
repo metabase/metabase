@@ -15,12 +15,16 @@
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.upload.core :as upload]
+   [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
-   (java.io File)))
+   (clojure.lang IDeref)
+   (java.io Closeable File)
+   (java.time Duration)))
 
 (set! *warn-on-reflection* true)
 
@@ -128,6 +132,67 @@
          (deliver start-promise t))
        (throw t)))))
 
+(defn- log! [message-log s]
+  (swap! message-log (fn [m] (update m (if (:python m) :post-python :pre-python) conj s)))
+  nil)
+
+(defn- replace-python-logs! [message-log stdout stderr]
+  ;; todo would be better to interleave python output
+  (swap! message-log assoc :python (str/join "\n" (remove str/blank? [stdout stderr])))
+  nil)
+
+(defn- save-log-as-message! [run-id message-log]
+  (let [{:keys [pre-python python post-python]} @message-log]
+    (t2/update! :model/TransformRun
+                :id run-id
+                {:message (str/join "\n" (concat pre-python
+                                                 (for [l (str/split-lines python)]
+                                                   (str "\033[32m" l "\033[0m"))
+                                                 post-python))})))
+
+(defn- log-loop! [run-id message-log]
+  (let [poll (fn [] (python-runner/get-logs))]
+    (try
+      (loop []
+        (if (.isInterrupted (Thread/currentThread))
+          (log/debug "Message update loop interrupted")
+          (do (Thread/sleep 1000)
+              (let [{:keys [status body]} (poll)]
+                (if-not (= 200 status)
+                  (do
+                    (log/warnf "Something went wrong polling the logs %s %s" status body)
+                    (log/debug "Exiting due to poll error"))
+                  (let [{:keys [execution_id stdout stderr]} body]
+                    (if-not (= run-id execution_id)
+                      (do (log/debugf "Run id did not match expected: %s actual: %s" run-id execution_id)
+                          (recur))
+                      (do
+                        (replace-python-logs! message-log stdout stderr)
+                        (save-log-as-message! run-id message-log)
+                        (recur)))))))))
+      (catch InterruptedException _)
+      (catch Throwable e
+        (log/errorf e "An exception was caught during msg update loop, run-id: %s" run-id)))))
+
+(defn open-log-thread! ^Closeable [run-id message-log]
+  (let [log-thread-promise (promise)
+        cleanup (fn []
+                  (let [^Thread log-thread (deref log-thread-promise 1000 nil)]
+                    (when-not log-thread (log/fatalf "Log thread reference not bound, run-id: %s" run-id))
+                    (when (.isAlive log-thread)
+                      (.interrupt log-thread)
+                      (when-not (.join log-thread (Duration/ofSeconds 10))
+                        (log/fatalf "Log thread could not be interrupted, run-id: %s" run-id)))))]
+    (u.jvm/in-virtual-thread*
+     (deliver log-thread-promise (Thread/currentThread))
+     (log-loop! run-id message-log))
+    (when-not (deref log-thread-promise 1000 nil) (log/fatalf "Log thread reference not bound, run-id: %s" run-id))
+    (reify
+      IDeref
+      (deref [_] @log-thread-promise)
+      Closeable
+      (close [_] (cleanup)))))
+
 (defn call-python-runner-api!
   "Call the Python runner API endpoint to execute Python code.
    Returns the result map or throws on error."
@@ -138,55 +203,59 @@
 
 (defn- debug-info-str [{:keys [exit-code stdout stderr]}]
   (str/join "\n"
-            [(format "exit code %d" exit-code)
-             "======"
-             "stdout"
+            ["stdout"
              "======"
              stdout
              "stderr"
              "======"
-             stderr]))
+             stderr
+             "======"
+             (format "exit code %d" exit-code)]))
 
-(defn- run-python-transform! [{:keys [schema name]} {:keys [source-tables body]} db run-id cancel-chan]
-  (let [driver (:engine db)
-        {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id cancel-chan)]
-    (if (not= 200 status)
-      (throw (ex-info (debug-info-str body)
-                      {:status-code 400
-                       :error (or (:stderr body) (:error body))
-                       :stdout (:stdout body)
-                       :stderr (:stderr body)}))
-      (try
-        ;; TODO would be nice if we have create or replace in upload
-        ;; NOTE (chris) we do have a replace, so this would be easy! but we're gonna stop using csv
-        ;; TODO we can remove this hack once we move away from upload-csv
-        (binding [api/*current-user-permissions-set* (atom #{"/"})]
-          (when-let [table (t2/select-one :model/Table
-                                          :name (ddl.i/format-name driver name)
-                                          :schema (ddl.i/format-name driver schema)
-                                          :db_id (:id db))]
-            (upload/delete-upload! table)
-            ;; TODO shouldn't this be handled in upload?
-            (t2/delete! :model/Table (:id table)))
-          ;; Create temporary CSV file from output data
-          (let [temp-file (File/createTempFile "transform-output-" ".csv")
-                csv-data (:output body)]
-            (try
-              (with-open [writer (io/writer temp-file)]
-                (.write writer ^String csv-data))
-              (upload/create-from-csv-and-sync! {:db db
-                                                 :filename (.getName temp-file)
-                                                 :file temp-file
-                                                 :schema schema
-                                                 :table-name name})
-              (finally
-                ;; Clean up temp file
-                (.delete temp-file))))
-          result)
-        (catch Exception e
-          (log/error e "Failed to to create resulting table")
-          (throw (ex-info "Failed to create the resulting table"
-                          {:error (.getMessage e)})))))))
+(defn- run-python-transform! [{:keys [schema name]} {:keys [source-tables body]} db run-id cancel-chan message-log]
+  (with-open [log-thread-ref (open-log-thread! run-id message-log)]
+    (let [driver (:engine db)
+          {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id cancel-chan)
+          {:keys [stdout stderr]} body]
+      (.close log-thread-ref)                               ; early close to force any writes to flush
+      (when (or stdout stderr)
+        (replace-python-logs! message-log stdout stderr))
+      (if (not= 200 status)
+        (throw (ex-info (debug-info-str body)
+                        {:status-code 400
+                         :error       (or stderr (:error body))
+                         :stdout      stdout
+                         :stderr      stderr}))
+        (try
+          ;; TODO would be nice if we have create or replace in upload
+          ;; NOTE (chris) we do have a replace, so this would be easy! but we're gonna stop using csv
+          ;; TODO we can remove this hack once we move away from upload-csv
+          (binding [api/*current-user-permissions-set* (atom #{"/"})]
+            (when-let [table (t2/select-one :model/Table
+                                            :name (ddl.i/format-name driver name)
+                                            :schema (ddl.i/format-name driver schema)
+                                            :db_id (:id db))]
+              (upload/delete-upload! table)
+              ;; TODO shouldn't this be handled in upload?
+              (t2/delete! :model/Table (:id table)))
+            ;; Create temporary CSV file from output data
+            (let [temp-file (File/createTempFile "transform-output-" ".csv")
+                  csv-data  (:output body)]
+              (try
+                (with-open [writer (io/writer temp-file)]
+                  (.write writer ^String csv-data))
+                (upload/create-from-csv-and-sync! {:db         db
+                                                   :filename   (.getName temp-file)
+                                                   :file       temp-file
+                                                   :schema     schema
+                                                   :table-name name})
+                (finally
+                  ;; Clean up temp file
+                  (.delete temp-file))))
+            result)
+          (catch Exception e
+            (log/error e "Failed to to create resulting table")
+            (throw (ex-info "Failed to create the resulting table" {:error (.getMessage e)}))))))))
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner.
@@ -194,18 +263,22 @@
   This is executing synchronously, but supports being kicked off in the background
   by delivering the `start-promise` just before the start when the beginning of the execution has been booked
   in the database."
-  ([transform] (execute-python-transform! transform nil))
-  ([transform {:keys [run-method start-promise]}]
-   (when (transforms.util/python-transform? transform)
-     (try
-       (let [{:keys [source target] transform-id :id} transform
-             db (t2/select-one :model/Database (:target-database source))
-             {run-id :id} (try-start-unless-already-running transform-id run-method)]
-         (some-> start-promise (deliver [:started run-id]))
-         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
-         (let [result (run-cancelable-transform! run-id (fn [cancel-chan] (run-python-transform! target source db run-id cancel-chan)))]
-           {:run_id run-id
-            :result result}))
-       (catch Throwable t
-         (log/error t "Error executing Python transform")
-         (throw t))))))
+  [transform {:keys [run-method start-promise message-log]}]
+  (when (transforms.util/python-transform? transform)
+    (try
+      (let [{:keys [source target] transform-id :id} transform
+            db (t2/select-one :model/Database (:target-database source))
+            {run-id :id} (try-start-unless-already-running transform-id run-method)]
+        (some-> start-promise (deliver [:started run-id]))
+        (log! message-log "Executing Python transform")
+        (log/info "Executing Python transform" transform-id "with target" (pr-str target))
+        (let [start-ms (u/start-timer)
+              result   (run-cancelable-transform! run-id (fn [cancel-chan] (run-python-transform! target source db run-id cancel-chan message-log)))]
+          (log! message-log (format "Python execution finished in %s" (Duration/ofMillis (u/since-ms start-ms))))
+          (save-log-as-message! run-id message-log)
+          {:run_id run-id
+           :result result}))
+      (catch Throwable t
+        (log/error t "Error executing Python transform")
+        (log! message-log "Error executing python transform")
+        (throw t)))))
