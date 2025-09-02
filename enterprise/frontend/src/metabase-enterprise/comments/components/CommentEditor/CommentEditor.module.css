@@ -1,5 +1,4 @@
 .container {
-  /* background: var(--mb-color-bg-white, #fff); */
   border: 1px solid var(--mb-color-border);
   box-shadow: var(--mantine-shadow-xs);
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
