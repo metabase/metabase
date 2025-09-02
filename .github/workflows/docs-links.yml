@@ -3,7 +3,7 @@ name: Check doc links
 on:
   pull_request:
     paths:
-      - 'docs/**'
+      - "docs/**"
   workflow_dispatch:
 
 jobs:
@@ -34,22 +34,3 @@ jobs:
           fail: true
           args: docs --config ./.lychee/config.toml --offline
           format: markdown
-
-      - name: Workflow summary
-        if: always()
-        run: |
-          if [ "${{ steps.link-check.outputs.exit_code }}" == "0" ]; then
-            echo "## ✅ Link Check Passed" >> $GITHUB_STEP_SUMMARY
-            echo "All documentation links are working correctly." >> \
-              $GITHUB_STEP_SUMMARY
-          else
-            echo "## ❌ Broken Links Found" >> $GITHUB_STEP_SUMMARY
-            echo "The link checker found broken or problematic links in the" >> \
-              $GITHUB_STEP_SUMMARY
-            echo "documentation." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Broken links:**" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "${{ steps.link-check.outputs.stdout }}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
