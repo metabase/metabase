@@ -26,7 +26,10 @@ type TableSelection = {
 type PythonDataPickerProps = {
   database?: number;
   tables?: Record<string, number>; // alias -> table-id mapping
-  onChange: (database: number, tables: Record<string, number>) => void;
+  onChange: (
+    database: number,
+    tables: Record<string, { id: number; name: string }>,
+  ) => void;
 };
 
 // Helper function to slugify table names
@@ -95,16 +98,23 @@ export function PythonDataPicker({
     },
   );
 
-  // Helper to notify parent of changes
   const notifyParentOfChange = (
     dbId: number | undefined,
     selections: TableSelection[],
+    tableIdToName?: Map<number, string>,
   ) => {
     if (dbId) {
-      const tablesMap: Record<string, number> = {};
+      const tablesMap: Record<string, { id: number; name: string }> = {};
+
       selections.forEach((selection) => {
         if (selection.tableId && selection.alias) {
-          tablesMap[selection.alias] = selection.tableId;
+          const tableName =
+            tableIdToName?.get(selection.tableId) ||
+            `Table ${selection.tableId}`;
+          tablesMap[selection.alias] = {
+            id: selection.tableId,
+            name: tableName,
+          };
         }
       });
       onChange(dbId, tablesMap);
@@ -133,10 +143,13 @@ export function PythonDataPicker({
       table: tbl,
     }));
 
+  const tableIdToNameMap = new Map<number, string>(
+    availableTables.map((t) => [parseInt(t.value), t.table.name]),
+  );
+
   const handleDatabaseChange = (value: string | null) => {
     const dbId = value ? parseInt(value) : undefined;
     setSelectedDatabaseId(dbId);
-    // Reset table selections when database changes
     const newSelections = [
       {
         id: `table-0-${Date.now()}`,
@@ -155,13 +168,11 @@ export function PythonDataPicker({
         const tableId = value ? parseInt(value) : undefined;
         const table = availableTables.find((t) => t.value === value)?.table;
 
-        // Generate new alias from table name
         const newAlias = table ? slugify(table.name) : "";
 
         return {
           ...selection,
           tableId,
-          // Update alias unless user has manually set it
           alias: selection.aliasManuallySet ? selection.alias : newAlias,
           aliasManuallySet: selection.aliasManuallySet || false,
         };
@@ -169,17 +180,43 @@ export function PythonDataPicker({
       return selection;
     });
     setTableSelections(newSelections);
-    notifyParentOfChange(selectedDatabaseId, newSelections);
+    notifyParentOfChange(selectedDatabaseId, newSelections, tableIdToNameMap);
   };
 
   const handleAliasChange = (selectionId: string, alias: string) => {
+    // Only allow valid Python identifier characters (letters, numbers, underscores)
+    // and ensure it doesn't start with a number
+    const validAlias = alias
+      .replace(/[^a-zA-Z0-9_]/g, "")
+      .replace(/^(\d)/, "_$1");
+
     const newSelections = tableSelections.map((selection) =>
       selection.id === selectionId
-        ? { ...selection, alias, aliasManuallySet: true }
+        ? { ...selection, alias: validAlias, aliasManuallySet: true }
         : selection,
     );
     setTableSelections(newSelections);
-    notifyParentOfChange(selectedDatabaseId, newSelections);
+    notifyParentOfChange(selectedDatabaseId, newSelections, tableIdToNameMap);
+  };
+
+  const handleResetAlias = (selectionId: string) => {
+    const newSelections = tableSelections.map((selection) => {
+      if (selection.id === selectionId && selection.tableId) {
+        const table = availableTables.find(
+          (t) => t.value === selection.tableId!.toString(),
+        )?.table;
+        if (table) {
+          return {
+            ...selection,
+            alias: slugify(table.name),
+            aliasManuallySet: false,
+          };
+        }
+      }
+      return selection;
+    });
+    setTableSelections(newSelections);
+    notifyParentOfChange(selectedDatabaseId, newSelections, tableIdToNameMap);
   };
 
   const handleAddTable = () => {
@@ -201,7 +238,7 @@ export function PythonDataPicker({
       (selection) => selection.id !== selectionId,
     );
     setTableSelections(newSelections);
-    notifyParentOfChange(selectedDatabaseId, newSelections);
+    notifyParentOfChange(selectedDatabaseId, newSelections, tableIdToNameMap);
   };
 
   const selectedTableIds = new Set(
@@ -238,41 +275,72 @@ export function PythonDataPicker({
           <Stack gap="sm">
             {tableSelections.map((selection, index) => {
               // Filter available tables to exclude already selected ones (except current selection)
-              const filteredTables = availableTables.filter((table) => 
-                !selectedTableIds.has(table.value) || table.value === selection.tableId?.toString()
+              const filteredTables = availableTables.filter(
+                (table) =>
+                  !selectedTableIds.has(table.value) ||
+                  table.value === selection.tableId?.toString(),
               );
-              
+
+              const table = availableTables.find(
+                (t) => t.value === selection.tableId?.toString(),
+              )?.table;
+              const defaultAlias = table ? slugify(table.name) : "";
+              const showReset =
+                selection.aliasManuallySet &&
+                selection.alias !== defaultAlias &&
+                table;
+
               return (
-              <Group key={selection.id} gap="sm" align="flex-end">
-                <Select
-                  style={{ flex: 1 }}
-                  data={filteredTables}
-                  value={selection.tableId?.toString() || null}
-                  onChange={(value) => handleTableChange(selection.id, value)}
-                  placeholder={t`Select a table`}
-                  clearable
-                  disabled={isLoadingTables}
-                />
-                <TextInput
-                  style={{ flex: 0.7 }}
-                  value={selection.alias}
-                  onChange={(e) =>
-                    handleAliasChange(selection.id, e.target.value)
-                  }
-                  placeholder={t`Table alias`}
-                  label={index === 0 ? t`Alias` : undefined}
-                />
-                {tableSelections.length > 1 && (
-                  <ActionIcon
-                    onClick={() => handleRemoveTable(selection.id)}
-                    aria-label={t`Remove table`}
-                    color="gray"
-                    variant="subtle"
-                  >
-                    <Icon name="trash" />
-                  </ActionIcon>
-                )}
-              </Group>
+                <Group key={selection.id} gap="sm" align="flex-end">
+                  <Select
+                    style={{ flex: 1 }}
+                    data={filteredTables}
+                    value={selection.tableId?.toString() || null}
+                    onChange={(value) => handleTableChange(selection.id, value)}
+                    placeholder={t`Select a table`}
+                    clearable
+                    disabled={isLoadingTables}
+                  />
+                  <TextInput
+                    style={{ flex: 0.7 }}
+                    value={selection.alias}
+                    onChange={(e) =>
+                      handleAliasChange(selection.id, e.target.value)
+                    }
+                    placeholder={t`Enter alias`}
+                    label={index === 0 ? t`Alias` : undefined}
+                    styles={{
+                      input: {
+                        color: selection.aliasManuallySet
+                          ? undefined
+                          : "var(--mb-color-text-light)",
+                      },
+                    }}
+                    rightSection={
+                      showReset ? (
+                        <ActionIcon
+                          onClick={() => handleResetAlias(selection.id)}
+                          aria-label={t`Reset alias to default`}
+                          color="gray"
+                          variant="subtle"
+                          size="xs"
+                        >
+                          <Icon name="refresh" size={12} />
+                        </ActionIcon>
+                      ) : null
+                    }
+                  />
+                  {tableSelections.length > 1 && (
+                    <ActionIcon
+                      onClick={() => handleRemoveTable(selection.id)}
+                      aria-label={t`Remove table`}
+                      color="gray"
+                      variant="subtle"
+                    >
+                      <Icon name="trash" />
+                    </ActionIcon>
+                  )}
+                </Group>
               );
             })}
             <Button
@@ -293,4 +361,7 @@ export function PythonDataPicker({
     </Stack>
   );
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> a3af25f5b (Auto-update Python transform function signature when table aliases change)

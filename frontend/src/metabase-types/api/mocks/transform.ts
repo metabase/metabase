@@ -21,6 +21,7 @@ export function createMockPythonTransformSource(): TransformSource {
     type: "python",
     body: "# Python script\nprint('Hello, world!')",
     "source-database": 1,
+    "source-tables": {},
   };
 }
 
