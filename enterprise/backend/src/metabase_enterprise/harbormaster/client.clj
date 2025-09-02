@@ -6,6 +6,7 @@
    [martian.clj-http :as martian-http]
    [martian.core :as martian]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.api.settings :as api.auth]
    [metabase.store-api.core :as store-api]
    [metabase.util :as m.util]
@@ -111,6 +112,7 @@
                 api-key]} (->config)
         request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
                                              "Content-Type" "application/json"}}
+                            api/*current-user-id* (assoc-in [:headers "X-Metabase-User-Id"] api/*current-user-id*)
                             body (assoc :body (json/encode body)))
         request-method-fn (->requestor method)
         unparsed-response (send-request request-method-fn store-api-url url request)
@@ -124,13 +126,19 @@
   {:name ::add-bearer-token
    :enter (fn [ctx] (assoc-in ctx [:request :headers "Authorization"] (str "Bearer " secret)))})
 
+(defn- metabase-user-id []
+  {:name ::add-metabase-user-id
+   :enter (fn [ctx]
+            (cond-> ctx
+              api/*current-user-id* (assoc-in [:request :headers "X-Metabase-User-Id"] api/*current-user-id*)))})
+
 (defn- create-client
   [store-api-url api-key]
   (martian-http/bootstrap-openapi
    (str store-api-url "/openapi.json")
    ;; martian options for calling operations
    {:server-url   store-api-url
-    :interceptors (into [(bearer-auth api-key)] martian-http/default-interceptors)}
+    :interceptors (into [(bearer-auth api-key) (metabase-user-id)] martian-http/default-interceptors)}
    ;; clj-http options for loading the openapi.json itself
    {:headers {"Authorization" (str "Bearer " api-key)}}))
 
