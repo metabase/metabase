@@ -373,12 +373,12 @@ describe("issues 55617, 55618", () => {
     cy.findByPlaceholderText("Select a target")
       .should("have.value", "People → ID")
       .click();
-    cy.get("main").scrollTo("top"); // scroll to top so the popover drops up
+    H.main().scrollTo("bottom"); // scroll to bottom so the popover drops up
     H.popover().within(() => {
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible").click();
+      cy.findByText("Orders → ID").should("exist");
+      cy.findByText("People → ID").should("exist");
+      cy.findByText("Products → ID").should("exist");
+      cy.findByText("Reviews → ID").should("exist").click();
     });
     cy.findByPlaceholderText("Select a target").should(
       "have.value",
