@@ -326,7 +326,7 @@ describe(
       beforeEach(() => {
         sdkBundleCleanup();
 
-        cy.window().then(() => {
+        cy.then(() => {
           H.clearBrowserCache();
         });
       });
