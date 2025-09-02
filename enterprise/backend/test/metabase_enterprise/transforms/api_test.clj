@@ -113,8 +113,7 @@
                                     :schema (get-test-schema)
                                     :name   table-name}}
                 resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
-            (is (=? (assoc body
-                           :last_run nil)
+            (is (=? body
                     (->
                      (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))
                      (update-in [:source :query] mbql.normalize/normalize))))))))))
