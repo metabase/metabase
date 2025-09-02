@@ -1,5 +1,8 @@
 import { t } from "ttag";
+import * as Yup from "yup";
 
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,
   FormProvider,
@@ -7,22 +10,47 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Button, Stack } from "metabase/ui";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import { FormFooter } from "metabase/common/components/FormFooter";
+import type { CollectionId } from "metabase-types/api";
+
+type CopyDocumentProperties = {
+  collection_id: CollectionId | null;
+  name: string;
+};
+
+type DocumentCopyFormProps = {
+  initialValues: Partial<CopyDocumentProperties>;
+  onCancel: () => void;
+  onSubmit: (vals: CopyDocumentProperties) => Promise<Document>;
+  onSaved: (doc: Document) => void;
+};
+
+const VALIDATION_SCHEMA = Yup.object({
+  name: Yup.string().required().default(""),
+  collection_id: Yup.number().nullable().default(null),
+});
 
 export const DocumentCopyForm = ({
   initialValues,
   onCancel,
   onSubmit,
   onSaved,
-}) => {
+}: DocumentCopyFormProps) => {
+  const handleSubmit = async (vals: CopyDocumentProperties) => {
+    const { name, collection_id } = vals;
+
+    const newDoc = await onSubmit({ name, collection_id });
+
+    onSaved?.(newDoc);
+  };
+
   return (
     <FormProvider
-      initialValues={initialValues}
-      onSubmit={onSubmit}
+      initialValues={{ ...VALIDATION_SCHEMA.getDefault(), ...initialValues }}
+      validationSchema={VALIDATION_SCHEMA}
+      onSubmit={handleSubmit}
       enableReinitialize
     >
-      {({ dirty }) => (
+      {() => (
         <Form>
           <Stack gap="md" mb="md">
             <FormTextInput
