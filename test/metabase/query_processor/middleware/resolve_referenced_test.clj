@@ -84,7 +84,9 @@
         (#'qp.resolve-referenced/check-for-circular-references entrypoint-query)
         (catch ExceptionInfo e
           (testing e
-            (is (= (#'qp.resolve-referenced/circular-ref-error entrypoint-query 2 1)
+            (is (= (#'qp.resolve-referenced/circular-ref-error entrypoint-query
+                                                               ::qp.resolve-referenced/card 2
+                                                               ::qp.resolve-referenced/card 1)
                    (ex-message e)))))))))
 
 (defn- make-card-template-tag
@@ -265,5 +267,46 @@
         (testing "Should throw an exception for self-referencing snippet"
           (is (thrown-with-msg?
                ExceptionInfo
-               #"Snippet to snippet cycle detected"
+               #"circular|cycle"
                (#'qp.resolve-referenced/check-for-circular-references entrypoint-query))))))))
+
+(deftest ^:parallel valid-card-snippet-chain-test
+  (testing "Allows valid non-cyclic card→snippet→snippet chains"
+    (testing "Card → Snippet 1 → Snippet 2 (no cycle)"
+      (let [;; Set up the metadata provider with one card
+            metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                               meta/metadata-provider
+                               [;; Card (id 1) references both snippet-1 and snippet-2
+                                {:database (meta/id)
+                                 :type :native
+                                 :native {:query "SELECT * FROM products {{snippet: snippet-1}} {{snippet: snippet-2}}"
+                                          :template-tags (merge (make-snippet-template-tag 101 "snippet-1")
+                                                                (make-snippet-template-tag 102 "snippet-2"))}}])
+            ;; Add two snippets where snippet-1 references snippet-2 (but no cycle)
+            metadata-provider-with-snippets
+            (lib.tu/mock-metadata-provider
+             metadata-provider
+             {:native-query-snippets [;; Snippet 1 references snippet-2
+                                      (make-snippet {:id 101
+                                                     :name "snippet-1"
+                                                     :content "WHERE category IN ({{snippet: snippet-2}})"
+                                                     :card-refs []
+                                                     :snippet-refs [[102 "snippet-2"]]})
+                                      ;; Snippet 2 does not reference anything else
+                                      (make-snippet {:id 102
+                                                     :name "snippet-2"
+                                                     :content "SELECT DISTINCT category FROM categories WHERE active = true"
+                                                     :card-refs []
+                                                     :snippet-refs []})]})
+
+            ;; Create the query that references Card 1
+            entrypoint-query (lib/query
+                              metadata-provider-with-snippets
+                              {:database (meta/id)
+                               :type :native
+                               :native {:query "SELECT * FROM {{#1}}"
+                                        :template-tags (card-template-tags [1])}})]
+
+        (testing "Should NOT throw an exception for valid non-cyclic chain"
+          ;; This should complete, without throwing an exception, and return a dependency graph
+          (is (some? (#'qp.resolve-referenced/check-for-circular-references entrypoint-query))))))))
