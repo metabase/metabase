@@ -57,8 +57,11 @@ export const CustomCodeBlock = CodeBlock.extend({
 
   addProseMirrorPlugins() {
     return [
-      createProseMirrorPlugin(CodeBlock.name), // this plugin creates a code block for pasted content from VS Code
+      createProseMirrorPlugin(CodeBlock.name),
+      // this plugin creates a code block for pasted content from VS Code
       // we can also detect the copied code language
+      //
+      // https://github.com/ueberdosis/tiptap/blob/7b4e6f5/packages/extension-code-block/src/code-block.ts#L266-L314
       new Plugin({
         key: new PluginKey("codeBlockVSCodeHandler"),
         props: {
