@@ -4,13 +4,13 @@
     <Console name="Console" target="SYSTEM_OUT" follow="true">
       <PatternLayout pattern="[%t] %-5level %logger{36} - %msg %notEmpty{%X}%n"/>
       <Filters>
-        <ThresholdFilter level="FATAL" onMatch="ACCEPT" onMismatch="DENY"/>
+        <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
       </Filters>
     </Console>
     <Console name="ConsoleInfoLevel" target="SYSTEM_OUT" follow="true">
       <PatternLayout pattern="[%t] %-5level %logger{36} - %msg %notEmpty{%X}%n"/>
       <Filters>
-        <ThresholdFilter level="FATAL" onMatch="ACCEPT" onMismatch="DENY"/>
+        <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
       </Filters>
     </Console>
     <File name="File" fileName="logs/test-log.json" append="false">
