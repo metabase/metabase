@@ -179,7 +179,7 @@
            limit
            start_time
            end_time
-           run_method
+           run_methods
            sort_column
            sort_direction
            transform_ids
@@ -204,8 +204,8 @@
                            (some? end_time)
                            (conj (timestamp-constraint :end_time end_time))
 
-                           (seq run_method)
-                           (conj [:in :run_method (set run_method)])
+                           (seq run_methods)
+                           (conj [:in :run_method (set run_methods)])
 
                            (seq transform_ids)
                            (conj [:in :transform_id transform_ids])

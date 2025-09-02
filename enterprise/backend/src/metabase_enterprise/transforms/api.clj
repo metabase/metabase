@@ -128,7 +128,7 @@
     [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
-    [:run_method {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
+    [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
   (log/info "get runs")
   (api/check-superuser)
   (transform-run/paged-runs (assoc query-params
