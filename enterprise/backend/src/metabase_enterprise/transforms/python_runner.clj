@@ -102,8 +102,6 @@
       (.withPathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access)))
     (.build ^AmazonS3ClientBuilder builder)))
 
-(create-s3-client)
-
 (defn- create-s3-client-for-container
   "Create S3 client for container operations (presigned URLs).
    Uses container-endpoint if different from host endpoint, otherwise reuses host client."
