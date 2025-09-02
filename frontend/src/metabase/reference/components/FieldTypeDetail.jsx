@@ -31,7 +31,7 @@ const FieldTypeDetail = ({
   const settings =
     typeof fieldSettingsFormField.value !== "undefined"
       ? fieldSettingsFormField.value
-      : field.settings?.currency;
+      : field.settings;
   const currency = getFieldCurrency(settings);
 
   return (
