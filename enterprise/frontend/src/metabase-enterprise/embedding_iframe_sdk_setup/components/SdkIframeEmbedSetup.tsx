@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
 import "react-resizable/css/styles.css";
 
 import { useUpdateSettingsMutation } from "metabase/api";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import { Box, Button, Group, Stack } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -22,7 +22,6 @@ const SdkIframeEmbedSetupContent = () => {
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
   const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
   const [updateSettings] = useUpdateSettingsMutation();
-  const [sendToast] = useToast();
 
   const {
     handleNext,
@@ -37,17 +36,6 @@ const SdkIframeEmbedSetupContent = () => {
   // If an admin accepts the terms, we never show it again.
   const acceptSimpleEmbedTerms = () =>
     updateSettings({ "show-simple-embed-terms": false });
-
-  // Automatically enable embedding if it's not already enabled.
-  useEffect(() => {
-    if (!isSimpleEmbeddingEnabled) {
-      updateSettings({ "enable-embedding-simple": true });
-
-      sendToast({
-        message: t`Embedded Analytics JS is enabled. You can configure it in admin settings.`,
-      });
-    }
-  }, [isSimpleEmbeddingEnabled, sendToast, updateSettings]);
 
   return (
     <Box className={S.Container}>
