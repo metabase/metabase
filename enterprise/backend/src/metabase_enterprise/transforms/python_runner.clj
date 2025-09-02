@@ -163,7 +163,7 @@
 
 (defn execute-python-code
   "Execute Python code using the Python execution server."
-  [run-id transform-id code table-name->id cancel-chan]
+  [run-id code table-name->id cancel-chan]
   (let [work-dir-name (str "run-" (System/currentTimeMillis) "-" (rand-int 10000))]
 
     (try
@@ -188,18 +188,18 @@
                                     s3-key    (str work-dir-name "/" (.getName temp-file))]
                                 (try
                                   ;; Write table data to temporary file (closes DB connection quickly)
-                                  (transforms.instrumentation/with-stage-timing [run-id transform-id :data-transfer :dwh-to-file]
+                                  (transforms.instrumentation/with-stage-timing [run-id :data-transfer :dwh-to-file]
                                     (write-table-data-to-file! id temp-file cancel-chan))
 
                                   (let [file-size (.length temp-file)]
-                                    (transforms.instrumentation/record-data-transfer! run-id transform-id :dwh-to-file file-size nil))
+                                    (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file file-size nil))
 
                                   ;; Upload file to S3 and get URL (using container client for GET URL)
-                                  (let [url (transforms.instrumentation/with-stage-timing [run-id transform-id :data-transfer :file-to-s3]
+                                  (let [url (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-s3]
                                               (upload-file-to-s3-and-get-url s3-client bucket-name s3-key temp-file container-s3-client))
                                         file-size (.length temp-file)]
                                     ;; Record S3 upload metrics
-                                    (transforms.instrumentation/record-data-transfer! run-id transform-id :file-to-s3 file-size nil)
+                                    (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 file-size nil)
                                     {:table-name (name table-name)
                                      :url        url
                                      :s3-key     s3-key})

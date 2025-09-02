@@ -124,7 +124,7 @@
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
          (run-cancelable-transform! run-id (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))
-         (transforms.instrumentation/with-stage-timing [run-id id :sync :table-sync]
+         (transforms.instrumentation/with-stage-timing [run-id :sync :table-sync]
            (sync-target! target database run-id))))
      (catch Throwable t
        (log/error t "Error executing transform")
@@ -198,10 +198,10 @@
 (defn call-python-runner-api!
   "Call the Python runner API endpoint to execute Python code.
    Returns the result map or throws on error."
-  [code table-name->id run-id transform-id cancel-chan]
+  [code table-name->id run-id cancel-chan]
   ;; TODO probably don't need this hack anymore, double check
-  (transforms.instrumentation/with-python-api-timing [run-id transform-id]
-    (update (python-runner/execute-python-code run-id transform-id code table-name->id cancel-chan)
+  (transforms.instrumentation/with-python-api-timing [run-id]
+    (update (python-runner/execute-python-code run-id code table-name->id cancel-chan)
             :body #(if (string? %) json/decode+kw %))))
 
 (defn- debug-info-str [{:keys [exit-code stdout stderr]}]
@@ -215,10 +215,10 @@
              "======"
              (format "exit code %d" exit-code)]))
 
-(defn- run-python-transform! [{:keys [schema name]} {:keys [source-tables body]} db run-id transform-id cancel-chan message-log]
+(defn- run-python-transform! [{:keys [schema name]} {:keys [source-tables body]} db run-id cancel-chan message-log]
   (with-open [log-thread-ref (open-log-thread! run-id message-log)]
     (let [driver                           (:engine db)
-          {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id transform-id cancel-chan)
+          {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id cancel-chan)
           {:keys [stdout stderr]}          body]
       (.close log-thread-ref)                               ; early close to force any writes to flush
       (when (or stdout stderr)
@@ -247,12 +247,12 @@
             (let [temp-file (File/createTempFile "transform-output-" ".csv")
                   csv-data  (:output body)]
               (try
-                (transforms.instrumentation/with-csv-write-timing [run-id transform-id]
+                (transforms.instrumentation/with-csv-write-timing [run-id]
                   (with-open [writer (io/writer temp-file)]
                     (.write writer ^String csv-data)))
                 (let [file-size (.length temp-file)]
-                  (transforms.instrumentation/record-data-transfer! run-id transform-id :file-to-dwh file-size nil)
-                  (transforms.instrumentation/with-stage-timing [run-id transform-id :data-transfer :file-to-dwh]
+                  (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil)
+                  (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-dwh]
                     (upload/create-from-csv-and-sync! {:db         db
                                                        :filename   (.getName temp-file)
                                                        :file       temp-file
@@ -282,7 +282,7 @@
         (log! message-log "Executing Python transform")
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
         (let [start-ms (u/start-timer)
-              result   (run-cancelable-transform! run-id (fn [cancel-chan] (run-python-transform! target source db run-id transform-id cancel-chan message-log)))]
+              result   (run-cancelable-transform! run-id (fn [cancel-chan] (run-python-transform! target source db run-id cancel-chan message-log)))]
           (log! message-log (format "Python execution finished in %s" (Duration/ofMillis (u/since-ms start-ms))))
           (save-log-as-message! run-id message-log)
           {:run_id run-id

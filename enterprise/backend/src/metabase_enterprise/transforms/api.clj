@@ -243,7 +243,8 @@
                               :run_id run-id})
           (assoc :status 202)))))
 
-(def ^:private python-test-run-id "python-test")
+;; hack
+(def ^:private python-test-run-id Integer/MAX_VALUE)
 
 (api.macros/defendpoint :post "/test-python"
   "Test Python code execution without creating a transform."
@@ -254,12 +255,11 @@
             [:tables [:map-of :string :int]]]]
   (log/info "test python code execution")
   (api/check-superuser)
-  (let [;; hack
-        run-id python-test-run-id
+  (let [run-id python-test-run-id
         cancel-chan (a/promise-chan)]
     (trasnforms.canceling/chan-start-run! run-id cancel-chan)
     (try
-      (let [{:keys [body status]} (transforms.execute/call-python-runner-api! (:code body) (:tables body) run-id :test cancel-chan)]
+      (let [{:keys [body status]} (transforms.execute/call-python-runner-api! (:code body) (:tables body) run-id cancel-chan)]
         (if (= status 200)
           (do
             (log/info "Python test execution succeeded")

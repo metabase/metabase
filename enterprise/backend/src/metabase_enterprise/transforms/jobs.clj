@@ -76,9 +76,9 @@
           (do
             (log/info "Executing job transform" (pr-str transform-id))
             (if (transforms.util/python-transform? current-transform)
-              (transforms.instrumentation/with-stage-timing [run-id transform-id :computation :python-execution]
+              (transforms.instrumentation/with-stage-timing [run-id :computation :python-execution]
                 (transforms.execute/execute-python-transform! current-transform {:run-method run-method}))
-              (transforms.instrumentation/with-stage-timing [run-id transform-id :computation :mbql-query]
+              (transforms.instrumentation/with-stage-timing [run-id :computation :mbql-query]
                 (transforms.execute/run-mbql-transform! current-transform {:run-method run-method})))
             (transforms.job-run/add-run-activity! run-id)
             (recur (conj complete (:id current-transform)) nil)))))))
