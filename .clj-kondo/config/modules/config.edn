@@ -1958,7 +1958,8 @@
            metabase-enterprise.transforms.init
            ;; TODO: Remove this from API once we remove the python-runner callback to metabase
            metabase-enterprise.transforms.settings}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            config
            driver
