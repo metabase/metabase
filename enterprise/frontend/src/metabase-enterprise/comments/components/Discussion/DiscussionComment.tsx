@@ -12,15 +12,12 @@ import type { Comment, DocumentContent } from "metabase-types/api";
 import { CommentEditor } from "../CommentEditor";
 
 import S from "./Discussion.module.css";
-import {
-  DiscussionActionPanel,
-  type DiscussionActionPanelProps,
-} from "./DiscussionActionPanel";
+import { DiscussionActionPanel } from "./DiscussionActionPanel";
 import { DiscussionAvatar } from "./DiscussionAvatar";
 
 type DiscussionCommentProps = {
+  canResolve?: boolean;
   comment: Comment;
-  actionPanelVariant?: DiscussionActionPanelProps["variant"];
   onResolve?: (comment: Comment) => unknown;
   onReopen?: (comment: Comment) => unknown;
   onReaction?: (comment: Comment, emoji: string) => unknown;
@@ -30,8 +27,8 @@ type DiscussionCommentProps = {
 };
 
 export function DiscussionComment({
+  canResolve,
   comment,
-  actionPanelVariant,
   onResolve,
   onReopen,
   onReaction,
@@ -70,7 +67,7 @@ export function DiscussionComment({
           {t`This comment was deleted.`}
         </Text>
         <DiscussionActionPanel
-          variant={actionPanelVariant}
+          canResolve={canResolve}
           comment={comment}
           onResolve={onResolve}
           onCopyLink={onCopyLink}
@@ -89,7 +86,7 @@ export function DiscussionComment({
     >
       {!isEditing && (
         <DiscussionActionPanel
-          variant={actionPanelVariant}
+          canResolve={canResolve}
           comment={comment}
           onResolve={onResolve}
           onReopen={onReopen}

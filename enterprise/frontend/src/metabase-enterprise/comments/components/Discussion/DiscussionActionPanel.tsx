@@ -17,7 +17,7 @@ import type { Comment } from "metabase-types/api";
 import S from "./Discussion.module.css";
 
 export type DiscussionActionPanelProps = {
-  variant?: "comment" | "discussion";
+  canResolve?: boolean;
   comment: Comment;
   onResolve?: (comment: Comment) => unknown;
   onReopen?: (comment: Comment) => unknown;
@@ -37,7 +37,7 @@ const ACTION_BUTTON_STYLE_PROPS = {
 } as const;
 
 export function DiscussionActionPanel({
-  variant = "comment",
+  canResolve,
   comment,
   onResolve,
   onReopen,
@@ -69,7 +69,8 @@ export function DiscussionActionPanel({
             <Icon name="bolt" />
           </ActionIcon>
         </Tooltip> */}
-        {variant === "discussion" && (
+
+        {canResolve && (
           <Tooltip label={comment.is_resolved ? t`Re-open` : t`Resolve`}>
             <ActionIcon
               size={ACTION_ICON_SIZE}
@@ -81,6 +82,7 @@ export function DiscussionActionPanel({
             </ActionIcon>
           </Tooltip>
         )}
+
         {hasMoreActions && (
           <Popover
             opened={popoverOpened}

@@ -91,8 +91,8 @@ export const Discussion = ({
         {comments.map((comment, index) => (
           <DiscussionComment
             key={comment.id}
+            canResolve={index === 0}
             comment={comment}
-            actionPanelVariant={index === 0 ? "discussion" : "comment"}
             onDelete={handleDeleteComment}
             onResolve={handleResolveComment}
             onReopen={handleReopenComment}
