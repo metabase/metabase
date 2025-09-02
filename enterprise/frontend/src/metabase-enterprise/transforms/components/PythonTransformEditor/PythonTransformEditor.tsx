@@ -1,5 +1,4 @@
-import { useHotkeys } from "@mantine/hooks";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { Flex } from "metabase/ui";
 import type { TransformSource } from "metabase-types/api";
@@ -43,14 +42,106 @@ export function PythonTransformEditor({
     setIsSourceDirty(true);
   };
 
+  const updateTransformSignature = (
+    script: string,
+    tables: Record<string, { id: number; name: string }>,
+  ): string => {
+    const tableAliases = Object.keys(tables);
+
+    const transformRegex = /^def\s+transform\s*\([^)]*\)\s*:\s*/m;
+
+    const signatureOneLine = `def transform(${tableAliases.join(", ")}):`;
+    const newSignature =
+      signatureOneLine.length > 80 && tableAliases.length > 0
+        ? `def transform(\n${tableAliases.map((alias) => `    ${alias}`).join(",\n")},\n):`
+        : signatureOneLine;
+
+    if (transformRegex.test(script)) {
+      let updatedScript = script.replace(transformRegex, newSignature + "\n");
+
+      const argsRegex =
+        /(\s+"""[\s\S]*?)\s+Args:\s*\n([\s\S]*?)(\n\s+Returns:|\n\s+""")/;
+      const argsMatch = updatedScript.match(argsRegex);
+
+      if (argsMatch && tableAliases.length > 0) {
+        const maxAliasLength = Math.max(...tableAliases.map((a) => a.length));
+        const newArgsSection = tableAliases
+          .map((alias) => {
+            const padding = " ".repeat(maxAliasLength - alias.length);
+            const tableName = tables[alias].name;
+            if (alias === tableName) {
+              return `        ${alias}:${padding} DataFrame containing the data from the corresponding table`;
+            }
+            return `        ${alias}:${padding} DataFrame containing the data from table "${tableName}"`;
+          })
+          .join("\n");
+
+        updatedScript = updatedScript.replace(
+          argsRegex,
+          `$1
+
+    Args:
+${newArgsSection}$3`,
+        );
+      } else if (argsMatch && tableAliases.length === 0) {
+        updatedScript = updatedScript.replace(argsRegex, "$1$3");
+      }
+
+      return updatedScript;
+    }
+
+    const maxAliasLength =
+      tableAliases.length > 0
+        ? Math.max(...tableAliases.map((a) => a.length))
+        : 0;
+    const functionTemplate = `
+${newSignature}
+    """
+    Transform function that processes the input data.
+    ${
+      tableAliases.length > 0
+        ? `
+
+    Args:
+${tableAliases
+  .map((alias) => {
+    const padding = " ".repeat(maxAliasLength - alias.length);
+    const tableName = tables[alias].name;
+    if (alias === tableName) {
+      return `        ${alias}:${padding} DataFrame containing the data from the corresponding table`;
+    }
+    return `        ${alias}:${padding} DataFrame containing the data from table "${tableName}"`;
+  })
+  .join("\n")}`
+        : ""
+    }
+
+    Returns:
+        DataFrame: The transformed data
+    """
+    import pandas as pd
+    return pd.DataFrame()
+`;
+
+    return script + functionTemplate;
+  };
+
   const handleDataChange = (
     database: number,
-    tables: Record<string, number>,
+    tables: Record<string, { id: number; name: string }>,
   ) => {
+    const updatedScript = updateTransformSignature(source.body, tables);
+
+    const sourceTables: Record<string, number> = {};
+    Object.entries(tables).forEach(([alias, tableInfo]) => {
+      sourceTables[alias] = tableInfo.id;
+    });
+
     const newSource = {
       ...source,
+      body: updatedScript,
       "source-database": database,
-      "source-tables": tables,
+      "source-tables": sourceTables,
     };
     setSource(newSource);
     setIsSourceDirty(true);
@@ -59,7 +150,6 @@ export function PythonTransformEditor({
   const handleSave = () => {
     onSave(source);
   };
-
 
   const canSave = Boolean(
     source.body.trim() &&

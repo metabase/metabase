@@ -2,9 +2,13 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
-import { Alert, Box, Button, Group, Text, Loader } from "metabase/ui";
+import { color } from "metabase/lib/colors";
+import { Alert, Box, Button, Group, Loader, Text } from "metabase/ui";
 
-import { useExecutePythonMutation, useCancelPythonMutation } from "../../../api/python-runner";
+import {
+  useCancelPythonMutation,
+  useExecutePythonMutation,
+} from "../../../api/python-runner";
 
 type PythonEditorProps = {
   script: string;
@@ -30,9 +34,9 @@ function parseCSV(csv: string): { headers: string[]; rows: string[][] } {
     return { headers: [], rows: [] };
   }
 
-  const headers = lines[0].split(",").map(h => h.trim());
-  const rows = lines.slice(1).map(line => {
-    return line.split(",").map(cell => cell.trim());
+  const headers = lines[0].split(",").map((h) => h.trim());
+  const rows = lines.slice(1).map((line) => {
+    return line.split(",").map((cell) => cell.trim());
   });
 
   return { headers, rows };
@@ -45,7 +49,8 @@ export function PythonEditor({
   tables = {},
 }: PythonEditorProps) {
   const [isRunning, setIsRunning] = useState(false);
-  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
+  const [executionResult, setExecutionResult] =
+    useState<ExecutionResult | null>(null);
   const [executePython] = useExecutePythonMutation();
   const [cancelPython] = useCancelPythonMutation();
   const handleScriptChange = (newScript: string) => {
@@ -63,7 +68,6 @@ export function PythonEditor({
         tables: tables,
       }).unwrap();
 
-
       if (result?.body && result?.body.error) {
         setExecutionResult({
           error: result.body.error || "Execution failed",
@@ -78,12 +82,10 @@ export function PythonEditor({
         });
       }
     } catch (error: any) {
-
       // The API returns error data directly in error.data
       const errorData = error?.data || {};
-      const errorMessage = errorData.error ||
-                          error?.message ||
-                          "Failed to execute Python script";
+      const errorMessage =
+        errorData.error || error?.message || "Failed to execute Python script";
       const stdout = errorData.stdout || "";
       const stderr = errorData.stderr || "";
 
@@ -119,7 +121,9 @@ export function PythonEditor({
   return (
     <Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
       {/* Python Script Editor */}
-      <Box style={{ height: "300px" }}>
+      <Box
+        style={{ flex: "1 1 300px", minHeight: "300px", overflow: "hidden" }}
+      >
         <CodeEditor
           value={script}
           onChange={handleScriptChange}
@@ -129,7 +133,10 @@ export function PythonEditor({
 
       {/* Results Section - positioned between editor and buttons */}
       {(executionResult || isRunning) && (
-        <Box mt="md">
+        <Box
+          mt="md"
+          style={{ flex: "0 0 auto", overflow: "auto", maxHeight: "40%" }}
+        >
           {isRunning ? (
             <Box p="md">
               <Text c="text-medium">{t`Running Python script...`}</Text>
@@ -142,17 +149,31 @@ export function PythonEditor({
                 </Alert>
               </Box>
               {executionResult.stdout && (
-                <Box mt="md" p="md" bg="bg-light" style={{ maxHeight: "150px", overflow: "auto" }}>
+                <Box
+                  mt="md"
+                  p="md"
+                  bg="bg-light"
+                  style={{ maxHeight: "150px", overflow: "auto" }}
+                >
                   <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-                  <Box style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+                  <Box
+                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                  >
                     {executionResult.stdout}
                   </Box>
                 </Box>
               )}
               {executionResult.stderr && (
-                <Box mt="md" p="md" bg="bg-light" style={{ maxHeight: "150px", overflow: "auto" }}>
+                <Box
+                  mt="md"
+                  p="md"
+                  bg="bg-light"
+                  style={{ maxHeight: "150px", overflow: "auto" }}
+                >
                   <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
-                  <Box style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+                  <Box
+                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                  >
                     {executionResult.stderr}
                   </Box>
                 </Box>
@@ -164,17 +185,31 @@ export function PythonEditor({
                 <Text c="text-medium">{t`No results to display.`}</Text>
               </Box>
               {executionResult?.stdout && (
-                <Box mt="md" p="md" bg="bg-light" style={{ maxHeight: "150px", overflow: "auto" }}>
+                <Box
+                  mt="md"
+                  p="md"
+                  bg="bg-light"
+                  style={{ maxHeight: "150px", overflow: "auto" }}
+                >
                   <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-                  <Box style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+                  <Box
+                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                  >
                     {executionResult.stdout}
                   </Box>
                 </Box>
               )}
               {executionResult?.stderr && (
-                <Box mt="md" p="md" bg="bg-light" style={{ maxHeight: "150px", overflow: "auto" }}>
+                <Box
+                  mt="md"
+                  p="md"
+                  bg="bg-light"
+                  style={{ maxHeight: "150px", overflow: "auto" }}
+                >
                   <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
-                  <Box style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+                  <Box
+                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                  >
                     {executionResult.stderr}
                   </Box>
                 </Box>
@@ -183,28 +218,55 @@ export function PythonEditor({
           ) : (
             <>
               {executionResult.stdout && (
-                <Box mt="md" p="md" bg="bg-light" style={{ maxHeight: "150px", overflow: "auto" }}>
+                <Box
+                  mt="md"
+                  p="md"
+                  bg="bg-light"
+                  style={{ maxHeight: "150px", overflow: "auto" }}
+                >
                   <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-                  <Box style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+                  <Box
+                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                  >
                     {executionResult.stdout}
                   </Box>
                 </Box>
               )}
               {executionResult.stderr && (
-                <Box mt="md" p="md" bg="bg-light" style={{ maxHeight: "150px", overflow: "auto" }}>
+                <Box
+                  mt="md"
+                  p="md"
+                  bg="bg-light"
+                  style={{ maxHeight: "150px", overflow: "auto" }}
+                >
                   <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
-                  <Box style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+                  <Box
+                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                  >
                     {executionResult.stderr}
                   </Box>
                 </Box>
               )}
               <Box mt="md" style={{ maxHeight: "300px", overflow: "auto" }}>
                 <Text fw="bold" mb="md">{t`Results Table:`}</Text>
-                <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #ddd" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    border: `1px solid ${color("border")}`,
+                  }}
+                >
                   <thead>
-                    <tr style={{ backgroundColor: "#f0f0f0" }}>
+                    <tr style={{ backgroundColor: color("bg-medium") }}>
                       {headers.map((header, index) => (
-                        <th key={index} style={{ padding: "8px", textAlign: "left", borderBottom: "2px solid #ddd" }}>
+                        <th
+                          key={index}
+                          style={{
+                            padding: "8px",
+                            textAlign: "left",
+                            borderBottom: `2px solid ${color("border")}`,
+                          }}
+                        >
                           {header}
                         </th>
                       ))}
@@ -212,7 +274,10 @@ export function PythonEditor({
                   </thead>
                   <tbody>
                     {rows.map((row, rowIndex) => (
-                      <tr key={rowIndex} style={{ borderBottom: "1px solid #eee" }}>
+                      <tr
+                        key={rowIndex}
+                        style={{ borderBottom: `1px solid ${color("border")}` }}
+                      >
                         {row.map((cell, cellIndex) => (
                           <td key={cellIndex} style={{ padding: "8px" }}>
                             {cell}
@@ -229,11 +294,15 @@ export function PythonEditor({
       )}
 
       {/* Action Buttons */}
-      <Box mt="md">
+      <Box mt="md" style={{ flex: "0 0 auto" }}>
         <Group gap="sm">
           <Button
             variant="filled"
-            style={isRunning ? { backgroundColor: '#dc2626', color: 'white' } : undefined}
+            style={
+              isRunning
+                ? { backgroundColor: color("error"), color: color("white") }
+                : undefined
+            }
             leftSection={isRunning ? undefined : <span>▶</span>}
             onClick={isRunning ? handleCancelScript : handleRunScript}
             disabled={!isRunnable && !isRunning}

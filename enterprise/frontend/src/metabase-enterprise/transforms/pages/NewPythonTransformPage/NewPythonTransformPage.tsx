@@ -13,23 +13,21 @@ import { CreatePythonTransformModal } from "./CreatePythonTransformModal";
 const DEFAULT_PYTHON_SOURCE: TransformSource & { type: "python" } = {
   type: "python",
   "source-database": 1, // Default to first database, will be updated by user
+  "source-tables": {}, // Will be populated when user selects tables
   body: `# Write your Python transformation script here
 import pandas as pd
 
-def transform(table_name):
+def transform():
     """
     Your transformation function.
-
-    Args:
-        table_name: DataFrame corresponding to the source table with the matching alias
-
-        (rename to match your actual alias, add extra arguments named for each additional table)
+    
+    Select tables above to add them as function parameters.
 
     Returns:
         DataFrame to write to the destination table
     """
     # Your transformation logic here
-    return pd.DataFrame([{"row_count": table_name.size}])`,
+    return pd.DataFrame([{"message": "Hello from Python transform!"}])`,
 };
 
 export function NewPythonTransformPage() {
