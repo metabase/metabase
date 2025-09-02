@@ -27,7 +27,7 @@
   :encryption :no
   :audit :getter)
 
-(setting/defsetting python-storage-s3-endpoint
+(setting/defsetting python-storage-s-3-endpoint
   (deferred-tru "S3 endpoint URL for storing Python execution artifacts.")
   :type :string
   :visibility :admin
@@ -38,7 +38,7 @@
   :encryption :no
   :audit :getter)
 
-(setting/defsetting python-storage-s3-region
+(setting/defsetting python-storage-s-3-region
   (deferred-tru "AWS region for S3 storage.")
   :type :string
   :visibility :admin
@@ -49,7 +49,7 @@
   :encryption :no
   :audit :getter)
 
-(setting/defsetting python-storage-s3-bucket
+(setting/defsetting python-storage-s-3-bucket
   (deferred-tru "S3 bucket name for storing Python execution artifacts.")
   :type :string
   :visibility :admin
@@ -60,7 +60,7 @@
   :encryption :no
   :audit :getter)
 
-(setting/defsetting python-storage-s3-access-key
+(setting/defsetting python-storage-s-3-access-key
   (deferred-tru "AWS access key ID for S3 authentication.")
   :type :string
   :visibility :admin
@@ -71,7 +71,7 @@
   :encryption :no
   :audit :getter)
 
-(setting/defsetting python-storage-s3-secret-key
+(setting/defsetting python-storage-s-3-secret-key
   (deferred-tru "AWS secret access key for S3 authentication.")
   :type :string
   :visibility :admin
@@ -82,7 +82,7 @@
   :encryption :when-encryption-key-set
   :audit :never)
 
-(setting/defsetting python-storage-s3-container-endpoint
+(setting/defsetting python-storage-s-3-container-endpoint
   (deferred-tru "Alternative S3 endpoint accessible from containers. Leave empty if same as main endpoint.")
   :type :string
   :visibility :admin
@@ -93,7 +93,7 @@
   :encryption :no
   :audit :getter)
 
-(setting/defsetting python-storage-s3-path-style-access
+(setting/defsetting python-storage-s-3-path-style-access
   (deferred-tru "Use path-style access for S3 requests (required for LocalStack and some S3-compatible services).")
   :type :boolean
   :visibility :admin

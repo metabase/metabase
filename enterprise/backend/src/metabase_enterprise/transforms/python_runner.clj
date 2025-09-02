@@ -72,24 +72,24 @@
     (doto ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder
       (.withEndpointConfiguration
        (AwsClientBuilder$EndpointConfiguration.
-        (transforms.settings/python-storage-s3-endpoint)
-        (transforms.settings/python-storage-s3-region)))
+        (transforms.settings/python-storage-s-3-endpoint)
+        (transforms.settings/python-storage-s-3-region)))
       (.withCredentials
        (reify com.amazonaws.auth.AWSCredentialsProvider
          (getCredentials [_]
            (BasicAWSCredentials.
-            (transforms.settings/python-storage-s3-access-key)
-            (transforms.settings/python-storage-s3-secret-key)))
+            (transforms.settings/python-storage-s-3-access-key)
+            (transforms.settings/python-storage-s-3-secret-key)))
          (refresh [_])))
-      (.withPathStyleAccessEnabled (transforms.settings/python-storage-s3-path-style-access)))
+      (.withPathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access)))
     (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder)))
 
 (defn- create-s3-client-for-container
   "Create S3 client for container operations (presigned URLs).
    Uses container-endpoint if different from host endpoint, otherwise reuses host client."
   ^com.amazonaws.services.s3.AmazonS3 [^com.amazonaws.services.s3.AmazonS3 host-client]
-  (let [container-endpoint (transforms.settings/python-storage-s3-container-endpoint)
-        host-endpoint (transforms.settings/python-storage-s3-endpoint)]
+  (let [container-endpoint (transforms.settings/python-storage-s-3-container-endpoint)
+        host-endpoint (transforms.settings/python-storage-s-3-endpoint)]
     (if (and container-endpoint (not= container-endpoint host-endpoint))
       ;; Create separate client for container endpoint
       (let [builder (AmazonS3ClientBuilder/standard)]
@@ -97,15 +97,15 @@
           (.withEndpointConfiguration
            (AwsClientBuilder$EndpointConfiguration.
             container-endpoint
-            (transforms.settings/python-storage-s3-region)))
+            (transforms.settings/python-storage-s-3-region)))
           (.withCredentials
            (reify com.amazonaws.auth.AWSCredentialsProvider
              (getCredentials [_]
                (BasicAWSCredentials.
-                (transforms.settings/python-storage-s3-access-key)
-                (transforms.settings/python-storage-s3-secret-key)))
+                (transforms.settings/python-storage-s-3-access-key)
+                (transforms.settings/python-storage-s-3-secret-key)))
              (refresh [_])))
-          (.withPathStyleAccessEnabled (transforms.settings/python-storage-s3-path-style-access)))
+          (.withPathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access)))
         (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder))
       ;; Use the same client if endpoints are the same
       host-client)))
@@ -158,7 +158,7 @@
 
     (try
       (let [server-url          (transforms.settings/python-execution-server-url)
-            bucket-name         (transforms.settings/python-storage-s3-bucket)
+            bucket-name         (transforms.settings/python-storage-s-3-bucket)
             s3-client           (create-s3-client)
             container-s3-client (create-s3-client-for-container s3-client)
 
