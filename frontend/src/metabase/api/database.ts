@@ -266,6 +266,7 @@ export const {
   useListDatabasesQuery,
   useGetDatabaseQuery,
   useGetDatabaseHealthQuery,
+  useLazyListDatabasesQuery,
   useGetDatabaseMetadataQuery,
   useListDatabaseSchemasQuery,
   useListSyncableDatabaseSchemasQuery,

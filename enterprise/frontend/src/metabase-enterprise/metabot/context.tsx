@@ -1,12 +1,15 @@
 import dayjs from "dayjs";
 import type React from "react";
 import { createContext, useCallback, useRef, useState } from "react";
+import _ from "underscore";
 
+import { useLazyListDatabasesQuery } from "metabase/api";
 import { useStore } from "metabase/lib/redux";
 import type {
   ChatContextProviderFn,
   MetabotContext as MetabotCtx,
 } from "metabase/metabot";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 
 export const defaultContext = {
   prompt: "",
@@ -36,13 +39,25 @@ export const MetabotProvider = ({
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
   const store = useStore();
 
+  const [listDbs] = useLazyListDatabasesQuery();
+
   const getChatContext = useCallback(async () => {
     const state = store.getState();
     const providerFns = [...providerFnsRef.current];
 
+    const { data: dbData } = await listDbs(undefined, true);
+    const databases = dbData?.data ?? [];
+    const hasDataAccess = getHasDataAccess(databases);
+    const hasNativeWrite = getHasNativeWrite(databases);
+
     const ctx = {
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
+      capabilities: _.compact([
+        "frontend:navigate_user_v1",
+        hasDataAccess && "permission:save_questions",
+        hasNativeWrite && "permission:write_sql_queries",
+      ]),
     };
 
     for (const providerFn of providerFns) {
@@ -55,7 +70,7 @@ export const MetabotProvider = ({
     }
 
     return ctx;
-  }, [store]);
+  }, [store, listDbs]);
 
   const registerChatContextProvider = useCallback(
     (providerFn: ChatContextProviderFn) => {
