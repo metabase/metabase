@@ -1,9 +1,19 @@
+import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
 import type { Engine } from "metabase-types/api";
 
+import * as utils from "../utils";
+
 import { TEST_ENGINES, setup } from "./setup";
+
+jest.mock("../../DatabaseFormError", () => {
+  return {
+    ...jest.requireActual("../../DatabaseFormError"),
+    DatabaseFormError: () => <div data-testid="database-form-error" />,
+  };
+});
 
 describe("DatabaseForm", () => {
   it("should submit default values", async () => {
@@ -155,6 +165,50 @@ describe("DatabaseForm with provider name", () => {
           provider_name: null,
         }),
       );
+    });
+  });
+
+  describe("connection error handling", () => {
+    beforeEach(() => {
+      // jest.spyOn(utils, "useHasConnectionError").mockClear();
+    });
+
+    it("shows error message when there is a connection error", () => {
+      const { unmount } = setup({ engines: TEST_ENGINES });
+      expect(
+        screen.queryByTestId("database-form-error"),
+      ).not.toBeInTheDocument();
+      jest.spyOn(utils, "useHasConnectionError").mockReturnValue(true);
+
+      unmount();
+      setup();
+      expect(screen.getByTestId("database-form-error")).toBeInTheDocument();
+    });
+
+    it("shows error message in the footer if isAdvanced is false (setup page)", () => {
+      jest.spyOn(utils, "useHasConnectionError").mockReturnValue(true);
+
+      setup({ isAdvanced: false, engines: TEST_ENGINES });
+      expect(screen.getByTestId("database-form-error")).toBeInTheDocument();
+      // Check error is rendered in the footer
+      expect(
+        within(screen.getByTestId("form-footer")).getByTestId(
+          "database-form-error",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows error message in the footer if isAdvanced is true (admin page)", () => {
+      jest.spyOn(utils, "useHasConnectionError").mockReturnValue(true);
+
+      setup({ isAdvanced: true, engines: TEST_ENGINES });
+      expect(screen.getByTestId("database-form-error")).toBeInTheDocument();
+      // Check error is NOT rendered in the footer
+      expect(
+        within(screen.getByTestId("form-footer")).queryByTestId(
+          "database-form-error",
+        ),
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -16,7 +16,7 @@ import {
   getEngineKey,
 } from "./utils";
 
-interface DatabaseFormProps {
+export interface DatabaseFormProps {
   initialValues?: Partial<DatabaseData>;
   autofocusFieldName?: string;
   onSubmit?: (values: DatabaseData) => void;

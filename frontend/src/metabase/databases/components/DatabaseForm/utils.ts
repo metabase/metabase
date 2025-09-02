@@ -22,8 +22,8 @@ export interface DatabaseFormConfig {
 }
 
 export const useHasConnectionError = () => {
-  const originalErrorMessage = useFormErrorMessage();
-  return !!originalErrorMessage;
+  const errorMessage = useFormErrorMessage();
+  return !!errorMessage;
 };
 
 export const getEngine = (

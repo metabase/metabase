@@ -8,7 +8,8 @@ import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
 import { Button, Flex, Text } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
-import { DatabaseFormError } from "./DatabaseFormError";
+import { DatabaseFormError } from "../DatabaseFormError";
+
 import {
   type ContinueWithoutDataComponent,
   useHasConnectionError,
@@ -69,7 +70,7 @@ export const DatabaseFormFooter = ({
 
   if (values.engine) {
     return (
-      <FormFooter>
+      <FormFooter data-testid="form-footer">
         {hasConnectionError && <DatabaseFormError />}
         <Button onClick={onCancel}>{t`Skip`}</Button>
         <FormSubmitButton variant="filled" label={t`Connect database`} />

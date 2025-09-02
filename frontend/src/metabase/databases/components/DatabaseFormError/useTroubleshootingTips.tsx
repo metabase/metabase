@@ -1,6 +1,8 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
+import { identity } from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
@@ -10,17 +12,14 @@ import {
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
 import { Box, Code } from "metabase/ui";
+import type { State } from "metabase-types/store";
 
 import type { TipProps } from "./TroubleshootingTip";
 
 export const useTroubleshootingTips = (count?: number): TipProps[] => {
   const applicationName = useSelector(getApplicationName);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const getDocPageUrl = useSelector(
-    (state) =>
-      (page: string): string =>
-        getDocsUrl(state, { page }),
-  );
+  const getDocPageUrl = useSelector(docPageUrlGetter);
 
   return useMemo(() => {
     const cloudIPLinkContent = renderDocsLinkMaybe(
@@ -93,5 +92,9 @@ const renderDocsLinkMaybe = (
 
   return linkContent;
 };
+
+const docPageUrlGetter = createSelector([identity], (state: State) => {
+  return (page: string): string => getDocsUrl(state, { page });
+});
 
 const metabaseIPAddresses = ["18.207.81.126", "3.211.20.157", "50.17.234.169"];

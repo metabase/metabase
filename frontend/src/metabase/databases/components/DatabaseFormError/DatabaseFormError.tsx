@@ -1,18 +1,16 @@
-import { useFormikContext } from "formik";
 import { Fragment, useRef, useState } from "react";
 import { useMount } from "react-use";
 import slugg from "slugg";
 import { t } from "ttag";
 
-import { useFormErrorMessage } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Alert, Box, Button, Divider, Icon, Paper } from "metabase/ui";
-import type { DatabaseData } from "metabase-types/api";
 
 import { AdditionalHelpButtonGroup } from "./AdditionalHelpButtonGroup";
 import S from "./DatabaseFormError.module.css";
 import { TroubleshootingTip } from "./TroubleshootingTip";
+import { useDatabaseErrorDetails } from "./useDatabaseErrorDetails";
 import { useTroubleshootingTips } from "./useTroubleshootingTips";
 
 export const DatabaseFormError = () => {
@@ -97,20 +95,4 @@ export const DatabaseFormError = () => {
       </Button>
     </Paper>
   );
-};
-
-const useDatabaseErrorDetails = () => {
-  const { errors } = useFormikContext<DatabaseData>();
-  const originalErrorMessage = useFormErrorMessage();
-  const isHostAndPortError =
-    typeof errors?.details === "object" &&
-    Object.hasOwn(errors?.details, "host") &&
-    Object.hasOwn(errors?.details, "port");
-
-  return {
-    errorMessage: isHostAndPortError
-      ? t`Make sure your Host and Port settings are correct.`
-      : originalErrorMessage,
-    isHostAndPortError,
-  };
 };

@@ -9,9 +9,9 @@ import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
 import DatabaseDetailField from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
+import { DatabaseFormError } from "../DatabaseFormError";
 import { DatabaseNameField } from "../DatabaseNameField";
 
-import { DatabaseFormError } from "./DatabaseFormError";
 import { type DatabaseFormConfig, useHasConnectionError } from "./utils";
 
 interface DatabaseFormBodyProps {
@@ -99,7 +99,7 @@ export const DatabaseFormBody = ({
           engine={engine}
         />
       ))}
-      {location === "admin" && hasConnectionError && <DatabaseFormError />}
+      {isAdvanced && hasConnectionError && <DatabaseFormError />}
     </Box>
   );
 };
