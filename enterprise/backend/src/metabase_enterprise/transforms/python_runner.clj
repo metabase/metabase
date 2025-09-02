@@ -76,13 +76,14 @@
        (AwsClientBuilder$EndpointConfiguration.
         (transforms.settings/python-storage-s-3-endpoint)
         (transforms.settings/python-storage-s-3-region)))
-      (.withCredentials
-       (reify com.amazonaws.auth.AWSCredentialsProvider
-         (getCredentials [_]
-           (BasicAWSCredentials.
-            (transforms.settings/python-storage-s-3-access-key)
-            (transforms.settings/python-storage-s-3-secret-key)))
-         (refresh [_])))
+      ;; for now, we rely on system credentials being picked up automatically
+      #_(.withCredentials
+         (reify com.amazonaws.auth.AWSCredentialsProvider
+           (getCredentials [_]
+             (BasicAWSCredentials.
+              (transforms.settings/python-storage-s-3-access-key)
+              (transforms.settings/python-storage-s-3-secret-key)))
+           (refresh [_])))
       (.withPathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access)))
     (.build ^com.amazonaws.services.s3.AmazonS3ClientBuilder builder)))
 
