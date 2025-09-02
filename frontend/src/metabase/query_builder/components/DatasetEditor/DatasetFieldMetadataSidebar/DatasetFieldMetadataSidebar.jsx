@@ -18,7 +18,7 @@ import {
 import { color } from "metabase/lib/colors";
 import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { Box, Radio, Tabs } from "metabase/ui";
+import { Box, Radio, Stack, Tabs } from "metabase/ui";
 import ColumnSettings, {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
@@ -276,7 +276,7 @@ function DatasetFieldMetadataSidebar({
                     />
                   </Box>
                 )}
-                <Box mb="1.5rem">
+                <Stack gap="sm" mb="1.5rem">
                   <DatasetFieldMetadataSemanticTypePicker
                     className={DatasetFieldMetadataSidebarS.SelectButton}
                     field={field}
@@ -284,23 +284,19 @@ function DatasetFieldMetadataSidebar({
                     onChange={handleSemanticTypeChange}
                     onKeyDown={onLastEssentialFieldKeyDown}
                   />
-                </Box>
-                {isCurrency(formFieldValues) && (
-                  <Box mb="1.5rem">
+                  {isCurrency(formFieldValues) && (
                     <DatasetFieldMetadataCurrencyPicker
                       onChange={handleFormattingSettingsChange}
                     />
-                  </Box>
-                )}
-                {isFK(formFieldValues) && (
-                  <Box mb="1.5rem">
+                  )}
+                  {isFK(formFieldValues) && (
                     <DatasetFieldMetadataFkTargetPicker
                       databaseId={dataset.databaseId()}
                       field={field}
                       onChange={handleFkTargetChange}
                     />
-                  </Box>
-                )}
+                  )}
+                </Stack>
               </div>
 
               <Tabs value={tab} onChange={setTab}>
