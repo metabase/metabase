@@ -1,4 +1,5 @@
-(ns metabase.server.middleware.etag-cache
+(ns metabase.server.lib.etag-cache
+  "ETag caching-related utilities."
   (:require
    [clojure.string :as str]
    [metabase.config.core :as config]

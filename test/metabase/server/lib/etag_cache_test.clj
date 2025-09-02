@@ -1,8 +1,8 @@
-(ns metabase.server.middleware.etag-cache-test
+(ns metabase.server.lib.etag-cache-test
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
-   [metabase.server.middleware.etag-cache :as mw.etag-cache]
+   [metabase.server.lib.etag-cache :as lib.etag-cache]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -17,7 +17,7 @@
 (deftest with-etag-returns-304-when-etag-matches
   (testing "Exact strong ETag match returns 304 with only ETag header added"
     (let [etag (format "\"%s\"" config/mb-version-hash)
-          resp (mw.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag}})]
+          resp (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag}})]
       (is (= 304 (:status resp)))
       (is (= "" (:body resp)))
       (is (= etag (get-in resp [:headers "ETag"])))
@@ -26,7 +26,7 @@
 
   (testing "Weak ETag (W/) is treated as match"
     (let [etag-weak (format "W/\"%s\"" config/mb-version-hash)
-          resp      (mw.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag-weak}})]
+          resp      (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag-weak}})]
       (is (= 304 (:status resp)))
       (is (= "" (:body resp)))
       (is (= (format "\"%s\"" config/mb-version-hash)
@@ -34,14 +34,14 @@
 
   (testing "Multiple ETags in If-None-Match; any match triggers 304"
     (let [header (format "\"other\", W/\"%s\", \"another\"" config/mb-version-hash)
-          resp   (mw.etag-cache/with-etag (base-response) {:headers {"if-none-match" header}})]
+          resp   (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" header}})]
       (is (= 304 (:status resp)))
       (is (= (format "\"%s\"" config/mb-version-hash)
              (get-in resp [:headers "ETag"]))))))
 
 (deftest with-etag-returns-200-and-adds-etag-when-no-match
   (testing "ETag does not match → 200; adds ETag, preserves existing headers; no Cache-Control/Content-Type"
-    (let [resp (mw.etag-cache/with-etag
+    (let [resp (lib.etag-cache/with-etag
                  (base-response {"X-Foo" "bar"})
                  {:headers {"if-none-match" "\"different\""}})]
       (is (= 200 (:status resp)))
@@ -53,7 +53,7 @@
       (is (nil? (get-in resp [:headers "Content-Type"])))))
 
   (testing "Missing If-None-Match → 200; adds ETag only"
-    (let [resp (mw.etag-cache/with-etag (base-response) {:headers {}})]
+    (let [resp (lib.etag-cache/with-etag (base-response) {:headers {}})]
       (is (= 200 (:status resp)))
       (is (= "dummy js" (:body resp)))
       (is (= (format "\"%s\"" config/mb-version-hash)

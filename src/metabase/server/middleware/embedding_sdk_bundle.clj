@@ -2,7 +2,7 @@
   "Embedding SDK Bundle related Ring middleware."
   (:require
    [metabase.config.core :as config]
-   [metabase.server.middleware.etag-cache :as mw.etag-cache]
+   [metabase.server.lib.etag-cache :as lib.etag-cache]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -23,7 +23,7 @@
       (update :headers merge no-store-cache-header)))
 
 (defn- serve-for-prod [base request]
-  (let [resp (mw.etag-cache/with-etag base request)]
+  (let [resp (lib.etag-cache/with-etag base request)]
     (cond-> resp
       true                 (update :headers merge
                                    default-cache-header
