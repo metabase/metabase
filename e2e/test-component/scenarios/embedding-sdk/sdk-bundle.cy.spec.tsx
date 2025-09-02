@@ -15,6 +15,8 @@ import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embeddin
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
+const { H } = cy;
+
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
   delete window.METABASE_EMBEDDING_SDK_BUNDLE;
@@ -327,6 +329,8 @@ describe(
 
       describe("when the SDK bundle can't be loaded", () => {
         it("should show an error", () => {
+          H.clearBrowserCache();
+
           cy.intercept("GET", "**/app/embedding-sdk.js", {
             statusCode: 404,
           });
