@@ -37,15 +37,14 @@
   (->> database-id kw-id (get conns) :connection-id))
 
 (defn- schema-filter->fn [{:keys [type patterns]}]
-  (fn [table-schema]
-    (or (= type "all")
-        (let [xform (case type
-                      "include" identity
-                      "exclude" nil?)]
-          (-> patterns
-              driver.s/schema-pattern->re-pattern
-              (re-matches table-schema)
-              xform)))))
+  (if (= type "all")
+    (constantly true)
+    (let [pat (driver.s/schema-pattern->re-pattern patterns)
+          f   (case type
+                "include" some?
+                "exclude" nil?)]
+      (fn [table-schema]
+        (f (re-matches pat table-schema))))))
 
 (defn- schema-filters->fn [schema-filters]
   (if (seq schema-filters)
@@ -120,12 +119,14 @@
       (select-keys [:schema-filters-type :schema-filters-patterns])
       (set/rename-keys {:schema-filters-type :type, :schema-filters-patterns :patterns})))
 
-(defn- ->secret [database & {:as replication-schema-filters}]
-  (let [credentials    (-> (:details database)
-                           (select-keys [:dbname :host :user :password :port])
+(defn- ->secret [{:keys [details]} & {:as replication-schema-filters}]
+  (let [dbname         (or (:dbname details) (:db details))
+        credentials    (-> details
+                           (select-keys [:host :user :password :port])
                            (update :port #(or % 5432)) ;; port is required in the API, but optional in MB
-                           (merge {:dbtype "postgresql"}))
-        schema-filters (->> [(m->schema-filter (:details database))
+                           (merge {:dbname dbname
+                                   :dbtype "postgresql"}))
+        schema-filters (->> [(m->schema-filter details)
                              (m->schema-filter replication-schema-filters)]
                             (filterv not-empty))]
     {:credentials    credentials
