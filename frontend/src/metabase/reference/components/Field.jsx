@@ -17,15 +17,7 @@ import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 import F from "./Field.module.css";
 import { FieldFkTargetPicker } from "./FieldFkTargetPicker";
 
-const Field = ({
-  databaseId,
-  field,
-  foreignKeys,
-  url,
-  icon,
-  isEditing,
-  formField,
-}) => {
+const Field = ({ databaseId, field, url, icon, isEditing, formField }) => {
   const semanticType =
     typeof formField.semantic_type.value !== "undefined"
       ? formField.semantic_type.value
@@ -105,31 +97,24 @@ const Field = ({
         </div>
         <div className={S.itemSubtitle}>
           <div className={F.fieldForeignKey}>
-            {isEditing
-              ? isTypeFK(semanticType) && (
-                  <FieldFkTargetPicker
-                    className={CS.mt1}
-                    databaseId={databaseId}
-                    field={field}
-                    value={
-                      formField.fk_target_field_id.value ||
-                      field.fk_target_field_id
-                    }
-                    onChange={(value) => {
-                      formField.fk_target_field_id.onChange({
-                        target: {
-                          name: formField.fk_target_field_id.name,
-                          value,
-                        },
-                      });
-                    }}
-                  />
-                )
-              : isTypeFK(field.semantic_type) && (
-                  <span className={CS.mt1}>
-                    {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
-                  </span>
-                )}
+            {isEditing && isTypeFK(semanticType) && (
+              <FieldFkTargetPicker
+                className={CS.mt1}
+                databaseId={databaseId}
+                field={field}
+                value={
+                  formField.fk_target_field_id.value || field.fk_target_field_id
+                }
+                onChange={(value) => {
+                  formField.fk_target_field_id.onChange({
+                    target: {
+                      name: formField.fk_target_field_id.name,
+                      value,
+                    },
+                  });
+                }}
+              />
+            )}
           </div>
 
           {match({ description: field.description, isEditing })
@@ -159,7 +144,6 @@ const Field = ({
 Field.propTypes = {
   databaseId: PropTypes.number.isRequired,
   field: PropTypes.object.isRequired,
-  foreignKeys: PropTypes.object.isRequired,
   url: PropTypes.string.isRequired,
   placeholder: PropTypes.string,
   icon: PropTypes.string,
