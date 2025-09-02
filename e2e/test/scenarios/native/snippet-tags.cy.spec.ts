@@ -304,7 +304,10 @@ describe("scenarios > native > snippet tags", () => {
       "remove a cycle, save the card, add a cycle again and verify that we detect it on update",
     );
     H.NativeEditor.clear().type("select 1");
-    H.saveQuestion("SQL");
+    H.saveQuestion("SQL", undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
     H.NativeEditor.clear().type("select {{snippet: snippet1}}");
     H.queryBuilderHeader().button("Save").click();
     H.modal().within(() => {
