@@ -5,7 +5,7 @@
  * clear the cache between tests. Use this helper if you need to clear the cache.
  */
 export function clearBrowserCache() {
-  return cy.wrap(
+  cy.wrap(
     Cypress.automation("remote:debugger:protocol", {
       command: "Network.clearBrowserCache",
     }),

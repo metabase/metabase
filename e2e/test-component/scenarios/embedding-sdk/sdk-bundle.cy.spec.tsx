@@ -325,52 +325,52 @@ describe(
     describe("Error handling", () => {
       beforeEach(() => {
         sdkBundleCleanup();
+
+        cy.then(() => {
+          H.clearBrowserCache();
+        });
       });
 
       describe("when the SDK bundle can't be loaded", () => {
         it("should show an error", () => {
-          H.clearBrowserCache().then(() => {
-            cy.intercept("GET", "**/app/embedding-sdk.js", {
-              statusCode: 404,
-            });
-
-            mountSdkContent(
-              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-              {
-                waitForUser: false,
-              },
-            );
-
-            cy.findByTestId("sdk-error-container").should(
-              "contain.text",
-              "Error loading the Embedding Analytics SDK",
-            );
+          cy.intercept("GET", "**/app/embedding-sdk.js", {
+            statusCode: 404,
           });
+
+          mountSdkContent(
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+            {
+              waitForUser: false,
+            },
+          );
+
+          cy.findByTestId("sdk-error-container").should(
+            "contain.text",
+            "Error loading the Embedding Analytics SDK",
+          );
         });
 
         it("should show a custom error", () => {
-          H.clearBrowserCache().then(() => {
-            cy.intercept("GET", "**/app/embedding-sdk.js", {
-              statusCode: 404,
-            });
-
-            mountSdkContent(
-              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-              {
-                sdkProviderProps: {
-                  errorComponent: ({ message }: { message: string }) => (
-                    <div>Custom error: {message}</div>
-                  ),
-                },
-                waitForUser: false,
-              },
-            );
-
-            cy.findByTestId("sdk-error-container").should(
-              "contain.text",
-              "Custom error: Error loading the Embedding Analytics SDK",
-            );
+          cy.intercept("GET", "**/app/embedding-sdk.js", {
+            statusCode: 404,
           });
+
+          mountSdkContent(
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+            {
+              sdkProviderProps: {
+                errorComponent: ({ message }: { message: string }) => (
+                  <div>Custom error: {message}</div>
+                ),
+              },
+              waitForUser: false,
+            },
+          );
+
+          cy.findByTestId("sdk-error-container").should(
+            "contain.text",
+            "Custom error: Error loading the Embedding Analytics SDK",
+          );
         });
       });
     });
