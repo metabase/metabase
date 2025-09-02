@@ -1,9 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import Color from "color";
 import { Component, createRef } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import IconBorder from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
@@ -19,7 +17,14 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-import { getGoalValue, getValue } from "./utils";
+import {
+  calculateProgressMetrics,
+  extractProgressValue,
+  findProgressColumn,
+  getGoalValue,
+  getProgressColors,
+  getProgressMessage,
+} from "./utils";
 
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
@@ -48,9 +53,15 @@ export default class Progress extends Component {
     return rows.length === 1 && cols.filter(isNumeric).length >= 1;
   }
 
-  static checkRenderable([{ data: { cols } }]) {
+  static checkRenderable([
+    {
+      data: { cols },
+    },
+  ]) {
     if (!cols.some(isNumeric)) {
-      throw new Error(t`Progress visualization requires at least one numeric column.`);
+      throw new Error(
+        t`Progress visualization requires at least one numeric column.`,
+      );
     }
   }
 
@@ -82,11 +93,11 @@ export default class Progress extends Component {
           },
         ],
         settings,
-      ) => [
-        _.find(cols, (col) => col.name === settings["progress.value"]) ||
-          cols.find(isNumeric) ||
-          cols[0],
-      ],
+      ) => {
+        const valueField = settings["progress.value"];
+        const column = findProgressColumn(cols, valueField);
+        return [column || cols[0]];
+      },
       readDependencies: ["progress.value"],
     }),
     "progress.goal": {
@@ -191,63 +202,24 @@ export default class Progress extends Component {
     } = this.props;
 
     const valueField = settings["progress.value"];
-    const column =
-      _.find(cols, (col) => col.name === valueField) ||
-      cols.find(isNumeric) ||
-      cols[0];
-    const columnIndex = cols.findIndex((col) => col.name === column.name);
+    const column = findProgressColumn(cols, valueField);
+    const columnIndex = column
+      ? cols.findIndex((col) => col.name === column.name)
+      : -1;
 
-    let value = 0;
-    if (rows[0] && columnIndex !== -1) {
-      const rawValue = rows[0][columnIndex];
-      if (rawValue === null || rawValue === undefined) {
-        value = 0;
-      } else if (rawValue === "Infinity") {
-        value = Infinity;
-      } else if (typeof rawValue === "number") {
-        value = rawValue;
-      } else {
-        value = 0;
-      }
-    } else {
-      value = getValue(rows);
-    }
+    const value = extractProgressValue(rows, columnIndex);
     const goal = getGoalValue(settings["progress.goal"], cols, rows);
 
+    const metrics = calculateProgressMetrics(value, goal);
+    const { hasValidValue, hasValidGoal, barPercent, arrowPercent } = metrics;
+
     const mainColor = settings["progress.color"];
-    const lightColor = Color(mainColor).lighten(0.25).rgb().string();
-    const darkColor = Color(mainColor).darken(0.3).rgb().string();
+    const colors = getProgressColors(mainColor, value, goal);
+    const progressColor = colors.foreground;
+    const restColor = colors.background;
+    const arrowColor = colors.pointer;
 
-    const hasValidValue =
-      value !== null && value !== undefined && !isNaN(value);
-    const hasValidGoal = goal !== null && goal !== undefined && !isNaN(goal);
-
-    const progressColor = mainColor;
-    const restColor = value > goal ? darkColor : lightColor;
-    const arrowColor = value > goal ? darkColor : mainColor;
-
-    let barPercent = 0;
-    let arrowPercent = 0;
-    let barMessage = "";
-
-    if (!hasValidValue && !hasValidGoal) {
-      barMessage = t`No data available`;
-    } else if (!hasValidValue) {
-      barMessage = t`No value data`;
-    } else if (!hasValidGoal) {
-      barMessage = t`No goal set`;
-      barPercent = 0;
-      arrowPercent = 0;
-    } else {
-      barPercent = Math.max(0, value < goal ? value / goal : goal / value);
-      arrowPercent = Math.max(0, value < goal ? value / goal : 1);
-
-      if (value === goal) {
-        barMessage = t`Goal met`;
-      } else if (value > goal) {
-        barMessage = t`Goal exceeded`;
-      }
-    }
+    const barMessage = getProgressMessage(metrics);
 
     const clicked = { value, column, settings };
     const isClickable = onVisualizationClick != null;

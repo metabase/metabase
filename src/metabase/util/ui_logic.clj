@@ -125,8 +125,27 @@
       (fn [row]
         (nth row default-col-index)))))
 
+(defn- extract-goal-value-from-column
+  "Extracts goal value from a column reference, similar to frontend getGoalValue"
+  [goal-setting columns rows]
+  (when (string? goal-setting)
+    (let [column-index (->> columns
+                            (map-indexed vector)
+                            (filter #(= goal-setting (get-in (second %) [:name])))
+                            (first)
+                            (first))]
+      (when (and column-index rows (seq rows))
+        (let [raw-value (nth (first rows) column-index nil)]
+          (cond
+            (nil? raw-value) 0
+            (= "Infinity" raw-value) ##Inf
+            (number? raw-value) raw-value
+            :else 0))))))
+
 (defn find-goal-value
-  "The goal value can come from a progress goal or a graph goal_value depending on it's type"
+  "The goal value can come from a progress goal or a graph goal_value depending on it's type.
+  For progress charts, the goal can be either a number or a column reference.
+  Matches the frontend behavior: invalid goals fallback to default value (0)."
   [result]
   (case (get-in result [:card :display])
 
@@ -134,6 +153,26 @@
     (get-in result [:card :visualization_settings :graph.goal_value])
 
     :progress
-    (get-in result [:card :visualization_settings :progress.goal])
+    (let [goal-setting (get-in result [:card :visualization_settings :progress.goal])
+          columns (get-in result [:result :data :cols])
+          rows (get-in result [:result :data :rows])]
+      (cond
+        (number? goal-setting)
+        goal-setting
+
+        (string? goal-setting)
+        ;; Check if column reference is valid (matches frontend isValid logic)
+        (if-let [column (->> columns (filter #(= goal-setting (:name %))) first)]
+          ;; Column exists, check if it's numeric
+          (if (isa? (:base_type column) :type/Number)
+            ;; Valid numeric column, extract value
+            (extract-goal-value-from-column goal-setting columns rows)
+            ;; Non-numeric column, use default
+            0)
+          ;; Column doesn't exist, use default
+          0)
+
+        ;; Invalid goal setting (nil, undefined, etc.), use default
+        :else 0))
 
     nil))
