@@ -1,5 +1,5 @@
 import { isUuid } from "metabase/lib/uuid";
-import type { Dataset, JsonQuery } from "metabase-types/api";
+import type { DashboardId, Dataset, JsonQuery } from "metabase-types/api";
 
 interface TileCoordinate {
   x: number | string;
@@ -8,7 +8,7 @@ interface TileCoordinate {
 
 interface TileUrlParams {
   cardId?: number;
-  dashboardId?: number | string;
+  dashboardId?: DashboardId;
   dashcardId?: number;
   zoom: string | number;
   coord: TileCoordinate;
@@ -160,7 +160,7 @@ function savedQuestionTileUrl(
 }
 
 function dashboardTileUrl(
-  dashboardId: number | string,
+  dashboardId: DashboardId,
   dashcardId: number,
   cardId: number,
   zoom: string | number,
