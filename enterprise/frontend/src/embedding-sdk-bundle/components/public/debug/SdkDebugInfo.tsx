@@ -3,11 +3,10 @@ import cx from "classnames";
 import dayjs from "dayjs";
 import type { HTMLAttributes } from "react";
 
-import { getEmbeddingSdkBundleBuildData } from "embedding-sdk-shared/lib/get-embedding-sdk-bundle-build-data";
 import {
   EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
-  getEmbeddingSdkPackageBuildData,
-} from "embedding-sdk-shared/lib/get-embedding-sdk-package-build-data";
+  getBuildInfo,
+} from "embedding-sdk-shared/lib/get-build-info";
 import type { BuildInfo } from "metabase/embedding-sdk/types/build-info";
 
 import S from "./SdkDebugInfo.module.css";
@@ -94,11 +93,11 @@ const DebugTable = ({
 
 export const SdkDebugInfo = (props: HTMLAttributes<HTMLDivElement>) => {
   const sdkPackageDebugInfoData = getDebugInfoData(
-    getEmbeddingSdkPackageBuildData(),
+    getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO"),
   );
 
   const sdkBundleDebugInfoData = getDebugInfoData(
-    getEmbeddingSdkBundleBuildData(),
+    getBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO"),
   );
 
   return (

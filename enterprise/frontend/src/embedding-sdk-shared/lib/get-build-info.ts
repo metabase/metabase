@@ -3,8 +3,12 @@ import type { BuildInfo } from "metabase/embedding-sdk/types/build-info";
 
 export const EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION = "unknown";
 
-export const getEmbeddingSdkPackageBuildData = (): BuildInfo => {
-  const buildInfo = getWindow()?.METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO;
+export const getBuildInfo = (
+  target:
+    | "METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO"
+    | "METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO",
+): BuildInfo => {
+  const buildInfo = getWindow()?.[target];
 
   return {
     version: buildInfo?.version,

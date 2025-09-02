@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-external-references-for-sdk-package-code
 import { versionToNumericComponents } from "metabase/lib/utils";
 
 // They are mostly used for local development

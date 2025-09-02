@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 
-module.exports.getSdkVersionFromPackageJson = () => {
+module.exports.getSdkPackageVersionFromPackageJson = () => {
   const sdkPackageTemplateJson = fs.readFileSync(
     path.resolve(
       path.join(
