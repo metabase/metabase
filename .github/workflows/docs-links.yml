@@ -1,0 +1,62 @@
+name: Check doc links
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 0"  # Weekly on Sundays at midnight UTC
+
+jobs:
+  link-checker:
+    name: Check documentation links
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run link checker
+        id: link-check
+        uses: lycheeverse/lychee-action@v2
+        with:
+          fail: false
+          args: docs --config ./.lychee/config.toml --offline
+          format: markdown
+
+      - name: Create issue for broken links
+        if: steps.link-check.outputs.exit_code != 0
+        uses: peter-evans/create-issue@v5
+        with:
+          title: "Documentation Link Checker Report - $(date +'%Y-%m-%d')"
+          body: |
+            The documentation link checker found broken or problematic links in
+            the docs directory.
+
+            ${{ steps.link-check.outputs.stdout }}
+          labels: "Type:Documentation"
+          assignees: jeff-bruemmer
+
+      - name: Workflow summary
+        if: always()
+        run: |
+          if [ "${{ steps.link-check.outputs.exit_code }}" == "0" ]; then
+            echo "## ✅ Link Check Passed" >> $GITHUB_STEP_SUMMARY
+            echo "All documentation links are working correctly." >> \
+              $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Broken Links Found" >> $GITHUB_STEP_SUMMARY
+            echo "The link checker found broken or problematic links in the" >> \
+              $GITHUB_STEP_SUMMARY
+            echo "documentation." >> $GITHUB_STEP_SUMMARY
+            echo "A GitHub issue has been created to track the problems." >> \
+              $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Check the issue for details on which links need to be" >> \
+              $GITHUB_STEP_SUMMARY
+            echo "fixed.**" >> $GITHUB_STEP_SUMMARY
+          fi
