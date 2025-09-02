@@ -67,12 +67,6 @@
   {:arglists '([engine])}
   identity)
 
-(defmulti repair-index!
-  "Brings the search index into consistency with the provided document set,
-  without promising a full reindex. Will add missing documents and remove stale ones."
-  {:arglists '([engine document-reducible])}
-  identity)
-
 (defn known-engines
   "List the possible search engines defined for this version, whether this instance supports them or not."
   []

@@ -1,10 +1,17 @@
 (ns metabase-enterprise.semantic-search.repair
-  "Index repair functionality for detecting and fixing lost deletes in semantic search."
+  "Index repair functionality for detecting and fixing lost deletes in semantic search.
+
+  When `metabase-enterprise.semantic-search.core/repair-index!` is called with the full set of documents
+  that should be in the index, we re-gate new and updated documents, and also populate a temporary repair table
+  with the model/model_id pairs of all provided documents. We use this repair table to do an anti-join against
+  the active index to find lost deletes that we issue tombstones for."
   (:require
    [clojure.set :as set]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [medley.core :as m]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [nano-id.core :as nano-id]
    [next.jdbc :as jdbc]
@@ -68,9 +75,12 @@
       (log/warnf e "Failed to drop repair table: %s" repair-table-name))))
 
 (defn- repair-table-name
-  "Generates a unique name for a repair table. Useful to redefine in tests."
+  "Generates a unique name for a repair table with timestamp for cleanup.
+  Format: repair_<millis-since-epoch>_<short-id>"
   []
-  (format "index_repair_%s" (nano-id/nano-id)))
+  (let [millis-since-epoch (t/to-millis-from-epoch (t/instant))
+        short-id           (u/lower-case-en (subs (nano-id/nano-id) 0 6))]
+    (format "repair_%d_%s" millis-since-epoch short-id)))
 
 (defn with-repair-table!
   "Creates a repair table, executes a function with the table name, and ensures cleanup.
