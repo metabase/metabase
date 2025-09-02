@@ -122,7 +122,7 @@
          (.withPathStyleAccessEnabled path-style-access?))))))
 
 (defn- generate-presigned-url*
-  "Generate presigned URL using the provided S3 client (no post-processing needed)"
+  "Generate presigned URL using the provided S3 client"
   [^AmazonS3 s3-client bucket-name key method]
   (let [one-hour    (* 60 60 1000)
         expiration  (Date. ^Long (+ (System/currentTimeMillis) one-hour))
