@@ -46,14 +46,3 @@
   :export?    false
   :encryption :when-encryption-key-set
   :audit      :never)
-
-(setting/defsetting python-runner-api-key
-  (deferred-tru "API key for authenticating with the Python runner service.")
-  :type       :string
-  :visibility :public
-  :default    nil
-  :feature    :transforms
-  :doc        false
-  :export?    false
-  :encryption :when-encryption-key-set
-  :audit      :never)
