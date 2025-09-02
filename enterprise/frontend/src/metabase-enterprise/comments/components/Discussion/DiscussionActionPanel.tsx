@@ -51,14 +51,11 @@ export function DiscussionActionPanel({
   return (
     <Paper
       className={cx(S.actionPanel, {
-        // [S.visibleOnCommentHover]: variant === "comment",
-        // [S.visibleOnDiscussionHover]: variant === "discussion",
-        [S.visibleOnCommentHover]: true,
         [S.visible]: popoverOpened,
       })}
       p="0.125rem"
     >
-      <Group gap="0">
+      <Group gap={0}>
         {/*<Tooltip label={t`Add reaction`}>
            TODO: add emoji picker
           <ActionIcon
@@ -100,6 +97,7 @@ export function DiscussionActionPanel({
                 </ActionIcon>
               </Tooltip>
             </Popover.Target>
+
             <Popover.Dropdown>
               <Paper p="0.25rem">
                 {onCopyLink && (
@@ -114,6 +112,7 @@ export function DiscussionActionPanel({
                     {t`Copy link`}
                   </Button>
                 )}
+
                 {onEdit && (
                   <Button
                     {...ACTION_BUTTON_STYLE_PROPS}
@@ -126,6 +125,7 @@ export function DiscussionActionPanel({
                     {t`Edit`}
                   </Button>
                 )}
+
                 {onDelete && (
                   <Button
                     {...ACTION_BUTTON_STYLE_PROPS}
