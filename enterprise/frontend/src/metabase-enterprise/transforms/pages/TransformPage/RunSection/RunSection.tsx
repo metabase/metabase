@@ -13,6 +13,7 @@ import {
 import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
+import { LogOutput } from "../../../components/LogOutput";
 import { RunButton } from "../../../components/RunButton";
 import { RunErrorInfo } from "../../../components/RunErrorInfo";
 import { SplitSection } from "../../../components/SplitSection";
@@ -30,10 +31,16 @@ export function RunSection({ transform }: RunSectionProps) {
       label={t`Run this transform`}
       description={t`This transform will be run whenever the jobs it belongs to are scheduled.`}
     >
-      <Group p="lg" justify="space-between">
-        <RunStatusSection transform={transform} />
-        <RunButtonSection transform={transform} />
-      </Group>
+      <Stack>
+        <Group p="lg" justify="space-between">
+          <RunStatusSection transform={transform} />
+          <RunButtonSection transform={transform} />
+        </Group>
+        {transform?.last_run?.message &&
+          ["started", "succeeded"].some(
+            (s) => transform?.last_run?.status === s,
+          ) && <LogOutput content={transform.last_run.message} />}
+      </Stack>
       <Divider />
       <Group p="lg" gap="lg">
         <Stack gap="sm">
