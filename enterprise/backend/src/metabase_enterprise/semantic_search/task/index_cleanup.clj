@@ -75,7 +75,8 @@
     (when (seq orphan-tables)
       (let [tables-to-drop (map keyword orphan-tables)
             drop-table-sql (sql/format
-                            (apply sql.helpers/drop-table :if-exists tables-to-drop))]
+                            (apply sql.helpers/drop-table :if-exists tables-to-drop)
+                            :quoted true)]
         (log/infof "Dropping %d orphaned repair tables: %s"
                    (count tables-to-drop)
                    (str/join ", " orphan-tables))
@@ -152,7 +153,8 @@
         orphaned-table-names (map keyword (orphan-index-tables pgvector index-metadata))
         tables-to-drop       (concat stale-table-names orphaned-table-names)
         drop-table-sql       (sql/format
-                              (apply sql.helpers/drop-table :if-exists tables-to-drop))]
+                              (apply sql.helpers/drop-table :if-exists tables-to-drop)
+                              :quoted true)]
     (when (seq tables-to-drop)
       (log/infof "Found %d semantic search index tables to clean up" (count tables-to-drop))
       (doseq [table-name stale-table-names]
