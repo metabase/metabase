@@ -150,8 +150,6 @@
 .Dropdown {
   background-color: var(--mb-color-background);
   border-color: var(--mb-color-border);
-  /* need to override the inline style from Mantine */
-  max-height: rem(500px) !important;
 }
 
 .SelectError {
