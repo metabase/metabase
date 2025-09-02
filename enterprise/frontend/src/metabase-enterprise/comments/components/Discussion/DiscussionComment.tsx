@@ -5,7 +5,7 @@ import { useCallback } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import { Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
+import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
 import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
@@ -13,7 +13,6 @@ import { CommentEditor } from "../CommentEditor";
 
 import S from "./Discussion.module.css";
 import { DiscussionActionPanel } from "./DiscussionActionPanel";
-import { DiscussionAvatar } from "./DiscussionAvatar";
 
 type DiscussionCommentProps = {
   canResolve?: boolean;
@@ -81,7 +80,7 @@ export function DiscussionComment({
       className={cx(S.commentRoot, {
         [S.target]: isTarget,
       })}
-      bullet={<DiscussionAvatar user={comment.creator} />}
+      bullet={<Avatar name={comment.creator.common_name} />}
       id={getCommentNodeId(comment)}
     >
       {!isEditing && (

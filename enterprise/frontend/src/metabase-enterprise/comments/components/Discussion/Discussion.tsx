@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
-import { Stack, Timeline, rem } from "metabase/ui";
+import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import {
   useCreateCommentMutation,
   useDeleteCommentMutation,
@@ -19,7 +19,6 @@ import type {
 import { CommentEditor } from "../CommentEditor";
 
 import S from "./Discussion.module.css";
-import { DiscussionAvatar } from "./DiscussionAvatar";
 import { DiscussionComment } from "./DiscussionComment";
 
 export interface DiscussionProps {
@@ -107,7 +106,7 @@ export const Discussion = ({
         {!comments[0]?.is_resolved && (
           <Timeline.Item
             className={S.commentRoot}
-            bullet={<DiscussionAvatar user={currentUser} />}
+            bullet={<Avatar name={currentUser.common_name} />}
           >
             <CommentEditor
               active={false}
