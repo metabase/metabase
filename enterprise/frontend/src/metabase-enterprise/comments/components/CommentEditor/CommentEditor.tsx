@@ -8,7 +8,7 @@ import {
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -116,22 +116,20 @@ export const CommentEditor = ({
       editor.commands.clearContent(true);
     }
   };
-  const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
+  const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
     if (readonly) {
       return;
     }
-    if (e.key === "Enter" && !e.shiftKey) {
+
+    if (event.key === "Enter" && !event.shiftKey) {
       // see CustomMentionExtension
       const isMentionOpen = (editor.storage as any)?.mention
         ?.isMentionPopupOpen;
-      if (isMentionOpen) {
-        return;
+
+      if (!isMentionOpen) {
+        event.preventDefault();
+        submitDoc();
       }
-      e.preventDefault();
-      if (!onSubmit) {
-        return;
-      }
-      submitDoc();
     }
   };
 
