@@ -7,8 +7,8 @@ import {
   CopyDashboardFormConnected,
   type CopyDashboardFormProperties,
 } from "metabase/dashboard/containers/CopyDashboardForm";
-import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
 import { PLUGIN_DOCUMENTS } from "metabase/plugins";
+import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
 
 interface EntityCopyModalProps {
   entityType: string;
@@ -47,8 +47,6 @@ const EntityCopyModal = ({
     ...dissoc(resolvedObject, "id"),
     name: resolvedObject.name + " - " + t`Duplicate`,
   };
-
-  console.log({ entityType });
 
   return (
     <ModalContent
