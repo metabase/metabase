@@ -248,3 +248,14 @@
 (methodical/defmethod events/publish-event! ::channel-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(methodical/defmethod events/publish-event! ::permissions-group-membership-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::cloud-add-on-event ::event)
+(derive :event/cloud-add-on-purchase ::cloud-add-on-event)
+
+(methodical/defmethod events/publish-event! ::cloud-add-on-event
+  [topic event]
+  (audit-log/record-event! topic event))
