@@ -145,6 +145,11 @@
 
 .SelectItems_Options {
   padding: 0.75rem;
+  /*
+    this clobbers bottom padding when the content overflows, but it's less bad than
+    double scrollbars or overflowing the viewport, see #62466, #61889
+  */
+  max-height: rem(500px);
 }
 
 .Dropdown {
