@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-// import { renderToString } from "react-dom/server";
 
 /**
  * Given a React node, it renders the node into a HTML string synchronously.
@@ -17,6 +16,4 @@ export function reactNodeToHtmlString(node: ReactNode) {
   });
 
   return container.innerHTML;
-  // const nodeStr = renderToString(node);
-  // return nodeStr;
 }
