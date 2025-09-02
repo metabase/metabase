@@ -7,7 +7,7 @@ import cx from "classnames";
 
 import type { MentionStorage } from "metabase-enterprise/comments/types";
 
-import S from "./mentions.module.css";
+import S from "./CustomMentionExtension.module.css";
 
 export interface CustomMentionAttributes extends MentionNodeAttrs {
   id: string | null;
