@@ -1388,15 +1388,18 @@ describe("scenarios > admin > transforms > runs", () => {
         cy.button("Update filter").click();
       });
       getRunMethodFilterWidget()
-        .findByText("Manual, Schedule")
+        .findByText("Schedule, Manual")
         .should("be.visible");
 
-      H.main().findByText("No runs yet").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
 
       cy.log("run method filter - remove filter");
       getRunMethodFilterWidget().button("Remove filter").click();
       getRunMethodFilterWidget()
-        .findByText("Manual, Schedule")
+        .findByText("Schedule, Manual")
         .should("not.exist");
       getContentTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
