@@ -36,7 +36,7 @@
 (mr/def ::transform-target
   [:map
    [:type [:enum "table"]]
-   [:schema {:optional true} [:or :string :nil]]
+   [:schema {:optional true} [:or ms/NonBlankString :nil]]
    [:name :string]])
 
 (mr/def ::run-trigger

@@ -148,7 +148,7 @@ export interface GetFieldValuesResponse {
 export interface SearchFieldValuesRequest {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  value: string;
+  value?: string;
   limit: number;
 }
 

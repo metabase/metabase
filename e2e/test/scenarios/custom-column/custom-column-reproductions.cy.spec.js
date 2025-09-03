@@ -2354,6 +2354,55 @@ describe("issue 52451", () => {
   });
 });
 
+describe("issue 56602", () => {
+  const productsModelDetails = {
+    name: "M1",
+    type: "model",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const ordersModelDetails = {
+    name: "M2",
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  const expressionName = "awesome stuff";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use expressions when joining models (metabase#56602)", () => {
+    H.createQuestion(productsModelDetails);
+    H.createQuestion(ordersModelDetails);
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(productsModelDetails.name).click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(ordersModelDetails.name).click();
+    });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      name: expressionName,
+      formula: `coalesce([User -> Birth Date], [${ordersModelDetails.name} -> Created At])`,
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().should("contain", expressionName);
+  });
+});
+
 describe("issue 61010", () => {
   const CUSTOM_COLUMN_NAME = "Foo";
   const AGGREGATION_NAME = "New count";
@@ -2409,5 +2458,40 @@ describe("issue 61010", () => {
     H.popover()
       .findByText("Unknown Aggregation or Metric: New count")
       .should("be.visible");
+  });
+});
+
+describe("issue 62987", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        query: { "source-table": ORDERS_ID },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+  });
+
+  it("should be possible to complete non-aggregation functions in custom aggregation (metabase#62987)", () => {
+    H.CustomExpressionEditor.type("Coun");
+    H.CustomExpressionEditor.completion("CountIf").should("be.visible").click();
+
+    H.CustomExpressionEditor.type("notEm", { focus: false });
+    H.CustomExpressionEditor.completion("notEmpty")
+      .should("be.visible")
+      .click();
+
+    H.CustomExpressionEditor.value().should("eq", "CountIf(notEmpty(column))");
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByText("CountIf").should("be.visible");
+      cy.findByText("notEmpty").should("be.visible");
+    });
   });
 });
