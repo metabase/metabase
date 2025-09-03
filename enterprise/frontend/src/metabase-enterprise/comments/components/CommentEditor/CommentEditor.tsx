@@ -11,16 +11,18 @@ import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
-import { configureMentionExtension } from "metabase-enterprise/comments/mentions/extension";
 import { isCommentsStorage } from "metabase-enterprise/comments/types";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
 import { CustomStarterKit } from "metabase-enterprise/documents/components/Editor/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
 import { EmojiSuggestionExtension } from "metabase-enterprise/documents/components/Editor/extensions/Emoji/EmojiSuggestionExtension";
+import { MentionExtension } from "metabase-enterprise/documents/components/Editor/extensions/Mention/MentionExtension";
+import { MentionSuggestion } from "metabase-enterprise/documents/components/Editor/extensions/Mention/MentionSuggestion";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
+import { createSuggestionRenderer } from "metabase-enterprise/documents/components/Editor/extensions/suggestionRenderer";
 import type { FormattingOptions } from "metabase-enterprise/documents/types";
 import type { DocumentContent } from "metabase-types/api";
 
@@ -58,7 +60,6 @@ export const CommentEditor = ({
 }: Props) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const [content, setContent] = useState<string | null>(null);
-  const dispatch = useDispatch();
 
   const extensions = useMemo(
     () =>
@@ -71,12 +72,16 @@ export const CommentEditor = ({
         Link.configure({
           HTMLAttributes: { class: CS.link },
         }),
-        configureMentionExtension({ dispatch }),
+        MentionExtension.configure({
+          suggestion: {
+            render: createSuggestionRenderer(MentionSuggestion),
+          },
+        }),
         EmojiSuggestionExtension,
         !readonly && Placeholder.configure({ placeholder }),
         !readonly && DisableMetabotSidebar,
       ].filter((extension): extension is Extension => extension != null),
-    [siteUrl, dispatch, readonly, placeholder],
+    [siteUrl, readonly, placeholder],
   );
 
   const editor = useEditor(
