@@ -135,22 +135,25 @@
        (throw t)))))
 
 (defn- log! [message-log s]
-  (swap! message-log (fn [m] (update m (if (:python m) :post-python :pre-python) conj s)))
+  (when message-log
+    (swap! message-log (fn [m] (update m (if (:python m) :post-python :pre-python) conj s))))
   nil)
 
 (defn- replace-python-logs! [message-log stdout stderr]
   ;; todo would be better to interleave python output
-  (swap! message-log assoc :python (str/join "\n" (remove str/blank? [stdout stderr])))
+  (when message-log
+    (swap! message-log assoc :python (str/join "\n" (remove str/blank? [stdout stderr]))))
   nil)
 
 (defn- save-log-as-message! [run-id message-log]
-  (let [{:keys [pre-python python post-python]} @message-log]
-    (t2/update! :model/TransformRun
-                :id run-id
-                {:message (str/join "\n" (concat pre-python
-                                                 (for [l (str/split-lines python)]
-                                                   (str "\033[32m" l "\033[0m"))
-                                                 post-python))})))
+  (when message-log
+    (let [{:keys [pre-python python post-python]} @message-log]
+      (t2/update! :model/TransformRun
+                  :id run-id
+                  {:message (str/join "\n" (concat pre-python
+                                                   (for [l (str/split-lines python)]
+                                                     (str "\033[32m" l "\033[0m"))
+                                                   post-python))}))))
 
 (defn- log-loop! [run-id message-log]
   ;; TODO ensure we poll only for this run-id
@@ -236,7 +239,7 @@
           ;; TODO would be nice if we have create or replace in upload
           ;; NOTE (chris) we do have a replace, so this would be easy! but we're gonna stop using csv
           ;; TODO we can remove this hack once we move away from upload-csv
-          (binding [api/*current-user-permissions-set* (atom #{"/"})]
+          (binding [api/*is-superuser?* true]
             (when-let [table (t2/select-one :model/Table
                                             :name (ddl.i/format-name driver name)
                                             :schema (ddl.i/format-name driver schema)
@@ -276,7 +279,10 @@
   [transform {:keys [run-method start-promise message-log]}]
   (when (transforms.util/python-transform? transform)
     (try
-      (let [{:keys [source target] transform-id :id} transform
+      (let [message-log (or message-log (atom {:pre-python  []
+                                               :python      nil
+                                               :post-python []}))
+            {:keys [source target] transform-id :id} transform
             db (t2/select-one :model/Database (:target-database source))
             {run-id :id} (try-start-unless-already-running transform-id run-method)]
         (some-> start-promise (deliver [:started run-id]))

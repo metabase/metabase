@@ -77,7 +77,6 @@
                                                   (apply merge-with merge))
 
         sql-deps (update-vals dependencies #(into #{} (keep output-tables) %))]
-    ;; Merge Python and SQL dependencies
     (merge python-deps sql-deps)))
 
 (defn find-cycle
