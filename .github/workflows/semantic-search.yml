@@ -77,14 +77,10 @@ jobs:
             junit-name: semantic-search-tests-mariadb-10-2
             mariadb-image: circleci/mariadb:10.2.23
             pgvector-image: pgvector/pgvector:pg17
-            env:
-              enable-ssl-tests: 'false'
           - name: MariaDB Latest with pgvector pg17
             junit-name: semantic-search-tests-mariadb-latest
             mariadb-image: circleci/mariadb:latest
             pgvector-image: pgvector/pgvector:pg17
-            env:
-              enable-ssl-tests: 'false'
         job:
           - name: Semantic Search Tests
             build-static-viz: false
@@ -153,14 +149,10 @@ jobs:
             junit-name: semantic-search-tests-mysql-8-0
             mysql-image: cimg/mysql:8.0
             pgvector-image: pgvector/pgvector:pg17
-            env:
-              enable-ssl-tests: 'false'
           - name: MySQL Latest with pgvector pg17
             junit-name: semantic-search-tests-mysql-latest
             mysql-image: mysql:latest
             pgvector-image: pgvector/pgvector:pg17
-            env:
-              enable-ssl-tests: 'true'
         job:
           - name: Semantic Search Tests
             build-static-viz: false
@@ -229,14 +221,10 @@ jobs:
             junit-name: semantic-search-tests-postgres-12
             postgres-image: postgres:12-alpine
             pgvector-image: pgvector/pgvector:pg17
-            env:
-              enable-ssl-tests: 'false'
           - name: Postgres Latest with pgvector pg17
             junit-name: semantic-search-tests-postgres-latest
             postgres-image: postgres:latest
             pgvector-image: pgvector/pgvector:pg17
-            env:
-              enable-ssl-tests: 'true'
         job:
           - name: Semantic Search Tests
             build-static-viz: false
