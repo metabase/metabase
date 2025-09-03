@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
@@ -97,4 +98,6 @@
 
                 (let [gate-contents (gate-table-contents pgvector gate-table)]
                   (is (tombstone? (gate-entry-by-id gate-contents "card_1")))
-                  (is (some? (gate-entry-by-id gate-contents "card_2"))))))))))))
+                  (is (some? (gate-entry-by-id gate-contents "card_2")))
+                  (is (not (semantic.util/table-exists? pgvector test-repair-table-name))
+                      "Repair table should be cleaned up after repair-index! completes"))))))))))
