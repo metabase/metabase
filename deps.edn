@@ -33,7 +33,6 @@
                                                            com.zaxxer/HikariCP-java7]}
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
-  com.amazonaws/aws-java-sdk-s3             {:mvn/version "1.12.777"}           ; AWS SDK for S3
   com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
                                              :exclusions  [it.unimi.dsi/fastutil
                                                            org.slf4j/slf4j-api]}
@@ -199,6 +198,7 @@
                                                            org.eclipse.jetty.ee9/jetty-ee9-servlet
                                                            org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server]}
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
+  software.amazon.awssdk/s3                 {:mvn/version "2.33.0"}             ; AWS SDK v2 for S3
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
   weavejester/dependency                    {:mvn/version "1.0.0"}              ; Dependency graphs and topological sorting

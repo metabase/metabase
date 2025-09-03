@@ -14,15 +14,18 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (com.amazonaws HttpMethod)
-   (com.amazonaws.auth AWSCredentialsProvider BasicAWSCredentials)
-   (com.amazonaws.client.builder AwsClientBuilder$EndpointConfiguration)
-   (com.amazonaws.services.s3 AmazonS3 AmazonS3ClientBuilder)
-   (com.amazonaws.services.s3.model AmazonS3Exception GeneratePresignedUrlRequest PutObjectRequest)
    (java.io BufferedWriter File OutputStream OutputStreamWriter)
+   (java.net URI)
    (java.nio.charset StandardCharsets)
-   (java.util Date)
-   (java.util.concurrent CancellationException)))
+   (java.time Duration)
+   (java.util.concurrent CancellationException)
+   (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
+   (software.amazon.awssdk.core.sync RequestBody)
+   (software.amazon.awssdk.regions Region)
+   (software.amazon.awssdk.services.s3 S3Client S3Configuration)
+   (software.amazon.awssdk.services.s3.model DeleteObjectRequest GetObjectRequest NoSuchKeyException PutObjectRequest)
+   (software.amazon.awssdk.services.s3.presigner S3Presigner)
+   (software.amazon.awssdk.services.s3.presigner.model GetObjectPresignRequest PresignedGetObjectRequest PresignedPutObjectRequest PutObjectPresignRequest)))
 
 (set! *warn-on-reflection* true)
 
@@ -87,97 +90,158 @@
                         cancel-chan)
     @manifest-atom))
 
-(defn- maybe-with-endpoint [^AmazonS3ClientBuilder builder endpoint]
+(defn- maybe-with-endpoint-s3-client [builder endpoint]
   (let [region (transforms.settings/python-storage-s-3-region)]
     (case [(some? endpoint) (some? region)]
-      [true true]   (.withEndpointConfiguration builder (AwsClientBuilder$EndpointConfiguration. endpoint region))
+      [true true]   (doto builder
+                      (.endpointOverride (URI/create endpoint))
+                      (.region (Region/of region)))
       [true false]  (log/warn "Ignoring endpoint because region is not defined")
-      [false true]  (.withRegion builder ^String region)
-      [false false] :nothing-to-do)))
+      [false true]  (.region builder (Region/of region))
+      [false false] (.region builder (Region/US_EAST_1)))))
 
-(defn- maybe-with-credentials [^AmazonS3ClientBuilder builder]
+(defn- maybe-with-endpoint-s3-presigner [builder endpoint]
+  (let [region (transforms.settings/python-storage-s-3-region)]
+    (case [(some? endpoint) (some? region)]
+      [true true]   (doto builder
+                      (.endpointOverride (URI/create endpoint))
+                      (.region (Region/of region)))
+      [true false]  (log/warn "Ignoring endpoint because region is not defined")
+      [false true]  (.region builder (Region/of region))
+      [false false] (.region builder (Region/US_EAST_1)))))
+
+(defn- create-s3-configuration
+  "Create S3Configuration with path-style access setting"
+  ^S3Configuration []
+  (-> (S3Configuration/builder)
+      (.pathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access))
+      (.build)))
+
+(defn- build-put-object-request
+  "Build a PutObjectRequest with bucket and key"
+  [^String bucket-name ^String key]
+  (-> (PutObjectRequest/builder)
+      (.bucket bucket-name)
+      (.key key)
+      (.build)))
+
+(defn- build-get-object-request
+  "Build a GetObjectRequest with bucket and key"
+  [^String bucket-name ^String key]
+  (-> (GetObjectRequest/builder)
+      (.bucket bucket-name)
+      (.key key)
+      (.build)))
+
+(defn- build-delete-object-request
+  "Build a DeleteObjectRequest with bucket and key"
+  [^String bucket-name ^String key]
+  (-> (DeleteObjectRequest/builder)
+      (.bucket bucket-name)
+      (.key key)
+      (.build)))
+
+(def ^:private presigned-url-duration
+  "Default duration for presigned URLs"
+  (Duration/ofHours 1))
+
+(defn- maybe-with-credentials-s3-client [builder]
   (let [access-key (transforms.settings/python-storage-s-3-access-key)
         secret-key (transforms.settings/python-storage-s-3-secret-key)]
-    (when (or access-key secret-key)
+    (if (or access-key secret-key)
       (if-not (and access-key secret-key)
-        (log/warnf "Ignoring %s because %s is not defined"
-                   (if access-key "access-key" "secret-key")
-                   (if (not access-key) "access-key" "secret-key"))
-        (doto builder
-          (.withCredentials
-           (reify AWSCredentialsProvider
-             (getCredentials [_] (BasicAWSCredentials. access-key secret-key))
-             (refresh [_]))))))))
+        (do (log/warnf "Ignoring %s because %s is not defined"
+                       (if access-key "access-key" "secret-key")
+                       (if (not access-key) "access-key" "secret-key"))
+            builder)
+        (.credentialsProvider builder
+                              (StaticCredentialsProvider/create
+                               (AwsBasicCredentials/create access-key secret-key))))
+      builder)))
+
+(defn- maybe-with-credentials-s3-presigner [builder]
+  (let [access-key (transforms.settings/python-storage-s-3-access-key)
+        secret-key (transforms.settings/python-storage-s-3-secret-key)]
+    (if (or access-key secret-key)
+      (if-not (and access-key secret-key)
+        (do (log/warnf "Ignoring %s because %s is not defined"
+                       (if access-key "access-key" "secret-key")
+                       (if (not access-key) "access-key" "secret-key"))
+            builder)
+        (.credentialsProvider builder
+                              (StaticCredentialsProvider/create
+                               (AwsBasicCredentials/create access-key secret-key))))
+      builder)))
 
 ;; We just recreate the client every time, to keep things simple if config is changed.
 (defn- create-s3-client
   "Create S3 client for host operations (uploads, reads)"
-  ^AmazonS3 []
-  (let [builder (AmazonS3ClientBuilder/standard)]
-    (doto ^AmazonS3ClientBuilder builder
-      (maybe-with-endpoint (transforms.settings/python-storage-s-3-endpoint))
-      maybe-with-credentials
-      (.withPathStyleAccessEnabled (transforms.settings/python-storage-s-3-path-style-access)))
-    (.build ^AmazonS3ClientBuilder builder)))
+  ^S3Client []
+  (let [builder (S3Client/builder)]
+    (doto builder
+      (maybe-with-endpoint-s3-client (transforms.settings/python-storage-s-3-endpoint))
+      maybe-with-credentials-s3-client
+      (.serviceConfiguration (create-s3-configuration)))
+    (.build builder)))
 
-(defn- create-s3-client-for-container
-  "Create S3 client for container operations (presigned URLs).
-   Uses container-endpoint if different from host endpoint, otherwise reuses host client."
-  ^AmazonS3 [^AmazonS3 host-client]
+(defn- create-s3-presigner-for-container
+  "Create S3 presigner for container operations (presigned URLs).
+   Uses container-endpoint if different from host endpoint."
+  ^S3Presigner []
   (let [container-endpoint (transforms.settings/python-storage-s-3-container-endpoint)
-        host-endpoint      (transforms.settings/python-storage-s-3-endpoint)
-        path-style-access? (transforms.settings/python-storage-s-3-path-style-access)]
-    (if (= container-endpoint host-endpoint)
-      ;; Use the same client if endpoints are the same
-      host-client
-      ;; Create a separate client to sign modified links that the container can use
-      (.build
-       (doto ^AmazonS3ClientBuilder (AmazonS3ClientBuilder/standard)
-         (maybe-with-endpoint container-endpoint)
-         maybe-with-credentials
-         (.withPathStyleAccessEnabled path-style-access?))))))
-
-(defn- generate-presigned-url*
-  "Generate presigned URL using the provided S3 client"
-  [^AmazonS3 s3-client bucket-name key method]
-  (let [one-hour    (* 60 60 1000)
-        expiration  (Date. ^Long (+ (System/currentTimeMillis) one-hour))
-        url-request (-> (GeneratePresignedUrlRequest. bucket-name key)
-                        (.withExpiration expiration)
-                        (.withMethod method))]
-    (.toString (.generatePresignedUrl s3-client url-request))))
+        builder (S3Presigner/builder)]
+    (doto builder
+      (maybe-with-endpoint-s3-presigner (or container-endpoint (transforms.settings/python-storage-s-3-endpoint)))
+      maybe-with-credentials-s3-presigner
+      (.serviceConfiguration (create-s3-configuration)))
+    (.build builder)))
 
 (defn- upload-file-to-s3
-  "Upload file using host client, return GET URL using container client"
-  [^AmazonS3 s3-client ^String bucket-name ^String key ^File file]
-  (.putObject s3-client (PutObjectRequest. bucket-name key file)))
+  "Upload file using host client"
+  [^S3Client s3-client ^String bucket-name ^String key ^File file]
+  (let [^PutObjectRequest request (build-put-object-request bucket-name key)]
+    (.putObject s3-client request (RequestBody/fromFile file))))
 
 (defn- generate-presigned-get-url
-  "Generate GET URL using container client"
-  [^AmazonS3 container-s3-client bucket-name key]
-  (generate-presigned-url* container-s3-client bucket-name key HttpMethod/GET))
+  "Generate GET URL using container presigner"
+  [^S3Presigner presigner ^String bucket-name ^String key]
+  (let [^GetObjectRequest get-request (build-get-object-request bucket-name key)
+        ^GetObjectPresignRequest presign-request (-> (GetObjectPresignRequest/builder)
+                                                     (.signatureDuration presigned-url-duration)
+                                                     (.getObjectRequest get-request)
+                                                     (.build))
+        presigned ^PresignedGetObjectRequest (.presignGetObject presigner presign-request)]
+    (.toString (.url presigned))))
 
 (defn- generate-presigned-put-url
-  "Generate PUT URL using container client"
-  [^AmazonS3 container-s3-client bucket-name key]
-  (generate-presigned-url* container-s3-client bucket-name key HttpMethod/PUT))
+  "Generate PUT URL using container presigner"
+  [^S3Presigner presigner ^String bucket-name ^String key]
+  (let [^PutObjectRequest put-request (build-put-object-request bucket-name key)
+        ^PutObjectPresignRequest presign-request (-> (PutObjectPresignRequest/builder)
+                                                     (.signatureDuration presigned-url-duration)
+                                                     (.putObjectRequest put-request)
+                                                     (.build))
+        presigned ^PresignedPutObjectRequest (.presignPutObject presigner presign-request)]
+    (.toString (.url presigned))))
 
-(defn- delete-s3-object [^AmazonS3 s3-client bucket-name key]
+(defn- delete-s3-object [^S3Client s3-client ^String bucket-name ^String key]
   (try
-    (.deleteObject s3-client ^String bucket-name ^String key)
+    (let [^DeleteObjectRequest request (build-delete-object-request bucket-name key)]
+      (.deleteObject s3-client request))
     (catch Exception _
       ;; Ignore deletion errors - object might not exist or we might not have permissions
       nil)))
 
-(defn- cleanup-s3-objects [^AmazonS3 s3-client bucket-name s3-keys]
+(defn- cleanup-s3-objects [^S3Client s3-client bucket-name s3-keys]
   (run! (partial delete-s3-object s3-client bucket-name) s3-keys))
 
-(defn- read-from-s3 [^AmazonS3 s3-client bucket-name key & [fallback-content]]
+(defn- read-from-s3 [^S3Client s3-client ^String bucket-name ^String key & [fallback-content]]
   (try
-    (let [object (.getObject s3-client ^String bucket-name ^String key)]
-      (slurp (.getObjectContent object)))
-    (catch AmazonS3Exception e
-      (if (and (= 404 (.getStatusCode e)) fallback-content)
+    (let [^GetObjectRequest request (build-get-object-request bucket-name key)
+          response (.getObject s3-client request)]
+      (slurp response))
+    (catch NoSuchKeyException e
+      (if fallback-content
         fallback-content
         (throw e)))))
 
