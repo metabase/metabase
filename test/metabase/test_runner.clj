@@ -94,7 +94,7 @@
   will extend to namespaces, drivers. Ideally e2e tests as well. Example config:
   ```javascript
      {
-       \"ignore\": {
+       \"ignored\": {
          \"vars\": [
            \"metabase.util.queue-test/bounded-transfer-queue-test\",
            \"metabase.util.queue-test/take-batch-test\"

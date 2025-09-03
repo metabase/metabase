@@ -1,4 +1,7 @@
 name: Prepare back-end environment
+description: |
+  Prepare the backend. Installs jdk, Clojure, and fetches the cache for m2. The CI config fetchs `ci-test-config.json`
+  from master and lets us ignore tests at the var level if they are flaking.
 inputs:
   java-version:
     required: true
@@ -21,6 +24,7 @@ runs:
         distribution: 'temurin'
     - name: Install Clojure CLI
       shell: bash
+      continue-on-error: true
       run: |
         curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
         sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
