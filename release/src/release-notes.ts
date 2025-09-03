@@ -3,7 +3,10 @@ import { match } from "ts-pattern";
 import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import { getMilestoneIssues, hasBeenReleased } from "./github";
 import { issueNumberRegex } from "./linked-issues";
-import { githubReleaseTemplate, websiteChangelogTemplate } from "./release-notes-templates";
+import {
+  githubReleaseTemplate,
+  websiteChangelogTemplate,
+} from "./release-notes-templates";
 import type { Issue, ReleaseProps } from "./types";
 import {
   getDotXVersion,
@@ -17,12 +20,11 @@ import {
   isValidVersionString,
 } from "./version-helpers";
 
-
 const hasLabel = (issue: Issue, label: string) => {
   if (typeof issue.labels === "string") {
     return issue.labels.includes(label);
   }
-  return issue.labels.some(tag => tag.name === label);
+  return issue.labels.some((tag) => tag.name === label);
 };
 
 const isBugIssue = (issue: Issue) => {
@@ -34,11 +36,11 @@ const isAlreadyFixedIssue = (issue: Issue) => {
 };
 
 const isNonUserFacingIssue = (issue: Issue) => {
-  return nonUserFacingLabels.some(label => hasLabel(issue, label));
+  return nonUserFacingLabels.some((label) => hasLabel(issue, label));
 };
 
 const isHiddenIssue = (issue: Issue) => {
-  return hiddenLabels.some(label => hasLabel(issue, label));
+  return hiddenLabels.some((label) => hasLabel(issue, label));
 };
 
 const formatIssue = (issue: Issue) =>
@@ -62,11 +64,11 @@ export const getDownloadUrl = (version: string) => {
   }${dotXVersion}/metabase.jar`;
 };
 
-export const getChangelogUrl = (version: string ) => {
+export const getChangelogUrl = (version: string) => {
   const majorVersion = getMajorVersion(version);
   const minorVersion = getMinorVersion(version);
-  return `https://www.metabase.com/changelog/${majorVersion}#metabase-${majorVersion}${minorVersion}`
-}
+  return `https://www.metabase.com/changelog/${majorVersion}#metabase-${majorVersion}${minorVersion}`;
+};
 
 export const getReleaseTitle = (version: string) => {
   return `Metabase ${getGenericVersion(version)}`;
@@ -84,6 +86,7 @@ enum IssueType {
 enum ProductCategory {
   administration = "Administration",
   database = "Database",
+  sdk = "SDK",
   embedding = "Embedding",
   operation = "Operation",
   organization = "Organization",
@@ -114,76 +117,79 @@ const getLabels = (issue: Issue): string[] => {
   if (typeof issue.labels === "string") {
     return issue.labels.split(",");
   }
-  return issue.labels.map(label => label.name || "");
+  return issue.labels.map((label) => label.name || "");
 };
 
 const hasCategory = (issue: Issue, categoryName: ProductCategory): boolean => {
   const labels = getLabels(issue);
-  return labels.some(label => label.includes(categoryName));
+  return labels.some((label) => label.includes(categoryName));
 };
 
 export const getProductCategory = (issue: Issue): ProductCategory => {
-  const category = Object.values(ProductCategory).find(categoryName =>
-    hasCategory(issue, categoryName)
+  const category = Object.values(ProductCategory).find((categoryName) =>
+    hasCategory(issue, categoryName),
   );
 
   return category ?? ProductCategory.other;
 };
 
 // Format issues for a single product category
-const formatIssueCategory = (categoryName: ProductCategory, issues: Issue[]): string => {
+const formatIssueCategory = (
+  categoryName: ProductCategory,
+  issues: Issue[],
+): string => {
   return `**${categoryName}**\n\n${issues.map(formatIssue).join("\n")}`;
 };
 
 // We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
 const sortCategories = (categories: ProductCategory[]) => {
   const uncategorizedIssues = categories.filter(
-    category => category === ProductCategory.other,
+    (category) => category === ProductCategory.other,
   );
   const sortedCategories = categories
-    .filter(cat => cat !== ProductCategory.other)
+    .filter((cat) => cat !== ProductCategory.other)
     .sort((a, b) => a.localeCompare(b));
 
-  return [
-    ...sortedCategories,
-    ...uncategorizedIssues,
-  ];
+  return [...sortedCategories, ...uncategorizedIssues];
 };
 
 // For each issue category ("Enhancements", "Bug Fixes", etc.), we want to group issues by product category
 const formatIssues = (issueMap: CategoryIssueMap): string => {
-  const categories = sortCategories(
-    Object.keys(issueMap) as ProductCategory[],
-  );
+  const categories = sortCategories(Object.keys(issueMap) as ProductCategory[]);
 
   return categories
-    .map(categoryName => formatIssueCategory(categoryName, issueMap[categoryName]))
+    .map((categoryName) =>
+      formatIssueCategory(categoryName, issueMap[categoryName]),
+    )
     .join("\n\n");
 };
 
 export const categorizeIssues = (issues: Issue[]) => {
   return issues
-    .filter(issue => !isHiddenIssue(issue))
-    .reduce((issueMap: IssueMap, issue: Issue) => {
-      const issueType = getIssueType(issue);
-      const productCategory = getProductCategory(issue);
+    .filter((issue) => !isHiddenIssue(issue))
+    .reduce(
+      (issueMap: IssueMap, issue: Issue) => {
+        const issueType = getIssueType(issue);
+        const productCategory = getProductCategory(issue);
 
-      return {
-        ...issueMap,
-        [issueType]: {
-          ...issueMap[issueType],
-          [productCategory]: [
-            ...issueMap[issueType][productCategory] ?? [],
-            issue,
-          ],
-        },
-      };
-    }, {
-      [IssueType.bugFixes]: {},
-      [IssueType.enhancements]: {},
-      [IssueType.alreadyFixedIssues]: {},
-      [IssueType.underTheHoodIssues]: {},
-    } as IssueMap);
+        return {
+          ...issueMap,
+          [issueType]: {
+            ...issueMap[issueType],
+            [productCategory]: [
+              ...(issueMap[issueType][productCategory] ?? []),
+              issue,
+            ],
+          },
+        };
+      },
+      {
+        [IssueType.bugFixes]: {},
+        [IssueType.enhancements]: {},
+        [IssueType.alreadyFixedIssues]: {},
+        [IssueType.underTheHoodIssues]: {},
+      } as IssueMap,
+    );
 };
 
 export const generateReleaseNotes = ({
@@ -202,18 +208,9 @@ export const generateReleaseNotes = ({
 
   return template
     .replace("{{version}}", getGenericVersion(version))
-    .replace(
-      "{{enhancements}}",
-      formatIssues(issuesByType.enhancements),
-    )
-    .replace(
-      "{{bug-fixes}}",
-      formatIssues(issuesByType.bugFixes),
-    )
-    .replace(
-      "{{already-fixed}}",
-      formatIssues(issuesByType.alreadyFixedIssues),
-    )
+    .replace("{{enhancements}}", formatIssues(issuesByType.enhancements))
+    .replace("{{bug-fixes}}", formatIssues(issuesByType.bugFixes))
+    .replace("{{already-fixed}}", formatIssues(issuesByType.alreadyFixedIssues))
     .replace(
       "{{under-the-hood}}",
       formatIssues(issuesByType.underTheHoodIssues),
@@ -232,7 +229,11 @@ export async function publishRelease({
   repo,
   issues,
   github,
-}: ReleaseProps & { oss_checksum: string, ee_checksum: string, issues: Issue[] }) {
+}: ReleaseProps & {
+  oss_checksum: string;
+  ee_checksum: string;
+  issues: Issue[];
+}) {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
@@ -253,18 +254,26 @@ export async function publishRelease({
   return github.rest.repos.createRelease(payload);
 }
 
-const issueLink = (issueNumber: string) => `https://github.com/metabase/metabase/issues/${issueNumber}`;
+const issueLink = (issueNumber: string) =>
+  `https://github.com/metabase/metabase/issues/${issueNumber}`;
 
 export function markdownIssueLinks(text: string) {
-  return text?.replaceAll(issueNumberRegex, (_, issueNumber) => {
-    return `([#${issueNumber}](${issueLink(issueNumber)}))`;
-  }) ?? text ?? '';
+  return (
+    text?.replaceAll(issueNumberRegex, (_, issueNumber) => {
+      return `([#${issueNumber}](${issueLink(issueNumber)}))`;
+    }) ??
+    text ??
+    ""
+  );
 }
 
 export function getWebsiteChangelog({
   version,
   issues,
-}: { version: string; issues: Issue[]; }) {
+}: {
+  version: string;
+  issues: Issue[];
+}) {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
