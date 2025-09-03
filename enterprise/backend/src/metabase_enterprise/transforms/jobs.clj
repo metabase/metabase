@@ -62,7 +62,7 @@
         (recur (conj complete (:id current-transform)))
         (map transforms-by-id complete)))))
 
-(defn run-transform! [run-id run-method {transform-id :id :as transform}]
+(defn- run-transform! [run-id run-method {transform-id :id :as transform}]
   (when (transform-run/running-run-for-run-id transform-id)
     (log/warn "Transform" (pr-str transform-id) "already running, waiting")
     (loop []
