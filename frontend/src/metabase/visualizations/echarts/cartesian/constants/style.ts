@@ -27,7 +27,7 @@ export const CHART_STYLE = {
     weight: 400,
   },
   seriesLabels: {
-    weight: 400,
+    weight: 700,
     size: 12,
     offset: 4,
     stackedPadding: 2,
