@@ -251,6 +251,7 @@
                                      (:fields metadata))}
         data-source {:type :csv-file
                      :file temp-file}]
+    ;; TODO: should be transactional
     (if (driver/table-exists? driver db target)
       (driver/truncate! driver (:id db) table-name)
       (table-creation/create-table-from-schema! driver (:id db) table-schema))
