@@ -6,7 +6,6 @@
    [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.app-db.core :as mdb]
-   [metabase.search.appdb.scoring-test :refer [with-weights]]
    [metabase.search.config :as search.config]
    [metabase.test :as mt])
   (:import
@@ -56,8 +55,8 @@
 (defn search-results
   "Like search-results* but with a sanity check that search without weights returns a different result."
   [ranker-key search-string & {:as raw-ctx}]
-  (let [result   (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
-        inverted (with-weights {ranker-key -1} (search-results* search-string raw-ctx))]
+  (let [result   (semantic.tu/with-weights {ranker-key  1} (search-results* search-string raw-ctx))
+        inverted (semantic.tu/with-weights {ranker-key -1} (search-results* search-string raw-ctx))]
     ;; note that this may not be a strict reversal, due to ties.
     (is (not= inverted result)
         "sanity check: search-no-weights should be different")
@@ -143,7 +142,7 @@
         (is (= [["dataset" 1 "card ancient"]
                 ["metric"  3 "card old"]
                 ["card"    2 "card recent"]]
-               (with-weights {:model 1.0 :model/dataset 1.0}
+               (semantic.tu/with-weights {:model 1.0 :model/dataset 1.0}
                  (search-results* "card"))))))))
 
 (deftest recency-test
@@ -181,9 +180,9 @@
          {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
          {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
         ;; fix some test flakes where dataset 3 exists and has some sort of recent views
-        (with-weights (assoc (search.config/weights :default)
-                             :user-recency 0
-                             :rrf 0)
+        (semantic.tu/with-weights (assoc (search.config/weights :default)
+                                         :user-recency 0
+                                         :rrf 0)
           (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
                    {:model "card",      :id 1, :name "view card"}
                    {:model "dataset",   :id 3, :name "view dataset"}]
@@ -202,8 +201,8 @@
 (defn indifferent?
   "Check that the results and their order do not depend on the given ranker."
   [ranker-key search-string & {:as raw-ctx}]
-  (= (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
-     (with-weights {ranker-key -1} (search-results* search-string raw-ctx))))
+  (= (semantic.tu/with-weights {ranker-key  1} (search-results* search-string raw-ctx))
+     (semantic.tu/with-weights {ranker-key -1} (search-results* search-string raw-ctx))))
 
 (deftest dashboard-count-test-2
   (mt/with-premium-features #{:semantic-search}
