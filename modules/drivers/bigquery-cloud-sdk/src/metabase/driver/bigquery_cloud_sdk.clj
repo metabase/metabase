@@ -843,15 +843,16 @@
   (let [details (get connection-details :details connection-details)
         client (database-details->client details)]
     (try
-      (doseq [query queries]
-        (let [sql (if (string? query) query (first query))
-              _ (log/debugf "Executing BigQuery DDL: %s" sql)
-              job-config (-> (QueryJobConfiguration/newBuilder sql)
-                             (.setUseLegacySql false)
-                             (.build))
-              table-result (.query client job-config (into-array BigQuery$JobOption []))]
-          (or (and table-result (.getTotalRows table-result))
-              0)))
+      (doall
+       (for [query queries]
+         (let [sql (if (string? query) query (first query))
+               _ (log/debugf "Executing BigQuery DDL: %s" sql)
+               job-config (-> (QueryJobConfiguration/newBuilder sql)
+                              (.setUseLegacySql false)
+                              (.build))
+               table-result (.query client job-config (into-array BigQuery$JobOption []))]
+           (or (and table-result (.getTotalRows table-result))
+               0))))
       (catch Exception e
         (log/error e "Error executing BigQuery DDL")
         (throw e)))))
