@@ -43,6 +43,8 @@ export function EmojiPicker({
         {!hideSearch && (
           <Box p="sm" pb="0rem">
             <TextInput
+              autoFocus
+              frimousse-search="true"
               placeholder={t`Search...`}
               value={searchValue}
               onChange={handleSearchChange}
@@ -76,10 +78,14 @@ export function EmojiPicker({
   );
 }
 
-function CategoryHeader({ category }: EmojiPickerListCategoryHeaderProps) {
+function CategoryHeader({
+  category,
+  ref,
+  ...props
+}: EmojiPickerListCategoryHeaderProps) {
   return (
-    <Box py="xs" pos="sticky" top={0} bg="var(--mb-color-bg-white)">
-      <Text fz="sm" c="text-secondary" tt="uppercase">
+    <Box py="xs" pos="sticky" top={0} bg="var(--mb-color-bg-white)" {...props}>
+      <Text fz="sm" c="text-secondary">
         {category.label}
       </Text>
     </Box>
@@ -93,6 +99,7 @@ function Emoji({ emoji, ref, ...props }: EmojiPickerListEmojiProps) {
       w="2rem"
       fz="1.25rem"
       ref={ref as React.RefObject<HTMLButtonElement>}
+      className={S.emojiButton}
       {...props}
     >
       {emoji.emoji}

@@ -22,3 +22,8 @@
   justify-content: center;
   color: var(--mb-color-text-secondary);
 }
+
+.emojiButton[data-active],
+.emojiButton:hover[data-vairant="subtle"] {
+  background-color: var(--mb-color-bg-medium);
+}
