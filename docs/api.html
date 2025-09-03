@@ -1829,7 +1829,8 @@ redirect_from:
           },
           "schema" : {
             "anyOf" : [ {
-              "type" : "string"
+              "type" : "string",
+              "minLength" : 1
             }, {
               "type" : "null"
             } ]
@@ -2384,6 +2385,13 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.datetime"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.today"
+        } ]
+      },
+      "metabase.legacy-mbql.schema.Emptyable" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.StringExpressionArg"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
         } ]
       },
       "metabase.legacy-mbql.schema.EqualityComparable" : {
@@ -14753,6 +14761,9 @@ redirect_from:
                   "metabot_id" : {
                     "type" : "string"
                   },
+                  "profile_id" : {
+                    "type" : "string"
+                  },
                   "state" : {
                     "type" : "object",
                     "properties" : { }
@@ -14804,6 +14815,9 @@ redirect_from:
                     "minLength" : 1
                   },
                   "metabot_id" : {
+                    "type" : "string"
+                  },
+                  "profile_id" : {
                     "type" : "string"
                   },
                   "state" : {

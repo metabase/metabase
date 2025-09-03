@@ -196,6 +196,7 @@
 
 .SavedQuestionHeaderButtonContainer {
   right: 0.38rem;
+  width: 100%;
 
   &.isModelOrMetric {
     right: 0;
@@ -203,6 +204,9 @@
 }
 
 .SavedQuestionLeftSideRoot {
+  width: 100%;
+  min-width: 0;
+
   .SavedQuestionHeaderButtonContainer {
     transition: all 400ms ease;
     position: relative;

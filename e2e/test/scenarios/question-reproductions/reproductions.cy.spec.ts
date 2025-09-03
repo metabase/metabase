@@ -1174,3 +1174,31 @@ describe("issue 58628", () => {
     H.queryBuilderHeader().should("be.visible");
   });
 });
+
+describe("issue 52872", () => {
+  const LONG_NAME = "a".repeat(254);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        name: LONG_NAME,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("Saved questions with a very long title should wrap (metabse#52872)", () => {
+    cy.findByDisplayValue(LONG_NAME)
+      .should("be.visible")
+      .then(($el) => {
+        cy.window().then((window) => {
+          cy.wrap($el[0].offsetWidth).should("be.lt", window.innerWidth);
+        });
+      });
+  });
+});

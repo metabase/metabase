@@ -128,6 +128,7 @@
       (let [no-value? (= (:value v) params/no-value)]
         (cond
           (params.ops/operator? (get-in v [:value :type]))
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (let [param (:value v)
                 compiled-clause (-> (assoc param
                                            :target
@@ -138,7 +139,6 @@
                                     ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
                                     ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that
                                     ;; desugars to [:or [:= 'field 1] ...].
-                                    #_{:clj-kondo/ignore [:deprecated-var]}
                                     driver-api/desugar-filter-clause
                                     driver-api/wrap-value-literals-in-mbql
                                     mongo.qp/compile-filter
