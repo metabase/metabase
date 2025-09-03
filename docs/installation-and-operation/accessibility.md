@@ -15,7 +15,7 @@ While we're working to make a product that is easy to use and inclusive to all, 
 - **Focus management:** Some interactive elements lack a visible focus indicator. A few hidden interactive elements receive the keyboard focus.
 - **Tables and data visualization:** Data tables do not consistently include programmatically defined row and column headers, impacting screen reader interpretation.
 - **Motion and animations:** Metabase includes minimal transition animations. If the [prefers-reduced-motion CSS setting](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion#user_preferences) is enabled in the OS, Metabase disables animations. However, we have not yet conducted full testing to confirm that all animations meet the recommended flicker rate threshold (between 2 Hz and 55 Hz).
-- **Labels:** Some form elements lack explicit labels. Few button labels and form fields are inappropriate and incomplete
+- **Labels:** Some form elements lack explicit labels. Few button labels and form fields are inappropriate and incomplete.
 - **Assistive technology compatibility:** Metabase is a React-based web application, which means it requires JavaScript to function and may not be fully operable with all assistive technologies.
 - **Contrast and visual accessibility:** While most UI elements meet contrast requirements, some text and interactive elements have insufficient color contrast, making them difficult to read for users with low vision or color blindness.
 - **Resizing and responsive behavior:** Most content can be resized up to 200% without loss of information, but some elements do not reflow properly, potentially causing overlap or cutoff content when text spacing is adjusted.
