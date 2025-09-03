@@ -13,7 +13,7 @@ Here's a basic overview of the steps you'll want to take when upgrading your SDK
 - [Metabase changelogs](https://www.metabase.com/changelog) list Metabase changes.
 - [Embedded analytics SDK changelogs](https://www.metabase.com/changelog/56) list changes specific to the SDK Package.
 
-Check for any relevant changes, especially deprecation changes that require you to update your application's code. If there are deprecation changes, we'll have docs that'll walk you through what changes you'll need to make and why.
+Check for any relevant changes, especially deprecations or breaking changes that require you to update your application's code. If there are deprecation changes, we'll have docs that'll walk you through what changes you'll need to make and why.
 
 ## 2. Test the upgrade
 
@@ -51,9 +51,9 @@ yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable
 
 See more on [SDK versions](./version.md).
 
-### If there are deprecation changes, make the necessary changes to your application code
+### If there are deprecations or breaking changes changes, make the necessary changes to your application code
 
-Deprecations are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
+Deprecations or breaking changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
 
 Update or add tests for any application code changes that you make.
 
@@ -72,12 +72,11 @@ If everything is working in staging, you're ready to deploy to production.
 
 Be sure to deploy your application changes and upgrade your Metabase in parallel so that the SDK version and the Metabase version stay in sync.
 
-### Cached SDK Bundle
+### Caching may delay the upgrade by up to a minute
 
-After upgrading, the previous version of the SDK Bundle may still be served from your new Metabase instance for up to 60 seconds (`Cache-Control: public, max-age=60`).
-This short cache window is intentional and helps ensure fast performance while still allowing updates to propagate quickly.
+This is intentional. After upgrading, Metabase may still serve the previous, cached version of the SDK Bundle for up to 60 seconds (`Cache-Control: public, max-age=60`). This short cache window helps ensure fast performance while still allowing updates to propagate quickly.
 
-If you don’t see your changes immediately, clear browser cache or just wait a minute. After that, the SDK Package will begin loading the newly deployed SDK Bundle.
+If you don’t see your changes immediately, clear your browser's cache or just wait a minute. After that, the SDK Package will load the newly deployed SDK Bundle.
 
 ### If your instance is pinned on Metabase Cloud, you'll need to request an upgrade
 

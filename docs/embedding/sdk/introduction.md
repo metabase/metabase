@@ -30,13 +30,6 @@ Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 - [Quickstart CLI](./quickstart-cli.md) (If you have an app, but no Metabase)
 - [Quickstart with sample React app](./quickstart-with-sample-app.md) (If you don't have either)
 
-## Architecture
-
-Starting with Metabase 57, the SDK consists of two parts:
-
-- **SDK Package** – The `@metabase/embedding-sdk-react` npm package is a lightweight bootstrapper library. Its primary purpose is to load and run the main SDK Bundle code.
-- **SDK Bundle** – The full SDK code, served directly from your self-hosted Metabase instance or Metabase Cloud, and it's the part of the Metabase. This ensures that the main SDK code is always compatible with its corresponding Metabase instance.
-
 ## Installation
 
 To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK in your React app.
@@ -84,6 +77,13 @@ To enforce a single `@types/react` version across all dependencies, add an `over
   }
 }
 ```
+
+## Architecture
+
+Starting with Metabase 57, the SDK consists of two parts:
+
+- **SDK Package** – The `@metabase/embedding-sdk-react` npm package is a lightweight bootstrapper library. Its primary purpose is to load and run the main SDK Bundle code.
+- **SDK Bundle** – The full SDK code, served directly from your self-hosted Metabase instance or Metabase Cloud, and it's the part of the Metabase. This ensures that the main SDK code is always compatible with its corresponding Metabase instance.
 
 ## Developing with the Embedded analytics SDK
 
