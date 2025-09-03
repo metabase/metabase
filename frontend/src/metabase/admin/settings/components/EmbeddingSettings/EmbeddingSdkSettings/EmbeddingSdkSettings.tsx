@@ -218,6 +218,7 @@ export function EmbeddingSdkSettings() {
                 url="https://www.metabase.com/product/embedded-analytics"
                 campaign="embedded-analytics-js"
                 location="embedding-page"
+                size="default"
               />
             )}
           </Group>
