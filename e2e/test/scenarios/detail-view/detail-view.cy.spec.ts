@@ -318,7 +318,7 @@ describe("detail view", () => {
       cy.log("image should be rendered in a frame with a link");
       DetailView.getDetailsRowValue({ index: 8, rowsCount: 15 }).within(() => {
         cy.findByRole("img")
-          .should("be.visible")
+          .should("exist") // do not wait for image to load
           .and("have.attr", "src", "https://example.com/product/14.jpg");
 
         cy.findByRole("link")

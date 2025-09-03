@@ -65,17 +65,19 @@
                   (is (= "search.engine/appdb" (:engine response))))))))))))
 
 (def ^:private search-context
-  {:query "test" :search-engine :search.engine/semantic})
+  {:search-string "test" :search-engine :search.engine/semantic})
 
 (defn- with-search-engine-mocks!
   "Sets up search engine mocks for the semantic & appdb backends for testing fallback behavior.
    appdb-fn can be a collection of results or a function that takes a context."
   [semantic-results appdb-results thunk]
   (with-redefs [semantic.pgvector-api/query (fn [_pgvector _index-metadata _search-ctx]
-                                              {:results semantic-results
-                                               ;; Set raw-count to a non-zero value to ensure fallback logic is
-                                               ;; triggered
-                                               :raw-count 1})
+                                              (if (map? semantic-results)
+                                                semantic-results
+                                                {:results semantic-results
+                                                 ;; Set raw-count to a non-zero value to ensure fallback logic is
+                                                 ;; triggered
+                                                 :raw-count 1}))
                 search.engine/results (fn [ctx]
                                         (case (:search-engine ctx)
                                           :search.engine/appdb (if (fn? appdb-results)
@@ -156,3 +158,18 @@
                   (let [remaining (rest results)]
                     (is (= 4 (count remaining)))
                     (is (every? #(contains? (set appdb-results) %) remaining))))))))))))
+
+(deftest test-semantic-search-fallback-empty-or-nil-search-string
+  (testing "fallback to backup search engine if :search-string is empty or nil"
+    (mt/with-premium-features #{:semantic-search}
+      (let [semantic-results {:results [] :raw-count 0}
+            appdb-results    [(make-card-result 1 "appdb-card-1")]
+            search-ctx       search-context]
+        (with-search-engine-mocks! semantic-results appdb-results
+          (fn []
+            (testing ":search-string is nil"
+              (let [results (semantic.core/results (assoc search-ctx :search-string nil))]
+                (is (= appdb-results results))))
+            (testing ":search-string is empty"
+              (let [results (semantic.core/results (assoc search-ctx :search-string ""))]
+                (is (= appdb-results results))))))))))

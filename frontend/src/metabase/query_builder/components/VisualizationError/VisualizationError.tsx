@@ -2,6 +2,7 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
 
+import EmptyState from "metabase/common/components/EmptyState";
 import ErrorDetails from "metabase/common/components/ErrorDetails/ErrorDetails";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -13,10 +14,10 @@ import { PLUGIN_AI_SQL_FIXER } from "metabase/plugins";
 import { getIsResultDirty } from "metabase/query_builder/selectors";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Center, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetError } from "metabase-types/api";
+import type { DatasetError, DatasetErrorType } from "metabase-types/api";
 
 import { VISUALIZATION_SLOW_TIMEOUT } from "../../constants";
 
@@ -30,6 +31,7 @@ interface VisualizationErrorProps {
   question: Question;
   duration: number;
   error: DatasetError;
+  errorType?: DatasetErrorType;
 }
 
 export function VisualizationError({
@@ -38,12 +40,13 @@ export function VisualizationError({
   question,
   duration,
   error,
+  errorType,
 }: VisualizationErrorProps) {
   const query = question.query();
   const isResultDirty = useSelector(getIsResultDirty);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-
   const isNative = question && Lib.queryDisplayInfo(query).isNative;
+
   if (typeof error === "object" && error.status != null) {
     // Assume if the request took more than 15 seconds it was due to a timeout
     // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
@@ -68,7 +71,20 @@ export function VisualizationError({
         />
       );
     }
-  } else if (error instanceof Error) {
+  }
+
+  if (errorType === "missing-required-permissions") {
+    return (
+      <Center className={className}>
+        <EmptyState
+          title={t`Sorry, you don't have permission to run this query.`}
+          illustrationElement={<Icon name="key" size={100} />}
+        />
+      </Center>
+    );
+  }
+
+  if (error instanceof Error) {
     return (
       <div
         className={cx(
@@ -93,7 +109,9 @@ export function VisualizationError({
         </div>
       </div>
     );
-  } else if (isNative) {
+  }
+
+  if (isNative) {
     // always show errors for native queries
     let processedError = String(error);
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
@@ -130,33 +148,33 @@ export function VisualizationError({
         </Flex>
       </Box>
     );
-  } else {
-    return (
+  }
+
+  return (
+    <div
+      className={cx(
+        className,
+        QueryBuilderS.QueryError2,
+        CS.flex,
+        CS.justifyCenter,
+      )}
+    >
       <div
         className={cx(
-          className,
-          QueryBuilderS.QueryError2,
-          CS.flex,
-          CS.justifyCenter,
+          QueryBuilderS.QueryErrorImage,
+          QueryBuilderS.QueryErrorImageQueryError,
+          CS.mr4,
         )}
-      >
-        <div
-          className={cx(
-            QueryBuilderS.QueryErrorImage,
-            QueryBuilderS.QueryErrorImageQueryError,
-            CS.mr4,
-          )}
-        />
-        <div className={QueryBuilderS.QueryError2Details}>
-          <h1
-            className={CS.textBold}
-          >{t`There was a problem with your question`}</h1>
-          <p
-            className={QueryBuilderS.QueryErrorMessageText}
-          >{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
-          <ErrorDetails className={CS.pt2} details={error} />
-        </div>
+      />
+      <div className={QueryBuilderS.QueryError2Details}>
+        <h1
+          className={CS.textBold}
+        >{t`There was a problem with your question`}</h1>
+        <p
+          className={QueryBuilderS.QueryErrorMessageText}
+        >{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
+        <ErrorDetails className={CS.pt2} details={error} />
       </div>
-    );
-  }
+    </div>
+  );
 }

@@ -208,7 +208,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :type       :boolean
   :audit      :getter
   :feature    :whitelabel
-  :default    true)
+  :default    true
+  :doc        false)
 
 (defsetting login-page-illustration
   (deferred-tru "Options for displaying the illustration on the login page.")

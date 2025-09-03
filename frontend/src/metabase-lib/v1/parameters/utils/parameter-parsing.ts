@@ -15,6 +15,7 @@ import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-val
 import type {
   Parameter,
   ParameterId,
+  ParameterType,
   ParameterValue,
   ParameterValueOrArray,
 } from "metabase-types/api";
@@ -63,7 +64,7 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   // TODO this casting should be removed as we tidy up Parameter types
   const { fields } = parameter as FieldFilterUiParameter;
   if (Array.isArray(fields) && fields.length > 0) {
-    return parseParameterValueForFields(coercedValue, fields);
+    return parseParameterValueForFields(type, coercedValue, fields);
   }
 
   // Note:
@@ -72,7 +73,7 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   // We cannot properly deserialize their values by checking the parameter type only
   switch (type) {
     case "number":
-      return parseParameterValueForNumber(coercedValue);
+      return parseParameterValueForNumber(type, coercedValue);
     case "location":
       return normalizeStringParameterValue(coercedValue);
     case "date":
@@ -86,7 +87,10 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   return coercedValue;
 }
 
-function parseParameterValueForNumber(value: ParameterValueOrArray) {
+function parseParameterValueForNumber(
+  type: ParameterType,
+  value: ParameterValueOrArray,
+) {
   // HACK to support multiple values for SQL parameters
   // https://github.com/metabase/metabase/issues/25374#issuecomment-1272520560
   if (typeof value === "string") {
@@ -106,16 +110,17 @@ function parseParameterValueForNumber(value: ParameterValueOrArray) {
     }
   }
 
-  return normalizeNumberParameterValue(value);
+  return normalizeNumberParameterValue(type, value);
 }
 
 function parseParameterValueForFields(
+  type: ParameterType,
   value: ParameterValueOrArray,
   fields: Field[],
 ): ParameterValueOrArray {
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
   if (fields.every((f) => f.isNumeric() && !f.isDate())) {
-    return normalizeNumberParameterValue(value);
+    return normalizeNumberParameterValue(type, value);
   }
 
   if (fields.every((f) => f.isBoolean())) {

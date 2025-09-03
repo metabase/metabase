@@ -24,6 +24,7 @@ export function Sidesheet({
     <Modal.Root
       data-testid={dataTestId}
       h="100dvh"
+      lockScroll={false}
       opened
       variant="sidesheet"
       onClose={onClose}
