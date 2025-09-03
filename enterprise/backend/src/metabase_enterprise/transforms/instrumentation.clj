@@ -107,7 +107,7 @@
    stage-label :- ::stage-label
    bytes :- [:maybe pos-int?]
    rows :- [:maybe pos-int?]]
-  (log/infof "Data transfer recorded: run-id=%d stage=%s %s %s"
+  (log/infof "Data transfer recorded: run-id=%d stage=%s%s%s"
              job-run-id (name stage-label)
              (if bytes (str " bytes=" bytes) "")
              (if rows (str " rows=" rows) ""))
