@@ -12,6 +12,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
 
+import LeafletClusteredPinMap from "./LeafletClusteredPinMap";
 import LeafletGridHeatMap from "./LeafletGridHeatMap";
 import LeafletHeatMap from "./LeafletHeatMap";
 import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
@@ -25,6 +26,7 @@ const WORLD_BOUNDS = [
 
 const MAP_COMPONENTS_BY_TYPE = {
   markers: LeafletMarkerPinMap,
+  clustered: LeafletClusteredPinMap,
   tiles: LeafletTilePinMap,
   heat: LeafletHeatMap,
   grid: LeafletGridHeatMap,
@@ -115,15 +117,15 @@ export default class PinMap extends Component {
     } = props;
     const latitudeIndex = _.findIndex(
       cols,
-      (col) => col.name === settings["map.latitude_column"],
+      (col) => col.name === (settings && settings["map.latitude_column"]),
     );
     const longitudeIndex = _.findIndex(
       cols,
-      (col) => col.name === settings["map.longitude_column"],
+      (col) => col.name === (settings && settings["map.longitude_column"]),
     );
     const metricIndex = _.findIndex(
       cols,
-      (col) => col.name === settings["map.metric_column"],
+      (col) => col.name === (settings && settings["map.metric_column"]),
     );
 
     const allPoints = rows.map((row) => [
@@ -134,7 +136,7 @@ export default class PinMap extends Component {
 
     // only use points with numeric coordinates & metric
     const validPoints = allPoints.map(([lat, lng, metric]) => {
-      if (settings["map.type"] === "pin") {
+      if (settings && settings["map.type"] === "pin") {
         return lat != null && lng != null;
       }
 
@@ -183,7 +185,12 @@ export default class PinMap extends Component {
     const { lat, lng, zoom } = this.state;
     const disableUpdateButton = lat == null && lng == null && zoom == null;
 
-    const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];
+    const Map =
+      MAP_COMPONENTS_BY_TYPE[
+        settings && settings["map.pin_type"]
+          ? settings["map.pin_type"]
+          : "markers"
+      ];
 
     const { rows, points, bounds, min, max, binHeight, binWidth } = this.state;
 
