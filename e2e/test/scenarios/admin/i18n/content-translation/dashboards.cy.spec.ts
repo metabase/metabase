@@ -7,6 +7,7 @@ import type {
   DashboardDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import { ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY } from "e2e/support/test-visualizer-data";
 import type { DictionaryArray } from "metabase-types/api";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -23,6 +24,101 @@ import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-transla
 const { H } = cy;
 
 describe("scenarios > content translation > static embedding > dashboards", () => {
+  describe("values translation on visualizer cards (metabase#62373)", () => {
+    before(() => {
+      cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
+        "uploadDictionary",
+      );
+
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
+        { locale: "fr", msgid: "Doohickey", msgstr: "Le doohickey" },
+        { locale: "fr", msgid: "Gizmo", msgstr: "Le gizmo" },
+        { locale: "fr", msgid: "Widget", msgstr: "Le widget" },
+      ]);
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
+      cy.intercept("GET", "/api/setting/version-info", {});
+
+      cy.signInAsAdmin();
+
+      H.createQuestion(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY, {
+        idAlias: "productsCountByCreatedAtQuestionId",
+        wrapId: true,
+      });
+    });
+
+    beforeEach(() => {
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+      cy.intercept("GET", "/api/embed/dashboard/**/search/*").as("searchQuery");
+    });
+
+    it("should translate static embedding dashboard values", () => {
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+      H.editDashboard();
+      H.removeDashboardCard(0);
+      H.openQuestionsSidebar();
+
+      // Add the regular question
+      H.sidebar()
+        .findByText(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name)
+        .click();
+
+      // Add the visualizer question
+      H.clickVisualizeAnotherWay(
+        ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
+      );
+      H.selectVisualization("bar");
+      H.saveDashcardVisualizerModal({ mode: "create" });
+      H.saveDashboard();
+
+      H.openStaticEmbeddingModal({
+        acceptTerms: false,
+      });
+      H.publishChanges("dashboard", () => {});
+
+      H.visitEmbeddedPage(
+        {
+          resource: { dashboard: ORDERS_DASHBOARD_ID as number },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "fr",
+          },
+        },
+      );
+
+      cy.wait("@dashboard");
+      cy.wait("@cardQuery");
+      cy.wait("@cardQuery");
+
+      H.getDashboardCard(0).within(() => {
+        cy.findAllByText("Le gadget").should("exist");
+        cy.findAllByText("Le doohickey").should("exist");
+        cy.findAllByText("Le gizmo").should("exist");
+        cy.findAllByText("Le widget").should("exist");
+      });
+
+      H.getDashboardCard(1).within(() => {
+        cy.findAllByText("Le gadget").should("exist");
+        cy.findAllByText("Le doohickey").should("exist");
+        cy.findAllByText("Le gizmo").should("exist");
+        cy.findAllByText("Le widget").should("exist");
+      });
+    });
+  });
+
   describe("measure names", () => {
     before(() => {
       cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
