@@ -13,9 +13,32 @@ import sys
 import traceback
 import pandas as pd
 import json
-from pathlib import Path
-import io
-import numpy as np
+import time
+
+class TimestampedWrapper:
+    """Wrapper that prefixes each line with unix millisecond timestamp"""
+    def __init__(self, original_stream):
+        self.original = original_stream
+        self.buffer = ""
+
+    def write(self, text):
+        if text:
+            self.buffer += text
+            if '\n' in self.buffer:
+                lines = self.buffer.split('\n')
+                self.buffer = lines[-1]  # Keep incomplete line in buffer
+
+                for line in lines[:-1]:  # Process complete lines
+                    timestamp = int(time.time() * 1000)
+                    self.original.write(f"{timestamp} {line}\n")
+        return len(text)
+
+    def flush(self):
+        if hasattr(self.original, 'flush'):
+            self.original.flush()
+
+    def __getattr__(self, name):
+        return getattr(self.original, name)
 
 def generate_output_manifest(dataframe):
     """
@@ -154,6 +177,10 @@ def read_table(table_source, manifest_source=None, limit=None):
 
 
 def main():
+    # Wrap stdout and stderr with timestamp prefixing
+    sys.stdout = TimestampedWrapper(sys.stdout)
+    sys.stderr = TimestampedWrapper(sys.stderr)
+
     # Get output URLs from environment variables
     output_url = os.environ.get('OUTPUT_URL')
     output_manifest_url = os.environ.get('OUTPUT_MANIFEST_URL')
