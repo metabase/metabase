@@ -47,7 +47,6 @@ const ruleFunction = (primary, secondaryOptions, context) => {
           node: decl,
           result,
           ruleName,
-          index: decl.source.start.column - 1 + match.index,
         });
       }
     });
