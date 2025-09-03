@@ -5,18 +5,15 @@ import Mention, {
 } from "@tiptap/extension-mention";
 import cx from "classnames";
 
-import S from "./mentions.module.css";
+import type { MentionStorage } from "metabase-enterprise/comments/types";
+
+import S from "./CustomMentionExtension.module.css";
 
 export interface CustomMentionAttributes extends MentionNodeAttrs {
   id: string | null;
   label: string;
   model: "user" | "card" | "dashboard" | "dataset" | "metric";
   mentionSuggestionChar?: string;
-}
-
-// Storage state for the Mention extension (accessed via editor.storage.mention)
-export interface MentionStorage {
-  isMentionPopupOpen: boolean;
 }
 
 export const CustomMentionExtension = Mention.extend<

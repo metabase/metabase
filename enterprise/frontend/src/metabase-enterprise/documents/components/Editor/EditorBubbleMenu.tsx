@@ -9,11 +9,12 @@ import { t } from "ttag";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { Flex } from "metabase/ui";
+import type { FormattingOptions } from "metabase-enterprise/documents/types";
 
 import S from "./EditorBubbleMenu.module.css";
 import { FormatButton } from "./FormatButton";
 
-const ALLOWED_FORMATTING = {
+const DEFAULT_ALLOWED_FORMATTING: FormattingOptions = {
   bold: true,
   italic: true,
   strikethrough: true,
@@ -25,18 +26,18 @@ const ALLOWED_FORMATTING = {
   quote: true,
   inline_code: true,
   code_block: true,
-} as const;
+};
 
 interface EditorBubbleMenuProps {
   editor: TiptapEditor;
   disallowedNodes: string[];
-  allowedFormatting?: Partial<typeof ALLOWED_FORMATTING>;
+  allowedFormatting?: FormattingOptions;
 }
 
 export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   editor,
   disallowedNodes,
-  allowedFormatting = ALLOWED_FORMATTING,
+  allowedFormatting = DEFAULT_ALLOWED_FORMATTING,
 }) => {
   const forceUpdate = useForceUpdate();
 

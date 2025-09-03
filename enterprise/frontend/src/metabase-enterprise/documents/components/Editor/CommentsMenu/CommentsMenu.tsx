@@ -60,8 +60,8 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
         ) : (
           <Button
             component={Link}
-            // If no existing comments, add query param to auto-open new comment form
-            to={threads.length === 0 ? `${href}?new=true` : href}
+            // If no existing unresolved comments comments, add query param to auto-open new comment form
+            to={hasUnresolvedComments ? href : `${href}?new=true`}
             leftSection={<Icon name="message" />}
             px="sm"
             size="xs"

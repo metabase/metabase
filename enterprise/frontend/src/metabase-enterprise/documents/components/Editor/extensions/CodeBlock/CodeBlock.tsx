@@ -21,9 +21,8 @@ import {
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 
 import { CommentsMenu } from "../../CommentsMenu";
+import S from "../../shared/Comments.module.css";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
-
-import S from "./CodeBlock.module.css";
 
 const languageClassPrefix = "language-";
 
@@ -58,8 +57,11 @@ export const CustomCodeBlock = CodeBlock.extend({
 
   addProseMirrorPlugins() {
     return [
-      createProseMirrorPlugin(CodeBlock.name), // this plugin creates a code block for pasted content from VS Code
+      createProseMirrorPlugin(CodeBlock.name),
+      // this plugin creates a code block for pasted content from VS Code
       // we can also detect the copied code language
+      //
+      // https://github.com/ueberdosis/tiptap/blob/7b4e6f5/packages/extension-code-block/src/code-block.ts#L266-L314
       new Plugin({
         key: new PluginKey("codeBlockVSCodeHandler"),
         props: {
@@ -149,7 +151,7 @@ export const CodeBlockNodeView = ({ node }: NodeViewProps) => {
   return (
     <>
       <NodeViewWrapper
-        className={cx(S.codeBlock, {
+        className={cx(S.root, {
           [S.open]: isOpen,
         })}
         ref={refs.setReference}

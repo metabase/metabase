@@ -5,33 +5,31 @@ import { useCallback } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import { Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { useSelector } from "metabase/lib/redux";
+import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
 import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
 
 import S from "./Discussion.module.css";
-import {
-  DiscussionActionPanel,
-  type DiscussionActionPanelProps,
-} from "./DiscussionActionPanel";
-import { DiscussionAvatar } from "./DiscussionAvatar";
+import { DiscussionActionPanel } from "./DiscussionActionPanel";
 
 type DiscussionCommentProps = {
+  canResolve?: boolean;
   comment: Comment;
-  actionPanelVariant?: DiscussionActionPanelProps["variant"];
-  onResolve?: (comment: Comment) => unknown;
-  onReopen?: (comment: Comment) => unknown;
-  onReaction?: (comment: Comment, emoji: string) => unknown;
-  onDelete?: (comment: Comment) => unknown;
-  onEdit?: (comment: Comment, newContent: DocumentContent) => unknown;
-  onCopyLink?: (comment: Comment) => unknown;
+  onResolve?: (comment: Comment) => void;
+  onReopen?: (comment: Comment) => void;
+  onReaction?: (comment: Comment, emoji: string) => void;
+  onDelete?: (comment: Comment) => void;
+  onEdit?: (comment: Comment, newContent: DocumentContent) => void;
+  onCopyLink?: (comment: Comment) => void;
 };
 
 export function DiscussionComment({
+  canResolve,
   comment,
-  actionPanelVariant,
   onResolve,
   onReopen,
   onReaction,
@@ -39,10 +37,12 @@ export function DiscussionComment({
   onEdit,
   onCopyLink,
 }: DiscussionCommentProps) {
+  const currentUser = useSelector(getCurrentUser);
   const [isEditing, editingHandler] = useDisclosure(false);
   const location = useLocation();
   const hash = location.hash?.substring(1);
   const isTarget = hash === getCommentNodeId(comment);
+  const isCurrentUsersComment = currentUser.id === comment.creator.id;
 
   const handleEditClick = useCallback(() => {
     editingHandler.open();
@@ -70,7 +70,7 @@ export function DiscussionComment({
           {t`This comment was deleted.`}
         </Text>
         <DiscussionActionPanel
-          variant={actionPanelVariant}
+          canResolve={canResolve}
           comment={comment}
           onResolve={onResolve}
           onCopyLink={onCopyLink}
@@ -84,18 +84,18 @@ export function DiscussionComment({
       className={cx(S.commentRoot, {
         [S.target]: isTarget,
       })}
-      bullet={<DiscussionAvatar user={comment.creator} />}
+      bullet={<Avatar name={comment.creator.common_name} />}
       id={getCommentNodeId(comment)}
     >
       {!isEditing && (
         <DiscussionActionPanel
-          variant={actionPanelVariant}
+          canResolve={canResolve}
           comment={comment}
           onResolve={onResolve}
           onReopen={onReopen}
           onReaction={onReaction}
-          onDelete={onDelete}
-          onEdit={handleEditClick}
+          onDelete={isCurrentUsersComment ? onDelete : undefined}
+          onEdit={isCurrentUsersComment ? handleEditClick : undefined}
           onCopyLink={onCopyLink}
         />
       )}
@@ -104,6 +104,7 @@ export function DiscussionComment({
         <Text fw={700} lh={1.3} truncate>
           {comment.creator.common_name}
         </Text>
+
         <Tooltip
           label={dayjs(comment.created_at).format("MMM D, YYYY, h:mm A")}
         >
@@ -118,8 +119,9 @@ export function DiscussionComment({
         </Tooltip>
       </Group>
 
-      <Box mt={isEditing ? "sm" : 0}>
+      <Box mt={isEditing ? "sm" : "xs"}>
         <CommentEditor
+          autoFocus
           initialContent={comment.content}
           onSubmit={handleEditingSubmit}
           readonly={!isEditing}

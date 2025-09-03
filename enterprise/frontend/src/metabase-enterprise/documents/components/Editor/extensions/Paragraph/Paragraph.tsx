@@ -21,9 +21,8 @@ import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 import { isTopLevel } from "metabase-enterprise/documents/utils/editorNodeUtils";
 
 import { CommentsMenu } from "../../CommentsMenu";
+import S from "../../shared/Comments.module.css";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
-
-import S from "./Paragraph.module.css";
 
 export const CustomParagraph = Paragraph.extend({
   addAttributes() {
@@ -73,7 +72,7 @@ export const ParagraphNodeView = ({ node, editor, getPos }: NodeViewProps) => {
   return (
     <>
       <NodeViewWrapper
-        className={cx(S.paragraph, {
+        className={cx(S.root, {
           [S.open]: isOpen,
         })}
         ref={refs.setReference}

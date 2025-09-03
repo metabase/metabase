@@ -6,9 +6,8 @@ import {
   type Extension,
   useEditor,
 } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -16,22 +15,25 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
 import { configureMentionExtension } from "metabase-enterprise/comments/mentions/extension";
+import { isCommentsStorage } from "metabase-enterprise/comments/types";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
+import { CustomStarterKit } from "metabase-enterprise/documents/components/Editor/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
 import { EmojiSuggestionExtension } from "metabase-enterprise/documents/components/Editor/extensions/Emoji/EmojiSuggestionExtension";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
+import type { FormattingOptions } from "metabase-enterprise/documents/types";
 import type { DocumentContent } from "metabase-types/api";
 
 import S from "./CommentEditor.module.css";
-import { trimTrailingEmptyParagraphsJSON } from "./editor.utils";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [SmartLink.name];
-// TODO: Other formats require to update editor styling.
-const ALLOWED_FORMATTING = {
+
+const ALLOWED_FORMATTING: FormattingOptions = {
   bold: true,
   italic: true,
   strikethrough: true,
-} as const;
+  inline_code: true,
+};
 
 interface Props {
   active?: boolean;
@@ -61,7 +63,7 @@ export const CommentEditor = ({
   const extensions = useMemo(
     () =>
       [
-        StarterKit.configure({ link: false }),
+        CustomStarterKit.configure({ link: false }),
         SmartLink.configure({
           HTMLAttributes: { class: "smart-link" },
           siteUrl,
@@ -73,7 +75,7 @@ export const CommentEditor = ({
         EmojiSuggestionExtension,
         !readonly && Placeholder.configure({ placeholder }),
         !readonly && DisableMetabotSidebar,
-      ].filter(Boolean) as Extension[],
+      ].filter((extension): extension is Extension => extension != null),
     [siteUrl, dispatch, readonly, placeholder],
   );
 
@@ -113,34 +115,34 @@ export const CommentEditor = ({
   const submitDoc = () => {
     const content = editor.getJSON() as DocumentContent;
     const isEmpty = editor.isEmpty;
+
     if (!isEmpty && onSubmit) {
-      onSubmit(trimTrailingEmptyParagraphsJSON(content));
+      onSubmit(content);
       editor.commands.clearContent(true);
     }
   };
-  const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
+  const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
     if (readonly) {
       return;
     }
-    if (e.key === "Enter" && !e.shiftKey) {
-      // see CustomMentionExtension
-      const isMentionOpen = (editor.storage as any)?.mention
-        ?.isMentionPopupOpen;
-      const isEmojiOpen = (editor.storage as any)?.emojiSuggestion
-        ?.isEmojiPopupOpen;
-      if (isMentionOpen || isEmojiOpen) {
-        return;
+
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      isCommentsStorage(editor.storage)
+    ) {
+      const { isMentionPopupOpen } = editor.storage.mention; // see CustomMentionExtension
+
+      if (!isMentionPopupOpen) {
+        event.preventDefault();
+        submitDoc();
       }
-      e.preventDefault();
-      if (!onSubmit) {
-        return;
-      }
-      submitDoc();
     }
   };
 
   return (
     <Flex
+      align="center"
       className={cx(S.container, {
         [S.readonly]: readonly,
         [S.active]: active,
@@ -151,15 +153,16 @@ export const CommentEditor = ({
         <EditorContent editor={editor} className={S.content} />
       </Box>
 
-      {readonly ? null : (
+      {!readonly && (
         <ActionIcon
+          className={cx(S.submitBtn, { [S.canSubmit]: content })}
           variant="subtle"
-          className={cx(S.submitBtn, { [S.canSubmit]: !!content })}
           onClick={submitDoc}
         >
           <Icon name="arrow_up" />
         </ActionIcon>
       )}
+
       {!readonly && (
         <EditorBubbleMenu
           editor={editor}

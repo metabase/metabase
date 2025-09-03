@@ -15,6 +15,8 @@ import type {
 import { searchApi, userApi } from "metabase/api";
 import type { DispatchFn } from "metabase/lib/redux";
 
+import { isCommentsStorage } from "../types";
+
 import { CustomMentionExtension } from "./CustomMentionExtension";
 import {
   MentionList,
@@ -110,18 +112,17 @@ const renderMentionList = () => {
 
   return {
     onStart: (props: SuggestionProps) => {
-      component = new ReactRenderer(MentionList, {
-        props,
-        editor: props.editor,
-      });
+      const { editor } = props;
 
-      // Mark mention popup as open in extension storage
-      try {
-        const storage = (props.editor.storage as any).mention;
-        if (storage) {
-          storage.isMentionPopupOpen = true;
-        }
-      } catch {}
+      component = new ReactRenderer(MentionList, { props, editor });
+
+      const mentionStorage = isCommentsStorage(editor.storage)
+        ? editor.storage.mention
+        : undefined;
+
+      if (mentionStorage) {
+        mentionStorage.isMentionPopupOpen = true;
+      }
 
       popup = document.createElement("div");
       popup.style.position = "absolute";
@@ -134,7 +135,7 @@ const renderMentionList = () => {
 
       const virtualElement: VirtualElement = {
         getBoundingClientRect: () => {
-          const { view, state } = props.editor;
+          const { view, state } = editor;
           const { from } = state.selection;
           const coordinates = view.coordsAtPos(from);
 
@@ -224,23 +225,25 @@ const renderMentionList = () => {
         props.event.stopPropagation();
         return true;
       }
+
       return component.ref?.onKeyDown(props) || false;
     },
 
-    onExit: (props: SuggestionProps) => {
+    onExit: ({ editor }: SuggestionProps) => {
       // Mark mention popup as closed in extension storage
-      try {
-        const storage = (props.editor.storage as any).mention;
-        if (storage) {
-          storage.isMentionPopupOpen = false;
-        }
-      } catch {}
+
+      if (isCommentsStorage(editor.storage)) {
+        editor.storage.mention.isMentionPopupOpen = false;
+      }
+
       if (cleanup) {
         cleanup();
       }
+
       if (popup && popup.parentNode) {
         popup.parentNode.removeChild(popup);
       }
+
       component.destroy();
     },
   };

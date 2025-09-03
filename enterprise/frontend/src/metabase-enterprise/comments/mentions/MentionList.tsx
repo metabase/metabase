@@ -101,10 +101,12 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
     }, [items]);
 
     if (!items.length) {
-      return <div className={S.mentionEmpty}>{t`No results found`}</div>;
+      return (
+        <div className={S.mentionList}>
+          <div className={S.mentionEmpty}>{t`No results found`}</div>
+        </div>
+      );
     }
-
-    let currentIndex = 0;
 
     return (
       <div className={S.mentionList}>
@@ -112,7 +114,8 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
           <>
             <div className={S.mentionSectionHeader}>{t`Users`}</div>
             {userItems.map((item) => {
-              const index = currentIndex++;
+              const index = items.indexOf(item);
+
               return (
                 <button
                   key={item.id}
@@ -133,7 +136,8 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
           <>
             <div className={S.mentionSectionHeader}>{t`Content`}</div>
             {contentItems.map((item) => {
-              const index = currentIndex++;
+              const index = items.indexOf(item);
+
               return (
                 <button
                   key={item.id}

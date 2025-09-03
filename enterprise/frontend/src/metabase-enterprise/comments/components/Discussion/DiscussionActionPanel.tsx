@@ -4,9 +4,9 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
-  Button,
   Group,
   Icon,
+  Menu,
   Paper,
   Popover,
   Tooltip,
@@ -18,27 +18,20 @@ import type { Comment } from "metabase-types/api";
 import S from "./Discussion.module.css";
 
 export type DiscussionActionPanelProps = {
-  variant?: "comment" | "discussion";
+  canResolve?: boolean;
   comment: Comment;
-  onResolve?: (comment: Comment) => unknown;
-  onReopen?: (comment: Comment) => unknown;
-  onReaction?: (comment: Comment, emoji: string) => unknown;
-  onDelete?: (comment: Comment) => unknown;
-  onEdit?: (comment: Comment) => unknown;
-  onCopyLink?: (comment: Comment) => unknown;
+  onResolve?: (comment: Comment) => void;
+  onReopen?: (comment: Comment) => void;
+  onReaction?: (comment: Comment, emoji: string) => void;
+  onDelete?: (comment: Comment) => void;
+  onEdit?: (comment: Comment) => void;
+  onCopyLink?: (comment: Comment) => void;
 };
 
 const ACTION_ICON_SIZE = "md";
-const ACTION_BUTTON_STYLE_PROPS = {
-  w: "100%",
-  p: "0.25rem",
-  variant: "inverse",
-  size: "xs",
-  radius: "xs",
-} as const;
 
 export function DiscussionActionPanel({
-  variant = "comment",
+  canResolve,
   comment,
   onResolve,
   onReopen,
@@ -55,7 +48,6 @@ export function DiscussionActionPanel({
       className={cx(S.actionPanel, {
         // [S.visibleOnCommentHover]: variant === "comment",
         // [S.visibleOnDiscussionHover]: variant === "discussion",
-        [S.visibleOnCommentHover]: true,
         [S.visible]: popoverOpened || emojiPickerOpened,
       })}
       p="0.125rem"
@@ -84,7 +76,7 @@ export function DiscussionActionPanel({
             <EmojiPicker onEmojiSelect={(emoji) => alert(emoji.emoji)} />
           </Popover.Dropdown>
         </Popover>
-        {variant === "discussion" && (
+        {canResolve && (
           <Tooltip label={comment.is_resolved ? t`Re-open` : t`Resolve`}>
             <ActionIcon
               size={ACTION_ICON_SIZE}
@@ -96,6 +88,7 @@ export function DiscussionActionPanel({
             </ActionIcon>
           </Tooltip>
         )}
+
         {hasMoreActions && (
           <Popover
             opened={popoverOpened}
@@ -113,45 +106,45 @@ export function DiscussionActionPanel({
                 </ActionIcon>
               </Tooltip>
             </Popover.Target>
-            <Popover.Dropdown>
-              <Paper p="0.25rem">
+
+            <Popover.Dropdown p="xs">
+              <Menu>
                 {onCopyLink && (
-                  <Button
-                    {...ACTION_BUTTON_STYLE_PROPS}
-                    leftSection={<Icon name="link" c="text-primary" />}
+                  <Menu.Item
+                    leftSection={<Icon name="link" />}
                     onClick={() => {
                       onCopyLink?.(comment);
                       setPopoverOpened(false);
                     }}
                   >
                     {t`Copy link`}
-                  </Button>
+                  </Menu.Item>
                 )}
+
                 {onEdit && (
-                  <Button
-                    {...ACTION_BUTTON_STYLE_PROPS}
-                    leftSection={<Icon name="pencil" c="text-primary" />}
+                  <Menu.Item
+                    leftSection={<Icon name="pencil" />}
                     onClick={() => {
                       onEdit?.(comment);
                       setPopoverOpened(false);
                     }}
                   >
                     {t`Edit`}
-                  </Button>
+                  </Menu.Item>
                 )}
+
                 {onDelete && (
-                  <Button
-                    {...ACTION_BUTTON_STYLE_PROPS}
-                    leftSection={<Icon name="trash" c="text-primary" />}
+                  <Menu.Item
+                    leftSection={<Icon name="trash" />}
                     onClick={() => {
                       onDelete?.(comment);
                       setPopoverOpened(false);
                     }}
                   >
                     {t`Delete`}
-                  </Button>
+                  </Menu.Item>
                 )}
-              </Paper>
+              </Menu>
             </Popover.Dropdown>
           </Popover>
         )}

@@ -39,6 +39,7 @@ import {
 import { useCardData } from "../../../../hooks/use-card-data";
 import { CommentsMenu } from "../../CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
+import CS from "../../shared/Comments.module.css";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 
 import styles from "./CardEmbedNode.module.css";
@@ -308,7 +309,11 @@ export const CardEmbedComponent = memo(
 
     if (isLoading && !card) {
       return (
-        <NodeViewWrapper className={styles.embedWrapper}>
+        <NodeViewWrapper
+          className={cx(styles.embedWrapper, CS.root, {
+            [CS.open]: isOpen,
+          })}
+        >
           <Box
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
@@ -336,7 +341,9 @@ export const CardEmbedComponent = memo(
     if (error) {
       return (
         <NodeViewWrapper
-          className={styles.embedWrapper}
+          className={cx(styles.embedWrapper, CS.root, {
+            [CS.open]: isOpen,
+          })}
           data-testid="document-card-embed"
         >
           <Box
@@ -361,8 +368,8 @@ export const CardEmbedComponent = memo(
     return (
       <>
         <NodeViewWrapper
-          className={cx(styles.embedWrapper, {
-            [styles.open]: isOpen,
+          className={cx(styles.embedWrapper, CS.root, {
+            [CS.open]: isOpen,
           })}
           data-testid="document-card-embed"
           ref={refs.setReference}

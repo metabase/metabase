@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
-import { match } from "ts-pattern";
+import { useState } from "react";
+import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { Stack, Timeline, rem } from "metabase/ui";
+import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import {
   useCreateCommentMutation,
   useDeleteCommentMutation,
   useUpdateCommentMutation,
 } from "metabase-enterprise/api";
-import { getCommentNodeId } from "metabase-enterprise/comments/utils";
+import { getCommentsUrl } from "metabase-enterprise/comments/utils";
 import type {
   Comment,
   CommentEntityType,
@@ -20,7 +21,6 @@ import type {
 import { CommentEditor } from "../CommentEditor";
 
 import S from "./Discussion.module.css";
-import { DiscussionAvatar } from "./DiscussionAvatar";
 import { DiscussionComment } from "./DiscussionComment";
 
 export interface DiscussionProps {
@@ -38,16 +38,18 @@ export const Discussion = ({
 }: DiscussionProps) => {
   const currentUser = useSelector(getCurrentUser);
   const [, setNewComment] = useState<DocumentContent>();
-  const [linkCopied, setLinkCopied] = useState(false);
   const parentCommentId = comments[0].id;
+  const [sendToast] = useToast();
 
   const [createComment] = useCreateCommentMutation();
   const [updateComment] = useUpdateCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
 
   const handleSubmit = (doc: DocumentContent) => {
+    const effectiveChildTargetId =
+      childTargetId || comments[0]?.child_target_id;
     createComment({
-      child_target_id: childTargetId,
+      child_target_id: effectiveChildTargetId,
       target_id: targetId,
       target_type: targetType,
       content: doc,
@@ -72,18 +74,18 @@ export const Discussion = ({
   };
 
   const handleCopyLink = (comment: Comment) => {
-    const url = getUrl({ childTargetId, targetId, targetType, comment });
+    const effectiveChildTargetId =
+      childTargetId || comments[0]?.child_target_id;
+    const url = getCommentsUrl({
+      childTargetId: effectiveChildTargetId,
+      targetId,
+      targetType,
+      comment,
+    });
 
     navigator.clipboard.writeText(`${window.location.origin}${url}`);
-    setLinkCopied(true);
+    sendToast({ icon: "check", message: t`Copied link` });
   };
-
-  useEffect(() => {
-    if (linkCopied) {
-      const timeout = setTimeout(() => setLinkCopied(false), 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [linkCopied]);
 
   return (
     <Stack>
@@ -91,8 +93,8 @@ export const Discussion = ({
         {comments.map((comment, index) => (
           <DiscussionComment
             key={comment.id}
+            canResolve={index === 0}
             comment={comment}
-            actionPanelVariant={index === 0 ? "discussion" : "comment"}
             onDelete={handleDeleteComment}
             onResolve={handleResolveComment}
             onReopen={handleReopenComment}
@@ -103,7 +105,7 @@ export const Discussion = ({
         {!comments[0]?.is_resolved && (
           <Timeline.Item
             className={S.commentRoot}
-            bullet={<DiscussionAvatar user={currentUser} />}
+            bullet={<Avatar name={currentUser.common_name} />}
           >
             <CommentEditor
               active={false}
@@ -116,27 +118,3 @@ export const Discussion = ({
     </Stack>
   );
 };
-
-function getUrl({
-  childTargetId,
-  targetId,
-  targetType,
-  comment,
-}: {
-  childTargetId: EntityId | null;
-  targetId: EntityId;
-  targetType: CommentEntityType;
-  comment: Comment | undefined;
-}) {
-  return match(targetType)
-    .with("document", () => {
-      const childTargetUrl = `/document/${targetId}/comments/${childTargetId}`;
-
-      if (comment) {
-        return `${childTargetUrl}#${getCommentNodeId(comment)}`;
-      }
-
-      return childTargetUrl;
-    })
-    .exhaustive();
-}

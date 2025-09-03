@@ -21,9 +21,8 @@ import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 import { isTopLevel } from "metabase-enterprise/documents/utils/editorNodeUtils";
 
 import { CommentsMenu } from "../../CommentsMenu";
+import S from "../../shared/Comments.module.css";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
-
-import S from "./BulletList.module.css";
 
 export const CustomBulletList = BulletList.extend({
   addAttributes() {
@@ -73,7 +72,7 @@ export const BulletListNodeView = ({ node, editor, getPos }: NodeViewProps) => {
   return (
     <>
       <NodeViewWrapper
-        className={cx(S.bulletList, {
+        className={cx(S.root, {
           [S.open]: isOpen,
         })}
         ref={refs.setReference}

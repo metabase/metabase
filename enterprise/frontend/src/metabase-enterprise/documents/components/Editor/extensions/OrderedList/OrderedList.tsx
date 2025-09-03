@@ -21,9 +21,8 @@ import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 import { isTopLevel } from "metabase-enterprise/documents/utils/editorNodeUtils";
 
 import { CommentsMenu } from "../../CommentsMenu";
+import S from "../../shared/Comments.module.css";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
-
-import S from "./OrderedList.module.css";
 
 export const CustomOrderedList = OrderedList.extend({
   addAttributes() {
@@ -89,7 +88,7 @@ export const OrderedListNodeView = ({
   return (
     <>
       <NodeViewWrapper
-        className={cx(S.orderedList, {
+        className={cx(S.root, {
           [S.open]: isOpen,
         })}
         ref={refs.setReference}

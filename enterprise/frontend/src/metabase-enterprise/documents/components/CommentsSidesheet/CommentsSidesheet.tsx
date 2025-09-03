@@ -5,13 +5,18 @@ import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/lib/redux";
-import { Modal, Tabs, rem } from "metabase/ui";
-import { useListCommentsQuery } from "metabase-enterprise/api";
+import { Box, Modal, Tabs, rem } from "metabase/ui";
+import {
+  useCreateCommentMutation,
+  useListCommentsQuery,
+} from "metabase-enterprise/api";
+import { CommentEditor } from "metabase-enterprise/comments/components";
 import { Discussions } from "metabase-enterprise/comments/components/Discussions";
 import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import { useDocumentState } from "metabase-enterprise/documents/hooks/use-document-state";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
+import type { DocumentContent } from "metabase-types/api";
 
 import S from "./CommentsSidesheet.module.css";
 
@@ -29,6 +34,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
   const location = useLocation();
   const { openCommentSidebar, closeCommentSidebar } = useDocumentState();
   const [activeTab, setActiveTab] = useState<SidesheetTab | null>("open");
+  const [, setNewComment] = useState<DocumentContent>();
   const document = useSelector(getCurrentDocument);
   const { data: commentsData } = useListCommentsQuery(
     getListCommentsQuery(document),
@@ -44,6 +50,10 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
   const targetComments = useMemo(() => {
     if (!comments) {
       return [];
+    }
+
+    if (childTargetId === "all") {
+      return comments;
     }
 
     return comments.filter(
@@ -73,6 +83,8 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     () => targetComments?.filter((comment) => !comment.is_resolved) ?? [],
     [targetComments],
   );
+
+  const [createComment] = useCreateCommentMutation();
 
   const availableTabs = useMemo<SidesheetTab[]>(() => {
     // Only show tabs if there are resolved comments
@@ -113,6 +125,20 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     }
   }, [hash, activeTabRef, isHashCommentResolved, isHashCommentUnresolved]);
 
+  const handleSubmit = (doc: DocumentContent) => {
+    if (!childTargetId || !document) {
+      return;
+    }
+
+    createComment({
+      child_target_id: childTargetId,
+      target_id: document.id,
+      target_type: "document",
+      content: doc,
+      parent_comment_id: null,
+    });
+  };
+
   if (!childTargetId || !document) {
     return null;
   }
@@ -135,7 +161,9 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
         w={rem(400)}
       >
         <Modal.Header px="xl">
-          <Modal.Title>{t`Comments`}</Modal.Title>
+          <Modal.Title>
+            {childTargetId === "all" ? t`All Comments` : t`Comments`}
+          </Modal.Title>
           <Modal.CloseButton onClick={closeSidebar} />
         </Modal.Header>
 
@@ -157,21 +185,31 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
 
             <Tabs.Panel value="open">
               <Discussions
-                childTargetId={childTargetId}
+                childTargetId={childTargetId === "all" ? null : childTargetId}
                 comments={activeComments}
+                showLastDivider
                 targetId={document.id}
                 targetType="document"
-                autoOpenNewComment={shouldAutoOpenNewComment}
               />
+
+              {childTargetId !== "all" && (
+                <Box p="xl">
+                  <CommentEditor
+                    autoFocus={shouldAutoOpenNewComment}
+                    placeholder={t`Add a comment…`}
+                    onChange={(document) => setNewComment(document)}
+                    onSubmit={handleSubmit}
+                  />
+                </Box>
+              )}
             </Tabs.Panel>
 
             <Tabs.Panel value="resolved">
               <Discussions
-                childTargetId={childTargetId}
+                childTargetId={childTargetId === "all" ? null : childTargetId}
                 comments={resolvedComments}
                 targetId={document.id}
                 targetType="document"
-                allowNewThreads={false}
               />
             </Tabs.Panel>
           </Tabs>

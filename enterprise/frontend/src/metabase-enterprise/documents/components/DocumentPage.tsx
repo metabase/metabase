@@ -33,6 +33,7 @@ import { Box } from "metabase/ui";
 import {
   useCreateDocumentMutation,
   useGetDocumentQuery,
+  useListCommentsQuery,
   useUpdateDocumentMutation,
 } from "metabase-enterprise/api";
 import type {
@@ -59,6 +60,7 @@ import {
   getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
+import { getListCommentsQuery } from "../utils/api";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
@@ -128,6 +130,12 @@ export const DocumentPage = ({
   if (documentId !== documentData?.id) {
     documentData = undefined;
   }
+
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery(documentData || null),
+  );
+  const hasComments =
+    !!commentsData?.comments && commentsData.comments.length > 0;
 
   const canWrite =
     (isNewDocument || documentData?.can_write) && !commentSidebarOpen;
@@ -431,6 +439,7 @@ export const DocumentPage = ({
                 onMove={() => setCollectionPickerMode("move")}
                 onToggleBookmark={handleToggleBookmark}
                 onArchive={() => handleUpdate({ archived: true })}
+                hasComments={hasComments}
               />
               <Editor
                 onEditorReady={setEditorInstance}
