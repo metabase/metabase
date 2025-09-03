@@ -40,11 +40,7 @@ const SdkIframeEmbedSetupContent = () => {
   return (
     <Box className={S.Container}>
       <SidebarResizer>
-        <Box
-          className={S.Sidebar}
-          component="aside"
-          style={{ opacity: isSimpleEmbeddingEnabled ? 1 : 0.5 }}
-        >
+        <Box className={S.Sidebar} component="aside">
           <Box className={S.SidebarContent}>
             <StepContent />
           </Box>

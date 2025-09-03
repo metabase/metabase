@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
@@ -18,9 +19,12 @@ export const EnableEmbeddedAnalyticsCard = () => {
   const [updateSettings] = useUpdateSettingsMutation();
   const [sendToast] = useToast();
 
+  const [showSimpleEmbedding] = useState(!isSimpleEmbeddingEnabled);
+
   const handleEnableEmbedding = async () => {
     try {
       await updateSettings({ "enable-embedding-simple": true });
+
       sendToast({
         message: t`Embedded Analytics JS is enabled. You can configure it in admin settings.`,
       });
@@ -38,32 +42,48 @@ export const EnableEmbeddedAnalyticsCard = () => {
   // eslint-disable-next-line no-literal-metabase-strings -- admin only
   const tooltip3 = t`Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.`;
 
+  if (!showSimpleEmbedding) {
+    return null;
+  }
+
   return (
-    <Card p="lg" mb="lg" bg="bg-light">
-      <Stack gap="xs">
-        <Text fz="md" c="text-dark" m={0}>
+    <Card p="md" mb="md">
+      <Stack gap={0}>
+        <Text fz="md" c="text-dark">
           {t`Enable Embedded Analytics JS to get started.`}
         </Text>
 
-        <Text size="sm" color="text-medium">
-          {t`By continuing, you agree to the fair usage conditions.`}
+        <Group gap="xs">
+          <Text size="sm" c="text-medium">
+            {t`By continuing, you agree to the fair usage conditions.`}
+          </Text>
 
-          <HoverCard position="right" withArrow>
+          <HoverCard position="right-start" withArrow>
             <HoverCard.Target>
               <Box>
-                <Icon name="info" size={16} color="text-medium" />
+                <Icon name="info" size={14} c="text-medium" />
               </Box>
             </HoverCard.Target>
 
             <HoverCard.Dropdown>
-              <Text size="sm">{tooltip1}</Text>
-              <Text>{tooltip2}</Text>
-              <Text>{tooltip3}</Text>
+              <Stack maw={340} p="md" gap="md">
+                <Text fz="sm" lh="lg">
+                  {tooltip1}
+                </Text>
+
+                <Text fz="sm" lh="lg">
+                  {tooltip2}
+                </Text>
+
+                <Text fz="sm" lh="lg">
+                  {tooltip3}
+                </Text>
+              </Stack>
             </HoverCard.Dropdown>
           </HoverCard>
-        </Text>
+        </Group>
 
-        <Group>
+        <Group justify="flex-end" mt="md">
           <Button
             variant={isSimpleEmbeddingEnabled ? "default" : "filled"}
             onClick={handleEnableEmbedding}

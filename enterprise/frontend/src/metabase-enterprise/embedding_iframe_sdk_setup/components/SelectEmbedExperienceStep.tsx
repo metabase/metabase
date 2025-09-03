@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase-enterprise/embedding_iframe_sdk/constants";
 
@@ -62,9 +64,14 @@ export const SelectEmbedExperienceStep = () => {
 
   return (
     <>
-      {!isSimpleEmbeddingEnabled && <EnableEmbeddedAnalyticsCard />}
+      <EnableEmbeddedAnalyticsCard />
 
-      <Card p="md" mb="md">
+      <Card
+        p="md"
+        mb="md"
+        opacity={isSimpleEmbeddingEnabled ? 1 : 0.5}
+        className={cx(!isSimpleEmbeddingEnabled && CS.pointerEventsNone)}
+      >
         <Text size="lg" fw="bold" mb="md">
           {t`Select your embed experience`}
         </Text>
