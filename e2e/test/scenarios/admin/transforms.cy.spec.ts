@@ -596,6 +596,51 @@ describe("scenarios > admin > transforms", () => {
       assertTableDoesNotExistError();
     });
   });
+
+  describe("cancelation", () => {
+    beforeEach(() => {
+      H.createTransform(
+        {
+          name: "Slow transform",
+          source: {
+            type: "query",
+            query: {
+              database: WRITABLE_DB_ID,
+              type: "native",
+              native: {
+                query:
+                  'SELECT name, cast(pg_sleep(10) as text) as slow FROM "Schema A"."Animals"',
+              },
+            },
+          },
+          target: {
+            type: "table",
+            name: TARGET_TABLE,
+            schema: TARGET_SCHEMA,
+          },
+          tag_ids: [],
+        },
+        { visitTransform: true },
+      );
+    });
+
+    it("should be possible to cancel a transform from the transform page", () => {
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getCancelButton().click();
+      H.modal().button("Yes").click();
+
+      getRunButton().should("have.text", "Canceling run…");
+      getRunStatus().should("have.text", "Canceling run…");
+
+      // We need to pass a timeout here since canceling a transform can
+      // take a while on the back end
+      getRunButton({ timeout: 30_000 }).should("have.text", "Run canceled");
+      getRunStatus().should("contain", "Last run was canceled");
+    });
+  });
 });
 
 describe("scenarios > admin > transforms > jobs", () => {
@@ -1039,8 +1084,16 @@ function getQueryEditor() {
   return cy.findByTestId("transform-query-editor");
 }
 
-function getRunButton() {
-  return cy.findByTestId("run-button");
+function getRunButton(options: { timeout?: number } = {}) {
+  return cy.findByTestId("run-button", options);
+}
+
+function getCancelButton() {
+  return cy.findByTestId("cancel-button");
+}
+
+function getRunStatus() {
+  return cy.findByTestId("run-status");
 }
 
 function getRunListLink() {

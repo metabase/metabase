@@ -64,6 +64,7 @@ export const RunButton = forwardRef(function RunButton(
           <Button
             onClick={onCancel}
             rightSection={<Icon name="close" aria-hidden />}
+            data-testid="cancel-button"
           />
         </Tooltip>
       )}

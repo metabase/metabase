@@ -31,6 +31,7 @@ export function RunSection({ transform }: RunSectionProps) {
     <SplitSection
       label={t`Run this transform`}
       description={t`This transform will be run whenever the jobs it belongs to are scheduled.`}
+      data-testid="run-section"
     >
       <Group p="lg" justify="space-between">
         <RunStatusSection transform={transform} />
@@ -57,7 +58,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
 
   if (last_run == null) {
     return (
-      <Group gap="sm">
+      <Group gap="sm" data-testid="run-status">
         <Icon c="text-secondary" name="calendar" />
         <Box>{t`This transform hasn’t been run before.`}</Box>
       </Group>
@@ -89,14 +90,14 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
   switch (status) {
     case "started":
       return (
-        <Group gap="sm">
+        <Group gap="sm" data-testid="run-status">
           <Icon c="text-primary" name="sync" />
           <Box>{t`Run in progress…`}</Box>
         </Group>
       );
     case "succeeded":
       return (
-        <Group gap="sm">
+        <Group gap="sm" data-testid="run-status">
           <Icon c="success" name="check_filled" />
           <Box>
             {endTimeText
@@ -108,7 +109,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       );
     case "failed":
       return (
-        <Group gap={0}>
+        <Group gap={0} data-testid="run-status">
           <Icon c="error" name="warning" mr="sm" />
           <Box mr={errorInfo ? "xs" : "sm"}>
             {endTimeText
@@ -120,7 +121,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       );
     case "timeout":
       return (
-        <Group gap={0}>
+        <Group gap={0} data-testid="run-status">
           <Icon c="error" name="warning" mr="sm" />
           <Box mr={errorInfo ? "xs" : "sm"}>
             {endTimeText
@@ -132,14 +133,14 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       );
     case "canceling":
       return (
-        <Group gap="sm">
+        <Group gap="sm" data-testid="run-status">
           <Icon c="text-secondary" name="close" />
           <Box>{t`Canceling run…`}</Box>
         </Group>
       );
     case "canceled":
       return (
-        <Group gap="sm">
+        <Group gap="sm" data-testid="run-status">
           <Icon c="text-secondary" name="close" />
           <Box>
             {endTimeText
