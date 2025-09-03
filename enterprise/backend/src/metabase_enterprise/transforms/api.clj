@@ -14,6 +14,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver.util :as driver.u]
    [metabase.request.core :as request]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
@@ -35,7 +36,7 @@
 (mr/def ::transform-target
   [:map
    [:type [:enum "table"]]
-   [:schema {:optional true} [:or :string :nil]]
+   [:schema {:optional true} [:or ms/NonBlankString :nil]]
    [:name :string]])
 
 (mr/def ::run-trigger
@@ -70,12 +71,20 @@
     (api/check-400 (driver.u/supports? (:engine database) feature database)
                    (deferred-tru "The database does not support the requested transform target type."))))
 
+(defn- localize-timestamps
+  [run]
+  (-> run
+      (u/update-some :start_time transforms.util/local-timestamp-string)
+      (u/update-some :end_time   transforms.util/local-timestamp-string)))
+
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
    _query-params]
   (api/check-superuser)
-  (t2/hydrate (t2/select :model/Transform) :last_run :transform_tag_ids))
+  (-> (t2/select :model/Transform)
+      (t2/hydrate :last_run :transform_tag_ids)
+      (->> (map #(update % :last_run localize-timestamps)))))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform."
@@ -114,6 +123,7 @@
         target-table (transforms.util/target-table database-id target :active true)]
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids)
+        (u/update-some :last_run localize-timestamps)
         (assoc :table target-table))))
 
 (api.macros/defendpoint :get "/:id/dependencies"
@@ -131,22 +141,22 @@
 (api.macros/defendpoint :get "/run"
   "Get transform runs based on a set of filter params."
   [_route-params
-   {:keys [sort_column sort_direction transform_ids statuses transform_tag_ids]} :-
+   query-params :-
    [:map
     [:sort_column    {:optional true} [:enum "started_at" "ended_at"]]
     [:sort_direction {:optional true} [:enum "asc" "desc"]]
     [:transform_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:transform_tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:end_time {:optional true} [:maybe ms/NonBlankString]]
+    [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
   (log/info "get runs")
   (api/check-superuser)
-  (transform-run/paged-runs {:transform_ids       transform_ids
-                             :transform_tag_ids   transform_tag_ids
-                             :statuses            statuses
-                             :sort_column         sort_column
-                             :sort_direction      sort_direction
-                             :offset              (request/offset)
-                             :limit               (request/limit)}))
+  (-> (transform-run/paged-runs (assoc query-params
+                                       :offset (request/offset)
+                                       :limit  (request/limit)))
+      (update :data #(map localize-timestamps %))))
 
 (api.macros/defendpoint :put "/:id"
   "Update a transform."

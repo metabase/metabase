@@ -136,6 +136,7 @@ export type DatasetError =
 export type DatasetErrorType =
   | "invalid-query"
   | "missing-required-parameter"
+  | "missing-required-permissions"
   | string;
 
 export interface EmbedDatasetData {

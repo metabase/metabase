@@ -16,20 +16,6 @@
   [weights scorers index-row]
   (search.scoring/all-scores weights scorers index-row))
 
-;; TODO move these to the spec definitions
-(def ^:private bookmarked-models [:card :collection :dashboard])
-
-(def ^:private sub-models {:card [:card :metric :dataset]})
-
-(def ^:private bookmark-score-expr
-  (let [match-clause (fn [m] [[:and
-                               (if-let [sms (sub-models (keyword m))]
-                                 [:in :search_index.model (mapv (fn [k] [:inline (name k)]) sms)]
-                                 [:= :search_index.model [:inline m]])
-                               [:!= nil (keyword (str m "_bookmark." m "_id"))]]
-                              [:inline 1]])]
-    (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
-
 (defn- view-count-percentiles*
   [p-value]
   (into {} (for [{:keys [model vcp]} (t2/query (specialization/view-count-percentile-query
@@ -63,7 +49,7 @@
     {:text         (specialization/text-score)
      :view-count   (view-count-expr search.config/view-count-scaling-percentile)
      :pinned       (search.scoring/truthy :pinned)
-     :bookmarked   bookmark-score-expr
+     :bookmarked   search.scoring/bookmark-score-expr
      :recency      (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
      :user-recency (search.scoring/inverse-duration (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
      :dashboard    (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
@@ -84,23 +70,9 @@
   [search-ctx]
   (base-scorers search-ctx))
 
-(defn- bookmark-join [model user-id]
-  (let [model-name (name model)
-        table-name (str model-name "_bookmark")]
-    [(keyword table-name)
-     [:and
-      (if-let [sms (sub-models model)]
-        [:in :search_index.model (mapv (fn [m] [:inline (name m)]) sms)]
-        [:= :search_index.model [:inline model-name]])
-      [:= (keyword (str table-name ".user_id")) user-id]
-      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :text]]]]))
-
-(defn- join-bookmarks [qry user-id]
-  (apply sql.helpers/left-join qry (mapcat #(bookmark-join % user-id) bookmarked-models)))
-
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
   [{:keys [current-user-id] :as search-ctx} scorers qry]
   (-> (search.scoring/with-scores search-ctx scorers qry)
-      (join-bookmarks current-user-id)
+      (search.scoring/join-bookmarks current-user-id)
       (sql.helpers/order-by [:total_score :desc])))

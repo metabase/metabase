@@ -139,8 +139,7 @@
             (keep (fn [{:keys [id], :as col}]
                     (when-let [dimension (when (pos-int? id)
                                            (field-id->remapping-dimension query id))]
-                      (let [original-ref (or (:lib/original-ref col)
-                                             (lib/ref col))]
+                      (let [original-ref (lib/ref col)]
                         {:original-field-clause original-ref
                          :new-field-clause      [:field
                                                  (merge

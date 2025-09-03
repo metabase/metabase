@@ -1,6 +1,6 @@
 import type { Query } from "history";
-import { Priority, useKBar, useRegisterActions } from "kbar";
-import { useMemo, useState } from "react";
+import { Priority, VisualState, useKBar, useRegisterActions } from "kbar";
+import { useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
@@ -43,6 +43,9 @@ export const useCommandPalette = ({
   const dispatch = useDispatch();
   const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const { isVisible } = useKBar((s) => ({
+    isVisible: s.visualState !== VisualState.hidden,
+  }));
 
   const isAdmin = useSelector(getUserIsAdmin);
   const canUserAccessSettings = useSelector(canAccessSettings);
@@ -60,10 +63,10 @@ export const useCommandPalette = ({
 
   useDebounce(
     () => {
-      setDebouncedSearchText(trimmedQuery);
+      setDebouncedSearchText(isVisible ? trimmedQuery : "");
     },
-    SEARCH_DEBOUNCE_DURATION,
-    [trimmedQuery],
+    isVisible ? SEARCH_DEBOUNCE_DURATION : 0,
+    [trimmedQuery, isVisible],
   );
 
   const hasQuery = searchQuery.length > 0;
@@ -86,9 +89,12 @@ export const useCommandPalette = ({
     },
   );
 
-  const { data: recentItems } = useListRecentsQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
+  const { data: recentItems, refetch: refetchRecents } = useListRecentsQuery();
+  useEffect(() => {
+    if (isVisible) {
+      refetchRecents();
+    }
+  }, [isVisible, refetchRecents]);
 
   const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);

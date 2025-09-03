@@ -1,3 +1,4 @@
+import type { FormLocation } from "metabase/databases/types";
 import type {
   ChecklistItemCTA,
   ChecklistItemValue,
@@ -247,14 +248,35 @@ export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
 }>;
 
+export type TableEditingSettingsToggledEvent = ValidateEvent<{
+  event: "edit_data_settings_toggled";
+  event_detail: "on" | "off";
+  target_id: number;
+  triggered_from: "admin-settings-databases";
+}>;
+
+export type TableEditButtonClickedEvent = ValidateEvent<{
+  event: "edit_data_button_clicked";
+  target_id: number;
+  triggered_from: "table-browser";
+}>;
+
+export type TableEditingRecordModifiedEvent = ValidateEvent<{
+  event: "edit_data_record_modified";
+  event_detail: "create" | "update" | "delete";
+  target_id: number;
+  triggered_from: "inline" | "modal";
+  result: "success" | "error";
+}>;
+
 export type ConnectionStringParsedSuccessEvent = ValidateEvent<{
   event: "connection_string_parsed_success";
-  triggered_from: "admin" | "setup" | "embedding_setup";
+  triggered_from: FormLocation;
 }>;
 
 export type ConnectionStringParsedFailedEvent = ValidateEvent<{
   event: "connection_string_parsed_failed";
-  triggered_from: "admin" | "setup" | "embedding_setup";
+  triggered_from: FormLocation;
 }>;
 
 export type TransformTriggerManualRunEvent = ValidateEvent<{
@@ -322,6 +344,11 @@ export type EmbedWizardEvent =
   | EmbedWizardAuthSelectedEvent
   | EmbedWizardCodeCopiedEvent;
 
+export type TableEditingEvent =
+  | TableEditingSettingsToggledEvent
+  | TableEditButtonClickedEvent
+  | TableEditingRecordModifiedEvent;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -352,6 +379,7 @@ export type SimpleEvent =
   | DashboardFilterCreatedEvent
   | DashboardFilterMovedEvent
   | EmbedWizardEvent
+  | TableEditingEvent
   | ConnectionStringParsedSuccessEvent
   | ConnectionStringParsedFailedEvent
   | TransformTriggerManualRunEvent

@@ -138,7 +138,7 @@
       ;; first
       (catch Throwable e
         (log/error e "Failed to connect to Database")
-        (throw (if-let [humanized-message (some->> (.getMessage e)
+        (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
                                                    (driver/humanize-connection-error-message driver))]
                  (let [error-data (cond
                                     (keyword? humanized-message)

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
@@ -13,8 +13,10 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
-import { METABOT_RESULTS_MESSAGE } from "metabase-enterprise/metabot/constants";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import {
+  useMetabotAgent,
+  useMetabotChatHandlers,
+} from "metabase-enterprise/metabot/hooks";
 import {
   cancelInflightAgentRequests,
   resetConversationId,
@@ -24,56 +26,19 @@ import Styles from "./MetabotChatEmbedding.module.css";
 
 const MIN_INPUT_HEIGHT = 42;
 
-interface MetabotChatEmbeddingProps {
-  onRedirectUrl: (result: string) => void;
-  onMessages: (messages: string[]) => void;
-}
-
-const EMBEDDING_METABOT_ID = "c61bf5f5-1025-47b6-9298-bf1827105bb6";
-
-export const MetabotChatEmbedding = ({
-  onRedirectUrl,
-  onMessages,
-}: MetabotChatEmbeddingProps) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const [input, setMessage] = useState("");
-
+export const MetabotChatEmbedding = () => {
   const metabot = useMetabotAgent();
+  const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
 
   const resetInput = useCallback(() => {
-    setMessage("");
+    handleResetInput();
     setInputExpanded(false);
-  }, []);
-
-  const handleSend = () => {
-    const trimmedInput = input.trim();
-    if (!trimmedInput.length || metabot.isDoingScience) {
-      return;
-    }
-    setMessage("");
-    const metabotRequestPromise = metabot.submitInput(
-      trimmedInput,
-      EMBEDDING_METABOT_ID,
-    );
-
-    metabotRequestPromise
-      .then((result) => {
-        const redirectUrl = (result.payload as any)?.data?.reactions?.find(
-          (reaction: { type: string; url: string }) =>
-            reaction.type === "metabot.reaction/redirect",
-        )?.url;
-        if (redirectUrl) {
-          onRedirectUrl(redirectUrl);
-        }
-      })
-      .catch((err) => console.error(err))
-      .finally(() => textareaRef.current?.focus());
-  };
+  }, [handleResetInput]);
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {
-    const textarea = textareaRef.current;
+    const textarea = metabot.promptInputRef?.current;
+
     if (!textarea) {
       return;
     }
@@ -86,10 +51,6 @@ export const MetabotChatEmbedding = ({
     textarea.scrollTop = Math.max(MIN_INPUT_HEIGHT, textarea.scrollHeight);
   };
 
-  const handleInputChange = (value: string) => {
-    setMessage(value);
-  };
-
   const inputPlaceholder = t`Tell me to do something, or ask a question`;
   const placeholder = metabot.isDoingScience
     ? t`Doing science...`
@@ -100,16 +61,10 @@ export const MetabotChatEmbedding = ({
   }
 
   const dispatch = useSdkDispatch();
+
   useEffect(() => {
     dispatch(resetConversationId());
   }, [dispatch]);
-
-  useEffect(() => {
-    const normalizedMessages = metabot.lastAgentMessages.filter(
-      (message) => message !== METABOT_RESULTS_MESSAGE,
-    );
-    onMessages(normalizedMessages);
-  }, [metabot.lastAgentMessages, onMessages]);
 
   return (
     <Box className={Styles.container} data-testid="metabot-chat">
@@ -142,9 +97,9 @@ export const MetabotChatEmbedding = ({
           autosize
           minRows={1}
           maxRows={4}
-          ref={textareaRef}
+          ref={metabot.promptInputRef}
           autoFocus
-          value={input}
+          value={metabot.prompt}
           disabled={metabot.isDoingScience}
           className={cx(
             Styles.textarea,
@@ -152,18 +107,19 @@ export const MetabotChatEmbedding = ({
             metabot.isDoingScience && Styles.textareaLoading,
           )}
           placeholder={placeholder}
-          onChange={(e) => handleInputChange(e.target.value)}
+          onChange={(e) => metabot.setPrompt(e.target.value)}
           // @ts-expect-error - undocumented API for mantine Textarea - leverages the prop from react-textarea-autosize's TextareaAutosize component
           onHeightChange={handleMaybeExpandInput}
           onKeyDown={(e) => {
             if (e.nativeEvent.isComposing) {
               return;
             }
+
             if (e.key === "Enter") {
               // prevent event from inserting new line + interacting with other content
               e.preventDefault();
               e.stopPropagation();
-              handleSend();
+              handleSubmitInput(metabot.prompt);
             }
           }}
         />
@@ -183,7 +139,7 @@ export const MetabotChatEmbedding = ({
             onClick={resetInput}
             data-testid="metabot-close-chat"
             style={{
-              visibility: input.length > 0 ? "visible" : "hidden",
+              visibility: metabot.prompt.length > 0 ? "visible" : "hidden",
             }}
           >
             <Icon name="close" c="var(--mb-color-text-primary)" size="1rem" />
