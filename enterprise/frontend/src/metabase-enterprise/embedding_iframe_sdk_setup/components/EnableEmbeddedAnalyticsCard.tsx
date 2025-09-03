@@ -25,7 +25,12 @@ export const EnableEmbeddedAnalyticsCard = () => {
 
   const handleEnableEmbedding = async () => {
     try {
-      await updateSettings({ "enable-embedding-simple": true });
+      await updateSettings({
+        "enable-embedding-simple": true,
+
+        // accept the terms for Embedded Analytics JS
+        "show-simple-embed-terms": false,
+      });
     } catch (error) {
       sendToast({ message: t`Failed to enable Embedded Analytics JS` });
     }
