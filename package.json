@@ -456,6 +456,7 @@
     "generate-cypress-html-report": "mochawesome-merge cypress/reports/mochareports/*.json > cypress/reports/cypress-test-report.json && marge cypress/reports/cypress-test-report.json -o cypress/reports --inline",
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-docs-links && yarn lint-yaml && yarn type-check",
     "lint-docs-links": "yarn && ./bin/verify-doc-links",
+    "lint-css": "stylelint './frontend/**/*.css'",
     "lint-eslint": "yarn build:cljs && yarn lint-eslint-pure",
     "lint-eslint-pure": "eslint --cache --cache-strategy content --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 --report-unused-disable-directives enterprise/frontend frontend e2e",
     "lint-prettier": "yarn && yarn lint-prettier-pure",
