@@ -141,7 +141,6 @@ jobs:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
-    continue-on-error: true
     env:
       CI: 'true'
       DRIVERS: clickhouse
