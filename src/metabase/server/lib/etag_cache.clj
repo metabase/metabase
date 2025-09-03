@@ -23,8 +23,7 @@
         (contains? (parse-if-none-match normalized-if-none-match) config/mb-version-hash))))
 
 (defn with-etag
-  "Return 304 + ETag if If-None-Match matches; else 200 base + ETag.
-   NOTE: does not set Cache-Control or Content-Type."
+  "Return 304 + ETag if If-None-Match matches; else 200 base + ETag."
   [response request]
   (if (etag-matches? (get-in request [:headers "if-none-match"]))
     (-> (response/response "")
