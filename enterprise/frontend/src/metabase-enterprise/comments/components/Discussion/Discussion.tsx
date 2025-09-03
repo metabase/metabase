@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import {
@@ -36,8 +38,8 @@ export const Discussion = ({
 }: DiscussionProps) => {
   const currentUser = useSelector(getCurrentUser);
   const [, setNewComment] = useState<DocumentContent>();
-  const [linkCopied, setLinkCopied] = useState(false);
   const parentCommentId = comments[0].id;
+  const [sendToast] = useToast();
 
   const [createComment] = useCreateCommentMutation();
   const [updateComment] = useUpdateCommentMutation();
@@ -82,15 +84,8 @@ export const Discussion = ({
     });
 
     navigator.clipboard.writeText(`${window.location.origin}${url}`);
-    setLinkCopied(true);
+    sendToast({ icon: "check", message: t`Link copied` });
   };
-
-  useEffect(() => {
-    if (linkCopied) {
-      const timeout = setTimeout(() => setLinkCopied(false), 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [linkCopied]);
 
   return (
     <Stack>
