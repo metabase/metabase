@@ -168,12 +168,12 @@
   (let [index-created (search.index/when-index-created)]
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
-        (log/debug "Forcing early reindex because existing index is old")
+        (log/info "Forcing early reindex because existing index is old")
         (search.engine/reindex! :search.engine/appdb {}))
 
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
-          (log/debug "Populating index")
+          (log/info "Populating index")
           (populate-index! :search/updating))))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
