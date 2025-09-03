@@ -37,7 +37,7 @@
   [job-run-id :- pos-int?
    stage-type :- ::stage-type
    stage-label :- ::stage-label
-   duration-ms :- pos-int?]
+   duration-ms :- int?]
   (log/infof "Transform stage completed: run-id=%d type=%s label=%s duration=%dms" job-run-id (name stage-type) (name stage-label) duration-ms)
   (let [labels {:job-run-id (str job-run-id)
                 :stage-type (name stage-type)
@@ -50,7 +50,7 @@
   [job-run-id :- pos-int?
    stage-type :- ::stage-type
    stage-label :- ::stage-label
-   duration-ms :- [:maybe pos-int?]]
+   duration-ms :- [:maybe int?]]
   (log/warnf "Transform stage failed: run-id=%d type=%s label=%s duration=%s" job-run-id (name stage-type) (name stage-label) (if duration-ms (str duration-ms "ms") "unknown"))
   (let [labels {:job-run-id (str job-run-id)
                 :stage-type (name stage-type)
@@ -105,8 +105,8 @@
   "Record metrics about data transfer (size and rows)."
   [job-run-id :- pos-int?
    stage-label :- ::stage-label
-   bytes :- [:maybe pos-int?]
-   rows :- [:maybe pos-int?]]
+   bytes :- [:maybe int?]
+   rows :- [:maybe int?]]
   (log/infof "Data transfer recorded: run-id=%d stage=%s%s%s"
              job-run-id (name stage-label)
              (if bytes (str " bytes=" bytes) "")
@@ -162,7 +162,7 @@
 (mu/defn record-python-api-call!
   "Record metrics about Python API calls."
   [job-run-id :- pos-int?
-   duration-ms :- pos-int?
+   duration-ms :- int?
    status :- [:enum :success :error :timeout]]
   (log/infof "Python API call %s: run-id=%d duration=%dms" (name status) job-run-id duration-ms)
   (let [labels {:job-run-id (str job-run-id)}]
