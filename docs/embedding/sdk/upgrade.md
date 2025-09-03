@@ -72,6 +72,13 @@ If everything is working in staging, you're ready to deploy to production.
 
 Be sure to deploy your application changes and upgrade your Metabase in parallel so that the SDK version and the Metabase version stay in sync.
 
+### Cached SDK Bundle
+
+After upgrading, the previous version of the SDK Bundle may still be served from your new Metabase instance for up to 60 seconds (`Cache-Control: public, max-age=60`).
+This short cache window is intentional and helps ensure fast performance while still allowing updates to propagate quickly.
+
+If you don’t see your changes immediately, clear browser cache or just wait a minute. After that, the SDK Package will begin loading the newly deployed SDK Bundle.
+
 ### If your instance is pinned on Metabase Cloud, you'll need to request an upgrade
 
 If you're on Metabase Cloud, and you've [pinned the version of your Metabase](./version.md#you-can-pin-instances-to-a-version-on-metabase-cloud), you'll need to request an upgrade by [contacting support](https://www.metabase.com/help-premium).
