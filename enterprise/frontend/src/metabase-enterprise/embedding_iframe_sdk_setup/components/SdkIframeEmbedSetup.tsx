@@ -6,7 +6,7 @@ import "react-resizable/css/styles.css";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { Box, Button, Group, Stack } from "metabase/ui";
+import { Box, Button, Group, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedNavigation } from "../hooks";
@@ -40,7 +40,11 @@ const SdkIframeEmbedSetupContent = () => {
   return (
     <Box className={S.Container}>
       <SidebarResizer>
-        <Box className={S.Sidebar} component="aside">
+        <Box
+          className={S.Sidebar}
+          component="aside"
+          style={{ opacity: isSimpleEmbeddingEnabled ? 1 : 0.5 }}
+        >
           <Box className={S.SidebarContent}>
             <StepContent />
           </Box>
@@ -49,7 +53,7 @@ const SdkIframeEmbedSetupContent = () => {
             <Button
               variant="default"
               onClick={handleBack}
-              disabled={!canGoBack}
+              disabled={!canGoBack || !isSimpleEmbeddingEnabled}
             >
               {t`Back`}
             </Button>
@@ -58,7 +62,7 @@ const SdkIframeEmbedSetupContent = () => {
               <Button
                 variant="filled"
                 onClick={handleNext}
-                disabled={!canGoNext}
+                disabled={!canGoNext || !isSimpleEmbeddingEnabled}
               >
                 {currentStep === "select-embed-options" ? t`Get Code` : t`Next`}
               </Button>
@@ -69,8 +73,15 @@ const SdkIframeEmbedSetupContent = () => {
 
       <Box className={S.PreviewPanel}>
         <Stack h="100%">
-          {/** Only show the embed preview once the embedding is auto-enabled, or already enabled. */}
-          {isSimpleEmbeddingEnabled && <SdkIframeEmbedPreview />}
+          {isSimpleEmbeddingEnabled ? (
+            <SdkIframeEmbedPreview />
+          ) : (
+            <Stack h="100%" justify="center" align="center" p="xl">
+              <Text size="lg" c="text-medium" ta="center" mt="lg">
+                {t`Enable Embedded Analytics JS to see the preview`}
+              </Text>
+            </Stack>
+          )}
         </Stack>
       </Box>
 
