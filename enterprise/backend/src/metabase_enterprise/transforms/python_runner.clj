@@ -70,12 +70,11 @@
 
 (defn- maybe-with-endpoint [^AmazonS3ClientBuilder builder endpoint]
   (let [region (transforms.settings/python-storage-s-3-region)]
-    (when (or endpoint region)
-      (if-not (and endpoint region)
-        (log/warnf "Ignoring %s because %s is not defined"
-                   (if endpoint "endpoint" "region")
-                   (if (not endpoint) "endpoint" "region"))
-        (.withEndpointConfiguration builder (AwsClientBuilder$EndpointConfiguration. endpoint region))))))
+    (case [(some? endpoint) (some? region)]
+      [true true]   (.withEndpointConfiguration builder (AwsClientBuilder$EndpointConfiguration. endpoint region))
+      [true false]  (log/warn "Ignoring endpoint because region is not defined")
+      [false true]  (.withRegion builder ^String region)
+      [false false] :nothing-to-do)))
 
 (defn- maybe-with-credentials [^AmazonS3ClientBuilder builder]
   (let [access-key (transforms.settings/python-storage-s-3-access-key)
@@ -202,6 +201,7 @@
                                                (str work-dir-name "-table-" (name table-name) "-" id)
                                                ".jsonl")
                                     s3-key    (str work-dir-name "/" (.getName temp-file))]
+                                (log/warn "uploading file" s3-key)
                                 (try
                                   (transforms.instrumentation/with-stage-timing [run-id :data-transfer :dwh-to-file]
                                     (write-table-data-to-file! id temp-file cancel-chan))
