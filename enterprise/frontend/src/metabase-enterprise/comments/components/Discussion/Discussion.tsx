@@ -84,7 +84,7 @@ export const Discussion = ({
     });
 
     navigator.clipboard.writeText(`${window.location.origin}${url}`);
-    sendToast({ icon: "check", message: t`Link copied` });
+    sendToast({ icon: "check", message: t`Copied link` });
   };
 
   return (
