@@ -10,7 +10,7 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log])
   (:import
-   (java.util.concurrent Executors ScheduledExecutorServIce TimeUnit)))
+   (java.util.concurrent Executors ScheduledExecutorService TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
