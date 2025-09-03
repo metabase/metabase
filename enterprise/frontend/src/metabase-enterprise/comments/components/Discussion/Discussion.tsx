@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -104,7 +105,7 @@ export const Discussion = ({
         ))}
         {!comments[0]?.is_resolved && (
           <Timeline.Item
-            className={S.commentRoot}
+            className={cx(S.commentRoot, S.replyItem)}
             bullet={<Avatar name={currentUser.common_name} />}
           >
             <CommentEditor
