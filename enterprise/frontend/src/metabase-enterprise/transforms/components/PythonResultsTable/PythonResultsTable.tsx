@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { colors } from "metabase/lib/colors/colors";
 import { Alert, Box, Text } from "metabase/ui";
 
 interface PythonResultsTableProps {
@@ -23,13 +24,13 @@ function parseCSV(csv: string): { headers: string[]; rows: string[][] } {
   }
 
   // Parse headers from first line
-  const headers = lines[0].split(",").map(h => h.trim());
-  
+  const headers = lines[0].split(",").map((h) => h.trim());
+
   // Parse data rows
-  const rows = lines.slice(1).map(line => {
+  const rows = lines.slice(1).map((line) => {
     // Simple CSV parsing - handles basic comma-separated values
     // For more complex CSV (with quotes, escapes), we'd need a proper parser
-    return line.split(",").map(cell => cell.trim());
+    return line.split(",").map((cell) => cell.trim());
   });
 
   return { headers, rows };
@@ -42,22 +43,11 @@ export function PythonResultsTable({
   stderr,
   isLoading = false,
 }: PythonResultsTableProps) {
-  console.log("PythonResultsTable received props:", {
-    csvData,
-    error,
-    stdout,
-    stderr,
-    isLoading,
-  });
-  
   const { headers, rows } = useMemo(() => {
     if (!csvData) {
-      console.log("No CSV data to parse");
       return { headers: [], rows: [] };
     }
-    console.log("Parsing CSV data:", csvData);
     const parsed = parseCSV(csvData);
-    console.log("Parsed result:", parsed);
     return parsed;
   }, [csvData]);
 
@@ -78,7 +68,11 @@ export function PythonResultsTable({
         {stdout && (
           <Box mb="md">
             <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-            <Box p="sm" bg="bg-light" style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+            <Box
+              p="sm"
+              bg="bg-light"
+              style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+            >
               {stdout}
             </Box>
           </Box>
@@ -86,7 +80,11 @@ export function PythonResultsTable({
         {stderr && (
           <Box>
             <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
-            <Box p="sm" bg="bg-light" style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+            <Box
+              p="sm"
+              bg="bg-light"
+              style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+            >
               {stderr}
             </Box>
           </Box>
@@ -102,7 +100,11 @@ export function PythonResultsTable({
         {stdout && (
           <Box mt="md">
             <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-            <Box p="sm" bg="bg-light" style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+            <Box
+              p="sm"
+              bg="bg-light"
+              style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+            >
               {stdout}
             </Box>
           </Box>
@@ -111,25 +113,48 @@ export function PythonResultsTable({
     );
   }
 
-  console.log("Rendering table with:", { headers, rows });
-  
   return (
-    <Box style={{ overflow: "auto", padding: "1rem", background: "#f5f5f5", border: "1px solid #ddd" }}>
+    <Box
+      style={{
+        overflow: "auto",
+        padding: "1rem",
+        background: colors["bg-light"],
+        border: `1px solid ${colors["border"]}`,
+      }}
+    >
       {stdout && (
         <Box p="md" pb={0}>
           <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
-          <Box p="sm" bg="bg-light" style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }} mb="md">
+          <Box
+            p="sm"
+            bg="bg-light"
+            style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+            mb="md"
+          >
             {stdout}
           </Box>
         </Box>
       )}
       <Box style={{ background: "white", padding: "1rem" }}>
         <Text fw="bold" mb="md">{t`Results Table:`}</Text>
-        <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #ddd" }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            border: `1px solid ${colors["border"]}`,
+          }}
+        >
           <thead>
-            <tr style={{ backgroundColor: "#f0f0f0" }}>
+            <tr style={{ backgroundColor: colors["bg-medium"] }}>
               {headers.map((header, index) => (
-                <th key={index} style={{ padding: "8px", textAlign: "left", borderBottom: "2px solid #ddd" }}>
+                <th
+                  key={index}
+                  style={{
+                    padding: "8px",
+                    textAlign: "left",
+                    borderBottom: `2px solid ${colors["border"]}`,
+                  }}
+                >
                   {header}
                 </th>
               ))}
@@ -137,7 +162,10 @@ export function PythonResultsTable({
           </thead>
           <tbody>
             {rows.map((row, rowIndex) => (
-              <tr key={rowIndex} style={{ borderBottom: "1px solid #eee" }}>
+              <tr
+                key={rowIndex}
+                style={{ borderBottom: `1px solid ${colors["bg-medium"]}` }}
+              >
                 {row.map((cell, cellIndex) => (
                   <td key={cellIndex} style={{ padding: "8px" }}>
                     {cell}

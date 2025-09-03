@@ -47,16 +47,16 @@ type SourceInfoProps = {
 };
 
 function SourceInfo({ transform }: SourceInfoProps) {
-  if (transform.source.type !== "python") {
-    return null;
-  }
-
   const sourceDatabaseId = transform.source["source-database"];
   const sourceTables = transform.source["source-tables"];
 
   const { data: database, isLoading: isDatabaseLoading } = useGetDatabaseQuery(
     sourceDatabaseId ? { id: sourceDatabaseId } : skipToken,
   );
+
+  if (!database) {
+    return null;
+  }
 
   const hasMultipleTables =
     sourceTables && Object.keys(sourceTables).length > 0;

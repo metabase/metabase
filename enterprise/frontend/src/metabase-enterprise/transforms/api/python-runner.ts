@@ -64,4 +64,5 @@ export const pythonRunnerApi = Api.injectEndpoints({
   overrideExisting: true,
 });
 
-export const { useExecutePythonMutation, useCancelPythonMutation } = pythonRunnerApi;
+export const { useExecutePythonMutation, useCancelPythonMutation } =
+  pythonRunnerApi;
