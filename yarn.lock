@@ -4832,10 +4832,24 @@
   dependencies:
     "@types/leaflet" "*"
 
+"@types/leaflet.markercluster@^1.5.4":
+  version "1.5.6"
+  resolved "https://registry.yarnpkg.com/@types/leaflet.markercluster/-/leaflet.markercluster-1.5.6.tgz#3fff147abeee2303b3814d5799151ae14d72654e"
+  integrity sha512-I7hZjO2+isVXGYWzKxBp8PsCzAYCJBc29qBdFpquOCkS7zFDqUsUvkEOyQHedsk/Cy5tocQzf+Ndorm5W9YKTQ==
+  dependencies:
+    "@types/leaflet" "^1.9"
+
 "@types/leaflet@*", "@types/leaflet@^1.7.5":
   version "1.7.5"
   resolved "https://registry.npmjs.org/@types/leaflet/-/leaflet-1.7.5.tgz"
   integrity sha512-+Myo00Yb5OuvUyrH+vUwn9DRgOaBJsF/etIMdMcNhWGBMo58Mo1cxLInvCd0ZpvItju/AeDYFB/Od2pLiHB3VA==
+  dependencies:
+    "@types/geojson" "*"
+
+"@types/leaflet@^1.9":
+  version "1.9.20"
+  resolved "https://registry.yarnpkg.com/@types/leaflet/-/leaflet-1.9.20.tgz#a7feef4b0a4b36335dfc98456e76c0a86ab8462c"
+  integrity sha512-rooalPMlk61LCaLOvBF2VIf9M47HgMQqi5xQ9QRi7c8PkdIe0WrIi5IxXUXQjAdL0c+vcQ01mYWbthzmp9GHWw==
   dependencies:
     "@types/geojson" "*"
 
@@ -13734,7 +13748,7 @@ leaflet.heat@^0.2.0:
 
 leaflet.markercluster@^1.5.3:
   version "1.5.3"
-  resolved "https://registry.npmjs.org/leaflet.markercluster/-/leaflet.markercluster-1.5.3.tgz"
+  resolved "https://registry.yarnpkg.com/leaflet.markercluster/-/leaflet.markercluster-1.5.3.tgz#9cdb52a4eab92671832e1ef9899669e80efc4056"
   integrity sha512-vPTw/Bndq7eQHjLBVlWpnGeLa3t+3zGiuM7fJwCkiMFq+nmRuG3RI3f7f4N4TDX7T4NpbAXpR2+NTRSEGfCSeA==
 
 leaflet@^1.2.0:

@@ -1,23 +1,22 @@
 import L from "leaflet";
-import _ from "underscore";
+import { t } from "ttag";
 // Import markercluster to extend L
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 
 import { getSubpathSafeUrl } from "metabase/lib/urls";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 
 import LeafletMap from "./LeafletMap";
 
-export default class LeafletClusteredPinMap extends LeafletMap {
+export class LeafletClusteredPinMap extends LeafletMap {
   componentDidMount() {
     super.componentDidMount();
 
     try {
       if (!L.markerClusterGroup) {
         throw new Error(
-          "Map clustering feature is not available. Please contact your administrator.",
+          t`Map clustering feature is not available. Please contact your administrator.`,
         );
       }
 
@@ -50,7 +49,8 @@ export default class LeafletClusteredPinMap extends LeafletMap {
       this._createMarkers(this.props.points);
     } catch (err) {
       console.error("Error initializing clustered pin map:", err);
-      this.props.onRenderError && this.props.onRenderError(err.message || err);
+      this.props.onRenderError &&
+        this.props.onRenderError(err?.message || String(err));
     }
   }
 
@@ -75,7 +75,18 @@ export default class LeafletClusteredPinMap extends LeafletMap {
     }
 
     try {
-      this._createMarkers(this.props.points);
+      // Only recreate markers if points have changed
+      if (
+        !prevProps.points ||
+        prevProps.points.length !== this.props.points.length ||
+        !prevProps.points.every(
+          (point, i) =>
+            point[0] === this.props.points[i][0] &&
+            point[1] === this.props.points[i][1],
+        )
+      ) {
+        this._createMarkers(this.props.points);
+      }
     } catch (err) {
       console.error("Error updating clustered pin map:", err);
       this.props.onRenderError &&
@@ -135,64 +146,8 @@ export default class LeafletClusteredPinMap extends LeafletMap {
       });
     } catch (err) {
       console.error("Error creating markers:", err);
-      this.props.onRenderError && this.props.onRenderError(err.message || err);
+      this.props.onRenderError &&
+        this.props.onRenderError(err?.message || String(err));
     }
-  };
-
-  _createMarker = (rowIndex) => {
-    const marker = L.marker([0, 0], { icon: this.pinMarkerIcon });
-
-    const { onHoverChange, onVisualizationClick, settings } = this.props;
-    if (onHoverChange) {
-      marker.on("mousemove", (e) => {
-        const {
-          series: [
-            {
-              data: { cols, rows },
-            },
-          ],
-        } = this.props;
-        const hover = {
-          dimensions: cols.map((col, colIndex) => ({
-            value: rows[rowIndex][colIndex],
-            column: col,
-          })),
-          element: marker._icon,
-        };
-        onHoverChange(hover);
-      });
-      marker.on("mouseout", () => {
-        onHoverChange(null);
-      });
-    }
-    if (onVisualizationClick) {
-      marker.on("click", () => {
-        const {
-          series: [
-            {
-              data: { cols, rows },
-            },
-          ],
-        } = this.props;
-        // if there is a primary key then associate a pin with it
-        const pkIndex = _.findIndex(cols, isPK);
-        const hasPk = pkIndex >= 0;
-
-        const data = cols.map((col, index) => ({
-          col,
-          value: rows[rowIndex][index],
-        }));
-
-        onVisualizationClick({
-          value: hasPk ? rows[rowIndex][pkIndex] : null,
-          column: hasPk ? cols[pkIndex] : null,
-          element: marker._icon,
-          origin: { row: rows[rowIndex], cols },
-          settings,
-          data,
-        });
-      });
-    }
-    return marker;
   };
 }

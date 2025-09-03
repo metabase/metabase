@@ -12,7 +12,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
 
-import LeafletClusteredPinMap from "./LeafletClusteredPinMap";
+import { LeafletClusteredPinMap } from "./LeafletClusteredPinMap";
 import LeafletGridHeatMap from "./LeafletGridHeatMap";
 import LeafletHeatMap from "./LeafletHeatMap";
 import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
