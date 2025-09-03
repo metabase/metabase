@@ -19,7 +19,7 @@ export const EnableEmbeddedAnalyticsCard = () => {
   const [updateSettings] = useUpdateSettingsMutation();
   const [sendToast] = useToast();
 
-  // Store the initial state of whether we should show this card.
+  // Freeze the card visibility to show even when we enabled the embedding setting.
   // This allows us to show the "Enabled" button state and not hide the card.
   const [showSimpleEmbedding] = useState(!isSimpleEmbeddingEnabled);
 
