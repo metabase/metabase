@@ -2,6 +2,7 @@
   (:require
    [metabase.analytics.prometheus :as prometheus]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -25,6 +26,7 @@
   [job-run-id :- pos-int?
    stage-type :- ::stage-type
    stage-label :- ::stage-label]
+  (log/infof "Transform stage started: run-id=%d type=%s label=%s" job-run-id (name stage-type) (name stage-label))
   (prometheus/inc! :metabase-transforms/stage-started
                    {:job-run-id (str job-run-id)
                     :stage-type (name stage-type)
@@ -36,6 +38,7 @@
    stage-type :- ::stage-type
    stage-label :- ::stage-label
    duration-ms :- pos-int?]
+  (log/infof "Transform stage completed: run-id=%d type=%s label=%s duration=%dms" job-run-id (name stage-type) (name stage-label) duration-ms)
   (let [labels {:job-run-id (str job-run-id)
                 :stage-type (name stage-type)
                 :stage-label (name stage-label)}]
@@ -48,6 +51,7 @@
    stage-type :- ::stage-type
    stage-label :- ::stage-label
    duration-ms :- [:maybe pos-int?]]
+  (log/warnf "Transform stage failed: run-id=%d type=%s label=%s duration=%s" job-run-id (name stage-type) (name stage-label) (if duration-ms (str duration-ms "ms") "unknown"))
   (let [labels {:job-run-id (str job-run-id)
                 :stage-type (name stage-type)
                 :stage-label (name stage-label)}]
@@ -103,6 +107,10 @@
    stage-label :- ::stage-label
    bytes :- [:maybe pos-int?]
    rows :- [:maybe pos-int?]]
+  (log/infof "Data transfer recorded: run-id=%d stage=%s %s %s"
+             job-run-id (name stage-label)
+             (if bytes (str " bytes=" bytes) "")
+             (if rows (str " rows=" rows) ""))
   (let [labels {:job-run-id (str job-run-id)
                 :stage-label (name stage-label)}]
     (when bytes
@@ -113,6 +121,7 @@
 (defn record-job-start!
   "Record the start of a transform job run."
   [job-id run-method]
+  (log/infof "Transform job started: job-id=%d run-method=%s" job-id (name run-method))
   (prometheus/inc! :metabase-transforms/job-runs-total
                    {:job-id (str job-id)
                     :run-method (name run-method)}))
@@ -120,6 +129,7 @@
 (defn record-job-completion!
   "Record the successful completion of a transform job run."
   [job-id run-method duration-ms]
+  (log/infof "Transform job completed: job-id=%d run-method=%s duration=%dms" job-id (name run-method) duration-ms)
   (let [labels {:job-id (str job-id)
                 :run-method (name run-method)}]
     (prometheus/inc! :metabase-transforms/job-runs-completed labels)
@@ -128,6 +138,7 @@
 (defn record-job-failure!
   "Record the failure of a transform job run."
   [job-id run-method duration-ms]
+  (log/warnf "Transform job failed: job-id=%d run-method=%s duration=%s" job-id (name run-method) (if duration-ms (str duration-ms "ms") "unknown"))
   (let [labels {:job-id (str job-id)
                 :run-method (name run-method)}]
     (prometheus/inc! :metabase-transforms/job-runs-failed labels)
@@ -153,6 +164,7 @@
   [job-run-id :- pos-int?
    duration-ms :- pos-int?
    status :- [:enum :success :error :timeout]]
+  (log/infof "Python API call %s: run-id=%d duration=%dms" (name status) job-run-id duration-ms)
   (let [labels {:job-run-id (str job-run-id)}]
     (prometheus/inc! :metabase-transforms/python-api-calls-total
                      (assoc labels :status (name status)))
