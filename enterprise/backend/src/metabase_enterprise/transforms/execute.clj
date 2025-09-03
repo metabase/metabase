@@ -263,6 +263,10 @@
           (let [temp-file (File/createTempFile "transform-output-" ".csv")
                 csv-data  (:output body)
                 metadata  (-> body :metadata json/decode+kw)]
+            (when-not (seq (:fields metadata))
+              (throw (ex-info "No fields in metadata"
+                              {:metadata metadata
+                               :raw-body body})))
             (try
               (with-open [writer (io/writer temp-file)]
                 (.write writer ^String csv-data))
