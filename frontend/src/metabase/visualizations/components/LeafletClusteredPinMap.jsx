@@ -14,6 +14,9 @@ export default class LeafletClusteredPinMap extends LeafletMap {
   componentDidMount() {
     super.componentDidMount();
 
+    try {
+      if (!L.markerClusterGroup) {
+        throw new Error(
           "Map clustering feature is not available. Please contact your administrator.",
         );
       }
@@ -73,7 +76,10 @@ export default class LeafletClusteredPinMap extends LeafletMap {
 
     try {
       this._createMarkers(this.props.points);
-      this.props.onRenderError && this.props.onRenderError(err?.message || String(err));
+    } catch (err) {
+      console.error("Error updating clustered pin map:", err);
+      this.props.onRenderError &&
+        this.props.onRenderError(err?.message || String(err));
     }
   }
 
