@@ -1,16 +1,17 @@
-/* eslint-disable no-restricted-syntax -- we should find a way to use semantic colors here */
-
 import { Avatar, rem } from "@mantine/core";
 
+import { color } from "metabase/lib/colors";
+
 const avatarColors = [
-  "var(--mb-base-color-lobster-40)",
-  "var(--mb-base-color-flamingo-40)",
-  "var(--mb-base-color-mango-40)",
-  "var(--mb-base-color-orion-40)",
-  "var(--mb-base-color-dubloon-40)",
-  "var(--mb-base-color-palm-40)",
-  "var(--mb-base-color-seafoam-40)",
-  "var(--mb-base-color-octopus-40)",
+  "var(--mb-color-brand)",
+  "var(--mb-color-error)",
+  color("accent1"),
+  color("accent2"),
+  color("accent3"),
+  color("accent4"),
+  color("accent5"),
+  color("accent6"),
+  color("accent7"),
 ];
 
 export const avatarOverrides = {
