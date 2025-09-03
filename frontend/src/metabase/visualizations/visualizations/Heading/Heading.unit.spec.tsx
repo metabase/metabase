@@ -337,7 +337,7 @@ function mapParameterToVariable({
   ];
   const parameters: Parameter[] = [parameter];
   const parameterValues = {
-    [parameter.id]: parameter.value ?? "",
+    [parameter.id]: parameter.value ?? null,
   };
 
   return { parameters, parameterValues, parameter_mappings };
