@@ -102,7 +102,9 @@ const DashCardLoadingView = ({
     }
     if (expectedDuration) {
       return jt`This usually takes around ${(
-        <span className={CS.textNoWrap}>{duration(expectedDuration)}</span>
+        <span key="duration" className={CS.textNoWrap}>
+          {duration(expectedDuration)}
+        </span>
       )}.`;
     }
   };
