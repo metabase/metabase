@@ -108,7 +108,7 @@ function renderEmojiPicker() {
         e.preventDefault();
         e.stopImmediatePropagation();
         const emoji = popup
-          .querySelector("[data-active][data-emoji]")
+          .querySelector('[frimousse-row][aria-rowindex="0"] [data-emoji]')
           ?.getAttribute("data-emoji");
 
         props.command({ emoji });
@@ -277,7 +277,6 @@ function getEmojiPickerProps(props: SuggestionProps) {
   return {
     search: props.query,
     hideSearch: true,
-    // hideSearch: false,
     onEmojiSelect: (emoji: { emoji: string }) => {
       props.command({ emoji: emoji.emoji });
     },

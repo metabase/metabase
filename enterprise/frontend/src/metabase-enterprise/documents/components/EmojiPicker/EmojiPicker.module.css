@@ -3,6 +3,7 @@
   flex-direction: column;
   height: 17rem;
   width: 17rem;
+  border-radius: var(--mantine-radius-sm);
 
   /*
   Make emoji background depend on base emoji color
@@ -39,6 +40,7 @@
         visibility: visible;
       }
     }
+    box-shadow: 0 0 4px 0px var(--mb-color-brand);
   }
 }
 
