@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useMemo } from "react";
+import { c } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import {
@@ -82,6 +83,13 @@ export const EmbeddingHubChecklist = ({
                 isCompleted && S.completedControl,
                 isLocked && S.lockedControl,
               )}
+              aria-label={
+                isCompleted
+                  ? `${step.title} ${c(
+                      "This is after a name of a step of a checklist, to indicate that the step has been completed",
+                    ).t`Done`}`
+                  : step.title
+              }
             >
               <Group gap="sm" c="var(--mb-color-text-medium)">
                 <span>{step.title}</span>
