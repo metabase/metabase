@@ -159,5 +159,7 @@ export function getParsedParams({ jobId }: JobPageParams): JobPageParsedParams {
 }
 
 export function isPollingNeeded(job?: TransformJob) {
-  return job?.last_run?.status === "started";
+  return (
+    job?.last_run?.status === "started" || job?.last_run?.status === "canceling"
+  );
 }
