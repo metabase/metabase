@@ -6,7 +6,6 @@ import {
   type Extension,
   useEditor,
 } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
 import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -18,6 +17,7 @@ import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
 import { configureMentionExtension } from "metabase-enterprise/comments/mentions/extension";
 import { isCommentsStorage } from "metabase-enterprise/comments/types";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
+import { CustomStarterKit } from "metabase-enterprise/documents/components/Editor/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
 import type { FormattingOptions } from "metabase-enterprise/documents/types";
@@ -62,7 +62,7 @@ export const CommentEditor = ({
   const extensions = useMemo(
     () =>
       [
-        StarterKit.configure({ link: false }),
+        CustomStarterKit.configure({ link: false }),
         SmartLink.configure({
           HTMLAttributes: { class: "smart-link" },
           siteUrl,
