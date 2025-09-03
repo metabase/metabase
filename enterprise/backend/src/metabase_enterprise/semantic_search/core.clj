@@ -120,19 +120,17 @@
         index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
       (log/warn "repair-index! called prior to init!")
-      (let [{:keys [metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)
-            active-index-name      (:table_name metadata-row)]
-        (semantic.repair/with-repair-table!
-          pgvector
-          (fn [repair-table-name]
-            ;; Re-gate all provided documents, populating the repair table as we go
-            (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents
-                                                 :repair-table repair-table-name)
-            ;; Find documents in the index that are not in the provided searchable-documents, and gate deletes for them
-            (when-let [ids-by-model (semantic.repair/find-lost-deletes-by-model pgvector active-index-name repair-table-name)]
-              (doseq [[model ids] ids-by-model]
-                (log/infof "Repairing lost deletes for model %s: deleting %d documents" model (count ids))
-                (semantic.pgvector-api/gate-deletes! pgvector index-metadata model ids)))))))))
+      (semantic.repair/with-repair-table!
+        pgvector
+        (fn [repair-table-name]
+          ;; Re-gate all provided documents, populating the repair table as we go
+          (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents
+                                               :repair-table repair-table-name)
+          ;; Find documents in the gate table that are not in the provided searchable-documents, and gate deletes for them
+          (when-let [ids-by-model (semantic.repair/find-lost-deletes-by-model pgvector (:gate-table-name index-metadata) repair-table-name)]
+            (doseq [[model ids] ids-by-model]
+              (log/infof "Repairing lost deletes for model %s: deleting %d documents" model (count ids))
+              (semantic.pgvector-api/gate-deletes! pgvector index-metadata model ids))))))))
 
 (comment
   (update-index! [{:model "card"

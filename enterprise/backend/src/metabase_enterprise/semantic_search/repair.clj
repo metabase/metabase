@@ -4,7 +4,7 @@
   When `metabase-enterprise.semantic-search.core/repair-index!` is called with the full set of documents
   that should be in the index, we re-gate new and updated documents, and also populate a temporary repair table
   with the model/model_id pairs of all provided documents. We use this repair table to do an anti-join against
-  the active index to find lost deletes that we issue tombstones for."
+  the gate table to find lost deletes that we issue tombstones for."
   (:require
    [clojure.set :as set]
    [honey.sql :as sql]
@@ -36,22 +36,22 @@
       (log/debugf "Populated repair table with %d document records" (count repair-records)))))
 
 (defn find-lost-deletes
-  "Performs an anti-join to find documents that exist in the active index
+  "Performs an anti-join to find documents that exist in the gate table
   but are not in the repair table. These represent lost deletes."
-  [pgvector index-table-name repair-table-name]
+  [pgvector gate-table-name repair-table-name]
   (let [anti-join-sql (-> (sql.helpers/select :model :model_id)
-                          (sql.helpers/from (keyword index-table-name))
+                          (sql.helpers/from (keyword gate-table-name))
                           (sql.helpers/where [:not [:exists
                                                     (-> (sql.helpers/select 1)
                                                         (sql.helpers/from (keyword repair-table-name))
                                                         (sql.helpers/where [:and
                                                                             [:= (keyword repair-table-name "model")
-                                                                             (keyword index-table-name "model")]
+                                                                             (keyword gate-table-name "model")]
                                                                             [:= (keyword repair-table-name "model_id")
-                                                                             (keyword index-table-name "model_id")]]))]])
+                                                                             (keyword gate-table-name "model_id")]]))]])
                           (sql/format :quoted true))
         results (jdbc/execute! pgvector anti-join-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
-    (log/infof "Found %d documents in index that should be deleted" (count results))
+    (log/infof "Found %d documents in gate table that should be deleted" (count results))
     results))
 
 (defn- create-repair-table!
@@ -96,8 +96,8 @@
 (defn find-lost-deletes-by-model
   "Finds lost deletes and groups them by model for easier processing.
   Returns a map of {model [id1 id2 ...]}."
-  [pgvector active-index-name repair-table-name]
-  (when-let [lost-deletes (seq (find-lost-deletes pgvector active-index-name repair-table-name))]
+  [pgvector gate-table-name repair-table-name]
+  (when-let [lost-deletes (seq (find-lost-deletes pgvector gate-table-name repair-table-name))]
     (log/debugf "Repairing %d lost deletes" (count lost-deletes))
     (->> lost-deletes
          (group-by :model)
