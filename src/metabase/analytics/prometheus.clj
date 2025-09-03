@@ -279,9 +279,9 @@
                      {:description "Number of rows in the active appdb index table."})
    (prometheus/gauge :metabase-search/semantic-index-size
                      {:description "Number of rows in the active semantic index table."})
-   (prometheus/gauge :metabase-search/semantic-dlq-size     ; TODO
+   (prometheus/gauge :metabase-search/semantic-dlq-size
                      {:description "Number of rows in the active semantic index dead-letter-queue table."})
-   (prometheus/gauge :metabase-search/semantic-gate-size    ; TODO
+   (prometheus/gauge :metabase-search/semantic-gate-size
                      {:description "Number of rows in the semantic gate table"})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
