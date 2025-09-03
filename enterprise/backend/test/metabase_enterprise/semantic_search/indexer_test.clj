@@ -440,71 +440,83 @@
                 (is (nil? @caught-ex))))))))))
 
 (deftest dlq-step-test
-  (let [pgvector       semantic.tu/db
-        index-metadata (semantic.tu/unique-index-metadata)
-        model          semantic.tu/mock-embedding-model
-        index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
-        sut            semantic.indexer/dlq-step
-        clock-ref      (volatile! (Instant/parse "2025-01-04T00:00:00Z"))
-        clock          (reify InstantSource (instant [_] @clock-ref))
-        dlq-loop-impl  (volatile! (constantly nil))
-        run-scenario   (fn [{:keys [indexing-state dlq-loop-return]}]
-                         (vreset! dlq-loop-impl (constantly dlq-loop-return))
-                         (let [indexing-state-ref (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
-                           (vswap! indexing-state-ref merge indexing-state)
-                           (sut pgvector index-metadata index indexing-state-ref)
-                           @indexing-state-ref))]
-    (with-redefs [semantic.dlq/dlq-retry-loop! (fn [& args] (apply @dlq-loop-impl args))
-                  semantic.indexer/clock       clock
-                  semantic.dlq/clock           clock]
-      (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
-                  _            (semantic.tu/open-index! pgvector index)
-                  index-id-ref (semantic.tu/closeable
-                                (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
-                                (constantly nil))
-                  _            (open-dlq! pgvector index-metadata @index-id-ref)]
+  (mt/with-prometheus-system! [_ system]
+    (let [pgvector       semantic.tu/db
+          index-metadata (semantic.tu/unique-index-metadata)
+          model          semantic.tu/mock-embedding-model
+          index          (semantic.index-metadata/qualify-index (semantic.index/default-index model) index-metadata)
+          sut            semantic.indexer/dlq-step
+          clock-ref      (volatile! (Instant/parse "2025-01-04T00:00:00Z"))
+          clock          (reify InstantSource (instant [_] @clock-ref))
+          dlq-loop-impl  (volatile! (constantly nil))
+          run-scenario   (fn [{:keys [indexing-state dlq-loop-return]}]
+                           (vreset! dlq-loop-impl (constantly dlq-loop-return))
+                           (let [indexing-state-ref (semantic.indexer/init-indexing-state (get-metadata-row! pgvector index-metadata index))]
+                             (vswap! indexing-state-ref merge indexing-state)
+                             (sut pgvector index-metadata index indexing-state-ref)
+                             @indexing-state-ref))]
+      (with-redefs [semantic.dlq/dlq-retry-loop! (fn [& args] (apply @dlq-loop-impl args))
+                    semantic.indexer/clock       clock
+                    semantic.dlq/clock           clock]
+        (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)
+                    _            (semantic.tu/open-index! pgvector index)
+                    index-id-ref (semantic.tu/closeable
+                                  (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)
+                                  (constantly nil))
+                    _            (open-dlq! pgvector index-metadata @index-id-ref)]
 
-        (testing "dlq rescheduled after no change"
-          (let [original-last-seen-change (Instant/parse "2025-01-12T03:22:45Z")
-                {:keys [last-seen-change next-dlq-run]}
-                (run-scenario {:indexing-state  {:last-seen-change original-last-seen-change}
-                               :dlq-loop-return {:exit-reason   :no-more-data,
-                                                 :run-time      (Duration/parse "PT42S")
-                                                 :success-count 0
-                                                 :failure-count 0}})
-                expected-next-dlq-run     (.plus (.instant clock) semantic.indexer/dlq-frequency)]
-            (testing ":last-seen-change not modified - would allow cold exit"
-              (is (= original-last-seen-change last-seen-change)))
-            (is (= expected-next-dlq-run next-dlq-run))))
+          (testing "dlq rescheduled after no change"
+            (let [original-last-seen-change (Instant/parse "2025-01-12T03:22:45Z")
+                  {:keys [last-seen-change next-dlq-run]}
+                  (run-scenario {:indexing-state  {:last-seen-change original-last-seen-change}
+                                 :dlq-loop-return {:exit-reason   :no-more-data,
+                                                   :run-time      (Duration/parse "PT42S")
+                                                   :success-count 0
+                                                   :failure-count 0}})
+                  expected-next-dlq-run     (.plus (.instant clock) semantic.indexer/dlq-frequency)]
+              (testing ":last-seen-change not modified - would allow cold exit"
+                (is (= original-last-seen-change last-seen-change)))
+              (is (= expected-next-dlq-run next-dlq-run))))
 
-        (testing "dlq rescheduled after change (no more data, should back off)"
-          (let [{:keys [last-seen-change next-dlq-run]}
-                (run-scenario {:dlq-loop-return {:exit-reason   :no-more-data,
-                                                 :run-time      (Duration/parse "PT12S")
-                                                 :success-count 1
-                                                 :failure-count 0}})
-                expected-next-dlq-run (.plus (.instant clock) semantic.indexer/dlq-frequency)]
-            (is (= (.instant clock) last-seen-change))
-            (is (= expected-next-dlq-run next-dlq-run))))
+          (testing "dlq rescheduled after change (no more data, should back off)"
+            (let [{:keys [last-seen-change next-dlq-run]}
+                  (run-scenario {:dlq-loop-return {:exit-reason   :no-more-data,
+                                                   :run-time      (Duration/parse "PT12S")
+                                                   :success-count 1
+                                                   :failure-count 0}})
+                  expected-next-dlq-run (.plus (.instant clock) semantic.indexer/dlq-frequency)]
+              (is (= (.instant clock) last-seen-change))
+              (is (= expected-next-dlq-run next-dlq-run))
+              (testing "Metrics have expected values"
+                (is (== 1 (mt/metric-value system :metabase-search/semantic-indexer-dlq-successes)))
+                (is (== 0 (mt/metric-value system :metabase-search/semantic-indexer-dlq-failures))))))
 
-        (testing "dlq rescheduled immediately after change (ran out of time, more to do)"
-          (let [{:keys [last-seen-change next-dlq-run]}
-                (run-scenario {:dlq-loop-return {:exit-reason   :ran-out-of-time
-                                                 :run-time      (Duration/parse "PT15S")
-                                                 :success-count 1
-                                                 :failure-count 0}})]
-            (is (= (.instant clock) last-seen-change))
-            (is (= (.instant clock) next-dlq-run))))
+          (testing "dlq rescheduled immediately after change (ran out of time, more to do)"
+            (let [{:keys [last-seen-change next-dlq-run]}
+                  (run-scenario {:dlq-loop-return {:exit-reason   :ran-out-of-time
+                                                   :run-time      (Duration/parse "PT15S")
+                                                   :success-count 1
+                                                   :failure-count 0}})]
+              (is (= (.instant clock) last-seen-change))
+              (is (= (.instant clock) next-dlq-run))
+              (testing "Metrics have expected values"
+                (is (== 2 (mt/metric-value system :metabase-search/semantic-indexer-dlq-successes)))
+                (is (== 0 (mt/metric-value system :metabase-search/semantic-indexer-dlq-failures))))))
 
-        ;; for now policy for this branch is the same as the above - but may change
-        (testing "dlq rescheduled immediately after change (ran out of time, more to do - failures)"
-          (let [{:keys [last-seen-change next-dlq-run]}
-                (run-scenario {:dlq-loop-return {:exit-reason   :ran-out-of-time
-                                                 :run-time      (Duration/parse "PT12S")
-                                                 :success-count 2
-                                                 :failure-count 3}})]
-            (is (= (.instant clock) last-seen-change))
-            (is (= (.instant clock) next-dlq-run))))))))
+          ;; for now policy for this branch is the same as the above - but may change
+          (testing "dlq rescheduled immediately after change (ran out of time, more to do - failures)"
+            (let [{:keys [last-seen-change next-dlq-run]}
+                  (run-scenario {:dlq-loop-return {:exit-reason   :ran-out-of-time
+                                                   :run-time      (Duration/parse "PT12S")
+                                                   :success-count 2
+                                                   :failure-count 3}})]
+              (is (= (.instant clock) last-seen-change))
+              (is (= (.instant clock) next-dlq-run))
+              (testing "Metrics have expected values"
+                (is (== 4 (mt/metric-value system :metabase-search/semantic-indexer-dlq-successes)))
+                (is (== 3 (mt/metric-value system :metabase-search/semantic-indexer-dlq-failures))))))
+          (testing ":metabase-search/semantic-indexer-dlq-loop-ms have expected value"
+            (is (< 0 (mt/metric-value system :metabase-search/semantic-indexer-dlq-loop-ms)))))))))
 
 (defn- get-dlq-rows! [pgvector index-metadata index-id]
   (let [q {:select [:*] :from [(semantic.dlq/dlq-table-name-kw index-metadata index-id)]}]
