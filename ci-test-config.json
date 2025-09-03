@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "ignored": {
+    "vars": []
+  },
+  "metadata": {
+    "last_updated": "2025-08-02",
+    "updated_by": "engineering-team",
+      "reason": "Initial, and empty, ci test config"
+  }
+}
