@@ -14,6 +14,7 @@ import {
   DatabaseForm,
   type DatabaseFormConfig,
 } from "metabase/databases/components/DatabaseForm";
+import type { FormLocation } from "metabase/databases/types";
 import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
 import type {
@@ -55,7 +56,7 @@ export const DatabaseEditConnectionForm = withRouter(
     location: LocationDescriptorObject;
     autofocusFieldName?: string;
     config?: Omit<DatabaseFormConfig, "isAdvanced">;
-    formLocation: "admin" | "full-page";
+    formLocation: Extract<FormLocation, "admin" | "full-page">;
   }) => {
     const dispatch = useDispatch();
 
