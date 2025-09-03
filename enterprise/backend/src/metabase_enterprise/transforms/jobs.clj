@@ -26,27 +26,42 @@
                (into more-transforms (get ordering current-transform))))
       found)))
 
+(defn- next-transform [ordering transforms-by-id complete]
+  (->> (transforms.ordering/available-transforms ordering #{} complete)
+       (map transforms-by-id)
+       (sort-by :created_at)
+       first))
+
 (defn- get-plan [transform-ids]
-  (let [all-transforms  (t2/select :model/Transform)
-        global-ordering (transforms.ordering/transform-ordering all-transforms)
-        relevant-ids    (get-deps global-ordering transform-ids)
-        ordering        (select-keys global-ordering relevant-ids)]
+  (let [all-transforms   (t2/select :model/Transform)
+        global-ordering  (transforms.ordering/transform-ordering all-transforms)
+        relevant-ids     (get-deps global-ordering transform-ids)
+        ordering         (select-keys global-ordering relevant-ids)
+        transforms-by-id (into {}
+                               (keep (fn [{:keys [id] :as transform}]
+                                       (when (relevant-ids id)
+                                         [id transform])))
+                               all-transforms)]
     (when-let [cycle (transforms.ordering/find-cycle ordering)]
       (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
         (throw (ex-info (str "Cyclic transform definitions detected: "
                              (str/join " → " (map id->name cycle)))
                         {:cycle cycle}))))
-    {:transforms-by-id (into {}
-                             (keep (fn [{:keys [id] :as transform}]
-                                     (when (relevant-ids id)
-                                       [id transform])))
-                             all-transforms)
-     :ordering         ordering}))
+    (loop [complete (ordered-set/ordered-set)]
+      (if-let [current-transform (next-transform ordering transforms-by-id complete)]
+        (recur (conj complete (:id current-transform)))
+        (map transforms-by-id complete)))))
 
-(defn- next-transform [{:keys [ordering transforms-by-id]} complete]
-  (-> (transforms.ordering/available-transforms ordering #{} complete)
-      first
-      transforms-by-id))
+(defn run-transform! [run-id run-method {transform-id :id :as transform}]
+  (when (transform-run/running-run-for-run-id transform-id)
+    (log/warn "Transform" (pr-str transform-id) "already running, waiting")
+    (loop []
+      (Thread/sleep 2000)
+      (when (transform-run/running-run-for-run-id transform-id)
+        (recur))))
+  (log/info "Executing job transform" (pr-str transform-id))
+  (transforms.execute/run-mbql-transform! transform {:run-method run-method})
+  (transforms.job-run/add-run-activity! run-id))
 
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
@@ -56,27 +71,8 @@
   (let [plan (get-plan transform-ids-to-run)]
     (when start-promise
       (deliver start-promise :started))
-    (loop [complete    #{}
-           in-progress nil]
-      (when-let [{transform-id :id :as current-transform} (next-transform plan complete)]
-        (cond
-          (transform-run/running-run-for-run-id transform-id)
-          (do
-            (log/info "Transform" (pr-str transform-id) "already running, sleeping")
-            (Thread/sleep 2000)
-            (recur complete transform-id))
-
-          in-progress
-          (do
-            (transforms.job-run/add-run-activity! run-id)
-            (recur (conj complete in-progress) nil))
-
-          :else
-          (do
-            (log/info "Executing job transform" (pr-str transform-id))
-            (transforms.execute/run-mbql-transform! current-transform {:run-method run-method})
-            (transforms.job-run/add-run-activity! run-id)
-            (recur (conj complete (:id current-transform)) nil)))))))
+    (doseq [transform plan]
+      (run-transform! run-id run-method transform))))
 
 (defn- job-transform-ids [job-id]
   (t2/select-fn-set :transform_id
@@ -93,11 +89,7 @@
 
   The transforms are returned in the order of their execution."
   [job-id]
-  (let [{:keys [ordering transforms-by-id]} (get-plan (job-transform-ids job-id))]
-    (loop [complete (ordered-set/ordered-set)]
-      (if-let [available (not-empty (transforms.ordering/available-transforms ordering #{} complete))]
-        (recur (into complete available))
-        (map transforms-by-id complete)))))
+  (get-plan (job-transform-ids job-id)))
 
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."
