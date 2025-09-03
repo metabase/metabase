@@ -1293,6 +1293,26 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
     });
   });
+
+  it("should not render detail view column in preview (metabase#63070)", () => {
+    function openPreview() {
+      cy.findByTestId("step-preview-button").click();
+    }
+
+    function verifyPreviewIsRendered() {
+      cy.findByTestId("table-scroll-container").should("contain", "37.65");
+    }
+
+    function verifyIndexColumnsNotRendered() {
+      cy.findAllByTestId("row-id-cell").should("have.length", 0);
+    }
+
+    H.openOrdersTable({ mode: "notebook" });
+
+    openPreview();
+    verifyPreviewIsRendered();
+    verifyIndexColumnsNotRendered();
+  });
 });
 
 function assertTableRowCount(expectedCount) {
