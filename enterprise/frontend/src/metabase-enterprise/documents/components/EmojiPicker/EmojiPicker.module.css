@@ -68,3 +68,11 @@
   justify-content: center;
   color: var(--mb-color-text-secondary);
 }
+
+.pickerList {
+  padding-block: var(--mantine-spacing-sm);
+
+  [frimousse-row] {
+    padding-inline: var(--mantine-spacing-xs);
+  }
+}
