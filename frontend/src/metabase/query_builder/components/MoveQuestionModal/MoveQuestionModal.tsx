@@ -162,8 +162,13 @@ export const MoveQuestionModal = ({
               "{0} is the dashboard name the question currently has dashcards in",
             ).jt`Do you still want this question to appear in ${(
               <>
-                <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
-                <Dashboards.Name id={question.dashboardId()} />
+                <Icon
+                  key="icon"
+                  name="dashboard"
+                  style={{ marginBottom: -2 }}
+                  size={20}
+                />{" "}
+                <Dashboards.Name key="name" id={question.dashboardId()} />
               </>
             )}?`}
           </Title>
@@ -208,8 +213,13 @@ export const MoveQuestionModal = ({
             {c("{0} is the name of a dashboard")
               .jt`Moving this question to another dashboard will remove it from ${(
               <>
-                <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
-                <Dashboards.Name id={question.dashboardId()} />
+                <Icon
+                  key="icon"
+                  name="dashboard"
+                  style={{ marginBottom: -2 }}
+                  size={20}
+                />{" "}
+                <Dashboards.Name key="name" id={question.dashboardId()} />
               </>
             )}`}
           </Title>
