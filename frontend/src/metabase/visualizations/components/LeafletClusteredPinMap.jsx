@@ -1,9 +1,9 @@
 import L from "leaflet";
 import _ from "underscore";
-import "leaflet.markercluster/dist/MarkerCluster.css";
-import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 // Import markercluster to extend L
 import "leaflet.markercluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 
 import { getSubpathSafeUrl } from "metabase/lib/urls";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
