@@ -640,6 +640,25 @@ describe("scenarios > admin > transforms", () => {
       getRunButton({ timeout: 30_000 }).should("have.text", "Run canceled");
       getRunStatus().should("contain", "Last run was canceled");
     });
+
+    it("should be possible to cancel a transform from the runs page", () => {
+      getRunButton().click();
+      getRunButton().should("have.text", "Running now…");
+      getRunStatus().should("have.text", "Run in progress…");
+
+      getNavSidebar().findByText("Runs").click();
+      getContentTable().within(() => {
+        cy.findByText("In-progress").should("be.visible");
+        cy.findByLabelText("Cancel run").click();
+      });
+
+      H.modal().button("Yes").click();
+
+      getContentTable().findByText("Canceling").should("be.visible");
+      getContentTable()
+        .findByText("Canceled", { timeout: 30_000 })
+        .should("be.visible");
+    });
   });
 });
 
