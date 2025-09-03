@@ -11,7 +11,8 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 
 export function PythonRunnerSettingsPage() {
-  const { data: settingValues, isLoading } = useGetSettingsQuery();
+  // it seems we don't need to wire in _settingValues to the inputs - what is this magic??
+  const { data: _settingValues, isLoading } = useGetSettingsQuery();
   const hasTransformsFeature = useHasTokenFeature("transforms");
 
   if (isLoading) {

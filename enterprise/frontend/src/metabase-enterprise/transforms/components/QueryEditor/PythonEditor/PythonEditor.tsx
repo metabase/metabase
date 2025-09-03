@@ -13,7 +13,11 @@ import {
 type PythonEditorProps = {
   script: string;
   isRunnable: boolean;
+  isRunning?: boolean;
+  isResultDirty?: boolean;
   onChange: (script: string) => void;
+  onRunScript?: () => Promise<void>;
+  onCancelScript?: () => void;
   tables?: Record<string, number>;
 };
 
@@ -68,19 +72,11 @@ export function PythonEditor({
         tables: tables,
       }).unwrap();
 
-      if (result?.body && result?.body.error) {
-        setExecutionResult({
-          error: result.body.error || "Execution failed",
-          stdout: result.body.stdout,
-          stderr: result.body.stderr,
-        });
-      } else {
-        setExecutionResult({
-          output: result.output,
-          stdout: result.stdout,
-          stderr: result.stderr,
-        });
-      }
+      setExecutionResult({
+        output: result.output,
+        stdout: result.stdout,
+        stderr: result.stderr,
+      });
     } catch (error: any) {
       // The API returns error data directly in error.data
       const errorData = error?.data || {};
