@@ -231,8 +231,7 @@
                    ;; of `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
                    ;; see https://github.com/metabase/metabase/issues/27856
-                   (cond-> (:quote-db-name details)
-                     (update :db quote-name))
+                   (update :db quote-name)
                    (cond-> use-password
                      (dissoc :private-key))
                    ;; password takes precedence if `use-password` is missing
@@ -511,9 +510,10 @@
 ;; :field]` below.
 (defn- qualify-identifier [[_identifier identifier-type components, :as identifier]]
   {:pre [(h2x/identifier? identifier)]}
-  (let [db-routing? (when (driver-api/initialized?)
-                      (driver-api/db-routing-enabled? (driver-api/database (driver-api/metadata-provider))))]
-    (apply h2x/identifier identifier-type (when-not db-routing? (query-db-name)) components)))
+  identifier
+  #_(let [db-routing? (when (driver-api/initialized?)
+                        (driver-api/db-routing-enabled? (driver-api/database (driver-api/metadata-provider))))]
+      (apply h2x/identifier identifier-type (when-not db-routing? (query-db-name)) components)))
 
 (defmethod sql.qp/->honeysql [:snowflake ::h2x/identifier]
   [_driver [_identifier identifier-type :as identifier]]
@@ -871,9 +871,9 @@
            (.next rs)))))))
 
 (defmethod driver/set-database-used! :snowflake [_driver conn db]
-  (let [sql (format "USE DATABASE \"%s\"" (db-name db))]
-    (with-open [stmt (.createStatement ^java.sql.Connection conn)]
-      (.execute stmt sql))))
+  nil #_(let [sql (format "USE DATABASE \"%s\"" (db-name db))]
+          (with-open [stmt (.createStatement ^java.sql.Connection conn)]
+            (.execute stmt sql))))
 
 (defmethod driver/run-transform! [:snowflake :table]
   [driver {:keys [connection-details query output-table]} opts]
