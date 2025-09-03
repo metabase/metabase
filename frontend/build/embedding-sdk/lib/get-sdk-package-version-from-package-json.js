@@ -3,7 +3,11 @@
 const fs = require("fs");
 const path = require("path");
 
-module.exports.getSdkVersionFromPackageJson = () => {
+const {
+  EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
+} = require("../constants/versions");
+
+module.exports.getSdkPackageVersionFromPackageJson = () => {
   const sdkPackageTemplateJson = fs.readFileSync(
     path.resolve(
       path.join(
@@ -19,5 +23,8 @@ module.exports.getSdkVersionFromPackageJson = () => {
     throw new Error(`Failed to get SDK package.template.json`);
   }
 
-  return JSON.parse(sdkPackageTemplateJson)?.version || "unknown";
+  return (
+    JSON.parse(sdkPackageTemplateJson)?.version ||
+    EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION
+  );
 };

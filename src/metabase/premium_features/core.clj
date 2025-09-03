@@ -28,6 +28,7 @@
   log-enabled?
   max-users-allowed
   plan-alias
+  quotas
   TokenStatus
   clear-cache]
 
