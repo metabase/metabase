@@ -7,7 +7,9 @@ import { useSelector } from "metabase/lib/redux";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import {
   useCreateCommentMutation,
+  useCreateReactionMutation,
   useDeleteCommentMutation,
+  useDeleteReactionMutation,
   useUpdateCommentMutation,
 } from "metabase-enterprise/api";
 import { getCommentsUrl } from "metabase-enterprise/comments/utils";
@@ -44,6 +46,8 @@ export const Discussion = ({
   const [createComment] = useCreateCommentMutation();
   const [updateComment] = useUpdateCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
+  const [createReaction] = useCreateReactionMutation();
+  const [deleteReaction] = useDeleteReactionMutation();
 
   const handleSubmit = (doc: DocumentContent) => {
     const effectiveChildTargetId =
@@ -87,6 +91,14 @@ export const Discussion = ({
     sendToast({ icon: "check", message: t`Copied link` });
   };
 
+  const handleReaction = (comment: Comment, emoji: string) => {
+    createReaction({ id: comment.id, emoji });
+  };
+
+  const handleReactionRemove = (comment: Comment) => {
+    deleteReaction({ id: comment.id });
+  };
+
   return (
     <Stack>
       <Timeline bulletSize={rem(24)} lineWidth={1} className={S.discussionRoot}>
@@ -100,6 +112,8 @@ export const Discussion = ({
             onReopen={handleReopenComment}
             onEdit={handleEditComment}
             onCopyLink={handleCopyLink}
+            onReaction={handleReaction}
+            onReactionRemove={handleReactionRemove}
           />
         ))}
         {!comments[0]?.is_resolved && (

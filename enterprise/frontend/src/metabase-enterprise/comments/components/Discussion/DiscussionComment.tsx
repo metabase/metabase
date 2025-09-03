@@ -15,6 +15,7 @@ import { CommentEditor } from "../CommentEditor";
 
 import S from "./Discussion.module.css";
 import { DiscussionActionPanel } from "./DiscussionActionPanel";
+import { DiscussionReactions } from "./DiscussionReactions";
 
 type DiscussionCommentProps = {
   canResolve?: boolean;
@@ -22,6 +23,7 @@ type DiscussionCommentProps = {
   onResolve?: (comment: Comment) => void;
   onReopen?: (comment: Comment) => void;
   onReaction?: (comment: Comment, emoji: string) => void;
+  onReactionRemove?: (comment: Comment, emoji: string) => void;
   onDelete?: (comment: Comment) => void;
   onEdit?: (comment: Comment, newContent: DocumentContent) => void;
   onCopyLink?: (comment: Comment) => void;
@@ -33,6 +35,7 @@ export function DiscussionComment({
   onResolve,
   onReopen,
   onReaction,
+  onReactionRemove,
   onDelete,
   onEdit,
   onCopyLink,
@@ -48,10 +51,13 @@ export function DiscussionComment({
     editingHandler.open();
   }, [editingHandler]);
 
-  const handleEditingSubmit = (document: DocumentContent) => {
-    onEdit?.(comment, document);
-    editingHandler.close();
-  };
+  const handleEditingSubmit = useCallback(
+    (document: DocumentContent) => {
+      onEdit?.(comment, document);
+      editingHandler.close();
+    },
+    [comment, onEdit, editingHandler],
+  );
 
   if (comment.is_deleted) {
     return (
@@ -125,6 +131,10 @@ export function DiscussionComment({
           initialContent={comment.content}
           onSubmit={handleEditingSubmit}
           readonly={!isEditing}
+        />
+        <DiscussionReactions
+          comment={comment}
+          onReactionRemove={onReactionRemove}
         />
       </Box>
     </Timeline.Item>

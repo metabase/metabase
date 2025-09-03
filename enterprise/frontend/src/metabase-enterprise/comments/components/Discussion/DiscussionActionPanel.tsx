@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -38,10 +38,19 @@ export function DiscussionActionPanel({
   onDelete,
   onEdit,
   onCopyLink,
+  onReaction,
 }: DiscussionActionPanelProps) {
   const [emojiPickerOpened, setEmojiPickerOpened] = useState(false);
   const [popoverOpened, setPopoverOpened] = useState(false);
   const hasMoreActions = Boolean(onReopen || onDelete || onEdit || onCopyLink);
+
+  const handleReaction = useCallback(
+    (emoji: { emoji: string; label: string }) => {
+      onReaction?.(comment, emoji.emoji);
+      setEmojiPickerOpened(false);
+    },
+    [comment, onReaction],
+  );
 
   return (
     <Paper
@@ -61,9 +70,6 @@ export function DiscussionActionPanel({
           <Popover.Target>
             <Tooltip label={t`Add reaction`} disabled={emojiPickerOpened}>
               <ActionIcon
-                style={{
-                  display: "none",
-                }}
                 size={ACTION_ICON_SIZE}
                 onClick={() => setEmojiPickerOpened((opened) => !opened)}
               >
@@ -73,7 +79,7 @@ export function DiscussionActionPanel({
             </Tooltip>
           </Popover.Target>
           <Popover.Dropdown>
-            <EmojiPicker onEmojiSelect={(emoji) => alert(emoji.emoji)} />
+            <EmojiPicker onEmojiSelect={handleReaction} />
           </Popover.Dropdown>
         </Popover>
         {canResolve && (

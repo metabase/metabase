@@ -48,3 +48,17 @@
   background-color: var(--mb-color-background);
   color: var(--mb-color-text-disabled);
 }
+
+.reaction {
+  appearance: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background-color: var(--mb-color-bg-medium);
+  padding: 0 0.5rem;
+  border-radius: 1rem;
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
