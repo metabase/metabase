@@ -161,7 +161,7 @@
                                (let [details (assoc details :quote-db-name quote?)]
                                  (sql-jdbc.conn/connection-details->spec :snowflake details)))
         true "\"v3_sample-dataset\""
-        false "v3_sample-dataset"))
+        false "\"v3_sample-dataset\""))
     (testing "Subname is replaced if hostname is provided (#22133)"
       (are [use-hostname alternative-host expected-subname] (=? expected-subname
                                                                 (:subname (let [details (-> details

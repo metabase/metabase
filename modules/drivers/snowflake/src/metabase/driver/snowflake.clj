@@ -883,7 +883,11 @@
                                                      :output-table output-table})]
                   (:overwrite? opts) (cons (driver/compile-drop-table driver output-table)))
         db-name-val (some connection-details [:db :dbname])
+        quoted-db (if (and (= (first db-name-val) \")
+                           (= (last db-name-val) \"))
+                    db-name-val
+                    (str "\"" db-name-val "\""))
         all-queries (if db-name-val
-                      (cons [(format "USE DATABASE \"%s\"" db-name-val)] queries)
+                      (cons [(str "USE DATABASE " quoted-db)] queries)
                       queries)]
     {:rows-affected (last (driver/execute-raw-queries! driver connection-details all-queries))}))
