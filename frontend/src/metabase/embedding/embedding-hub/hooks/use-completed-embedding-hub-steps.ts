@@ -1,67 +1,35 @@
 import { useMemo } from "react";
-import _ from "underscore";
 
-import { useGetPermissionsGraphQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 
 import type { EmbeddingHubStepId } from "../types";
 
 /**
  * Embedding Hub completion steps should be derived by the instance state at the time, or tracked manually in instance settings for some of them.
  */
-export const useCompletedEmbeddingHubSteps = (): Record<
-  EmbeddingHubStepId,
-  boolean
-> => {
-  const isJwtEnabled = useSetting("jwt-enabled");
-  const isSamlEnabled = useSetting("saml-enabled");
-  const isJwtConfigured = useSetting("jwt-configured");
-  const isSamlConfigured = useSetting("saml-configured");
+export const useCompletedEmbeddingHubSteps = (): {
+  data: Record<EmbeddingHubStepId, boolean>;
+  isLoading: boolean;
+} => {
+  const { data: embeddingHubChecklist, isLoading } =
+    useGetEmbeddingHubChecklistQuery(undefined, {
+      refetchOnMountOrArgChange: true,
+    });
 
-  const isSsoReady =
-    (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
+  const data = useMemo(() => {
+    if (isLoading || !embeddingHubChecklist) {
+      return {
+        "create-test-embed": false,
+        "add-data": false,
+        "create-dashboard": false,
+        "configure-row-column-security": false,
+        "secure-embeds": false,
+        "embed-production": false,
+      };
+    }
 
-  const { data: permissionsGraph } = useGetPermissionsGraphQuery();
+    return embeddingHubChecklist;
+  }, [embeddingHubChecklist, isLoading]);
 
-  const hasConfiguredSandboxes = useMemo(
-    () => getValuesFlat(permissionsGraph).includes("sandboxed"),
-    [permissionsGraph],
-  );
-
-  const isTestEmbedCreated = useSetting(
-    "embedding-hub-test-embed-snippet-created",
-  );
-
-  const isProductionEmbedCreated = useSetting(
-    "embedding-hub-production-embed-snippet-created",
-  );
-
-  return useMemo(() => {
-    return {
-      "create-test-embed": isTestEmbedCreated ?? false,
-      "add-data": false,
-      "create-dashboard": false,
-      "configure-row-column-security": hasConfiguredSandboxes,
-      "secure-embeds": isSsoReady,
-      "embed-production": isProductionEmbedCreated ?? false,
-    };
-  }, [
-    isTestEmbedCreated,
-    hasConfiguredSandboxes,
-    isSsoReady,
-    isProductionEmbedCreated,
-  ]);
+  return { data, isLoading };
 };
-
-/**
- * Converts nested objects to a flat array of "leaf" values
- * eg: { k1: { k3: "1" }, k2: "2" } -> ["1", "2"]
- */
-function getValuesFlat(obj: unknown): string[] {
-  return _.chain(obj)
-    .values()
-    .map((v) => (_.isObject(v) ? getValuesFlat(v) : v))
-    .flatten()
-    .filter((v): v is string => typeof v === "string")
-    .value();
-}
