@@ -129,6 +129,13 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
           {errorInfo ?? runsInfo}
         </Group>
       );
+    case "canceling":
+      return (
+        <Group gap="sm">
+          <Icon c="text-secondary" name="close" />
+          <Box>{t`Canceling run…`}</Box>
+        </Group>
+      );
     case "canceled":
       return (
         <Group gap="sm">
@@ -151,9 +158,9 @@ type RunButtonSectionProps = {
 };
 
 function RunButtonSection({ transform }: RunButtonSectionProps) {
-  const [fetchTransform, { isFetching }] = useLazyGetTransformQuery();
+  const [fetchTransform] = useLazyGetTransformQuery();
   const [runTransform, { isLoading: isStarting }] = useRunTransformMutation();
-  const [cancelTransform, { isLoading: isCancelling }] =
+  const [cancelTransform, { isLoading: isCanceling }] =
     useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
   const [
@@ -188,8 +195,8 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
       <RunButton
         allowCancellation
         run={transform.last_run}
-        isLoading={isFetching || isStarting || isCancelling}
-        isCancelling={isCancelling}
+        isStarting={isStarting}
+        isCanceling={isCanceling}
         onRun={handleRun}
         onCancel={openConfirmModal}
       />

@@ -9,9 +9,9 @@ const RECENT_TIMEOUT = 5000;
 
 type RunButtonProps = {
   run: TransformRun | null | undefined;
-  isLoading: boolean;
   isDisabled?: boolean;
-  isCancelling?: boolean;
+  isStarting?: boolean;
+  isCanceling?: boolean;
   allowCancellation?: boolean;
   onRun: () => void;
   onCancel?: () => void;
@@ -20,8 +20,8 @@ type RunButtonProps = {
 export const RunButton = forwardRef(function RunButton(
   {
     run,
-    isLoading,
-    isCancelling,
+    isStarting = false,
+    isCanceling = false,
     isDisabled: isExternallyDisabled = false,
     onRun,
     onCancel,
@@ -32,7 +32,8 @@ export const RunButton = forwardRef(function RunButton(
   const [isRecent, setIsRecent] = useState(false);
   const { label, color, leftSection, isDisabled } = getRunButtonInfo({
     run,
-    isLoading,
+    isStarting,
+    isCanceling,
     isRecent,
     isDisabled: isExternallyDisabled,
   });
@@ -43,7 +44,7 @@ export const RunButton = forwardRef(function RunButton(
     return () => clearTimeout(timeoutId);
   }, [run]);
 
-  const isRunning = run?.status === "started" || isLoading;
+  const isStartingOrStarted = run?.status === "started" || isStarting;
 
   return (
     <Button.Group>
@@ -58,11 +59,10 @@ export const RunButton = forwardRef(function RunButton(
       >
         {label}
       </Button>
-      {allowCancellation && isRunning && (
+      {allowCancellation && isStartingOrStarted && (
         <Tooltip label={t`Cancel`}>
           <Button
             onClick={onCancel}
-            disabled={isCancelling}
             rightSection={<Icon name="close" aria-hidden />}
           />
         </Tooltip>
@@ -73,7 +73,8 @@ export const RunButton = forwardRef(function RunButton(
 
 type RunButtonOpts = {
   run: TransformRun | null | undefined;
-  isLoading: boolean;
+  isStarting: boolean;
+  isCanceling: boolean;
   isRecent: boolean;
   isDisabled: boolean;
 };
@@ -87,14 +88,24 @@ type RunButtonInfo = {
 
 function getRunButtonInfo({
   run,
-  isLoading,
+  isStarting,
+  isCanceling,
   isRecent,
   isDisabled,
 }: RunButtonOpts): RunButtonInfo {
-  if (run?.status === "started" || isLoading) {
+  if (run?.status === "started" || isStarting) {
     return {
       label: t`Running now…`,
       leftSection: <Loader size="sm" />,
+      isDisabled: true,
+    };
+  }
+
+  if (run?.status === "canceling" || isCanceling) {
+    return {
+      label: t`Canceling run…`,
+      leftSection: <Loader size="sm" />,
+      color: "text-secondary",
       isDisabled: true,
     };
   }
@@ -120,7 +131,7 @@ function getRunButtonInfo({
     return {
       label: t`Run canceled`,
       color: "text-secondary",
-      leftSection: <Icon name="close" aria-hidden />,
+      leftSection: <Icon name="check" aria-hidden />,
       isDisabled,
     };
   }
