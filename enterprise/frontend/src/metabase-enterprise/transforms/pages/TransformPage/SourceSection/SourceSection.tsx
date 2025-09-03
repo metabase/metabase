@@ -47,13 +47,11 @@ type SourceInfoProps = {
 };
 
 function SourceInfo({ transform }: SourceInfoProps) {
-  const isPythonSource = transform.source.type === "python";
-  const sourceDatabaseId = isPythonSource
-    ? transform.source["source-database"]
-    : undefined;
-  const sourceTables = isPythonSource
-    ? transform.source["source-tables"]
-    : undefined;
+  const source = transform.source;
+  const sourceDatabaseId =
+    source.type === "python" ? source["source-database"] : undefined;
+  const sourceTables =
+    source.type === "python" ? source["source-tables"] : undefined;
 
   const { data: database, isLoading: isDatabaseLoading } = useGetDatabaseQuery(
     sourceDatabaseId ? { id: sourceDatabaseId } : skipToken,
