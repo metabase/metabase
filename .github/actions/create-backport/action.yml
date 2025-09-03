@@ -38,36 +38,62 @@ runs:
         CONFLICT_LIST=$(git ls-files -u)
 
         CONFLICTS=$(git ls-files -u | wc -l)
-        if [ "$CONFLICTS" -gt 0 ]; then
-          git cherry-pick --abort
+        if [ "$CONFLICTS" -gt 0 ] ; then
+          # Check if all conflicts are only in i18n files (locales/*.po)
+          I18N_ONLY = $(git ls-files -u | cut -f2 | grep -v "^locales/.*\.po$" | wc -l)
 
-          echo "Could not cherry pick because of a conflict"
-          echo "has-conflicts=true" >> $GITHUB_OUTPUT
+          # wc -l has whitespace, we use`// /` to remove it
+          if [ "${I18N_ONLY// /}" -eq 0 ] ; then
+            echo "All conflicts are in i18n files. Attempting automatic resolution..."
 
-          # Add a shell script for resolving conflicts
-          echo "git reset HEAD~1" > ./backport.sh
-          echo "rm ./backport.sh" >> ./backport.sh
-          echo "git cherry-pick ${COMMIT}" >> ./backport.sh
-          echo "echo 'Resolve conflicts and force push this branch.\n\nTo backport translations run: bin/i18n/merge-translations <release-branch>'" >> ./backport.sh
-          chmod +x ./backport.sh
-          git add ./backport.sh
-          git commit -m "Add backport resolution script"
+            git checkout --theirs locales/
+            git add locales/
 
-          PR_BODY=$(cat <<-END
-          #${ORIGINAL_PULL_REQUEST_NUMBER}
-          > [!IMPORTANT]
-          > Manual conflict resolution is required.
-          > Checkout the branch and run \`./backport.sh\` script. Force push your changes after cherry-picking. Check the box below when done.
+            # Install gettext for translation merging
+            # sudo apt-get update -qq && sudo apt-get install -qq gettext
 
-          Conflicts:
-          \`\`\`shell
-          ${CONFLICT_LIST}
-          \`\`\`
+            # Run merge-translations script
+            ./bin/i18n/merge-translations ${TARGET_BRANCH}
 
-          - [ ] Conflicts resolved
-        END
-          )
-        else
+            # Add resolved files and complete cherry-pick
+            git add locales/
+            git cherry-pick --continue --no-edit
+
+            echo "has-conflicts = false" > > $GITHUB_OUTPUT
+            else
+            echo "Non-i18n conflicts found, requiring manual resolution"
+            git cherry-pick --abort
+            echo "has-conflicts=true" > > $GITHUB_OUTPUT
+
+            # Add a shell script for resolving conflicts
+            echo "git reset HEAD~1" > ./backport.sh
+            echo "rm ./backport.sh" > > ./backport.sh
+            echo "git cherry-pick ${COMMIT}" > > ./backport.sh
+            echo "echo 'Resolve conflicts and force push this branch.\n\nTo backport translations run: bin/i18n/merge-translations < release-branch > '" > > ./backport.sh
+            chmod +x ./backport.sh
+            git add ./backport.sh
+            git commit -m "Add backport resolution script"
+          fi
+
+          if [ "$I18N_ONLY_CONFLICTS" -eq 0 ] ; then
+            PR_BODY = "#${ORIGINAL_PULL_REQUEST_NUMBER}"
+            else
+            PR_BODY=$(cat <<-END
+            #${ORIGINAL_PULL_REQUEST_NUMBER}
+            > [!IMPORTANT]
+            > Manual conflict resolution is required.
+            > Checkout the branch and run \`./backport.sh\` script. Force push your changes after cherry-picking. Check the box below when done.
+
+            Conflicts:
+            \`\`\`shell
+            ${CONFLICT_LIST}
+            \`\`\`
+
+            - [ ] Conflicts resolved
+            END
+            )
+          fi
+          else
           echo "has-conflicts=false" >> $GITHUB_OUTPUT
           PR_BODY="#${ORIGINAL_PULL_REQUEST_NUMBER}"
         fi
