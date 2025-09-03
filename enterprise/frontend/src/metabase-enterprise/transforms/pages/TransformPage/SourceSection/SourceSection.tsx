@@ -47,10 +47,6 @@ type SourceInfoProps = {
 };
 
 function SourceInfo({ transform }: SourceInfoProps) {
-  if (transform.source.type !== "python") {
-    return null;
-  }
-
   const sourceDatabaseId = transform.source["source-database"];
   const sourceTables = transform.source["source-tables"];
 
@@ -58,7 +54,12 @@ function SourceInfo({ transform }: SourceInfoProps) {
     sourceDatabaseId ? { id: sourceDatabaseId } : skipToken,
   );
 
-  const hasMultipleTables = sourceTables && Object.keys(sourceTables).length > 0;
+  if (!database) {
+    return null;
+  }
+
+  const hasMultipleTables =
+    sourceTables && Object.keys(sourceTables).length > 0;
 
   if (isDatabaseLoading) {
     return <Loader size="sm" />;
@@ -173,7 +174,9 @@ function SourceItemLink({
     >
       <Group gap="xs">
         <Icon name={icon} size={small ? 14 : 16} />
-        <Text c="inherit" size={small ? "sm" : "md"}>{label}</Text>
+        <Text c="inherit" size={small ? "sm" : "md"}>
+          {label}
+        </Text>
       </Group>
     </Link>
   );
