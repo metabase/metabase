@@ -12,6 +12,10 @@
 .pickerViewport {
   overflow: auto;
   flex-grow: 1;
+
+  &:focus-visible {
+    outline: none;
+  }
 }
 
 .pickerMessage {
