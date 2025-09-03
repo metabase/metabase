@@ -62,6 +62,10 @@
         "sanity check: search-no-weights should be different")
     result))
 
+;;
+;; index-based scorers
+;;
+
 (deftest rrf-test
   (mt/with-premium-features #{:semantic-search}
     (with-index-contents!
@@ -211,6 +215,44 @@
         [{:model "card" :id 1 :name "card popular" :dashboardcard_count 200}
          {:model "card" :id 2 :name "card" :dashboardcard_count 201}]
         (is (indifferent? :dashboard "card"))))))
+
+;;;
+;;; "premium" index-based scorers
+;;;
+
+(deftest official-collection-test
+  (with-index-contents!
+    [{:model "collection" :id 1 :name "collection normal" :official_collection false}
+     {:model "collection" :id 2 :name "collection official" :official_collection true}]
+    (testing "official collections has higher rank"
+      (mt/with-premium-features #{:semantic-search :official-collections}
+        (is (= [["collection" 2 "collection official"]
+                ["collection" 1 "collection normal"]]
+               (search-results :official-collection "collection")))))
+    (testing "only if feature is enabled"
+      (mt/with-premium-features #{:semantic-search}
+        (is (= [["collection" 1 "collection normal"]
+                ["collection" 2 "collection official"]]
+               (search-results* "collection")))))))
+
+(deftest verified-test
+  (with-index-contents!
+    [{:model "card" :id 1 :name "card normal" :verified false}
+     {:model "card" :id 2 :name "card verified" :verified true}]
+    (testing "verified items have higher rank"
+      (mt/with-premium-features #{:semantic-search :content-verification}
+        (is (= [["card" 2 "card verified"]
+                ["card" 1 "card normal"]]
+               (search-results :verified "card")))))
+    (testing "only if feature is enabled"
+      (mt/with-premium-features #{:semantic-search}
+        (is (= [["card" 1 "card normal"]
+                ["card" 2 "card verified"]]
+               (search-results* "card")))))))
+
+;;
+;; appdb-based scorers
+;;
 
 (deftest bookmark-test
   (mt/with-premium-features #{:semantic-search}
