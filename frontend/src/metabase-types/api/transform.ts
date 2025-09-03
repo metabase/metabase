@@ -40,6 +40,7 @@ export type TransformTarget = {
   type: TransformTargetType;
   name: string;
   schema: string | null;
+  database: number;
 };
 
 export type TransformRun = {

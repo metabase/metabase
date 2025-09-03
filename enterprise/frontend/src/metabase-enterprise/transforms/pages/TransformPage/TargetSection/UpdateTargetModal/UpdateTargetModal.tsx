@@ -117,10 +117,15 @@ function UpdateTargetForm({
   }
 
   const handleSubmit = async (values: EditTransformValues) => {
+    if (!databaseId) {
+      throw new Error("Database ID is required");
+    }
     if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id).unwrap();
     }
-    await updateTransform(getUpdateRequest(transform, values)).unwrap();
+    await updateTransform(
+      getUpdateRequest(transform, values, databaseId),
+    ).unwrap();
     onUpdate();
   };
 
@@ -203,6 +208,7 @@ function getSubmitButtonColor(shouldDeleteTarget: boolean) {
 function getUpdateRequest(
   { id }: Transform,
   { name, schema }: EditTransformValues,
+  databaseId: number,
 ): UpdateTransformRequest {
   return {
     id,
@@ -210,6 +216,7 @@ function getUpdateRequest(
       type: "table",
       name,
       schema,
+      database: databaseId,
     },
   };
 }
