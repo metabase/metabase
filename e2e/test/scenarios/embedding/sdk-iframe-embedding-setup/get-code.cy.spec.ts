@@ -183,6 +183,13 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       codeBlock().should("not.contain", "entity-types");
     });
+
+    H.waitForSimpleEmbedIframesToLoad();
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Orders", { timeout: 20_000 }).should("be.visible");
+      cy.findByText("Orders Model").should("be.visible");
+    });
   });
 
   it("should include entity-types when model count is 3", () => {
@@ -197,6 +204,13 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       codeBlock().should("contain", "entity-types='[\"model\"]'");
+    });
+
+    H.waitForSimpleEmbedIframesToLoad();
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Orders Model", { timeout: 20_000 }).should("be.visible");
+      cy.findByText("Orders").should("not.exist");
     });
   });
 });
