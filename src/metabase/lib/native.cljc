@@ -58,24 +58,25 @@
     :id   (str (random-uuid))}))
 
 (defn recognize-template-tags
-  "Finds and returns all template tags in query-text.
-
-  Does not traverse into snippets or assign snippet-ids."
+  "Finds and returns all template tags in query-text."
   [query-text]
   (let [parsed (lib.parse/parse {} query-text)]
-    (loop [found {}
+    (loop [found            {}
            [current & more] (vec parsed)]
       (match [current]
-        [nil] found
+        [nil]              found
         [_ :guard string?] (recur found more)
-        [{:type ::lib.parse/param
-          :name tag-name}] (let [full-tag         (str "{{" tag-name "}}")
-                                 [_ matched-name] (some #(re-matches % full-tag) tag-regexes)]
-                             (recur (cond-> found
-                                      (and matched-name (not (found matched-name))) (assoc matched-name (fresh-tag matched-name)))
-                                    more))
-        [{:type ::lib.parse/optional
-          :contents contents}] (recur found (apply conj more contents))))))
+
+        [{:type ::lib.parse/param, :name tag-name}]
+        (let [full-tag         (str "{{" tag-name "}}")
+              [_ matched-name] (some #(re-matches % full-tag) tag-regexes)]
+          (recur (cond-> found
+                   (and matched-name (not (found matched-name))) (assoc matched-name (fresh-tag matched-name)))
+                 more))
+
+        [{:type     ::lib.parse/optional
+          :contents contents}]
+        (recur found (apply conj more contents))))))
 
 (defn- rename-template-tag
   [existing-tags old-name new-name]

@@ -804,22 +804,21 @@
   "Recursively extract snippet dependencies from snippet template tags.
    Returns a sequence of dependent items including the snippet and any nested snippets."
   [metadata-providerable snippet-id visited-ids]
-  (if (contains? visited-ids snippet-id)
-    [] ; Avoid infinite recursion
-    (let [visited-ids' (conj visited-ids snippet-id)
-          snippet (lib.metadata/native-query-snippet metadata-providerable snippet-id)]
-      (if-not snippet
-        [{:type :native-query-snippet, :id snippet-id}] ; Return just the ID if we can't fetch the snippet
-        (cons {:type :native-query-snippet, :id snippet-id}
-              ;; Recursively get dependencies from the snippet's own template tags
-              (when-let [snippet-template-tags (:template-tags snippet)]
-                (mapcat
-                 (fn [{nested-type :type, nested-snippet-id :snippet-id}]
-                   (when (and (= nested-type :snippet)
-                              (some? nested-snippet-id)
-                              (integer? nested-snippet-id))
-                     (query-dependents-snippets metadata-providerable nested-snippet-id visited-ids')))
-                 (vals snippet-template-tags))))))))
+  (if-let [snippet (lib.metadata/native-query-snippet metadata-providerable snippet-id)]
+    (let [visited-ids' (conj visited-ids snippet-id)]
+      (cons {:type :native-query-snippet, :id snippet-id}
+            ;; Recursively get dependencies from the snippet's own template tags
+            (for [{nested-type       :type,
+                   nested-snippet-id :snippet-id} (vals (:template-tags snippet))
+                  :when (and (= nested-type :snippet)
+                             (integer? nested-snippet-id)
+                             (not (contains? visited-ids' nested-snippet-id)))
+                  dependency (query-dependents-snippets metadata-providerable
+                                                        nested-snippet-id
+                                                        visited-ids')]
+              dependency)))
+    ;; Return just the ID if we can't fetch the snippet:
+    [{:type :native-query-snippet, :id snippet-id}]))
 
 (defn- query-dependents-foreign-keys
   [metadata-providerable columns]

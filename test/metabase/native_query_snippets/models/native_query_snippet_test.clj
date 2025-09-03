@@ -115,7 +115,7 @@
   (testing "Template tags serialization preserves nil, empty, and populated states"
     (mt/with-temp [:model/User {user-id :id} {:email "test@example.com"}]
 
-      (testing "nil in -> nil out"
+      (testing "nil in -> {} out"
         (let [snippet (t2/insert-returning-instance! :model/NativeQuerySnippet
                                                      {:name "nil-tags"
                                                       :content "SELECT 1"

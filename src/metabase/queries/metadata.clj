@@ -33,8 +33,12 @@
               source-ids)
       (update-vals persistent!)))
 
+(defn- query->template-tags
+  [query]
+  (some-> query :native :template-tags vals seq))
+
 (defn- query->template-tag-field-ids [query]
-  (when-let [template-tags (some-> query :native :template-tags vals seq)]
+  (when-let [template-tags (query->template-tags query)]
     (for [{tag-type :type, [dim-tag id _opts] :dimension} template-tags
           :when (and (#{:dimension :temporal-unit} tag-type)
                      (= dim-tag :field)
@@ -44,12 +48,10 @@
 (defn- query->template-tag-snippet-ids
   "Extract snippet IDs from template tags in a native query."
   [query]
-  (when-let [template-tags (some-> query :native :template-tags vals seq)]
-    (into #{}
-          (for [{tag-type :type, snippet-id :snippet-id} template-tags
-                :when                                    (and (= tag-type :snippet)
-                                                              (some? snippet-id))]
-            snippet-id))))
+  (some->> (query->template-tags query)
+           (into #{}
+                 (comp (filter #(= :snippet (:type %)))
+                       (keep :snippet-id)))))
 
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
@@ -78,19 +80,19 @@
   [snippets]
   (set
    (for [snippet snippets
-         :when (:template_tags snippet)
-         tag (vals (:template_tags snippet))
-         :when (#{:dimension :temporal-unit} (:type tag))
-         :let [dimension (:dimension tag)
-                                            ;; Handle both keyword and string field references
-               [dim-type field-id] (cond
-                                     (vector? dimension) dimension
-                                     (string? dimension) (try
-                                                           (read-string dimension)
-                                                           (catch Exception _ nil))
-                                     :else nil)]
-         :when (and (#{:field "field"} dim-type)
-                    (integer? field-id))]
+         :when   (:template_tags snippet)
+         tag     (vals (:template_tags snippet))
+         :when   (#{:dimension :temporal-unit} (:type tag))
+         :let    [dimension (:dimension tag)
+                  ;; Handle both keyword and string field references
+                  [dim-type field-id] (cond
+                                        (vector? dimension) dimension
+                                        (string? dimension) (try
+                                                              (read-string dimension)
+                                                              (catch Exception _ nil))
+                                        :else               nil)]
+         :when   (and (#{:field "field"} dim-type)
+                      (integer? field-id))]
      field-id)))
 
 (defn- batch-fetch-query-metadata*

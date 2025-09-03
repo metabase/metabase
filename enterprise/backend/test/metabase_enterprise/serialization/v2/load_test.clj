@@ -966,7 +966,7 @@
 (deftest snippet-template-tags-import-test
   (testing "Template tags import preserves nil, empty, and populated values"
     (mt/with-empty-h2-app-db!
-      (testing "Missing template_tags field -> nil in database"
+      (testing "Missing template_tags field -> {} when selected"
         (let [snippet-data {:serdes/meta [{:model "NativeQuerySnippet"
                                            :id    "test-entity-1"
                                            :label "test_snippet_1"}]
