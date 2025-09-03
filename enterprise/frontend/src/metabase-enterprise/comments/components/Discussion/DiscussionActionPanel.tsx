@@ -69,6 +69,9 @@ export function DiscussionActionPanel({
           <Popover.Target>
             <Tooltip label={t`Add reaction`} disabled={emojiPickerOpened}>
               <ActionIcon
+                style={{
+                  display: "none",
+                }}
                 size={ACTION_ICON_SIZE}
                 onClick={() => setEmojiPickerOpened((opened) => !opened)}
               >
