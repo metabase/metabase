@@ -1,5 +1,7 @@
 (ns metabase.driver.table-creation
   (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [metabase.driver :as driver]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -76,6 +78,21 @@
       (log/debugf "Inserting %d rows from %s source" (count rows) (:type data-source))
       (driver/insert-into! driver database-id table-name column-names rows))
     (count rows)))
+
+(defmulti insert-from-csv!
+  "Insert data from a csv file"
+  {:arglists '([driver database-id table-name column-names csv-file])}
+  (fn [driver & _] driver) :hierarchy #'driver/hierarchy)
+
+(defmethod insert-from-csv! :default
+  [driver db-id table-name column-names file]
+  (let [csv-rows (csv/read-csv (io/reader file))
+        data-rows (rest csv-rows)]
+    (insert-from-source! driver db-id table-name column-names {:type :rows :data data-rows})))
+
+(defmethod insert-from-source! :csv-file
+  [driver db-id table-name column-names {:keys [file]}]
+  (insert-from-csv! driver db-id table-name column-names file))
 
 (mu/defn create-table-from-schema!
   "Create a table from a table-schema"

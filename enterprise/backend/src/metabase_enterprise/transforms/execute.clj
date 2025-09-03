@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms.execute
   (:require
    [clojure.core.async :as a]
-   [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.transforms.canceling :as canceling]
@@ -226,20 +225,6 @@
     (str/starts-with? dtype-str "datetime") :datetime
     (str/starts-with? dtype-str "date") :date
     :else :text))
-
-(defmulti ^:private load-from-csv
-  {:arglists '([driver database-id table-name column-names csv-file])}
-  (fn [driver & _] driver) :hierarchy #'driver/hierarchy)
-
-(defmethod load-from-csv :default
-  [driver db-id table-name column-names file]
-  (let [csv-rows (csv/read-csv (io/reader file))
-        data-rows (rest csv-rows)]
-    (table-creation/insert-from-source! driver db-id table-name column-names {:type :rows :data data-rows})))
-
-(defmethod table-creation/insert-from-source! :csv-file
-  [driver db-id table-name column-names {:keys [file]}]
-  (load-from-csv driver db-id table-name column-names file))
 
 (defn- transfer-file-to-db [driver db target metadata temp-file]
   (let [table-name (transforms.util/qualified-table-name driver target)
