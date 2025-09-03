@@ -2154,3 +2154,29 @@ describe("issue 52674", () => {
     H.popover().should("be.visible");
   });
 });
+
+describe("issue 53370", () => {
+  const LONG_NAME = "a".repeat(254);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createDashboard({
+      name: LONG_NAME,
+    }).then(({ body: dashboard }) => {
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("should wrap long dashboard named (metabase#53370)", () => {
+    cy.findByDisplayValue(LONG_NAME)
+      .should("be.visible")
+      .then(($el) => {
+        cy.window().then((win) => {
+          cy.wrap($el[0].offsetWidth).should("be.lt", win.innerWidth);
+        });
+      });
+    //
+  });
+});
