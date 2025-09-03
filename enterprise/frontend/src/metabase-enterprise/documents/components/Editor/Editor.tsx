@@ -144,6 +144,7 @@ export const Editor: React.FC<EditorProps> = ({
       extensions,
       content: initialContent || "",
       autofocus: false,
+      editable,
       immediatelyRender: false,
       onUpdate: ({ editor }) => {
         if (onChange) {
