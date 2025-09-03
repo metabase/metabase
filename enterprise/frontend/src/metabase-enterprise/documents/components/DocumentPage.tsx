@@ -33,6 +33,7 @@ import { Box } from "metabase/ui";
 import {
   useCreateDocumentMutation,
   useGetDocumentQuery,
+  useListCommentsQuery,
   useUpdateDocumentMutation,
 } from "metabase-enterprise/api";
 import type {
@@ -59,6 +60,7 @@ import {
   getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
+import { getListCommentsQuery } from "../utils/api";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
@@ -129,6 +131,12 @@ export const DocumentPage = ({
     documentData = undefined;
   }
 
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery(documentData || null),
+  );
+  const hasComments =
+    !!commentsData?.comments && commentsData.comments.length > 0;
+
   const canWrite =
     (isNewDocument || documentData?.can_write) && !commentSidebarOpen;
 
@@ -144,7 +152,6 @@ export const DocumentPage = ({
     documentContent,
     setDocumentContent,
     updateCardEmbeds,
-    closeCommentSidebar,
   } = useDocumentState(documentData);
 
   // This is important as it will affect collection breadcrumbs in the appbar
@@ -408,27 +415,6 @@ export const DocumentPage = ({
     [dispatch, selectedEmbedIndex],
   );
 
-  const handleToggleComments = useCallback(() => {
-    if (commentSidebarOpen) {
-      closeCommentSidebar();
-
-      if (location.pathname.includes("/comments/")) {
-        dispatch(push(`/document/${documentData?.id || documentId}`));
-      }
-    } else {
-      dispatch(
-        push(`/document/${documentData?.id || documentId}/comments/all`),
-      );
-    }
-  }, [
-    commentSidebarOpen,
-    closeCommentSidebar,
-    location.pathname,
-    dispatch,
-    documentData?.id,
-    documentId,
-  ]);
-
   return (
     <>
       <Box className={styles.documentPage}>
@@ -453,7 +439,7 @@ export const DocumentPage = ({
                 onMove={() => setCollectionPickerMode("move")}
                 onToggleBookmark={handleToggleBookmark}
                 onArchive={() => handleUpdate({ archived: true })}
-                onToggleComments={handleToggleComments}
+                hasComments={hasComments}
               />
               <Editor
                 onEditorReady={setEditorInstance}
