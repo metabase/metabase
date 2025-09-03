@@ -9,7 +9,6 @@
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
-   [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
@@ -130,24 +129,6 @@
                                          :result_columns []}
                      :conversation_id conversation-id}
                     response))))))))
-
-(deftest find-metric-test
-  (mt/with-premium-features #{:metabot-v3}
-    (let [tool-requests (atom [])
-          conversation-id (str (random-uuid))
-          output (str (random-uuid))
-          ai-token (ai-session-token)]
-      (with-redefs [metabot-v3.tools.find-metric/find-metric
-                    (fn [arguments]
-                      (swap! tool-requests conj arguments)
-                      {:structured-output output})]
-        (let [response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/find-metric"
-                                             {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                             {:arguments       {:message "search text"}
-                                              :conversation_id conversation-id})]
-          (is (=? {:structured_output output
-                   :conversation_id conversation-id}
-                  response)))))))
 
 (deftest find-outliers-test
   (doseq [data-source [{:query {:database 1}, :query_id "query ID", :result_field_id "q1233/2"}
