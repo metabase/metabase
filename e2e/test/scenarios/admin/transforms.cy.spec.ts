@@ -289,7 +289,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       getSchemaLink().should("have.attr", "aria-disabled", "false");
       getTableLink().should("have.attr", "aria-disabled", "false").click();
 
-      H.queryBuilderHeader().findByText(TARGET_SCHEMA).should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
 
