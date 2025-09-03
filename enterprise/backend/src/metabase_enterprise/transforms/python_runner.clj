@@ -20,6 +20,7 @@
    (java.time Duration)
    (java.util.concurrent CancellationException)
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
+   (software.amazon.awssdk.auth.credentials DefaultCredentialsProvider)
    (software.amazon.awssdk.core.sync RequestBody)
    (software.amazon.awssdk.regions Region)
    (software.amazon.awssdk.services.s3 S3Client S3Configuration)
@@ -98,7 +99,7 @@
                       (.region (Region/of region)))
       [true false]  (log/warn "Ignoring endpoint because region is not defined")
       [false true]  (.region builder (Region/of region))
-      [false false] (.region builder (Region/US_EAST_1)))))
+      [false false] builder)))
 
 (defn- maybe-with-endpoint-s3-presigner [builder endpoint]
   (let [region (transforms.settings/python-storage-s-3-region)]
@@ -153,11 +154,11 @@
         (do (log/warnf "Ignoring %s because %s is not defined"
                        (if access-key "access-key" "secret-key")
                        (if (not access-key) "access-key" "secret-key"))
-            builder)
+            (.credentialsProvider builder (DefaultCredentialsProvider/create)))
         (.credentialsProvider builder
                               (StaticCredentialsProvider/create
                                (AwsBasicCredentials/create access-key secret-key))))
-      builder)))
+      (.credentialsProvider builder (DefaultCredentialsProvider/create)))))
 
 (defn- maybe-with-credentials-s3-presigner [builder]
   (let [access-key (transforms.settings/python-storage-s-3-access-key)
