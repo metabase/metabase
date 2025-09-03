@@ -11,7 +11,6 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import { useTranslatedCollectionId } from "embedding-sdk-bundle/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -259,11 +258,7 @@ const DefaultViewSaveModal = ({
     targetCollection,
   } = useSdkQuestionContext();
 
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: targetCollection,
-  });
-
-  if (!isSaveEnabled || !isOpen || !question || isLoading) {
+  if (!isSaveEnabled || !isOpen || !question) {
     return null;
   }
 
@@ -279,7 +274,7 @@ const DefaultViewSaveModal = ({
         await onSave(question);
         close();
       }}
-      targetCollection={id}
+      targetCollection={targetCollection}
     />
   );
 };

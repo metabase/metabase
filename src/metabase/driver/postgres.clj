@@ -110,28 +110,29 @@
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/humanize-connection-error-message :postgres
-  [_ message]
-  (condp re-matches message
-    #"^FATAL: database \".*\" does not exist$"
-    :database-name-incorrect
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^FATAL: database \".*\" does not exist$"
+      :database-name-incorrect
 
-    #"^No suitable driver found for.*$"
-    :invalid-hostname
+      #"^No suitable driver found for.*$"
+      :invalid-hostname
 
-    #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
-    :cannot-connect-check-host-and-port
+      #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
+      :cannot-connect-check-host-and-port
 
-    #"^FATAL: role \".*\" does not exist$"
-    :username-incorrect
+      #"^FATAL: role \".*\" does not exist$"
+      :username-incorrect
 
-    #"^FATAL: password authentication failed for user.*$"
-    :password-incorrect
+      #"^FATAL: password authentication failed for user.*$"
+      :password-incorrect
 
-    #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
-    (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
-      (str (str/capitalize message) \.))
+      #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
+      (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
+        (str (str/capitalize message) \.))
 
-    message))
+      message)))
 
 (defmethod driver/db-default-timezone :postgres
   [driver database]
@@ -1211,3 +1212,19 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :postgres
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
+
+(defmethod driver/extra-info :postgres
+  [_driver]
+  {:providers [{:name "Aiven" :pattern "\\.aivencloud\\.com$"}
+               {:name "Amazon RDS" :pattern "\\.rds\\.amazonaws\\.com$"}
+               {:name "Azure" :pattern "\\.postgres\\.database\\.azure\\.com$"}
+               {:name "Crunchy Data" :pattern "\\.db\\.postgresbridge\\.com$"}
+               {:name "DigitalOcean" :pattern "db\\.ondigitalocean\\.com$"}
+               {:name "Fly.io" :pattern "\\.fly\\.dev$"}
+               {:name "Neon" :pattern "\\.neon\\.tech$"}
+               {:name "PlanetScale" :pattern "\\.psdb\\.cloud$"}
+               {:name "Railway" :pattern "\\.railway\\.app$"}
+               {:name "Render" :pattern "\\.render\\.com$"}
+               {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
+               {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
+               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})

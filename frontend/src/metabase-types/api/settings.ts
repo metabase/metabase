@@ -36,9 +36,8 @@ export const engineKeys = [
   "bigquery-cloud-sdk",
   "clickhouse",
   "databricks",
-  "druid",
   "druid-jdbc",
-  "databricks",
+  "druid",
   "mysql",
   "oracle",
   "postgres",
@@ -52,6 +51,29 @@ export const engineKeys = [
   "vertica",
 ] as const;
 
+export const providerNames = [
+  "Aiven",
+  "Amazon RDS",
+  "Azure",
+  "Crunchy Data",
+  "DigitalOcean",
+  "Fly.io",
+  "Neon",
+  "PlanetScale",
+  "Railway",
+  "Render",
+  "Scaleway",
+  "Supabase",
+  "Timescale",
+] as const;
+
+export type DatabaseProviderName = (typeof providerNames)[number];
+
+export type DatabaseProvider = {
+  name: DatabaseProviderName;
+  pattern: string;
+};
+
 export type EngineKey = (typeof engineKeys)[number];
 
 export interface Engine {
@@ -63,6 +85,7 @@ export interface Engine {
     "db-routing-info": {
       text: string;
     };
+    providers?: DatabaseProvider[];
   } | null;
 }
 
@@ -210,6 +233,7 @@ const tokenStatusFeatures = [
   "metabase-store-managed",
   "metabot-v3",
   "no-upsell",
+  "offer-metabase-ai",
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
@@ -230,6 +254,10 @@ const tokenStatusFeatures = [
 
 export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
 
+interface TokenStatusStoreUsers {
+  email: string;
+}
+
 export interface TokenStatus {
   status: TokenStatusStatus;
   valid: boolean;
@@ -237,6 +265,7 @@ export interface TokenStatus {
   "error-details"?: string;
   trial?: boolean;
   features?: TokenStatusFeature[];
+  "store-users"?: TokenStatusStoreUsers[];
 }
 
 export type DayOfWeekId =
@@ -279,6 +308,7 @@ export const tokenFeatures = [
   "collection_cleanup",
   "cache_preemptive",
   "metabot_v3",
+  "offer_metabase_ai",
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
@@ -286,6 +316,7 @@ export const tokenFeatures = [
   "development_mode",
   "etl_connections",
   "etl_connections_pg",
+  "table_data_editing",
   "documents",
   "semantic_search",
   "transforms",

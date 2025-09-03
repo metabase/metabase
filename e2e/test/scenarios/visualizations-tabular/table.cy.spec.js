@@ -155,7 +155,7 @@ describe("scenarios > visualizations > table", () => {
     H.openObjectDetail(5);
 
     // Ensure click on row index opens the object detail
-    H.modal().findByText("Order");
+    H.modal().findByText("6").should("be.visible");
 
     // Close object detail modal
     cy.realType("{esc}");

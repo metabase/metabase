@@ -57,7 +57,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withNewQuestion",
     "withNewDashboard",
   ] satisfies (keyof BrowserEmbedOptions)[],
-};
+} as const;
 
 // This file is used by embed.js, so we shouldn't import external dependencies.
 const uniq = <T>(list: T[]): T[] => Array.from(new Set(list));
