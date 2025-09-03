@@ -101,7 +101,11 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
     }, [items]);
 
     if (!items.length) {
-      return <div className={S.mentionEmpty}>{t`No results found`}</div>;
+      return (
+        <div className={S.mentionList}>
+          <div className={S.mentionEmpty}>{t`No results found`}</div>
+        </div>
+      );
     }
 
     return (
