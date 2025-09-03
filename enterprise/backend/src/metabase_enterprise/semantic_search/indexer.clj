@@ -93,10 +93,10 @@
 
 (defn- observe-poll-to-poll-interval [poll-result watermark]
   (let [{new-poll-time :poll-time} poll-result
-        {:keys [last-poll-time]} watermark]
-    (when last-poll-time
+        {:keys [last-poll]} watermark]
+    (when last-poll
       ;; distance between polls
-      (let [idle-time-ms (- (inst-ms new-poll-time) (inst-ms last-poll-time))]
+      (let [idle-time-ms (- (inst-ms new-poll-time) (inst-ms last-poll))]
         (analytics/observe! :metabase-search/semantic-indexer-poll-to-poll-interval-ms idle-time-ms)))))
 
 (defn indexing-step
