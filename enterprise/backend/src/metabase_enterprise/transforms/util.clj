@@ -75,7 +75,7 @@
                           ;; python transform target
                           (-> target :database))
           {driver :engine :as database} (t2/select-one :model/Database database-id)]
-      (driver/drop-transform-target! driver database #p target)
+      (driver/drop-transform-target! driver database target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)
       (deactivate-table! database target))))
 
