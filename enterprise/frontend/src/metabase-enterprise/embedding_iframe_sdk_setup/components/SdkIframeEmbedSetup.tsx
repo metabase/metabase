@@ -75,7 +75,7 @@ const SdkIframeEmbedSetupContent = () => {
           ) : (
             <Card h="100%">
               <Flex h="100%" align="center" justify="center">
-                <Image w={120} h={120} src={noResultsSource} />
+                <Image w={120} h={120} src={noResultsSource} alt="No results" />
               </Flex>
             </Card>
           )}
