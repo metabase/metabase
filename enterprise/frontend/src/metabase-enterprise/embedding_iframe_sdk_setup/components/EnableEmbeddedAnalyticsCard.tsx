@@ -19,15 +19,13 @@ export const EnableEmbeddedAnalyticsCard = () => {
   const [updateSettings] = useUpdateSettingsMutation();
   const [sendToast] = useToast();
 
+  // Store the initial state of whether we should show this card.
+  // This allows us to show the "Enabled" button state and not hide the card.
   const [showSimpleEmbedding] = useState(!isSimpleEmbeddingEnabled);
 
   const handleEnableEmbedding = async () => {
     try {
       await updateSettings({ "enable-embedding-simple": true });
-
-      sendToast({
-        message: t`Embedded Analytics JS is enabled. You can configure it in admin settings.`,
-      });
     } catch (error) {
       sendToast({ message: t`Failed to enable Embedded Analytics JS` });
     }
@@ -88,6 +86,7 @@ export const EnableEmbeddedAnalyticsCard = () => {
             variant={isSimpleEmbeddingEnabled ? "default" : "filled"}
             onClick={handleEnableEmbedding}
             disabled={isSimpleEmbeddingEnabled}
+            leftSection={isSimpleEmbeddingEnabled && <Icon name="check" />}
           >
             {isSimpleEmbeddingEnabled ? t`Enabled` : t`Enable to continue`}
           </Button>

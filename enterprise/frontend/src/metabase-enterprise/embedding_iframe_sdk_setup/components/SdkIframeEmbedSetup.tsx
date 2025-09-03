@@ -4,9 +4,10 @@ import { t } from "ttag";
 
 import "react-resizable/css/styles.css";
 
+import noResultsSource from "assets/img/no_results.svg";
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { Box, Button, Group, Stack, Text } from "metabase/ui";
+import { Box, Button, Card, Flex, Group, Image, Stack } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedNavigation } from "../hooks";
@@ -72,11 +73,11 @@ const SdkIframeEmbedSetupContent = () => {
           {isSimpleEmbeddingEnabled ? (
             <SdkIframeEmbedPreview />
           ) : (
-            <Stack h="100%" justify="center" align="center" p="xl">
-              <Text size="lg" c="text-medium" ta="center" mt="lg">
-                {t`Enable Embedded Analytics JS to see the preview`}
-              </Text>
-            </Stack>
+            <Card h="100%">
+              <Flex h="100%" align="center" justify="center">
+                <Image w={120} h={120} src={noResultsSource} />
+              </Flex>
+            </Card>
           )}
         </Stack>
       </Box>
