@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
    [flatland.ordered.set :as ordered-set]
+   [medley.core :as m]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -29,9 +30,7 @@
 (defn- first-transform [[initial & more]]
   (when initial
     (reduce (fn [best current]
-              (if (< (compare (:created_at current)
-                              (:created_at best))
-                     0)
+              (if (neg? (compare (:created_at current) (:created_at best)))
                 current
                 best))
             initial
