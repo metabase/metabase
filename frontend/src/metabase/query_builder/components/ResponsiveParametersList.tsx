@@ -5,13 +5,14 @@ import { msgid, ngettext, t } from "ttag";
 import Button from "metabase/common/components/Button";
 import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { Box, Flex } from "metabase/ui";
-import type { CardId, Parameter } from "metabase-types/api";
+import type { CardId, DashboardId, Parameter } from "metabase-types/api";
 
 import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
 import { SyncedParametersList } from "./SyncedParametersList";
 
 interface ResponsiveParametersListProps {
   cardId?: CardId;
+  dashboardId?: DashboardId;
   parameters: Parameter[];
   setParameterValue: (parameterId: string, value: string) => void;
   setParameterIndex: (parameterId: string, parameterIndex: number) => void;
@@ -20,6 +21,7 @@ interface ResponsiveParametersListProps {
 
 export const ResponsiveParametersList = ({
   cardId,
+  dashboardId,
   parameters,
   setParameterValue,
   setParameterIndex,
@@ -79,6 +81,7 @@ export const ResponsiveParametersList = ({
         <SyncedParametersList
           className={ResponsiveParametersListS.StyledParametersList}
           cardId={cardId}
+          dashboardId={dashboardId}
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}

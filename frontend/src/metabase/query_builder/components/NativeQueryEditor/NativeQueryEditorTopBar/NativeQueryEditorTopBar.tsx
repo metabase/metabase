@@ -138,6 +138,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
       {hasParametersList && setParameterValue && (
         <ResponsiveParametersList
           cardId={question.id()}
+          dashboardId={question.getDashboardProps().dashboardId}
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}
