@@ -49,10 +49,16 @@ function parseCSV(csv: string): { headers: string[]; rows: string[][] } {
 export function PythonEditor({
   script,
   isRunnable,
+  isRunning: isRunningProp,
+  isResultDirty: _isResultDirty,
   onChange,
+  onRunScript,
+  onCancelScript,
   tables = {},
 }: PythonEditorProps) {
-  const [isRunning, setIsRunning] = useState(false);
+  const [localIsRunning, setLocalIsRunning] = useState(false);
+  const isRunning =
+    isRunningProp !== undefined ? isRunningProp : localIsRunning;
   const [executionResult, setExecutionResult] =
     useState<ExecutionResult | null>(null);
   const [executePython] = useExecutePythonMutation();
@@ -63,7 +69,11 @@ export function PythonEditor({
   };
 
   const handleRunScript = async () => {
-    setIsRunning(true);
+    if (onRunScript) {
+      await onRunScript();
+      return;
+    }
+    setLocalIsRunning(true);
     setExecutionResult(null);
 
     try {
@@ -91,21 +101,25 @@ export function PythonEditor({
         stderr: stderr,
       });
     } finally {
-      setIsRunning(false);
+      setLocalIsRunning(false);
     }
   };
 
   const handleCancelScript = async () => {
+    if (onCancelScript) {
+      onCancelScript();
+      return;
+    }
     try {
       await cancelPython().unwrap();
-      setIsRunning(false);
+      setLocalIsRunning(false);
       setExecutionResult({
         error: t`Python script execution was canceled`,
       });
     } catch (error) {
       console.error("Failed to cancel Python script:", error);
       // Still set running to false since the cancel might have worked on the server
-      setIsRunning(false);
+      setLocalIsRunning(false);
       setExecutionResult({
         error: t`Python script execution was canceled (cancel request may have failed)`,
       });
