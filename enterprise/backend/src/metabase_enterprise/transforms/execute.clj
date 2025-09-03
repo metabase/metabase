@@ -227,19 +227,30 @@
     (str/starts-with? dtype-str "date") :date
     :else :text))
 
-;; TODO: custom data-source instead of bottoming to :type :row
+(defmulti ^:private load-from-csv
+  {:arglists '([driver database-id table-name column-names csv-file])}
+  (fn [driver & _] driver) :hierarchy #'driver/hierarchy)
+
+(defmethod load-from-csv :default
+  [driver db-id table-name column-names file]
+  (let [csv-rows (csv/read-csv (io/reader file))
+        data-rows (rest csv-rows)]
+    (table-creation/insert-from-source! driver db-id table-name column-names {:type :rows :data data-rows})))
+
+(defmethod table-creation/insert-from-source! :csv-file
+  [driver db-id table-name column-names {:keys [file]}]
+  (load-from-csv driver db-id table-name column-names file))
+
 (defn- transfer-file-to-db [driver db target metadata temp-file]
-  (let [table-name (transforms.util/qualified-table-name  driver target)
-        csv-rows (csv/read-csv (io/reader temp-file))
-        data-rows (rest csv-rows)
+  (let [table-name (transforms.util/qualified-table-name driver target)
         table-schema {:name table-name
                       :columns (mapv (fn [{:keys [name dtype]}]
                                        {:name name
                                         :type (dtype->table-type dtype)
                                         :nullable? true})
                                      (:fields metadata))}
-        data-source {:type :rows
-                     :data data-rows}]
+        data-source {:type :csv-file
+                     :file temp-file}]
     (if (driver/table-exists? driver db target)
       (driver/truncate! driver (:id db) table-name)
       (table-creation/create-table-from-schema! driver (:id db) table-schema))

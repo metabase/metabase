@@ -49,8 +49,7 @@
    Returns:
    - Number of rows inserted"
   {:arglists '([driver database-id table-name column-names data-source])}
-  (fn [driver & _] driver)
-  :hierarchy #'driver/hierarchy)
+  (fn [_ _ _ _ data-source] (:type data-source)))
 
 (defmulti data-source->rows
   "Converts a data source into a sequence of row vectors."
