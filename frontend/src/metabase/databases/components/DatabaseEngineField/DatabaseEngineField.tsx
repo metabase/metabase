@@ -40,6 +40,7 @@ export const DatabaseEngineField = ({
         options={options}
         disabled={disabled || values.is_sample}
         onChange={onChange}
+        engineKey={engineKey}
       />
     );
   }
