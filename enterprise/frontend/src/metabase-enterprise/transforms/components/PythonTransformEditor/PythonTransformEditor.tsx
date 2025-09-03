@@ -48,7 +48,7 @@ export function PythonTransformEditor({
   ): string => {
     const tableAliases = Object.keys(tables);
 
-    const transformRegex = /^def\s+transform\s*\([^)]*\)\s*:\s*/m;
+    const transformRegex = /^def\s+transform\s*\([^)]*\)\s*:\s*\n(\s*)/m;
 
     const signatureOneLine = `def transform(${tableAliases.join(", ")}):`;
     const newSignature =
@@ -57,7 +57,11 @@ export function PythonTransformEditor({
         : signatureOneLine;
 
     if (transformRegex.test(script)) {
-      let updatedScript = script.replace(transformRegex, newSignature + "\n");
+      // Capture the existing indentation after the colon
+      const match = script.match(transformRegex);
+      const originalIndent = match ? match[1] : "    ";
+      
+      let updatedScript = script.replace(transformRegex, newSignature + "\n" + originalIndent);
 
       const argsRegex =
         /(\s+"""[\s\S]*?)\s*Args:\s*\n([\s\S]*?)\s*(\n\s+Returns:|\n\s+""")/;
