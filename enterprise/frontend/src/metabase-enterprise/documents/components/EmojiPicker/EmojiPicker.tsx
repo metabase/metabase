@@ -69,9 +69,10 @@ export function EmojiPicker({
           <Picker.Empty
             className={S.pickerMessage}
           >{t`No emoji found.`}</Picker.Empty>
-          <Box px="sm" pb="sm">
-            <Picker.List components={{ CategoryHeader, Emoji }} />
-          </Box>
+          <Picker.List
+            className={S.pickerList}
+            components={{ CategoryHeader, Emoji }}
+          />
         </Picker.Viewport>
       </Picker.Root>
     </Paper>
@@ -84,7 +85,7 @@ function CategoryHeader({
   ...props
 }: EmojiPickerListCategoryHeaderProps) {
   return (
-    <Box py="xs" pos="sticky" top={0} bg="var(--mb-color-bg-white)" {...props}>
+    <Box px="sm" pos="sticky" top={0} bg="var(--mb-color-bg-white)" {...props}>
       <Text fz="sm" c="text-secondary">
         {category.label}
       </Text>
