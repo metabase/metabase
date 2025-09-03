@@ -22,10 +22,10 @@ export default class LeafletClusteredPinMap extends LeafletMap {
         );
       }
 
-      const { settings: _settings } = this.props;
-      // Use default values for now to test basic functionality
-      const clusterRadius = 50;
-      const maxZoom = 18;
+      const { settings } = this.props;
+      // Use settings with fallback to defaults
+      const clusterRadius = settings?.["map.cluster_radius"] ?? 50;
+      const maxZoom = settings?.["map.cluster_max_zoom"] ?? 18;
 
       this.pinMarkerLayer = L.markerClusterGroup({
         chunkedLoading: true,
@@ -58,16 +58,20 @@ export default class LeafletClusteredPinMap extends LeafletMap {
   componentDidUpdate(prevProps, prevState) {
     super.componentDidUpdate(prevProps, prevState);
 
-    // For now, don't check for settings changes to avoid undefined access
-    const clusterSettingsChanged = false;
+    // Compare cluster-related settings to enable dynamic reconfiguration
+    const prevSettings = prevProps.settings || {};
+    const currSettings = this.props.settings || {};
+    // Only compare relevant cluster settings; fallback to defaults if not present
+    const prevClusterRadius = prevSettings["map.cluster_radius"] ?? 50;
+    const currClusterRadius = currSettings["map.cluster_radius"] ?? 50;
+    const prevMaxZoom = prevSettings["map.cluster_max_zoom"] ?? 18;
+    const currMaxZoom = currSettings["map.cluster_max_zoom"] ?? 18;
+    const clusterSettingsChanged =
+      prevClusterRadius !== currClusterRadius || prevMaxZoom !== currMaxZoom;
 
     if (clusterSettingsChanged && this.pinMarkerLayer) {
-      // Use default values for now
-      const clusterRadius = 50;
-      const maxZoom = 18;
-
-      this.pinMarkerLayer.options.maxClusterRadius = clusterRadius;
-      this.pinMarkerLayer.options.disableClusteringAtZoom = maxZoom;
+      this.pinMarkerLayer.options.maxClusterRadius = currClusterRadius;
+      this.pinMarkerLayer.options.disableClusteringAtZoom = currMaxZoom;
       this.pinMarkerLayer.refreshClusters();
     }
 
@@ -85,7 +89,7 @@ export default class LeafletClusteredPinMap extends LeafletMap {
     }
 
     try {
-      const mapBounds = this.map?.getBounds?.();
+      const mapBounds = this.map.getBounds();
       if (!mapBounds) {
         return;
       }

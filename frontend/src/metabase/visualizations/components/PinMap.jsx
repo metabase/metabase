@@ -117,15 +117,15 @@ export default class PinMap extends Component {
     } = props;
     const latitudeIndex = _.findIndex(
       cols,
-      (col) => col.name === (settings && settings["map.latitude_column"]),
+      (col) => col.name === settings?.["map.latitude_column"],
     );
     const longitudeIndex = _.findIndex(
       cols,
-      (col) => col.name === (settings && settings["map.longitude_column"]),
+      (col) => col.name === settings?.["map.longitude_column"],
     );
     const metricIndex = _.findIndex(
       cols,
-      (col) => col.name === (settings && settings["map.metric_column"]),
+      (col) => col.name === settings?.["map.metric_column"],
     );
 
     const allPoints = rows.map((row) => [
@@ -136,7 +136,7 @@ export default class PinMap extends Component {
 
     // only use points with numeric coordinates & metric
     const validPoints = allPoints.map(([lat, lng, metric]) => {
-      if (settings && settings["map.type"] === "pin") {
+      if (settings?.["map.type"] === "pin") {
         return lat != null && lng != null;
       }
 
@@ -185,12 +185,7 @@ export default class PinMap extends Component {
     const { lat, lng, zoom } = this.state;
     const disableUpdateButton = lat == null && lng == null && zoom == null;
 
-    const Map =
-      MAP_COMPONENTS_BY_TYPE[
-        settings && settings["map.pin_type"]
-          ? settings["map.pin_type"]
-          : "markers"
-      ];
+    const Map = MAP_COMPONENTS_BY_TYPE[settings?.["map.pin_type"] ?? "markers"];
 
     const { rows, points, bounds, min, max, binHeight, binWidth } = this.state;
 
