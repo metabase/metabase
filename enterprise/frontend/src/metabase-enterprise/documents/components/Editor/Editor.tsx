@@ -235,10 +235,13 @@ export const Editor: React.FC<EditorProps> = ({
         }}
       >
         <EditorContent data-testid="document-content" editor={editor} />
-        <EditorBubbleMenu
-          editor={editor}
-          disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
-        />
+
+        {editable && (
+          <EditorBubbleMenu
+            editor={editor}
+            disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+          />
+        )}
       </Box>
     </Box>
   );
