@@ -7,13 +7,13 @@ summary: How to upgrade your Metabase and Embedded analytics SDK versions, test 
 
 Here's a basic overview of the steps you'll want to take when upgrading your SDK.
 
-## 1. Read the release post and changelog for both Metabase and the Embedded analytics SDK
+## 1. Read the release post and changelog for Metabase and the Embedded analytics SDK
 
 - [Release posts](https://www.metabase.com/releases) give a good overview of what's in each release, and call out breaking changes (which are rare).
 - [Metabase changelogs](https://www.metabase.com/changelog) list Metabase changes.
-- [Embedded analytics SDK changelogs](https://www.metabase.com/changelog/55) list changes specific to the SDK package.
+- [Embedded analytics SDK changelogs](https://www.metabase.com/changelog/56) list changes specific to the SDK Package.
 
-Check for any relevant changes, especially breaking changes that require you to update your application's code. If there are breaking changes, we'll have docs that'll walk you through what changes you'll need to make and why.
+Check for any relevant changes, especially deprecation changes that require you to update your application's code. If there are deprecation changes, we'll have docs that'll walk you through what changes you'll need to make and why.
 
 ## 2. Test the upgrade
 
@@ -37,10 +37,10 @@ Via npm:
 npm install @metabase/embedding-sdk-react@{next-major-version-number}-stable
 ```
 
-For example, if you were upgrading to version 55 of the SDK:
+For example, if you were upgrading to version 56 of the SDK:
 
 ```bash
-npm install @metabase/embedding-sdk-react@55-stable
+npm install @metabase/embedding-sdk-react@56-stable
 ```
 
 If you're using yarn:
@@ -51,11 +51,14 @@ yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable
 
 See more on [SDK versions](./version.md).
 
-### If there are breaking changes, make the necessary changes to your application code
+### If there are deprecation changes, make the necessary changes to your application code
 
-Breaking changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
+Deprecation changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
 
 Update or add tests for any application code changes that you make.
+
+In most cases, a deprecated change becomes a breaking change in the release following its deprecation.
+For example, if we plan to remove a prop from an SDK React component, we first mark it as **deprecated**, and then remove it in the next release.
 
 ### Deploy to your staging environment
 
