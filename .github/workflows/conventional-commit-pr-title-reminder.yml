@@ -21,7 +21,7 @@ jobs:
           result-encoding: string
           script: | # js
             const pullRequestTitle = context.payload.pull_request.title
-            const conventionalCommitRegex = /^(?<type>\w+)\((?<scope>[\w-]+)\):/
+            const conventionalCommitRegex = /^(?<type>\w+)\((?<scope>[\w\$\.\-\* ]+)\):/
             const match = pullRequestTitle.match(conventionalCommitRegex)
             if (match) {
               const { type, scope } = match.groups
