@@ -80,11 +80,11 @@
               transform-payload {:name   "My beautiful python runner"
                                  :source {:type            "python"
                                           :body            "print('hello world')"
-                                          :source-tables   {}
-                                          :target-database (mt/id)}
-                                 :target {:type   "table"
-                                          :schema schema
-                                          :name   table-name}}
+                                          :source-tables   {}}
+                                 :target {:type     "table"
+                                          :schema   schema
+                                          :name     table-name
+                                          :database (mt/id)}}
               transform (mt/user-http-request :crowberto :post 200 "ee/transform"
                                               transform-payload)]
           (is (= "print('hello chris')"

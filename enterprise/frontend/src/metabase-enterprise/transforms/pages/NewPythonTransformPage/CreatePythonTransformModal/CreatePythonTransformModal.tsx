@@ -9,7 +9,6 @@ import type { Transform, TransformSource } from "metabase-types/api";
 type PythonTransformApiSource = {
   type: "python";
   body: string;
-  "target-database": number;
   "source-database": number;
   "source-tables": Record<string, number>;
 };
@@ -54,7 +53,6 @@ export function CreatePythonTransformModal({
       const transformedSource: PythonTransformApiSource = {
         type: "python",
         body: source.body,
-        "target-database": source["source-database"], // for now the same
         "source-database": source["source-database"],
         "source-tables": source["source-tables"] || {},
       };
@@ -67,6 +65,7 @@ export function CreatePythonTransformModal({
           type: "table",
           schema: values.targetSchema,
           name: values.targetName,
+          database: source["source-database"], // for now the same as source
         },
       }).unwrap();
 

@@ -32,6 +32,7 @@ export function createMockTransformTarget(
     type: "table",
     name: "Table",
     schema: null,
+    database: 1,
     ...opts,
   };
 }

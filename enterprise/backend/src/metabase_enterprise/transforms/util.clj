@@ -71,9 +71,11 @@
   [{:keys [id target source], :as _transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (-> source :query :database)
+          database-id (or (-> source :query :database)
+                          ;; python transform target
+                          (-> target :database))
           {driver :engine :as database} (t2/select-one :model/Database database-id)]
-      (driver/drop-transform-target! driver database target)
+      (driver/drop-transform-target! driver database #p target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)
       (deactivate-table! database target))))
 

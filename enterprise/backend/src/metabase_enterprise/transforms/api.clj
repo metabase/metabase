@@ -39,12 +39,12 @@
     [:map {:closed true}
      [:source-database {:optional true} :int]
      [:source-tables   [:map-of :string :int]]
-     [:target-database :int]
      [:type [:= "python"]]
      [:body :string]]]])
 
 (mr/def ::transform-target
   [:map
+   [:database :int]
    [:type [:enum "table"]]
    [:schema {:optional true} [:or ms/NonBlankString :nil]]
    [:name :string]])

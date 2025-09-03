@@ -186,7 +186,7 @@
 
 (defn- create-s3-presigner-for-container
   "Create S3 presigner for container operations (presigned URLs).
-   Uses container-endpoint if different from host endpoint."
+  Uses container-endpoint if different from host endpoint."
   ^S3Presigner []
   (let [container-endpoint (transforms.settings/python-storage-s-3-container-endpoint)
         builder (S3Presigner/builder)]
@@ -352,8 +352,8 @@
         (try
           (if (and (= 200 (:status response))
                    (zero? (:exit_code result)))
-            ;; Success - read the output from S3
-            (let [output-content (read-from-s3 s3-client bucket-name output-key "")
+           ;; Success - read the output from S3
+            (let [output-content (read-from-s3 s3-client bucket-name output-key)
                   output-manifest (read-from-s3 s3-client bucket-name output-manifest-key "{}")
                   stdout-content (read-from-s3 s3-client bucket-name stdout-key "stdout missing")
                   stderr-content (read-from-s3 s3-client bucket-name stderr-key "stderr missing")]
@@ -367,7 +367,7 @@
                  :body   {:error  "Transform did not produce output CSV"
                           :stdout stdout-content
                           :stderr stderr-content}}))
-            ;; Error from execution server - read stderr/stdout from S3
+           ;; Error from execution server - read stderr/stdout from S3
             (let [stdout-content (read-from-s3 s3-client bucket-name stdout-key "stdout missing")
                   stderr-content (read-from-s3 s3-client bucket-name stderr-key "stderr missing")]
               {:status 500
@@ -379,7 +379,7 @@
                 :stdout      stdout-content
                 :stderr      stderr-content}}))
           (finally
-            ;; Clean up S3 objects
+           ;; Clean up S3 objects
             (try
               (cleanup-s3-objects s3-client bucket-name all-s3-keys)
               (catch Exception _)))))

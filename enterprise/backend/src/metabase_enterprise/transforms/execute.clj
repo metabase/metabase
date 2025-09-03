@@ -289,7 +289,7 @@
                                                :python      nil
                                                :post-python []}))
             {:keys [source target] transform-id :id} transform
-            db (t2/select-one :model/Database (:target-database source))
+            db (t2/select-one :model/Database (:database target))
             {run-id :id} (try-start-unless-already-running transform-id run-method)]
         (some-> start-promise (deliver [:started run-id]))
         (log! message-log "Executing Python transform")
