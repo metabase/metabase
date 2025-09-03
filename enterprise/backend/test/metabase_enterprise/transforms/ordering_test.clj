@@ -1,7 +1,10 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.ordering-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.ordering :as ordering]
+   [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -9,7 +12,7 @@
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
-        schema (or schema "public")]
+        schema (or schema (driver.sql/default-schema driver/*driver*))]
     {:source {:type :query
               :query query}
      :name (str "transform_" name)
@@ -87,13 +90,11 @@
                 t4 #{t1 t2}}
                (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3 t4]]))))))
     (testing "dependencies are correctly identified when some transform have been run and some haven't"
-      (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                                {:database (mt/id),
-                                                 :type :native,
-                                                 :native {:query "SELECT * FROM checkins LIMIT 100"}}
-                                                "checkins_transform")
-                     :model/Table {table1 :id} {:schema "public"
-                                                :name "checkins_transform"}
+      (mt/with-temp [:model/Transform {t1 :id :as transform1} (make-transform
+                                                               {:database (mt/id),
+                                                                :type :native,
+                                                                :native {:query "SELECT * FROM checkins LIMIT 100"}}
+                                                               "checkins_transform")
                      :model/Transform {t2 :id} (make-transform
                                                 {:database (mt/id),
                                                  :type :native,
@@ -107,12 +108,17 @@
                                                                   ON vt.id = ct.venue_id
                                                                   LIMIT 100"}}
                                                 "venues_transform_2")]
-        (is (= #{{:table table1} {:transform t2}}
-               (transform-deps-for-db (t2/select-one :model/Transform  t3))))
-        (is (= {t1 #{}
-                t2 #{}
-                t3 #{t1 t2}}
-               (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))
+        (try
+          (transforms.execute/run-mbql-transform! transform1 {:run-method :manual})
+          (let [table1 (t2/select-one-pk :model/Table :name "checkins_transform")]
+            (is (= #{{:table table1} {:transform t2}}
+                   (transform-deps-for-db (t2/select-one :model/Transform  t3)))))
+          (is (= {t1 #{}
+                  t2 #{}
+                  t3 #{t1 t2}}
+                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]]))))
+          (finally
+            (t2/delete! :model/Table :name "checkins_transform")))))))
 
 (deftest bigquery-native-transform-dependency-ordering-test
   (mt/test-driver :bigquery-cloud-sdk
