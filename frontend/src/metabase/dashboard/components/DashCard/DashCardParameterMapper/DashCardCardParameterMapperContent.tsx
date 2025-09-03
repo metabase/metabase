@@ -96,6 +96,10 @@ export const DashCardCardParameterMapperContent = ({
     );
   }, [editingParameterInlineDashcard, dashcard.id]);
 
+  const hasExistingConnection = useMemo(() => {
+    return target != null;
+  }, [target]);
+
   const headerContent = useMemo(() => {
     if (layoutHeight <= 2) {
       return null;
@@ -191,7 +195,7 @@ export const DashCardCardParameterMapperContent = ({
     );
   }
 
-  if (isInlineParameterOfAnotherQuestionCard) {
+  if (isInlineParameterOfAnotherQuestionCard && !hasExistingConnection) {
     return (
       <Flex className={S.TextCardDefault} gap="sm" align="center" ta="center">
         <Icon name="info" size={12} className={S.InfoIcon} />

@@ -570,6 +570,41 @@ describe("parameters/utils/mapping-options", () => {
 
       expect(options.length).toBeGreaterThan(0);
     });
+
+    it("should return options when inline parameter on question card has existing connection to different card", () => {
+      const card = { ...structured({ "source-table": ORDERS_ID }), id: 123 };
+      const question = new Question(card, metadata);
+      const parameterId = "param123";
+      const parameter = { id: parameterId, type: "date/single" };
+      const dashcard = createMockDashboardCard({
+        id: 1,
+        dashboard_tab_id: 1,
+        card_id: 123,
+        parameter_mappings: [
+          {
+            parameter_id: parameterId,
+            card_id: 123,
+            target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+          },
+        ],
+      });
+      const parameterDashcard = createMockDashboardCard({
+        id: 2,
+        dashboard_tab_id: 1,
+        card_id: 456,
+      });
+
+      const options = getParameterMappingOptions(
+        question,
+        parameter,
+        card,
+        dashcard,
+        parameterDashcard,
+      );
+
+      // Should return options to allow users to see and potentially disconnect existing connections
+      expect(options.length).toBeGreaterThan(0);
+    });
   });
 });
 

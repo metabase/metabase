@@ -149,7 +149,21 @@ export function getParameterMappingOptions(
     parameterDashcard != null &&
     isQuestionDashCard(parameterDashcard) &&
     parameterDashcard.id !== dashcard?.id;
-  if (isInlineParameterOfAnotherQuestionCard) {
+
+  // Check if there's an existing connection between this parameter and this specific dashcard/card combo
+  const hasExistingConnection =
+    parameter != null &&
+    dashcard != null &&
+    isQuestionDashCard(dashcard) &&
+    "id" in card &&
+    dashcard.parameter_mappings?.some(
+      (mapping) =>
+        mapping.parameter_id === parameter.id && mapping.card_id === card.id,
+    );
+
+  // Only block if it's an inline parameter of another card AND there's no existing connection
+  // to allow users to see and potentially disconnect existing connections
+  if (isInlineParameterOfAnotherQuestionCard && !hasExistingConnection) {
     return [];
   }
 
