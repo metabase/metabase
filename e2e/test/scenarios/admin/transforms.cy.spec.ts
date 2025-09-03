@@ -230,8 +230,6 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.wait("@createTransform");
       });
 
-      getTableLink().should("have.text", TARGET_TABLE);
-
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "true")
@@ -244,6 +242,10 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
           "This schema will be created when the transform runs",
         );
 
+      getTableLink()
+        .should("have.text", TARGET_TABLE)
+        .should("have.attr", "aria-disabled", "true");
+
       cy.log("run the transform and verify the table");
       runTransformAndWaitForSuccess();
       getSchemaLink()
@@ -253,6 +255,41 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
 
       getTableLink().click();
       H.queryBuilderHeader().findByText(CUSTOM_SCHEMA).should("be.visible");
+      H.assertQueryBuilderRowCount(3);
+    });
+
+    it("should be able to create a new table in an existing when saving a transform", () => {
+      visitTransformListPage();
+      getTransformListPage().button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findByText(DB_NAME).click();
+        cy.findByText(SOURCE_TABLE).click();
+      });
+      getQueryEditor().button("Save").click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").type("MBQL transform");
+        cy.findByLabelText("Table name").type(TARGET_TABLE);
+        cy.button("Save").click();
+        cy.wait("@createTransform");
+      });
+
+      getSchemaLink()
+        .should("have.text", TARGET_SCHEMA)
+        .should("have.attr", "aria-disabled", "false");
+
+      getTableLink()
+        .should("have.text", TARGET_TABLE)
+        .should("have.attr", "aria-disabled", "true");
+
+      cy.log("run the transform and verify the table");
+      runTransformAndWaitForSuccess();
+
+      getSchemaLink().should("have.attr", "aria-disabled", "false");
+      getTableLink().should("have.attr", "aria-disabled", "false").click();
+
+      H.queryBuilderHeader().findByText(TARGET_SCHEMA).should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
 
@@ -506,12 +543,26 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
-      getTableLink().should("have.text", TARGET_TABLE_2);
-      getSchemaLink().should("have.text", TARGET_SCHEMA_2);
+
+      getSchemaLink()
+        .should("have.text", TARGET_SCHEMA_2)
+        .should("have.attr", "aria-disabled", "false");
+
+      getTableLink()
+        .should("have.text", TARGET_TABLE_2)
+        .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the table");
       runTransformAndWaitForSuccess();
-      getTableLink().click();
+      getSchemaLink()
+        .should("have.text", TARGET_SCHEMA_2)
+        .should("have.attr", "aria-disabled", "false");
+
+      getTableLink()
+        .should("have.text", TARGET_TABLE_2)
+        .should("have.attr", "aria-disabled", "false")
+        .click();
+
       H.queryBuilderHeader().findByText(TARGET_SCHEMA_2).should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
@@ -533,9 +584,13 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
-      getTableLink().should("have.text", TARGET_TABLE_2);
+
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
+        .should("have.attr", "aria-disabled", "true");
+
+      getTableLink()
+        .should("have.text", TARGET_TABLE_2)
         .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the table");
@@ -543,7 +598,12 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       getSchemaLink()
         .should("have.text", CUSTOM_SCHEMA)
         .should("have.attr", "aria-disabled", "false");
-      getTableLink().click();
+
+      getTableLink()
+        .should("have.text", TARGET_TABLE_2)
+        .should("have.attr", "aria-disabled", "false")
+        .click();
+
       H.queryBuilderHeader().findByText(CUSTOM_SCHEMA).should("be.visible");
       H.assertQueryBuilderRowCount(3);
     });
@@ -563,11 +623,25 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.button("Change target").click();
         cy.wait("@updateTransform");
       });
-      getTableLink().should("have.text", TARGET_TABLE_2);
+
+      getSchemaLink()
+        .should("have.text", TARGET_SCHEMA)
+        .should("have.attr", "aria-disabled", "false");
+
+      getTableLink()
+        .should("have.text", TARGET_TABLE_2)
+        .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the new table");
       runTransformAndWaitForSuccess();
-      getTableLink().click();
+      getSchemaLink()
+        .should("have.text", TARGET_SCHEMA)
+        .should("have.attr", "aria-disabled", "false");
+
+      getTableLink()
+        .should("have.text", TARGET_TABLE_2)
+        .should("have.attr", "aria-disabled", "false")
+        .click();
       H.queryBuilderHeader()
         .findByText("Transform Table 2")
         .should("be.visible");
@@ -594,11 +668,26 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
         cy.wait("@deleteTransformTable");
         cy.wait("@updateTransform");
       });
-      getTableLink().should("have.text", TARGET_TABLE_2);
+
+      getSchemaLink()
+        .should("have.text", TARGET_SCHEMA)
+        .should("have.attr", "aria-disabled", "false");
+
+      getTableLink()
+        .should("have.text", TARGET_TABLE_2)
+        .should("have.attr", "aria-disabled", "true");
 
       cy.log("run the transform and verify the new table");
       runTransformAndWaitForSuccess();
-      getTableLink().click();
+
+      getSchemaLink()
+        .should("have.text", TARGET_SCHEMA)
+        .should("have.attr", "aria-disabled", "false");
+
+      getTableLink()
+        .should("have.text", TARGET_TABLE_2)
+        .should("have.attr", "aria-disabled", "false")
+        .click();
       H.queryBuilderHeader()
         .findByText("Transform Table 2")
         .should("be.visible");
