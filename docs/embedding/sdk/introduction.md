@@ -32,7 +32,7 @@ Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
 ## Architecture
 
-Starting with Metabase 57, the SDK is consists of two parts:
+Starting with Metabase 57, the SDK consists of two parts:
 
 - **SDK Package** – The `@metabase/embedding-sdk-react` npm package is a lightweight bootstrapper library. Its primary purpose is to load and run the main SDK Bundle code.
 - **SDK Bundle** – The full SDK code, served directly from your self-hosted Metabase instance or Metabase Cloud, and it's the part of the Metabase. This ensures that the main SDK code is always compatible with its corresponding Metabase instance.

@@ -53,7 +53,7 @@ See more on [SDK versions](./version.md).
 
 ### If there are deprecation changes, make the necessary changes to your application code
 
-Deprecation changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
+Deprecations are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
 
 Update or add tests for any application code changes that you make.
 
