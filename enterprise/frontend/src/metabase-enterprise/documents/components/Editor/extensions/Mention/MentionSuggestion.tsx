@@ -10,6 +10,7 @@ import {
   LoadingSuggestionPaper,
   SuggestionPaper,
 } from "../../shared/SuggestionPaper";
+import type { SuggestionModel } from "../../types";
 import { EntitySearchSection } from "../shared/EntitySearchSection";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
@@ -21,6 +22,7 @@ interface MentionSuggestionProps {
   editor: Editor;
   range: Range;
   query: string;
+  searchModels?: SuggestionModel[];
 }
 
 interface SuggestionRef {
@@ -31,7 +33,7 @@ const MentionSuggestionComponent = forwardRef<
   SuggestionRef,
   MentionSuggestionProps
 >(function MentionSuggestionComponent(
-  { items: _items, command, editor, range: _range, query },
+  { items: _items, command, editor, range: _range, query, searchModels },
   ref,
 ) {
   const document = useSelector(getCurrentDocument);
@@ -56,6 +58,7 @@ const MentionSuggestionComponent = forwardRef<
   } = useEntitySuggestions({
     query,
     editor,
+    searchModels,
     onSelectEntity,
   });
 
@@ -86,3 +89,18 @@ const MentionSuggestionComponent = forwardRef<
 });
 
 export const MentionSuggestion = MentionSuggestionComponent;
+
+export const createMentionSuggestion = ({
+  searchModels,
+}: {
+  searchModels: SuggestionModel[];
+}) => {
+  return forwardRef<
+    SuggestionRef,
+    Omit<MentionSuggestionProps, "searchModels">
+  >(function MentionSuggestionWrapper(props, ref) {
+    return (
+      <MentionSuggestion {...props} ref={ref} searchModels={searchModels} />
+    );
+  });
+};

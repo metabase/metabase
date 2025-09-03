@@ -3,13 +3,14 @@ import { getName } from "metabase/lib/name";
 import type {
   Database,
   RecentItem,
-  SearchModel,
   SearchResult,
+  User,
 } from "metabase-types/api";
 
 import type { MenuItem } from "../../shared/MenuComponents";
+import type { SuggestionModel } from "../../types";
 
-export const filterRecents = (item: RecentItem, models: SearchModel[]) =>
+export const filterRecents = (item: RecentItem, models: SuggestionModel[]) =>
   models.includes(item.model);
 
 export function buildSearchMenuItems(
@@ -32,7 +33,7 @@ export function buildSearchMenuItems(
 }
 
 export function buildRecentsMenuItems(
-  recents: Array<RecentItem>,
+  recents: RecentItem[],
   onSelect: (recent: RecentItem) => void,
 ): MenuItem[] {
   return recents.map((recent) => {
@@ -41,7 +42,7 @@ export function buildRecentsMenuItems(
       icon: iconData.name,
       label: getName(recent),
       id: recent.id,
-      model: recent.model as SearchModel,
+      model: recent.model as SuggestionModel,
       action: () => onSelect(recent),
     };
   });
@@ -59,6 +60,21 @@ export function buildDbMenuItems(
       id: db.id,
       model: "database",
       action: () => onSelect(db),
+    };
+  });
+}
+
+export function buildUserMenuItems(
+  users: User[],
+  onSelect: (user: User) => void,
+): MenuItem[] {
+  return users.map((user) => {
+    return {
+      icon: "unknown",
+      label: user.common_name,
+      id: user.id,
+      model: "user",
+      action: () => onSelect(user),
     };
   });
 }

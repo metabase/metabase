@@ -1,6 +1,6 @@
-import type { SearchModel } from "metabase-types/api";
+import type { SuggestionModel } from "../../types";
 
-export const LINK_SEARCH_MODELS: SearchModel[] = [
+export const LINK_SEARCH_MODELS: SuggestionModel[] = [
   "card",
   "dataset",
   "metric",
@@ -11,6 +11,6 @@ export const LINK_SEARCH_MODELS: SearchModel[] = [
   "document",
 ];
 
-export const EMBED_SEARCH_MODELS: SearchModel[] = ["card", "dataset"];
+export const EMBED_SEARCH_MODELS: SuggestionModel[] = ["card", "dataset"];
 
 export const LINK_SEARCH_LIMIT = 5;

@@ -7,11 +7,14 @@ import {
 import { memo, useEffect } from "react";
 import { t } from "ttag";
 
-import { cardApi } from "metabase/api";
-import { collectionApi } from "metabase/api/collection";
-import { dashboardApi } from "metabase/api/dashboard";
-import { databaseApi } from "metabase/api/database";
-import { tableApi } from "metabase/api/table";
+import {
+  useGetCardQuery,
+  useGetCollectionQuery,
+  useGetDashboardQuery,
+  useGetDatabaseQuery,
+  useGetTableQuery,
+  useListUsersQuery,
+} from "metabase/api";
 import {
   type IconModel,
   type ObjectWithModel,
@@ -21,7 +24,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
-import { documentApi } from "metabase-enterprise/api";
+import { useGetDocumentQuery } from "metabase-enterprise/api";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
 import type {
   Card,
@@ -30,9 +33,12 @@ import type {
   Dashboard,
   Database,
   Document,
-  SearchModel,
   Table,
+  User,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
+
+import type { SuggestionModel } from "../../types";
 
 import styles from "./SmartLinkNode.module.css";
 
@@ -42,13 +48,14 @@ type SmartLinkEntity =
   | Collection
   | Table
   | Database
-  | Document;
+  | Document
+  | User;
 
 // Utility function to parse entity URLs and extract entityId and model
 export function parseEntityUrl(
   url: string,
   siteUrl?: string,
-): { entityId: number; model: SearchModel } | null {
+): { entityId: number; model: SuggestionModel } | null {
   try {
     const urlObj = new URL(url);
 
@@ -88,7 +95,7 @@ export function parseEntityUrl(
     // Match different entity URL patterns
     const patterns: {
       pattern: RegExp;
-      model: SearchModel;
+      model: SuggestionModel;
       idIndex?: number;
     }[] = [
       { pattern: /^\/question\/(\d+)/, model: "card" },
@@ -205,33 +212,36 @@ export const SmartLink = Node.create<{
   },
 });
 
-const useEntityData = (entityId: number | null, model: SearchModel | null) => {
-  const cardQuery = cardApi.useGetCardQuery(
+const useEntityData = (
+  entityId: number | null,
+  model: SuggestionModel | null,
+) => {
+  const cardQuery = useGetCardQuery(
     { id: entityId! },
     { skip: !entityId || (model !== "card" && model !== "dataset") },
   );
 
-  const dashboardQuery = dashboardApi.useGetDashboardQuery(
+  const dashboardQuery = useGetDashboardQuery(
     { id: entityId! },
     { skip: !entityId || model !== "dashboard" },
   );
 
-  const collectionQuery = collectionApi.useGetCollectionQuery(
+  const collectionQuery = useGetCollectionQuery(
     { id: entityId! },
     { skip: !entityId || model !== "collection" },
   );
 
-  const tableQuery = tableApi.useGetTableQuery(
+  const tableQuery = useGetTableQuery(
     { id: entityId! },
     { skip: !entityId || model !== "table" },
   );
 
-  const databaseQuery = databaseApi.useGetDatabaseQuery(
+  const databaseQuery = useGetDatabaseQuery(
     { id: entityId! },
     { skip: !entityId || model !== "database" },
   );
 
-  const documentQuery = documentApi.useGetDocumentQuery(
+  const documentQuery = useGetDocumentQuery(
     {
       id: entityId!,
     },
@@ -239,6 +249,10 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
       skip: !entityId || model !== "document",
     },
   );
+
+  const usersQuery = useListUsersQuery(undefined, {
+    skip: !entityId || model !== "user",
+  });
 
   // Determine which query is active and return its state
   if (model === "card" || model === "dataset") {
@@ -289,6 +303,16 @@ const useEntityData = (entityId: number | null, model: SearchModel | null) => {
     };
   }
 
+  if (model === "user") {
+    const user = usersQuery.data?.data.find((user) => user.id === entityId);
+
+    return {
+      entity: user ? { ...user, name: user.common_name } : null,
+      isLoading: usersQuery.isLoading,
+      error: usersQuery.error,
+    };
+  }
+
   return { entity: null, isLoading: false, error: null };
 };
 
@@ -326,6 +350,14 @@ export const SmartLinkComponent = memo(
               {error ? t`Failed to load` : t`Unknown`} {model}
             </span>
           </span>
+        </NodeViewWrapper>
+      );
+    }
+
+    if (model === "user" && isUser(entity)) {
+      return (
+        <NodeViewWrapper as="span">
+          <span className={styles.userMention}>@{entity.name}</span>
         </NodeViewWrapper>
       );
     }
@@ -370,12 +402,12 @@ SmartLinkComponent.displayName = "SmartLinkComponent";
 
 function entityToUrlableModel(
   entity: SmartLinkEntity,
-  model: SearchModel | null,
+  model: SuggestionModel | null,
 ): UrlableModel {
   const result: UrlableModel = {
     id: entity.id as number, // it is string | number in reality, but then gets casted to a string in "modelToUrl"
     model: (entity as Dashboard).model || model || "",
-    name: entity.name,
+    name: isUser(entity) ? entity.common_name : entity.name,
   };
 
   if ("db_id" in entity && entity.db_id) {
@@ -393,11 +425,15 @@ function entityToUrlableModel(
 
 function entityToObjectWithModel(
   entity: SmartLinkEntity,
-  model: SearchModel | null,
+  model: SuggestionModel | null,
 ): ObjectWithModel {
   return {
     model: ((entity as Dashboard).model || model || "") as IconModel,
     display: (entity as Card).display as CardDisplayType,
     is_personal: (entity as Collection).is_personal,
   };
+}
+
+function isUser(value: unknown): value is User {
+  return isObject(value) && typeof value.common_name === "string";
 }

@@ -2,7 +2,9 @@ import type { Editor } from "@tiptap/core";
 import { useCallback, useEffect, useState } from "react";
 
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
-import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
+import type { RecentItem, SearchResult, User } from "metabase-types/api";
+
+import type { SuggestionModel } from "../../types";
 
 import { useEntitySearch } from "./useEntitySearch";
 
@@ -11,7 +13,7 @@ interface UseEntitySuggestionsOptions {
   editor: Editor;
   onSelectEntity: (item: { id: number | string; model: string }) => void;
   enabled?: boolean;
-  searchModels?: SearchModel[];
+  searchModels?: SuggestionModel[];
 }
 
 interface UseEntitySuggestionsResult {
@@ -64,10 +66,21 @@ export function useEntitySuggestions({
     [onSelectEntity],
   );
 
+  const handleUserSelect = useCallback(
+    (item: User) => {
+      onSelectEntity({
+        id: item.id,
+        model: "user",
+      });
+    },
+    [onSelectEntity],
+  );
+
   const { menuItems, isLoading, searchResults } = useEntitySearch({
     query,
     onSelectRecent: handleRecentSelect,
     onSelectSearchResult: handleSearchResultSelect,
+    onSelectUser: handleUserSelect,
     enabled,
     searchModels,
   });

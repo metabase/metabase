@@ -20,8 +20,9 @@ import { CustomStarterKit } from "metabase-enterprise/documents/components/Edito
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
 import { EmojiSuggestionExtension } from "metabase-enterprise/documents/components/Editor/extensions/Emoji/EmojiSuggestionExtension";
 import { MentionExtension } from "metabase-enterprise/documents/components/Editor/extensions/Mention/MentionExtension";
-import { MentionSuggestion } from "metabase-enterprise/documents/components/Editor/extensions/Mention/MentionSuggestion";
+import { createMentionSuggestion } from "metabase-enterprise/documents/components/Editor/extensions/Mention/MentionSuggestion";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
+import { LINK_SEARCH_MODELS } from "metabase-enterprise/documents/components/Editor/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase-enterprise/documents/components/Editor/extensions/suggestionRenderer";
 import type { FormattingOptions } from "metabase-enterprise/documents/types";
 import type { DocumentContent } from "metabase-types/api";
@@ -74,7 +75,11 @@ export const CommentEditor = ({
         }),
         MentionExtension.configure({
           suggestion: {
-            render: createSuggestionRenderer(MentionSuggestion),
+            render: createSuggestionRenderer(
+              createMentionSuggestion({
+                searchModels: [...LINK_SEARCH_MODELS, "user"],
+              }),
+            ),
           },
         }),
         EmojiSuggestionExtension,

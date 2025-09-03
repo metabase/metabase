@@ -1,10 +1,13 @@
-.smartLink {
+.smartLink,
+.userMention {
   color: var(--mb-color-brand);
   font-weight: 700;
   padding: 0.125rem;
   border-radius: var(--mantine-radius-sm);
   transition: 200ms background-color;
+}
 
+.smartLink {
   &:hover {
     background-color: var(--mb-color-background-hover);
   }

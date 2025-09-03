@@ -1,14 +1,25 @@
 import { useMemo } from "react";
 
-import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
+import {
+  useListRecentsQuery,
+  useListUsersQuery,
+  useSearchQuery,
+} from "metabase/api";
+import type {
+  RecentItem,
+  SearchModel,
+  SearchResult,
+  User,
+} from "metabase-types/api";
 
 import type { MenuItem } from "../../shared/MenuComponents";
+import type { SuggestionModel } from "../../types";
 
 import { LINK_SEARCH_LIMIT, LINK_SEARCH_MODELS } from "./constants";
 import {
   buildRecentsMenuItems,
   buildSearchMenuItems,
+  buildUserMenuItems,
   filterRecents,
 } from "./suggestionUtils";
 
@@ -16,8 +27,9 @@ interface UseEntitySearchOptions {
   query: string;
   onSelectRecent: (item: RecentItem) => void;
   onSelectSearchResult: (item: SearchResult) => void;
+  onSelectUser: (item: User) => void;
   enabled?: boolean;
-  searchModels?: SearchModel[];
+  searchModels?: SuggestionModel[];
 }
 
 interface UseEntitySearchResult {
@@ -30,6 +42,7 @@ export function useEntitySearch({
   query,
   onSelectRecent,
   onSelectSearchResult,
+  onSelectUser,
   enabled = true,
   searchModels = LINK_SEARCH_MODELS,
 }: UseEntitySearchOptions): UseEntitySearchResult {
@@ -54,13 +67,28 @@ export function useEntitySearch({
   const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery(
     {
       q: query,
-      models: searchModels,
+      models: searchModels.filter(
+        (model): model is SearchModel => model !== "user",
+      ),
       limit: LINK_SEARCH_LIMIT,
     },
     {
       skip: !enabled || !query || query.length === 0,
     },
   );
+
+  const { data: usersResponse, isLoading: isUsersLoading } = useListUsersQuery(
+    undefined,
+    {
+      skip: !searchModels.includes("user"),
+    },
+  );
+
+  const users = useMemo(() => {
+    return (usersResponse?.data ?? []).filter((user) => {
+      return user.common_name.toLowerCase().includes(query.toLowerCase());
+    });
+  }, [usersResponse, query]);
 
   const searchResults = useMemo(
     () => searchResponse?.data ?? [],
@@ -71,6 +99,10 @@ export function useEntitySearch({
     const items: MenuItem[] = [];
 
     if (query.length > 0) {
+      if (!isUsersLoading) {
+        items.push(...buildUserMenuItems(users, onSelectUser));
+      }
+
       if (!isSearchLoading) {
         items.push(
           ...buildSearchMenuItems(searchResults, onSelectSearchResult),
@@ -86,11 +118,14 @@ export function useEntitySearch({
   }, [
     query,
     searchResults,
+    users,
     isSearchLoading,
+    isUsersLoading,
     filteredRecents,
     isRecentsLoading,
     onSelectRecent,
     onSelectSearchResult,
+    onSelectUser,
   ]);
 
   const isLoading =
