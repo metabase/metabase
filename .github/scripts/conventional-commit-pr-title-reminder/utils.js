@@ -15,9 +15,9 @@ These types \`docs\`, \`style\`, \`refactor\`, \`test\`, \`build\`, and \`ci\` a
 Please also make sure to include \`sdk-package\` scope, otherwise, the changelog will not include this task.
 
 For example, these are valid PR titles:
-- \`feat(sdk): Add interactive dashboard component\`
-- \`feat(sdk): Support theming pie chart\`
-- \`fix(sdk): Fix static dashboard crash\``;
+- \`feat(sdk-package): Add interactive dashboard component\`
+- \`feat(sdk-package): Support theming pie chart\`
+- \`fix(sdk-package): Fix static dashboard crash\``;
 
   const owner = context.repo.owner;
   const repo = context.repo.repo;
