@@ -172,18 +172,22 @@
         result)
       result)))
 
-(defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-opts target-ref-id]
+(defn- remove-local-references-with-pred
+  "Remove the local ref clauses that
+
+    (pred location clause)
+
+  returns truthy for."
+  [query stage-number unmodified-query-for-stage pred]
   (let [stage (lib.util/query-stage query stage-number)
         to-remove (mapcat
                    (fn [location]
                      (when-let [clauses (get-in stage location)]
-                       (->> clauses
-                            (keep (fn [clause]
-                                    (lib.util.match/match-lite-recursive clause
-                                      [(op :guard (= op target-op))
-                                       (_ :guard #(or (empty? target-opts)
-                                                      (set/subset? (set target-opts) (set %))))
-                                       (id :guard (= id target-ref-id))] [location clause]))))))
+                       (keep (fn [clause]
+                               (when (pred location clause)
+                                 (log/infof "Removing %s at location %s" (pr-str clause) (pr-str location))
+                                 [location clause]))
+                             clauses)))
                    (stage-paths query stage-number))
         dead-joins (volatile! (transient []))]
     (as-> query q
@@ -191,17 +195,28 @@
        (fn [query [location target-clause]]
          (remove-replace-location
           query stage-number unmodified-query-for-stage location target-clause
-          #(try (lib.util/remove-clause %1 %2 %3 stage-number)
-                (catch #?(:clj Exception :cljs js/Error) e
-                  (let [{:keys [error join]} (ex-data e)]
-                    (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
-                        ;; Return the stage unchanged, but keep track of the dead joins.
-                      (do (vswap! dead-joins conj! join)
-                          %1)
-                      (throw e)))))))
+          (fn [stage location target-clause]
+            (try (lib.util/remove-clause stage location target-clause stage-number)
+                 (catch #?(:clj Exception :cljs js/Error) e
+                   (let [{:keys [error join]} (ex-data e)]
+                     (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
+                       ;; Return the stage unchanged, but keep track of the dead joins.
+                       (do (vswap! dead-joins conj! join)
+                           stage)
+                       (throw e))))))))
        q
        to-remove)
       (reduce #(remove-join %1 stage-number %2) q (persistent! @dead-joins)))))
+
+(defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-opts target-ref-id]
+  (remove-local-references-with-pred
+   query stage-number unmodified-query-for-stage
+   (fn [location clause]
+     (lib.util.match/match-lite-recursive clause
+       [(op :guard (= op target-op))
+        (_ :guard #(or (empty? target-opts)
+                       (set/subset? (set target-opts) (set %))))
+        (id :guard (= id target-ref-id))] [location clause]))))
 
 (defn- remove-stage-references
   [query previous-stage-number unmodified-query-for-stage target-uuid]
@@ -285,9 +300,12 @@
   ([query :- ::lib.schema/query
     stage-number :- :int
     target-clause]
-   (if (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
-     (remove-join query stage-number target-clause)
-     (remove-replace* query stage-number target-clause :remove nil))))
+   (->> (if (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
+          (remove-join query stage-number target-clause)
+          (remove-replace* query stage-number target-clause :remove nil))
+        ;; normalize the query after removing stuff which will add stuff like `:fields` `:none` to joins if we removed
+        ;; the last field ref.
+        (lib.normalize/normalize ::lib.schema/query))))
 
 (defn- fresh-ref
   [reference]
@@ -568,21 +586,32 @@
   (let [removed-cols (set/difference
                       (set (lib.metadata.calculation/visible-columns query-before stage-number))
                       (set (lib.metadata.calculation/visible-columns query-after stage-number)))]
+    (when (seq removed-cols)
+      (log/infof "Removing %s" (pr-str (map :lib/source-column-alias removed-cols))))
     (reduce
      #(apply remove-local-references %1 stage-number query-after (match-spec %2))
      query-after
      removed-cols)))
 
-(defn- remove-invalidated-refs
+(defn- remove-invalidated-refs-from-joins
   "Remove refs that are now invalid because a join has been removed."
   [query-after query-before stage-number]
-  (let [query-without-local-refs (remove-matching-missing-columns
-                                  query-after
-                                  query-before
-                                  stage-number
-                                  (fn [column] [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
-    ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at
-    ;; the next stage as well
+  (let [join-aliases             (fn [query]
+                                   (into #{} (keep :alias) (lib.join/joins query stage-number)))
+        removed-aliases          (set/difference (join-aliases query-before) (join-aliases query-after))
+        _                        (when (seq removed-aliases)
+                                   (log/infof "Removing refs from removed joins %s" (pr-str removed-aliases)))
+        query-without-local-refs (cond-> query-after
+                                   (seq removed-aliases)
+                                   (remove-local-references-with-pred
+                                    stage-number
+                                    query-after
+                                    (fn [_location a-ref]
+                                      (lib.util.match/match-lite-recursive a-ref
+                                        [:field {:join-alias (_ :guard removed-aliases)} _id-or-name]
+                                        a-ref))))]
+    ;; Because joins can use :all or :none, we cannot just use [[remove-local-references-with-pred]] we have to
+    ;; manually look at the next stage as well
     (if-let [next-stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]
       (remove-matching-missing-columns
        query-without-local-refs
@@ -600,28 +629,28 @@
     :else join-spec))
 
 (defn- update-joins
-  ([query stage-number join-spec f]
-   (if-let [join-alias (join-spec->alias query stage-number join-spec)]
-     (mu/disable-enforcement
-       (let [query-after (as-> query $q
-                           (lib.util/update-query-stage
-                            $q
-                            stage-number
-                            (fn [stage]
-                              (u/assoc-dissoc stage :joins (f (:joins stage) join-alias))))
-                           (lib.util/update-query-stage
-                            $q
-                            stage-number
-                            (fn [stage]
-                              (m/update-existing
-                               stage
-                               :joins
-                               (fn [joins]
-                                 (mapv #(lib.join/add-default-alias $q stage-number %) joins))))))]
-         (-> query-after
-             (remove-invalidated-refs query stage-number)
-             normalize-fields-clauses)))
-     query)))
+  [query stage-number join-spec f]
+  (if-let [join-alias (join-spec->alias query stage-number join-spec)]
+    (mu/disable-enforcement
+      (let [query-after (as-> query $q
+                          (lib.util/update-query-stage
+                           $q
+                           stage-number
+                           (fn [stage]
+                             (u/assoc-dissoc stage :joins (f (:joins stage) join-alias))))
+                          (lib.util/update-query-stage
+                           $q
+                           stage-number
+                           (fn [stage]
+                             (m/update-existing
+                              stage
+                              :joins
+                              (fn [joins]
+                                (mapv #(lib.join/add-default-alias $q stage-number %) joins))))))]
+        (-> query-after
+            (remove-invalidated-refs-from-joins query stage-number)
+            normalize-fields-clauses)))
+    query))
 
 (defn- dependent-join? [join join-alias]
   (or (= (:alias join) join-alias)

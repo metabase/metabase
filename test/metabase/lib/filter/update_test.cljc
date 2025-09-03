@@ -24,7 +24,7 @@
                     (lib/filter (lib/= (meta/field-metadata :orders :id) 1))
                     (lib/filter (lib/= (meta/field-metadata :orders :id) 2))
                     (lib/filter (lib/= (lib/with-join-alias (meta/field-metadata :orders :id) "O2") 4)))]
-      (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "O2"} (meta/id :orders :id)] 4]
+      (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "O2"} "ID"] 4]
                                    [:between {} [:field {} (meta/id :orders :id)] -100 200]]}]}
               (lib/update-numeric-filter query (meta/field-metadata :orders :id) -100 200))))))
 
@@ -92,7 +92,7 @@
                                                     (meta/field-metadata :venues :longitude)
                                                     {:north 10, :south -10, :east 20, :west -20})]
       (testing "First application of update-lat-lon-filter"
-        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
                                      [:inside
                                       {}
                                       [:field {} (meta/id :venues :latitude)]
@@ -103,7 +103,7 @@
                                       20]]}]}
                 query-lat-lon)))
       (testing "Second application of update-lat-lon-filter"
-        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
                                      [:inside
                                       {}
                                       [:field {} (meta/id :venues :latitude)]
@@ -119,21 +119,27 @@
 
 (deftest ^:parallel update-lat-lon-filter-remove-existing-antimerdian-test
   (testing "Remove existing filter(s) that cross the antimerdian (metabase#41056).\n"
-    (let [base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                         (lib/join (-> (lib/join-clause (meta/table-metadata :venues))
-                                       (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :id)
-                                                                         (-> (meta/field-metadata :venues :id)
-                                                                             (lib/with-join-alias "V2")))])
-                                       (lib/with-join-alias "V2")))
-                         (lib/filter (lib/= (meta/field-metadata :venues :latitude) 1))
-                         (lib/filter (lib/= (meta/field-metadata :venues :longitude) 2))
-                         (lib/filter (lib/= (lib/with-join-alias (meta/field-metadata :venues :latitude) "V2") 4)))
-          query-lat-lon  (lib/update-lat-lon-filter base-query
-                                                    (meta/field-metadata :venues :latitude)
-                                                    (meta/field-metadata :venues :longitude)
-                                                    {:north 10, :south -10, :east -170, :west 170})]
+    (let [base-query    (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                            (lib/join (-> (lib/join-clause (meta/table-metadata :venues))
+                                          (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :id)
+                                                                            (-> (meta/field-metadata :venues :id)
+                                                                                (lib/with-join-alias "V2")))])
+                                          (lib/with-join-alias "V2")))
+                            (lib/filter (lib/= (meta/field-metadata :venues :latitude) 1))
+                            (lib/filter (lib/= (meta/field-metadata :venues :longitude) 2))
+                            (lib/filter (lib/= (lib/with-join-alias (meta/field-metadata :venues :latitude) "V2") 4)))
+          _             (is (=? {:stages [{:joins   [{:alias  "V2"
+                                                      :fields :all}]
+                                           :filters [[:= {} [:field (complement :join-alias) (meta/id :venues :latitude)] 1]
+                                                     [:= {} [:field (complement :join-alias) (meta/id :venues :longitude)] 2]
+                                                     [:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]]}]}
+                                base-query))
+          query-lat-lon (lib/update-lat-lon-filter base-query
+                                                   (meta/field-metadata :venues :latitude)
+                                                   (meta/field-metadata :venues :longitude)
+                                                   {:north 10, :south -10, :east -170, :west 170})]
       (testing "First application of update-lat-lon-filter (metabase#41056)"
-        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
                                      [:or
                                       {}
                                       [:inside
@@ -154,7 +160,7 @@
                                        -170]]]}]}
                 query-lat-lon)))
       (testing "Second application of update-lat-lon-filter (metabase#41056)"
-        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} (meta/id :venues :latitude)] 4]
+        (is (=? {:stages [{:filters [[:= {} [:field {:join-alias "V2"} "LATITUDE"] 4]
                                      [:or
                                       {}
                                       [:inside

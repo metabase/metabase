@@ -112,7 +112,7 @@
 (mr/def ::join
   [:and
    [:map
-    {:default {}, :decode/normalize normalize-join}
+    {:default {}, :decode/normalize #'normalize-join}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
     [:stages      [:ref :metabase.lib.schema/stages]]
     [:conditions  [:ref ::conditions]]

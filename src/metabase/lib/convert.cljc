@@ -125,21 +125,30 @@
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
-(defn- default-MBQL-clause->pMBQL [mbql-clause]
-  (let [last-elem (peek mbql-clause)
-        last-elem-option? (map? last-elem)
-        [clause-type & args] (cond-> mbql-clause
-                               last-elem-option? pop)
-        options (if last-elem-option?
-                  last-elem
-                  {})]
-    (lib.options/ensure-uuid (into [clause-type options] (map ->pMBQL) args))))
+(defn- default-legacy-mbql-clause->mbql5 [[tag & args :as clause]]
+  (if (map? (first args))
+    ;; already MBQL 5
+    clause
+    ;; decode from legacy MBQL
+    (let [[tag options & args] (case (mbql.s/options-style tag)
+                                 ::mbql.s/options-style.none                     (list* tag nil args)
+                                 ::mbql.s/options-style.mbql5                    clause
+                                 (::mbql.s/options-style.last-always
+                                  ::mbql.s/options-style.last-always.snake_case) (list* tag (or (last args) {}) (butlast args))
+                                 ::mbql.s/options-style.last-unless-empty        (if (map? (last args))
+                                                                                   (list* tag (last args) (butlast args))
+                                                                                   (list* tag {} args))
+                                 ::mbql.s/options-style.𝕨𝕚𝕝𝕕                     (cond
+                                                                                   (> (count args) 2) clause
+                                                                                   (map? (last args)) (list* tag (last args) (butlast args))
+                                                                                   :else              (list* tag {} args)))]
+      (lib.options/ensure-uuid (into [tag options] (map ->pMBQL) args)))))
 
 (defmethod ->pMBQL :default
   [x]
   (if (and (vector? x)
            (keyword? (first x)))
-    (default-MBQL-clause->pMBQL x)
+    (default-legacy-mbql-clause->mbql5 x)
     x))
 
 (defmethod ->pMBQL :mbql/query

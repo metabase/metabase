@@ -4,6 +4,7 @@
    [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
@@ -20,6 +21,7 @@
   {:mbql/query        ::lib.schema/query
    :mbql.stage/mbql   ::lib.schema/stage.mbql
    :mbql.stage/native ::lib.schema/stage.native
+   :mbql/join         ::lib.schema.join/join
    :metadata/database ::lib.schema.metadata/database
    :metadata/table    ::lib.schema.metadata/table
    :metadata/column   ::lib.schema.metadata/column

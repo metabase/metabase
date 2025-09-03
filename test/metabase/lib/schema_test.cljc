@@ -130,7 +130,8 @@
                                       :order-by     [[:asc
                                                       {:lib/uuid (str (random-uuid))}
                                                       [:aggregation {:lib/uuid (str (random-uuid))} good-ref]]]}
-                                     {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
+                                     {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]
+                       :strategy    :left-join}]}
       nil)))
 
 (def ^:private valid-expression
@@ -179,7 +180,8 @@
                                     :order-by     [[:asc
                                                     {:lib/uuid (str (random-uuid))}
                                                     [:expression {:lib/uuid (str (random-uuid))} "price + 2"]]]}
-                                   {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
+                                   {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]
+                     :strategy    :left-join}]}
     nil))
 
 (defn- valid-join
@@ -197,7 +199,9 @@
     :alias       join-alias
     :conditions  [condition]
     :stages      [{:lib/type     :mbql.stage/mbql
-                   :source-table 2}]}))
+                   :source-table 2}]
+    :fields      :none
+    :strategy    :left-join}))
 
 (deftest ^:parallel check-join-references-test
   (are [stage errors] (= errors

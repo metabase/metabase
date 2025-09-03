@@ -142,7 +142,7 @@
                 :lib/source-column-alias  "count"
                 :lib/desired-column-alias "count"}]
               cols))
-      (is (=? [[:field {:join-alias "Products"} (meta/id :products :category)]
+      (is (=? [[:field {:join-alias "Products"} "CATEGORY"]
                [:aggregation {} string?]]
               (map lib.ref/ref cols))))))
 
