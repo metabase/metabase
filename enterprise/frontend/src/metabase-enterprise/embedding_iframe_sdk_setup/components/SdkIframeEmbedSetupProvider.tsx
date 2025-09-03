@@ -70,11 +70,11 @@ export const SdkIframeEmbedSetupProvider = ({
   );
 
   const settings = useMemo(() => {
-    const mergedSettings = rawSettings ?? defaultSettings;
+    const latestSettings = rawSettings ?? defaultSettings;
 
     // Append entity-types=model if there are more than 2 models in the instance.
     if (modelCount > 2) {
-      return match(mergedSettings)
+      return match(latestSettings)
         .with({ componentName: "metabase-question" }, (settings) => ({
           ...settings,
           entityTypes: ["model" as const],
@@ -86,7 +86,7 @@ export const SdkIframeEmbedSetupProvider = ({
         .otherwise((settings) => settings);
     }
 
-    return mergedSettings;
+    return latestSettings;
   }, [defaultSettings, modelCount, rawSettings]);
 
   // Which embed experience are we setting up?

@@ -169,4 +169,34 @@ H.describeWithSnowplow(suiteTitle, () => {
       codeBlock().should("contain", "metabase-question");
     });
   });
+
+  it("should not include entity-types when model count is 1", () => {
+    cy.intercept("GET", "/api/search?limit=0&models=dataset", {
+      data: [],
+      total: 1,
+    }).as("searchModels");
+
+    navigateToGetCodeStep({ experience: "exploration" });
+
+    cy.wait("@searchModels");
+
+    getEmbedSidebar().within(() => {
+      codeBlock().should("not.contain", "entity-types");
+    });
+  });
+
+  it("should include entity-types when model count is 3", () => {
+    cy.intercept("GET", "/api/search?limit=0&models=dataset", {
+      data: [],
+      total: 3,
+    }).as("searchModels");
+
+    navigateToGetCodeStep({ experience: "exploration" });
+
+    cy.wait("@searchModels");
+
+    getEmbedSidebar().within(() => {
+      codeBlock().should("contain", "entity-types='[\"model\"]'");
+    });
+  });
 });
