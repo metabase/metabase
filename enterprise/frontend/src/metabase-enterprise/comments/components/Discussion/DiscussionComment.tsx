@@ -5,6 +5,8 @@ import { useCallback } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { useSelector } from "metabase/lib/redux";
 import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
 import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import type { Comment, DocumentContent } from "metabase-types/api";
@@ -35,10 +37,12 @@ export function DiscussionComment({
   onEdit,
   onCopyLink,
 }: DiscussionCommentProps) {
+  const currentUser = useSelector(getCurrentUser);
   const [isEditing, editingHandler] = useDisclosure(false);
   const location = useLocation();
   const hash = location.hash?.substring(1);
   const isTarget = hash === getCommentNodeId(comment);
+  const isCurrentUsersComment = currentUser.id === comment.creator.id;
 
   const handleEditClick = useCallback(() => {
     editingHandler.open();
@@ -90,8 +94,8 @@ export function DiscussionComment({
           onResolve={onResolve}
           onReopen={onReopen}
           onReaction={onReaction}
-          onDelete={onDelete}
-          onEdit={handleEditClick}
+          onDelete={isCurrentUsersComment ? onDelete : undefined}
+          onEdit={isCurrentUsersComment ? handleEditClick : undefined}
           onCopyLink={onCopyLink}
         />
       )}
