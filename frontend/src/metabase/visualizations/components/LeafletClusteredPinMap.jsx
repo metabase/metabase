@@ -14,11 +14,7 @@ export default class LeafletClusteredPinMap extends LeafletMap {
   componentDidMount() {
     super.componentDidMount();
 
-    try {
-      // Check if markerClusterGroup is available
-      if (!L.markerClusterGroup) {
-        throw new Error(
-          "Leaflet markerClusterGroup is not available. Make sure leaflet.markercluster is properly imported.",
+          "Map clustering feature is not available. Please contact your administrator.",
         );
       }
 
