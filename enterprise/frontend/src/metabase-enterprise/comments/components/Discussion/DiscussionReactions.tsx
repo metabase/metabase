@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import cx from "classnames";
+import { useCallback, useMemo } from "react";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -18,22 +19,6 @@ export function DiscussionReactions({
   onReactionRemove,
   onReaction,
 }: DiscussionReactionsProps) {
-  const currentUser = useSelector(getCurrentUser);
-  const handleReactionClick = useCallback(
-    (reaction: CommentReaction) => {
-      const isCurrentUserReaction = reaction.users.some(
-        (user) => user.id === currentUser.id,
-      );
-
-      if (isCurrentUserReaction) {
-        onReactionRemove?.(comment, reaction.emoji);
-      } else {
-        onReaction?.(comment, reaction.emoji);
-      }
-    },
-    [comment, currentUser.id, onReactionRemove, onReaction],
-  );
-
   if (comment.reactions.length === 0) {
     return null;
   }
@@ -41,27 +26,62 @@ export function DiscussionReactions({
   return (
     <Flex p="0" mt="sm" gap="sm" wrap="wrap">
       {comment.reactions.map((reaction) => (
-        <Tooltip
+        <Reaction
           key={reaction.emoji}
-          label={reaction.users.map((user) => user.name).join(", ")}
-        >
-          <Flex
-            component="button"
-            type="button"
-            align="center"
-            gap="xs"
-            className={S.reaction}
-            onClick={() => handleReactionClick(reaction)}
-          >
-            <Text component="span" fz="1rem">
-              {reaction.emoji}
-            </Text>
-            <Text component="span" fz="sm" fw={700}>
-              {reaction.count}
-            </Text>
-          </Flex>
-        </Tooltip>
+          reaction={reaction}
+          onReaction={(emoji) => onReaction?.(comment, emoji)}
+          onReactionRemove={(emoji) => onReactionRemove?.(comment, emoji)}
+        />
       ))}
     </Flex>
+  );
+}
+
+function Reaction({
+  reaction,
+  onReaction,
+  onReactionRemove,
+}: {
+  reaction: CommentReaction;
+  onReaction: (emoji: string) => void;
+  onReactionRemove: (emoji: string) => void;
+}) {
+  const currentUser = useSelector(getCurrentUser);
+  const isCurrentUserReaction = useMemo(
+    () => reaction.users.some((user) => user.id === currentUser.id),
+    [reaction.users, currentUser.id],
+  );
+
+  const reactionLabel = useMemo(
+    () => reaction.users.map((user) => user.name).join(", "),
+    [reaction.users],
+  );
+
+  const handleReactionClick = useCallback(
+    () =>
+      isCurrentUserReaction
+        ? onReactionRemove?.(reaction.emoji)
+        : onReaction?.(reaction.emoji),
+    [isCurrentUserReaction, onReactionRemove, onReaction, reaction],
+  );
+
+  return (
+    <Tooltip label={reactionLabel}>
+      <Flex
+        align="center"
+        gap="xs"
+        fz="sm"
+        fw={700}
+        className={cx(S.reaction, {
+          [S.currentUserReaction]: isCurrentUserReaction,
+        })}
+        onClick={handleReactionClick}
+      >
+        <Text component="span" fz="1rem">
+          {reaction.emoji}
+        </Text>
+        {reaction.count}
+      </Flex>
+    </Tooltip>
   );
 }
