@@ -48,8 +48,8 @@ export const LegendItemDot = forwardRef<
       style={sizeStyle}
       ref={ref as Ref<HTMLDivElement>}
     >
-      <OuterCircle />
-      <InnerCircle color={color} isVisible={isVisible} />
+      <OuterCircle style={sizeStyle} />
+      <InnerCircle color={color} isVisible={isVisible} style={sizeStyle} />
     </Root>
   );
 });
