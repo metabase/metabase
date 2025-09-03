@@ -81,20 +81,35 @@ enum IssueType {
   underTheHoodIssues = "underTheHoodIssues",
 }
 
+const otherProductCategory = "Other";
+
+type ProductCategory =
+  | "Administration"
+  | "Database"
+  | "SDK"
+  | "Embedding"
+  | "Operation"
+  | "Organization"
+  | "Querying"
+  | "Reporting"
+  | "Visualization"
+  | "Other";
+
 // Product area labels take the form of "Category/Subcategory", e.g., "Querying/MBQL"
 // We're only interested in the main product category, e.g., "Querying"
-enum ProductCategory {
-  administration = "Administration",
-  database = "Database",
-  sdk = "SDK",
-  embedding = "Embedding",
-  operation = "Operation",
-  organization = "Organization",
-  querying = "Querying",
-  reporting = "Reporting",
-  visualization = "Visualization",
-  other = "Other",
-}
+// The position in list matters, as it determines the order in which issue labels are tested against items in this list
+const productCategories: ProductCategory[] = [
+  "Administration",
+  "Database",
+  "SDK",
+  "Embedding",
+  "Operation",
+  "Organization",
+  "Querying",
+  "Reporting",
+  "Visualization",
+  otherProductCategory,
+];
 
 type CategoryIssueMap = Record<Partial<ProductCategory>, Issue[]>;
 
@@ -126,11 +141,11 @@ const hasCategory = (issue: Issue, categoryName: ProductCategory): boolean => {
 };
 
 export const getProductCategory = (issue: Issue): ProductCategory => {
-  const category = Object.values(ProductCategory).find((categoryName) =>
+  const category = productCategories.find((categoryName) =>
     hasCategory(issue, categoryName),
   );
 
-  return category ?? ProductCategory.other;
+  return category ?? otherProductCategory;
 };
 
 // Format issues for a single product category
@@ -144,10 +159,10 @@ const formatIssueCategory = (
 // We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
 const sortCategories = (categories: ProductCategory[]) => {
   const uncategorizedIssues = categories.filter(
-    (category) => category === ProductCategory.other,
+    (category) => category === otherProductCategory,
   );
   const sortedCategories = categories
-    .filter((cat) => cat !== ProductCategory.other)
+    .filter((cat) => cat !== otherProductCategory)
     .sort((a, b) => a.localeCompare(b));
 
   return [...sortedCategories, ...uncategorizedIssues];
