@@ -6,7 +6,7 @@ import type { DatabaseData, Engine } from "metabase-types/api";
 import { getEngineOptions } from "../../utils/engine";
 import { DatabaseEngineList } from "../DatabaseEngineList";
 
-import DatabaseEngineSelect from "./DatabaseEngineSelect";
+import { DatabaseEngineSelect } from "./DatabaseEngineSelect";
 
 interface DatabaseEngineFieldProps {
   engineKey: string | undefined;

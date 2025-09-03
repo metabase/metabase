@@ -20,7 +20,7 @@ export interface DatabaseEngineSelectProps {
   engineKey: string | undefined;
 }
 
-const DatabaseEngineSelect = ({
+export const DatabaseEngineSelect = ({
   options,
   disabled,
   onChange,
@@ -73,6 +73,3 @@ const renderSelectOption: SelectProps["renderOption"] = ({ option }) => {
     </SelectItem>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseEngineSelect;
