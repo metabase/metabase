@@ -42,7 +42,7 @@ export const EmbeddingHub = () => {
 
         <Text mb="xl" c="text-medium">
           {c("{0} is the link to the selected embedding type.")
-            .jt`Get started with ${(<EmbeddingTypeDropdown />)}`}
+            .jt`Get started with ${(<EmbeddingTypeDropdown key="embedding-type-dropdown" />)}`}
         </Text>
 
         <EmbeddingHubChecklist
