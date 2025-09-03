@@ -118,7 +118,7 @@ export type ListTransformRunsRequest = {
   transform_tag_ids?: TransformTagId[];
   start_time?: string;
   end_time?: string;
-  run_method?: TransformRunMethod[];
+  run_methods?: TransformRunMethod[];
 } & PaginationRequest;
 
 export type ListTransformRunsResponse = {
