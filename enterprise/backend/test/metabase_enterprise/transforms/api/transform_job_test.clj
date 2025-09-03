@@ -4,8 +4,8 @@
    [metabase-enterprise.transforms.models.transform-job]
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
+   [metabase-enterprise.transforms.test-util :refer [parse-instant zoned-timestamp]]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -72,10 +72,10 @@
                        :model/TransformJobTransformTag _ {:job_id j2-id :tag_id t1-id :position 1}
                        :model/TransformJobTransformTag _ {:job_id j3-id :tag_id t2-id :position 0}
                        :model/TransformJobRun _ {:job_id j1-id :status "timeout" :run_method "cron"
-                                                 :start_time #t "2025-08-25T10:12:11Z"
-                                                 :end_time #t "2025-08-26T10:52:17Z"}
+                                                 :start_time (parse-instant "2025-08-25T10:12:11")
+                                                 :end_time (parse-instant "2025-08-26T10:52:17")}
                        :model/TransformJobRun _ {:job_id j2-id :status "started" :run_method "manual"
-                                                 :start_time #t "2025-08-26T10:12:11Z"
+                                                 :start_time (parse-instant "2025-08-26T10:12:11")
                                                  :end_time nil
                                                  :is_active true}]
           (let [our-job-ids #{j1-id j2-id j3-id}
@@ -103,9 +103,12 @@
                 (try
                   (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :next_run_start_time "2025-08-27~")]
                     (is (=? [{:id j1-id
-                              :last_run {:job_id j1-id, :run_method "cron"}
+                              :last_run {:job_id j1-id
+                                         :run_method "cron"
+                                         :start_time (zoned-timestamp "2025-08-25T10:12:11")
+                                         :end_time (zoned-timestamp "2025-08-26T10:52:17")}
                               :name "Job 1"
-                              :next_run {:start_time (every-pred string? u.date/parse)}
+                              :next_run {:start_time #"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d.*[+-]\d\d:\d\d\[.*\]"}
                               :schedule at-5-second-schedule
                               :tag_ids [t1-id]}]
                             (returned-jobs response))))

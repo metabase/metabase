@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.jobs :as transforms.jobs]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -199,7 +200,9 @@
                 (->date-field-filter-xf [:next_run :start_time] next_run_start_time)
                 (if transform-tag-ids
                   (filter #(some transform-tag-ids (:tag_ids %)))
-                  identity))
+                  identity)
+                (map #(update % :last_run transforms.util/localize-run-timestamps))
+                (map #(update % :next_run transforms.util/localize-run-timestamps)))
           (t2/hydrate jobs :tag_ids :last_run))))
 
 (def ^{:arglists '([request respond raise])} routes

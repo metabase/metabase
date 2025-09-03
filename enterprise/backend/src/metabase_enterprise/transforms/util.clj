@@ -3,6 +3,7 @@
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -109,3 +110,10 @@
   "Convert the timestamp t to a string encoding the it in the system timezone."
   [t]
   (-> t local-timestamp str))
+
+(defn localize-run-timestamps
+  "Localize the timestamps of a `run`."
+  [run]
+  (-> run
+      (u/update-some :start_time local-timestamp-string)
+      (u/update-some :end_time   local-timestamp-string)))
