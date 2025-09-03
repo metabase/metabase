@@ -18,6 +18,8 @@ describe("scenarios - embedding hub", () => {
         "Create a dashboard",
       );
 
+      cy.intercept("GET", "/api/automagic-dashboards/**").as("xrayDashboard");
+
       cy.log("Generate a dashboard via x-ray");
       cy.findByRole("button", { name: /create a dashboard/i })
         .scrollIntoView()
@@ -25,8 +27,9 @@ describe("scenarios - embedding hub", () => {
 
       H.main().findByText("Generate automatic dashboard").click();
       H.modal().findByText("Accounts").click();
-      cy.wait(1000); // TODO: fix this, I think the button is clickable before it actually work
-      H.main().findByText("Save this").click();
+
+      cy.wait("@xrayDashboard");
+      H.main().findByText("Save this").should("not.be.disabled").click();
 
       H.undoToast().findByRole("link", { name: "See it" }).should("be.visible");
 
