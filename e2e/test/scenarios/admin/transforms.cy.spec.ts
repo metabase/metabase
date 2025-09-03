@@ -1598,7 +1598,7 @@ function createMbqlTransform({
   targetTable = TARGET_TABLE,
   targetSchema = TARGET_SCHEMA,
   tagIds,
-  databaseId = 1,
+  databaseId,
   name = "MBQL transform",
   visitTransform,
 }: {
