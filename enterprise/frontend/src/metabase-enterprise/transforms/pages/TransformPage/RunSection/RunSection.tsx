@@ -1,9 +1,13 @@
+import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
+  useCancelCurrentTransformRunMutation,
   useLazyGetTransformQuery,
   useRunTransformMutation,
   useUpdateTransformMutation,
@@ -126,6 +130,18 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
           {errorInfo ?? runsInfo}
         </Group>
       );
+    case "canceled":
+      return (
+        <Group gap="sm">
+          <Icon c="text-secondary" name="close" />
+          <Box>
+            {endTimeText
+              ? t`Last run was canceled ${endTimeText}.`
+              : t`Last run was canceled.`}
+          </Box>
+          {runsInfo}
+        </Group>
+      );
     default:
       return null;
   }
@@ -137,8 +153,14 @@ type RunButtonSectionProps = {
 
 function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [fetchTransform, { isFetching }] = useLazyGetTransformQuery();
-  const [runTransform, { isLoading: isRunning }] = useRunTransformMutation();
+  const [runTransform, { isLoading: isStarting }] = useRunTransformMutation();
+  const [cancelTransform, { isLoading: isCancelling }] =
+    useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
+  const [
+    isConfirmCancellationModalOpen,
+    { close: closeConfirmModal, open: openConfirmModal },
+  ] = useDisclosure(false);
 
   const handleRun = async () => {
     trackTranformTriggerManualRun({
@@ -156,12 +178,38 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
     return { error };
   };
 
+  const handleCancel = async () => {
+    const { error } = await cancelTransform(transform.id);
+    if (error && !isResourceNotFoundError(error)) {
+      sendErrorToast(t`Failed to cancel transform`);
+    } else {
+      // fetch the transform to get the correct `last_run` info
+      fetchTransform(transform.id);
+    }
+    return { error };
+  };
+
   return (
-    <RunButton
-      run={transform.last_run}
-      isLoading={isFetching || isRunning}
-      onRun={handleRun}
-    />
+    <>
+      <RunButton
+        allowCancellation
+        run={transform.last_run}
+        isLoading={isFetching || isStarting || isCancelling}
+        isCancelling={isCancelling}
+        onRun={handleRun}
+        onCancel={openConfirmModal}
+      />
+      <ConfirmModal
+        title={t`Cancel this run?`}
+        opened={isConfirmCancellationModalOpen}
+        onClose={closeConfirmModal}
+        onConfirm={() => {
+          void handleCancel();
+          closeConfirmModal();
+        }}
+        closeButtonText={t`No`}
+      />
+    </>
   );
 }
 
