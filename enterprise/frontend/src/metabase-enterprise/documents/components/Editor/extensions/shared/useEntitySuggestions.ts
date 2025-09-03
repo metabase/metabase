@@ -128,6 +128,7 @@ export function useEntitySuggestions({
       }
 
       if (event.key === "Enter") {
+        event.stopPropagation();
         enterHandler();
         return true;
       }

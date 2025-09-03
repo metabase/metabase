@@ -14,7 +14,6 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
-import { isCommentsStorage } from "metabase-enterprise/comments/types";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
 import { CustomStarterKit } from "metabase-enterprise/documents/components/Editor/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
@@ -136,17 +135,9 @@ export const CommentEditor = ({
       return;
     }
 
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey &&
-      isCommentsStorage(editor.storage)
-    ) {
-      const { isMentionPopupOpen } = editor.storage.mention; // see CustomMentionExtension
-
-      if (!isMentionPopupOpen) {
-        event.preventDefault();
-        submitDoc();
-      }
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      submitDoc();
     }
   };
 
@@ -157,7 +148,7 @@ export const CommentEditor = ({
         [S.readonly]: readonly,
         [S.active]: active,
       })}
-      onKeyDownCapture={handleKeyDown}
+      onKeyDown={handleKeyDown}
     >
       <Box className={S.contentWrapper}>
         <EditorContent editor={editor} className={S.content} />
