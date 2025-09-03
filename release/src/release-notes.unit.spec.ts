@@ -112,7 +112,7 @@ describe("Release Notes", () => {
       expect(notes).toContain(
         "https://downloads.metabase.com/v0.2.3.x/metabase.jar",
       );
-      expect(notes).not.toContain("SDK package bug Issue");
+      expect(notes).not.toContain("SDK Package Bug Issue");
     });
 
     it("should generate release notes from alternative templates", () => {
