@@ -1,14 +1,9 @@
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
-import { t } from "ttag";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_DB_ROUTING } from "metabase/plugins";
 import { Box, Title } from "metabase/ui";
-import type { DatabaseId } from "metabase-types/api";
 
 import { DatabaseEditConnectionForm } from "../components/DatabaseEditConnectionForm";
+import { useDatabaseConnection } from "../hooks/use-database-connection";
 
 interface DatabasePageProps {
   params: { databaseId: string };
@@ -16,39 +11,8 @@ interface DatabasePageProps {
 }
 
 export function DatabasePage({ params, route }: DatabasePageProps) {
-  const dispatch = useDispatch();
-  const queryParams = new URLSearchParams(location.search);
-  const preselectedEngine = queryParams.get("engine") ?? undefined;
-  const addingNewDatabase = params.databaseId === undefined;
-  const databaseReq = useGetDatabaseQuery(
-    addingNewDatabase ? skipToken : { id: parseInt(params.databaseId, 10) },
-  );
-  const database = databaseReq.currentData ?? {
-    id: undefined,
-    is_attached_dwh: false,
-    router_user_attribute: undefined,
-    engine: preselectedEngine,
-  };
-
-  const handleCancel = () => {
-    dispatch(
-      database?.id
-        ? push(`/admin/databases/${database.id}`)
-        : push(`/admin/databases`),
-    );
-  };
-
-  const handleOnSubmit = (savedDB: { id: DatabaseId }) => {
-    if (addingNewDatabase) {
-      dispatch(push(`/admin/databases/${savedDB.id}`));
-    } else {
-      handleCancel();
-    }
-  };
-
-  const title = addingNewDatabase
-    ? t`Add a database`
-    : t`Edit connection details`;
+  const { database, databaseReq, handleCancel, handleOnSubmit, title, config } =
+    useDatabaseConnection({ databaseId: params.databaseId });
 
   return (
     <Box w="100%" maw="54rem" mx="auto" p="xl">
@@ -62,13 +26,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
         onSubmitted={handleOnSubmit}
         route={route}
         onCancel={handleCancel}
-        config={{
-          engine: {
-            fieldState: database
-              ? PLUGIN_DB_ROUTING.getPrimaryDBEngineFieldState(database)
-              : "disabled",
-          },
-        }}
+        config={config}
         formLocation="full-page"
       />
     </Box>
