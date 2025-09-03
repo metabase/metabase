@@ -2397,7 +2397,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
 
-    it("should allow connecting inline parameters only to cards on the same tab", () => {
+    it("should not allow connecting inline parameters to cards on a different tab", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
       }).then(({ body: dashcard }) => {
@@ -2420,9 +2420,6 @@ describe("scenarios > dashboard > parameters", () => {
         // Add a filter to the first card
         H.setDashCardFilter(0, "Text or Category", null, "Category");
         H.selectDashboardFilter(H.getDashboardCard(0), "Category");
-
-        // Connect it to the second card
-        H.selectDashboardFilter(H.getDashboardCard(1), "Category");
 
         H.goToTab("Tab 2");
 
