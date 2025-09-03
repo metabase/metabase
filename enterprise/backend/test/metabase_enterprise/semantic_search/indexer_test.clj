@@ -725,3 +725,24 @@
 
                     (.interrupt thread)
                     (is (.join thread (Duration/ofSeconds 1)) "dies in a reasonable amount of time")))))))))))
+
+(deftest indexer-loop-metric-test
+  (mt/with-prometheus-system! [_ system]
+    (let [pgvector semantic.tu/db
+          index-metadata (semantic.tu/unique-index-metadata)
+          metadata-row {:id                42
+                        :indexer_last_poll (ts "2025-01-01T12:00:00Z")
+                        :indexer_last_seen (ts "2025-01-01T11:30:00Z")}
+          index        {:table-name "foo"}]
+      (testing ":metabase-search/semantic-indexer-loop-ms"
+        (with-redefs [semantic.index-metadata/get-active-index-state
+                      (fn [& _]
+                        {:index index :metadata-row metadata-row})
+
+                      semantic.indexer/indexing-loop
+                      (fn [& _]
+                        (Thread/sleep 200)
+                        nil)]
+          (semantic.indexer/quartz-job-run! pgvector index-metadata)
+          (is (<= 0.2 (mt/metric-value system :metabase-search/semantic-indexer-loop-ms))))))))
+
