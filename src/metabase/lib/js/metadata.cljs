@@ -542,12 +542,10 @@
           ids)))
 
 (defn- metadatas-by-name [metadata metadata-type names]
-  (let [names      (into #{} names)
-        k          (-> metadata-type metadata-field by-name-field)
+  (let [k          (-> metadata-type metadata-field by-name-field)
         metadatas* (some-> metadata k deref)]
-    (into []
-          (keep (fn [the-name]
-                  (some-> metadatas* (get the-name))))
+    (into [] (comp (distinct)
+                   (keep #(get metadatas* %)))
           names)))
 
 (defn- tables [metadata database-id]

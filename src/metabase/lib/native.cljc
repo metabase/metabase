@@ -62,7 +62,7 @@
   [query-text]
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found            {}
-           [current & more] (vec parsed)]
+           [current & more] parsed]
       (match [current]
         [nil]              found
         [_ :guard string?] (recur found more)
@@ -76,7 +76,7 @@
 
         [{:type     ::lib.parse/optional
           :contents contents}]
-        (recur found (apply conj more contents))))))
+        (recur found (into more contents))))))
 
 (defn- rename-template-tag
   [existing-tags old-name new-name]
@@ -120,7 +120,7 @@
       (seen snippet-name) (recur more-snippet-names seen tags)
       :else (let [snippet-tags (->> (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name)
                                     :template-tags)]
-              (recur (apply conj more-snippet-names (snippet-names snippet-tags))
+              (recur (into more-snippet-names (snippet-names snippet-tags))
                      (conj seen snippet-name)
                      (merge tags snippet-tags))))))
 

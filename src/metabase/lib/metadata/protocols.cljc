@@ -42,7 +42,7 @@
  cache).")
 
   (metadatas-by-name [metadata-provider metadata-type names]
-    "Return a sequence of non-nil metadata object of `metadata-type` associated with `names`, which is either
+    "Return a sequence of non-nil metadata objects of `metadata-type` associated with `names`, which is either
   a sequence or a set of string names. Objects should be fetched as needed, but if this MetadataProvider has an
   internal cache (i.e., if it is a [[CachedMetadataProvider]]), it should return any cached objects and only fetch
   ones not present in the cache. This should not error if any objects were not found. The order objects are returned

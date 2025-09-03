@@ -35,7 +35,7 @@
 
 (defn- query->template-tags
   [query]
-  (some-> query :native :template-tags vals seq))
+  (-> query :native :template-tags vals))
 
 (defn- query->template-tag-field-ids [query]
   (when-let [template-tags (query->template-tags query)]
@@ -67,14 +67,14 @@
                                         :when (and snippet-id
                                                    (not (contains? seen-ids snippet-id)))]
                                     snippet-id)))
-         nested-snippet-ids   (mapcat ->nested-snippet-ids snippets-to-recurse)
+         nested-snippet-ids   (into #{} (mapcat ->nested-snippet-ids) snippets-to-recurse)
          nested-snippets      (when (seq nested-snippet-ids)
                                 (t2/select :model/NativeQuerySnippet :id [:in nested-snippet-ids]))]
      (if-not (seq nested-snippet-ids)
        all-snippets
        (recur (into all-snippets nested-snippets)
               nested-snippets
-              (into seen-ids nested-snippet-ids))))))
+              (set/union seen-ids nested-snippet-ids))))))
 
 (defn- collect-snippet-field-ids
   [snippets]

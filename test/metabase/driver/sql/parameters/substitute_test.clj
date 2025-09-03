@@ -324,7 +324,7 @@
 
 (deftest ^:parallel substitute-recursive-native-query-snippets-test
   (testing "Recursive native query snippet substitution"
-    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:outer")]]
       (is (=? ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
               (substitute query {"snippet:outer" (params/->ReferencedQuerySnippet 123 "{{snippet:symbol_is_A}}")
                                  "snippet:symbol_is_A" (params/->ReferencedQuerySnippet 124 "symbol = 'A'")}))))))
