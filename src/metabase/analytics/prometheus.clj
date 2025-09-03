@@ -410,12 +410,7 @@
                           :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000]})
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
-                        :labels [:job-run-id :status]})
-   (prometheus/histogram :metabase-transforms/csv-write-duration-ms
-                         {:description "Duration of CSV file write operations during transforms."
-                          :labels [:job-run-id]
-                          ;; 10ms -> 5 minutes
-                          :buckets [10 100 500 1000 5000 10000 30000 60000 300000]})])
+                        :labels [:job-run-id :status]})])
 
 (defn- quartz-collectors
   []

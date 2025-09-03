@@ -252,9 +252,8 @@
             (let [temp-file (File/createTempFile "transform-output-" ".csv")
                   csv-data  (:output body)]
               (try
-                (transforms.instrumentation/with-csv-write-timing [run-id]
-                  (with-open [writer (io/writer temp-file)]
-                    (.write writer ^String csv-data)))
+                (with-open [writer (io/writer temp-file)]
+                  (.write writer ^String csv-data))
                 (let [file-size (.length temp-file)]
                   (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil)
                   (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-dwh]

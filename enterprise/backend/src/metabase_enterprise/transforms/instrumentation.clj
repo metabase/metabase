@@ -12,28 +12,19 @@
 
 (mr/def ::stage-label
   [:enum
-   ;; Data transfer stages
    :dwh-to-file
    :file-to-s3
    :file-to-dwh
 
-   ;; Python execution stages
    :python-execution
-
-   ;; MBQL execution stages
    :mbql-query
-
-   ;; Sync stages
-   :table-sync
-
-   ;; File operations
-   :csv-write])
+   :table-sync])
 
 (mu/defn record-stage-start!
   "Record the start of a transform stage."
-  [job-run-id      :- pos-int?
-   stage-type      :- ::stage-type
-   stage-label     :- ::stage-label]
+  [job-run-id :- pos-int?
+   stage-type :- ::stage-type
+   stage-label :- ::stage-label]
   (prometheus/inc! :metabase-transforms/stage-started
                    {:job-run-id (str job-run-id)
                     :stage-type (name stage-type)
@@ -41,10 +32,10 @@
 
 (mu/defn record-stage-completion!
   "Record the successful completion of a transform stage."
-  [job-run-id      :- pos-int?
-   stage-type      :- ::stage-type
-   stage-label     :- ::stage-label
-   duration-ms     :- pos-int?]
+  [job-run-id :- pos-int?
+   stage-type :- ::stage-type
+   stage-label :- ::stage-label
+   duration-ms :- pos-int?]
   (let [labels {:job-run-id (str job-run-id)
                 :stage-type (name stage-type)
                 :stage-label (name stage-label)}]
@@ -53,16 +44,44 @@
 
 (mu/defn record-stage-failure!
   "Record the failure of a transform stage."
-  [job-run-id      :- pos-int?
-   stage-type      :- ::stage-type
-   stage-label     :- ::stage-label
-   duration-ms     :- [:maybe pos-int?]]
+  [job-run-id :- pos-int?
+   stage-type :- ::stage-type
+   stage-label :- ::stage-label
+   duration-ms :- [:maybe pos-int?]]
   (let [labels {:job-run-id (str job-run-id)
                 :stage-type (name stage-type)
                 :stage-label (name stage-label)}]
     (prometheus/inc! :metabase-transforms/stage-failed labels)
     (when duration-ms
       (prometheus/observe! :metabase-transforms/stage-duration-ms labels duration-ms))))
+
+(defn with-timing
+  "Generic timing function that executes body while recording metrics.
+
+   Takes a map of optional functions:
+   - :start-fn - function to call when starting
+   - :success-fn - function to call on success (receives duration-ms as last arg)
+   - :error-fn - function to call on error (receives duration-ms as last arg)
+
+   Usage:
+   (with-timing {:start-fn #(record-stage-start! %1 %2 %3)
+                 :success-fn #(record-stage-completion! %1 %2 %3 %4)
+                 :error-fn #(record-stage-failure! %1 %2 %3 %4)}
+                [job-run-id stage-type stage-label]
+                #(do-work)) "
+  [callbacks args body-fn]
+  (let [start-time (u/start-timer)]
+    (when-let [start-fn (:start-fn callbacks)]
+      (apply start-fn args))
+    (try
+      (let [result (body-fn)]
+        (when-let [success-fn (:success-fn callbacks)]
+          (apply success-fn (conj (vec args) (long (u/since-ms start-time)))))
+        result)
+      (catch Throwable t
+        (when-let [error-fn (:error-fn callbacks)]
+          (apply error-fn (conj (vec args) (long (u/since-ms start-time)))))
+        (throw t)))))
 
 (defmacro with-stage-timing
   "Execute body while timing a transform stage. Automatically records start, completion or failure.
@@ -71,23 +90,19 @@
    (with-stage-timing [job-run-id :data-transfer :dwh-to-file]
      ;; stage implementation
      result)"
-  [[job-run-id stage-type stage-label] & body]
-  `(let [start-time# (u/start-timer)]
-     (record-stage-start! ~job-run-id ~stage-type ~stage-label)
-     (try
-       (let [result# (do ~@body)]
-         (record-stage-completion! ~job-run-id ~stage-type ~stage-label (long (u/since-ms start-time#)))
-         result#)
-       (catch Throwable t#
-         (record-stage-failure! ~job-run-id ~stage-type ~stage-label (long (u/since-ms start-time#)))
-         (throw t#)))))
+  [args & body]
+  `(with-timing {:start-fn record-stage-start!
+                 :success-fn record-stage-completion!
+                 :error-fn record-stage-failure!}
+     ~args
+     (^:once fn* [] ~@body)))
 
 (mu/defn record-data-transfer!
   "Record metrics about data transfer (size and rows)."
-  [job-run-id      :- pos-int?
-   stage-label     :- ::stage-label
-   bytes           :- [:maybe pos-int?]
-   rows            :- [:maybe pos-int?]]
+  [job-run-id :- pos-int?
+   stage-label :- ::stage-label
+   bytes :- [:maybe pos-int?]
+   rows :- [:maybe pos-int?]]
   (let [labels {:job-run-id (str job-run-id)
                 :stage-label (name stage-label)}]
     (when bytes
@@ -127,25 +142,17 @@
      ;; job implementation
      result)"
   [[job-id run-method] & body]
-  `(let [start-time# (System/currentTimeMillis)]
-     (record-job-start! ~job-id ~run-method)
-     (try
-       (let [result# (do ~@body)]
-         (record-job-completion! ~job-id ~run-method
-                                 (- (System/currentTimeMillis) start-time#))
-         result#)
-       (catch Throwable t#
-         (record-job-failure! ~job-id ~run-method
-                              (- (System/currentTimeMillis) start-time#))
-         (throw t#)))))
-
-(mr/def ::api-call-status [:enum :success :error :timeout])
+  `(with-timing {:start-fn record-job-start!
+                 :success-fn record-job-completion!
+                 :error-fn record-job-failure!}
+     [~job-id ~run-method]
+     (^:once fn* [] ~@body)))
 
 (mu/defn record-python-api-call!
   "Record metrics about Python API calls."
-  [job-run-id      :- pos-int?
-   duration-ms     :- pos-int?
-   status          :- ::api-call-status]
+  [job-run-id :- pos-int?
+   status :- [:enum :success :error :timeout]
+   duration-ms :- pos-int?]
   (let [labels {:job-run-id (str job-run-id)}]
     (prometheus/inc! :metabase-transforms/python-api-calls-total
                      (assoc labels :status (name status)))
@@ -154,31 +161,9 @@
 (defmacro with-python-api-timing
   "Execute body while timing a Python API call."
   [[job-run-id] & body]
-  `(let [start-time# (System/currentTimeMillis)]
-     (try
-       (let [result# (do ~@body)]
-         (record-python-api-call! ~job-run-id
-                                  (- (System/currentTimeMillis) start-time#)
-                                  :success)
-         result#)
-       (catch Throwable t#
-         (record-python-api-call! ~job-run-id
-                                  (- (System/currentTimeMillis) start-time#)
-                                  :error)
-         (throw t#)))))
-
-(defn record-csv-write-operation!
-  "Record metrics about CSV file write operations."
-  [job-run-id duration-ms]
-  (prometheus/observe! :metabase-transforms/csv-write-duration-ms
-                       {:job-run-id (str job-run-id)}
-                       duration-ms))
-
-(defmacro with-csv-write-timing
-  "Execute body while timing a CSV file write operation."
-  [[job-run-id] & body]
-  `(let [start-time# (System/currentTimeMillis)]
-     (let [result# (do ~@body)]
-       (record-csv-write-operation! ~job-run-id
-                                    (- (System/currentTimeMillis) start-time#))
-       result#)))
+  `(with-timing {:success-fn (fn [job-run-id# duration-ms#]
+                               (record-python-api-call! job-run-id# duration-ms# :success))
+                 :error-fn (fn [job-run-id# duration-ms#]
+                             (record-python-api-call! job-run-id# duration-ms# :error))}
+     [~job-run-id]
+     (^:once fn* [] ~@body)))
