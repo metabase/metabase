@@ -17,9 +17,9 @@ title: Driver interface changelog
   metabase.driver/connection-spec, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
   and metabase.driver.sql/default-schema to implement sql transforms.
 
-- Added the driver multi-methods `driver/schema-exists?` and `driver/create-schema-if-needed!` which should be implemented by drivers that support `:schemas` and `:transforms/table`.
+- Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!` which should be implemented by drivers that support `:schemas` and `:transforms/table`.
 
-- `driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
+- `metabase.driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
   instead of just the top-level message as a string.
 
 ## Metabase 0.56.3
