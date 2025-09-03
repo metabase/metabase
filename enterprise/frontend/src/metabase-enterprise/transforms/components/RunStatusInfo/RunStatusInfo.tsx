@@ -5,6 +5,8 @@ import { formatStatus } from "../../utils";
 import { RunCancelButton } from "../RunCancelButton/RunCancelButton";
 import { RunErrorInfo } from "../RunErrorInfo";
 
+import S from "./RunStatusInfo.module.css";
+
 type RunStatusInfoProps = {
   transform?: Transform;
   status: TransformRunStatus;
@@ -21,7 +23,7 @@ export function RunStatusInfo({
   const isError = status === "failed" || status === "timeout";
 
   return (
-    <Group gap="xs">
+    <Group gap="xs" className={S.runStatusInfo}>
       <Box c={isError ? "error" : undefined}>{formatStatus(status)}</Box>
       {isError && message != null && (
         <RunErrorInfo message={message} endTime={endTime} />
