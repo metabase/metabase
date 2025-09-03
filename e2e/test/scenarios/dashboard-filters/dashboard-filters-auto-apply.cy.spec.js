@@ -289,129 +289,157 @@ describe(
         });
       });
 
-      it.skip("should display a toast when a dashboard takes longer than 15s to load even without parameter values (but has parameters with default values)", () => {
-        cy.clock();
-        openSlowDashboard();
+      it(
+        "should display a toast when a dashboard takes longer than 15s to load even without parameter values (but has parameters with default values)",
+        { tags: "@skip" },
+        () => {
+          cy.clock();
+          openSlowDashboard();
 
-        cy.tick(TOAST_TIMEOUT);
-        cy.wait("@cardQuery");
-        H.undoToast().within(() => {
-          cy.findByText(TOAST_MESSAGE).should("be.visible");
-          cy.button("Turn off").click();
-          cy.wait("@updateDashboard");
-        });
+          cy.tick(TOAST_TIMEOUT);
+          cy.wait("@cardQuery");
+          H.undoToast().within(() => {
+            cy.findByText(TOAST_MESSAGE).should("be.visible");
+            cy.button("Turn off").click();
+            cy.wait("@updateDashboard");
+          });
 
-        H.openDashboardSettingsSidebar();
-        H.sidesheet()
-          .findByLabelText(filterToggleLabel)
-          .should("not.be.checked");
-        // Gadget
-        const filterDefaultValue = FILTER_WITH_DEFAULT_VALUE.default[0];
-        H.filterWidget().findByText(filterDefaultValue).should("be.visible");
-        H.getDashboardCard().within(() => {
-          H.assertTableRowsCount(53);
-        });
-      });
+          H.openDashboardSettingsSidebar();
+          H.sidesheet()
+            .findByLabelText(filterToggleLabel)
+            .should("not.be.checked");
+          // Gadget
+          const filterDefaultValue = FILTER_WITH_DEFAULT_VALUE.default[0];
+          H.filterWidget().findByText(filterDefaultValue).should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(53);
+          });
+        },
+      );
 
-      it.skip("should not display the toast when we clear out parameter default value", () => {
-        cy.clock();
-        openSlowDashboard({ [FILTER_WITH_DEFAULT_VALUE.slug]: null });
+      it(
+        "should not display the toast when we clear out parameter default value",
+        { tags: "@skip" },
+        () => {
+          cy.clock();
+          openSlowDashboard({ [FILTER_WITH_DEFAULT_VALUE.slug]: null });
 
-        cy.tick(TOAST_TIMEOUT);
-        cy.wait("@cardQuery");
-        H.undoToast().should("not.exist");
-        H.getDashboardCard().within(() => {
-          H.assertTableRowsCount(200);
-        });
-      });
+          cy.tick(TOAST_TIMEOUT);
+          cy.wait("@cardQuery");
+          H.undoToast().should("not.exist");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(200);
+          });
+        },
+      );
     });
 
     describe("auto-apply filter toast", () => {
-      it.skip("should display a toast when a dashboard takes longer than 15s to load", () => {
-        cy.clock();
-        createDashboard();
-        openSlowDashboard({ [FILTER.slug]: "Gadget" });
+      it(
+        "should display a toast when a dashboard takes longer than 15s to load",
+        { tags: "@skip" },
+        () => {
+          cy.clock();
+          createDashboard();
+          openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
-        cy.tick(TOAST_TIMEOUT);
-        cy.wait("@cardQuery");
-        H.undoToast().within(() => {
-          cy.findByText(TOAST_MESSAGE).should("be.visible");
-          cy.button("Turn off").click();
-          cy.wait("@updateDashboard");
-        });
+          cy.tick(TOAST_TIMEOUT);
+          cy.wait("@cardQuery");
+          H.undoToast().within(() => {
+            cy.findByText(TOAST_MESSAGE).should("be.visible");
+            cy.button("Turn off").click();
+            cy.wait("@updateDashboard");
+          });
 
-        H.openDashboardSettingsSidebar();
-        H.sidesheet()
-          .findByLabelText(filterToggleLabel)
-          .should("not.be.checked");
-        H.closeDashboardSettingsSidebar();
-        H.filterWidget().findByText("Gadget").should("be.visible");
-        H.getDashboardCard().within(() => {
-          H.assertTableRowsCount(53);
-        });
-      });
+          H.openDashboardSettingsSidebar();
+          H.sidesheet()
+            .findByLabelText(filterToggleLabel)
+            .should("not.be.checked");
+          H.closeDashboardSettingsSidebar();
+          H.filterWidget().findByText("Gadget").should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(53);
+          });
+        },
+      );
 
-      it.skip("should display the toast indefinitely unless dismissing manually", () => {
-        cy.clock();
-        createDashboard();
-        openSlowDashboard({ [FILTER.slug]: "Gadget" });
+      it(
+        "should display the toast indefinitely unless dismissing manually",
+        { tags: "@skip" },
+        () => {
+          cy.clock();
+          createDashboard();
+          openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
-        cy.tick(TOAST_TIMEOUT);
-        cy.wait("@cardQuery");
-        H.undoToast().findByText(TOAST_MESSAGE).should("be.visible");
+          cy.tick(TOAST_TIMEOUT);
+          cy.wait("@cardQuery");
+          H.undoToast().findByText(TOAST_MESSAGE).should("be.visible");
 
-        cy.tick(100 * TOAST_TIMEOUT);
-        H.undoToast().findByText(TOAST_MESSAGE).should("be.visible");
+          cy.tick(100 * TOAST_TIMEOUT);
+          H.undoToast().findByText(TOAST_MESSAGE).should("be.visible");
 
-        H.undoToast().icon("close").click();
-        H.undoToast().should("not.exist");
-      });
+          H.undoToast().icon("close").click();
+          H.undoToast().should("not.exist");
+        },
+      );
 
-      it.skip("should not display the toast when auto applying filters is disabled", () => {
-        cy.clock();
-        createDashboard({ dashboardDetails: { auto_apply_filters: false } });
-        openSlowDashboard({ [FILTER.slug]: "Gadget" });
+      it(
+        "should not display the toast when auto applying filters is disabled",
+        { tags: "@skip" },
+        () => {
+          cy.clock();
+          createDashboard({ dashboardDetails: { auto_apply_filters: false } });
+          openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
-        cy.tick(TOAST_TIMEOUT);
-        cy.wait("@cardQuery");
-        H.undoToast().should("not.exist");
-        H.filterWidget().findByText("Gadget").should("be.visible");
-        H.getDashboardCard().within(() => {
-          H.assertTableRowsCount(53);
-        });
-      });
+          cy.tick(TOAST_TIMEOUT);
+          cy.wait("@cardQuery");
+          H.undoToast().should("not.exist");
+          H.filterWidget().findByText("Gadget").should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(53);
+          });
+        },
+      );
 
-      it.skip("should not display the toast if there are no parameter values", () => {
-        cy.clock();
-        createDashboard();
-        openSlowDashboard();
+      it(
+        "should not display the toast if there are no parameter values",
+        { tags: "@skip" },
+        () => {
+          cy.clock();
+          createDashboard();
+          openSlowDashboard();
 
-        cy.tick(TOAST_TIMEOUT);
-        cy.wait("@cardQuery");
-        H.undoToast().should("not.exist");
-      });
+          cy.tick(TOAST_TIMEOUT);
+          cy.wait("@cardQuery");
+          H.undoToast().should("not.exist");
+        },
+      );
 
-      it.skip("should not display the same toast twice for a dashboard", () => {
-        cy.clock();
-        createDashboard();
-        openSlowDashboard({ [FILTER.slug]: "Gadget" });
+      it(
+        "should not display the same toast twice for a dashboard",
+        { tags: "@skip" },
+        () => {
+          cy.clock();
+          createDashboard();
+          openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
-        cy.tick(TOAST_TIMEOUT);
-        cy.wait("@cardQuery");
-        H.undoToast().within(() => {
-          cy.button("Turn off").should("be.visible");
-          cy.icon("close").click();
-        });
-        H.filterWidget().findByText("Gadget").click();
-        H.popover().within(() => {
-          cy.findByText("Widget").click();
-          cy.findByText("Update filter").click();
-        });
+          cy.tick(TOAST_TIMEOUT);
+          cy.wait("@cardQuery");
+          H.undoToast().within(() => {
+            cy.button("Turn off").should("be.visible");
+            cy.icon("close").click();
+          });
+          H.filterWidget().findByText("Gadget").click();
+          H.popover().within(() => {
+            cy.findByText("Widget").click();
+            cy.findByText("Update filter").click();
+          });
 
-        cy.tick(TOAST_TIMEOUT);
-        cy.wait("@cardQuery");
-        H.undoToast().should("not.exist");
-      });
+          cy.tick(TOAST_TIMEOUT);
+          cy.wait("@cardQuery");
+          H.undoToast().should("not.exist");
+        },
+      );
     });
 
     describe("no collection curate permission", () => {
@@ -429,14 +457,18 @@ describe(
         H.popover().findByText("Edit settings").should("not.exist");
       });
 
-      it.skip("should not display a toast even when a dashboard takes longer than 15s to load", () => {
-        cy.clock();
-        openSlowDashboard({ [FILTER.slug]: "Gadget" });
+      it(
+        "should not display a toast even when a dashboard takes longer than 15s to load",
+        { tags: "@skip" },
+        () => {
+          cy.clock();
+          openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
-        cy.tick(TOAST_TIMEOUT);
-        cy.wait("@cardQuery");
-        H.undoToast().should("not.exist");
-      });
+          cy.tick(TOAST_TIMEOUT);
+          cy.wait("@cardQuery");
+          H.undoToast().should("not.exist");
+        },
+      );
     });
 
     describe("embeddings", () => {
@@ -571,62 +603,70 @@ describe(
           });
         });
 
-        it.skip("should display a toast when a dashboard takes longer than 15s to load", () => {
-          createDashboard();
-          // Not sure why I need to pass a date in this case, but it doesn't work without it.
-          cy.clock(Date.now());
-          openSlowFullAppEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
-          cy.tick(TOAST_TIMEOUT);
-          cy.wait("@cardQuery");
-          H.undoToast().within(() => {
-            cy.findByText(TOAST_MESSAGE).should("be.visible");
-            cy.button("Turn off").click();
-            cy.wait("@updateDashboard");
-          });
+        it(
+          "should display a toast when a dashboard takes longer than 15s to load",
+          { tags: "@skip" },
+          () => {
+            createDashboard();
+            // Not sure why I need to pass a date in this case, but it doesn't work without it.
+            cy.clock(Date.now());
+            openSlowFullAppEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
+            cy.tick(TOAST_TIMEOUT);
+            cy.wait("@cardQuery");
+            H.undoToast().within(() => {
+              cy.findByText(TOAST_MESSAGE).should("be.visible");
+              cy.button("Turn off").click();
+              cy.wait("@updateDashboard");
+            });
 
-          // In embedding we'll load bookmark after the dashboard is loaded, it's the opposite in normal app because bookmark is cached from somewhere else.
-          // And somehow, dashboard card query will be completed before the dashboard even start to load, and in entity loader it uses `setTimeout`,
-          // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
-          cy.tick();
+            // In embedding we'll load bookmark after the dashboard is loaded, it's the opposite in normal app because bookmark is cached from somewhere else.
+            // And somehow, dashboard card query will be completed before the dashboard even start to load, and in entity loader it uses `setTimeout`,
+            // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
+            cy.tick();
 
-          H.openDashboardSettingsSidebar();
-          H.sidesheet()
-            .findByLabelText(filterToggleLabel)
-            .should("not.be.checked");
-          H.filterWidget().findByText("Gadget").should("be.visible");
+            H.openDashboardSettingsSidebar();
+            H.sidesheet()
+              .findByLabelText(filterToggleLabel)
+              .should("not.be.checked");
+            H.filterWidget().findByText("Gadget").should("be.visible");
 
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(53);
-          });
+            H.getDashboardCard().within(() => {
+              H.assertTableRowsCount(53);
+            });
 
-          // Card result should be updated after manually updating the filter
-          H.filterWidget().icon("close").click();
-          H.applyFilterButton().should("be.visible").click();
+            // Card result should be updated after manually updating the filter
+            H.filterWidget().icon("close").click();
+            H.applyFilterButton().should("be.visible").click();
 
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(200);
-          });
-        });
+            H.getDashboardCard().within(() => {
+              H.assertTableRowsCount(200);
+            });
+          },
+        );
 
-        it.skip("should not display a toast when a dashboard takes longer than 15s to load if users have no write access to a dashboard", () => {
-          createDashboard();
-          cy.signIn("readonly");
-          // Not sure why I need to pass a date in this case, but it doesn't work without it.
-          cy.clock(Date.now());
-          openSlowFullAppEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
-          cy.tick(TOAST_TIMEOUT);
-          cy.wait("@cardQuery");
-          H.undoToast().should("not.exist");
+        it(
+          "should not display a toast when a dashboard takes longer than 15s to load if users have no write access to a dashboard",
+          { tags: "@skip" },
+          () => {
+            createDashboard();
+            cy.signIn("readonly");
+            // Not sure why I need to pass a date in this case, but it doesn't work without it.
+            cy.clock(Date.now());
+            openSlowFullAppEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
+            cy.tick(TOAST_TIMEOUT);
+            cy.wait("@cardQuery");
+            H.undoToast().should("not.exist");
 
-          // In embedding we'll load bookmark after the dashboard is loaded, it's the opposite in normal app because bookmark is cached from somewhere else.
-          // And somehow, dashboard card query will be completed before the dashboard even start to load, and in entity loader it uses `setTimeout`,
-          // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
-          cy.tick();
+            // In embedding we'll load bookmark after the dashboard is loaded, it's the opposite in normal app because bookmark is cached from somewhere else.
+            // And somehow, dashboard card query will be completed before the dashboard even start to load, and in entity loader it uses `setTimeout`,
+            // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
+            cy.tick();
 
-          H.getDashboardCard().within(() => {
-            H.assertTableRowsCount(53);
-          });
-        });
+            H.getDashboardCard().within(() => {
+              H.assertTableRowsCount(53);
+            });
+          },
+        );
       });
     });
   },

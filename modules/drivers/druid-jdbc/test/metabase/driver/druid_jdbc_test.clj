@@ -23,9 +23,9 @@
     :druid-jdbc
     (tqpt/with-flattened-dbdef
       (testing "describe-database"
-        (is (= {:tables #{{:schema "druid", :name "checkins" :description nil}
-                          {:schema "druid", :name "json" :description nil}
-                          {:schema "druid", :name "big_json" :description nil}}}
+        (is (= {:tables #{{:schema "druid", :name "checkins" :description nil, :is_writable nil}
+                          {:schema "druid", :name "json" :description nil, :is_writable nil}
+                          {:schema "druid", :name "big_json" :description nil, :is_writable nil}}}
                (driver/describe-database :druid-jdbc (mt/db)))))
       (testing "describe-table"
         (is (=? {:schema "druid"

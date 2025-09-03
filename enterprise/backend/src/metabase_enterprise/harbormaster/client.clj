@@ -7,7 +7,7 @@
    [martian.core :as martian]
    [medley.core :as m]
    [metabase.api.settings :as api.auth]
-   [metabase.cloud-migration.core :as cloud-migration]
+   [metabase.store-api.core :as store-api]
    [metabase.util :as m.util]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -44,7 +44,7 @@
   `->config` either gets the store-api-url and api-key from settings or throws an exception when either are unset or
   blank."
   []
-  (let [store-api-url (cloud-migration/store-api-url)
+  (let [store-api-url (store-api/store-api-url)
         _ (when (str/blank? store-api-url)
             (log/error "Missing store-api-url. Cannot create hm client config.")
             (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
@@ -138,7 +138,7 @@
   (memoize create-client))
 
 (defn- client []
-  (let [store-api-url (cloud-migration/store-api-url)
+  (let [store-api-url (store-api/store-api-url)
         api-key       (api.auth/api-key)]
     (when (str/blank? store-api-url)
       (log/error "Missing store-api-url. Cannot create hm client config.")
@@ -156,8 +156,14 @@
   [& args]
   (apply martian/explore (client) args))
 
+(defn- maybe-decode [x]
+  (try
+    (json/decode+kw x)
+    (catch Exception _
+      x)))
+
 (defn call
-  "Call the API, using Martian. Will throw on non 2xx.
+  "Call the API, using Martian. Will throw on non 2xx, and you can get the failure body (if any) using ex-data.
   e.g.
     ;; call the :foo endpoint with {:some-id id}
     ;; use (explore :list-connections) for params, if any, and pass them in a map
@@ -166,8 +172,10 @@
   (try
     (:body (martian/response-for (client) operation-id args))
     (catch Exception e
-      (log/errorf e "Error on Harbormaster operation call %s" operation-id)
-      (throw e))))
+      (let [resp-body (some-> e ex-data :body maybe-decode)
+            msg (format "Error on Harbormaster operation call %s" operation-id)]
+        (log/error msg (or resp-body e))
+        (throw (ex-info msg (if (map? resp-body) resp-body {})))))))
 
 (defn request
   "Same as call, but return the request that will be performed.
@@ -213,6 +221,5 @@
   ;;     :as :text}
 
   ;; Call the :list-connections operation.
-  (call :list-connections)
+  (call :list-connections))
   ;; => ()
-  )

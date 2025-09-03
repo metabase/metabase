@@ -34,16 +34,17 @@
 
 (driver/register! :redshift, :parent #{:postgres})
 
-(doseq [[feature supported?] {:connection-impersonation  true
-                              :describe-fields           true
-                              :describe-fks              true
-                              :expression-literals       true
-                              :identifiers-with-spaces   false
-                              :uuid-type                 false
-                              :nested-field-columns      false
-                              :test/jvm-timezone-setting false
-                              :database-routing          true
-                              :transforms/table          false}]
+(doseq [[feature supported?] {:connection-impersonation       true
+                              :describe-fields                true
+                              :describe-fks                   true
+                              :expression-literals            true
+                              :identifiers-with-spaces        false
+                              :uuid-type                      false
+                              :nested-field-columns           false
+                              :test/jvm-timezone-setting      false
+                              :database-routing               true
+                              :metadata/table-existence-check true
+                              :transforms/table               true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -113,7 +114,7 @@
            (map #(dissoc % :type)))
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
-(defmethod driver/describe-database :redshift
+(defmethod driver/describe-database* :redshift
   [driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
   ;;

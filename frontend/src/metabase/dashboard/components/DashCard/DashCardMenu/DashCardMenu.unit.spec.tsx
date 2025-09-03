@@ -24,7 +24,11 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockDashboardState,
+  createMockState,
+  createMockStoreDashboard,
+} from "metabase-types/store/mocks";
 
 import { DashCardMenu } from "./DashCardMenu";
 
@@ -102,7 +106,15 @@ interface SetupOpts {
   result?: Dataset;
 }
 
-const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
+const setup = ({
+  card = TEST_CARD,
+  result = TEST_RESULT,
+  canEdit = true,
+  onEditVisualization,
+}: SetupOpts & {
+  canEdit?: boolean;
+  onEditVisualization?: () => void;
+} = {}) => {
   const mockDashboard = createMockDashboard();
 
   const storeInitialState = createMockState({
@@ -110,6 +122,15 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
       databases: [createSampleDatabase()],
       questions: [card],
       dashboards: [mockDashboard],
+    }),
+    dashboard: createMockDashboardState({
+      dashboardId: mockDashboard.id,
+      dashboards: {
+        [mockDashboard.id]: createMockStoreDashboard({
+          id: mockDashboard.id,
+          name: mockDashboard.name,
+        }),
+      },
     }),
   });
 
@@ -137,6 +158,8 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
               question={question}
               result={result}
               dashcard={dashcard}
+              canEdit={canEdit}
+              onEditVisualization={onEditVisualization}
             />
           </MockDashboardContext>
         )}
@@ -240,5 +263,24 @@ describe("DashCardMenu", () => {
 
     expect(await screen.findByText("Edit question")).toBeInTheDocument();
     expect(screen.queryByText("Download results")).not.toBeInTheDocument();
+  });
+
+  it("should not display Edit question when canEdit is false", async () => {
+    setup({ canEdit: false });
+
+    await userEvent.click(getIcon("ellipsis"));
+
+    expect(await screen.findByText("Download results")).toBeInTheDocument();
+    expect(screen.queryByText("Edit question")).not.toBeInTheDocument();
+  });
+
+  it("should not display Edit visualization when canEdit is false", async () => {
+    const onEditVisualization = jest.fn();
+    setup({ canEdit: false, onEditVisualization });
+
+    await userEvent.click(getIcon("ellipsis"));
+
+    expect(await screen.findByText("Download results")).toBeInTheDocument();
+    expect(screen.queryByText("Edit visualization")).not.toBeInTheDocument();
   });
 });

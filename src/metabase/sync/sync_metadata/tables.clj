@@ -134,7 +134,10 @@
            :database_require_filter (:database_require_filter table)
            :display_name            (or (:display_name table)
                                         (humanization/name->human-readable-name (:name table)))
-           :name                    (:name table)})))
+           :name                    (:name table)
+           :is_writable             (:is_writable table)}
+          (when (:is_sample database)
+            {:data_authority :ingested}))))
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
@@ -153,7 +156,10 @@
                                              (dissoc :visibility_type)
 
                                              true
-                                             (assoc :active true))))
+                                             (assoc :active true)
+
+                                             (:is_sample database)
+                                             (assoc :data_authority :ingested))))
     ;; otherwise create a new Table
     (create-table! database table)))
 
@@ -186,7 +192,7 @@
                 {:active false})))
 
 (def ^:private keys-to-update
-  [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status])
+  [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
 
 (mu/defn- update-table-metadata-if-needed!
   "Update the table metadata if it has changed."
@@ -241,26 +247,39 @@
         (remove metabase-metadata/is-metabase-metadata-table?)
         (:tables db-metadata)))
 
+(mu/defn- select-tables :- [:set (ms/InstanceOf :model/Table)]
+  "Selects the columns we need for `:model/Table`, with some optional filters"
+  [database :- i/DatabaseInstance
+   & filters]
+  (set (apply
+        t2/select
+        [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count
+         :visibility_type :initial_sync_status]
+        :db_id (u/the-id database)
+        filters)))
+
 (mu/defn- db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
-  "Return information about what Tables we have for this DB in the Metabase application DB."
+  "Return information about what Tables we have for this DB in the Metabase application DB. Only includes active tables."
   [database :- i/DatabaseInstance]
-  (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count
-                   :visibility_type :initial_sync_status]
-                  :db_id  (u/the-id database)
-                  :active true)))
+  (select-tables database :active true))
+
+(mu/defn- db->our-tables :- [:set (ms/InstanceOf :model/Table)]
+  "Return *all* tables we have for this DB in the Metabase appDB, including inactive ones."
+  [database :- i/DatabaseInstance]
+  (select-tables database))
 
 (mu/defn- adjusted-schemas :- [:maybe [:map-of :string :string]]
   "Returns a map of schemas that should be adjusted to their new names."
   [driver
    database
-   our-metadata :- [:set (ms/InstanceOf :model/Table)]]
+   our-tables :- [:set (ms/InstanceOf :model/Table)]]
   (reduce
    (fn [accum schema]
      (let [new-schema (driver/adjust-schema-qualification driver database schema)]
        (cond-> accum
          (not= schema new-schema) (assoc schema new-schema))))
    nil
-   (into #{} (map :schema our-metadata))))
+   (into #{} (map :schema our-tables))))
 
 (defn- adjust-table-schemas!
   [database schemas-to-update]
@@ -331,14 +350,15 @@
 
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
-   (let [driver (driver.u/database->driver database)
+   (let [driver                (driver.u/database->driver database)
          db-table-metadatas    (table-set db-metadata)
          name+schema           #(select-keys % [:name :schema])
          name+schema->db-table (m/index-by name+schema db-table-metadatas)
          our-metadata          (db->our-metadata database)
          multi-level-support?  (driver.u/supports? driver :multi-level-schema database)
          schemas-to-update     (when multi-level-support?
-                                 (adjusted-schemas driver database our-metadata))
+                                 ;; we want to adjust the schemas for all tables (not just active ones from `our-metadata`)
+                                 (adjusted-schemas driver database (db->our-tables database)))
          our-metadata          (cond->> our-metadata
                                  multi-level-support?
                                  (into #{} (map (fn [table]

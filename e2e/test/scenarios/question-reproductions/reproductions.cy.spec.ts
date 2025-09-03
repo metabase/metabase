@@ -120,9 +120,9 @@ describe("issue 39487", () => {
 
   // broken after migration away from filter modal
   // see https://github.com/metabase/metabase/issues/55688
-  it.skip(
+  it(
     "calendar has constant size when using date range picker filter (metabase#39487)",
-    { viewportHeight: 1000 },
+    { viewportHeight: 1000, tags: "@skip" },
     () => {
       createTimeSeriesQuestionWithFilter([
         "between",
@@ -953,7 +953,7 @@ describe("issue 55631", () => {
   });
 });
 
-describe.skip("issue 39033", () => {
+describe("issue 39033", () => {
   const question1Name = "Q1";
   const question1Details: NativeQuestionDetails = {
     name: question1Name,
@@ -1122,5 +1122,83 @@ describe("issue 55487", () => {
     cy.go("forward");
 
     cy.findByTestId("object-detail").should("be.visible");
+  });
+});
+
+describe("issue 42723", () => {
+  const questionDetails: StructuredQuestionDetails = {
+    display: "line",
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to change the query without loosing the viz type (metabase#42723)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.queryBuilderFooter().findByLabelText("Switch to data").click();
+    H.tableHeaderClick("Count");
+    H.popover().icon("arrow_up").click();
+    H.tableInteractiveHeader().icon("chevronup").should("be.visible");
+
+    H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
+    H.ensureChartIsActive();
+  });
+});
+
+describe("issue 58628", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signIn("nodata");
+  });
+
+  it("should show the unauthorized page when accessing the notebook editor without data perms (metabase#58628)", () => {
+    cy.log("should not be able to access the notebook editor");
+    cy.visit("/question/notebook");
+    cy.url().should("include", "/unauthorized");
+    H.main()
+      .findByText("Sorry, you don’t have permission to see that.")
+      .should("be.visible");
+
+    cy.log("should be able to access the query builder in view mode");
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.queryBuilderHeader().should("be.visible");
+  });
+});
+
+describe("issue 52872", () => {
+  const LONG_NAME = "a".repeat(254);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        name: LONG_NAME,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("Saved questions with a very long title should wrap (metabse#52872)", () => {
+    cy.findByDisplayValue(LONG_NAME)
+      .should("be.visible")
+      .then(($el) => {
+        cy.window().then((window) => {
+          cy.wrap($el[0].offsetWidth).should("be.lt", window.innerWidth);
+        });
+      });
   });
 });

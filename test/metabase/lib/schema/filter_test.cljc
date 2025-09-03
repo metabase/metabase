@@ -125,3 +125,15 @@
            [:=
             [:field {} 2]
             [:field {:join-alias "Parent"} 1]]))))
+
+(deftest ^:parallel normalize-clause-add-uuids-test
+  (is (=? [:=
+           {:lib/uuid string?}
+           [:field {:lib/uuid string?, :base-type :type/BigInteger} "ID"]
+           [:value {:lib/uuid string?, :base-type :type/BigInteger, :effective-type :type/BigInteger} 144]]
+          (lib/normalize
+           :mbql.clause/=
+           [:=
+            {}
+            [:field {:base-type :type/BigInteger} "ID"]
+            [:value {:base-type :type/BigInteger} 144]]))))

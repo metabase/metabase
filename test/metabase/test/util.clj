@@ -834,7 +834,7 @@
            {:delete-from (t2/table-name model)
             :where [:and max-id-condition additional-conditions]}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (search/reindex! {:in-place? true})))))
+        (search/reindex! {:in-place? true :async? false})))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
@@ -1579,7 +1579,7 @@
   `(fn [{:keys ~(mapv (comp symbol name) bindings)}]
      ~@body))
 
-(defn do-poll-until [^Long timeout-ms thunk]
+(defn do-poll-until [^Long timeout-ms code thunk]
   (let [result-prom (promise)
         _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
         _runner (future (loop []
@@ -1588,7 +1588,8 @@
                             (recur))))
         result @result-prom]
     (cond (= result ::timeout) (throw (ex-info (str "Timeout after " timeout-ms "ms")
-                                               {:timeout-ms timeout-ms}))
+                                               {:timeout-ms timeout-ms
+                                                :code code}))
           (instance? Throwable result) (throw result)
           :else result)))
 
@@ -1602,6 +1603,7 @@
   [timeout-ms & body]
   `(do-poll-until
     ~timeout-ms
+    '~@body
     (fn ~'poll-body [] ~@body)))
 
 (methodical/defmethod =?/=?-diff [(Class/forName "[B") (Class/forName "[B")]

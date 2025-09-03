@@ -595,7 +595,7 @@
                    (describe-schema driver conn catalog schema))))
           (jdbc/reducible-query {:connection conn} sql))))
 
-(defmethod driver/describe-database :presto-jdbc
+(defmethod driver/describe-database* :presto-jdbc
   [driver {{:keys [catalog schema] :as _details} :details :as database}]
   (sql-jdbc.execute/do-with-connection-with-options
    driver

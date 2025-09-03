@@ -438,13 +438,14 @@ class Question {
     return this.setQuery(query);
   }
 
-  composeQuestionAdhoc(): Question {
+  composeQuestionAdhoc(options: QuestionCreatorOpts = {}): Question {
     if (!this.isSaved()) {
       return this;
     }
-
     const query = this.composeQuestion().query();
-    return Question.create({ metadata: this.metadata() }).setQuery(query);
+    return Question.create({ metadata: this.metadata(), ...options }).setQuery(
+      query,
+    );
   }
 
   /**
@@ -699,7 +700,9 @@ class Question {
       return (
         q &&
         new Question(q.card(), this.metadata())
-          .setParameters(getTemplateTagParametersFromCard(q.card()))
+          .setParameters(
+            getTemplateTagParametersFromCard(q.card(), q.metadata()),
+          )
           .setDashboardProps({
             dashboardId: undefined,
             dashcardId: undefined,
@@ -879,7 +882,9 @@ class Question {
       return this;
     }
 
-    return this.setParameters(getTemplateTagParametersFromCard(this.card()));
+    return this.setParameters(
+      getTemplateTagParametersFromCard(this.card(), this.metadata()),
+    );
   }
 
   /**
