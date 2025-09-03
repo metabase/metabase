@@ -4,7 +4,7 @@ exports.updateComment = updateComment;
 async function updateComment({ github, context }) {
   const githubUsername = context.payload.sender.login;
   const comment = `${CONVENTIONAL_COMMIT_REMINDER_COMMENT_IDENTIFIER}
-@${githubUsername} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
+@${githubUsername} You have modified embedding SDK package code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
 Here are all the supported types that will be shown in the changelog:
 - \`feat\`
 - \`fix\`
@@ -12,7 +12,7 @@ Here are all the supported types that will be shown in the changelog:
 
 These types \`docs\`, \`style\`, \`refactor\`, \`test\`, \`build\`, and \`ci\` are also encouraged for non-changelog related tasks.
 
-Please also make sure to include \`sdk\` scope, otherwise, the changelog will not include this task.
+Please also make sure to include \`sdk-package\` scope, otherwise, the changelog will not include this task.
 
 For example, these are valid PR titles:
 - \`feat(sdk): Add interactive dashboard component\`

@@ -1,0 +1,39 @@
+name: Embedding SDK Labels Reminder
+
+on:
+  pull_request:
+    types: [auto_merge_enabled, review_requested, labeled, unlabeled, synchronize]
+    branches:
+      - "master"
+  merge_group:
+
+jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_embedding_sdk_package_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_package_sources }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  embedding-sdk-package-no-release-notes-reminder:
+    needs: [ files-changed ]
+    if: |
+      !cancelled() &&
+      (needs.files-changed.outputs.frontend_embedding_sdk_package_sources == 'true')
+    name: SDK package no-release-notes reminder
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'release-notes, no-release-notes'
+          disable-reviews: true
