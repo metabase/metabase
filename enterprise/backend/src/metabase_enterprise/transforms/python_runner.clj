@@ -238,7 +238,7 @@
 (defn- read-from-s3 [^S3Client s3-client ^String bucket-name ^String key & [fallback-content]]
   (try
     (let [^GetObjectRequest request (build-get-object-request bucket-name key)
-          response (.getObject s3-client request)]
+          response                  (.getObject s3-client request)]
       (slurp response))
     (catch NoSuchKeyException e
       (if fallback-content
@@ -267,7 +267,7 @@
       (let [server-url               (transforms.settings/python-execution-server-url)
             bucket-name              (transforms.settings/python-storage-s-3-bucket)
             s3-client                (create-s3-client)
-            container-s3-client      (create-s3-client-for-container s3-client)
+            container-presigner      (create-s3-presigner-for-container)
 
             ;; Generate S3 keys for output files
             output-key               (str work-dir-name "/output.csv")
@@ -275,10 +275,10 @@
             stdout-key               (str work-dir-name "/stdout.txt")
             stderr-key               (str work-dir-name "/stderr.txt")
             ;; Generate presigned URLs for writing (using container client)
-            output-url               (generate-presigned-put-url container-s3-client bucket-name output-key)
-            output-manifest-url      (generate-presigned-put-url container-s3-client bucket-name output-manifest-key)
-            stdout-url               (generate-presigned-put-url container-s3-client bucket-name stdout-key)
-            stderr-url               (generate-presigned-put-url container-s3-client bucket-name stderr-key)
+            output-url               (generate-presigned-put-url container-presigner bucket-name output-key)
+            output-manifest-url      (generate-presigned-put-url container-presigner bucket-name output-manifest-key)
+            stdout-url               (generate-presigned-put-url container-presigner bucket-name stdout-key)
+            stderr-url               (generate-presigned-put-url container-presigner bucket-name stderr-key)
             ;; Upload input table data (write to disk first, then upload to S3)
             table-results            (for [[table-name id] table-name->id]
                                        (let [temp-file       (File/createTempFile
@@ -305,8 +305,8 @@
                                                  (upload-file-to-s3 s3-client bucket-name s3-key temp-file)
                                                  (upload-file-to-s3 s3-client bucket-name manifest-s3-key manifest-file))
 
-                                               (let [data-url     (generate-presigned-get-url container-s3-client bucket-name s3-key)
-                                                     manifest-url (generate-presigned-get-url container-s3-client bucket-name manifest-s3-key)]
+                                               (let [data-url     (generate-presigned-get-url container-presigner bucket-name s3-key)
+                                                     manifest-url (generate-presigned-get-url container-presigner bucket-name manifest-s3-key)]
                                                  (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ file-size manifest-size) nil)
                                                  {:table-name      (name table-name)
                                                   :url             data-url
@@ -353,8 +353,8 @@
           (if (and (= 200 (:status response))
                    (zero? (:exit_code result)))
             ;; Success - read the output from S3
-            (let [output-content (read-from-s3 s3-client bucket-name output-key)
-                  output-manifest (read-from-s3 s3-client bucket-name output-manifest-key)
+            (let [output-content (read-from-s3 s3-client bucket-name output-key "")
+                  output-manifest (read-from-s3 s3-client bucket-name output-manifest-key "{}")
                   stdout-content (read-from-s3 s3-client bucket-name stdout-key "stdout missing")
                   stderr-content (read-from-s3 s3-client bucket-name stderr-key "stderr missing")]
               (if (not (str/blank? output-content))
