@@ -19,6 +19,7 @@ import { isCommentsStorage } from "metabase-enterprise/comments/types";
 import { EditorBubbleMenu } from "metabase-enterprise/documents/components/Editor/EditorBubbleMenu";
 import { CustomStarterKit } from "metabase-enterprise/documents/components/Editor/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/documents/components/Editor/extensions/DisableMetabotSidebar";
+import { EmojiSuggestionExtension } from "metabase-enterprise/documents/components/Editor/extensions/Emoji/EmojiSuggestionExtension";
 import { SmartLink } from "metabase-enterprise/documents/components/Editor/extensions/SmartLink/SmartLinkNode";
 import type { FormattingOptions } from "metabase-enterprise/documents/types";
 import type { DocumentContent } from "metabase-types/api";
@@ -71,6 +72,7 @@ export const CommentEditor = ({
           HTMLAttributes: { class: CS.link },
         }),
         configureMentionExtension({ dispatch }),
+        EmojiSuggestionExtension,
         !readonly && Placeholder.configure({ placeholder }),
         !readonly && DisableMetabotSidebar,
       ].filter((extension): extension is Extension => extension != null),

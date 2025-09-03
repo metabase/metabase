@@ -12,6 +12,7 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
+import { EmojiPicker } from "metabase-enterprise/documents/components/EmojiPicker/EmojiPicker";
 import type { Comment } from "metabase-types/api";
 
 import S from "./Discussion.module.css";
@@ -38,28 +39,43 @@ export function DiscussionActionPanel({
   onEdit,
   onCopyLink,
 }: DiscussionActionPanelProps) {
+  const [emojiPickerOpened, setEmojiPickerOpened] = useState(false);
   const [popoverOpened, setPopoverOpened] = useState(false);
   const hasMoreActions = Boolean(onReopen || onDelete || onEdit || onCopyLink);
 
   return (
     <Paper
       className={cx(S.actionPanel, {
-        [S.visible]: popoverOpened,
+        // [S.visibleOnCommentHover]: variant === "comment",
+        // [S.visibleOnDiscussionHover]: variant === "discussion",
+        [S.visible]: popoverOpened || emojiPickerOpened,
       })}
       p="0.125rem"
     >
-      <Group gap={0}>
-        {/*<Tooltip label={t`Add reaction`}>
-           TODO: add emoji picker
-          <ActionIcon
-            size={ACTION_ICON_SIZE}
-            onClick={() => onReaction?.(comment, "👍")}
-          >
-             TODO: add reaction icon
-            <Icon name="bolt" />
-          </ActionIcon>
-        </Tooltip> */}
-
+      <Group gap="0">
+        <Popover
+          position="bottom-end"
+          opened={emojiPickerOpened}
+          onChange={setEmojiPickerOpened}
+        >
+          <Popover.Target>
+            <Tooltip label={t`Add reaction`} disabled={emojiPickerOpened}>
+              <ActionIcon
+                style={{
+                  display: "none",
+                }}
+                size={ACTION_ICON_SIZE}
+                onClick={() => setEmojiPickerOpened((opened) => !opened)}
+              >
+                {/* TODO: add reaction icon */}
+                <Icon name="bolt" />
+              </ActionIcon>
+            </Tooltip>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <EmojiPicker onEmojiSelect={(emoji) => alert(emoji.emoji)} />
+          </Popover.Dropdown>
+        </Popover>
         {canResolve && (
           <Tooltip label={comment.is_resolved ? t`Re-open` : t`Resolve`}>
             <ActionIcon

@@ -1,0 +1,70 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 17rem;
+  width: 17rem;
+  border-radius: var(--mantine-radius-sm);
+
+  /*
+  Make emoji background depend on base emoji color
+  https://frimousse.liveblocks.io/#colorful-buttons
+  */
+  [frimousse-emoji] {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: transparent;
+    font-size: 18px;
+    overflow: hidden;
+    &::before {
+      display: flex;
+      content: var(--emoji);
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      visibility: hidden;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5em;
+      filter: blur(16px) saturate(200%);
+    }
+  }
+  &:focus-within {
+    [data-active] {
+      background: light-dark(rgb(245 245 245 / 80%), rgb(38 38 38 / 80%));
+      &::before {
+        visibility: visible;
+      }
+    }
+    box-shadow: 0 0 4px 0px var(--mb-color-brand);
+  }
+}
+
+.pickerSearch {
+  visibility: visible;
+  height: 0;
+  padding: 0;
+  border: none;
+}
+
+.pickerViewport {
+  overflow: auto;
+  flex-grow: 1;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.pickerMessage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mb-color-text-secondary);
+}
