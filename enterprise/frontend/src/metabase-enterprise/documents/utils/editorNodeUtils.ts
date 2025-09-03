@@ -1,4 +1,5 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { EditorState } from "@tiptap/pm/state";
 import type { Editor, NodeViewProps } from "@tiptap/react";
 
 /**
@@ -57,3 +58,6 @@ export function isTopLevel({
   const resolvedPos = editor.state.doc.resolve(pos);
   return resolvedPos.depth === 0;
 }
+
+export const isMetabotBlock = (state: EditorState): boolean =>
+  state.selection.$head.parent.type.name === "metabot";

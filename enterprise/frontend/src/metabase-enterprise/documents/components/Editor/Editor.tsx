@@ -1,7 +1,6 @@
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import type { EditorState } from "@tiptap/pm/state";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
@@ -16,6 +15,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
 import { getMentionsCache } from "metabase-enterprise/documents/selectors";
 import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
+import { isMetabotBlock } from "metabase-enterprise/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
 
 import S from "./Editor.module.css";
@@ -66,9 +66,6 @@ const getMetabotPromptSerializer =
       return acc;
     }, payload);
   };
-
-const isMetabotBlock = (state: EditorState): boolean =>
-  state.selection.$head.parent.type.name === "metabot";
 
 export interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
