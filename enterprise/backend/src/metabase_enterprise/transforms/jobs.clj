@@ -26,11 +26,21 @@
                (into more-transforms (get ordering current-transform))))
       found)))
 
+(defn- first-transform [[initial & more]]
+  (when initial
+    (reduce (fn [best current]
+              (if (< (compare (:created_at current)
+                              (:created_at best))
+                     0)
+                current
+                best))
+            initial
+            more)))
+
 (defn- next-transform [ordering transforms-by-id complete]
   (->> (transforms.ordering/available-transforms ordering #{} complete)
        (map transforms-by-id)
-       (sort-by :created_at)
-       first))
+       first-transform))
 
 (defn- get-plan [transform-ids]
   (let [all-transforms   (t2/select :model/Transform)
