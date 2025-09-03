@@ -63,7 +63,7 @@ export function CreatePythonTransformModal({
         source: transformedSource as any,
         target: {
           type: "table",
-          schema: values.targetSchema,
+          schema: values.targetSchema?.trim() || null,
           name: values.targetName,
           database: source["source-database"], // for now the same as source
         },
