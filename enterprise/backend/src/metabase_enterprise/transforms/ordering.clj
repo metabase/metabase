@@ -126,7 +126,8 @@
 
 (defn available-transforms
   "Given an ordering (see transform-ordering), a set of running transform ids, and a set of completed transform ids,
-  computes which transforms are currently able to be run."
+  computes which transforms are currently able to be run.  Returns transform ids in the order that they appear in the
+  ordering map.  If you want them returned in a specific order, use a sorted-map-by."
   [ordering running complete]
   (for [[transform-id deps] ordering
         :when (and (not (or (running transform-id)
