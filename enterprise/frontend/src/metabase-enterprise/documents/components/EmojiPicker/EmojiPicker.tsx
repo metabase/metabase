@@ -4,7 +4,7 @@ import {
   type Emoji as EmojiType,
   EmojiPicker as Picker,
 } from "frimousse";
-import { type ChangeEvent, useState } from "react";
+import { type CSSProperties, type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Box, Icon, Paper, Text, TextInput } from "metabase/ui";
@@ -33,7 +33,7 @@ export function EmojiPicker({
   const searchValue = controlledSearch ?? search;
 
   return (
-    <Paper tabIndex={0}>
+    <Paper>
       <Picker.Root
         className={S.root}
         emojibaseUrl={EMOJIBASE_URL}
@@ -99,7 +99,13 @@ function Emoji({ emoji, ref, ...props }: EmojiPickerListEmojiProps) {
       w="2rem"
       fz="1.25rem"
       ref={ref as React.RefObject<HTMLButtonElement>}
-      className={S.emojiButton}
+      data-emoji={emoji.emoji}
+      styles={{
+        root: {
+          // for colored backgrounds
+          "--emoji": `"${emoji.emoji}"`,
+        } as CSSProperties,
+      }}
       {...props}
     >
       {emoji.emoji}

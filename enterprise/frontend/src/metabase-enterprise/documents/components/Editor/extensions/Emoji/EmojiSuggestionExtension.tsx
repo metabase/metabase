@@ -88,6 +88,40 @@ function renderEmojiPicker() {
   let component: ReactRenderer<any>;
   let popup: HTMLElement;
   let cleanup: (() => void) | undefined;
+  const handlers = new WeakMap();
+
+  /**
+   * The implementation of frimousse emoji picker requires it's built-in
+   * search input to be focused to properly support keyboard navigation.
+   * But because the suggestion popup is rendered outside of the editor,
+   * pressing Tab once doesn't set focus on the right element.
+   *
+   * To work around this, we listen to global keydown events and focus
+   * the search input when Tab is pressed.
+   *
+   * Also, it's not possible to pick first available emoji with 'Enter' key press
+   * until the search input is focused, so this case is also handled manually.
+   */
+  function getGlobalPopupKeyHandler(props: SuggestionProps) {
+    return function focusSearchOnTab(e: KeyboardEvent) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const emoji = popup
+          .querySelector("[data-active][data-emoji]")
+          ?.getAttribute("data-emoji");
+
+        props.command({ emoji });
+        return;
+      }
+      if (e.key !== "Tab" || e.shiftKey) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      component.element?.querySelector("input")?.focus();
+    };
+  }
 
   return {
     onStart: (props: SuggestionProps) => {
@@ -108,6 +142,10 @@ function renderEmojiPicker() {
         popup.appendChild(component.element);
       }
 
+      const handler = getGlobalPopupKeyHandler(props);
+      document.addEventListener("keydown", handler, { capture: true });
+      handlers.set(popup, handler);
+
       const virtualElement = getCaretVirtualElement(props.editor);
       cleanup = startAutoPositioning(virtualElement, popup);
     },
@@ -115,12 +153,18 @@ function renderEmojiPicker() {
     onUpdate: (props: SuggestionProps) => {
       component.updateProps(getEmojiPickerProps(props));
 
+      document.removeEventListener("keydown", handlers.get(popup), {
+        capture: true,
+      });
+      const updateHandler = getGlobalPopupKeyHandler(props);
+      document.addEventListener("keydown", updateHandler, { capture: true });
+      handlers.set(popup, updateHandler);
+
       const virtualElement = getCaretVirtualElement(props.editor);
       updatePositionOnce(virtualElement, popup);
     },
 
     onKeyDown: (props: SuggestionKeyDownProps) => {
-      debugger;
       if (props.event.key === "Escape") {
         props.event.stopImmediatePropagation();
         return true;
@@ -135,6 +179,9 @@ function renderEmojiPicker() {
       if (cleanup) {
         cleanup();
       }
+      document.removeEventListener("keydown", handlers.get(popup), {
+        capture: true,
+      });
       if (popup && popup.parentNode) {
         popup.parentNode.removeChild(popup);
       }
@@ -230,6 +277,7 @@ function getEmojiPickerProps(props: SuggestionProps) {
   return {
     search: props.query,
     hideSearch: true,
+    // hideSearch: false,
     onEmojiSelect: (emoji: { emoji: string }) => {
       props.command({ emoji: emoji.emoji });
     },
