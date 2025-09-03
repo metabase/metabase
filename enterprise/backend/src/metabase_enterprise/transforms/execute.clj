@@ -138,19 +138,26 @@
   nil)
 
 (defn- replace-python-logs! [message-log stdout stderr]
-  ;; todo would be better to interleave python output
-  (when message-log
-    (swap! message-log assoc :python (str/join "\n" (remove str/blank? [stdout stderr]))))
+  (when message-log (swap! message-log assoc :python {:stdout stdout :stderr stderr}))
   nil)
 
 (defn- save-log-as-message! [run-id message-log]
   (when message-log
-    (let [{:keys [pre-python python post-python]} @message-log]
+    (let [{:keys [pre-python python post-python]} @message-log
+          {:keys [stdout stderr]} python
+          interleaved-python
+          (->> (concat (for [l (str/split-lines stdout)
+                             :let [[ts s] (str/split l #" " 2)]]
+                         [(parse-long ts) (str "\033[32m" s "\033[0m")])
+                       (for [l (str/split-lines stderr)
+                             :let [[ts s] (str/split l #" " 2)]]
+                         [(parse-long ts) (str "\033[31m" s "\033[0m")]))
+               (sort-by first)
+               (map second))]
       (t2/update! :model/TransformRun
                   :id run-id
                   {:message (str/join "\n" (concat pre-python
-                                                   (for [l (str/split-lines python)]
-                                                     (str "\033[32m" l "\033[0m"))
+                                                   interleaved-python
                                                    post-python))}))))
 
 (defn- log-loop! [run-id message-log]
