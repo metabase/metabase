@@ -48,7 +48,7 @@
                               "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")
           result         (execute {:code transform-code})]
       (is (=? {:output "name,age\nAlice,25\nBob,30\n"
-               :stdout "Successfully saved 2 rows to CSV\n"
+               :stdout "Successfully saved 2 rows to CSV\nSuccessfully saved output manifest with 2 fields\n"
                :stderr ""}
               result)))))
 
@@ -103,7 +103,7 @@
                               "    return pd.DataFrame(data)")
           result         (execute {:code transform-code})]
       (is (=? {:output "x,y,z\n1,10,a\n2,20,b\n3,30,c\n"
-               :stdout "Successfully saved 3 rows to CSV\n"
+               :stdout "Successfully saved 3 rows to CSV\nSuccessfully saved output manifest with 3 fields\n"
                :stderr ""}
               result)))))
 
@@ -118,7 +118,7 @@
                                 "    return pd.DataFrame(data)")
             result         (execute {:code transform-code})]
         (is (=? {:output "name,score\nCharlie,85\nDana,92\n"
-                 :stdout "Successfully saved 2 rows to CSV\n"
+                 :stdout "Successfully saved 2 rows to CSV\nSuccessfully saved output manifest with 2 fields\n"
                  :stderr ""}
                 result))))))
 
