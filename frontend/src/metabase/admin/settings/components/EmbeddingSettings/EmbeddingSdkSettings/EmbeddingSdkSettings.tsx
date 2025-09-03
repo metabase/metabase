@@ -193,6 +193,15 @@ export function EmbeddingSdkSettings() {
 
             {isSimpleEmbedFeatureEnabled ? (
               <Group gap="md">
+                <LinkButton
+                  size="compact-xs"
+                  variant="outline"
+                  to="/embed-js"
+                  fz="sm"
+                >
+                  {t`Try it out`}
+                </LinkButton>
+
                 <Button
                   size="compact-xs"
                   variant="outline"
@@ -203,21 +212,13 @@ export function EmbeddingSdkSettings() {
                 >
                   {t`Documentation`}
                 </Button>
-
-                <LinkButton
-                  size="compact-xs"
-                  variant="outline"
-                  to="/embed-js"
-                  fz="sm"
-                >
-                  {t`Try it out`}
-                </LinkButton>
               </Group>
             ) : (
               <UpsellEmbeddingButton
                 url="https://www.metabase.com/product/embedded-analytics"
                 campaign="embedded-analytics-js"
                 location="embedding-page"
+                size="default"
               />
             )}
           </Group>
