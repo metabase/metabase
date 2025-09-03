@@ -26,30 +26,33 @@
                (into more-transforms (get ordering current-transform))))
       found)))
 
-(defn- first-transform [[initial & more]]
-  (when initial
-    (reduce (fn [best current]
-              (if (neg? (compare (:created_at current) (:created_at best)))
-                current
-                best))
-            initial
-            more)))
-
 (defn- next-transform [ordering transforms-by-id complete]
   (->> (transforms.ordering/available-transforms ordering #{} complete)
-       (map transforms-by-id)
-       first-transform))
+       first
+       transforms-by-id))
+
+(defn- sorted-ordering [ordering transforms-by-id]
+  (let [get-created-at (comp :created_at transforms-by-id)]
+    (into (sorted-map-by (fn [transform-id-1 transform-id-2]
+                           ;; compare based on created_at and id.  created_at should generally be unique, so id should
+                           ;; basically never be used, but we don't want to forget about transforms if we somehow end
+                           ;; up with multiple with the same created_at.
+                           (compare [(get-created-at transform-id-1)
+                                     transform-id-1]
+                                    [(get-created-at transform-id-2)
+                                     transform-id-2])))
+          ordering)))
 
 (defn- get-plan [transform-ids]
   (let [all-transforms   (t2/select :model/Transform)
         global-ordering  (transforms.ordering/transform-ordering all-transforms)
         relevant-ids     (get-deps global-ordering transform-ids)
-        ordering         (select-keys global-ordering relevant-ids)
         transforms-by-id (into {}
                                (keep (fn [{:keys [id] :as transform}]
                                        (when (relevant-ids id)
                                          [id transform])))
-                               all-transforms)]
+                               all-transforms)
+        ordering         (sorted-ordering (select-keys global-ordering relevant-ids) transforms-by-id)]
     (when-let [cycle (transforms.ordering/find-cycle ordering)]
       (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
         (throw (ex-info (str "Cyclic transform definitions detected: "

@@ -44,14 +44,34 @@
                           5 {:id 5 :created_at #t "2025-01-01T01:01:02"}
                           6 {:id 6 :created_at #t "2025-01-01T01:01:06"}
                           7 {:id 7 :created_at #t "2025-01-01T01:01:07"}
-                          8 {:id 8 :created_at #t "2025-01-01T01:01:08"}}]
+                          8 {:id 8 :created_at #t "2025-01-01T01:01:08"}}
+        sorted-ordering (#'jobs/sorted-ordering ordering transforms-by-id)]
     (is (= 5
-           (-> (#'jobs/next-transform ordering transforms-by-id #{})
+           (-> (#'jobs/next-transform sorted-ordering transforms-by-id #{})
                :id)))
     (is (= 4
-           (-> (#'jobs/next-transform ordering transforms-by-id #{5})
+           (-> (#'jobs/next-transform sorted-ordering transforms-by-id #{5})
                :id)))
     (is (= 1
-           (-> (#'jobs/next-transform ordering transforms-by-id #{2 3 4 5 6 7 8})
+           (-> (#'jobs/next-transform sorted-ordering transforms-by-id #{2 3 4 5 6 7 8})
                :id)))
-    (is (nil? (#'jobs/next-transform ordering transforms-by-id #{1 2 3 4 5 6 7 8})))))
+    (is (nil? (#'jobs/next-transform sorted-ordering transforms-by-id #{1 2 3 4 5 6 7 8})))))
+
+(deftest next-transform-same-created-at-test
+  (let [ordering {1 #{2 3}
+                  2 #{}
+                  3 #{}}
+        transforms-by-id {1 {:id 1 :created_at #t "2025-01-01T01:01:01"}
+                          2 {:id 2 :created_at #t "2025-01-01T01:01:01"}
+                          3 {:id 3 :created_at #t "2025-01-01T01:01:01"}}
+        sorted-ordering (#'jobs/sorted-ordering ordering transforms-by-id)]
+    (is (= 2
+           (-> (#'jobs/next-transform sorted-ordering transforms-by-id #{})
+               :id)))
+    (is (= 3
+           (-> (#'jobs/next-transform sorted-ordering transforms-by-id #{2})
+               :id)))
+    (is (= 1
+           (-> (#'jobs/next-transform sorted-ordering transforms-by-id #{2 3})
+               :id)))
+    (is (nil? (#'jobs/next-transform sorted-ordering transforms-by-id #{1 2 3})))))
