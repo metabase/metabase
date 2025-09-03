@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -159,35 +160,48 @@ type RunButtonSectionProps = {
 
 function RunButtonSection({ transform }: RunButtonSectionProps) {
   const [fetchTransform] = useLazyGetTransformQuery();
-  const [runTransform, { isLoading: isStarting }] = useRunTransformMutation();
-  const [cancelTransform, { isLoading: isCanceling }] =
-    useCancelCurrentTransformRunMutation();
+  const [runTransform] = useRunTransformMutation();
+  const [cancelTransform] = useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
   const [
     isConfirmCancellationModalOpen,
     { close: closeConfirmModal, open: openConfirmModal },
   ] = useDisclosure(false);
 
+  // Manualy track the cancelation or running state since it relies on
+  // two overlapping requests and we cannot disambiguate them when using
+  // isLoading from useLazyGetTransformQuery.
+  const [isStarting, setIsStarting] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
+
   const handleRun = async () => {
-    const { error } = await runTransform(transform.id);
-    if (error) {
-      sendErrorToast(t`Failed to run transform`);
-    } else {
-      // fetch the transform to get the correct `last_run` info
-      fetchTransform(transform.id);
+    try {
+      setIsStarting(true);
+      const { error } = await runTransform(transform.id);
+      if (error) {
+        sendErrorToast(t`Failed to run transform`);
+      } else {
+        // fetch the transform to get the correct `last_run` info
+        await fetchTransform(transform.id, false);
+      }
+    } finally {
+      setIsStarting(false);
     }
-    return { error };
   };
 
   const handleCancel = async () => {
-    const { error } = await cancelTransform(transform.id);
-    if (error && !isResourceNotFoundError(error)) {
-      sendErrorToast(t`Failed to cancel transform`);
-    } else {
-      // fetch the transform to get the correct `last_run` info
-      fetchTransform(transform.id);
+    try {
+      setIsCanceling(true);
+      const { error } = await cancelTransform(transform.id);
+      if (error && !isResourceNotFoundError(error)) {
+        sendErrorToast(t`Failed to cancel transform`);
+      } else {
+        // fetch the transform to get the correct `last_run` info
+        await fetchTransform(transform.id, false);
+      }
+    } finally {
+      setIsCanceling(false);
     }
-    return { error };
   };
 
   return (
