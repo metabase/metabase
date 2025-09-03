@@ -52,6 +52,7 @@ export type TransformRunStatus =
   | "succeeded"
   | "failed"
   | "timeout"
+  | "canceling"
   | "canceled";
 
 export type TransformRunMethod = "manual" | "cron";
