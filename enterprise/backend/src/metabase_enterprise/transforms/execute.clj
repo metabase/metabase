@@ -237,9 +237,10 @@
         data-source {:type :csv-file
                      :file temp-file}]
     ;; TODO: should be transactional
-    (if (driver/table-exists? driver db target)
-      (driver/truncate! driver (:id db) table-name)
-      (table-creation/create-table-from-schema! driver (:id db) table-schema))
+    (when (driver/table-exists? driver db target)
+      (driver/drop-table! driver (:id db) table-name))
+
+    (table-creation/create-table-from-schema! driver (:id db) table-schema)
     (table-creation/insert-from-source! driver (:id db) table-name (mapv :name (:columns table-schema)) data-source)))
 
 (defn- run-python-transform! [target {:keys [source-tables body]} db run-id cancel-chan message-log]
