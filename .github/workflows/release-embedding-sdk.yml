@@ -344,8 +344,8 @@ jobs:
       - name: Update changelog
         if: inputs.branch != 'master'
         run: |
-          cat changelog-diff enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md > new-changelog
-          mv new-changelog enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md
+          cat changelog-diff enterprise/frontend/src/embedding-sdk-package/CHANGELOG.md > new-changelog
+          mv new-changelog enterprise/frontend/src/embedding-sdk-package/CHANGELOG.md
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
