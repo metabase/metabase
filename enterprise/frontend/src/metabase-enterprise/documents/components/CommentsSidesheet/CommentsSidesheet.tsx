@@ -162,7 +162,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       >
         <Modal.Header px="xl">
           <Modal.Title>
-            {childTargetId === "all" ? t`All Comments` : t`Comments`}
+            {childTargetId === "all" ? t`All comments` : t`Comments`}
           </Modal.Title>
           <Modal.CloseButton onClick={closeSidebar} />
         </Modal.Header>
