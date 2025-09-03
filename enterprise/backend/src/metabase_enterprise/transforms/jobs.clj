@@ -27,9 +27,9 @@
       found)))
 
 (defn- next-transform [ordering transforms-by-id complete]
-  (->> (transforms.ordering/available-transforms ordering #{} complete)
-       first
-       transforms-by-id))
+  (-> (transforms.ordering/available-transforms ordering #{} complete)
+      first
+      transforms-by-id))
 
 (defn- sorted-ordering [ordering transforms-by-id]
   (let [get-created-at (comp :created_at transforms-by-id)]
