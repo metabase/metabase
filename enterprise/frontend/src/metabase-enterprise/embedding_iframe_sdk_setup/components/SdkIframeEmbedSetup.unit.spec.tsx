@@ -54,7 +54,7 @@ describe("Embed flow > initial setup", () => {
 
 describe("Embed flow > forward and backward navigation", () => {
   it("navigates forward through the embed flow", async () => {
-    setup();
+    setup({ simpleEmbeddingEnabled: true });
 
     expect(
       screen.getByText("Select your embed experience"),
@@ -84,7 +84,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("navigates backward to the previous step", async () => {
-    setup();
+    setup({ simpleEmbeddingEnabled: true });
 
     // Select embed type > select resource > select embed options
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -105,7 +105,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("skips the 'select resource' step for exploration", async () => {
-    setup();
+    setup({ simpleEmbeddingEnabled: true });
 
     await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
 
@@ -158,18 +158,6 @@ describe("Embed flow > usage terms card", () => {
     const matchingRequest = await waitForUpdateSetting(
       "show-simple-embed-terms",
       false,
-    );
-
-    expect(matchingRequest).toBeDefined();
-  });
-
-  it("automatically enables simple embedding when entering the flow", async () => {
-    setup({ showSimpleEmbedTerms: true, simpleEmbeddingEnabled: false });
-
-    // Verify that enable-embedding-simple is set to true
-    const matchingRequest = await waitForUpdateSetting(
-      "enable-embedding-simple",
-      true,
     );
 
     expect(matchingRequest).toBeDefined();
