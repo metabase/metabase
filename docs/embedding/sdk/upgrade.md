@@ -25,11 +25,11 @@ You can do this locally or in a dev instance. If your testing setup involves a l
 
 See [upgrading Metabase](../../installation-and-operation/upgrading-metabase.md).
 
-### Upgrade the SDK with npm or yarn
+### Upgrade the SDK with npm or Yarn
 
 You'll want to test the changes locally first, as there may be breaking changes that require you to upgrade your application code.
 
-Check out a new branch in your application and install the next stable version, either with npm or yarn:
+Check out a new branch in your application and install the next stable version, either with npm or Yarn:
 
 Via npm:
 
@@ -43,7 +43,7 @@ For example, if you were upgrading to version 56 of the SDK:
 npm install @metabase/embedding-sdk-react@56-stable
 ```
 
-If you're using yarn:
+If you're using Yarn:
 
 ```bash
 yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable

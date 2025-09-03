@@ -34,7 +34,7 @@ Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
 Starting with Metabase 57, the SDK is consists of two parts:
 
-- **SDK Package** – The `@metabase/embedding-sdk-react` NPM package is a lightweight bootstrapper library. Its primary purpose is to load and run the main SDK Bundle code.
+- **SDK Package** – The `@metabase/embedding-sdk-react` npm package is a lightweight bootstrapper library. Its primary purpose is to load and run the main SDK Bundle code.
 - **SDK Bundle** – The full SDK code, served directly from your self-hosted Metabase instance or Metabase Cloud, and it's the part of the Metabase. This ensures that the main SDK code is always compatible with its corresponding Metabase instance.
 
 ## Installation
@@ -53,7 +53,7 @@ You can install the Embedded analytics SDK for React via npm. Make sure to use t
 npm install @metabase/embedding-sdk-react@56-stable
 ```
 
-or with yarn:
+or with Yarn:
 
 ```bash
 yarn add @metabase/embedding-sdk-react@56-stable
@@ -65,7 +65,7 @@ In rare scenarios, the Embedding SDK and your application may use different majo
 
 To enforce a single `@types/react` version across all dependencies, add an `overrides` (npm) or `resolutions` (Yarn) section to your `package.json` and specify the `@types/react` version your application uses.
 
-#### NPM set @types/react version
+#### npm set @types/react version
 
 ```json
 {
@@ -113,9 +113,9 @@ View the SDK's changelog:
 - [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 - [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
-## Embedded analytics SDK on NPM
+## Embedded analytics SDK on npm
 
-Check out the Metabase Embedded analytics SDK on NPM: [metaba.se/sdk-npm](https://metaba.se/sdk-npm).
+Check out the Metabase Embedded analytics SDK on npm: [metaba.se/sdk-npm](https://metaba.se/sdk-npm).
 
 ## SDK limitations
 
