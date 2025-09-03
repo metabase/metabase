@@ -84,6 +84,7 @@
   {:arglists '([driver database-id table-name column-names csv-file])}
   (fn [driver & _] driver) :hierarchy #'driver/hierarchy)
 
+;; default impl, e.g. postgres could issue `COPY`
 (defmethod insert-from-csv! :default
   [driver db-id table-name column-names file]
   (let [csv-rows (csv/read-csv (io/reader file))
