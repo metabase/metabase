@@ -103,6 +103,9 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       !availableTabs.includes(activeTab)
     ) {
       setActiveTab(availableTabs[0]);
+    } else if (availableTabs.length === 0 && activeTab === "resolved") {
+      // when we're on resolved tab and then create a new comment, nothing is rendered
+      setActiveTab("open");
     }
   }, [availableTabs, activeTab]);
 
