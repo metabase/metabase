@@ -151,8 +151,8 @@
 (mu/defn record-python-api-call!
   "Record metrics about Python API calls."
   [job-run-id :- pos-int?
-   status :- [:enum :success :error :timeout]
-   duration-ms :- pos-int?]
+   duration-ms :- pos-int?
+   status :- [:enum :success :error :timeout]]
   (let [labels {:job-run-id (str job-run-id)}]
     (prometheus/inc! :metabase-transforms/python-api-calls-total
                      (assoc labels :status (name status)))
