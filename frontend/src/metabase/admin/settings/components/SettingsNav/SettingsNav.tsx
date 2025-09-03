@@ -93,7 +93,7 @@ export function SettingsNav() {
         <SettingsNavItem
           path="python-runner"
           label={t`Python Runner`}
-          icon="code"
+          icon="snippet"
         />
       )}
       <SettingsNavItem

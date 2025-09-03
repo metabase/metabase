@@ -47,8 +47,13 @@ type SourceInfoProps = {
 };
 
 function SourceInfo({ transform }: SourceInfoProps) {
-  const sourceDatabaseId = transform.source["source-database"];
-  const sourceTables = transform.source["source-tables"];
+  const isPythonSource = transform.source.type === "python";
+  const sourceDatabaseId = isPythonSource
+    ? transform.source["source-database"]
+    : undefined;
+  const sourceTables = isPythonSource
+    ? transform.source["source-tables"]
+    : undefined;
 
   const { data: database, isLoading: isDatabaseLoading } = useGetDatabaseQuery(
     sourceDatabaseId ? { id: sourceDatabaseId } : skipToken,
@@ -85,8 +90,8 @@ function SourceInfo({ transform }: SourceInfoProps) {
             <TableWithAlias
               key={alias}
               alias={alias}
-              tableId={tableId}
-              databaseId={sourceDatabaseId}
+              tableId={tableId as number}
+              databaseId={sourceDatabaseId as number}
             />
           ))}
         </Stack>
