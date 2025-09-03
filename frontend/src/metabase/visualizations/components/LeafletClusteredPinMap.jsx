@@ -73,9 +73,7 @@ export default class LeafletClusteredPinMap extends LeafletMap {
 
     try {
       this._createMarkers(this.props.points);
-    } catch (err) {
-      console.error("Error creating markers:", err);
-      this.props.onRenderError && this.props.onRenderError(err.message || err);
+      this.props.onRenderError && this.props.onRenderError(err?.message || String(err));
     }
   }
 
