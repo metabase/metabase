@@ -9,6 +9,10 @@ const messages = stylelint.utils.ruleMessages(ruleName, {
 /** @type {import('stylelint').Rule} */
 const ruleFunction = (primary, secondaryOptions, context) => {
   return (root, result) => {
+    // you're allowed to use base colors in colors.module.css
+    if (root.source.input.file.includes("colors.module.css")) {
+      return;
+    }
     const validOptions = stylelint.utils.validateOptions(result, ruleName, {
       actual: primary,
       possible: [true],
