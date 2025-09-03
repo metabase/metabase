@@ -62,7 +62,7 @@
    pgvector
    (sql/format {:delete-from [[:raw (:gate-table-name index-metadata)]]})))
 
-(deftest qqq-metric-collector-test
+(deftest metric-collector-test
   (mt/with-premium-features #{:semantic-search}
     (mt/with-prometheus-system! [_ system]
       (let [pgvector       semantic.tu/db
