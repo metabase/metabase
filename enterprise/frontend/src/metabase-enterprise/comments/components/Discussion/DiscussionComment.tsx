@@ -135,6 +135,7 @@ export function DiscussionComment({
         <DiscussionReactions
           comment={comment}
           onReactionRemove={onReactionRemove}
+          onReaction={onReaction}
         />
       </Box>
     </Timeline.Item>

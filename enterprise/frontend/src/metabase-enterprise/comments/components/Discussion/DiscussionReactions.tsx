@@ -10,11 +10,13 @@ import S from "./Discussion.module.css";
 type DiscussionReactionsProps = {
   comment: Comment;
   onReactionRemove?: (comment: Comment, emoji: string) => void;
+  onReaction?: (comment: Comment, emoji: string) => void;
 };
 
 export function DiscussionReactions({
   comment,
   onReactionRemove,
+  onReaction,
 }: DiscussionReactionsProps) {
   const currentUser = useSelector(getCurrentUser);
   const handleReactionClick = useCallback(
@@ -25,9 +27,11 @@ export function DiscussionReactions({
 
       if (isCurrentUserReaction) {
         onReactionRemove?.(comment, reaction.emoji);
+      } else {
+        onReaction?.(comment, reaction.emoji);
       }
     },
-    [comment, currentUser.id, onReactionRemove],
+    [comment, currentUser.id, onReactionRemove, onReaction],
   );
 
   if (comment.reactions.length === 0) {
