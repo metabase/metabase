@@ -14,8 +14,10 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
   const { database, databaseReq, handleCancel, handleOnSubmit, title, config } =
     useDatabaseConnection({ databaseId: params.databaseId });
 
+  const pageMaxWidth = `calc(28.5rem + 4rem)`;
+
   return (
-    <Box w="100%" maw="54rem" mx="auto" p="xl">
+    <Box w="100%" maw={pageMaxWidth} mx="auto" p="xl">
       <Title order={1} mb="lg">
         {title}
       </Title>
