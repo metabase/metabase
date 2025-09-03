@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.execute
   (:require
    [clojure.core.async :as a]
+   [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.transforms.canceling :as canceling]
@@ -9,13 +10,11 @@
    [metabase-enterprise.transforms.python-runner :as python-runner]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.table-creation :as table-creation]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
@@ -219,12 +218,39 @@
              "======"
              (format "exit code %d" exit-code)]))
 
-(defn- run-python-transform! [{:keys [schema name]} {:keys [source-tables body]} db run-id cancel-chan message-log]
+(defn- dtype->table-type [dtype-str]
+  (cond
+    (str/starts-with? dtype-str "int") :int
+    (str/starts-with? dtype-str "float") :float
+    (str/starts-with? dtype-str "bool") :boolean
+    (str/starts-with? dtype-str "datetime") :datetime
+    (str/starts-with? dtype-str "date") :date
+    :else :text))
+
+;; TODO: custom data-source instead of bottoming to :type :row
+(defn- transfer-file-to-db [driver db target metadata temp-file]
+  (let [table-name (transforms.util/qualified-table-name  driver target)
+        csv-rows (csv/read-csv (io/reader temp-file))
+        data-rows (rest csv-rows)
+        table-schema {:name table-name
+                      :columns (mapv (fn [{:keys [name dtype]}]
+                                       {:name name
+                                        :type (dtype->table-type dtype)
+                                        :nullable? true})
+                                     (:fields metadata))}
+        data-source {:type :rows
+                     :data data-rows}]
+    (if (driver/table-exists? driver db target)
+      (driver/truncate! driver (:id db) table-name)
+      (table-creation/create-table-from-schema! driver (:id db) table-schema))
+    (table-creation/insert-from-source! driver (:id db) table-name (mapv :name (:columns table-schema)) data-source)))
+
+(defn- run-python-transform! [target {:keys [source-tables body]} db run-id cancel-chan message-log]
   (with-open [log-thread-ref (open-log-thread! run-id message-log)]
     (let [driver                           (:engine db)
           {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id cancel-chan)
           {:keys [stdout stderr]}          body]
-      (.close log-thread-ref)                               ; early close to force any writes to flush
+      (.close log-thread-ref)           ; early close to force any writes to flush
       (when (or stdout stderr)
         (replace-python-logs! message-log stdout stderr))
       (if (not= 200 status)
@@ -236,35 +262,19 @@
                          :stdout      stdout
                          :stderr      stderr}))
         (try
-          ;; TODO would be nice if we have create or replace in upload
-          ;; NOTE (chris) we do have a replace, so this would be easy! but we're gonna stop using csv
-          ;; TODO we can remove this hack once we move away from upload-csv
-          (binding [api/*is-superuser?* true]
-            (when-let [table (t2/select-one :model/Table
-                                            :name (ddl.i/format-name driver name)
-                                            :schema (ddl.i/format-name driver schema)
-                                            :db_id (:id db))]
-              (upload/delete-upload! table)
-              ;; TODO shouldn't this be handled in upload?
-              ;; NO - because we don't delete these records typically, we just mark them as inactive (chris)
-              ;;      this hack here actually breaks links - we'll want the :model/Table id to be stable in prod
-              (t2/delete! :model/Table (:id table)))
-            (let [temp-file (File/createTempFile "transform-output-" ".csv")
-                  csv-data  (:output body)]
-              (try
-                (with-open [writer (io/writer temp-file)]
-                  (.write writer ^String csv-data))
-                (let [file-size (.length temp-file)]
-                  (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil)
-                  (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-dwh]
-                    (upload/create-from-csv-and-sync! {:db         db
-                                                       :filename   (.getName temp-file)
-                                                       :file       temp-file
-                                                       :schema     schema
-                                                       :table-name name})))
-                (finally
-                  (.delete temp-file))))
-            result)
+          (let [temp-file (File/createTempFile "transform-output-" ".csv")
+                csv-data  (:output body)
+                metadata  (-> body :metadata json/decode+kw)]
+            (try
+              (with-open [writer (io/writer temp-file)]
+                (.write writer ^String csv-data))
+              (let [file-size (.length temp-file)]
+                (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-dwh]
+                  (transfer-file-to-db driver db target metadata temp-file))
+                (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil))
+              (finally
+                (.delete temp-file))))
+          result
           (catch Exception e
             (log/error e "Failed to to create resulting table")
             (throw (ex-info "Failed to create the resulting table" {:error (.getMessage e)}))))))))
@@ -289,6 +299,8 @@
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
         (let [start-ms (u/start-timer)
               result   (run-cancelable-transform! run-id (fn [cancel-chan] (run-python-transform! target source db run-id cancel-chan message-log)))]
+          (transforms.instrumentation/with-stage-timing [run-id :sync :table-sync]
+            (sync-target! target db run-id))
           (log! message-log (format "Python execution finished in %s" (Duration/ofMillis (u/since-ms start-ms))))
           (save-log-as-message! run-id message-log)
           {:run_id run-id
