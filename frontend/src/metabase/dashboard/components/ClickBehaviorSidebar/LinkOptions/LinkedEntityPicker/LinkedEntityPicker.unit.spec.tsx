@@ -328,7 +328,7 @@ describe("LinkedEntityPicker", () => {
             await screen.findByPlaceholderText(/search/i),
             typedText,
           );
-          await userEvent.click(screen.getByText("Everywhere"));
+          await userEvent.click(await screen.findByText("Everywhere"));
 
           expect(
             await screen.findByText(questionSearchResult.name),
