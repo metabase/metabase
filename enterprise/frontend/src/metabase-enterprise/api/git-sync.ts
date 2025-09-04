@@ -1,3 +1,5 @@
+import type { Transform } from "metabase-types/api";
+
 import { EnterpriseApi } from "./api";
 
 export type GitTreeNode = {
@@ -7,9 +9,13 @@ export type GitTreeNode = {
   children?: GitTreeNode[];
 };
 
+export type EntityType = "transform";
+
 export type GitFileContent = {
   path: string;
   content: string;
+  entityType?: EntityType;
+  entity?: Transform;
 };
 
 export const gitSyncApi = EnterpriseApi.injectEndpoints({
@@ -37,6 +43,37 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/git-source-of-truth/git/${encodeURIComponent(path)}`,
       }),
+      transformResponse: (response: GitFileContent) => {
+        // Mock transform entity for all files for now
+        const mockTransform: Transform = {
+          id: 1,
+          name: `Transform from ${response.path}`,
+          description: "Mock transform entity for demonstration",
+          source: {
+            type: "query",
+            query: {
+              database: 1,
+              type: "native",
+              native: {
+                query: "SELECT * FROM orders LIMIT 10",
+              },
+            },
+          },
+          target: {
+            type: "table",
+            name: "transformed_data",
+            schema: null,
+          },
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        };
+
+        return {
+          ...response,
+          entityType: "transform" as EntityType,
+          entity: mockTransform,
+        };
+      },
     }),
   }),
 });
