@@ -117,3 +117,11 @@
   :setter     :none
   :getter     (comp sort t/available-zone-ids)
   :doc        false)
+
+(defsetting system-timezone
+  "Available report timezone options"
+  :visibility :public
+  :export?    true
+  :setter     :none
+  :getter     (comp str t/zone-id)
+  :doc        false)

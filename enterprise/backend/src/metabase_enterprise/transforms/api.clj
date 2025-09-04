@@ -74,8 +74,8 @@
 (defn- localize-timestamps
   [run]
   (-> run
-      (u/update-some :start_time transforms.util/local-timestamp-string)
-      (u/update-some :end_time   transforms.util/local-timestamp-string)))
+      (u/update-some :start_time transforms.util/utc-timestamp-string)
+      (u/update-some :end_time   transforms.util/utc-timestamp-string)))
 
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."

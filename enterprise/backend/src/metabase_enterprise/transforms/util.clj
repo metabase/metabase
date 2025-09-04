@@ -92,20 +92,20 @@
   (case (-> transform :target :type)
     "table"             :transforms/table))
 
-(defn local-timestamp
-  "Convert the timestamp t to a ZonedDateTime instance in the system timezone."
+(defn ->instant
+  "Convert the timestamp t to an Instant in the system timezone."
   [t]
   (condp instance? t
+    Instant        t
+    Date           (.toInstant ^Date t)
+    OffsetDateTime (.toInstant ^OffsetDateTime t)
+    ZonedDateTime  (.toInstant ^ZonedDateTime t)
+    LocalDateTime  (recur (.atZone ^LocalDateTime t (ZoneId/systemDefault)))
     String         (recur (u.date/parse t))
-    Date           (recur (.toInstant ^Date t))
-    Instant        (ZonedDateTime/ofInstant t (ZoneId/systemDefault))
-    LocalDateTime  (ZonedDateTime/of t (ZoneId/systemDefault))
-    OffsetDateTime (.atZoneSameInstant ^OffsetDateTime t (ZoneId/systemDefault))
-    ZonedDateTime  (.withZoneSameInstant ^ZonedDateTime t (ZoneId/systemDefault))
-    (throw (ex-info (str "Cannot convert timestamp " t " of type " (type t) " to a ZonedDateTime")
+    (throw (ex-info (str "Cannot convert timestamp " t " of type " (type t) " to an Instant")
                     {:timestamp t}))))
 
-(defn local-timestamp-string
+(defn utc-timestamp-string
   "Convert the timestamp t to a string encoding the it in the system timezone."
   [t]
-  (-> t local-timestamp str))
+  (-> t ->instant str))
