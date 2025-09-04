@@ -1,3 +1,5 @@
+import type { DocumentId } from "metabase-types/api";
+
 export const documentContent = () => cy.findByTestId("document-content");
 
 export const documentSaveButton = () =>
@@ -50,4 +52,23 @@ export const openDocumentCardMenu = (name: string) => {
   getDocumentCard(name)
     .findByRole("button", { name: /ellipsis/ })
     .click();
+};
+
+export function visitDocument(documentIdOrAlias: DocumentId | string) {
+  if (typeof documentIdOrAlias === "number") {
+    visitDocument(documentIdOrAlias);
+  }
+
+  if (typeof documentIdOrAlias === "string") {
+    cy.get(documentIdOrAlias).then((id) => visitDocumentById(Number(id)));
+  }
+}
+
+const visitDocumentById = (id: DocumentId) => {
+  const alias = `documentQuery-${id}`;
+  cy.intercept("GET", `/api/ee/document/${id}`).as(alias);
+
+  cy.visit(`/document/${id}`);
+
+  cy.wait(`@${alias}`);
 };
