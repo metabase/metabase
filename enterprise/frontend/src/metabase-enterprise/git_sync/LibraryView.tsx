@@ -57,7 +57,7 @@ export const LibraryView = () => {
         }}
       >
         <Flex direction="column" h="100%">
-          <Box p="lg">
+          <Box px="lg" pt="lg">
             <Title order={4}>{t`Your library`}</Title>
           </Box>
           <ScrollArea flex={1} p="md">
@@ -67,6 +67,7 @@ export const LibraryView = () => {
               </Flex>
             ) : (
               <Tree
+                initiallyExpanded
                 data={treeItems}
                 selectedId={selectedFilePath ?? undefined}
                 onSelect={handleNodeSelect}

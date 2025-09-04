@@ -6,13 +6,14 @@ import _ from "underscore";
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { TreeNodeList } from "./TreeNodeList";
 import type { ITreeNodeItem } from "./types";
-import { getInitialExpandedIds } from "./utils";
+import { getAllExpandableIds, getInitialExpandedIds } from "./utils";
 
 interface TreeProps {
   data: ITreeNodeItem[];
   selectedId?: ITreeNodeItem["id"];
   role?: string;
   emptyState?: React.ReactNode;
+  initiallyExpanded?: boolean;
   onSelect?: (item: ITreeNodeItem) => void;
   TreeNode?: any; // This was previously set to TreeNodeComponent, but after upgrading to react 18, the type no longer played nice with forward ref compontents, including styled components
 }
@@ -22,12 +23,18 @@ function BaseTree({
   selectedId,
   role = "menu",
   emptyState = null,
+  initiallyExpanded = false,
   onSelect,
   TreeNode = DefaultTreeNode,
 }: TreeProps) {
-  const [expandedIds, setExpandedIds] = useState(
-    new Set(selectedId != null ? getInitialExpandedIds(selectedId, data) : []),
-  );
+  const [expandedIds, setExpandedIds] = useState(() => {
+    if (initiallyExpanded) {
+      return new Set(getAllExpandableIds(data));
+    }
+    return new Set(
+      selectedId != null ? getInitialExpandedIds(selectedId, data) : [],
+    );
+  });
   const previousSelectedId = usePrevious(selectedId);
   const prevData = usePrevious(data);
 
