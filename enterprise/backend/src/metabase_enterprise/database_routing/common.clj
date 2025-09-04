@@ -12,7 +12,7 @@
   [db-or-id]
   (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
 
-(def ^:dynamic *database-routing-on* :unset)
+(def ^:dynamic ^:private *database-routing-on* :unset)
 
 (defn router-db-or-id->destination-db-id
   "Given a user and a database (or id), returns the ID of the destination database that the user's query should ultimately be
@@ -118,11 +118,3 @@
       (throw (ex-info "Forbidden access to Router Database without `with-database-routing-off`" {})))
     (when (is-disallowed-destination-db-access? db-id)
       (throw (ex-info "Forbidden access to Destination Database without `with-database-routing-on`" {})))))
-
-(defenterprise db-routing-enabled?
-  "Returns whether or not the given database is either a router or a destination database."
-  :feature :database-routing
-  [db-or-id]
-  (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
-      (and (:router-database-id db-or-id)
-           (t2/exists? :model/DatabaseRouter :database_id (u/the-id (:router-database-id db-or-id))))))

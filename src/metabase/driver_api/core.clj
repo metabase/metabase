@@ -96,7 +96,6 @@
  connection-pool/destroy-connection-pool!
  connection-pool/map->properties
  database-routing/check-allowed-access!
- database-routing/db-routing-enabled?
  events/publish-event!
  lib-be/start-of-week
  lib.field/json-field?

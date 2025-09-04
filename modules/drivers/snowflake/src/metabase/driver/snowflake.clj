@@ -510,10 +510,7 @@
 ;; :field]` below.
 (defn- qualify-identifier [[_identifier identifier-type components, :as identifier]]
   {:pre [(h2x/identifier? identifier)]}
-  identifier
-  #_(let [db-routing? (when (driver-api/initialized?)
-                        (driver-api/db-routing-enabled? (driver-api/database (driver-api/metadata-provider))))]
-      (apply h2x/identifier identifier-type (when-not db-routing? (query-db-name)) components)))
+  (apply h2x/identifier identifier-type components))
 
 (defmethod sql.qp/->honeysql [:snowflake ::h2x/identifier]
   [_driver [_identifier identifier-type :as identifier]]
@@ -869,11 +866,6 @@
              table-name (escape-name-for-metadata name)]
          (with-open [rs (.getTables metadata db-name schema-name table-name nil)]
            (.next rs)))))))
-
-(defmethod driver/set-database-used! :snowflake [_driver conn db]
-  nil #_(let [sql (format "USE DATABASE \"%s\"" (db-name db))]
-          (with-open [stmt (.createStatement ^java.sql.Connection conn)]
-            (.execute stmt sql))))
 
 (defmethod driver/run-transform! [:snowflake :table]
   [driver {:keys [connection-details query output-table]} opts]

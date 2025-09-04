@@ -6,7 +6,6 @@
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
-   #_[metabase-enterprise.database-routing.common :as db-routing.common]
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -372,9 +371,6 @@
                   (u/id db-or-id-or-spec)     db-or-id-or-spec
                   ;; otherwise it's a spec and we can't get the db
                   :else nil)]
-    #_(when (and (= :on db-routing.common/*database-routing-on*)
-                 (driver-api/db-routing-enabled? db))
-        (driver/set-database-used! driver conn db))
     (set-role-if-supported! driver conn db))
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
