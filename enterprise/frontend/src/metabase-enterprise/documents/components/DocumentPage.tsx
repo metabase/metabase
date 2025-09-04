@@ -10,6 +10,7 @@ import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 import _ from "underscore";
+import cx from "classnames";
 
 import {
   skipToken,
@@ -417,7 +418,11 @@ export const DocumentPage = ({
 
   return (
     <>
-      <Box className={styles.documentPage}>
+      <Box
+        className={cx(styles.documentPage, {
+          [styles.commentsOpened]: commentSidebarOpen,
+        })}
+      >
         <SetTitle title={documentData?.name || t`New document`} />
         {documentData?.archived && <DocumentArchivedEntityBanner />}
         <Box className={styles.contentArea}>
