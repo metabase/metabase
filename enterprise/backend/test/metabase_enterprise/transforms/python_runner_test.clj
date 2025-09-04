@@ -232,6 +232,8 @@
             (is (= :boolean (dtype->table-type (field-by-name "is_active"))))
             (is (= :datetime (dtype->table-type (field-by-name "scheduled_for"))))
 
-            ;; TODO: ideally those would be preserved.. but they're "object" dtypes for now
+            ;; TODO: ideally those would be :date and :datetime respectively,
+            ;; but they're "object" dtypes for now as ingestion into pandas is lossy
+            ;; and there's no date dtype
             (is (= :text (dtype->table-type (field-by-name "created_date"))))
             (is (= :text (dtype->table-type (field-by-name "updated_at"))))))))))
