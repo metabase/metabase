@@ -3,7 +3,7 @@ import stylelint from "stylelint";
 const ruleName = "metabase/no-base-colors";
 const messages = stylelint.utils.ruleMessages(ruleName, {
   rejected: (variable) =>
-    `You cannot use a base color: "${variable}" in this file. Define a sematic color in colors.module.css instead.`,
+    `You cannot use a base color: "${variable}" in this file. Define a semantic color in colors.module.css instead.`,
 });
 
 /** @type {import('stylelint').Rule} */
