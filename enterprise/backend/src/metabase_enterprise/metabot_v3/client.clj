@@ -167,7 +167,8 @@
                             (:body response)
                             (mtx/transformer {:name :api-response}))
           (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>))
-          (store-message! conversation-id <>))
+          ;; FIXME: not sure how to trigger this from the FE to check if it works
+          #_(run! #(store-message! conversation-id %) (:messages <>)))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
