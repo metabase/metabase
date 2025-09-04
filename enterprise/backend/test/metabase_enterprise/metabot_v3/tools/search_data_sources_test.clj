@@ -126,27 +126,28 @@
               (is (empty? results)))))
 
         (testing "search-data-sources with metabot collection and verified content"
-          (let [metabot {:entity_id "test-bot"
-                         :collection_id 100
-                         :use_verified_content true}
-                table-result {:id 1 :model "table" :name "orders"}
-                card-in-collection {:id 2 :model "card" :name "Q1" :collection {:id 100} :verified true}
-                card-other-collection {:id 3 :model "card" :name "Q2" :collection {:id 200} :verified true}]
+          (mt/with-premium-features #{:content-management}
+            (let [metabot {:entity_id "test-bot"
+                           :collection_id 100
+                           :use_verified_content true}
+                  table-result {:id 1 :model "table" :name "orders"}
+                  card-in-collection {:id 2 :model "card" :name "Q1" :collection {:id 100} :verified true}
+                  card-other-collection {:id 3 :model "card" :name "Q2" :collection {:id 200} :verified true}]
 
-            (with-redefs [t2/select-one (fn [model & _]
-                                          (is (= :model/Metabot model) "Should query for Metabot model")
-                                          metabot)
-                          search/search (fn [context]
-                                         ;; Verify that verified flag is set when metabot has use_verified_content
-                                          (is (true? (:verified context)))
-                                          {:data [table-result card-in-collection card-other-collection]})]
+              (with-redefs [t2/select-one (fn [model & _]
+                                            (is (= :model/Metabot model) "Should query for Metabot model")
+                                            metabot)
+                            search/search (fn [context]
+                                           ;; Verify that verified flag is set when metabot has use_verified_content
+                                            (is (true? (:verified context)))
+                                            {:data [table-result card-in-collection card-other-collection]})]
 
-              (let [results (sds/search-data-sources {:keywords ["test"]
-                                                      :metabot-id "test-bot"
-                                                      :entity-types ["table" "question"]})]
-                ;; Should only return table and card in collection 100
-                (is (= 2 (count results)))
-                (is (some #(= (:id %) 1) results) "Table should be included")
-                (is (some #(= (:id %) 2) results) "Card in metabot collection should be included")
-                (is (not (some #(= (:id %) 3) results)) "Card in different collection should be excluded")))))))))
+                (let [results (sds/search-data-sources {:keywords ["test"]
+                                                        :metabot-id "test-bot"
+                                                        :entity-types ["table" "question"]})]
+                  ;; Should only return table and card in collection 100
+                  (is (= 2 (count results)))
+                  (is (some #(= (:id %) 1) results) "Table should be included")
+                  (is (some #(= (:id %) 2) results) "Card in metabot collection should be included")
+                  (is (not (some #(= (:id %) 3) results)) "Card in different collection should be excluded")))))))))))
 
