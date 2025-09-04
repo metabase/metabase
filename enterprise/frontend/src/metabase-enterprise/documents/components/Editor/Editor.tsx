@@ -1,4 +1,4 @@
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, pointerWithin } from "@dnd-kit/core";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
@@ -34,7 +34,11 @@ import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMent
 import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
 import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
-import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
+import {
+  useCardEmbedDnD,
+  useCardEmbedsTracking,
+  useQuestionSelection,
+} from "./hooks";
 import type { CardEmbedRef } from "./types";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
@@ -142,7 +146,11 @@ export const Editor: React.FC<EditorProps> = ({
         },
       }),
       TableKit.configure({
-        table: { resizable: true },
+        table: {
+          resizable: true,
+          cellMinWidth: 200,
+          lastColumnResizable: false,
+        },
       }),
     ],
     [siteUrl, getState],
@@ -194,94 +202,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   useCardEmbedsTracking(editor, onCardEmbedsChange);
   useQuestionSelection(editor, onQuestionSelect);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (!active || !over || active.id === over.id) {
-      return;
-    }
-
-    // Handle reordering of CardEmbed nodes
-    if (editor && active.id.toString().startsWith("card-embed-")) {
-      const sourceId = active.id.toString().replace("card-embed-", "");
-      const targetZoneId = over.id.toString().replace("drop-zone-", "");
-      const direction = over.id.toString().includes("-left") ? "left" : "right";
-      const targetId = targetZoneId.replace("-left", "").replace("-right", "");
-
-      // Don't allow dropping next to itself
-      if (sourceId === targetId) {
-        return;
-      }
-
-      // Find the source and target nodes in the document
-      let sourcePos = -1;
-      let targetPos = -1;
-      let sourceNode: any = null;
-      let targetNode: any = null;
-
-      editor.state.doc.descendants((node, pos) => {
-        if (
-          node.type.name === "cardEmbed" &&
-          node.attrs.id?.toString() === sourceId
-        ) {
-          sourcePos = pos;
-          sourceNode = node;
-        }
-        if (
-          node.type.name === "cardEmbed" &&
-          node.attrs.id?.toString() === targetId
-        ) {
-          targetPos = pos;
-          targetNode = node;
-        }
-      });
-
-      if (sourcePos !== -1 && targetPos !== -1 && sourceNode && targetNode) {
-        // Create a table with two columns containing the CardEmbeds
-        const leftCardEmbed =
-          direction === "left" ? sourceNode.toJSON() : targetNode.toJSON();
-        const rightCardEmbed =
-          direction === "left" ? targetNode.toJSON() : sourceNode.toJSON();
-
-        const tableContent = {
-          type: "table",
-          content: [
-            {
-              type: "tableRow",
-              content: [
-                {
-                  type: "tableCell",
-                  content: [leftCardEmbed],
-                },
-                {
-                  type: "tableCell",
-                  content: [rightCardEmbed],
-                },
-              ],
-            },
-          ],
-        };
-
-        // Remove both nodes and insert the table at the target position
-        const tr = editor.state.tr;
-
-        // Delete nodes in reverse order to maintain positions
-        if (sourcePos > targetPos) {
-          tr.delete(sourcePos, sourcePos + sourceNode.nodeSize);
-          tr.delete(targetPos, targetPos + targetNode.nodeSize);
-        } else {
-          tr.delete(targetPos, targetPos + targetNode.nodeSize);
-          tr.delete(sourcePos, sourcePos + sourceNode.nodeSize);
-        }
-
-        // Insert the table at the position of whichever node was first
-        const insertPos = Math.min(sourcePos, targetPos);
-        tr.insert(insertPos, editor.schema.nodeFromJSON(tableContent));
-        editor.view.dispatch(tr);
-      }
-    }
-  };
+  const { handleDragEnd } = useCardEmbedDnD(editor);
 
   if (!editor) {
     return null;
@@ -296,7 +217,7 @@ export const Editor: React.FC<EditorProps> = ({
   }
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
       <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
         <Box
           className={S.editorContent}

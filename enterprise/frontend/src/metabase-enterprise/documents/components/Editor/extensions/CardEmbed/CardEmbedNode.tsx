@@ -42,11 +42,14 @@ import { NativeQueryModal } from "./NativeQueryModal";
 interface DropZoneProps {
   id: string;
   side: "left" | "right";
+  disabled?: boolean;
 }
 
-const DropZone = ({ id, side }: DropZoneProps) => {
+const DropZone = ({ id, side, disabled }: DropZoneProps) => {
+  // TODO: disable drop area if card is dragged over itself
   const { isOver, setNodeRef } = useDroppable({
     id: `drop-zone-${id}-${side}`,
+    disabled,
   });
 
   return (
@@ -167,6 +170,16 @@ export const CardEmbedComponent = memo(
       id: `card-embed-${id}`,
       disabled: !canWrite,
     });
+
+    const draggableStyle = transform
+      ? {
+          transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+          opacity: isDragging ? 0.5 : 1,
+          zIndex: isDragging ? 1000 : "auto",
+        }
+      : {};
+
+    const dragHandleRef = useRef<HTMLDivElement>(null);
 
     let embedIndex = -1;
 
@@ -317,25 +330,11 @@ export const CardEmbedComponent = memo(
     );
 
     if (isLoading && !card) {
-      const draggableStyle = transform
-        ? {
-            transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-            opacity: isDragging ? 0.5 : 1,
-            zIndex: isDragging ? 1000 : "auto",
-          }
-        : {};
-
       return (
         <NodeViewWrapper
           className={styles.embedWrapper}
           style={{ position: "relative" }}
         >
-          {canWrite && id && (
-            <>
-              <DropZone id={id.toString()} side="left" />
-              <DropZone id={id.toString()} side="right" />
-            </>
-          )}
           <Box
             ref={setDraggableRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
@@ -343,13 +342,24 @@ export const CardEmbedComponent = memo(
             })}
             style={{
               ...draggableStyle,
-              cursor: canWrite ? "move" : "default",
             }}
-            {...attributes}
-            {...(canWrite ? listeners : {})}
           >
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
+                {canWrite && (
+                  <Box
+                    ref={dragHandleRef}
+                    className={styles.dragHandle}
+                    {...attributes}
+                    {...listeners}
+                  >
+                    <Icon
+                      name="grabber"
+                      size={16}
+                      color="var(--mb-color-text-medium)"
+                    />
+                  </Box>
+                )}
                 <Box className={styles.titleContainer}>
                   <Text size="md" color="text-dark" fw={700}>
                     {t`Loading question...`}
@@ -368,26 +378,12 @@ export const CardEmbedComponent = memo(
     }
 
     if (error) {
-      const draggableStyle = transform
-        ? {
-            transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-            opacity: isDragging ? 0.5 : 1,
-            zIndex: isDragging ? 1000 : "auto",
-          }
-        : {};
-
       return (
         <NodeViewWrapper
           className={styles.embedWrapper}
           data-testid="document-card-embed"
           style={{ position: "relative" }}
         >
-          {canWrite && id && (
-            <>
-              <DropZone id={id.toString()} side="left" />
-              <DropZone id={id.toString()} side="right" />
-            </>
-          )}
           <Box
             ref={setDraggableRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
@@ -395,11 +391,31 @@ export const CardEmbedComponent = memo(
             })}
             style={{
               ...draggableStyle,
-              cursor: canWrite ? "move" : "default",
             }}
-            {...attributes}
-            {...(canWrite ? listeners : {})}
           >
+            <Box className={styles.questionHeader}>
+              <Flex align="center" justify="space-between" gap="0.5rem">
+                {canWrite && (
+                  <Box
+                    ref={dragHandleRef}
+                    className={styles.dragHandle}
+                    {...attributes}
+                    {...listeners}
+                  >
+                    <Icon
+                      name="grabber"
+                      size={16}
+                      color="var(--mb-color-text-medium)"
+                    />
+                  </Box>
+                )}
+                <Box className={styles.titleContainer}>
+                  <Text size="md" color="text-dark" fw={700}>
+                    {t`Error loading question`}
+                  </Text>
+                </Box>
+              </Flex>
+            </Box>
             <Flex className={styles.questionResults}>
               <ErrorView
                 error={
@@ -414,14 +430,6 @@ export const CardEmbedComponent = memo(
       );
     }
 
-    const draggableStyle = transform
-      ? {
-          transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-          opacity: isDragging ? 0.5 : 1,
-          zIndex: isDragging ? 1000 : "auto",
-        }
-      : {};
-
     return (
       <NodeViewWrapper
         className={styles.embedWrapper}
@@ -430,8 +438,8 @@ export const CardEmbedComponent = memo(
       >
         {canWrite && id && (
           <>
-            <DropZone id={id.toString()} side="left" />
-            <DropZone id={id.toString()} side="right" />
+            <DropZone id={id.toString()} side="left" disabled={isDragging} />
+            <DropZone id={id.toString()} side="right" disabled={isDragging} />
           </>
         )}
         <Box
@@ -441,14 +449,25 @@ export const CardEmbedComponent = memo(
           })}
           style={{
             ...draggableStyle,
-            cursor: canWrite ? "move" : "default",
           }}
-          {...attributes}
-          {...(canWrite ? listeners : {})}
         >
           {card && (
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
+                {canWrite && (
+                  <Box
+                    ref={dragHandleRef}
+                    className={styles.dragHandle}
+                    {...attributes}
+                    {...listeners}
+                  >
+                    <Icon
+                      name="grabber"
+                      size={16}
+                      color="var(--mb-color-text-medium)"
+                    />
+                  </Box>
+                )}
                 {isEditingTitle ? (
                   <TextInput
                     ref={titleInputRef}

@@ -206,31 +206,21 @@
   margin: 0;
   overflow: hidden;
   table-layout: fixed;
-  width: 100%;
+  width: 900px;
+  /* Prevent table from growing beyond max-width */
+  box-sizing: border-box;
 
   :global(td) {
-    border: 1px solid var(--mb-color-border);
+    border: none;
     box-sizing: border-box;
-    min-width: 1em;
-    padding: 6px 8px;
+    min-width: 200px;
+    padding: 0 0.5rem;
     position: relative;
     vertical-align: top;
 
     > * {
       margin-bottom: 0;
     }
-  }
-
-  :global(.selectedCell:after) {
-    background: var(--mb-color-border);
-    content: "";
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    pointer-events: none;
-    position: absolute;
-    z-index: 2;
   }
 
   :global(.column-resize-handle) {
@@ -241,16 +231,16 @@
     right: -2px;
     top: 0;
     width: 4px;
+    cursor: col-resize;
   }
 }
 
 .editorContent :global(.ProseMirror) :global(.tableWrapper) {
-  margin: 1.5rem 0;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .editorContent
-  :global(.ProseMirror)
-  :global(.tableWrapper):global(.resize-cursor) {
+  :global(.ProseMirror):global(.resize-cursor)
+  :global(.tableWrapper) {
   cursor: col-resize;
 }
