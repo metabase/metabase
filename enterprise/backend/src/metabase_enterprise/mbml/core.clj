@@ -158,7 +158,8 @@
 ;; TODO(edpaget): Probably belongs in the transform module
 (defmethod mbml-file->model* :model/Transform:v1
   [{:keys [tags database identifier] :as mbml-map} {existing-entity-id :id}]
-  (let [tag-ids (t2/select-pks-vec :model/TransformTag :name [:in tags])
+  (let [tag-ids (when (seq tags)
+                  (t2/select-pks-vec :model/TransformTag :name [:in tags]))
         database-id (t2/select-one-pk :model/Database :name database)]
     (when-not (= (count tag-ids) (count (set tags)))
       (throw (mbml.errors/format-model-transformation-error :missing-tags :model/Transform mbml-map mbml.parser/*file*)))
@@ -168,7 +169,7 @@
                               (assoc :library_identifier identifier)
                               (update-source-query database-id)
                               (dissoc :entity :tags :body :identifier :database)
-                              (assoc :tag_ids tag-ids))]
+                              (assoc :tag_ids (or (seq tag-ids) [])))]
 
       (try
         (if existing-entity-id

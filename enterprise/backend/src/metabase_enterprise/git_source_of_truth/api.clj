@@ -51,7 +51,9 @@
       (try
         ;; TODO this is silly
         (doseq [file (next (file-seq (io/file (sources/load-source! source (.toString dir)))))
-                :when (not (.isDirectory file))]
+                :when (not (.isDirectory file))
+                :when (some #(str/ends-with? (.getPath file) %)
+                            [".sql" ".yaml" ".yml"])]
           (mbml/mbml-file->model (.getPath file)))
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
