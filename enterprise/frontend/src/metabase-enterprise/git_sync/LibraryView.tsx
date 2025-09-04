@@ -92,7 +92,7 @@ export const LibraryView = () => {
   return (
     <Flex h="100%" gap={0}>
       <Box
-        w="300px"
+        w="360px"
         h="100%"
         style={{
           borderRight: "1px solid var(--mb-color-border)",
