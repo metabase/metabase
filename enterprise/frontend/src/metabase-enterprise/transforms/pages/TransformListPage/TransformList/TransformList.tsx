@@ -5,11 +5,12 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { Card } from "metabase/ui";
+import { Card, Flex } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
+import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
 import type { Transform } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
@@ -52,7 +53,9 @@ export function TransformList() {
         columnTitles={[
           t`Transform`,
           t`Target`,
-          t`Last run at`,
+          <Flex align="center" gap="xs" key="last-run-at">
+            {t`Last run at`} <TimezoneIndicator />
+          </Flex>,
           t`Last run status`,
           t`Tags`,
         ]}

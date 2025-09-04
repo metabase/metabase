@@ -5,11 +5,12 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { Card } from "metabase/ui";
+import { Card, Flex } from "metabase/ui";
 import {
   useListTransformJobsQuery,
   useListTransformTagsQuery,
 } from "metabase-enterprise/api";
+import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
 import type { JobListParams } from "metabase-enterprise/transforms/types";
 import type { TransformJob } from "metabase-types/api";
 
@@ -55,8 +56,12 @@ export function JobList({ params }: { params: JobListParams }) {
       <AdminContentTable
         columnTitles={[
           t`Job`,
-          t`Last run at`,
-          t`Next run`,
+          <Flex align="center" gap="xs" key="last-run-at">
+            {t`Last run at`} <TimezoneIndicator />
+          </Flex>,
+          <Flex align="center" gap="xs" key="next-run">
+            {t`Next run`} <TimezoneIndicator />
+          </Flex>,
           t`Transforms`,
           t`Tags`,
         ]}
