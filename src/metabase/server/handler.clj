@@ -51,7 +51,9 @@
          config/is-dev?
          (not *compile-files*)
          ;; [[user/*enable-hot-reload*]] is set to true in `dev.clj` when the `--hot` flag is passed to the `:dev-start` alias
-         (true? @(requiring-resolve 'user/*enable-hot-reload*)))
+         (try
+           (true? @(requiring-resolve 'user/*enable-hot-reload*))
+           (catch Exception _ nil)))
     (log/info "Wrap Reload Dev MW Enabled. Outdated namespaces will be recompiled when handling incoming requests")
     (let [wrap-reload (requiring-resolve 'ring.middleware.reload/wrap-reload)]
       (fn wrap-reload-dev-mw-fn [handler]
