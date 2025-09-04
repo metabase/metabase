@@ -49,12 +49,17 @@
     (with-temp-directory dir
       (log/info "Reloading Metabase configuration from source")
       (try
-        ;; TODO this is silly
-        (doseq [file (next (file-seq (io/file (sources/load-source! source (.toString dir)))))
-                :when (not (.isDirectory file))
-                :when (some #(str/ends-with? (.getPath file) %)
-                            [".sql" ".yaml" ".yml"])]
-          (mbml/mbml-file->model (.getPath file)))
+        (mbml/mbml-files->models
+         (->> (.toString dir)
+              (sources/load-source! source )
+              io/file
+              file-seq
+              next
+              (filter (fn [f]
+                        (and (not (.isDirectory f))
+                             (some #(str/ends-with? (.getPath f) %)
+                                   [".sql" ".yaml" ".yml"]))))
+              (map #(.getPath %))))
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
          :message "Successfully reloaded from git repository"}
