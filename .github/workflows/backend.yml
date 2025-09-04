@@ -229,12 +229,37 @@ jobs:
 
           # Debug: Show current location and structure
           echo "📍 Current directory: $(pwd)"
+          echo "🔍 Git information:"
+          echo "  Branch: $(git rev-parse --abbrev-ref HEAD)"
+          echo "  Commit: $(git rev-parse HEAD)"
+          echo "  Remote: $(git remote -v | head -1)"
+          echo ""
           echo "📂 Repository root contents:"
           ls -la
+          echo ""
+          echo "🔎 Looking for python-runner specifically:"
+          find . -maxdepth 2 -name "*python*" -type d 2>/dev/null || echo "No python directories found"
+          echo ""
+          echo "📋 All top-level directories:"
+          ls -d */ | sort
+          echo ""
 
           # Verify python-runner directory exists
           if [ ! -d "python-runner" ]; then
             echo "❌ python-runner directory not found!"
+            echo ""
+            echo "🔍 Additional debugging:"
+            echo "Git log of current HEAD:"
+            git log --oneline -5
+            echo ""
+            echo "Files in current commit that match 'python':"
+            git ls-tree -r HEAD | grep python || echo "No python files in current commit"
+            echo ""
+            echo "All files in python-runner directory in git:"
+            git ls-tree -r HEAD python-runner/ || echo "No python-runner files in git tree"
+            echo ""
+            echo "Git status of python-runner:"
+            git status python-runner/ || echo "Git status failed"
             exit 1
           fi
 

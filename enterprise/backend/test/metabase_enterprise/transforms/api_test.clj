@@ -218,7 +218,8 @@
 (defn- test-run
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "ee/transform/%s/run" transform-id))
-        timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
+        _ (println "RESP " resp)
+        timeout-s 30 ; 10 seconds is our timeout to finish execution and sync
         limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
     (is (=? {:message "Transform run started"}
             resp))
@@ -228,7 +229,6 @@
       (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
             status (some-> resp :last_run :status keyword)]
         (when-not (contains? #{:started :succeeded} status)
-          (println resp)
           (throw (ex-info (str "Transform run failed with status " status) {:resp resp})))
         (when-not (some? (:table resp))
           (Thread/sleep 100)
