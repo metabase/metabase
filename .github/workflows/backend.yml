@@ -232,6 +232,8 @@ jobs:
           cd python-runner
           echo "3"
           ls .
+          echo "4"
+          ls src/
 
           # Set environment variables for the Makefile
           export PYTHON_RUNNER_PORT=5001
