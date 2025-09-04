@@ -75,8 +75,9 @@ describe("series", () => {
       }),
     },
     breakout: {
-      index: 1,
-      column: createMockColumn({ name: "type", display_name: "Type" }),
+      breakoutDimensions: [
+        { index: 1, column: createMockColumn({ name: "type" }) },
+      ],
     },
   };
 
@@ -91,7 +92,7 @@ describe("series", () => {
       ],
       cols: [
         breakoutColumns.dimension.column,
-        breakoutColumns.breakout.column,
+        breakoutColumns.breakout.breakoutDimensions[0].column,
         breakoutColumns.metric.column,
       ],
     }),
@@ -186,6 +187,71 @@ describe("series", () => {
 
         expect(result).toHaveLength(1);
         expect(result[0].visible).toBe(false);
+      });
+
+      it("should return series models with composite names and keys for multiple breakout columns", () => {
+        // Add a second breakout column
+        const multiBreakoutColumns: BreakoutChartColumns = {
+          ...breakoutColumns,
+          breakout: {
+            breakoutDimensions: [
+              { index: 1, column: createMockColumn({ name: "type" }) },
+              { index: 3, column: createMockColumn({ name: "region" }) },
+            ],
+          },
+        };
+
+        const multiBreakoutSeries: SingleSeries = {
+          ...breakoutSeries,
+          data: createMockDatasetData({
+            rows: [
+              [1, "type1", 100, "north"],
+              [2, "type1", 200, "south"],
+              [3, "type2", 300, "north"],
+              [4, "type2", 400, "south"],
+              [5, "type2", 500, "north"],
+            ],
+            cols: [
+              multiBreakoutColumns.dimension.column,
+              multiBreakoutColumns.breakout.breakoutDimensions[0].column,
+              multiBreakoutColumns.metric.column,
+              multiBreakoutColumns.breakout.breakoutDimensions[1].column,
+            ],
+          }),
+        };
+
+        const rawSeries = [multiBreakoutSeries];
+        const cardsColumns = [multiBreakoutColumns];
+
+        const result = getCardsSeriesModels(
+          rawSeries,
+          cardsColumns,
+          [],
+          createMockComputedVisualizationSettings(),
+        );
+
+        expect(result).toHaveLength(4);
+
+        expect(result[0]).toMatchObject({
+          dataKey: "2:count:type1 - north",
+          name: "type1 - north",
+          tooltipName: multiBreakoutColumns.metric.column.display_name,
+        });
+        expect(result[1]).toMatchObject({
+          dataKey: "2:count:type1 - south",
+          name: "type1 - south",
+          tooltipName: multiBreakoutColumns.metric.column.display_name,
+        });
+        expect(result[2]).toMatchObject({
+          dataKey: "2:count:type2 - north",
+          name: "type2 - north",
+          tooltipName: multiBreakoutColumns.metric.column.display_name,
+        });
+        expect(result[3]).toMatchObject({
+          dataKey: "2:count:type2 - south",
+          name: "type2 - south",
+          tooltipName: multiBreakoutColumns.metric.column.display_name,
+        });
       });
     });
 
