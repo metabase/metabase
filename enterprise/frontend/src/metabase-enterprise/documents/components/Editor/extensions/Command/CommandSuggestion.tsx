@@ -50,18 +50,6 @@ export interface CommandSuggestionProps {
   query: string;
 }
 
-// interface CommandItem {
-//   command?: string;
-//   clearQuery?: boolean;
-//   switchToLinkMode?: boolean;
-//   switchToEmbedMode?: boolean;
-//   selectItem?: boolean;
-//   embedItem?: boolean;
-//   entityId?: number | string;
-//   model?: string;
-//   document?: Document | null;
-// }
-
 interface SuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
@@ -237,6 +225,24 @@ export const CommandSuggestion = forwardRef<
     [command, showLinkSearch, document],
   );
 
+  // Use shared entity suggestions for link/embed mode and browse all functionality
+  const entitySuggestions = useEntitySuggestions({
+    query,
+    editor,
+    onSelectEntity: onSelectLinkEntity,
+    enabled: true,
+    searchModels: showLinkSearch ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
+  });
+
+  const {
+    menuItems: searchMenuItems,
+    isLoading: isSearchLoading,
+    searchResults,
+    selectedIndex: entitySelectedIndex,
+    modal: entityModal,
+    handlers: entityHandlers,
+  } = entitySuggestions;
+
   const executeCommand = (commandName: string) => {
     if (commandName === "linkTo") {
       command({
@@ -252,6 +258,10 @@ export const CommandSuggestion = forwardRef<
         clearQuery: true,
         switchToEmbedMode: true,
       });
+
+      if (searchMenuItems.length === 0) {
+        entityHandlers.openModal();
+      }
       setShowEmbedSearch(true);
       return;
     }
@@ -268,24 +278,6 @@ export const CommandSuggestion = forwardRef<
       command: commandName,
     });
   };
-
-  // Use shared entity suggestions for link/embed mode and browse all functionality
-  const entitySuggestions = useEntitySuggestions({
-    query,
-    editor,
-    onSelectEntity: onSelectLinkEntity,
-    enabled: showLinkSearch || showEmbedSearch || !!query,
-    searchModels: showLinkSearch ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
-  });
-
-  const {
-    menuItems: searchMenuItems,
-    isLoading: isSearchLoading,
-    searchResults,
-    selectedIndex: entitySelectedIndex,
-    modal: entityModal,
-    handlers: entityHandlers,
-  } = entitySuggestions;
 
   const currentItems = useMemo(() => {
     if (showLinkSearch || showEmbedSearch) {
@@ -355,13 +347,6 @@ export const CommandSuggestion = forwardRef<
     showEmbedSearch,
     searchMenuItems.length,
   ]);
-
-  // Auto-open modal when switching to embed mode with no recents
-  useEffect(() => {
-    if (showEmbedSearch && !query && searchMenuItems.length === 0) {
-      entityHandlers.openModal();
-    }
-  }, [showEmbedSearch, query, searchMenuItems.length, entityHandlers.openModal]);
 
   useEffect(() => {
     const selectedItem = itemRefs.current[selectedIndex];
