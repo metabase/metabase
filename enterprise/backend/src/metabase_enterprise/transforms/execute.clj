@@ -9,6 +9,7 @@
    [metabase-enterprise.transforms.python-runner :as python-runner]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.table-creation :as table-creation]
    [metabase.driver.util :as driver.u]
@@ -243,9 +244,11 @@
                                      (:fields metadata))}
         data-source {:type :csv-file
                      :file temp-file}]
-    ;; TODO: should be transactional
+    ;; TODO: should be transactional, perharps go through driver/run-transform!
     (transforms.util/delete-target-table! transform)
-    (table-creation/create-table-from-schema! driver (:id db) table-schema)
+    ;; HACK:
+    (binding [api/*is-superuser?* true]
+      (table-creation/create-table-from-schema! driver (:id db) table-schema))
     (table-creation/insert-from-source! driver (:id db) table-name (mapv :name (:columns table-schema)) data-source)))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
