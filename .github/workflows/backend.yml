@@ -222,91 +222,19 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: be-python-runner-tests
-      - name: Build and start python-runner container
+      - name: Start python-runner using Makefile
         run: |
-          # Create mount directory
-          mkdir -p /tmp/python-exec-work
-
-          # Debug: Show current location and structure
-          echo "📍 Current directory: $(pwd)"
-          echo "🔍 Git information:"
-          echo "  Branch: $(git rev-parse --abbrev-ref HEAD)"
-          echo "  Commit: $(git rev-parse HEAD)"
-          echo "  Remote: $(git remote -v | head -1)"
-          echo ""
-          echo "📂 Repository root contents:"
-          ls -la
-          echo ""
-          echo "🔎 Looking for python-runner specifically:"
-          find . -maxdepth 2 -name "*python*" -type d 2>/dev/null || echo "No python directories found"
-          ls -la python-runner
-          echo ""
-          echo "📋 All top-level directories:"
-          ls -d */ | sort
-          echo ""
-
-          # Verify python-runner directory exists
-          if [ ! -d "python-runner" ]; then
-            echo "❌ python-runner directory not found!"
-            echo ""
-            echo "🔍 Additional debugging:"
-            echo "Git log of current HEAD:"
-            git log --oneline -5
-            echo ""
-            echo "Files in current commit that match 'python':"
-            git ls-tree -r HEAD | grep python || echo "No python files in current commit"
-            echo ""
-            echo "All files in python-runner directory in git:"
-            git ls-tree -r HEAD python-runner/ || echo "No python-runner files in git tree"
-            echo ""
-            echo "Git status of python-runner:"
-            git status python-runner/ || echo "Git status failed"
-            exit 1
-          fi
-
-          echo "📂 python-runner directory contents:"
-          ls -la python-runner/
-
-          # Verify Dockerfile exists
-          if [ ! -f "python-runner/Dockerfile" ]; then
-            echo "❌ python-runner/Dockerfile not found!"
-            exit 1
-          fi
-
-          # Build the Docker image from the python-runner directory
-          echo "🔨 Building Docker image..."
-          docker build -t metabase/python-runner:latest ./python-runner
-
-          # Get the docker network used by service containers
-          NETWORK=$(docker network ls --filter name=github --format "{{.Name}}")
-
-          docker run -d \
-            --name python-runner \
-            --network $NETWORK \
-            -p 5001:5000 \
-            -v /tmp/python-exec-work:/tmp/python-exec-work \
-            -e AWS_ACCESS_KEY_ID=test \
-            -e AWS_SECRET_ACCESS_KEY=test \
-            -e AWS_DEFAULT_REGION=us-east-1 \
-            -e AWS_ENDPOINT_URL=http://localstack:4566 \
-            --add-host host.docker.internal:host-gateway \
-            metabase/python-runner:latest
-
-          # Wait for the service to be ready
-          for i in {1..30}; do
-            if curl -f http://localhost:5001/status; then
-              echo "✅ Python runner is ready!"
-              break
-            fi
-            if [ $i -eq 30 ]; then
-              echo "❌ Python runner failed to start within 60 seconds"
-              echo "Container logs:"
-              docker logs python-runner
-              exit 1
-            fi
-            echo "⏳ Waiting for python runner to start... ($i/30)"
-            sleep 2
-          done
+          echo "🚀 Starting python-runner using make run..."
+          cd python-runner
+          
+          # Set environment variables for the Makefile
+          export PYTHON_RUNNER_PORT=5001
+          export PYTHON_RUNNER_MOUNT_PATH=/tmp/python-exec-work
+          
+          # Use the official make run command
+          make run
+          
+          echo "✅ Python runner started successfully!"
       - name: Verify Python Runner health
         run: |
           echo "🔍 Checking Python Runner status..."
@@ -334,27 +262,14 @@ jobs:
             docker logs python-runner
             exit 1
           fi
-      - name: Create S3 bucket in LocalStack
+      - name: Verify LocalStack and S3 setup
         run: |
+          echo "🔍 Verifying LocalStack is ready and S3 bucket exists..."
+          # The make run command should have already set up the S3 bucket
+          curl -s http://localhost:4566/_localstack/health | jq .
+          
+          # Install awscli to verify the bucket
           pip install awscli
-          # Wait for LocalStack to be ready
-          for i in {1..30}; do
-            if aws --endpoint-url=http://localhost:4566 s3 ls 2>/dev/null; then
-              echo "✅ LocalStack is ready!"
-              break
-            fi
-            if [ $i -eq 30 ]; then
-              echo "❌ LocalStack failed to start within 60 seconds"
-              exit 1
-            fi
-            echo "⏳ Waiting for LocalStack... ($i/30)"
-            sleep 2
-          done
-
-          echo "📦 Creating S3 bucket..."
-          aws --endpoint-url=http://localhost:4566 s3 mb s3://metabase-python-runner || true
-
-          echo "🔍 Verifying S3 bucket exists..."
           aws --endpoint-url=http://localhost:4566 s3 ls s3://metabase-python-runner
 
       - name: Verify Python Runner can access LocalStack
