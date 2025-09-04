@@ -118,6 +118,9 @@
                  :data            message
                  :usage           usage
                  :total           (->> (vals usage)
+                                       ;; NOTE: this filter is supporting backward-compatible usage format, can be
+                                       ;; removed when ai-service does not give us `completionTokens` in `usage`
+                                       (filter map?)
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))})))
 

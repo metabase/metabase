@@ -373,6 +373,99 @@ databaseChangeLog:
                     AND mt2.name = SUBSTRING(metabase_table.name, 1, POSITION('__mbarchiv__' IN metabase_table.name) - 1)
                     AND mt2.id != metabase_table.id);
 
+  - changeSet:
+      id: v56.2025-09-03T17:15:00
+      author: piranha
+      comment: Added 0.56.0 -- add metabot_conversation
+      changes:
+        - createTable:
+            tableName: metabot_conversation
+            remarks: Table to store metabot conversation messages
+            columns:
+              - column:
+                  name: id
+                  type: char(36)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_conversation_user_id
+              - column:
+                  name: summary
+                  type: text
+                  remarks: Auto-generated summary for the conversation
+              - column:
+                  name: state
+                  type: text
+                  remarks: Metabot conversation state
+            indexes:
+              - index:
+                  name: idx_metabot_conversation_user_id
+                  columns:
+                    - column:
+                        name: user_id
+
+  - changeSet:
+      id: v56.2025-09-03T17:15:01
+      author: piranha
+      comment: Added 0.56.0 -- add metabot_message
+      changes:
+        - createTable:
+            tableName: metabot_message
+            remarks: Table to store metabot conversation messages
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: data
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'Full message content'
+              - column:
+                  name: usage
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: 'Can be null for user messages; {"<model-name>": {"prompt": 1, "completion": 2}}'
+              - column:
+                  name: total
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: 'A sum of all prompt+completion from `usage`'
+              - column:
+                  name: conversation_id
+                  type: char(36)
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabot_conversation
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_message_conversation_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
