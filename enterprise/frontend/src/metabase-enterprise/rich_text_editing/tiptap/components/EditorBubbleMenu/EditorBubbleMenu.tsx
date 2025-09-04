@@ -9,11 +9,11 @@ import { t } from "ttag";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { Flex } from "metabase/ui";
-import type { FormattingOptions } from "metabase-enterprise/rich_text_editing/tiptap/types";
 
 import { FormatButton } from "../FormatButton/FormatButton";
 
 import S from "./EditorBubbleMenu.module.css";
+import type { FormattingOptions } from "./types";
 
 const DEFAULT_ALLOWED_FORMATTING: FormattingOptions = {
   bold: true,
