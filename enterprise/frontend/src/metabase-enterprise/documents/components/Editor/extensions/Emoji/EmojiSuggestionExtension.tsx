@@ -103,17 +103,30 @@ function renderEmojiPicker() {
    * until the search input is focused, so this case is also handled manually.
    */
   function getGlobalPopupKeyHandler(props: SuggestionProps) {
-    return function focusSearchOnTab(e: KeyboardEvent) {
+    return function (e: KeyboardEvent) {
       if (e.key === "Enter") {
         e.preventDefault();
         e.stopImmediatePropagation();
-        const emoji = popup
-          .querySelector('[frimousse-row][aria-rowindex="0"] [data-emoji]')
-          ?.getAttribute("data-emoji");
+
+        // This covers 2 scenarios:
+        // 1. autocomplete for 1st available emoji
+        // 2. selecting one with arrow keys
+        // We cover both cases here "manually", because otherwise editor inserts new line
+        // if we don't capture the event.
+        const activeEmojiElement =
+          popup.querySelector("[data-active]") ||
+          popup.querySelector(
+            '[frimousse-row][aria-rowindex="0"] [data-emoji]',
+          );
+
+        const emoji = activeEmojiElement?.getAttribute("data-emoji");
 
         props.command({ emoji });
         return;
       }
+
+      // When user presses Tab we focus EmojiPicker's hidden input component
+      // to allow to pick emoji with keyboard.
       if (e.key !== "Tab" || e.shiftKey) {
         return;
       }

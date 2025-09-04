@@ -11,6 +11,7 @@ import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { METAKEY } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
@@ -135,7 +136,7 @@ export const CommentEditor = ({
       return;
     }
 
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       submitDoc();
     }
@@ -148,7 +149,7 @@ export const CommentEditor = ({
         [S.readonly]: readonly,
         [S.active]: active,
       })}
-      onKeyDown={handleKeyDown}
+      onKeyDownCapture={handleKeyDown}
     >
       <Box className={S.contentWrapper}>
         <EditorContent editor={editor} className={S.content} />
@@ -160,7 +161,7 @@ export const CommentEditor = ({
           variant="subtle"
           onClick={submitDoc}
         >
-          <Icon name="arrow_up" />
+          <Icon tooltip={t`Send (${METAKEY} + Enter)`} name="arrow_up" />
         </ActionIcon>
       )}
 
