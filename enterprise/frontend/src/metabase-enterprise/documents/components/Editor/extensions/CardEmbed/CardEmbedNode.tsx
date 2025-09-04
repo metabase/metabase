@@ -1,3 +1,7 @@
+/* eslint-disable no-color-literals */
+// TODO - remove this
+
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
   type NodeViewProps,
@@ -34,6 +38,34 @@ import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
+
+interface DropZoneProps {
+  id: string;
+  side: "left" | "right";
+}
+
+const DropZone = ({ id, side }: DropZoneProps) => {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `drop-zone-${id}-${side}`,
+  });
+
+  return (
+    <Box
+      ref={setNodeRef}
+      style={{
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        width: "20px",
+        [side]: "-10px",
+        backgroundColor: isOver ? "rgba(59, 130, 246, 0.3)" : "transparent",
+        border: isOver ? "2px dashed #3b82f6" : "none",
+        zIndex: 10,
+        pointerEvents: "all",
+      }}
+    />
+  );
+};
 
 function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
@@ -123,6 +155,18 @@ export const CardEmbedComponent = memo(
     const { id, name } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
+
+    // Set up draggable functionality
+    const {
+      attributes,
+      listeners,
+      setNodeRef: setDraggableRef,
+      transform,
+      isDragging,
+    } = useDraggable({
+      id: `card-embed-${id}`,
+      disabled: !canWrite,
+    });
 
     let embedIndex = -1;
 
@@ -273,12 +317,36 @@ export const CardEmbedComponent = memo(
     );
 
     if (isLoading && !card) {
+      const draggableStyle = transform
+        ? {
+            transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+            opacity: isDragging ? 0.5 : 1,
+            zIndex: isDragging ? 1000 : "auto",
+          }
+        : {};
+
       return (
-        <NodeViewWrapper className={styles.embedWrapper}>
+        <NodeViewWrapper
+          className={styles.embedWrapper}
+          style={{ position: "relative" }}
+        >
+          {canWrite && id && (
+            <>
+              <DropZone id={id.toString()} side="left" />
+              <DropZone id={id.toString()} side="right" />
+            </>
+          )}
           <Box
+            ref={setDraggableRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
+            style={{
+              ...draggableStyle,
+              cursor: canWrite ? "move" : "default",
+            }}
+            {...attributes}
+            {...(canWrite ? listeners : {})}
           >
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
@@ -300,15 +368,37 @@ export const CardEmbedComponent = memo(
     }
 
     if (error) {
+      const draggableStyle = transform
+        ? {
+            transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+            opacity: isDragging ? 0.5 : 1,
+            zIndex: isDragging ? 1000 : "auto",
+          }
+        : {};
+
       return (
         <NodeViewWrapper
           className={styles.embedWrapper}
           data-testid="document-card-embed"
+          style={{ position: "relative" }}
         >
+          {canWrite && id && (
+            <>
+              <DropZone id={id.toString()} side="left" />
+              <DropZone id={id.toString()} side="right" />
+            </>
+          )}
           <Box
+            ref={setDraggableRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
+            style={{
+              ...draggableStyle,
+              cursor: canWrite ? "move" : "default",
+            }}
+            {...attributes}
+            {...(canWrite ? listeners : {})}
           >
             <Flex className={styles.questionResults}>
               <ErrorView
@@ -324,15 +414,37 @@ export const CardEmbedComponent = memo(
       );
     }
 
+    const draggableStyle = transform
+      ? {
+          transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+          opacity: isDragging ? 0.5 : 1,
+          zIndex: isDragging ? 1000 : "auto",
+        }
+      : {};
+
     return (
       <NodeViewWrapper
         className={styles.embedWrapper}
         data-testid="document-card-embed"
+        style={{ position: "relative" }}
       >
+        {canWrite && id && (
+          <>
+            <DropZone id={id.toString()} side="left" />
+            <DropZone id={id.toString()} side="right" />
+          </>
+        )}
         <Box
+          ref={setDraggableRef}
           className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
             [styles.selected]: selected,
           })}
+          style={{
+            ...draggableStyle,
+            cursor: canWrite ? "move" : "default",
+          }}
+          {...attributes}
+          {...(canWrite ? listeners : {})}
         >
           {card && (
             <Box className={styles.questionHeader}>
