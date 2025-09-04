@@ -23,7 +23,9 @@ tags:
   - analytics
   - customer
 database: analytics-db
-target: customer_analysis_results
+target:
+  type: table
+  name: customer_analysis_results
 source: |
   SELECT customer_id, total_orders, avg_order_value
   FROM customer_metrics
@@ -39,7 +41,9 @@ source: |
 --   - reporting
 --   - sales
 -- database: sales-db
--- target: monthly_sales_report
+-- target:
+--   type: table
+--   name: monthly_sales_report
 -- METABASE_END
 
 SELECT 
@@ -61,7 +65,9 @@ ORDER BY month;")
 #   - etl
 #   - processing
 # database: warehouse-db
-# target: processed_data
+# target:
+#   type: table
+#   name: processed_data
 # METABASE_END
 
 import pandas as pd
@@ -113,7 +119,7 @@ SELECT * FROM incomplete;")
 
 ;;; ---------------------------------------- parse-mbml-file Tests ------------------------------------
 
-(deftest parse-mbml-file-yaml-test
+(deftest ^:parallel parse-mbml-file-yaml-test
   (testing "Parse valid YAML file"
     (mt/with-temp-file [temp-file "transform.yaml"]
       (spit temp-file valid-yaml-content)
@@ -123,7 +129,7 @@ SELECT * FROM incomplete;")
         (is (= "Customer Analysis Transform" (:name result)))
         (is (= "customer-analysis" (:identifier result)))
         (is (= "analytics-db" (:database result)))
-        (is (= "customer_analysis_results" (:target result)))
+        (is (= "customer_analysis_results" (-> result :target :name)))
         (is (vector? (:tags result)))
         (is (= 2 (count (:tags result))))
         (is (contains? result :source)))))
@@ -137,7 +143,7 @@ SELECT * FROM incomplete;")
         (is (= "Sales Report Transform" (:name result)))
         (is (= "sales-report" (:identifier result)))
         (is (= "sales-db" (:database result)))
-        (is (= "monthly_sales_report" (:target result)))
+        (is (= "monthly_sales_report" (-> result :target :name)))
         (is (str/includes? (:source result) "SELECT"))
         (is (str/includes? (:source result) "DATE_TRUNC")))))
 
@@ -150,15 +156,15 @@ SELECT * FROM incomplete;")
         (is (= "Data Processing Transform" (:name result)))
         (is (= "data-processing" (:identifier result)))
         (is (= "warehouse-db" (:database result)))
-        (is (= "processed_data" (:target result)))
+        (is (= "processed_data" (-> result :target :name)))
         (is (str/includes? (:source result) "import pandas"))
         (is (str/includes? (:source result) "def process_customer_data"))))))
 
-(deftest parse-mbml-file-error-handling-test
+(deftest ^:parallel parse-mbml-file-error-handling-test
   (testing "File not found error"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"File does not exist"
+         #"File not found"
          (mbml.core/parse-mbml-file "/nonexistent/path/file.yaml"))))
 
   (testing "Empty file error"
@@ -182,7 +188,7 @@ SELECT * FROM incomplete;")
       (spit temp-file invalid-yaml-missing-required-fields)
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Value does not match schema"
+           #"MBML validation failed"
            (mbml.core/parse-mbml-file temp-file)))))
 
   (testing "Malformed YAML error"
@@ -211,7 +217,7 @@ SELECT * FROM incomplete;")
 
 ;;; ---------------------------------------- parse-mbml-string Tests ----------------------------------
 
-(deftest parse-mbml-string-yaml-test
+(deftest ^:parallel parse-mbml-string-yaml-test
   (testing "Parse valid YAML content with explicit file type"
     (let [result (mbml.core/parse-mbml-string valid-yaml-content :yaml)]
       (is (map? result))
@@ -226,7 +232,7 @@ SELECT * FROM incomplete;")
       (is (= "model/Transform:v1" (:entity result)))
       (is (= "Customer Analysis Transform" (:name result))))))
 
-(deftest parse-mbml-string-sql-test
+(deftest ^:parallel parse-mbml-string-sql-test
   (testing "Parse valid SQL content with front-matter"
     (let [result (mbml.core/parse-mbml-string valid-sql-with-frontmatter :sql)]
       (is (map? result))
@@ -242,7 +248,7 @@ SELECT * FROM incomplete;")
          #"No MBML metadata"
          (mbml.core/parse-mbml-string sql-without-frontmatter :sql)))))
 
-(deftest parse-mbml-string-python-test
+(deftest ^:parallel parse-mbml-string-python-test
   (testing "Parse valid Python content with front-matter"
     (let [result (mbml.core/parse-mbml-string valid-python-with-frontmatter :python)]
       (is (map? result))
@@ -252,17 +258,17 @@ SELECT * FROM incomplete;")
       (is (str/includes? (:source result) "import pandas"))
       (is (not (str/includes? (:source result) "METABASE_BEGIN"))))))
 
-(deftest parse-mbml-string-validation-test
+(deftest ^:parallel parse-mbml-string-validation-test
   (testing "Schema validation with missing required fields"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Value does not match schema"
+         #"MBML validation failed"
          (mbml.core/parse-mbml-string invalid-yaml-missing-required-fields :yaml))))
 
   (testing "Schema validation with invalid entity type"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Value does not match schema"
+         #"MBML validation failed"
          (mbml.core/parse-mbml-string invalid-yaml-wrong-entity-type :yaml))))
 
   (testing "YAML parsing error with malformed content"
@@ -271,7 +277,7 @@ SELECT * FROM incomplete;")
          #"YAML|parse"
          (mbml.core/parse-mbml-string malformed-yaml-content :yaml)))))
 
-(deftest parse-mbml-string-edge-cases-test
+(deftest ^:parallel parse-mbml-string-edge-cases-test
   (testing "Empty content"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -299,7 +305,7 @@ SELECT * FROM incomplete;")
 
 ;;; ---------------------------------------- API Function Edge Cases ----------------------------------
 
-(deftest api-function-parameter-validation-test
+(deftest ^:parallel api-function-parameter-validation-test
   (testing "parse-mbml-file with invalid parameters"
     ;; This should be caught by mu/defn parameter validation
     (is (thrown?
@@ -320,7 +326,7 @@ SELECT * FROM incomplete;")
          clojure.lang.ExceptionInfo
          (mbml.core/parse-mbml-string "" :yaml)))))
 
-(deftest file-type-detection-integration-test
+(deftest ^:parallel file-type-detection-integration-test
   (testing "File type detection integration with different extensions"
     (mt/with-temp-file [yaml-file "test.yml"]
       (spit yaml-file valid-yaml-content)
@@ -342,7 +348,7 @@ SELECT * FROM incomplete;")
       (let [result (mbml.core/parse-mbml-file py-file)]
         (is (= "Data Processing Transform" (:name result)))))))
 
-(deftest error-context-preservation-test
+(deftest ^:parallel error-context-preservation-test
   (testing "Error context includes relevant debugging information"
     (try
       (mbml.core/parse-mbml-file "/nonexistent/file.yaml")
@@ -362,7 +368,7 @@ SELECT * FROM incomplete;")
             (is (or (str/includes? (str data) "YAML")
                     (str/includes? (str data) "parse")))))))))
 
-(deftest comprehensive-integration-test
+(deftest ^:parallel comprehensive-integration-test
   (testing "Complete parse workflow with all supported formats"
     ;; Test the complete workflow from file creation to validated result
     (let [test-cases [{:extension "yaml" :content valid-yaml-content :expected-name "Customer Analysis Transform"}

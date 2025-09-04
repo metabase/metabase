@@ -38,10 +38,11 @@
    (deferred-tru "database must be a non-blank string")))
 
 (mr/def ::target
-  "Schema for target table/view names. Must be a non-blank string."
-  (mu/with-api-error-message
-   ms/NonBlankString
-   (deferred-tru "target must be a non-blank string")))
+  "Schema for target table/view names."
+  [:map
+   [:type [:enum "table"]]
+   [:schema {:optional true} ms/NonBlankString]
+   [:name ms/NonBlankString]])
 
 (mr/def ::description
   "Schema for entity descriptions. Optional string field."

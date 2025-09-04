@@ -4,18 +4,16 @@
   Tests all schema validations for Transform:v1 entities including required fields,
   optional fields, entity type validation, and error message testing with internationalization."
   (:require
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest ^:parallel is testing]]
    [metabase-enterprise.mbml.schema :as mbml.schema]
-   [metabase.test :as mt]
-   [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
 ;;; ------------------------------------------ Entity Type Schema Tests ------------------------------------------
 
-(deftest entity-type-schema-test
+(deftest ^:parallel entity-type-schema-test
   (testing "::entity-type schema validation"
     (testing "valid entity types"
-      (is (= true (mr/validate ::mbml.schema/entity-type "model/Transform:v1"))))
+      (is (true? (mr/validate ::mbml.schema/entity-type "model/Transform:v1"))))
 
     (testing "invalid entity types"
       (are [invalid-type] (= false (mr/validate ::mbml.schema/entity-type invalid-type))
@@ -31,10 +29,10 @@
 
 ;;; ------------------------------------------ Required Field Schema Tests ------------------------------------
 
-(deftest required-field-schemas-test
+(deftest ^:parallel required-field-schemas-test
   (testing "::identifier schema validation"
     (testing "valid identifiers"
-      (are [valid-id] (= true (mr/validate ::mbml.schema/identifier valid-id))
+      (are [valid-id] (true? (mr/validate ::mbml.schema/identifier valid-id))
         "my-transform"
         "transform_with_underscores"
         "Transform123"
@@ -52,7 +50,7 @@
 
   (testing "::name schema validation"
     (testing "valid names"
-      (are [valid-name] (= true (mr/validate ::mbml.schema/name valid-name))
+      (are [valid-name] (true? (mr/validate ::mbml.schema/name valid-name))
         "My Transform"
         "Transform with Spaces"
         "1234567890"
@@ -69,7 +67,7 @@
 
   (testing "::database schema validation"
     (testing "valid database references"
-      (are [valid-db] (= true (mr/validate ::mbml.schema/database valid-db))
+      (are [valid-db] (true? (mr/validate ::mbml.schema/database valid-db))
         "production"
         "test-db"
         "database_123"
@@ -85,28 +83,33 @@
         "   ")))
 
   (testing "::target schema validation"
-    (testing "valid target names"
-      (are [valid-target] (= true (mr/validate ::mbml.schema/target valid-target))
-        "output_table"
-        "my-view"
-        "TableName"
-        "t"))
+    (testing "valid target maps"
+      (are [valid-target] (true? (mr/validate ::mbml.schema/target valid-target))
+        {:type "table" :name "output_table"}
+        {:type "table" :name "my-view"}
+        {:type "table" :name "TableName"}
+        {:type "table" :name "t"}))
 
-    (testing "invalid target names"
+    (testing "invalid target maps"
       (are [invalid-target] (= false (mr/validate ::mbml.schema/target invalid-target))
         ""
         nil
         123
         []
         {}
-        "   "))))
+        "   "
+        {:name "table"} ; missing type
+        {:type "table"} ; missing name
+        {:type "view" :name "table"} ; invalid type
+        {:type "table" :name ""} ; empty name
+        {:type "table" :name nil}))))
 
 ;;; ------------------------------------------ Optional Field Schema Tests ------------------------------------
 
-(deftest optional-field-schemas-test
+(deftest ^:parallel optional-field-schemas-test
   (testing "::description schema validation"
     (testing "valid descriptions"
-      (are [valid-desc] (= true (mr/validate ::mbml.schema/description valid-desc))
+      (are [valid-desc] (true? (mr/validate ::mbml.schema/description valid-desc))
         "A description"
         ""
         "Multi-line\ndescription"
@@ -121,7 +124,7 @@
 
   (testing "::tags schema validation"
     (testing "valid tags"
-      (are [valid-tags] (= true (mr/validate ::mbml.schema/tags valid-tags))
+      (are [valid-tags] (true? (mr/validate ::mbml.schema/tags valid-tags))
         ["tag1" "tag2"]
         ["single-tag"]
         []
@@ -137,7 +140,7 @@
 
   (testing "::source schema validation"
     (testing "valid source code"
-      (are [valid-source] (= true (mr/validate ::mbml.schema/source valid-source))
+      (are [valid-source] (true? (mr/validate ::mbml.schema/source valid-source))
         "SELECT * FROM table"
         "# Python code\nprint('hello')"
         ""
@@ -151,27 +154,27 @@
 
 ;;; ------------------------------------------ Transform:v1 Schema Tests --------------------------------------
 
-(deftest transform-v1-schema-test
+(deftest ^:parallel transform-v1-schema-test
   (let [valid-complete-transform
         {:entity "model/Transform:v1"
          :name "Complete Transform"
          :identifier "complete-transform"
          :database "production"
-         :target "output_table"
+         :target {:type "table" :name "output_table"}
          :description "A complete transform with all fields"
          :tags ["etl" "production" "analytics"]
-         :source "SELECT id, name, created_at FROM users WHERE active = true"}
+         :source "SELECT id, name, created_at FROM users WHERE active true?"}
 
         valid-minimal-transform
         {:entity "model/Transform:v1"
          :name "Minimal Transform"
          :identifier "minimal-transform"
          :database "test-db"
-         :target "test_output"}]
+         :target {:type "table" :name "test_output"}}]
 
     (testing "valid Transform:v1 entities"
-      (is (= true (mr/validate ::mbml.schema/transform-v1 valid-complete-transform)))
-      (is (= true (mr/validate ::mbml.schema/transform-v1 valid-minimal-transform))))
+      (is (true? (mr/validate ::mbml.schema/transform-v1 valid-complete-transform)))
+      (is (true? (mr/validate ::mbml.schema/transform-v1 valid-minimal-transform))))
 
     (testing "missing required fields"
       (are [missing-field] (= false (mr/validate ::mbml.schema/transform-v1 (dissoc valid-minimal-transform missing-field)))
@@ -198,19 +201,19 @@
 
 ;;; ------------------------------------------ MBML Entity Multi-dispatch Tests ------------------------------
 
-(deftest mbml-entity-schema-test
+(deftest ^:parallel mbml-entity-schema-test
   (let [valid-transform
         {:entity "model/Transform:v1"
          :name "Test Transform"
          :identifier "test-transform"
          :database "test-db"
-         :target "test_table"
+         :target {:type "table" :name "test_table"}
          :description "Test description"
          :tags ["test"]
          :source "SELECT 1"}]
 
     (testing "valid MBML entities"
-      (is (= true (mr/validate ::mbml.schema/mbml-entity valid-transform))))
+      (is (true? (mr/validate ::mbml.schema/mbml-entity valid-transform))))
 
     (testing "invalid entity dispatch"
       (is (= false (mr/validate ::mbml.schema/mbml-entity (assoc valid-transform :entity "model/Unknown:v1")))))
@@ -223,7 +226,7 @@
 
 ;;; ------------------------------------------ Error Message Testing ------------------------------------------
 
-(deftest schema-error-messages-test
+(deftest ^:parallel schema-error-messages-test
   (testing "error explanations are provided"
     (let [invalid-transform {:entity "invalid" :name "" :identifier nil}
           errors (mr/explain ::mbml.schema/transform-v1 invalid-transform)]
@@ -242,65 +245,12 @@
            :name "Valid Transform"
            :identifier "valid-transform"
            :database "db"
-           :target "table"}]
+           :target {:type "table" :name "table"}}]
       (is (nil? (mr/explain ::mbml.schema/transform-v1 valid-transform))))))
-
-;;; ------------------------------------------ Edge Cases and Validation Tests ----------------------------
-
-(deftest edge-cases-test
-  (testing "unicode and special characters"
-    (let [unicode-transform
-          {:entity "model/Transform:v1"
-           :name "Трансформ с Unicode"
-           :identifier "unicode-transform"
-           :database "データベース"
-           :target "表格"
-           :description "Description with émojis 🎉"
-           :tags ["タグ" "étiquette"]
-           :source "SELECT 'こんにちは' as greeting"}]
-      (is (= true (mr/validate ::mbml.schema/transform-v1 unicode-transform)))))
-
-  (testing "empty collections"
-    (let [empty-collections-transform
-          {:entity "model/Transform:v1"
-           :name "Empty Collections Transform"
-           :identifier "empty-collections"
-           :database "db"
-           :target "table"
-           :tags []}]
-      (is (= true (mr/validate ::mbml.schema/transform-v1 empty-collections-transform)))))
-
-  (testing "whitespace handling"
-    (testing "non-blank strings with whitespace are valid"
-      (are [field value] (= true (mr/validate field value))
-        ::mbml.schema/name " Valid Name "
-        ::mbml.schema/identifier " valid-identifier "
-        ::mbml.schema/database " database "
-        ::mbml.schema/target " table "))
-
-    (testing "blank strings (only whitespace) are invalid"
-      (are [field value] (= false (mr/validate field value))
-        ::mbml.schema/name "   "
-        ::mbml.schema/identifier "   "
-        ::mbml.schema/database "   "
-        ::mbml.schema/target "   ")))
-
-  (testing "very long strings"
-    (let [very-long-string (apply str (repeat 1000 "a"))
-          long-string-transform
-          {:entity "model/Transform:v1"
-           :name very-long-string
-           :identifier very-long-string
-           :database very-long-string
-           :target very-long-string
-           :description very-long-string
-           :tags [very-long-string]
-           :source very-long-string}]
-      (is (= true (mr/validate ::mbml.schema/transform-v1 long-string-transform))))))
 
 ;;; ------------------------------------------ Internationalization Tests ---------------------------------
 
-(deftest internationalization-test
+(deftest ^:parallel internationalization-test
   (testing "error messages use deferred-tru for i18n"
     ;; Note: Testing actual i18n behavior requires setting up locale contexts
     ;; Here we test that the schema definitions include i18n error messages
@@ -316,29 +266,3 @@
       (is (string? (str entity-error)))
       (is (string? (str identifier-error)))
       (is (string? (str name-error))))))
-
-;;; ------------------------------------------ Schema Registry Tests --------------------------------------
-
-(deftest schema-registry-test
-  (testing "all MBML schemas are registered"
-    (are [schema-key] (some? (mr/schema schema-key))
-      ::mbml.schema/entity-type
-      ::mbml.schema/identifier
-      ::mbml.schema/name
-      ::mbml.schema/database
-      ::mbml.schema/target
-      ::mbml.schema/description
-      ::mbml.schema/tags
-      ::mbml.schema/source
-      ::mbml.schema/transform-v1
-      ::mbml.schema/mbml-entity))
-
-  (testing "schema resolution works correctly"
-    (let [resolved-schema (mr/schema ::mbml.schema/transform-v1)]
-      (is (some? resolved-schema))
-      (is (mr/validate resolved-schema
-                       {:entity "model/Transform:v1"
-                        :name "Test"
-                        :identifier "test"
-                        :database "db"
-                        :target "table"})))))

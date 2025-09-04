@@ -5,13 +5,13 @@
   and validation of internationalized error messages."
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest ^:parallel is testing]]
    [metabase-enterprise.mbml.errors :as mbml.errors]
    [metabase.util.i18n :as i18n]))
 
 ;;; ------------------------------------------ Error Context Tests ------------------------------------------
 
-(deftest error-context-test
+(deftest ^:parallel error-context-test
   (testing "error-context creates structured error maps"
     (let [error (mbml.errors/error-context
                  :yaml-parse-error
@@ -64,7 +64,7 @@
 
 ;;; ---------------------------------------- File Context Tests ------------------------------------------
 
-(deftest format-file-context-test
+(deftest ^:parallel format-file-context-test
   (testing "format-file-context with line numbers"
     (is (= "in file test.yaml at line 42"
            (mbml.errors/format-file-context "test.yaml" 42)))
@@ -85,7 +85,7 @@
 
 ;;; ------------------------------------------ YAML Error Tests ------------------------------------------
 
-(deftest format-yaml-error-test
+(deftest ^:parallel format-yaml-error-test
   (testing "format-yaml-error with file context"
     (let [yaml-content "invalid: yaml: content:\n  - missing\n    quote"
           cause (Exception. "YAML parsing failed")
@@ -128,12 +128,13 @@
 
 ;;; ------------------------------------- Schema Validation Error Tests -------------------------------------
 
-(deftest format-schema-validation-error-test
+(deftest ^:parallel format-schema-validation-error-test
   (testing "format-schema-validation-error with file context"
-    (let [explanation {:errors [{:name "missing required field"}
-                                {:entity "invalid entity type"}]}
+    (let [mock-exception (ex-info "Validation failed"
+                                  {:error {:errors [{:path [:name] :message "missing required field"}
+                                                    {:path [:entity] :message "invalid entity type"}]}})
           invalid-data {:entity "invalid" :database "test"}
-          error (mbml.errors/format-schema-validation-error explanation invalid-data "transform.yaml")]
+          error (mbml.errors/format-schema-validation-error mock-exception invalid-data "transform.yaml")]
 
       (is (instance? clojure.lang.ExceptionInfo error))
 
@@ -141,14 +142,15 @@
         (is (= :schema-validation (:type data)))
         (is (= "transform.yaml" (:file data)))
         (is (= invalid-data (get-in data [:data :failed-data])))
-        (is (= (:errors explanation) (get-in data [:data :raw-errors])))
+        (is (= mock-exception (ex-cause error)))
         (is (vector? (:suggestions data)))
         (is (some #(re-find #"required fields" %) (:suggestions data))))))
 
   (testing "format-schema-validation-error without file context"
-    (let [explanation {:errors [{:path [:identifier] :message "blank identifier"}]}
+    (let [mock-exception (ex-info "Validation failed"
+                                  {:error {:errors [{:path [:identifier] :message "blank identifier"}]}})
           invalid-data {:name "test"}
-          error (mbml.errors/format-schema-validation-error explanation invalid-data)]
+          error (mbml.errors/format-schema-validation-error mock-exception invalid-data)]
 
       (let [data (ex-data error)]
         (is (= :schema-validation (:type data)))
@@ -156,7 +158,8 @@
         (is (= invalid-data (get-in data [:data :failed-data]))))))
 
   (testing "format-schema-validation-error suggestions are comprehensive"
-    (let [error (mbml.errors/format-schema-validation-error {:errors []} {})]
+    (let [mock-exception (ex-info "Validation failed" {:error {:errors []}})
+          error (mbml.errors/format-schema-validation-error mock-exception {})]
       (let [suggestions (:suggestions (ex-data error))]
         (is (>= (count suggestions) 3))
         (is (some #(re-find #"entity.*identifier.*database.*target" %) suggestions))
@@ -164,7 +167,7 @@
 
 ;;; --------------------------------------- Front-matter Error Tests ---------------------------------------
 
-(deftest format-frontmatter-error-test
+(deftest ^:parallel format-frontmatter-error-test
   (testing "format-frontmatter-error for missing markers"
     (let [content "SELECT * FROM table -- no METABASE markers"
           error (mbml.errors/format-frontmatter-error :missing-markers content "query.sql")]
@@ -211,7 +214,7 @@
 
 ;;; ---------------------------------------- File System Error Tests ----------------------------------------
 
-(deftest format-file-error-test
+(deftest ^:parallel format-file-error-test
   (testing "format-file-error for file not found"
     (let [cause (Exception. "File does not exist")
           error (mbml.errors/format-file-error :file-not-found "missing.yaml" cause)]
@@ -256,7 +259,7 @@
 
 ;;; ------------------------------------- Unsupported File Error Tests ------------------------------------
 
-(deftest format-unsupported-file-error-test
+(deftest ^:parallel format-unsupported-file-error-test
   (testing "format-unsupported-file-error basic functionality"
     (let [error (mbml.errors/format-unsupported-file-error "document.txt")
           data (ex-data error)]
@@ -270,14 +273,14 @@
     (let [error (mbml.errors/format-unsupported-file-error "bad.exe")]
       (is (re-find #"Unsupported file format.*bad\.exe" (.getMessage error)))))
 
-  (testing "format-unsupported-file-error with nil detected type"
+  (testing "format-unsupported-file-error with various file types"
     (let [error (mbml.errors/format-unsupported-file-error "unknown")
           data (ex-data error)]
       (is (= "unknown" (:file data))))))
 
 ;;; -------------------------------------- Internationalization Tests ------------------------------------
 
-(deftest internationalization-test
+(deftest ^:parallel internationalization-test
   (testing "error messages use deferred-tru"
     ; Test that error type definitions use deferred-tru
     (is (every? i18n/localized-string? (vals mbml.errors/error-types))))
@@ -294,7 +297,7 @@
       (is (string? (.getMessage error)))))
 
   (testing "suggestions are localized"
-    (let [error (mbml.errors/format-schema-validation-error {:errors []} {} "file.yaml")
+    (let [error (mbml.errors/format-schema-validation-error (ex-info "test message" {:error {}}) "file.yaml")
           suggestions (:suggestions (ex-data error))]
       (is (every? string? suggestions))
       (is (every? #(> (count %) 0) suggestions))))
@@ -310,10 +313,15 @@
 
 ;;; ---------------------------------------- Error Types Tests ----------------------------------------
 
-(deftest error-types-test
+(deftest ^:parallel error-types-test
   (testing "error-types map contains expected keys"
-    (let [expected-types #{:file-not-found :unsupported-format :yaml-parse-error
-                           :schema-validation :frontmatter-error :io-error}]
+    (let [expected-types #{:file-not-found
+                           :unsupported-format
+                           :yaml-parse-error
+                           :empty-file-error
+                           :schema-validation
+                           :frontmatter-error
+                           :io-error}]
       (is (= expected-types (set (keys mbml.errors/error-types))))))
 
   (testing "error-types values are localized strings"

@@ -15,6 +15,7 @@
 (def ^:const error-types
   "Map of error type keywords to human-readable descriptions."
   {:file-not-found (deferred-tru "File not found")
+   :empty-file-error (deferred-tru "File is empty")
    :unsupported-format (deferred-tru "Unsupported file format")
    :yaml-parse-error (deferred-tru "YAML parsing error")
    :schema-validation (deferred-tru "Schema validation error")
@@ -35,14 +36,12 @@
     ex-info object following Metabase error patterns"
   [type message & [opts]]
   (let [opts-map (or opts {})
-        ; Convert deferred-tru to string for ex-info
         msg-str (if (string? message) message (str message))
         ; Also convert context and suggestions to strings
         context-str (when-let [ctx (:context opts-map)]
                       (if (string? ctx) ctx (str ctx)))
         suggestions-str (when-let [suggs (:suggestions opts-map)]
                           (mapv #(if (string? %) % (str %)) suggs))]
-    (prn (:cause opts-map))
     (ex-info msg-str
              (merge
               {:type type
@@ -103,27 +102,25 @@
   "Format Malli schema validation errors using metabase.util.malli.humanize.
 
   Args:
-    explanation: Malli explanation object from mr/explain
-    data: The data that failed validation
-    file: Optional file context
+    exception: Malli exception
+    data: data that failed to validate
 
   Returns:
     ex-info object with humanized validation messages"
-  [explanation data & [file]]
-  (let [humanized (mu.humanize/humanize explanation)]
-    (error-context
-     :schema-validation
-     (if file
-       (deferred-tru "MBML validation failed {0}" (format-file-context file))
-       (deferred-tru "MBML validation failed"))
-     {:file file
-      :data {:failed-data data
-             :explanation humanized
-             :raw-errors (:errors explanation)}
-      :context (deferred-tru "The MBML entity structure does not match required schema")
-      :suggestions [(deferred-tru "Ensure all required fields are present: entity, name, identifier, database, target")
-                    (deferred-tru "Check that entity type is a supported value (e.g., '''model/Transform:v1''')")
-                    (deferred-tru "Verify field values are the correct type (strings, arrays, etc.)")]})))
+  [exception data & [file]]
+  (error-context
+   :schema-validation
+   (if file
+     (deferred-tru "MBML validation failed {0}" (format-file-context file))
+     (deferred-tru "MBML validation failed"))
+   {:file file
+    :cause exception
+    :data (merge {:failed-data data}
+                 (-> exception ex-data :error))
+    :context (deferred-tru "The MBML entity structure does not match required schema")
+    :suggestions [(deferred-tru "Ensure all required fields are present: entity, name, identifier, database, target")
+                  (deferred-tru "Check that entity type is a supported value (e.g., '''model/Transform:v1''')")
+                  (deferred-tru "Verify field values are the correct type (strings, arrays, etc.)")]}))
 
 ;;; ---------------------------------------- Front-matter Error Handling ----------------------------------------
 

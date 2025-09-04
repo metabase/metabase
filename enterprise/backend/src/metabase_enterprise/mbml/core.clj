@@ -57,7 +57,8 @@
    [metabase-enterprise.mbml.errors :as mbml.errors]
    [metabase-enterprise.mbml.parser :as parser]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
  ;;; ------------------------------------------ Main Parser API -----------------------------------------------
 
@@ -114,6 +115,8 @@
 
     (let [content (slurp file-path)
           file-type (parser/detect-file-type file-path)]
+      (when (= :unknown file-type)
+        (throw (mbml.errors/format-unsupported-file-error file-path)))
       (when (str/blank? content)
         (throw (mbml.errors/format-file-error :empty-file-error file-path nil)))
 
@@ -123,3 +126,27 @@
       (throw (mbml.errors/format-file-error :file-not-found file-path e)))
     (catch java.io.IOException e
       (throw (mbml.errors/format-file-error :file-io-oerror file-path e)))))
+
+(def ^:private entity-type->model
+  {"model/Transform:v1" :model/Transform})
+
+(defn mbml-file->model
+  "Take an mbml file and write it to the appdb
+
+  Args:
+    file-path: Path to MBML file (string)
+
+  Returns:
+    A toucan instance
+
+  Throws :
+    Exception for file reading errors, parse errors, or validation errors
+
+  Example:
+    (mbml-file->model \"/path/to/transform.yaml\")
+    (mbml-file->model \"/path/to/transform.sql\")"
+  [file-path]
+  (let [{:keys [entity] :as loaded} (parse-mbml-file file-path)]
+    ;; TODO(edpaget): for more copmlex models this will need to apply some kind of transformation
+    ;; before writing to the database
+    (t2/insert-returning-instance! (entity-type->model entity) loaded)))

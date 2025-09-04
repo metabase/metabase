@@ -15,6 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO(edpaget): refactor these to extract shared code; make sure they raise errors
 (mu/defn extract-sql-frontmatter :- [:map
                                      [:metadata [:maybe :string]]
                                      [:source [:maybe :string]]]
@@ -36,12 +37,12 @@
         begin-match (re-find begin-pattern content)]
     (if-not begin-match
       {:metadata nil :source content}
-      (let [after-begin-pos (+ (.indexOf content begin-match) (count begin-match))
+      (let [after-begin-pos (+ (.indexOf ^String content ^String begin-match) (count begin-match))
             after-begin (subs content after-begin-pos)
             end-match (re-find end-pattern after-begin)]
         (if-not end-match
           {:metadata nil :source content}
-          (let [end-pos (.indexOf after-begin end-match)
+          (let [end-pos (.indexOf ^String after-begin ^String end-match)
                 frontmatter-raw (subs after-begin 0 end-pos)
                 remaining-source (subs after-begin (+ end-pos (count end-match)))
                 ;; Strip comment prefixes (-- ) from each line
@@ -76,7 +77,7 @@
         begin-match (re-find begin-pattern content)]
     (if-not begin-match
       {:metadata nil :source content}
-      (let [after-begin-pos (+ (.indexOf ^String content begin-match) (count begin-match))
+      (let [after-begin-pos (+ (.indexOf ^String content ^String begin-match) (count begin-match))
             ^String after-begin (subs content after-begin-pos)
             ^String end-match (re-find end-pattern after-begin)]
         (if-not end-match
@@ -97,6 +98,7 @@
 
  ;; Define the file type schema  
 (def FileType
+  "File types we can operate on"
   [:enum :yaml :sql :python :unknown])
 
 (mu/defn detect-file-type :- FileType
@@ -117,7 +119,7 @@
             (str/ends-with? lower-name ".yaml")) :yaml
         (str/ends-with? lower-name ".sql") :sql
         (str/ends-with? lower-name ".py") :python
-        :else (mbml.errors/format-unsupported-file-error filename)))
+        :else :unknown))
     :unknown))
 
 (mu/defn extract-content :- [:map
@@ -187,8 +189,10 @@
     Exception with validation errors if data doesn't match MBML schema"
   [parsed-data :- :map
    source-code :- [:maybe :string]]
-  (if (mr/validate ::mbml.schema/mbml-entity parsed-data)
-    (if source-code
-      (assoc parsed-data :source source-code)
-      parsed-data)
-    (throw (mbml.errors/format-schema-validation-error (mr/explain ::mbml.schema/mbml-entity parsed-data) parsed-data))))
+  (try
+    (let [validated-data (mu/validate-throw ::mbml.schema/mbml-entity parsed-data)]
+      (if source-code
+        (assoc validated-data :source source-code)
+        validated-data))
+    (catch Exception e
+      (throw (mbml.errors/format-schema-validation-error e parsed-data)))))

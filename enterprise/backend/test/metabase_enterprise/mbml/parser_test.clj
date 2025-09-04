@@ -13,8 +13,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.mbml.parser :as mbml.parser]
-   [metabase.test :as mt]))
+   [metabase-enterprise.mbml.parser :as mbml.parser]))
 
 ;;; ------------------------------------------ Test Data --------------------------------------------------
 
@@ -25,7 +24,9 @@
 -- identifier: customer_sales_transform
 -- description: Transform customer data with sales metrics
 -- database: analytics_db
--- target: customer_sales_view
+-- target:
+--   name: customer_sales_view
+--   type: table
 -- tags:
 --   - sales
 --   - customer
@@ -46,7 +47,9 @@ GROUP BY c.customer_id, c.customer_name;")
 # identifier: data_processing_transform
 # description: Python-based data transformation
 # database: warehouse_db
-# target: processed_data
+# target:
+#   name: processed_data
+#   type: table
 # tags:
 #   - etl
 #   - pipeline
@@ -90,7 +93,9 @@ print('Missing end marker')")
     -- name: Indented Transform
     -- identifier: indented_transform
     -- database: test_db
-    -- target: indented_view
+    -- target:
+    --   type: table
+    --   name: indented_view
     -- METABASE_END
 
 SELECT * FROM indented_table;")
@@ -101,7 +106,9 @@ SELECT * FROM indented_table;")
     # name: Indented Transform
     # identifier: indented_transform
     # database: test_db
-    # target: indented_view
+    # target:
+    #   type: table
+    #   name: indented_view
     # METABASE_END
 
 print('Indented Python code')")
@@ -112,7 +119,9 @@ name: YAML Transform
 identifier: yaml_transform
 description: Pure YAML configuration
 database: yaml_db
-target: yaml_view
+target:
+  type: table
+  name: yaml_view
 tags:
   - yaml
   - config")
@@ -130,7 +139,7 @@ database: test_db")
 
 ;;; ---------------------------------- extract-sql-frontmatter Tests ------------------------------------
 
-(deftest extract-sql-frontmatter-test
+(deftest ^:parallel extract-sql-frontmatter-test
   (testing "Extracts front-matter from valid SQL file"
     (let [result (mbml.parser/extract-sql-frontmatter valid-sql-with-frontmatter)]
       (is (map? result))
@@ -170,7 +179,7 @@ database: test_db")
       (is (str/includes? metadata "entity:"))
       (is (str/includes? metadata "tags:\n  - sales\n  - customer")))))
 
-(deftest extract-sql-frontmatter-edge-cases-test
+(deftest ^:parallel extract-sql-frontmatter-edge-cases-test
   (testing "Handles empty content"
     (is (thrown? Exception (mbml.parser/extract-sql-frontmatter empty-content))))
 
@@ -191,7 +200,7 @@ database: test_db")
 
 ;;; --------------------------------- extract-python-frontmatter Tests ---------------------------------
 
-(deftest extract-python-frontmatter-test
+(deftest ^:parallel extract-python-frontmatter-test
   (testing "Extracts front-matter from valid Python file"
     (let [result (mbml.parser/extract-python-frontmatter valid-python-with-frontmatter)]
       (is (map? result))
@@ -231,7 +240,7 @@ database: test_db")
       (is (str/includes? metadata "entity:"))
       (is (str/includes? metadata "tags:\n  - etl\n  - pipeline")))))
 
-(deftest extract-python-frontmatter-edge-cases-test
+(deftest ^:parallel extract-python-frontmatter-edge-cases-test
   (testing "Handles empty content"
     (is (thrown? Exception (mbml.parser/extract-python-frontmatter empty-content))))
 
@@ -252,7 +261,7 @@ database: test_db")
 
 ;;; ------------------------------------ detect-file-type Tests --------------------------------------
 
-(deftest detect-file-type-test
+(deftest ^:parallel detect-file-type-test
   (testing "Detects YAML files correctly"
     (is (= :yaml (mbml.parser/detect-file-type "config.yaml")))
     (is (= :yaml (mbml.parser/detect-file-type "data.yml")))
@@ -284,7 +293,7 @@ database: test_db")
 
 ;;; ------------------------------------- extract-content Tests -------------------------------------
 
-(deftest extract-content-test
+(deftest ^:parallel extract-content-test
   (testing "Routes YAML files correctly"
     (let [result (mbml.parser/extract-content valid-yaml-content :yaml)]
       (is (map? result))
@@ -325,7 +334,7 @@ database: test_db")
       (is (nil? (:metadata result)))
       (is (= python-without-frontmatter (:source result))))))
 
-(deftest extract-content-edge-cases-test
+(deftest ^:parallel extract-content-edge-cases-test
   (testing "Handles empty content"
     (is (thrown? Exception (mbml.parser/extract-content empty-content :yaml))))
 
@@ -334,7 +343,7 @@ database: test_db")
 
 ;;; --------------------------------------- parse-yaml Tests ----------------------------------------
 
-(deftest parse-yaml-test
+(deftest ^:parallel parse-yaml-test
   (testing "Parses valid YAML content"
     (let [result (mbml.parser/parse-yaml valid-yaml-content)]
       (is (map? result))
@@ -369,7 +378,7 @@ database: test_db")
       (is (= "Transform with special chars: @#$%" (:name result)))
       (is (str/includes? (:description result) "Multi-line")))))
 
-(deftest parse-yaml-error-handling-test
+(deftest ^:parallel parse-yaml-error-handling-test
   (testing "Provides structured error for YAML parse failure"
     (try
       (mbml.parser/parse-yaml malformed-yaml-content)
@@ -390,20 +399,20 @@ database: test_db")
 
 ;;; ------------------------------------- validate-mbml Tests --------------------------------------
 
-(deftest validate-mbml-test
+(deftest ^:parallel validate-mbml-test
   (testing "Validates valid MBML entity without source code"
     (let [valid-data {:entity "model/Transform:v1"
                       :name "Test Transform"
                       :identifier "test_transform"
                       :database "test_db"
-                      :target "test_view"}
+                      :target {:type "table" :name "test_view"}}
           result (mbml.parser/validate-mbml valid-data nil)]
       (is (map? result))
       (is (= "model/Transform:v1" (:entity result)))
       (is (= "Test Transform" (:name result)))
       (is (= "test_transform" (:identifier result)))
       (is (= "test_db" (:database result)))
-      (is (= "test_view" (:target result)))
+      (is (= {:type "table" :name "test_view"} (:target result)))
       (is (not (contains? result :source)))))
 
   (testing "Validates valid MBML entity with source code"
@@ -411,7 +420,7 @@ database: test_db")
                       :name "Test Transform"
                       :identifier "test_transform"
                       :database "test_db"
-                      :target "test_view"}
+                      :target {:type "table" :name "test_view"}}
           source-code "SELECT * FROM test_table;"
           result (mbml.parser/validate-mbml valid-data source-code)]
       (is (map? result))
@@ -422,7 +431,7 @@ database: test_db")
                       :name "Complete Transform"
                       :identifier "complete_transform"
                       :database "test_db"
-                      :target "test_view"
+                      :target {:type "table" :name "test_view"}
                       :description "A complete transform with all fields"
                       :tags ["test" "complete"]}
           result (mbml.parser/validate-mbml valid-data nil)]
@@ -441,7 +450,7 @@ database: test_db")
                         :name "Invalid Transform"
                         :identifier "invalid_transform"
                         :database "test_db"
-                        :target "test_view"}]
+                        :target {:type "table" :name "test_view"}}]
       (is (thrown? Exception (mbml.parser/validate-mbml invalid-data nil)))))
 
   (testing "Throws exception for invalid field types"
@@ -449,10 +458,10 @@ database: test_db")
                         :name 123 ; should be string
                         :identifier "test_transform"
                         :database "test_db"
-                        :target "test_view"}]
+                        :target {:type "table" :name "test_view"}}]
       (is (thrown? Exception (mbml.parser/validate-mbml invalid-data nil))))))
 
-(deftest validate-mbml-error-handling-test
+(deftest ^:parallel validate-mbml-error-handling-test
   (testing "Provides structured error for validation failure"
     (try
       (mbml.parser/validate-mbml {:entity "invalid"} nil)
@@ -466,24 +475,24 @@ database: test_db")
                        :name "Test"
                        :identifier "test"
                        :database "db"
-                       :target "view"}
+                       :target {:type "table" :name "view"}}
                       {:entity "model/Transform:v1"
                        :name "" ; empty name
                        :identifier "test"
                        :database "db"
-                       :target "view"}
+                       :target {:type "table" :name "view"}}
                       {:entity "model/Transform:v1"
                        :name "Test"
                        :identifier "" ; empty identifier
                        :database "db"
-                       :target "view"}]]
+                       :target {:type "table" :name "view"}}]]
       (doseq [invalid-data test-cases]
         (is (thrown? Exception (mbml.parser/validate-mbml invalid-data nil))
             (str "Should throw exception for: " invalid-data))))))
 
 ;;; ----------------------------------- Frontmatter Edge Cases -----------------------------------
 
-(deftest frontmatter-edge-cases-test
+(deftest ^:parallel frontmatter-edge-cases-test
   (testing "Handles multiple METABASE blocks in SQL (uses first valid one)"
     (let [content "-- METABASE_BEGIN
 -- entity: model/Transform:v1
@@ -541,7 +550,7 @@ SELECT * FROM test;"
         (let [result (mbml.parser/extract-sql-frontmatter (str content "\nSELECT 1;"))]
           (is (string? (:metadata result)) (str "Should extract metadata from: " content)))))))
 
-(deftest unicode-content-test
+(deftest ^:parallel unicode-content-test
   (testing "Handles unicode characters in SQL frontmatter"
     (let [content "-- METABASE_BEGIN
 -- entity: model/Transform:v1
