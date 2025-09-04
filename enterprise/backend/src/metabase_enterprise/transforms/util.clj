@@ -9,6 +9,7 @@
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDateTime OffsetDateTime ZonedDateTime ZoneId)
+   (java.time.format DateTimeFormatter)
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
@@ -106,10 +107,15 @@
     (throw (ex-info (str "Cannot convert timestamp " t " of type " (type t) " to a ZonedDateTime")
                     {:timestamp t}))))
 
+(defn format-iso-timestamp
+  "Format a timestamp as an ISO-8601 string."
+  [t]
+  (.format ^ZonedDateTime t DateTimeFormatter/ISO_OFFSET_DATE_TIME))
+
 (defn local-timestamp-string
   "Convert the timestamp t to a string encoding the it in the system timezone."
   [t]
-  (-> t local-timestamp str))
+  (-> t local-timestamp format-iso-timestamp))
 
 (defn localize-run-timestamps
   "Localize the timestamps of a `run`."
