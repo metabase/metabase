@@ -31,15 +31,23 @@
   [_]
   #{:snippets})
 
-(defn- add-template-tags [snippet]
-  (assoc snippet :template_tags
-         (-> (:content snippet)
-             lib/recognize-template-tags
-             (update-vals (fn [{:keys [type snippet-name] :as tag}]
-                            (cond-> tag
-                              (= type :snippet) (assoc :snippet-id
-                                                       (t2/select-one-fn :id :model/NativeQuerySnippet
-                                                                         :name snippet-name))))))))
+(defn- add-template-tags [{old-tags :template_tags :as snippet}]
+  (let [snippet-tag? (fn [tag] (= (:type tag) :snippet))
+        name->old-tag (into {} (comp (map val)
+                                     (filter snippet-tag?)
+                                     (map (juxt :snippet-name identity)))
+                            old-tags)
+        new-tags (lib/recognize-template-tags (:content snippet))
+        set-snippet-id (fn [{:keys [snippet-name] :as tag}]
+                         (->> (t2/select-one-fn :id :model/NativeQuerySnippet :name snippet-name)
+                              (assoc tag :snippet-id)))]
+    (->> (fn [tag]
+           (if-not (snippet-tag? tag)
+             tag
+             (or (name->old-tag (:snippet-name tag))
+                 (set-snippet-id tag))))
+         (update-vals new-tags)
+         (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
