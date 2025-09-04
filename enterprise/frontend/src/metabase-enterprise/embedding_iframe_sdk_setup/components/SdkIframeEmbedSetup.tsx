@@ -5,7 +5,6 @@ import { t } from "ttag";
 import "react-resizable/css/styles.css";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { useUpdateSettingsMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Button, Card, Flex, Group, Image, Stack } from "metabase/ui";
 
@@ -15,14 +14,11 @@ import { useSdkIframeEmbedNavigation } from "../hooks";
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
 import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
-import { SimpleEmbedTermsCard } from "./SimpleEmbedTermsCard";
 
 const SdkIframeEmbedSetupContent = () => {
   const { currentStep } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
-  const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
-  const [updateSettings] = useUpdateSettingsMutation();
 
   const {
     handleNext,
@@ -32,11 +28,6 @@ const SdkIframeEmbedSetupContent = () => {
     isLastStep,
     StepContent,
   } = useSdkIframeEmbedNavigation();
-
-  // The embed disclaimer is only shown once per instance.
-  // If an admin accepts the terms, we never show it again.
-  const acceptSimpleEmbedTerms = () =>
-    updateSettings({ "show-simple-embed-terms": false });
 
   return (
     <Box className={S.Container}>
@@ -81,10 +72,6 @@ const SdkIframeEmbedSetupContent = () => {
           )}
         </Stack>
       </Box>
-
-      {showSimpleEmbedTerms && (
-        <SimpleEmbedTermsCard onAccept={acceptSimpleEmbedTerms} />
-      )}
     </Box>
   );
 };
