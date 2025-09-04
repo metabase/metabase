@@ -23,7 +23,7 @@
    (software.amazon.awssdk.auth.credentials DefaultCredentialsProvider)
    (software.amazon.awssdk.core.sync RequestBody)
    (software.amazon.awssdk.regions Region)
-   (software.amazon.awssdk.services.s3 S3Client S3Configuration)
+   (software.amazon.awssdk.services.s3 S3Client S3ClientBuilder S3Configuration)
    (software.amazon.awssdk.services.s3.model DeleteObjectRequest GetObjectRequest NoSuchKeyException PutObjectRequest)
    (software.amazon.awssdk.services.s3.presigner S3Presigner)
    (software.amazon.awssdk.services.s3.presigner.model GetObjectPresignRequest PresignedGetObjectRequest PresignedPutObjectRequest PutObjectPresignRequest)))
@@ -91,7 +91,7 @@
                         cancel-chan)
     @manifest-atom))
 
-(defn- maybe-with-endpoint-s3-client [builder endpoint]
+(defn- maybe-with-endpoint-s3-client [^S3ClientBuilder builder endpoint]
   (let [region (transforms.settings/python-storage-s-3-region)]
     (case [(some? endpoint) (some? region)]
       [true true]   (doto builder
@@ -101,7 +101,7 @@
       [false true]  (.region builder (Region/of region))
       [false false] builder)))
 
-(defn- maybe-with-endpoint-s3-presigner [builder endpoint]
+(defn- maybe-with-endpoint-s3-presigner [^S3ClientBuilder builder endpoint]
   (let [region (transforms.settings/python-storage-s-3-region)]
     (case [(some? endpoint) (some? region)]
       [true true]   (doto builder
@@ -142,11 +142,11 @@
       (.key key)
       (.build)))
 
-(def ^:private presigned-url-duration
+(def ^:private ^Duration presigned-url-duration
   "Default duration for presigned URLs"
   (Duration/ofHours 1))
 
-(defn- maybe-with-credentials-s3-client [builder]
+(defn- maybe-with-credentials-s3-client [^S3ClientBuilder builder]
   (let [access-key (transforms.settings/python-storage-s-3-access-key)
         secret-key (transforms.settings/python-storage-s-3-secret-key)]
     (if (or access-key secret-key)
@@ -160,7 +160,7 @@
                                (AwsBasicCredentials/create access-key secret-key))))
       (.credentialsProvider builder (DefaultCredentialsProvider/create)))))
 
-(defn- maybe-with-credentials-s3-presigner [builder]
+(defn- maybe-with-credentials-s3-presigner [^S3ClientBuilder builder]
   (let [access-key (transforms.settings/python-storage-s-3-access-key)
         secret-key (transforms.settings/python-storage-s-3-secret-key)]
     (if (or access-key secret-key)
@@ -178,7 +178,7 @@
 (defn- create-s3-client
   "Create S3 client for host operations (uploads, reads)"
   ^S3Client []
-  (let [builder (S3Client/builder)]
+  (let [^S3ClientBuilder builder (S3Client/builder)]
     (doto builder
       (maybe-with-endpoint-s3-client (transforms.settings/python-storage-s-3-endpoint))
       maybe-with-credentials-s3-client
