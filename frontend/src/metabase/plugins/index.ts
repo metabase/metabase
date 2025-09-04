@@ -854,4 +854,5 @@ export const PLUGIN_GIT_SYNC = {
   LibraryNav: PluginPlaceholder,
   GitSyncSettings: NotFoundPlaceholder,
   GitChangeList: NotFoundPlaceholder,
+  ViewLibraryButton: PluginPlaceholder,
 };
