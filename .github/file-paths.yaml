@@ -42,7 +42,7 @@ frontend_sources: &frontend_sources
   - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
 
 frontend_embedding_sources:
-  - "enterprise/frontend/{embedding,embedding-*}/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+  - "enterprise/frontend/src/{embedding,embedding-*}/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
   - "enterprise/frontend/src/metabase-enterprise/{embedding,embedding-*}**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
 
 frontend_embedding_sdk_sources:
