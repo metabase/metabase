@@ -194,8 +194,6 @@
                                 "\n"
                                 "def transform(sample_table):\n"
                                 "    df = sample_table.copy()\n"
-                                "    df['scheduled_for'] = pd.to_datetime(df['scheduled_for'])\n"
-                                "    df['updated_at'] = pd.to_datetime(df['updated_at'])\n"
                                 "    return df")
             result (execute {:code transform-code
                              :tables {"sample_table" (mt/id :sample_table)}})
