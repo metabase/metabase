@@ -280,9 +280,9 @@
                       col
                       (when-not remove-join-alias?
                         (when-let [previous-join-alias (:lib/original-join-alias col)]
-                          {:metabase.lib.join/join-alias previous-join-alias})))
+                          {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
                      lib.ref/ref))))
-          ;; legacy field refs should never have `:effective-type`
+          ;; broken legacy field refs in results medtadata should never have `:effective-type`
           (lib.options/update-options dissoc :effective-type)
           lib.convert/->legacy-MBQL
           (->> (fe-friendly-expression-ref col))))))

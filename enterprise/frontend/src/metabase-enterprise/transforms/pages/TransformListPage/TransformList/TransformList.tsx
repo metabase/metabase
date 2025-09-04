@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { Card } from "metabase/ui";
 import {
   useListTransformTagsQuery,
@@ -15,7 +16,6 @@ import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getTransformUrl } from "../../../urls";
-import { parseLocalTimestamp } from "../../../utils";
 
 import S from "./TransformList.module.css";
 
@@ -67,7 +67,7 @@ export function TransformList() {
             <td>{transform.target.name}</td>
             <td className={S.nowrap}>
               {transform.last_run?.end_time
-                ? parseLocalTimestamp(transform.last_run.end_time).format("lll")
+                ? parseTimestamp(transform.last_run.end_time).format("lll")
                 : null}
             </td>
             <td className={S.nowrap}>
@@ -77,9 +77,7 @@ export function TransformList() {
                   message={transform.last_run.message}
                   endTime={
                     transform.last_run.end_time != null
-                      ? parseLocalTimestamp(
-                          transform.last_run.end_time,
-                        ).toDate()
+                      ? parseTimestamp(transform.last_run.end_time).toDate()
                       : null
                   }
                 />

@@ -55,6 +55,25 @@
         (testing "Returns 404 for non-existent job"
           (mt/user-http-request :crowberto :get 404 "ee/transform-job/999999"))))))
 
+(deftest get-job-transforms-test
+  (testing "GET /api/ee/transform-job/:id/transforms"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temp [:model/Transform {transform1-id :id} {:name "tr1"}
+                     :model/Transform {transform2-id :id} {:name "tr2"}
+                     :model/Transform _transform3 {}
+                     :model/TransformTag {tag-id :id} {}
+                     :model/TransformTransformTag _ {:transform_id transform1-id :tag_id tag-id :position 0}
+                     :model/TransformTransformTag _ {:transform_id transform2-id :tag_id tag-id :position 0}
+                     :model/TransformJob {job-id :id} {}
+                     :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 0}]
+        (testing "Returns the transforms of the job"
+          (let [response (mt/user-http-request :crowberto :get 200 (str "ee/transform-job/" job-id "/transforms"))]
+            (is (=? [{:id transform1-id, :name "tr1"} {:id transform2-id, :name "tr2"}]
+                    (sort-by :id response)))))
+
+        (testing "Returns 404 for non-existent job"
+          (mt/user-http-request :crowberto :get 404 "ee/transform-job/999999/transforms"))))))
+
 (deftest list-jobs-test
   (testing "GET /api/ee/transform-job"
     (mt/with-premium-features #{:transforms}

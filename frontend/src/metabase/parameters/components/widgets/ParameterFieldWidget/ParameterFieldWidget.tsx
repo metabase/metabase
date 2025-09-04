@@ -70,7 +70,7 @@ export function ParameterFieldWidget({
 
     if (isRequired && isEmpty) {
       if (hasValue(parameter.default)) {
-        setValue(parameter.default);
+        setValue(parameter.default as RowValue[]);
       }
       return;
     }
