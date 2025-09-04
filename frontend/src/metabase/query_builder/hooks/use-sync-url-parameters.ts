@@ -14,8 +14,8 @@ export function useSyncUrlParameters({
   parameters,
   enabled = true,
 }: UseSyncUrlParametersProps) {
-  const queryParams = useMemo(
-    () => getParameterValuesBySlug(parameters),
+  const searchString = useMemo(
+    () => buildSearchString(getParameterValuesBySlug(parameters)),
     [parameters],
   );
 
@@ -30,7 +30,6 @@ export function useSyncUrlParameters({
       return;
     }
 
-    const searchString = buildSearchString(queryParams);
     if (searchString !== window.location.search) {
       window.history.replaceState(
         null,
@@ -38,7 +37,7 @@ export function useSyncUrlParameters({
         window.location.pathname + searchString + window.location.hash,
       );
     }
-  }, [enabled, queryParams]);
+  }, [enabled, searchString]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
