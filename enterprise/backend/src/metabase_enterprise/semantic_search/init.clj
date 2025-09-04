@@ -3,4 +3,5 @@
    [metabase-enterprise.semantic-search.settings]
    [metabase-enterprise.semantic-search.task.index-cleanup]
    [metabase-enterprise.semantic-search.task.index-repair]
-   [metabase-enterprise.semantic-search.task.indexer]))
+   [metabase-enterprise.semantic-search.task.indexer]
+   [metabase-enterprise.semantic-search.task.metric-collector]))
