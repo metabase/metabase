@@ -3,12 +3,12 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { Group } from "metabase/ui";
-import { TimeFilterWidget } from "metabase-enterprise/transforms/pages/RunListPage/FilterList/TimeFilterWidget";
 import { getJobListUrl } from "metabase-enterprise/transforms/urls";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 
+import { TagFilterWidget } from "../../../components/TagFilterWidget";
+import { TimeFilterWidget } from "../../../components/TimeFilterWidget";
 import type { JobListParams } from "../../../types";
-import { TagFilterWidget } from "../../RunListPage/FilterList/TagFilterWidget";
 
 type FilterListProps = {
   tags: TransformTag[];
