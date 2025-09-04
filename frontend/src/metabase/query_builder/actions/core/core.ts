@@ -44,7 +44,11 @@ import {
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../selectors";
-import { clearQueryResult, runQuestionQuery } from "../querying";
+import {
+  clearQueryResult,
+  runDirtyQuestionQuery,
+  runQuestionQuery,
+} from "../querying";
 import { onCloseSidebars } from "../ui";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
@@ -121,7 +125,7 @@ export const setCardAndRun = (
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(runQuestionQuery({ shouldUpdateUrl }));
+    dispatch(runDirtyQuestionQuery({ shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));

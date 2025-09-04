@@ -929,6 +929,44 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       assertTableDoesNotExistError();
     });
   });
+
+  describe("dependencies", () => {
+    it("should render a table of dependencies", () => {
+      createMbqlTransform({
+        name: "Transform A",
+        targetTable: "table_a",
+        visitTransform: true,
+      }).then(runTransformAndWaitForSuccess);
+
+      createMbqlTransform({
+        name: "Transform B",
+        sourceTable: "table_a",
+        targetTable: "table_b",
+        visitTransform: true,
+      }).then(runTransformAndWaitForSuccess);
+
+      createMbqlTransform({
+        name: "Transform C",
+        sourceTable: "table_b",
+        targetTable: "table_c",
+        visitTransform: true,
+      });
+
+      H.main().findByText("Dependencies").scrollIntoView().should("be.visible");
+      getContentTable().within(() => {
+        // 1 transform plus the header row
+        cy.findAllByRole("row").should("have.length", 2);
+
+        // Check the existence and also their order
+        cy.findAllByRole("row").eq(1).should("contain", "Transform B");
+      });
+    });
+
+    it("should no dependencies table if the transform has no dependencies", () => {
+      createMbqlTransform({ name: "Transform A", visitTransform: true });
+      H.main().findByText("Dependencies").should("not.exist");
+    });
+  });
 });
 
 describe("scenarios > admin > transforms > jobs", () => {
@@ -1329,6 +1367,44 @@ describe("scenarios > admin > transforms > jobs", () => {
       testLastRunFilter();
       testNextRunFilter();
       testTagFilter();
+    });
+  });
+
+  describe("dependencies", () => {
+    it("should render a table of dependencies", () => {
+      createMbqlTransform({
+        name: "Transform A",
+        targetTable: "table_a",
+        visitTransform: true,
+      }).then(runTransformAndWaitForSuccess);
+
+      createMbqlTransform({
+        name: "Transform B",
+        sourceTable: "table_a",
+        targetTable: "table_b",
+        visitTransform: true,
+      }).then(runTransformAndWaitForSuccess);
+
+      createMbqlTransform({
+        name: "Transform C",
+        sourceTable: "table_b",
+        targetTable: "table_c",
+        visitTransform: true,
+      });
+
+      H.main().findByText("Dependencies").scrollIntoView().should("be.visible");
+      getContentTable().within(() => {
+        // 1 transform plus the header row
+        cy.findAllByRole("row").should("have.length", 2);
+
+        // Check the existence and also their order
+        cy.findAllByRole("row").eq(1).should("contain", "Transform B");
+      });
+    });
+
+    it("should no dependencies table if the transform has no dependencies", () => {
+      createMbqlTransform({ name: "Transform A", visitTransform: true });
+      H.main().findByText("Dependencies").should("not.exist");
     });
   });
 });
@@ -1793,7 +1869,7 @@ function visitRunListPage() {
 function runTransformAndWaitForSuccess() {
   getRunButton().click();
   getRunButton().should("have.text", "Ran successfully");
-  getTableLink().should("have.attr", "href");
+  return getTableLink().should("have.attr", "href");
 }
 
 function runTransformAndWaitForFailure() {
@@ -1832,6 +1908,7 @@ function createMbqlTransform({
             type: "query",
             query: {
               "source-table": tableId,
+              limit: 5,
             },
           },
         },

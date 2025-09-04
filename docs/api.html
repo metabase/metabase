@@ -16266,6 +16266,33 @@ redirect_from:
               "minimum" : 0
             }
           }
+        }, {
+          "in" : "query",
+          "name" : "start_time",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "end_time",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "run_methods",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "manual", "cron" ]
+            }
+          }
         } ],
         "responses" : {
           "2XX" : {
