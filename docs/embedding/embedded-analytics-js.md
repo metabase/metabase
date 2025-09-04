@@ -19,6 +19,7 @@ Currently you can choose to embed:
 - A dashboard
 - A question (chart). You can embed both questions built with the query builder and questions built with SQL.
 - Full graphical [query builder](../questions/query-builder/editor.md) to enable people to build their own charts and explorations.
+- A browser to navigate collections and open dashboards or questions.
 
 ## Quickstart
 
@@ -31,8 +32,12 @@ Currently you can choose to embed:
 ### 2. Create a new embed
 
 1. In Metabase, click on **+ New** button in top right corner and select **Embed**. Note that this will only be visible to admins.
-2. Choose the type of entity to embed. Currently the available types are dashboard, question, and exploration (which will embed the Metabase query builder).
-3. Next, select the entity you want to embed.
+2. Choose the _type_ of entity to embed:
+    - dashboard
+    - question
+    - exploration (which will embed the Metabase query builder)
+    - browser.
+3. Next, select the entity you want to embed. For browser, pick the collection you want people to start from.
 
 Once you've selected what you want to embed, click Next to customize your embed.
 
@@ -121,6 +126,8 @@ When you're creating a new embed using **+ New > Embed**, you'll see the followi
 - **Parameters**: for dashboard filters, SQL variables, and time grouping parameters, you can add default values. Default values set here override the default values set at the dashboard or question level. For dashboard filters and parameters, you can choose whether to hide the parameter.
 
 - **Show title**: what it says on the tin.
+
+- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection. When disabled, they can still perform actions like filter, summarize, and drill-through, but won’t be able to save results.”
 
 ## Configuring embeds
 
@@ -348,3 +355,19 @@ To render a question (chart).
 - `initial-sql-parameters` - default value for SQL parameters, only applicable to native SQL questions, like `{ "productId": "42" }`
 - `is-save-enabled` (default is false)
 - `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal”`, `"root”`
+
+- ### Browser
+
+To render a collection browser so people can navigate a collection and open dashboards or questions.
+
+ ```html
+<metabase-browser initial-collection="14" read-only="false"></metabase-browser>
+```
+
+**Required parameters:**
+
+- `initial-collection` - This can be a collection ID or `root`. Use a collection ID (e.g., `14`) to start in a specific collection. Use `root` to start at the top-level, "Our Analytics" collection.
+
+**Optional parameters:**
+
+- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.
