@@ -4,15 +4,31 @@ on:
   pull_request:
     branches:
       - master
-    paths:
-      - enterprise/frontend/src/embedding-sdk-package/**
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_embedding_sources: ${{ steps.changes.outputs.frontend_embedding_sources }}
+      frontend_embedding_sdk_package_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_package_sources }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   pr-title-reminder:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     permissions:
       pull-requests: write
+    needs: [ files-changed ]
+    if: ${{ !cancelled() }}
     steps:
       - name: Check if the PR title is already following Conventional Commits style
         uses: actions/github-script@v7
@@ -25,7 +41,7 @@ jobs:
             const match = pullRequestTitle.match(conventionalCommitRegex)
             if (match) {
               const { type, scope } = match.groups
-              return ['feat', 'fix', 'perf', 'docs', 'style', 'refactor', 'test', 'build', 'ci'].includes(type) && scope === 'sdk-package'
+              return ['feat', 'fix', 'perf', 'docs', 'style', 'refactor', 'test', 'build', 'ci'].includes(type) && !!scope
             }
 
       - name: Checkout repository so `gh` CLI works
@@ -36,7 +52,18 @@ jobs:
       - name: Remind PR authors to use conventional commit in the title
         if: ${{ steps.is-conventional-commit.outputs.result != 'true' }}
         uses: actions/github-script@v7
+        env:
+          EMBEDDING_SOURCES_CHANGED: ${{ needs.files-changed.outputs.frontend_embedding_sources }}
+          EMBEDDING_SDK_PACKAGE_SOURCES_CHANGED: ${{ needs.files-changed.outputs.frontend_embedding_sdk_package_sources }}
         with:
           script: |
-            const { updateComment } = require(".github/scripts/conventional-commit-pr-title-reminder/utils.js")
-            await updateComment({github, context})
+            const { updateCommentForEmbedding, updateCommentForEmbeddingSdkPackage } = require(".github/scripts/conventional-commit-pr-title-reminder/utils.js")
+
+            const embeddingSourcesChanged = process.env.EMBEDDING_SOURCES_CHANGED === 'true';
+            const embeddingSdkPackageSourcesChanged = process.env.EMBEDDING_SDK_PACKAGE_SOURCES_CHANGED === 'true';
+
+            if (embeddingSourcesChanged) {
+              await updateCommentForEmbedding({github, context})
+            } else if (embeddingSdkPackageSourcesChanged) {
+              await updateCommentForEmbeddingSdkPackage({github, context})
+            }
