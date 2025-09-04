@@ -48,3 +48,27 @@
   background-color: var(--mb-color-background);
   color: var(--mb-color-text-disabled);
 }
+
+.reaction {
+  appearance: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background-color: var(--mb-color-bg-medium);
+  padding: 0 0.5rem;
+  border-radius: 1rem;
+  color: var(--mb-color-text-medium);
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.currentUserReaction {
+  background-color: var(--mb-color-brand);
+  color: var(--mb-color-text-white);
+
+  &:hover {
+    background-color: var(--mb-color-brand-alpha-88);
+  }
+}

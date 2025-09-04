@@ -1,5 +1,5 @@
 import type { DocumentContent } from "./document";
-import type { BaseUser } from "./user";
+import type { BaseUser, UserId } from "./user";
 
 export type CommentId = number;
 
@@ -24,7 +24,15 @@ export interface Comment {
   created_at: string;
   updated_at: string;
 
+  reactions: CommentReaction[];
+
   version: number;
+}
+
+export interface CommentReaction {
+  emoji: string;
+  count: number;
+  users: { id: UserId; name: string }[];
 }
 
 /** request types below */
@@ -47,4 +55,13 @@ export interface UpdateCommentRequest {
   content?: DocumentContent;
   is_deleted?: boolean;
   is_resolved?: boolean;
+}
+
+export interface CreateReactionRequest {
+  id: CommentId;
+  emoji: string;
+}
+
+export interface DeleteReactionRequest {
+  id: CommentId;
 }
