@@ -371,16 +371,16 @@ describe("CommandSuggestion", () => {
     await userEvent.click(await screen.findByRole("option", { name: "Chart" }));
 
     // Wait for the modal to auto-open
-    const modal = await screen.findByRole("dialog");
+    const modal = await screen.findByLabelText("Choose a question or model");
     expect(modal).toBeInTheDocument();
-    
+
     // Close the modal to test the menu state without auto-opening
     const closeButton = within(modal).getByRole("button", { name: /close/i });
     await userEvent.click(closeButton);
 
     // Now the menu should show Browse all without a redundant divider
-    expect(await screen.findByRole("option", { name: "Browse all" })).toBeInTheDocument();
-    
+    expect(await screen.findByText("Browse all")).toBeInTheDocument();
+
     // There should be no menu items above Browse all, so no divider should be present
     const menuContainer = screen.getByLabelText("Command Dialog");
     const dividers = within(menuContainer).queryAllByRole("separator");
