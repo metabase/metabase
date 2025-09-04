@@ -120,7 +120,7 @@
 
 (defsetting system-timezone
   "Available report timezone options"
-  :visibility :public
+  :visibility :admin
   :export?    true
   :setter     :none
   :getter     (comp str t/zone-id)
