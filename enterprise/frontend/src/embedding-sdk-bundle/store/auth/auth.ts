@@ -80,6 +80,10 @@ export const initAuth = createAsyncThunk(
     ]);
 
     if (!user.payload) {
+      if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
+        throw MetabaseError.EXISTING_USER_SESSION_FAILED();
+      }
+
       throw MetabaseError.USER_FETCH_FAILED();
     }
     if (!siteSettings.payload) {
