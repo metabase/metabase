@@ -233,7 +233,7 @@
     (str/starts-with? dtype-str "date") :date
     :else :text))
 
-(defn- transfer-file-to-db [driver db target metadata temp-file]
+(defn- transfer-file-to-db [driver db {:keys [target] :as transform} metadata temp-file]
   (let [table-name (transforms.util/qualified-table-name driver target)
         table-schema {:name table-name
                       :columns (mapv (fn [{:keys [name dtype]}]
@@ -244,15 +244,14 @@
         data-source {:type :csv-file
                      :file temp-file}]
     ;; TODO: should be transactional
-    (when (driver/table-exists? driver db target)
-      (driver/drop-table! driver (:id db) table-name))
-
+    (transforms.util/delete-target-table! transform)
     (table-creation/create-table-from-schema! driver (:id db) table-schema)
     (table-creation/insert-from-source! driver (:id db) table-name (mapv :name (:columns table-schema)) data-source)))
 
-(defn- run-python-transform! [target {:keys [source-tables body]} db run-id cancel-chan message-log]
+(defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
   (with-open [log-thread-ref (open-log-thread! run-id message-log)]
     (let [driver                           (:engine db)
+          {:keys [source-tables body]}     source
           {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id cancel-chan)
           {:keys [stdout stderr]}          body]
       (.close log-thread-ref)           ; early close to force any writes to flush
@@ -279,7 +278,7 @@
                 (.write writer ^String csv-data))
               (let [file-size (.length temp-file)]
                 (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-dwh]
-                  (transfer-file-to-db driver db target metadata temp-file))
+                  (transfer-file-to-db driver db transform metadata temp-file))
                 (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil))
               (finally
                 (.delete temp-file))))
@@ -300,14 +299,14 @@
       (let [message-log (or message-log (atom {:pre-python  []
                                                :python      nil
                                                :post-python []}))
-            {:keys [source target] transform-id :id} transform
+            {:keys [target] transform-id :id} transform
             db (t2/select-one :model/Database (:database target))
             {run-id :id} (try-start-unless-already-running transform-id run-method)]
         (some-> start-promise (deliver [:started run-id]))
         (log! message-log "Executing Python transform")
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
         (let [start-ms (u/start-timer)
-              result   (run-cancelable-transform! run-id (fn [cancel-chan] (run-python-transform! target source db run-id cancel-chan message-log)))]
+              result   (run-cancelable-transform! run-id (fn [cancel-chan] (run-python-transform! transform db run-id cancel-chan message-log)))]
           (transforms.instrumentation/with-stage-timing [run-id :sync :table-sync]
             (sync-target! target db run-id))
           (log! message-log (format "Python execution finished in %s" (Duration/ofMillis (u/since-ms start-ms))))
