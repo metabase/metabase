@@ -145,6 +145,7 @@ const RowChartView = <TDatum,>({
             y += innerBarScale?.(seriesIndex) ?? 0;
 
             const x = xScale(xStartValue);
+            // console.log({ x, xStartValue });
             const width = Math.abs(xScale(xEndValue) - x);
 
             const hasSeriesHover = hoveredData != null;
