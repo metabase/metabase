@@ -228,16 +228,6 @@ jobs:
       - name: Start python-runner using Makefile
         run: |
           echo "🚀 Starting python-runner using make run..."
-          echo "1"
-          ls -la
-          echo "2"
-          ls -la python-runner/
-          cd python-runner
-          echo "3"
-          ls .
-          echo "4"
-          ls src
-
           # Set environment variables for the Makefile
           export PYTHON_RUNNER_PORT=5001
           export PYTHON_RUNNER_MOUNT_PATH=/tmp/python-exec-work
