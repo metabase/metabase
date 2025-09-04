@@ -65,8 +65,7 @@
                   (if (and (:is_deleted comment) (has-replies? (:id comment)))
                     ;; Replace deleted comment content with empty JSON if it has replies
                     (assoc decoded-comment
-                           :content {}
-                           :creator nil)
+                           :content {})
                     decoded-comment))))
          ;; Remove deleted comments that have no replies
          (remove #(and (:is_deleted %) (not (has-replies? (:id %))))))))
