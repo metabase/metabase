@@ -2,9 +2,11 @@
   (:require
    [clojure.set :as set]
    [clojure.walk :as walk]
+   [java-time.api :as t]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defn- safe-case-updater
   [f]
@@ -67,3 +69,12 @@
                            {:navigate_to navigate-to}))
       :metadata   {:usage (when (= (first last-c) :finish)
                             (:usage (second last-c)))}})))
+
+;;; Usage info, maybe there is a better place?
+
+(defn total-tokens-last-utc-day []
+  "Calculate total Metabot token usage over a window of the the previous UTC day 00:00-23:59"
+  []
+  (let [yesterday-utc (t/minus (t/offset-date-time (t/zone-offset "+00")) (t/days 1))]
+    (t2/select-one-fn :total [:model/MetabotMessage [:%sum.total :total]]
+                      {:where [:= [:cast :created_at :date] [:cast yesterday-utc :date]]})))

@@ -123,7 +123,7 @@
 
 (defn- handle-finish [conversation-id lines]
   (let [message (-> (metabot-v3.u/aisdk-lines->message lines)
-                    (u/assoc-default :role "assistant"))]
+                    (u/assoc-default :role :assistant))]
     (store-message! conversation-id message)))
 
 (mu/defn request :- ::metabot-v3.client.schema/ai-service.response
@@ -198,7 +198,7 @@
   (premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
     (store-message! conversation-id (-> (last messages)
-                                        (u/assoc-default :role "user")))
+                                        (u/assoc-default :role :user)))
     (let [url      (ai-url "/v2/agent/stream")
           body     (-> {:messages        messages
                         :context         context
