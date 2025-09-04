@@ -25,7 +25,7 @@
    (software.amazon.awssdk.regions Region)
    (software.amazon.awssdk.services.s3 S3Client S3ClientBuilder S3Configuration)
    (software.amazon.awssdk.services.s3.model DeleteObjectRequest GetObjectRequest NoSuchKeyException PutObjectRequest)
-   (software.amazon.awssdk.services.s3.presigner S3Presigner)
+   (software.amazon.awssdk.services.s3.presigner S3Presigner S3Presigner$Builder)
    (software.amazon.awssdk.services.s3.presigner.model GetObjectPresignRequest PresignedGetObjectRequest PresignedPutObjectRequest PutObjectPresignRequest)))
 
 (set! *warn-on-reflection* true)
@@ -101,7 +101,7 @@
       [false true]  (.region builder (Region/of region))
       [false false] builder)))
 
-(defn- maybe-with-endpoint-s3-presigner [^S3ClientBuilder builder endpoint]
+(defn- maybe-with-endpoint-s3-presigner [^S3Presigner$Builder builder endpoint]
   (let [region (transforms.settings/python-storage-s-3-region)]
     (case [(some? endpoint) (some? region)]
       [true true]   (doto builder
@@ -160,7 +160,7 @@
                                (AwsBasicCredentials/create access-key secret-key))))
       (.credentialsProvider builder (DefaultCredentialsProvider/create)))))
 
-(defn- maybe-with-credentials-s3-presigner [^S3ClientBuilder builder]
+(defn- maybe-with-credentials-s3-presigner [^S3Presigner$Builder builder]
   (let [access-key (transforms.settings/python-storage-s-3-access-key)
         secret-key (transforms.settings/python-storage-s-3-secret-key)]
     (if (or access-key secret-key)
