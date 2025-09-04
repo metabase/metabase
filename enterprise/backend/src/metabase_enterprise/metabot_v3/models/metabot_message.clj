@@ -13,4 +13,5 @@
 
 (t2/deftransforms :model/MetabotMessage
   {:usage mi/transform-json
-   :data  mi/transform-json})
+   :data  mi/transform-json
+   :role  mi/transform-keyword})
