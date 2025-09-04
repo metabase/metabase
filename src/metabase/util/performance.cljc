@@ -52,7 +52,7 @@
      ([f init coll1]
       (if (nil? coll1)
         init
-        (let [it1 (.iterator ^Iterable coll1)]
+        (let [it1 (RT/iter coll1)]
           (loop [res init]
             (if (.hasNext it1)
               (let [res (f res (.next it1))]
@@ -63,8 +63,8 @@
      ([f init coll1 coll2]
       (if (or (nil? coll1) (nil? coll2))
         init
-        (let [it1 (.iterator ^Iterable coll1)
-              it2 (.iterator ^Iterable coll2)]
+        (let [it1 (RT/iter coll1)
+              it2 (RT/iter coll2)]
           (loop [res init]
             (if (and (.hasNext it1) (.hasNext it2))
               (let [res (f res (.next it1) (.next it2))]
@@ -75,9 +75,9 @@
      ([f init coll1 coll2 coll3]
       (if (or (nil? coll1) (nil? coll2) (nil? coll3))
         init
-        (let [it1 (.iterator ^Iterable coll1)
-              it2 (.iterator ^Iterable coll2)
-              it3 (.iterator ^Iterable coll3)]
+        (let [it1 (RT/iter coll1)
+              it2 (RT/iter coll2)
+              it3 (RT/iter coll3)]
           (loop [res init]
             (if (and (.hasNext it1) (.hasNext it2) (.hasNext it3))
               (let [res (f res (.next it1) (.next it2) (.next it3))]
@@ -88,10 +88,10 @@
      ([f init coll1 coll2 coll3 coll4]
       (if (or (nil? coll1) (nil? coll2) (nil? coll3) (nil? coll4))
         init
-        (let [it1 (.iterator ^Iterable coll1)
-              it2 (.iterator ^Iterable coll2)
-              it3 (.iterator ^Iterable coll3)
-              it4 (.iterator ^Iterable coll4)]
+        (let [it1 (RT/iter coll1)
+              it2 (RT/iter coll2)
+              it3 (RT/iter coll3)
+              it4 (RT/iter coll4)]
           (loop [res init]
             (if (and (.hasNext it1) (.hasNext it2) (.hasNext it3) (.hasNext it4))
               (let [res (f res (.next it1) (.next it2) (.next it3) (.next it4))]
