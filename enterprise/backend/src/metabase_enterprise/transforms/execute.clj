@@ -9,7 +9,6 @@
    [metabase-enterprise.transforms.python-runner :as python-runner]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.table-creation :as table-creation]
    [metabase.driver.util :as driver.u]
