@@ -25,7 +25,7 @@ import { FileContentViewer } from "./FileContentViewer";
 
 function convertGitTreeToTreeItems(node: GitTreeNode): ITreeNodeItem {
   return {
-    id: node.path,
+    id: node.id,
     name: node.name,
     icon: node.type === "folder" ? "folder" : "document",
     children: node.children?.map(convertGitTreeToTreeItems),
@@ -41,24 +41,23 @@ function filterTreeItems(
   }
 
   const lowerFilter = filter.toLowerCase();
+  const result: ITreeNodeItem[] = [];
 
-  return items
-    .map((item) => {
-      const nameMatches = item.name.toLowerCase().includes(lowerFilter);
-      const filteredChildren = item.children
-        ? filterTreeItems(item.children, filter)
-        : undefined;
+  for (const item of items) {
+    const nameMatches = item.name.toLowerCase().includes(lowerFilter);
+    const filteredChildren = item.children
+      ? filterTreeItems(item.children, filter)
+      : undefined;
 
-      if (nameMatches || (filteredChildren && filteredChildren.length > 0)) {
-        return {
-          ...item,
-          children: filteredChildren,
-        };
-      }
+    if (nameMatches || (filteredChildren && filteredChildren.length > 0)) {
+      result.push({
+        ...item,
+        children: filteredChildren,
+      });
+    }
+  }
 
-      return null;
-    })
-    .filter((item): item is ITreeNodeItem => item !== null);
+  return result;
 }
 
 export const LibraryView = () => {
@@ -68,10 +67,13 @@ export const LibraryView = () => {
 
   const { data: treeData, isLoading: isTreeLoading } =
     useGetRepositoryTreeQuery();
-  const { data: fileContent, isLoading: isFileLoading } =
-    useGetFileContentQuery(selectedFilePath ?? "", {
-      skip: !selectedFilePath,
-    });
+  const {
+    data: fileContent,
+    isLoading: isFileLoading,
+    isFetching: isFileFetching,
+  } = useGetFileContentQuery(selectedFilePath ?? "", {
+    skip: !selectedFilePath,
+  });
 
   const handleNodeSelect = (item: ITreeNodeItem) => {
     if (!item.children) {
@@ -128,11 +130,11 @@ export const LibraryView = () => {
 
       <Box flex={1} h="100%">
         {selectedFilePath ? (
-          isFileLoading ? (
+          isFileFetching || (isFileLoading && !fileContent) ? (
             <Flex justify="center" align="center" h="100%">
               <Loader />
             </Flex>
-          ) : fileContent ? (
+          ) : fileContent && fileContent.path === selectedFilePath ? (
             <FileContentViewer content={fileContent} />
           ) : (
             <Flex justify="center" align="center" h="100%">
