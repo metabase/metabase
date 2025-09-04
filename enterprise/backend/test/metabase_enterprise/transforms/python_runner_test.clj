@@ -42,20 +42,12 @@
 
 (def ^:private test-id 1)
 
-(defn- execute [{:keys [code tables]}]
-  (:body (python-runner/execute-python-code test-id code (or tables {}) (a/promise-chan))))
+(defn- reconstruct-logs [{:keys [events] :as body}]
+  (assoc body :stdout (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
+         :stderr (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))))
 
 (defn- execute [{:keys [code tables]}]
-  (:body (python-runner/execute-python-code test-id code (or tables {}) (a/promise-chan))))
-
-(defn- sanitize-log
-  [s]
-  ;; remove the timestamp for each log lines
-  (some-> s (str/replace #"(?m)^\d{13}\s*" "")))
-
-(defn- log-contains
-  [substr]
-  (mt/malli=? [:fn #(-> % sanitize-log (str/includes? substr))]))
+  (reconstruct-logs (:body (python-runner/execute-python-code test-id code (or tables {}) (a/promise-chan)))))
 
 (deftest ^:parallel transform-function-basic-test
   (testing "executes transform function and returns CSV output"
@@ -65,7 +57,7 @@
                               "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")
           result         (execute {:code transform-code})]
       (is (=? {:output "name,age\nAlice,25\nBob,30\n"
-               :stdout (log-contains "Successfully saved 2 rows to CSV\nSuccessfully saved output manifest with 2 fields\n")
+               :stdout "Successfully saved 2 rows to CSV\nSuccessfully saved output manifest with 2 fields"
                :stderr ""}
               result)))))
 
@@ -76,7 +68,7 @@
                                       "# No transform function defined")})]
       (is (=? {:error     "Execution failed"
                :exit-code 1
-               :stderr    (log-contains "ERROR: User script must define a 'transform()' function\n")
+               :stderr    "ERROR: User script must define a 'transform()' function"
                :stdout    ""}
               result)))))
 
@@ -86,30 +78,29 @@
                                       "    return 'not a dataframe'")})]
       (is (=? {:error     "Execution failed"
                :exit-code 1
-               :stderr    (log-contains "ERROR: Transform function must return a pandas DataFrame, got <class 'str'>\n")
+               :stderr    "ERROR: Transform function must return a pandas DataFrame, got <class 'str'>"
                :stdout    ""}
               result)))))
 
-;; TODO argh we need to fix the fact that logs contains timestamp and random tmp function
-#_(deftest ^:parallel transform-function-error-test
-    (testing "handles transform function with error"
-      (let [result            (execute {:code (str "def transform():\n"
-                                                   "    raise ValueError('Something went wrong')")})
-            expected-template (str "ERROR: Transform function failed: Something went wrong\n"
-                                   "Traceback (most recent call last):\n"
-                                   "  File \"/app/transform_runner.py\", line ___LINE___, in main\n"
-                                   "    result = script.transform()\n"
-                                   "             ^^^^^^^^^^^^^^^^^^\n"
-                                   "  File \"___PATH___/script.py\", line 2, in transform\n"
-                                   "    raise ValueError('Something went wrong')\n"
-                                   "ValueError: Something went wrong\n")
-            stderr-pattern    (template->regex expected-template)]
-        (is (=? {:error     "Execution failed"
-                 :exit-code 1
-                 :stderr    #(re-matches stderr-pattern %)
-                 :stdout    ""
-                 :timeout   false}
-                result)))))
+(deftest ^:parallel transform-function-error-test
+  (testing "handles transform function with error"
+    (let [result            (execute {:code (str "def transform():\n"
+                                                 "    raise ValueError('Something went wrong')")})
+          expected-template (str "ERROR: Transform function failed: Something went wrong\n"
+                                 "Traceback (most recent call last):\n"
+                                 "  File \"/app/transform_runner.py\", line ___LINE___, in main\n"
+                                 "    result = script.transform()\n"
+                                 "             ^^^^^^^^^^^^^^^^^^\n"
+                                 "  File \"___PATH___/script.py\", line 2, in transform\n"
+                                 "    raise ValueError('Something went wrong')\n"
+                                 "ValueError: Something went wrong")
+          stderr-pattern    (template->regex expected-template)]
+      (is (=? {:error     "Execution failed"
+               :exit-code 1
+               :stderr    #(re-matches stderr-pattern %)
+               :stdout    ""
+               :timeout   false}
+              result)))))
 
 (deftest ^:parallel transform-function-complex-dataframe-test
   (testing "can create complex DataFrames with transform"
@@ -120,7 +111,7 @@
                               "    return pd.DataFrame(data)")
           result         (execute {:code transform-code})]
       (is (=? {:output "x,y,z\n1,10,a\n2,20,b\n3,30,c\n"
-               :stdout (log-contains "Successfully saved 3 rows to CSV\nSuccessfully saved output manifest with 3 fields\n")
+               :stdout "Successfully saved 3 rows to CSV\nSuccessfully saved output manifest with 3 fields"
                :stderr ""}
               result)))))
 
@@ -134,7 +125,7 @@
                                 "    return pd.DataFrame(data)")
             result         (execute {:code transform-code})]
         (is (=? {:output "name,score\nCharlie,85\nDana,92\n"
-                 :stdout (log-contains "Successfully saved 2 rows to CSV\nSuccessfully saved output manifest with 2 fields\n")
+                 :stdout "Successfully saved 2 rows to CSV\nSuccessfully saved output manifest with 2 fields"
                  :stderr ""}
                 result))))))
 
@@ -164,16 +155,16 @@
 
           (is (=? {:output "student_count,average_score\n4,88.75\n"
                    :metadata "{\n  \"version\": \"0.1.0\",\n  \"fields\": [\n    {\n      \"name\": \"student_count\",\n      \"dtype\": \"int64\"\n    },\n    {\n      \"name\": \"average_score\",\n      \"dtype\": \"float64\"\n    }\n  ],\n  \"table_metadata\": {}\n}"
-                   :stdout (log-contains (str "Successfully saved 1 rows to CSV\n"
-                                              "Successfully saved output manifest with 2 fields\n"))
+                   :stdout  (str "Successfully saved 1 rows to CSV\n"
+                                 "Successfully saved output manifest with 2 field")
                    :stderr ""}
                   result)))))))
 
 (defn- datetime-equal?
   [expected-iso-str actual-pandas-str]
-  (let [formatter (jt/formatter "yyyy-MM-dd HH:mm:ssXXX")
+  (let [formatter   (jt/formatter "yyyy-MM-dd HH:mm:ssXXX")
         expected-dt (jt/zoned-date-time expected-iso-str)
-        actual-dt (jt/offset-date-time formatter actual-pandas-str)]
+        actual-dt   (jt/offset-date-time formatter actual-pandas-str)]
     (= (jt/to-millis-from-epoch expected-dt)
        (jt/to-millis-from-epoch actual-dt))))
 

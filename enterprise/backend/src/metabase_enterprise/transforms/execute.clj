@@ -207,14 +207,15 @@
     (update (python-runner/execute-python-code run-id code table-name->id cancel-chan)
             :body #(if (string? %) json/decode+kw %))))
 
-(defn- debug-info-str [{:keys [exit-code stdout stderr]}]
+(defn- debug-info-str [{:keys [exit-code events]}]
   (str/join "\n"
+            ;; todo this was temporary before the log stuff, needs a rethink at some point
             ["stdout"
              "======"
-             stdout
+             (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
              "stderr"
              "======"
-             stderr
+             (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))
              "======"
              (format "exit code %d" exit-code)]))
 
@@ -249,18 +250,16 @@
     (let [driver                           (:engine db)
           {:keys [source-tables body]}     source
           {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id cancel-chan)
-          {:keys [stdout stderr events]}   body]
+          {:keys [events]}   body]
       (.close log-thread-ref)           ; early close to force any writes to flush
-      (when (or stdout stderr)
+      (when (seq events)
         (replace-python-logs! message-log events))
       (if (not= 200 status)
         (throw (ex-info (debug-info-str body)
-                        {:status-code 400
+                        {:status-code     400
                          :api-status-code status
-                         :body        body
-                         :error       (or stderr (:error body))
-                         :stdout      stdout
-                         :stderr      stderr}))
+                         :body            body
+                         :error           (:error body)}))
         (try
           (let [temp-file (File/createTempFile "transform-output-" ".csv")
                 csv-data  (:output body)
