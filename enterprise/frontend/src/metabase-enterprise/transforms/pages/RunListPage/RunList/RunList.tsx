@@ -5,7 +5,8 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useDispatch } from "metabase/lib/redux";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { Card, Group, Stack } from "metabase/ui";
+import { Card, Flex, Group, Stack } from "metabase/ui";
+import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
 import type { TransformRun } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
@@ -66,8 +67,12 @@ function RunTable({ runs }: RunTableProps) {
       <AdminContentTable
         columnTitles={[
           t`Transform`,
-          t`Started at`,
-          t`End at`,
+          <Flex align="center" gap="xs" key="started-at">
+            {t`Started at`} <TimezoneIndicator />
+          </Flex>,
+          <Flex align="center" gap="xs" key="end-at">
+            {t`End at`} <TimezoneIndicator />
+          </Flex>,
           t`Status`,
           t`Trigger`,
         ]}
