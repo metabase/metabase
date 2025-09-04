@@ -185,9 +185,23 @@ export function getPieRows(
 ) {
   const [
     {
-      data: { rows: dataRows },
+      data: { rows: dataRows, untranslatedRows },
     },
   ] = rawSeries;
+
+  const untranslatedKeysToTranslatedKeys = new Map<string, string>();
+  if (untranslatedRows) {
+    untranslatedRows.forEach((row, i) => {
+      untranslatedKeysToTranslatedKeys.set(
+        row[0] as string,
+        dataRows[i][0] as string,
+      );
+    });
+  } else {
+    dataRows.forEach((row) => {
+      untranslatedKeysToTranslatedKeys.set(row[0] as string, row[0] as string);
+    });
+  }
 
   if (!settings["pie.metric"] || !settings["pie.dimension"]) {
     return [];
@@ -239,6 +253,13 @@ export function getPieRows(
   const savedPieRows = hasSortDimensionChanged
     ? []
     : (settings["pie.rows"] ?? []);
+  const savedColors = new Map<string, string>();
+  savedPieRows.forEach((pieRow) => {
+    savedColors.set(
+      untranslatedKeysToTranslatedKeys.get(pieRow.key) ?? pieRow.key,
+      pieRow.color,
+    );
+  });
 
   const savedPieKeys = savedPieRows.map((pieRow) => pieRow.key);
 
@@ -280,7 +301,7 @@ export function getPieRows(
         key,
         name,
         originalName: name,
-        color,
+        color: savedColors.get(key) ?? color,
         defaultColor: true,
         enabled: true,
         hidden: false,
@@ -326,7 +347,7 @@ export function getPieRows(
           key,
           name,
           originalName: name,
-          color,
+          color: savedColors.get(key) ?? color,
           defaultColor: true,
           enabled: true,
           hidden: false,

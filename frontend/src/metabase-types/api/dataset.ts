@@ -177,7 +177,15 @@ export type SingleSeries = {
    * COLUMN_2, etc.) to their original values (count, avg, etc.).
    */
   columnValuesMapping?: Record<string, VisualizerColumnValueSource[]>;
-} & Pick<Dataset, "data" | "error" | "started_at">;
+
+  data: Dataset["data"] & {
+    /**
+     * The original, untranslated rows for this series (if any).
+     * Undefined if no translation occured.
+     */
+    untranslatedRows?: RowValues[];
+  };
+} & Pick<Dataset, "error" | "started_at">;
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };

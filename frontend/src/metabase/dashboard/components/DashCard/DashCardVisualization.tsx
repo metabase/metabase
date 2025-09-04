@@ -207,7 +207,7 @@ interface DashCardVisualizationProps {
 
 export function DashCardVisualization({
   dashcard,
-  series: untranslatedRawSeries,
+  series: rawSeries,
   question,
   metadata,
   getHref,
@@ -247,10 +247,6 @@ export function DashCardVisualization({
 
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),
-  );
-
-  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
-    untranslatedRawSeries,
   );
 
   const visualizerErrMsg = useMemo(() => {

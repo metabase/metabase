@@ -124,12 +124,18 @@ export const translateFieldValuesInSeries = (
     if (!singleSeries.data) {
       return singleSeries;
     }
+    const untranslatedRows = singleSeries.data.rows.concat();
+
     const translatedRows = singleSeries.data.rows.map((row) =>
       row.map((value) => tc(value)),
     );
     return {
       ...singleSeries,
-      data: { ...singleSeries.data, rows: translatedRows },
+      data: {
+        ...singleSeries.data,
+        untranslatedRows,
+        rows: translatedRows,
+      },
     };
   });
 };

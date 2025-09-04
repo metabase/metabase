@@ -7,7 +7,10 @@ import type {
   DashboardDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
-import { ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY } from "e2e/support/test-visualizer-data";
+import {
+  ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
+  PRODUCTS_COUNT_BY_CATEGORY_PIE,
+} from "e2e/support/test-visualizer-data";
 import type { DictionaryArray } from "metabase-types/api";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -24,12 +27,8 @@ import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-transla
 const { H } = cy;
 
 describe("scenarios > content translation > static embedding > dashboards", () => {
-  describe("values translation on visualizer cards (metabase#62373)", () => {
-    before(() => {
-      cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
-        "uploadDictionary",
-      );
-
+  describe("values translation", () => {
+    beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
@@ -41,12 +40,8 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         { locale: "fr", msgid: "Widget", msgstr: "Le widget" },
       ]);
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
-      cy.intercept("GET", "/api/setting/version-info", {});
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
 
       cy.signInAsAdmin();
 
@@ -54,15 +49,91 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         idAlias: "productsCountByCreatedAtQuestionId",
         wrapId: true,
       });
+
+      H.createQuestion(
+        {
+          ...PRODUCTS_COUNT_BY_CATEGORY_PIE,
+          visualization_settings: {
+            "pie.rows": [
+              ["Widget", "#69C8C8"],
+              ["Gadget", "#C7EAEA"],
+              ["Gizmo", "#98D9D9"],
+              ["Doohickey", "#F3F3F4"],
+            ].map(([key, color]) => ({
+              key,
+              name: key,
+              originalName: key,
+              color,
+              defaultColor: false,
+              enabled: true,
+              hidden: false,
+              isOther: false,
+            })),
+          },
+        },
+        {
+          idAlias: "productsCountByCategoryPieQuestionId",
+          wrapId: true,
+        },
+      );
     });
 
-    beforeEach(() => {
-      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
-      cy.intercept("GET", "/api/embed/dashboard/**/search/*").as("searchQuery");
+    it("should assign the proper colors to a pie", () => {
+      H.createDashboard({
+        name: "the_dashboard",
+      }).then(({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+        H.editDashboard();
+        H.openQuestionsSidebar();
+
+        H.sidebar().findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
+        H.saveDashboard();
+
+        H.openStaticEmbeddingModal({
+          acceptTerms: false,
+        });
+        H.publishChanges("dashboard", () => {});
+
+        H.visitEmbeddedPage(
+          {
+            resource: { dashboard: dashboardId as number },
+            params: {},
+          },
+          {
+            additionalHashOptions: {
+              locale: "fr",
+            },
+          },
+        );
+
+        cy.wait("@dashboard");
+        cy.wait("@cardQuery");
+
+        H.getDashboardCard(0).within(() => {
+          cy.findAllByText("Le gadget").should("exist");
+          cy.findAllByText("Le doohickey").should("exist");
+          cy.findAllByText("Le gizmo").should("exist");
+          cy.findAllByText("Le widget").should("exist");
+
+          // Verify colors
+          cy.findByTestId("chart-legend").within(() => {
+            cy.get("button [color]").then(($elements) => {
+              const actualColors = Array.from($elements).map((el) =>
+                el.getAttribute("color"),
+              );
+              expect(actualColors).to.deep.equal([
+                "#69C8C8",
+                "#C7EAEA",
+                "#98D9D9",
+                "#F3F3F4",
+              ]);
+            });
+          });
+        });
+      });
     });
 
-    it("should translate static embedding dashboard values", () => {
+    it("should translate static embedding dashboard values on visualizer cards (metabase#62373)", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
 
       H.editDashboard();
