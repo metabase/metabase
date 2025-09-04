@@ -118,7 +118,7 @@
                                                              :content "SELECT * FROM orders {{snippet: expensive}}"
                                                              :collection_id coll-id}]
 
-      (testing "Initial reference points to the wrong 'expensive' snippet"
+      (testing "Initial reference points to the \"wrong\" 'expensive' snippet"
         (let [tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id query-id)]
           (is (= expensive-wrong-id (get-in tags ["snippet: expensive" :snippet-id])))))
 
@@ -132,7 +132,7 @@
 
       ;; Step 4: Create a new "expensive" snippet with correct logic
       (mt/with-temp [:model/NativeQuerySnippet {expensive-correct-id :id} {:name "expensive"
-                                                                           :content "WHERE total > 100" ; Correct!
+                                                                           :content "WHERE total > 100"
                                                                            :collection_id coll-id}]
 
         (testing "With a new snippet matching the reference name, existing queries keep old reference"

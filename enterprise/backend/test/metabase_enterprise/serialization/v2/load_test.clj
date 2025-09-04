@@ -965,8 +965,9 @@
 
 (deftest snippet-template-tags-import-test
   (testing "Template tags import preserves nil, empty, and populated values"
-    (mt/with-empty-h2-app-db!
-      (testing "Missing template_tags field -> {} when selected"
+
+    (testing "Missing template_tags field -> {} when selected"
+      (mt/with-empty-h2-app-db!
         (let [snippet-data {:serdes/meta [{:model "NativeQuerySnippet"
                                            :id    "test-entity-1"
                                            :label "test_snippet_1"}]
@@ -981,9 +982,10 @@
             (is (=? {"id" {:type         :text
                            :display-name "ID"
                            :name         "id"}}
-                    template-tags)))))
+                    template-tags))))))
 
-      (testing "Empty map template_tags -> preserved as empty map"
+    (testing "Empty map template_tags -> preserved as empty map"
+      (mt/with-empty-h2-app-db!
         (let [snippet-data {:serdes/meta   [{:model "NativeQuerySnippet"
                                              :id    "test-entity-2"
                                              :label "test_snippet_2"}]
@@ -995,25 +997,28 @@
               ingestion    (ingestion-in-memory [snippet-data])]
           (serdes.load/load-metabase! ingestion)
           (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-2")]
-            (is (= {} template-tags)))))
+            (is (= {} template-tags))))))
 
-      (testing "Populated template_tags -> preserved as-is"
+    (testing "Snippet template tags get preserved rather than recalculated"
+      (mt/with-empty-h2-app-db!
         (let [snippet-data {:serdes/meta   [{:model "NativeQuerySnippet"
                                              :id    "test-entity-3"
                                              :label "test_snippet_3"}]
                             :name          "with-tags"
-                            :content       "WHERE id = {{id}}"
-                            :template_tags {"id" {:type         "text"
-                                                  :name         "id"
-                                                  :display-name "ID"}}
+                            :content       "WHERE id = {{snippet: id}}"
+                            :template_tags {"id" {:type         :snippet
+                                                  :name         "snippet: id"
+                                                  :snippet-name "id"
+                                                  ;; Definitely not calculated that way:
+                                                  :display-name "Snippet: WOOP"}}
                             :creator_id    "test@example.com"
                             :entity_id     "test-entity-3"}
               ingestion    (ingestion-in-memory [snippet-data])]
           (serdes.load/load-metabase! ingestion)
           (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-3")]
-            (is (=? {"id" {:type         :text
-                           :name         "id"
-                           :display-name "ID"}}
+            (is (=? {"snippet: id" {:type         :snippet
+                                    :name         "snippet: id"
+                                    :display-name "Snippet: WOOP"}}
                     template-tags))))))))
 
 (deftest load-action-test
