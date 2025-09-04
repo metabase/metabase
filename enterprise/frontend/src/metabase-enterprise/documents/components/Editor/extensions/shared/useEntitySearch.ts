@@ -15,7 +15,11 @@ import type {
 import type { MenuItem } from "../../shared/MenuComponents";
 import type { SuggestionModel } from "../../types";
 
-import { LINK_SEARCH_LIMIT, LINK_SEARCH_MODELS } from "./constants";
+import {
+  LINK_SEARCH_LIMIT,
+  LINK_SEARCH_MODELS,
+  USER_SEARCH_LIMIT,
+} from "./constants";
 import {
   buildRecentsMenuItems,
   buildSearchMenuItems,
@@ -85,9 +89,11 @@ export function useEntitySearch({
   );
 
   const users = useMemo(() => {
-    return (usersResponse?.data ?? []).filter((user) => {
-      return user.common_name.toLowerCase().includes(query.toLowerCase());
-    });
+    return (usersResponse?.data ?? [])
+      .filter((user) => {
+        return user.common_name.toLowerCase().includes(query.toLowerCase());
+      })
+      .slice(0, USER_SEARCH_LIMIT);
   }, [usersResponse, query]);
 
   const searchResults = useMemo(

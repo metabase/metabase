@@ -14,3 +14,5 @@ export const LINK_SEARCH_MODELS: SuggestionModel[] = [
 export const EMBED_SEARCH_MODELS: SuggestionModel[] = ["card", "dataset"];
 
 export const LINK_SEARCH_LIMIT = 5;
+
+export const USER_SEARCH_LIMIT = LINK_SEARCH_LIMIT;
