@@ -20,6 +20,8 @@ title: Driver interface changelog
 - `driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
   instead of just the top-level message as a string.
 
+- Removed `driver/set-database-used`. Drivers should set default databases in their connection specs instead.
+
 ## Metabase 0.56.3
 
 - Added the driver multi-method `driver/describe-database*` that drivers should now implement instead of `driver/describe-database`.
