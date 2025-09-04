@@ -291,11 +291,13 @@
             output-manifest-key      (str work-dir-name "/output.manifest.json")
             stdout-key               (str work-dir-name "/stdout.txt")
             stderr-key               (str work-dir-name "/stderr.txt")
+            events-key               (str work-dir-name "/events.json")
             ;; Generate presigned URLs for writing (using container client)
             output-url               (generate-presigned-put-url container-presigner bucket-name output-key)
             output-manifest-url      (generate-presigned-put-url container-presigner bucket-name output-manifest-key)
             stdout-url               (generate-presigned-put-url container-presigner bucket-name stdout-key)
             stderr-url               (generate-presigned-put-url container-presigner bucket-name stderr-key)
+            events-url               (generate-presigned-put-url container-presigner bucket-name events-key)
             ;; Upload input table data (write to disk first, then upload to S3)
             table-results            (for [[table-name id] table-name->id]
                                        (let [temp-file       (File/createTempFile
@@ -336,7 +338,7 @@
                                              (safe-delete manifest-file)))))
             table-name->url          (into {} (map (juxt :table-name :url) table-results))
             table-name->manifest-url (into {} (map (juxt :table-name :manifest-url) table-results))
-            all-s3-keys              (concat [output-key output-manifest-key stdout-key stderr-key]
+            all-s3-keys              (concat [output-key output-manifest-key stdout-key stderr-key events-key]
                                              (map :s3-key table-results)
                                              (map :manifest-s3-key table-results))
             canc                     (a/go (when (a/<! cancel-chan)
@@ -352,6 +354,7 @@
                                       :output_manifest_url output-manifest-url
                                       :stdout_url          stdout-url
                                       :stderr_url          stderr-url
+                                      :events_url          events-url
                                       :table_mapping       table-name->url
                                       :manifest_mapping    table-name->manifest-url}
             response                 (http/post (str server-url "/execute")
@@ -370,23 +373,27 @@
           (if (and (= 200 (:status response))
                    (zero? (:exit_code result)))
            ;; Success - read the output from S3
-            (let [output-content (read-from-s3 s3-client bucket-name output-key)
+            (let [output-content  (read-from-s3 s3-client bucket-name output-key)
                   output-manifest (read-from-s3 s3-client bucket-name output-manifest-key "{}")
-                  stdout-content (read-from-s3 s3-client bucket-name stdout-key "stdout missing")
-                  stderr-content (read-from-s3 s3-client bucket-name stderr-key "stderr missing")]
+                  stdout-content  (read-from-s3 s3-client bucket-name stdout-key "stdout missing")
+                  stderr-content  (read-from-s3 s3-client bucket-name stderr-key "stderr missing")
+                  events-content  (read-from-s3 s3-client bucket-name events-key "[]")]
               (if (not (str/blank? output-content))
                 {:status 200
                  :body   {:output output-content
                           :metadata output-manifest
                           :stdout stdout-content
-                          :stderr stderr-content}}
+                          :stderr stderr-content
+                          :events (mapv json/decode+kw (str/split-lines events-content))}}
                 {:status 500
                  :body   {:error  "Transform did not produce output CSV"
                           :stdout stdout-content
-                          :stderr stderr-content}}))
+                          :stderr stderr-content
+                          :events (mapv json/decode+kw (str/split-lines events-content))}}))
            ;; Error from execution server - read stderr/stdout from S3
             (let [stdout-content (read-from-s3 s3-client bucket-name stdout-key "stdout missing")
-                  stderr-content (read-from-s3 s3-client bucket-name stderr-key "stderr missing")]
+                  stderr-content (read-from-s3 s3-client bucket-name stderr-key "stderr missing")
+                  events-content (read-from-s3 s3-client bucket-name events-key "[]")]
               {:status 500
                :body
                {:error       (or (:error result) "Execution failed")
@@ -394,9 +401,10 @@
                 :status-code (:status response)
                 :timeout     (:timeout result)
                 :stdout      stdout-content
-                :stderr      stderr-content}}))
+                :stderr      stderr-content
+                :events      (mapv json/decode+kw (str/split-lines events-content))}}))
           (finally
-           ;; Clean up S3 objects
+            ;; Clean up S3 objects
             (try
               (cleanup-s3-objects s3-client bucket-name all-s3-keys)
               (catch Exception _)))))

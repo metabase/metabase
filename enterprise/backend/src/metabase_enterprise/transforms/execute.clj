@@ -137,27 +137,20 @@
     (swap! message-log (fn [m] (update m (if (:python m) :post-python :pre-python) conj s))))
   nil)
 
-(defn- replace-python-logs! [message-log stdout stderr]
-  (when message-log (swap! message-log assoc :python {:stdout stdout :stderr stderr}))
+(defn- replace-python-logs! [message-log events]
+  (when message-log (swap! message-log assoc :python events))
   nil)
 
 (defn- save-log-as-message! [run-id message-log]
   (when message-log
-    (let [{:keys [pre-python python post-python]} @message-log
-          {:keys [stdout stderr]} python
-          interleaved-python
-          (->> (concat (for [l (str/split-lines stdout)
-                             :let [[ts s] (str/split l #" " 2)]]
-                         [(parse-long ts) (str "\033[32m" s "\033[0m")])
-                       (for [l (str/split-lines stderr)
-                             :let [[ts s] (str/split l #" " 2)]]
-                         [(parse-long ts) (str "\033[31m" s "\033[0m")]))
-               (sort-by first)
-               (map second))]
+    (let [{:keys [pre-python python post-python]} @message-log]
       (t2/update! :model/TransformRun
                   :id run-id
                   {:message (str/join "\n" (concat pre-python
-                                                   interleaved-python
+                                                   (for [{:keys [stream message]} python]
+                                                     (if (= "stdout" stream)
+                                                       (str "\033[32m" message "\033[0m")
+                                                       (str "\033[31m" message "\033[0m")))
                                                    post-python))}))))
 
 (defn- log-loop! [run-id message-log]
@@ -173,12 +166,13 @@
                   (do
                     (log/warnf "Something went wrong polling the logs %s %s" status body)
                     (log/debug "Exiting due to poll error"))
-                  (let [{:keys [execution_id stdout stderr]} body]
+                  (let [{:keys [execution_id events]} body]
+
                     (if-not (= run-id execution_id)
                       (do (log/debugf "Run id did not match expected: %s actual: %s" run-id execution_id)
                           (recur))
                       (do
-                        (replace-python-logs! message-log stdout stderr)
+                        (replace-python-logs! message-log events)
                         (save-log-as-message! run-id message-log)
                         (recur)))))))))
       (catch InterruptedException _)
@@ -255,10 +249,10 @@
     (let [driver                           (:engine db)
           {:keys [source-tables body]}     source
           {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id cancel-chan)
-          {:keys [stdout stderr]}          body]
+          {:keys [stdout stderr events]}   body]
       (.close log-thread-ref)           ; early close to force any writes to flush
       (when (or stdout stderr)
-        (replace-python-logs! message-log stdout stderr))
+        (replace-python-logs! message-log events))
       (if (not= 200 status)
         (throw (ex-info (debug-info-str body)
                         {:status-code 400
