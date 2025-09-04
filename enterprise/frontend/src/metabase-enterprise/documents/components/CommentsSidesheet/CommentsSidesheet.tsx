@@ -1,3 +1,4 @@
+import { useWindowEvent } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLatest, useLocation } from "react-use";
@@ -128,6 +129,17 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     }
   }, [hash, activeTabRef, isHashCommentResolved, isHashCommentUnresolved]);
 
+  // Mantine modal, at least in v8 listens to `window` events in capture mode (before bubbling up),
+  // so the modal closes before the event reaches the comment editor
+  // See: https://github.com/mantinedev/mantine/blob/master/packages/%40mantine/core/src/components/ModalBase/use-modal.ts#L43
+  // Therefore we need to listen for escape events during the bubbling phase, not the capture phase
+  const closeOnEscape = false;
+  useWindowEvent("keydown", (event) => {
+    if (event.key === "Escape" && !event.defaultPrevented) {
+      closeSidebar();
+    }
+  });
+
   const handleSubmit = (doc: DocumentContent) => {
     if (!childTargetId || !document) {
       return;
@@ -153,6 +165,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       opened
       variant="sidesheet"
       onClose={closeSidebar}
+      closeOnEscape={closeOnEscape}
     >
       <Modal.Content
         classNames={{
