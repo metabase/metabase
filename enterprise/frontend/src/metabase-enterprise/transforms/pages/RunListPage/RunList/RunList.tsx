@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useDispatch } from "metabase/lib/redux";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { Card, Group, Stack } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
@@ -11,7 +12,7 @@ import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import type { RunListParams } from "../../../types";
 import { getRunListUrl, getTransformUrl } from "../../../urls";
-import { formatRunMethod, parseLocalTimestamp } from "../../../utils";
+import { formatRunMethod } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
 
 import S from "./RunList.module.css";
@@ -78,11 +79,9 @@ function RunTable({ runs }: RunTableProps) {
             onClick={() => handleRowClick(run)}
           >
             <td>{run.transform?.name}</td>
-            <td>{parseLocalTimestamp(run.start_time).format("lll")}</td>
+            <td>{parseTimestamp(run.start_time).format("lll")}</td>
             <td>
-              {run.end_time
-                ? parseLocalTimestamp(run.end_time).format("lll")
-                : null}
+              {run.end_time ? parseTimestamp(run.end_time).format("lll") : null}
             </td>
             <td>
               <RunStatusInfo
@@ -90,7 +89,7 @@ function RunTable({ runs }: RunTableProps) {
                 message={run.message}
                 endTime={
                   run.end_time != null
-                    ? parseLocalTimestamp(run.end_time).toDate()
+                    ? parseTimestamp(run.end_time).toDate()
                     : null
                 }
               />

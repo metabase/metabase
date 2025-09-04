@@ -1352,11 +1352,157 @@ describe("scenarios > admin > transforms > runs", () => {
       });
     }
 
+    function testRunMethodFilter() {
+      cy.log("no filters");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("run method filter - add a filter");
+      getRunMethodFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Manual").click();
+        cy.button("Add filter").click();
+      });
+      getRunMethodFilterWidget().findByText("Manual").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("run method filter - update a filter");
+      getRunMethodFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Manual").click();
+        cy.findByText("Schedule").click();
+        cy.button("Update filter").click();
+      });
+      getRunMethodFilterWidget().findByText("Schedule").should("be.visible");
+      H.main().findByText("No runs yet").should("be.visible");
+
+      cy.log("run method filter - multiple options");
+      getRunMethodFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Manual").click();
+        cy.button("Update filter").click();
+      });
+      getRunMethodFilterWidget()
+        .findByText("Schedule, Manual")
+        .should("be.visible");
+
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("run method filter - remove filter");
+      getRunMethodFilterWidget().button("Remove filter").click();
+      getRunMethodFilterWidget()
+        .findByText("Schedule, Manual")
+        .should("not.exist");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+    }
+
+    function testStartAtFilter() {
+      cy.log("no filters");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("today");
+      getStartAtFilterWidget().click();
+      H.popover().findByText("Today").click();
+      getStartAtFilterWidget().findByText("Today").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      getStartAtFilterWidget().button("Remove filter").click();
+      getStartAtFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Relative date range…").click();
+        cy.findByText("Include today").click();
+        cy.button("Apply").click();
+      });
+      getStartAtFilterWidget()
+        .findByText("Previous 30 days or today")
+        .should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      getStartAtFilterWidget().button("Remove filter").click();
+      getStartAtFilterWidget().click();
+      H.popover().findByText("Previous week").click();
+      getStartAtFilterWidget().findByText("Previous week").should("be.visible");
+      H.main().findByText("No runs yet").should("be.visible");
+
+      getStartAtFilterWidget().button("Remove filter").click();
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+    }
+
+    function testEndAtFilter() {
+      cy.log("no filters");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("today");
+      getEndAtFilterWidget().click();
+      H.popover().findByText("Today").click();
+      getEndAtFilterWidget().findByText("Today").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      getEndAtFilterWidget().button("Remove filter").click();
+      getEndAtFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Relative date range…").click();
+        cy.findByText("Include today").click();
+        cy.button("Apply").click();
+      });
+      getEndAtFilterWidget()
+        .findByText("Previous 30 days or today")
+        .should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      getEndAtFilterWidget().button("Remove filter").click();
+      getEndAtFilterWidget().click();
+      H.popover().findByText("Previous week").click();
+      getEndAtFilterWidget().findByText("Previous week").should("be.visible");
+      H.main().findByText("No runs yet").should("be.visible");
+
+      getEndAtFilterWidget().button("Remove filter").click();
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+    }
+
     createInitialData();
     getNavSidebar().findByText("Runs").click();
     testTransformFilter();
     testStatusFilter();
     testTagFilter();
+    testRunMethodFilter();
+    testStartAtFilter();
+    testEndAtFilter();
   });
 });
 
@@ -1434,6 +1580,18 @@ function getStatusFilterWidget() {
 
 function getTagFilterWidget() {
   return cy.findByRole("group", { name: "Tags" });
+}
+
+function getRunMethodFilterWidget() {
+  return cy.findByRole("group", { name: "Run method" });
+}
+
+function getStartAtFilterWidget() {
+  return cy.findByRole("group", { name: "Start at" });
+}
+
+function getEndAtFilterWidget() {
+  return cy.findByRole("group", { name: "End at" });
 }
 
 function visitTransformListPage() {

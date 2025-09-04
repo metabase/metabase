@@ -1,16 +1,11 @@
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type {
   Database,
   TransformRunMethod,
   TransformRunStatus,
 } from "metabase-types/api";
-
-export function parseLocalTimestamp(timestamp: string) {
-  return parseTimestamp(timestamp, null, true);
-}
 
 export function formatStatus(status: TransformRunStatus) {
   switch (status) {

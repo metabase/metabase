@@ -29,6 +29,7 @@ import type {
   Database,
   DatasetQuery,
   ParameterId,
+  ParameterValueOrArray,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -333,7 +334,7 @@ export const apiUpdateQuestion = (
 export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: string | string[]) => {
+  (parameterId: ParameterId, value: ParameterValueOrArray | null) => {
     return { id: parameterId, value: normalizeValue(value) };
   },
 );
@@ -354,7 +355,9 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-function normalizeValue(value: string | string[]) {
+function normalizeValue(
+  value: ParameterValueOrArray | null,
+): ParameterValueOrArray | null {
   if (value === "") {
     return null;
   }
