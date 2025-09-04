@@ -11,7 +11,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.mbml.core :as mbml.core]
-   [metabase-enterprise.mbml.parser :as mbml.parser]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -493,7 +492,7 @@ GROUP BY customer_id;")
                          :target map?}
                         result))
 
-        ;; Verify the source came from the SQL body, not the original source field
+                ;; Verify the source came from the SQL body, not the original source field
                 (let [saved-transform (t2/select-one :model/Transform :id (:id result))]
                   (is (=? {:name "SQL Transform for Model Creation"}
                           saved-transform))))))))

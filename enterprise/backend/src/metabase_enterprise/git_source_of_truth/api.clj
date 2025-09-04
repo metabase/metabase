@@ -51,7 +51,7 @@
       (try
         (mbml/mbml-files->models
          (->> (.toString dir)
-              (sources/load-source! source )
+              (sources/load-source! source)
               io/file
               file-seq
               next
@@ -167,6 +167,9 @@
     {:status  :error
      :message "Git source of truth is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
+(def ^:private entity-type->fe-type
+  {"model/Transform:v1" "transform"})
+
 (api.macros/defendpoint :get "/git/:path"
   "List item in the library"
   [{:keys [path]}]
@@ -177,8 +180,11 @@
         (let [root-dir (io/file (sources/load-source! source (.toString dir)))
               file (io/file root-dir path)]
           (api/check-404 (when (.exists file)
-                           {:path    path
-                            :content (slurp file)})))
+                           (let [[entity-type _ model] (mbml/mbml-file->unsaved-model path)]
+                             {:path    path
+                              :entityType (entity-type->fe-type entity-type)
+                              :entity model
+                              :content (slurp file)}))))
         (catch Exception e
           (log/errorf e "Failed to reload from git repository: %s" (.getMessage e))
           (let [error-msg (cond

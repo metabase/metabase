@@ -134,49 +134,103 @@
 (def ^:private entity-type->model
   {"model/Transform:v1" :model/Transform})
 
-(defmulti mbml-file->model*
+(defmulti save-model!
   "Impl for multi-entity dispatch for mbml-file->model. Implement to support versioned
   deserialization of a model from an mbml-parsed entity map."
-  {:arglists '([mbml-map existing-entity])}
-  (fn [{:keys [entity]} _existing-entity] (keyword entity)))
+  {:arglists '([entity model existing-entity])}
+  (fn [entity model _existing-entity] (keyword entity)))
 
-(defmethod mbml-file->model* :default
-  [{:keys [entity identifier] :as mbml-map} {existing-entity-id :id}]
-  (let [model-kw (entity-type->model entity)
-        mbml-map' (-> (assoc mbml-map :library_identifier identifier)
-                      (dissoc :entity :identifier))]
+(defmulti mbml-file->unsaved-model*
+  "Transformer for mbml-files into content that can be saved as a metabase model
+
+  Args:
+    mbml-map: parsed and validated mbml map
+
+  Returns:
+    map of the model that can be inserted or updated into the appdb
+
+  Raises:
+    ex-info objects when given data that cannot be transformed."
+  {:arglists '([mbml-map])}
+  (fn [{:keys [entity]}] (keyword entity)))
+
+(defmethod mbml-file->unsaved-model* :default
+  [{:keys [identifier] :as mbml-map}]
+  (-> mbml-map
+      (assoc :library_identifer identifier)
+      (dissoc :identifier :entity)))
+
+(defmethod save-model! :default
+  [entity model {existing-entity-id :id}]
+  (let [model-kw (entity-type->model entity)]
     (if existing-entity-id
-      (do (t2/update! model-kw :id existing-entity-id mbml-map')
+      (do (t2/update! model-kw :id existing-entity-id model)
           (t2/select-one model-kw))
-      (t2/insert-returning-instance! model-kw mbml-map'))))
+      (t2/insert-returning-instance! model-kw model))))
 
 (defn- update-source-query
   [{:keys [source body] :as model} database-id]
   (assoc model :source {:type "query"
                         :query (lib/native-query (lib.metadata.jvm/application-database-metadata-provider database-id) (or body source))}))
 
+<<<<<<< Updated upstream
 ;; TODO(edpaget): Probably belongs in the transform module
 (defmethod mbml-file->model* :model/Transform:v1
   [{:keys [tags database identifier] :as mbml-map} {existing-entity-id :id}]
   (let [tag-ids (when (seq tags)
                   (t2/select-pks-vec :model/TransformTag :name [:in tags]))
+=======
+(defmethod mbml-file->unsaved-model* :model/Transform:v1
+  [{:keys [tags database identifier] :as mbml-map}]
+  (let [tag-ids (t2/select-pks-vec :model/TransformTag :name [:in tags])
+>>>>>>> Stashed changes
         database-id (t2/select-one-pk :model/Database :name database)]
     (when-not (= (count tag-ids) (count (set tags)))
       (throw (mbml.errors/format-model-transformation-error :missing-tags :model/Transform mbml-map mbml.parser/*file*)))
     (when-not database-id
       (throw (mbml.errors/format-model-transformation-error :database-id :model/Transform mbml-map mbml.parser/*file*)))
+<<<<<<< Updated upstream
     (let [transform-input (-> mbml-map
                               (assoc :library_identifier identifier)
                               (update-source-query database-id)
                               (dissoc :entity :tags :body :identifier :database)
                               (assoc :tag_ids (or (seq tag-ids) [])))]
+=======
+    (-> mbml-map
+        (assoc :library_identifier identifier)
+        (update-source-query database-id)
+        (dissoc :entity :tags :body :identifier :database)
+        (assoc :tag_ids tag-ids))))
+>>>>>>> Stashed changes
 
-      (try
-        (if existing-entity-id
-          (transforms/update-transform! existing-entity-id transform-input)
-          (transforms/create-transform! transform-input))
-        (catch Exception e
-          (throw (mbml.errors/format-model-transformation-error :default :model/Transform mbml-map mbml.parser/*file* e)))))))
+;; TODO(edpaget): Probably belongs in the transform module
+(defmethod save-model! :model/Transform:v1
+  [_ model {existing-entity-id :id}]
+  (if existing-entity-id
+    (transforms/update-transform! existing-entity-id model)
+    (transforms/create-transform! model)))
+
+(defn mbml-file->unsaved-model
+  "Take an mbml file and create a model that could be saved to the database
+
+  Implment the mbml-file->unsaved-model* multimethod to have it support a new entity-type.
+
+  Args:
+    file-path: Path to MBML file (string)
+
+  Returns:
+    tuple of entity, identifier, and map compatible with a saved toucan entity
+
+  Raises:
+    Exception for file reading errors, parse errors, or validation errors
+
+  Example:
+    (mbml-file->model \"/path/to/transform.yaml\")
+    (mbml-file->model \"/path/to/transform.sql\")"
+  [file-path]
+  (binding [mbml.parser/*file* file-path]
+    (let [{:keys [identifier entity] :as mbml-map} (parse-mbml-file file-path)]
+      [entity identifier (mbml-file->unsaved-model* mbml-map)])))
 
 (defn mbml-file->model
   "Take an mbml file and write it to the appdb.
@@ -197,26 +251,29 @@
     (mbml-file->model \"/path/to/transform.sql\")"
   [file-path]
   (binding [mbml.parser/*file* file-path]
-    (let [{:keys [identifier entity] :as mbml-map} (parse-mbml-file file-path)
+    (let [[entity identifier model] (mbml-file->unsaved-model file-path)
           existing-entity (t2/select-one (entity-type->model entity) :library_identifier identifier)]
-      (mbml-file->model* mbml-map existing-entity))))
+      (try
+        (save-model! entity model existing-entity)
+        (catch Exception e
+          (throw (mbml.errors/format-model-transformation-error :default :model/Transform model mbml.parser/*file* e)))))))
 
 (mu/defn mbml-files->models :- [:sequential :map]
   "Load multiple MBML files transactionally and clean up orphaned models.
-  
+
   Processes all files within a single transaction, creating or updating models
   based on their library_identifier. After loading, removes any models with
   library_identifier values that don't match the loaded files.
-  
+
   Args:
     file-paths: Collection of paths to MBML files
-  
+
   Returns:
     Collection of created/updated model instances
-  
-  Throws:
+
+  Raises:
     Exception if any file fails to load (entire transaction rolls back)
-  
+
   Example:
     (mbml-files->models [\"transform1.yaml\" \"transform2.sql\"])"
   [file-paths :- [:sequential ms/NonBlankString]]
