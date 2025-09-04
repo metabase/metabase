@@ -253,7 +253,7 @@
               (let [last-unit (t/minus (maybe-reduce-resolution unit dt) (to-period 1))]
                 (unit-range last-unit last-unit)))
     :filter (fn [{:keys [unit]} field-clause]
-              [:time-interval field-clause :last (keyword unit)])}
+              (lib/time-interval field-clause :last (keyword unit)))}
 
    {:parser (regex->parser (re-pattern (str #"this" temporal-units-regex))
                            [:unit])
@@ -261,7 +261,7 @@
               (let [dt-adj (maybe-reduce-resolution unit dt)]
                 (unit-range dt-adj dt-adj)))
     :filter (fn [{:keys [unit]} field-clause]
-              [:time-interval field-clause :current (keyword unit)])}])
+              (lib/time-interval field-clause :current (keyword unit)))}])
 
 (defn- ->iso-8601-date [t]
   (t/format :iso-local-date t))

@@ -43,7 +43,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       setupEmbed('<metabase-browser initial-collection="root" />');
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Exploration")
+        .findByText("New exploration")
         .should("be.visible")
         .click();
 
@@ -89,7 +89,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       `);
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Exploration")
+        .findByText("New exploration")
         .should("not.exist");
     });
   });
@@ -101,7 +101,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       );
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Dashboard")
+        .findByText("New dashboard")
         .should("be.visible")
         .click();
 
@@ -121,7 +121,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .findByText("Our analytics")
         .should("be.visible");
 
-      H.getSimpleEmbedIframeContent().findByText("New Dashboard").click();
+      H.getSimpleEmbedIframeContent().findByText("New dashboard").click();
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("change collection to save dashboard in");
@@ -160,7 +160,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       );
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Exploration")
+        .findByText("New exploration")
         .should("be.visible")
         .click();
 
@@ -175,7 +175,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         '<metabase-browser initial-collection="root" read-only="false" />',
       );
 
-      H.getSimpleEmbedIframeContent().findByText("New Exploration").click();
+      H.getSimpleEmbedIframeContent().findByText("New exploration").click();
 
       cy.log("select data model");
       H.getSimpleEmbedIframeContent().findByText("Orders").click();
@@ -205,7 +205,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       `);
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Dashboard")
+        .findByText("New dashboard")
         .should("not.exist");
     });
 
@@ -215,7 +215,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       );
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Dashboard")
+        .findByText("New dashboard")
         .should("be.visible")
         .click();
 
@@ -287,7 +287,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       `);
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Exploration")
+        .findByText("New exploration")
         .should("not.exist");
     });
 
@@ -300,7 +300,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         />
       `);
 
-      H.getSimpleEmbedIframeContent().findByText("New Exploration").click();
+      H.getSimpleEmbedIframeContent().findByText("New exploration").click();
 
       cy.log("should show data picker with limited entity types");
       H.getSimpleEmbedIframeContent()

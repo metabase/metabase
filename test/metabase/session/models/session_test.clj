@@ -80,16 +80,15 @@
                     :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"
                     :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"})
 
-                  (is (malli= [:map-of [:= email]
-                               [:sequential
-                                [:map {:closed true}
-                                 [:from ms/Email]
-                                 [:to [:= [email]]]
-                                 [:subject [:= (format "We've Noticed a New Metabase Login, %s" first-name)]]
-                                 [:body [:sequential [:map
-                                                      [:type [:= "text/html; charset=utf-8"]]
-                                                      [:content :string]]]]]]]
-                              @mt/inbox))
+                  (is (malli= [:sequential {:min 1}
+                               [:map {:closed true}
+                                [:from ms/Email]
+                                [:to [:= [email]]]
+                                [:subject [:= (format "We've Noticed a New Metabase Login, %s" first-name)]]
+                                [:body [:sequential [:map
+                                                     [:type [:= "text/html; charset=utf-8"]]
+                                                     [:content :string]]]]]]
+                              (get @mt/inbox email)))
                   (let [message  (-> @mt/inbox (get email) first :body first :content)
                         site-url (system/site-url)]
                     (testing (format "\nMessage = %s\nsite-url = %s" (pr-str message) (pr-str site-url))

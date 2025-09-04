@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { Card } from "metabase/ui";
 import {
   useListTransformJobsQuery,
@@ -15,7 +16,6 @@ import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getJobUrl } from "../../../urls";
-import { parseLocalTimestamp } from "../../../utils";
 
 import S from "./JobList.module.css";
 
@@ -60,7 +60,7 @@ export function JobList() {
             <td>{job.name}</td>
             <td className={S.nowrap}>
               {job.last_run?.start_time
-                ? parseLocalTimestamp(job.last_run?.start_time).format("lll")
+                ? parseTimestamp(job.last_run?.start_time).format("lll")
                 : null}
             </td>
             <td className={S.nowrap}>
@@ -70,7 +70,7 @@ export function JobList() {
                   message={job.last_run.message}
                   endTime={
                     job.last_run.end_time != null
-                      ? parseLocalTimestamp(job.last_run.end_time).toDate()
+                      ? parseTimestamp(job.last_run.end_time).toDate()
                       : null
                   }
                 />

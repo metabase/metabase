@@ -1,3 +1,5 @@
+import { EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
+
 import {
   isInvalidMetabaseVersion,
   isSdkPackageCompatibleWithSdkBundle,
@@ -29,7 +31,7 @@ describe("sdk version utils", () => {
       expectedResult: true,
     },
     {
-      version: "vUNKNOWN",
+      version: EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION,
       expectedResult: true,
     },
     {

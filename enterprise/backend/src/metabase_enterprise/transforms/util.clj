@@ -3,8 +3,12 @@
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant LocalDateTime OffsetDateTime ZonedDateTime ZoneId)
+   (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -87,3 +91,21 @@
   [transform]
   (case (-> transform :target :type)
     "table"             :transforms/table))
+
+(defn local-timestamp
+  "Convert the timestamp t to a ZonedDateTime instance in the system timezone."
+  [t]
+  (condp instance? t
+    String         (recur (u.date/parse t))
+    Date           (recur (.toInstant ^Date t))
+    Instant        (ZonedDateTime/ofInstant t (ZoneId/systemDefault))
+    LocalDateTime  (ZonedDateTime/of t (ZoneId/systemDefault))
+    OffsetDateTime (.atZoneSameInstant ^OffsetDateTime t (ZoneId/systemDefault))
+    ZonedDateTime  (.withZoneSameInstant ^ZonedDateTime t (ZoneId/systemDefault))
+    (throw (ex-info (str "Cannot convert timestamp " t " of type " (type t) " to a ZonedDateTime")
+                    {:timestamp t}))))
+
+(defn local-timestamp-string
+  "Convert the timestamp t to a string encoding the it in the system timezone."
+  [t]
+  (-> t local-timestamp str))

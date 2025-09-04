@@ -9,6 +9,7 @@ import type {
   ActionParametersMapping,
   ParameterId,
   ParameterValueOrArray,
+  ParameterValuesMap,
   ParametersForActionExecution,
   WritebackAction,
   WritebackParameter,
@@ -23,7 +24,7 @@ function formatParameterValue(value: ParameterValueOrArray) {
 function prepareParameter(
   mapping: ActionParametersMapping,
   action: WritebackAction,
-  parameterValues: { [id: string]: ParameterValueOrArray },
+  parameterValues: ParameterValuesMap,
 ): ActionParameterTuple | undefined {
   if (!action?.parameters?.length) {
     return;
@@ -46,7 +47,7 @@ function prepareParameter(
 
 export function getDashcardParamValues(
   dashcard: ActionDashboardCard,
-  parameterValues: { [id: string]: ParameterValueOrArray },
+  parameterValues: ParameterValuesMap,
 ): ParametersForActionExecution {
   if (
     !dashcard.action ||

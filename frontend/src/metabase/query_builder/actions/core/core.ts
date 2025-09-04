@@ -29,6 +29,7 @@ import type {
   Database,
   DatasetQuery,
   ParameterId,
+  ParameterValueOrArray,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -43,7 +44,11 @@ import {
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../selectors";
-import { clearQueryResult, runQuestionQuery } from "../querying";
+import {
+  clearQueryResult,
+  runDirtyQuestionQuery,
+  runQuestionQuery,
+} from "../querying";
 import { onCloseSidebars } from "../ui";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
@@ -120,7 +125,7 @@ export const setCardAndRun = (
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(runQuestionQuery({ shouldUpdateUrl }));
+    dispatch(runDirtyQuestionQuery({ shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -257,8 +262,13 @@ export const apiCreateQuestion = (
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
     if (isModel || isMetric) {
+      // composeQuestionAdhoc() returns a question with a 'table' display by default
       const composedQuestion =
-        createdQuestionWithMetadata.composeQuestionAdhoc();
+        isModel && question.display() === "list"
+          ? createdQuestionWithMetadata.composeQuestionAdhoc({
+              display: "list",
+            })
+          : createdQuestionWithMetadata.composeQuestionAdhoc();
       dispatch(runQuestionQuery({ overrideWithQuestion: composedQuestion }));
     }
 
@@ -328,7 +338,7 @@ export const apiUpdateQuestion = (
 export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: string | string[]) => {
+  (parameterId: ParameterId, value: ParameterValueOrArray | null) => {
     return { id: parameterId, value: normalizeValue(value) };
   },
 );
@@ -349,7 +359,9 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-function normalizeValue(value: string | string[]) {
+function normalizeValue(
+  value: ParameterValueOrArray | null,
+): ParameterValueOrArray | null {
   if (value === "") {
     return null;
   }
