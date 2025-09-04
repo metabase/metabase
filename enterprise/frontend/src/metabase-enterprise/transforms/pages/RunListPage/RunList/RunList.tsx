@@ -84,8 +84,10 @@ function RunTable({ runs }: RunTableProps) {
             onClick={() => handleRowClick(run)}
           >
             <td>{run.transform?.name}</td>
-            <td>{parseTimestamp(run.start_time).format("lll")}</td>
-            <td>
+            <td className={S.nowrap}>
+              {parseTimestamp(run.start_time).format("lll")}
+            </td>
+            <td className={S.nowrap}>
               {run.end_time ? parseTimestamp(run.end_time).format("lll") : null}
             </td>
             <td>
