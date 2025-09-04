@@ -202,10 +202,6 @@ jobs:
     name: Python Runner Tests
     env:
       CI: 'true'
-      MB_PYTHON_EXECUTION_SERVER_URL: http://localhost:5001
-      MB_PYTHON_EXECUTION_MOUNT_PATH: /tmp/python-exec-work
-      MB_PYTHON_RUNNER_S3_BUCKET: metabase-python-runner
-      MB_PYTHON_RUNNER_S3_ENDPOINT: http://localhost:4566
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       AWS_DEFAULT_REGION: us-east-1
@@ -223,23 +219,10 @@ jobs:
           echo "🚀 Starting python-runner using make run..."
           cd python-runner
 
-          # Set environment variables for the Makefile
-          export PYTHON_RUNNER_PORT=5001
-          export PYTHON_RUNNER_MOUNT_PATH=/tmp/python-exec-work
-
           # Use the official make run command
           make run
 
           echo "✅ Python runner started successfully!"
-      - name: Verify LocalStack and S3 setup
-        run: |
-          echo "🔍 Verifying LocalStack is ready and S3 bucket exists..."
-          # The make run command should have already set up the S3 bucket
-          curl -s http://localhost:4566/_localstack/health | jq .
-
-          # Install awscli to verify the bucket
-          pip install awscli
-          aws --endpoint-url=http://localhost:4566 s3 ls s3://metabase-python-runner
 
       - name: Verify Python Runner can access LocalStack
         run: |
