@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -486,3 +487,81 @@
                [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "American" "Burger" "Burger" "Artisan"  string?]
                [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "Artisan"  "Burger" "German" "Asian"    string?]]
               (mt/rows results))))))
+
+(deftest ^:parallel explicit-join-with-fields-and-implicitly-joined-remaps-test
+  (testing "#62591"
+    (let [query (let [mp (-> (mt/metadata-provider)
+                             (lib.tu/remap-metadata-provider
+                              (mt/id :orders :user_id)    (mt/id :people :name)
+                              (mt/id :orders :product_id) (mt/id :products :title)))]
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                      (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :orders)))
+                                    (lib/with-join-alias "Orders")))
+                      (lib/remove-field -1 (-> (lib.metadata/field mp (mt/id :orders :id))
+                                               (lib/with-join-alias "Orders")))
+                      (lib/order-by (lib.metadata/field mp (mt/id :people :id)))
+                      (lib/limit 2)))]
+      (is (=? {:stages [{:joins [{:alias      "Orders"
+                                  :stages     [{:source-table (mt/id :orders)}]
+                                  :fields     [[:field {:join-alias "Orders"} (mt/id :orders :user_id)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :product_id)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :subtotal)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :tax)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :total)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :discount)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :created_at)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :quantity)]]
+                                  :conditions [[:= {}
+                                                [:field {} (mt/id :people :id)]
+                                                [:field {:join-alias "Orders"} (mt/id :orders :user_id)]]]}]}]}
+              query))
+      (doseq [f [#'lib/returned-columns
+                 #'qp.preprocess/query->expected-cols]]
+        (testing f
+          (is (= (concat
+                  ["ID"
+                   "ADDRESS"
+                   "EMAIL"
+                   "PASSWORD"
+                   "NAME"
+                   "CITY"
+                   "LONGITUDE"
+                   "STATE"
+                   "SOURCE"
+                   "BIRTH_DATE"
+                   "ZIP"
+                   "LATITUDE"
+                   "CREATED_AT"
+                   "Orders__USER_ID"
+                   "Orders__PRODUCT_ID"
+                   "Orders__SUBTOTAL"
+                   "Orders__TAX"
+                   "Orders__TOTAL"
+                   "Orders__DISCOUNT"
+                   "Orders__CREATED_AT"
+                   "Orders__QUANTITY"]
+                  (condp = f
+                    #'lib/returned-columns
+                    ["Orders__NAME"
+                     "Orders__TITLE"]
+
+                    #'qp.preprocess/query->expected-cols
+                    ["Orders__PEOPLE__via__USER_ID__NAME"
+                     "Orders__PRODUCTS__via__PRODUCT_ID__TITLE"]))
+                 (map :lib/desired-column-alias
+                      (condp = f
+                        #'lib/returned-columns
+                        (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true})
+
+                        #'qp.preprocess/query->expected-cols
+                        (qp.preprocess/query->expected-cols query)))))))
+      (mt/with-native-query-testing-context query
+        (is (= [[1 "9611-9809 West Rosedale Road" "borer-hudson@yahoo.com" "ccca881f-3e4b-4e5c-8336-354103604af6"
+                 "Hudson Borer" "Wood River" -98.53 "NE" "Twitter" "1986-12-12T00:00:00Z" "68883" 40.71 "2017-10-07T01:34:35.462Z"
+                 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Hudson Borer" "Awesome Concrete Shoes"]
+                [1 "9611-9809 West Rosedale Road" "borer-hudson@yahoo.com" "ccca881f-3e4b-4e5c-8336-354103604af6"
+                 "Hudson Borer" "Wood River" -98.53 "NE" "Twitter" "1986-12-12T00:00:00Z" "68883" 40.71 "2017-10-07T01:34:35.462Z"
+                 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3 "Hudson Borer" "Mediocre Wooden Bench"]]
+               (mt/formatted-rows [int str str str str str 2.0 str str str str 2.0 str
+                                   int int 2.0 2.0 2.0 2.0 str int str str]
+                                  (qp/process-query query))))))))

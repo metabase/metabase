@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -11,7 +11,6 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import { useTranslatedCollectionId } from "embedding-sdk-bundle/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -24,6 +23,7 @@ import {
   PopoverBackButton,
   Stack,
 } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import {
   FlexibleSizeComponent,
@@ -98,6 +98,16 @@ export const SdkQuestionDefaultView = ({
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
+
+  const isNativeQuestion = useMemo(() => {
+    if (!question) {
+      return false;
+    }
+
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    return isNative;
+  }, [question]);
 
   useEffect(() => {
     if (isNewQuestion && !isQuestionSaved) {
@@ -206,17 +216,25 @@ export const SdkQuestionDefaultView = ({
                         <ChartTypeDropdown />
                         <QuestionSettingsDropdown />
                       </Button.Group>
-                      <Divider
-                        mx="xs"
-                        orientation="vertical"
-                        // we have to do this for now because Mantine's divider overrides this color no matter what
-                        color="var(--mb-color-border) !important"
-                      />
+
+                      {!isNativeQuestion && (
+                        <Divider
+                          mx="xs"
+                          orientation="vertical"
+                          // we have to do this for now because Mantine's divider overrides this color no matter what
+                          color="var(--mb-color-border) !important"
+                        />
+                      )}
                     </>
                   )}
-                  <FilterDropdown />
-                  <SummarizeDropdown />
-                  <BreakoutDropdown />
+
+                  {!isNativeQuestion && (
+                    <>
+                      <FilterDropdown />
+                      <SummarizeDropdown />
+                      <BreakoutDropdown />
+                    </>
+                  )}
                 </>
               )}
             </Group>
@@ -259,11 +277,7 @@ const DefaultViewSaveModal = ({
     targetCollection,
   } = useSdkQuestionContext();
 
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: targetCollection,
-  });
-
-  if (!isSaveEnabled || !isOpen || !question || isLoading) {
+  if (!isSaveEnabled || !isOpen || !question) {
     return null;
   }
 
@@ -279,7 +293,7 @@ const DefaultViewSaveModal = ({
         await onSave(question);
         close();
       }}
-      targetCollection={id}
+      targetCollection={targetCollection}
     />
   );
 };

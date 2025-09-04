@@ -890,7 +890,7 @@ describe("issue 33844", () => {
     });
     cy.findByTestId("run-button").click();
     cy.wait("@dataset");
-    cy.findByTestId("dataset-edit-bar").findByText("Metadata").click();
+    cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
     testModelMetadata(true);
   });
 
@@ -926,7 +926,7 @@ describe("issue 45924", () => {
     H.popover().findByText("ID").click();
     cy.findByTestId("run-button").click();
     cy.wait("@dataset");
-    cy.findByTestId("dataset-edit-bar").findByText("Metadata").click();
+    cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
     H.tableHeaderClick("ID1");
     cy.findByLabelText("Display name").should("have.value", "ID1");
     cy.findByTestId("dataset-edit-bar").button("Save changes").click();
@@ -1169,7 +1169,7 @@ describe("issue 36161", () => {
     H.popover().button("Done").click();
     H.runButtonOverlay().click();
     cy.wait("@dataset");
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns-name").click();
     H.openColumnOptions("ID2");
     H.renameColumn("ID2", "ID2 custom");
     H.openColumnOptions("ID3");
@@ -1217,7 +1217,7 @@ describe("issue 34514", () => {
     assertBackToEmptyState();
   });
 
-  it("should allow browser history navigation between tabs (metabase#34514)", () => {
+  it("should allow browser history navigation between tabs (metabase#34514, metabase#45787)", () => {
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Tables").click();
       cy.wait("@fetchTables");
@@ -1228,19 +1228,17 @@ describe("issue 34514", () => {
     cy.wait("@dataset");
     assertQueryTabState();
 
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns-name").click();
     assertMetadataTabState();
-
-    // Close the TabHinToast component.
-    // This isn't a part of the test scenario but it helps with flakiness.
-    cy.icon("close").click();
+    cy.get("@dataset.all").should("have.length", 1);
 
     cy.go("back");
-    cy.wait(["@dataset", "@fetchDatabase"]); // This should be removed when (metabase#45787) is fixed
     assertQueryTabState();
+    cy.get("@dataset.all").should("have.length", 1);
 
     cy.go("back");
     assertBackToEmptyState();
+    cy.get("@dataset.all").should("have.length", 1);
   });
 
   function assertQueryTabState() {
@@ -1261,7 +1259,7 @@ describe("issue 34514", () => {
     H.entityPickerModal().should("be.visible");
     H.entityPickerModal().button("Close").click();
 
-    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+    cy.findByTestId("editor-tabs-columns").should("be.disabled");
     cy.button("Save").should("be.disabled");
     H.getNotebookStep("data")
       .findByText("Pick your starting data")
@@ -1720,7 +1718,7 @@ describe("issue 57557", () => {
     });
     H.waitForLoaderToBeRemoved();
     cy.findByTestId("editor-tabs-query").should("be.disabled");
-    cy.findByTestId("editor-tabs-metadata").should("be.checked");
+    cy.findByTestId("editor-tabs-columns").should("be.checked");
   });
 });
 
@@ -1811,7 +1809,7 @@ describe("issue 55486", () => {
   });
 
   function checkIsShowingMetadataEditorTab() {
-    cy.findByTestId("editor-tabs-metadata").should("be.checked");
+    cy.findByTestId("editor-tabs-columns").should("be.checked");
     cy.findByTestId("visualization-root").should("be.visible");
   }
 
@@ -1823,7 +1821,7 @@ describe("issue 55486", () => {
   it("should render the correct query after using the back button in a model (metabase#56775)", () => {
     H.openQuestionActions("Edit query definition");
 
-    H.datasetEditBar().findByText("Metadata").click();
+    H.datasetEditBar().findByText("Columns").click();
     checkIsShowingMetadataEditorTab();
 
     H.datasetEditBar().findByText("Query").click();

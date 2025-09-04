@@ -1567,6 +1567,7 @@
            app-db
            audit-app
            classloader
+           config
            driver
            lib
            models
@@ -1606,6 +1607,7 @@
   {:team "Cloud"
    :api  #{metabase-enterprise.cloud-add-ons.api}
    :uses #{api
+           events
            premium-features
            util
            enterprise/harbormaster}}
@@ -1653,6 +1655,7 @@
            metabase-enterprise.database-replication.init}
    :uses #{analytics
            api
+           driver
            premium-features
            settings
            util
