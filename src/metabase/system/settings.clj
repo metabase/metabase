@@ -119,7 +119,7 @@
   :doc        false)
 
 (defsetting system-timezone
-  "Available report timezone options"
+  "The timezone used by the system by default. AKA the JVM timezone."
   :visibility :admin
   :export?    true
   :setter     :none
