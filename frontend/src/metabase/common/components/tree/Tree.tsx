@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import * as React from "react";
 import { usePrevious } from "react-use";
-import _ from "underscore";
 
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { TreeNodeList } from "./TreeNodeList";
@@ -39,18 +38,30 @@ function BaseTree({
   const prevData = usePrevious(data);
 
   useEffect(() => {
+    if (initiallyExpanded && data !== prevData) {
+      setExpandedIds(new Set(getAllExpandableIds(data)));
+      return;
+    }
+
     if (!selectedId) {
       return;
     }
     const selectedItemChanged =
       previousSelectedId !== selectedId && !expandedIds.has(selectedId);
-    if (selectedItemChanged || !_.isEqual(data, prevData)) {
+    if (selectedItemChanged || data !== prevData) {
       setExpandedIds(
         (prev) =>
           new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
       );
     }
-  }, [prevData, data, selectedId, previousSelectedId, expandedIds]);
+  }, [
+    prevData,
+    data,
+    selectedId,
+    previousSelectedId,
+    expandedIds,
+    initiallyExpanded,
+  ]);
 
   const handleToggleExpand = useCallback(
     (itemId: string | number) => {

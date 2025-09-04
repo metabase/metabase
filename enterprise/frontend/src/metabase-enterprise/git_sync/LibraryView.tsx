@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import {
   Box,
   Flex,
@@ -11,6 +12,7 @@ import {
   ScrollArea,
   Stack,
   Text,
+  TextInput,
   Title,
 } from "metabase/ui";
 import {
@@ -30,8 +32,40 @@ function convertGitTreeToTreeItems(node: GitTreeNode): ITreeNodeItem {
   };
 }
 
+function filterTreeItems(
+  items: ITreeNodeItem[],
+  filter: string,
+): ITreeNodeItem[] {
+  if (!filter) {
+    return items;
+  }
+
+  const lowerFilter = filter.toLowerCase();
+
+  return items
+    .map((item) => {
+      const nameMatches = item.name.toLowerCase().includes(lowerFilter);
+      const filteredChildren = item.children
+        ? filterTreeItems(item.children, filter)
+        : undefined;
+
+      if (nameMatches || (filteredChildren && filteredChildren.length > 0)) {
+        return {
+          ...item,
+          children: filteredChildren,
+        };
+      }
+
+      return null;
+    })
+    .filter((item): item is ITreeNodeItem => item !== null);
+}
+
 export const LibraryView = () => {
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [filterValue, setFilterValue] = useState("");
+  const debouncedFilter = useDebouncedValue(filterValue, 300);
+
   const { data: treeData, isLoading: isTreeLoading } =
     useGetRepositoryTreeQuery();
   const { data: fileContent, isLoading: isFileLoading } =
@@ -45,7 +79,13 @@ export const LibraryView = () => {
     }
   };
 
-  const treeItems = treeData ? [convertGitTreeToTreeItems(treeData)] : [];
+  const treeItems = useMemo(() => {
+    if (!treeData) {
+      return [];
+    }
+    const items = [convertGitTreeToTreeItems(treeData)];
+    return filterTreeItems(items, debouncedFilter);
+  }, [treeData, debouncedFilter]);
 
   return (
     <Flex h="100%" gap={0}>
@@ -60,7 +100,16 @@ export const LibraryView = () => {
           <Box px="lg" pt="lg">
             <Title order={4}>{t`Your library`}</Title>
           </Box>
-          <ScrollArea flex={1} p="md">
+          <Box p="md">
+            <TextInput
+              placeholder={t`Go to file`}
+              value={filterValue}
+              onChange={(e) => setFilterValue(e.currentTarget.value)}
+              leftSection={<Icon name="search" />}
+              size="sm"
+            />
+          </Box>
+          <ScrollArea flex={1} pb="md">
             {isTreeLoading ? (
               <Flex justify="center" align="center" h="200px">
                 <Loader size="sm" />
