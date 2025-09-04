@@ -122,6 +122,18 @@ export const LibraryView = () => {
                 data={treeItems}
                 selectedId={selectedFilePath ?? undefined}
                 onSelect={handleNodeSelect}
+                emptyState={
+                  <Flex justify="center" align="center" h="200px">
+                    <Stack align="center" gap="md">
+                      <Icon
+                        name="search"
+                        size={32}
+                        color="var(--mb-color-text-light)"
+                      />
+                      <Text c="text-light">{t`No results found`}</Text>
+                    </Stack>
+                  </Flex>
+                }
               />
             )}
           </ScrollArea>
