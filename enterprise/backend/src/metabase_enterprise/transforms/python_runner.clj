@@ -61,6 +61,20 @@
       (qp.store/with-metadata-provider db-id
         (driver/execute-reducible-query driver query {:canceled-chan cancel-chan} respond)))))
 
+;; imported from metabase.upload.types
+(defn- base-type->upload-type
+  [base-type]
+  (when base-type
+    (condp #(isa? %2 %1) base-type
+      :type/Float          :float
+      :type/BigInteger     :int
+      :type/Integer        :int
+      :type/Boolean        :boolean
+      :type/DateTimeWithTZ :offset-datetime
+      :type/DateTime       :datetime
+      :type/Date           :date
+      :type/Text           :text)))
+
 (defn- generate-manifest
   "Generate a metadata manifest for the table columns."
   [table-id cols-meta]
@@ -69,6 +83,8 @@
                            {:name           (:name col-meta)
                             :database_type  (when (:base_type col-meta)
                                               (str (:base_type col-meta)))
+                            :upload_type    (when (:base_type col-meta)
+                                              (name (base-type->upload-type (:base_type col-meta))))
                             :semantic_type  (when (:semantic_type col-meta)
                                               (str (:semantic_type col-meta)))
                             :effective_type (when (:effective_type col-meta)

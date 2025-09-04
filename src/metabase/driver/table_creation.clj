@@ -51,7 +51,9 @@
    Returns:
    - Number of rows inserted"
   {:arglists '([driver database-id table-name column-names data-source])}
-  (fn [_ _ _ _ data-source] (:type data-source)))
+  (fn [driver _ _ _ data-source]
+    [(driver/dispatch-on-initialized-driver driver) (:type data-source)])
+  :hierarchy #'driver/hierarchy)
 
 (defmulti data-source->rows
   "Converts a data source into a sequence of row vectors."
@@ -67,33 +69,26 @@
   (throw (ex-info (format "Unsupported data source type: %s" (:type data-source))
                   {:data-source data-source})))
 
-(mu/defmethod insert-from-source! :default
+(mu/defmethod insert-from-source! [::driver/driver :default]
   [driver :- :keyword
    database-id :- pos-int?
    table-name :- :keyword
    column-names :- [:sequential :string]
    data-source]
   (let [rows (data-source->rows data-source)]
-    (when (seq rows)
-      (log/debugf "Inserting %d rows from %s source" (count rows) (:type data-source))
-      (driver/insert-into! driver database-id table-name column-names rows))
-    (count rows)))
+    (insert-from-source! driver database-id table-name column-names {:type :rows :data rows})))
 
-(defmulti insert-from-csv!
-  "Insert data from a csv file"
-  {:arglists '([driver database-id table-name column-names csv-file])}
-  (fn [driver & _] driver) :hierarchy #'driver/hierarchy)
+(defmethod insert-from-source! [::driver/driver :rows]
+  [driver db-id table-name column-names {:keys [data]}]
+  (when (seq data)
+    (driver/insert-into! driver db-id table-name column-names data))
+  (count data))
 
-;; default impl, e.g. postgres could issue `COPY`
-(defmethod insert-from-csv! :default
-  [driver db-id table-name column-names file]
+(defmethod insert-from-source! [::driver/driver :csv-file]
+  [driver db-id table-name column-names {:keys [file]}]
   (let [csv-rows (csv/read-csv (io/reader file))
         data-rows (rest csv-rows)]
     (insert-from-source! driver db-id table-name column-names {:type :rows :data data-rows})))
-
-(defmethod insert-from-source! :csv-file
-  [driver db-id table-name column-names {:keys [file]}]
-  (insert-from-csv! driver db-id table-name column-names file))
 
 (mu/defn create-table-from-schema!
   "Create a table from a table-schema"

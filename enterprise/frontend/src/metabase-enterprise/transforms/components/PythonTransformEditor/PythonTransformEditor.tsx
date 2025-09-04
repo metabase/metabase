@@ -60,8 +60,11 @@ export function PythonTransformEditor({
       // Capture the existing indentation after the colon
       const match = script.match(transformRegex);
       const originalIndent = match ? match[1] : "    ";
-      
-      let updatedScript = script.replace(transformRegex, newSignature + "\n" + originalIndent);
+
+      let updatedScript = script.replace(
+        transformRegex,
+        newSignature + "\n" + originalIndent,
+      );
 
       const argsRegex =
         /(\s+"""[\s\S]*?)\s*Args:\s*\n([\s\S]*?)\s*(\n\s+Returns:|\n\s+""")/;
@@ -84,7 +87,7 @@ export function PythonTransformEditor({
           // Replace existing Args section
           updatedScript = updatedScript.replace(
             argsRegex,
-            `$1
+            `    $1
 
     Args:
 ${newArgsSection}
