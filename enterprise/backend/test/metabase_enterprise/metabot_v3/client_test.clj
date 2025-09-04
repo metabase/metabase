@@ -18,9 +18,9 @@
 
 (mu/defn make-mock-stream-response [chunks usage :- ::metabot-v3.client.schema/usage]
   (str (->> chunks
-            (map #(str "0:" % "\n"))
+            (map #(str "0:" (json/encode %) "\n"))
             (str/join))
-       "d:" (json/encode {:usage usage})))
+       "d:" (json/encode {:finishReason "stop" :usage usage})))
 
 (defn mock-post! [^String body]
   (fn [_url _opts]
@@ -49,11 +49,17 @@
                          :state           {:some "state"}}]
       (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (mt/with-model-cleanup [:model/MetabotUsage]
+          (mt/with-model-cleanup [:model/MetabotMessage
+                                  [:model/MetabotConversation :created_at]]
             (let [res (m3.client/streaming-request req)]
               (is (instance? StreamingResponse res))
               (is (= "text/event-stream; charset=utf-8" (:content-type (.options ^StreamingResponse res))))
 
-              (let [body (consume-streaming-response res)]
+              (let [body    (consume-streaming-response res)
+                    conv    (t2/select-one :model/MetabotConversation :id cid)
+                    message (t2/select-one :model/MetabotMessage :conversation_id cid)]
                 (is (string? body))
-                (is (= 10 (t2/select-one-fn :total :model/MetabotUsage :conversation_id cid)))))))))))
+                (is (some? conv))
+                (is (=? {:total 10
+                         :data {:content "a1a2a3"}}
+                        message))))))))))
