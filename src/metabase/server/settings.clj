@@ -65,5 +65,5 @@ x.com")
   (deferred-tru "Prevents the server from sending CORS headers for requests originating from localhost.")
   :type       :boolean
   :default    false
-  :visibility :internal
+  :visibility :admin
   :export?    true)

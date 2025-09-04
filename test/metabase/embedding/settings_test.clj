@@ -7,6 +7,7 @@
    [metabase.embedding.settings :as embed.settings]
    [metabase.premium-features.token-check :as token-check]
    [metabase.premium-features.token-check-test :as token-check-test]
+   [metabase.server.settings :refer [disable-cors-on-localhost]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -217,3 +218,39 @@
       (test-origin-sync! {:mb-embedding-app-origins-interactive nil} :no-op)
 
       (test-origin-sync! {:mb-embedding-app-origin other-ip} :sets-both))))
+
+(deftest disable-cors-on-localhost-validation-test
+  (testing "Should reject localhost origins when disable-cors-on-localhost is enabled"
+    (mt/with-premium-features #{:embedding-sdk}
+      (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                         disable-cors-on-localhost true
+                                         embedding-app-origins-sdk ""]
+        (testing "localhost:* should be rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Localhost origins are not allowed on this instance."
+               (embed.settings/embedding-app-origins-sdk! "localhost:*"))))
+        (testing "localhost:3000 should be rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Localhost origins are not allowed on this instance."
+               (embed.settings/embedding-app-origins-sdk! "localhost:3000"))))
+        (testing "localhost mixed with other origins should be rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Localhost origins are not allowed on this instance."
+               (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")))))))
+
+  (testing "Should allow localhost origins when disable-cors-on-localhost is disabled"
+    (mt/with-premium-features #{:embedding-sdk}
+      (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                         disable-cors-on-localhost false
+                                         embedding-app-origins-sdk ""]
+        (testing "localhost origins should be allowed"
+          (embed.settings/embedding-app-origins-sdk! "localhost:*")
+          (is (= "" (embed.settings/embedding-app-origins-sdk)))
+          (embed.settings/embedding-app-origins-sdk! "localhost:3000")
+          (is (= "" (embed.settings/embedding-app-origins-sdk))))
+        (testing "localhost mixed with other origins should work"
+          (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")
+          (is (= "https://example.com" (embed.settings/embedding-app-origins-sdk))))))))

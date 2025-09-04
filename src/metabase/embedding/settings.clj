@@ -6,6 +6,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -152,17 +153,30 @@
 (defn- -embedding-app-origins-sdk []
   (setting/get-value-of-type :string :embedding-app-origins-sdk))
 
+(defn- validate-no-localhost-when-disabled
+  "Throws an exception if localhost origins are present when disable-cors-on-localhost is enabled."
+  [origins-string]
+  (when (and (server.settings/disable-cors-on-localhost)
+             (seq origins-string)
+             (re-find #"localhost" origins-string))
+    (throw (ex-info
+            "Localhost origins are not allowed on this instance."
+            {:status-code 400}))))
+
 (defn- -embedding-app-origins-sdk!
   "The setter for [[embedding-app-origins-sdk]].
 
-  Checks that we have SDK embedding feature and that it's enabled, then sets the value accordingly."
+  Checks that we have SDK embedding feature and that it's enabled, then sets the value accordingly.
+  Also validates that localhost origins are not added when disable-cors-on-localhost is enabled."
   [new-value]
-  (->> new-value
-       ignore-localhost
-       ;; Why ignore-localhost?, because localhost:* will always be allowed, so we don't need to store it, if we
-       ;; were to store it, and the value was set N times, it would have localhost:* prefixed N times. Also, we
-       ;; should not store localhost:port, since it's covered by localhost:* (which is the minimum value).
-       (setting/set-value-of-type! :string :embedding-app-origins-sdk)))
+  ;; Validate before processing if disable-cors-on-localhost is enabled
+  (validate-no-localhost-when-disabled new-value)
+  (let [processed-value (->> new-value
+                             ignore-localhost)]
+    ;; Why ignore-localhost?, because localhost:* will always be allowed, so we don't need to store it, if we
+    ;; were to store it, and the value was set N times, it would have localhost:* prefixed N times. Also, we
+    ;; should not store localhost:port, since it's covered by localhost:* (which is the minimum value).
+    (setting/set-value-of-type! :string :embedding-app-origins-sdk processed-value)))
 
 (defsetting embedding-app-origins-sdk
   (deferred-tru "Allow Metabase SDK access to these space delimited origins.")
