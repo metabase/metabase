@@ -112,6 +112,25 @@
                      (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))
                      (update-in [:source :query] mbql.normalize/normalize))))))))))
 
+(defn- ->transform [transform-name query]
+  {:source {:type "query",
+            :query query}
+   :name transform-name
+   :target {:schema "public"
+            :name "orders_2"
+            :type "table"}})
+
+(deftest get-transform-dependencies-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-temp [:model/Table {table :id} {:schema "public", :name "orders_2"}
+                   :model/Field _           {:table_id table, :name "foo"}
+                   :model/Transform parent  (->transform "transform1" (mt/mbql-query orders))
+                   :model/Transform child   (-> (->transform "transform2" (mt/mbql-query nil {:source-table table}))
+                                                (assoc-in [:target :name] "orders_3"))]
+      (mt/with-premium-features #{:transforms}
+        (is (= [parent]
+               (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s/dependencies" (:id child)))))))))
+
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
