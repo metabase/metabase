@@ -127,7 +127,7 @@ When you're creating a new embed using **+ New > Embed**, you'll see the followi
 
 - **Show title**: what it says on the tin.
 
-- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection. When disabled, they can still explore but not save.
+- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection. When disabled, they can still perform actions like filter, summarize, and drill-through, but won’t be able to save results.”
 
 ## Configuring embeds
 
@@ -370,5 +370,4 @@ To render a collection browser so people can navigate a collection and open dash
 
 **Optional parameters:**
 
-- `read-only` (default is true) – if true, people can only view and explore. If false, they can create and edit items in the collection.
-
+- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.
