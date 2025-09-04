@@ -222,14 +222,14 @@ jobs:
         run: |
           echo "🚀 Starting python-runner using make run..."
           cd python-runner
-          
+
           # Set environment variables for the Makefile
           export PYTHON_RUNNER_PORT=5001
           export PYTHON_RUNNER_MOUNT_PATH=/tmp/python-exec-work
-          
+
           # Use the official make run command
           make run
-          
+
           echo "✅ Python runner started successfully!"
       - name: Verify LocalStack and S3 setup
         run: |
@@ -258,8 +258,7 @@ jobs:
           fi
       - name: Run Python Runner tests
         run: >-
-          clojure -X:dev:ci:test:ee:ee-dev:drivers:drivers-dev
-          :only metabase-enterprise.transforms.api-test
+          clojure -X:dev:ci:test:ee:ee-dev:drivers:drivers-dev :only metabase-enterprise.transforms.api-test
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
