@@ -116,13 +116,15 @@ export function NewVersionInfo() {
       </Tabs.List>
       <Tabs.Panel value="whats-new">
         <iframe
-          src={`https://www.metabase.com/releases${embedQueryParams}`}
+          data-testid="releases-iframe"
+          src={`https://www.metabase.com/releasesXX${embedQueryParams}`}
           className={S.iframe}
         />
       </Tabs.Panel>
       <Tabs.Panel value="changelog">
         <iframe
-          src={`https://www.metabase.com/changelog/${latestMajorVersion}${embedQueryParams}`}
+          data-testid="changelog-iframe"
+          src={`https://www.metabase.com/changelogXX/${latestMajorVersion}${embedQueryParams}`}
           className={S.iframe}
         />
       </Tabs.Panel>

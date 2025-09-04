@@ -1500,3 +1500,29 @@ describe("admin > settings > nav", () => {
     cy.url().should("include", "/admin/settings/authentication/api-keys");
   });
 });
+
+describe("admin > settings > updates", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.visit("/admin/settings/updates");
+  });
+
+  const assertIframeLoaded = (testId) => {
+    cy.findByTestId(testId).should("be.visible");
+    cy.findByTestId(testId).should(($iframe) => {
+      const body = $iframe.contents()[0]().text();
+      expect(body).to.exist;
+    });
+  };
+
+  it("should show iframes with releases and changelogs", () => {
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText("Changelog").should("be.visible").click();
+      assertIframeLoaded("changelog-iframe");
+
+      cy.findByText("What's new").should("be.visible").click();
+      assertIframeLoaded("releases-iframe");
+    });
+  });
+});
