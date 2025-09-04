@@ -487,7 +487,7 @@
     "test-visual:loki-report": "node frontend/test/generate-loki-report-json.js && reg-cli --from .loki/report.json --report .loki/report.html",
     "test-visual:loki-report-open": "yarn test-visual:loki || (echo 'Visual test failed, opening report...' && yarn test-visual:loki-report && open-cli .loki/report.html)",
     "type-check": "yarn clean:cljs && yarn build:cljs && yarn type-check-pure",
-    "type-check-pure": "tsc --noEmit",
+    "type-check-pure": "NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit",
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
     "generate:expression-parser": "lezer-generator frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o frontend/src/metabase/querying/expressions/tokenizer/lezer.js",
