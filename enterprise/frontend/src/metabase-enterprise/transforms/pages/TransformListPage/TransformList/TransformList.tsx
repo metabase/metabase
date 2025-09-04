@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { Card, Flex } from "metabase/ui";
 import {
   useListTransformTagsQuery,
@@ -17,10 +17,12 @@ import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getTransformUrl } from "../../../urls";
+import { parseTimestampWithTimezone } from "../../../utils";
 
 import S from "./TransformList.module.css";
 
 export function TransformList() {
+  const systemTimezone = useSetting("system-timezone");
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
@@ -70,7 +72,10 @@ export function TransformList() {
             <td>{transform.target.name}</td>
             <td className={S.nowrap}>
               {transform.last_run?.end_time
-                ? parseTimestamp(transform.last_run.end_time).format("lll")
+                ? parseTimestampWithTimezone(
+                    transform.last_run.end_time,
+                    systemTimezone,
+                  ).format("lll")
                 : null}
             </td>
             <td className={S.nowrap}>
@@ -80,7 +85,10 @@ export function TransformList() {
                   message={transform.last_run.message}
                   endTime={
                     transform.last_run.end_time != null
-                      ? parseTimestamp(transform.last_run.end_time).toDate()
+                      ? parseTimestampWithTimezone(
+                          transform.last_run.end_time,
+                          systemTimezone,
+                        ).toDate()
                       : null
                   }
                 />
