@@ -230,6 +230,8 @@
     (str/starts-with? dtype-str "int") :int
     (str/starts-with? dtype-str "float") :float
     (str/starts-with? dtype-str "bool") :boolean
+    ;; datetime64[ns, timezone] indicates timezone-aware datetime
+    (str/starts-with? dtype-str "datetime64[ns, ") :offset-datetime
     (str/starts-with? dtype-str "datetime") :datetime
     (str/starts-with? dtype-str "date") :date
     :else :text))

@@ -195,6 +195,7 @@
                                 "def transform(sample_table):\n"
                                 "    df = sample_table.copy()\n"
                                 "    df['scheduled_for'] = pd.to_datetime(df['scheduled_for'])\n"
+                                "    df['updated_at'] = pd.to_datetime(df['updated_at'])\n"
                                 "    return df")
             result (execute {:code transform-code
                              :tables {"sample_table" (mt/id :sample_table)}})
@@ -230,10 +231,9 @@
             (is (= :int (dtype->table-type (field-by-name "count"))))
             (is (= :float (dtype->table-type (field-by-name "price"))))
             (is (= :boolean (dtype->table-type (field-by-name "is_active"))))
-            (is (= :datetime (dtype->table-type (field-by-name "scheduled_for"))))
+            (is (= :offset-datetime (dtype->table-type (field-by-name "scheduled_for"))))
+            (is (= :datetime (dtype->table-type (field-by-name "updated_at"))))
 
-            ;; TODO: ideally those would be :date and :datetime respectively,
-            ;; but they're "object" dtypes for now as ingestion into pandas is lossy
+            ;; TODO: ideally this would be :date but it's "object" dtypes as there's no
             ;; and there's no date dtype
-            (is (= :text (dtype->table-type (field-by-name "created_date"))))
-            (is (= :text (dtype->table-type (field-by-name "updated_at"))))))))))
+            (is (= :text (dtype->table-type (field-by-name "created_date"))))))))))
