@@ -149,9 +149,9 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
             document.body.contains(component.element)
           ) {
             document.body.removeChild(component.element);
+            component?.destroy();
+            return true;
           }
-          component?.destroy();
-          return true;
         }
 
         const ref = component?.ref;

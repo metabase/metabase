@@ -131,6 +131,7 @@ export function DiscussionComment({
           initialContent={comment.content}
           onSubmit={handleEditingSubmit}
           readonly={!isEditing}
+          onEscape={editingHandler.close}
         />
         <DiscussionReactions
           comment={comment}

@@ -1,11 +1,7 @@
+import { Extension } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import {
-  type Editor,
-  EditorContent,
-  type Extension,
-  useEditor,
-} from "@tiptap/react";
+import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -47,6 +43,7 @@ interface Props {
   onBlur?: (content: DocumentContent, editor: Editor) => void;
   onChange?: (content: DocumentContent) => void;
   onSubmit?: (content: DocumentContent) => void;
+  onEscape?: () => void;
 }
 
 export const CommentEditor = ({
@@ -58,6 +55,7 @@ export const CommentEditor = ({
   onBlur,
   onChange,
   onSubmit,
+  onEscape,
 }: Props) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const [content, setContent] = useState<string | null>(null);
@@ -65,6 +63,21 @@ export const CommentEditor = ({
   const extensions = useMemo(
     () =>
       [
+        Extension.create({
+          name: "OverrideEscape",
+          addKeyboardShortcuts() {
+            return {
+              Escape: () => {
+                if (onEscape) {
+                  onEscape();
+                  return true;
+                }
+
+                return this.editor.commands.blur();
+              },
+            };
+          },
+        }),
         CustomStarterKit.configure({ link: false }),
         SmartLink.configure({
           HTMLAttributes: { class: "smart-link" },
@@ -86,7 +99,7 @@ export const CommentEditor = ({
         !readonly && Placeholder.configure({ placeholder }),
         !readonly && DisableMetabotSidebar,
       ].filter((extension): extension is Extension => extension != null),
-    [siteUrl, readonly, placeholder],
+    [siteUrl, readonly, placeholder, onEscape],
   );
 
   const editor = useEditor(
