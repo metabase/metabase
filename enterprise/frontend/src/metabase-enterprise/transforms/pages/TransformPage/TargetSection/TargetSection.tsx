@@ -111,7 +111,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
                 : undefined
             }
             tooltip={
-              table?.schema || targetSchemaExists
+              table?.schema != null || targetSchemaExists
                 ? undefined
                 : t`This schema will be created when the transform runs`
             }
