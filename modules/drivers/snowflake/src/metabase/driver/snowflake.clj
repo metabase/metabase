@@ -878,7 +878,7 @@
         quoted-db (if (and (= (first db-name-val) \")
                            (= (last db-name-val) \"))
                     db-name-val
-                    (str "\"" db-name-val "\""))
+                    (quote-name db-name-val))
         all-queries (if db-name-val
                       (cons [(str "USE DATABASE " quoted-db)] queries)
                       queries)]
