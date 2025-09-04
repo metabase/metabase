@@ -4,11 +4,6 @@
   margin: 0 0 24px 0;
 }
 
-.replyItem {
-  margin: -16px 0 0 0;
-  padding: 0;
-}
-
 .target {
   --padding-v: 16px;
   --padding-h: 24px;
