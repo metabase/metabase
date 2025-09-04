@@ -1,4 +1,6 @@
-exports.updateComment = updateComment;
+exports.updateCommentForEmbedding = updateCommentForEmbedding;
+exports.updateCommentForEmbeddingSdkPackage =
+  updateCommentForEmbeddingSdkPackage;
 
 /** @param {import('@types/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
 async function updateCommentForEmbedding({ github, context }) {
