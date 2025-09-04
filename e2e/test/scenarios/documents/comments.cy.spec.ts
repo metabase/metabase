@@ -35,16 +35,29 @@ H.describeWithSnowplowEE("document comments", () => {
     cy.findByRole("link", { name: "All comments" }).should("not.exist");
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
-      Comments.getDocumentNodeButton({
-        targetId: documentId,
-        childTargetId: HEADING_1_ID,
-      }).should("not.be.visible");
+      testCommentingOnNode(documentId, HEADING_1_ID, getHeading1);
+      testCommentingOnNode(documentId, HEADING_2_ID, getHeading2);
+      testCommentingOnNode(documentId, HEADING_3_ID, getHeading3);
+      testCommentingOnNode(documentId, PARAGRAPH_ID, getParagraph);
+      testCommentingOnNode(documentId, BULLET_LIST_ID, getBulletList);
+      testCommentingOnNode(documentId, BLOCKQUOTE_ID, getBlockquote);
+      testCommentingOnNode(documentId, ORDERED_LIST_ID, getOrderedList);
+      testCommentingOnNode(documentId, CODE_BLOCK_ID, getCodeBlock);
+      testCommentingOnNode(documentId, CARD_EMBED_ID, getEmbed);
+    });
 
-      cy.findByRole("heading", { name: "Heading 1" }).realHover();
-      Comments.getDocumentNodeButton({
-        targetId: documentId,
-        childTargetId: HEADING_1_ID,
-      })
+    function testCommentingOnNode<E extends HTMLElement>(
+      targetId: DocumentId,
+      childTargetId: string,
+      getNodeElement: () => Cypress.Chainable<JQuery<E>>,
+    ) {
+      Comments.getDocumentNodeButton({ targetId, childTargetId }).should(
+        "not.be.visible",
+      );
+
+      getNodeElement().scrollIntoView();
+      getNodeElement().realHover();
+      Comments.getDocumentNodeButton({ targetId, childTargetId })
         .should("be.visible")
         .click();
 
@@ -59,17 +72,26 @@ H.describeWithSnowplowEE("document comments", () => {
         });
       });
 
+      cy.log("shows comments button when comments for the node are open");
       Comments.getDocumentNodeButton({
-        targetId: documentId,
-        childTargetId: HEADING_1_ID,
+        targetId,
+        childTargetId,
         hasComments: true,
       })
         .should("be.visible")
         .and("contain.text", "1");
 
       cy.realPress("Escape");
+      cy.realPress("Escape"); // TODO: remove this, this is because of a bug #21
       H.modal().should("not.exist");
-    });
+
+      cy.log("shows comments button when node has unresolved comments");
+      Comments.getDocumentNodeButton({
+        targetId,
+        childTargetId,
+        hasComments: true,
+      }).should("be.visible");
+    }
   });
 });
 
@@ -280,7 +302,7 @@ function createLoremIpsumDocument() {
           content: [
             {
               type: "text",
-              text: 'while (true) {\n  console.log("metabase");\n}',
+              text: "while (true) {}",
             },
           ],
         },
@@ -306,4 +328,51 @@ function createLoremIpsumDocument() {
   cy.findByRole("textbox", { name: "Document Title" })
     .should("be.visible")
     .and("have.value", "Lorem ipsum");
+}
+
+function getHeading1() {
+  return H.documentContent().findByRole("heading", {
+    name: "Heading 1",
+    level: 1,
+  });
+}
+
+function getHeading2() {
+  return H.documentContent().findByRole("heading", {
+    name: "Heading 2",
+    level: 2,
+  });
+}
+
+function getHeading3() {
+  return H.documentContent().findByRole("heading", {
+    name: "Heading 3",
+    level: 3,
+  });
+}
+
+function getParagraph() {
+  return H.documentContent().findByText("Lorem ipsum dolor sit amet.");
+}
+
+function getBulletList() {
+  return H.documentContent().findByText("Bullet A").closest("ul");
+}
+
+function getBlockquote() {
+  return H.documentContent()
+    .findByText("A famous quote")
+    .closest("[data-node-view-wrapper]");
+}
+
+function getOrderedList() {
+  return H.documentContent().findByText("Item 1").closest("ol");
+}
+
+function getCodeBlock() {
+  return H.documentContent().findByText("while (true) {}");
+}
+
+function getEmbed() {
+  return H.documentContent().findByTestId("document-card-embed");
 }
