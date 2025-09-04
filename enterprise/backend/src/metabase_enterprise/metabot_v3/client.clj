@@ -14,6 +14,7 @@
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.streaming-response :as sr]
    [metabase.system.core :as system]
@@ -24,20 +25,23 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.o11y :refer [with-span]]
    [toucan2.core :as t2])
-  (:import (java.io BufferedReader)))
+  (:import
+   (java.io BufferedReader)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic ^:private *debug* false)
 
 (def TYPE-PREFIX
-  "AI-SDK type prefix"
+  "AI SDK type to prefix"
   {:text        "0:"
    :data        "2:"
    :error       "3:"
    :finish      "d:"
    :tool-call   "9:"
    :tool-result "a:"})
+
+(def PREFIX-TYPE "AI SDK prefix to type" (set/map-invert TYPE-PREFIX))
 
 (defn get-ai-service-token
   "Get the token for the AI service."
@@ -115,18 +119,49 @@
 (defn- generate-embeddings-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
 
-(defn- store-usage! [conversation-id usage]
-  (t2/insert! :model/MetabotUsage
-              {:user_id         api/*current-user-id*
-               :conversation_id conversation-id
-               :usage           usage
-               :total           (->> (vals usage)
-                                     (map #(+ (:prompt %) (:completion %)))
-                                     (apply +))}))
+(defn- store-message! [conversation-id message]
+  (let [usage (-> message :metadata :usage)]
+    (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
+                              (constantly {:user_id api/*current-user-id*}))
+    (t2/insert! :model/MetabotMessage
+                {:conversation_id conversation-id
+                 :data            message
+                 :usage           usage
+                 :total           (->> (vals usage)
+                                       (map #(+ (:prompt %) (:completion %)))
+                                       (apply +))})))
 
-(defn- handle-finish [conversation-id data]
-  (let [data (json/decode+kw data)]
-    (some->> (:usage data) (store-usage! conversation-id))))
+(defn aisdk-lines->message [lines]
+  (let [chunks (mapv (fn [line] [(get PREFIX-TYPE (subs line 0 2))
+                                 (json/decode+kw (subs line 2))])
+                     lines)
+        types  (into #{} (map first chunks))
+        last-c (nth chunks (dec (count chunks)))]
+    (when-not (set/subset? types #{:text :tool-call :finish})
+      (log/error "Unhandled chunk types appeared" {:chunk-types types}))
+    (u/remove-nils
+     {:content    (apply str (for [[type c] chunks
+                                   :when    (= type :text)]
+                               c))
+      :tool-calls (-> (for [[type c] chunks
+                            :when    (= type :tool-call)]
+                        {:id        (:toolCallId c)
+                         :name      (:toolName c)
+                         :arguments (:args c)})
+                      vec
+                      not-empty)
+      :data       (apply merge
+                         (when-let [navigate-to (first (for [[type c] chunks
+                                                             :when    (and (= type :data)
+                                                                           (= (:type c) :navigate_to))]
+                                                         (:value c)))]
+                           {:navigate_to navigate-to}))
+      :metadata   {:usage (when (= (first last-c) :finish)
+                            (:usage (second last-c)))}})))
+
+(defn- handle-finish [conversation-id lines]
+  (let [message (aisdk-lines->message lines)]
+    (store-message! conversation-id message)))
 
 (mu/defn request :- ::metabot-v3.client.schema/ai-service.response
   "Make a V2 request to the AI Service."
@@ -166,7 +201,7 @@
                             (:body response)
                             (mtx/transformer {:name :api-response}))
           (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>))
-          (some->> (:usage <>) (store-usage! conversation-id)))
+          (store-message! conversation-id <>))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
@@ -225,17 +260,17 @@
         (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
           ;; Response from the AI Service will send response parts separated by newline
           (with-open [response-lines ^BufferedReader (io/reader (:body response))]
-            (loop []
+            (loop [lines []]
               ;; https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
               ;; Format is text chunks separated by 2 newlines, so for each line we append another newline
               ;; Immediately flush so it feels fluid on the frontend
               (when-let [line (.readLine response-lines)]
                 (when (str/starts-with? line (:finish TYPE-PREFIX))
-                  (handle-finish conversation-id (subs line 2)))
+                  (handle-finish conversation-id (conj lines line)))
                 (.write os (.getBytes line "UTF-8"))
                 (.write os (.getBytes "\n"))
                 (.flush os)
-                (recur)))))
+                (recur (conj lines line))))))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
