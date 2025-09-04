@@ -459,64 +459,67 @@ GROUP BY customer_id;")
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (testing "Create Transform model from YAML file"
-        (mt/with-temp [:model/TransformTag _ {:name "test"}]
-          (mt/with-temp-file [temp-file "transform.yaml"]
-            (spit temp-file transform-yaml-for-model-test)
-            (let [result (mbml.core/mbml-file->model temp-file)]
-              (is (=? {:id int?
-                       :name "Test Transform for Model Creation"
-                       :description "Transform used for testing model creation"
-                       :source map?
-                       :target map?
-                       :entity_id string?
-                       :created_at some?
-                       :updated_at some?}
-                      result))
+        (mt/with-model-cleanup [:model/Transform]
+          (mt/with-temp [:model/TransformTag _ {:name "test"}]
+            (mt/with-temp-file [temp-file "transform.yaml"]
+              (spit temp-file transform-yaml-for-model-test)
+              (let [result (mbml.core/mbml-file->model temp-file)]
+                (is (=? {:id int?
+                         :name "Test Transform for Model Creation"
+                         :description "Transform used for testing model creation"
+                         :source map?
+                         :target map?
+                         :entity_id string?
+                         :created_at some?
+                         :updated_at some?}
+                        result))
 
-              ;; Verify the transform was actually created in the database
-              (let [saved-transform (t2/select-one :model/Transform :id (:id result))]
-                (is (=? {:name "Test Transform for Model Creation"
-                         :description "Transform used for testing model creation"}
-                        saved-transform)))))))
+                ;; Verify the transform was actually created in the database
+                (let [saved-transform (t2/select-one :model/Transform :id (:id result))]
+                  (is (=? {:name "Test Transform for Model Creation"
+                           :description "Transform used for testing model creation"}
+                          saved-transform))))))))
 
       (testing "Create Transform model from SQL file"
-        (mt/with-temp [:model/TransformTag _ {:name "test"}]
-          (mt/with-temp-file [temp-file "transform.sql"]
-            (spit temp-file transform-sql-for-model-test)
-            (let [result (mbml.core/mbml-file->model temp-file)]
-              (is (=? {:id int?
-                       :name "SQL Transform for Model Creation"
-                       :description "SQL transform used for testing"
-                       :source map?
-                       :target map?}
-                      result))
+        (mt/with-model-cleanup [:model/Transform]
+          (mt/with-temp [:model/TransformTag _ {:name "test"}]
+            (mt/with-temp-file [temp-file "transform.sql"]
+              (spit temp-file transform-sql-for-model-test)
+              (let [result (mbml.core/mbml-file->model temp-file)]
+                (is (=? {:id int?
+                         :name "SQL Transform for Model Creation"
+                         :description "SQL transform used for testing"
+                         :source map?
+                         :target map?}
+                        result))
 
-              ;; Verify the source came from the SQL body, not the original source field
-              (let [saved-transform (t2/select-one :model/Transform :id (:id result))]
-                (is (=? {:name "SQL Transform for Model Creation"}
-                        saved-transform)))))))
+        ;; Verify the source came from the SQL body, not the original source field
+                (let [saved-transform (t2/select-one :model/Transform :id (:id result))]
+                  (is (=? {:name "SQL Transform for Model Creation"}
+                          saved-transform))))))))
 
       (testing "Test update functionality"
-        (mt/with-temp [:model/TransformTag {tag-id-1 :id} {:name "test"}
-                       :model/Transform {transform-id :id} {:name "Existing Transform"
-                                                            :library_identifier "test-transform-model"
-                                                            :description "Old description"
-                                                            :source "{\"type\":\"native\",\"native\":{\"query\":\"SELECT 1\"}}"
-                                                            :target "{\"type\":\"table\",\"name\":\"old_table\"}"}
-                       :model/TransformTransformTag _ {:tag_id tag-id-1 :transform_id transform-id :position 0}]
-          (mt/with-temp-file [temp-file "transform.yaml"]
-            (spit temp-file transform-yaml-for-model-test)
-            (let [result (mbml.core/mbml-file->model temp-file)]
-              (is (=? {:id transform-id
-                       :name "Test Transform for Model Creation"
-                       :description "Transform used for testing model creation"}
-                      result))
-
-              ;; Verify the transform was actually updated in the database
-              (let [updated-transform (t2/select-one :model/Transform :id transform-id)]
-                (is (=? {:name "Test Transform for Model Creation"
+        (mt/with-model-cleanup [:model/Transform]
+          (mt/with-temp [:model/TransformTag {tag-id-1 :id} {:name "test"}
+                         :model/Transform {transform-id :id} {:name "Existing Transform"
+                                                              :library_identifier "test-transform-model"
+                                                              :description "Old description"
+                                                              :source "{\"type\":\"native\",\"native\":{\"query\":\"SELECT 1\"}}"
+                                                              :target "{\"type\":\"table\",\"name\":\"old_table\"}"}
+                         :model/TransformTransformTag _ {:tag_id tag-id-1 :transform_id transform-id :position 0}]
+            (mt/with-temp-file [temp-file "transform.yaml"]
+              (spit temp-file transform-yaml-for-model-test)
+              (let [result (mbml.core/mbml-file->model temp-file)]
+                (is (=? {:id transform-id
+                         :name "Test Transform for Model Creation"
                          :description "Transform used for testing model creation"}
-                        updated-transform))))))))))
+                        result))
+
+                ;; Verify the transform was actually updated in the database
+                (let [updated-transform (t2/select-one :model/Transform :id transform-id)]
+                  (is (=? {:name "Test Transform for Model Creation"
+                           :description "Transform used for testing model creation"}
+                          updated-transform)))))))))))
 
 (deftest ^:parallel mbml-file->model-error-handling-test
   (testing "Error when database doesn't exist"
@@ -547,3 +550,57 @@ GROUP BY customer_id;")
                      :file string?}
                     data))
             (is (str/includes? (:file data) "bad-transform.yaml"))))))))
+
+(def transform-yaml-1-for-batch-test
+  "entity: model/Transform:v1
+name: First Batch Transform
+identifier: batch-transform-1
+description: First transform for batch testing
+tags:
+  - test
+  - batch
+database: test-data (postgres)
+target:
+  type: table
+  name: batch_output_1
+source: |
+  SELECT * FROM table1 WHERE active = true")
+
+(def transform-yaml-2-for-batch-test
+  "entity: model/Transform:v1
+name: Second Batch Transform
+identifier: batch-transform-2
+description: Second transform for batch testing
+tags:
+  - test
+  - batch
+database: test-data (postgres)
+target:
+  type: table
+  name: batch_output_2
+source: |
+  SELECT * FROM table2 WHERE status = 'complete'")
+
+(deftest mbml-files->models-successful-batch-loading-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/dataset transforms-dataset/transforms-test
+      (mt/with-model-cleanup [:model/Transform]
+        (testing "Successfully load multiple MBML files"
+          (mt/with-temp [:model/TransformTag {tag-id-test :id} {:name "test"}
+                         :model/TransformTag {tag-id-batch :id} {:name "batch"}]
+            (mt/with-temp-file [temp-file-1 "transform1.yaml"
+                                temp-file-2 "transform2.yaml"]
+              (spit temp-file-1 transform-yaml-1-for-batch-test)
+              (spit temp-file-2 transform-yaml-2-for-batch-test)
+
+              (let [results (mbml.core/mbml-files->models [temp-file-1 temp-file-2])]
+                (is (= 2 (count results)))
+                (is (=? [{:name "First Batch Transform"
+                          :library_identifier "batch-transform-1"}
+                         {:name "Second Batch Transform"
+                          :library_identifier "batch-transform-2"}]
+                        results)))))))
+
+      (testing "Empty file list returns empty result"
+        (let [results (mbml.core/mbml-files->models [])]
+          (is (= [] results)))))))

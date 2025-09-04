@@ -199,3 +199,40 @@
     (let [{:keys [identifier entity] :as mbml-map} (parse-mbml-file file-path)
           existing-entity (t2/select-one (entity-type->model entity) :library_identifier identifier)]
       (mbml-file->model* mbml-map existing-entity))))
+
+(mu/defn mbml-files->models :- [:sequential :map]
+  "Load multiple MBML files transactionally and clean up orphaned models.
+  
+  Processes all files within a single transaction, creating or updating models
+  based on their library_identifier. After loading, removes any models with
+  library_identifier values that don't match the loaded files.
+  
+  Args:
+    file-paths: Collection of paths to MBML files
+  
+  Returns:
+    Collection of created/updated model instances
+  
+  Throws:
+    Exception if any file fails to load (entire transaction rolls back)
+  
+  Example:
+    (mbml-files->models [\"transform1.yaml\" \"transform2.sql\"])"
+  [file-paths :- [:sequential ms/NonBlankString]]
+  (t2/with-transaction []
+    (let [models (mapv mbml-file->model file-paths)
+          loaded-identifiers (into #{}
+                                   (keep :library_identifier)
+                                   models)]
+
+      (doseq [model-type (vals entity-type->model)]
+        (when (seq loaded-identifiers)
+          ;; Delete models with library_identifier not in loaded set
+          ;; Models without library_identifier (nil) are preserved
+          (t2/delete! model-type
+                      {:where [:and
+                               [:not-in :library_identifier loaded-identifiers]
+                               [:not= :library_identifier nil]]})))
+
+      ;; Return the loaded models
+      models)))
