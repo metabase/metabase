@@ -278,15 +278,30 @@
         {:output (str "No model found with model_id " model-id)}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
-(defn- query-table*
-  [{:keys [table-id fields filters aggregations group-by order-by limit] :as _arguments}]
-  (let [table-id (cond-> table-id
-                   (string? table-id) parse-long)
-        table (metabot-v3.tools.u/get-table table-id :db_id)
-        mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))
-        base-query (lib/query mp (lib.metadata/table mp table-id))
+(defn- resolve-datasource
+  "Resolve datasource parameters to [field-id-prefix base-query] tuple.
+   Accepts either {:table-id id} or {:model-id id}."
+  [{:keys [table-id model-id]}]
+  (cond
+    model-id
+    (let [card (metabot-v3.tools.u/get-card model-id)
+          mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+          base-query (lib/query mp (lib.metadata/card mp model-id))]
+      [(metabot-v3.tools.u/card-field-id-prefix model-id) base-query])
+
+    table-id
+    (let [table (metabot-v3.tools.u/get-table table-id :db_id)
+          mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))
+          base-query (lib/query mp (lib.metadata/table mp table-id))]
+      [(metabot-v3.tools.u/table-field-id-prefix table-id) base-query])
+
+    :else
+    (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true}))))
+
+(defn- query-datasource*
+  [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
+  (let [[filter-field-id-prefix base-query] (resolve-datasource arguments)
         visible-cols (lib/visible-columns base-query)
-        filter-field-id-prefix (metabot-v3.tools.u/table-field-id-prefix table-id)
         resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
@@ -316,17 +331,22 @@
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
 
-(defn query-table
-  "Create a query based on a table."
-  [{:keys [table-id] :as arguments}]
+(defn query-datasource
+  "Create a query based on a datasource (table or model)."
+  [{:keys [table-id model-id] :as arguments}]
   (try
     (cond
-      (int? table-id) {:structured-output (query-table* arguments)}
-      (string? table-id) {:structured-output (query-table* (update arguments :table-id parse-long))}
-      :else {:output (str "Invalid table_id " table-id)})
+      (int? model-id) {:structured-output (query-datasource* arguments)}
+      (int? table-id) {:structured-output (query-datasource* arguments)}
+      model-id        {:output (str "Invalid model_id " model-id)}
+      table-id        {:output (str "Invalid table_id " table-id)}
+      :else           {:output "Either table_id or model_id must be provided"})
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
-        {:output (str "No table found with table_id " table-id)}
+        {:output (cond
+                   table-id (str "No table found with table_id " table-id)
+                   model-id (str "No model found with model_id " model-id)
+                   :else "Resource not found")}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn- base-query
