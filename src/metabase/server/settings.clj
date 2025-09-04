@@ -61,8 +61,8 @@ x.com")
   :visibility :internal
   :export?    false)
 
-(defsetting disallow-cors-on-localhost
-  (deferred-tru "Disallow CORS requests from localhost origins.")
+(defsetting disable-cors-on-localhost
+  (deferred-tru "Prevents the server from sending CORS headers for requests originating from localhost.")
   :type       :boolean
   :default    false
   :visibility :internal

@@ -201,31 +201,31 @@
   (testing "Should handle invalid origins"
     (is (mw.security/approved-origin? "http://example.com" "  fpt://something ://123 4 http://example.com"))))
 
-(deftest test-disallow-cors-on-localhost-approved-origin
-  (testing "Should approve localhost origins when disallow-cors-on-localhost is false"
-    (mt/with-temporary-setting-values [disallow-cors-on-localhost false]
+(deftest test-disable-cors-on-localhost-approved-origin
+  (testing "Should approve localhost origins when disable-cors-on-localhost is false"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost false]
       (is (mw.security/approved-origin? "http://localhost" ""))
       (is (mw.security/approved-origin? "http://localhost:3000" ""))))
-  (testing "Should reject localhost origins when disallow-cors-on-localhost is true"
-    (mt/with-temporary-setting-values [disallow-cors-on-localhost true]
+  (testing "Should reject localhost origins when disable-cors-on-localhost is true"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost true]
       (is (not (mw.security/approved-origin? "http://localhost" "")))
       (is (not (mw.security/approved-origin? "http://localhost:3000" "")))))
-  (testing "Should allow localhost origins when explicitly added to approved origins even with disallow-cors-on-localhost true"
-    (mt/with-temporary-setting-values [disallow-cors-on-localhost true]
+  (testing "Should allow localhost origins when explicitly added to approved origins even with disable-cors-on-localhost true"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost true]
       (is (mw.security/approved-origin? "http://localhost" "localhost"))
       (is (mw.security/approved-origin? "http://localhost:3000" "localhost:*")))))
 
-(deftest test-disallow-cors-on-localhost-access-control-headers
-  (testing "Should allow CORS headers for localhost when disallow-cors-on-localhost is false"
-    (mt/with-temporary-setting-values [disallow-cors-on-localhost false
+(deftest test-disable-cors-on-localhost-access-control-headers
+  (testing "Should allow CORS headers for localhost when disable-cors-on-localhost is false"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost false
                                        enable-embedding-sdk false]
       (is (= "http://localhost:8080" (get (mw.security/access-control-headers
                                            "http://localhost:8080"
                                            false
                                            "")
                                           "Access-Control-Allow-Origin")))))
-  (testing "Should block CORS headers for localhost when disallow-cors-on-localhost is true and embedding disabled"
-    (mt/with-temporary-setting-values [disallow-cors-on-localhost true
+  (testing "Should block CORS headers for localhost when disable-cors-on-localhost is true and embedding disabled"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost true
                                        enable-embedding-sdk false]
       (is (= nil (get (mw.security/access-control-headers
                        "http://localhost:8080"

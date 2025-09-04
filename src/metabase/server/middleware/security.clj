@@ -226,7 +226,7 @@
    (or
     ;; Allow localhost origins unless explicitly disallowed
     (and (localhost-origin? raw-origin)
-         (not (server.settings/disallow-cors-on-localhost)))
+         (not (server.settings/disable-cors-on-localhost)))
     ;; Check against approved origins list
     (when (and (seq raw-origin) (seq approved-origins-raw))
       (let [approved-list (parse-approved-origins approved-origins-raw)
@@ -241,7 +241,7 @@
 (defn access-control-headers
   "Returns headers for CORS requests"
   [origin enabled? approved-origins]
-  (let [localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disallow-cors-on-localhost)))]
+  (let [localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))]
     (when (or enabled? localhost-allowed?)
       (merge
        (when (approved-origin? origin approved-origins)
