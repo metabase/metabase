@@ -180,7 +180,7 @@
         (let [root-dir (io/file (sources/load-source! source (.toString dir)))
               file (io/file root-dir path)]
           (api/check-404 (when (.exists file)
-                           (let [[entity-type _ model] (mbml/mbml-file->unsaved-model path)]
+                           (let [[entity-type _ model] (mbml/mbml-file->unsaved-model (str (io/file root-dir path)))]
                              {:path    path
                               :entityType (entity-type->fe-type entity-type)
                               :entity model

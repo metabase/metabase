@@ -173,35 +173,19 @@
   (assoc model :source {:type "query"
                         :query (lib/native-query (lib.metadata.jvm/application-database-metadata-provider database-id) (or body source))}))
 
-<<<<<<< Updated upstream
-;; TODO(edpaget): Probably belongs in the transform module
-(defmethod mbml-file->model* :model/Transform:v1
-  [{:keys [tags database identifier] :as mbml-map} {existing-entity-id :id}]
-  (let [tag-ids (when (seq tags)
-                  (t2/select-pks-vec :model/TransformTag :name [:in tags]))
-=======
 (defmethod mbml-file->unsaved-model* :model/Transform:v1
   [{:keys [tags database identifier] :as mbml-map}]
   (let [tag-ids (t2/select-pks-vec :model/TransformTag :name [:in tags])
->>>>>>> Stashed changes
         database-id (t2/select-one-pk :model/Database :name database)]
     (when-not (= (count tag-ids) (count (set tags)))
       (throw (mbml.errors/format-model-transformation-error :missing-tags :model/Transform mbml-map mbml.parser/*file*)))
     (when-not database-id
       (throw (mbml.errors/format-model-transformation-error :database-id :model/Transform mbml-map mbml.parser/*file*)))
-<<<<<<< Updated upstream
-    (let [transform-input (-> mbml-map
-                              (assoc :library_identifier identifier)
-                              (update-source-query database-id)
-                              (dissoc :entity :tags :body :identifier :database)
-                              (assoc :tag_ids (or (seq tag-ids) [])))]
-=======
     (-> mbml-map
         (assoc :library_identifier identifier)
         (update-source-query database-id)
         (dissoc :entity :tags :body :identifier :database)
         (assoc :tag_ids tag-ids))))
->>>>>>> Stashed changes
 
 ;; TODO(edpaget): Probably belongs in the transform module
 (defmethod save-model! :model/Transform:v1
