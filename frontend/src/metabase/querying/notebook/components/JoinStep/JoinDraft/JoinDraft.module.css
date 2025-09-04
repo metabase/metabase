@@ -1,6 +1,6 @@
 .JoinCell {
   flex: 1;
-  align-self: start;
+  align-self: stretch;
 }
 
 .JoinConditionCell {
@@ -8,6 +8,7 @@
   flex-direction: column;
   align-items: start;
   justify-content: center;
+  align-self: stretch;
   gap: 0.5rem;
   padding: 0.5rem;
 }
