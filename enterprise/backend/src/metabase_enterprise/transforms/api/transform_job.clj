@@ -132,44 +132,17 @@
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
     (t2/hydrate job :tag_ids :last_run)))
 
-(defn- report-zone-id
-  ^ZoneId []
-  (if-let [zone-name (driver/report-timezone)]
-    (t/zone-id zone-name)
-    (t/zone-id)))
-
-(defn- report-local-date
-  []
-  (.toLocalDate (t/zoned-date-time (report-zone-id))))
-
-(defn- ->instant
-  ^Instant [t]
-  (when t
-    (condp instance? t
-      Instant        t
-      Date           (.toInstant ^Date t)
-      OffsetDateTime (.toInstant ^OffsetDateTime t)
-      ZonedDateTime  (.toInstant ^ZonedDateTime t)
-      String         (recur (u.date/parse t))
-      LocalDateTime  (recur (.atZone ^LocalDateTime t (report-zone-id)))
-      LocalTime      (recur (.atDate ^LocalTime t (report-local-date)))
-      OffsetTime     (recur (.atDate ^OffsetTime t (report-local-date)))
-      LocalDate      (recur (.atStartOfDay ^LocalDate t))
-      (throw (ex-info (format "Cannot convert timestamp %s of type %s to an Instant" t (type t))
-                      {:timestamp t})))))
-
 (defn- add-next-run
   [{id :id :as job}]
   (if-let [start-time (-> id transforms.schedule/existing-trigger :next-fire-time)]
-    (assoc job :next_run {:start_time (str (->instant start-time))})
+    (assoc job :next_run {:start_time (str (transforms.util/->instant start-time))})
     job))
 
 (defn- matching-timestamp?
   [job field-path {:keys [start end]}]
-  (when-let [field-instant (->instant (get-in job field-path))]
-    (let [start-instant (some-> start u.date/parse ->instant)
-          end-instant (some-> end u.date/parse ->instant)]
-      (log/debug "matching-timestamp?" (pr-str [field-instant start-instant end-instant]))
+  (when-let [field-instant (transforms.util/->instant (get-in job field-path))]
+    (let [start-instant (some-> start u.date/parse transforms.util/->instant)
+          end-instant (some-> end u.date/parse transforms.util/->instant)]
       (and (or (nil? start)
                (not (.isBefore field-instant start-instant)))
            (or (nil? end)

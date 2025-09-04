@@ -108,7 +108,7 @@
                                          :start_time (utc-timestamp "2025-08-25T10:12:11")
                                          :end_time (utc-timestamp "2025-08-26T10:52:17")}
                               :name "Job 1"
-                              :next_run {:start_time #"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d.*(?:[+-]\d\d:\d\d|Z)\[.*\]"}
+                              :next_run {:start_time #"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ"}
                               :schedule at-5-second-schedule
                               :tag_ids [t1-id]}]
                             (returned-jobs response))))
