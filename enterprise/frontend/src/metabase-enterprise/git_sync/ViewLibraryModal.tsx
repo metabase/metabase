@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { Box, Button, Center, Flex, Icon, Modal } from "metabase/ui";
 
 import { LibraryView } from "./LibraryView";
@@ -14,7 +15,7 @@ export const ViewLibraryModal = ({
   isOpen,
   onClose,
 }: ViewLibraryModalProps) => {
-  const syncConfigured = true; //useSetting("git-sync-configured");
+  const syncConfigured = useSetting("git-sync-configured");
 
   return (
     <Modal.Root opened={isOpen} onClose={onClose} size="calc(100vw - 60px)">
