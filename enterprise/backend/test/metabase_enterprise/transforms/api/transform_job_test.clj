@@ -4,7 +4,7 @@
    [metabase-enterprise.transforms.models.transform-job]
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
-   [metabase-enterprise.transforms.test-util :refer [parse-instant zoned-timestamp]]
+   [metabase-enterprise.transforms.test-util :refer [parse-instant utc-timestamp]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -105,8 +105,8 @@
                     (is (=? [{:id j1-id
                               :last_run {:job_id j1-id
                                          :run_method "cron"
-                                         :start_time (zoned-timestamp "2025-08-25T10:12:11")
-                                         :end_time (zoned-timestamp "2025-08-26T10:52:17")}
+                                         :start_time (utc-timestamp "2025-08-25T10:12:11")
+                                         :end_time (utc-timestamp "2025-08-26T10:52:17")}
                               :name "Job 1"
                               :next_run {:start_time #"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d.*(?:[+-]\d\d:\d\d|Z)\[.*\]"}
                               :schedule at-5-second-schedule

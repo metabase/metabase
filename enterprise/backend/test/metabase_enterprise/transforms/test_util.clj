@@ -64,7 +64,7 @@
   ^Instant [timestamp-string]
   (-> timestamp-string parse-timestamp .toInstant))
 
-(defn zoned-timestamp
+(defn utc-timestamp
   "Parse a local datetime and convert it to a string encoding a ZonedDateTime in the default timezone."
   ^String [timestamp-string]
-  (-> timestamp-string parse-timestamp str))
+  (-> timestamp-string parse-instant str))

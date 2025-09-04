@@ -9,7 +9,6 @@
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDateTime OffsetDateTime ZonedDateTime ZoneId)
-   (java.time.format DateTimeFormatter)
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
@@ -94,32 +93,27 @@
   (case (-> transform :target :type)
     "table"             :transforms/table))
 
-(defn local-timestamp
-  "Convert the timestamp t to a ZonedDateTime instance in the system timezone."
+(defn ->instant
+  "Convert the timestamp t to an Instant in the system timezone."
   [t]
   (condp instance? t
+    Instant        t
+    Date           (.toInstant ^Date t)
+    OffsetDateTime (.toInstant ^OffsetDateTime t)
+    ZonedDateTime  (.toInstant ^ZonedDateTime t)
+    LocalDateTime  (recur (.atZone ^LocalDateTime t (ZoneId/systemDefault)))
     String         (recur (u.date/parse t))
-    Date           (recur (.toInstant ^Date t))
-    Instant        (ZonedDateTime/ofInstant t (ZoneId/systemDefault))
-    LocalDateTime  (ZonedDateTime/of t (ZoneId/systemDefault))
-    OffsetDateTime (.atZoneSameInstant ^OffsetDateTime t (ZoneId/systemDefault))
-    ZonedDateTime  (.withZoneSameInstant ^ZonedDateTime t (ZoneId/systemDefault))
-    (throw (ex-info (str "Cannot convert timestamp " t " of type " (type t) " to a ZonedDateTime")
+    (throw (ex-info (str "Cannot convert timestamp " t " of type " (type t) " to an Instant")
                     {:timestamp t}))))
 
-(defn format-iso-timestamp
-  "Format a timestamp as an ISO-8601 string."
-  [t]
-  (.format ^ZonedDateTime t DateTimeFormatter/ISO_OFFSET_DATE_TIME))
-
-(defn local-timestamp-string
+(defn utc-timestamp-string
   "Convert the timestamp t to a string encoding the it in the system timezone."
   [t]
-  (-> t local-timestamp format-iso-timestamp))
+  (-> t ->instant str))
 
 (defn localize-run-timestamps
-  "Localize the timestamps of a `run`."
+  "Convert the timestamps of a `run` to ISO strings in UTC."
   [run]
   (-> run
-      (u/update-some :start_time local-timestamp-string)
-      (u/update-some :end_time   local-timestamp-string)))
+      (u/update-some :start_time utc-timestamp-string)
+      (u/update-some :end_time   utc-timestamp-string)))
