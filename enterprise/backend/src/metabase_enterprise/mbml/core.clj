@@ -56,7 +56,9 @@
    [clojure.string :as str]
    [metabase-enterprise.mbml.errors :as mbml.errors]
    [metabase-enterprise.mbml.parser :as mbml.parser]
-   [metabase-enterprise.mbml.parser :as parser]
+   [metabase-enterprise.transforms.core :as transforms]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -80,12 +82,12 @@
     (parse-mbml-string yaml-content :yaml)
     (parse-mbml-string sql-with-frontmatter :sql)"
   [content :- ms/NonBlankString
-   file-type-hint :- [:maybe parser/FileType]]
+   file-type-hint :- [:maybe mbml.parser/FileType]]
   (let [file-type (or file-type-hint :yaml)
-        {:keys [metadata body]} (parser/extract-content content file-type)]
+        {:keys [metadata body]} (mbml.parser/extract-content content file-type)]
     (if metadata
-      (let [parsed-data (parser/parse-yaml metadata)]
-        (parser/validate-mbml parsed-data body))
+      (let [parsed-data (mbml.parser/parse-yaml metadata)]
+        (mbml.parser/validate-mbml parsed-data body))
       (throw (ex-info "No MBML metadata found in content"
                       {:type :no-metadata-error
                        :content-preview (subs content 0 (min 200 (count content)))
@@ -115,7 +117,7 @@
       (throw (mbml.errors/format-file-error :file-not-found file-path nil)))
 
     (let [content (slurp file-path)
-          file-type (parser/detect-file-type file-path)]
+          file-type (mbml.parser/detect-file-type file-path)]
       (when (= :unknown file-type)
         (throw (mbml.errors/format-unsupported-file-error file-path)))
       (when (str/blank? content)
@@ -132,8 +134,53 @@
 (def ^:private entity-type->model
   {"model/Transform:v1" :model/Transform})
 
+(defmulti mbml-file->model*
+  "Impl for multi-entity dispatch for mbml-file->model. Implement to support versioned
+  deserialization of a model from an mbml-parsed entity map."
+  {:arglists '([mbml-map existing-entity])}
+  (fn [{:keys [entity]} _existing-entity] (keyword entity)))
+
+(defmethod mbml-file->model* :default
+  [{:keys [entity identifier] :as mbml-map} {existing-entity-id :id}]
+  (let [model-kw (entity-type->model entity)
+        mbml-map' (-> (assoc mbml-map :library_identifier identifier)
+                      (dissoc :entity :identifier))]
+    (if existing-entity-id
+      (do (t2/update! model-kw :id existing-entity-id mbml-map')
+          (t2/select-one model-kw))
+      (t2/insert-returning-instance! model-kw mbml-map'))))
+
+(defn- update-source-query
+  [{:keys [source body] :as model} database-id]
+  (assoc model :source {:type "query"
+                        :query (lib/native-query (lib.metadata.jvm/application-database-metadata-provider database-id) (or body source))}))
+
+;; TODO(edpaget): Probably belongs in the transform module
+(defmethod mbml-file->model* :model/Transform:v1
+  [{:keys [tags database identifier] :as mbml-map} {existing-entity-id :id}]
+  (let [tag-ids (t2/select-pks-vec :model/TransformTag :name [:in tags])
+        database-id (t2/select-one-pk :model/Database :name database)]
+    (when-not (= (count tag-ids) (count (set tags)))
+      (throw (mbml.errors/format-model-transformation-error :missing-tags :model/Transform mbml-map mbml.parser/*file*)))
+    (when-not database-id
+      (throw (mbml.errors/format-model-transformation-error :database-id :model/Transform mbml-map mbml.parser/*file*)))
+    (let [transform-input (-> mbml-map
+                              (assoc :library_identifier identifier)
+                              (update-source-query database-id)
+                              (dissoc :entity :tags :body :identifier :database)
+                              (assoc :tag_ids tag-ids))]
+
+      (try
+        (if existing-entity-id
+          (transforms/update-transform! existing-entity-id transform-input)
+          (transforms/create-transform! transform-input))
+        (catch Exception e
+          (throw (mbml.errors/format-model-transformation-error :default :model/Transform mbml-map mbml.parser/*file* e)))))))
+
 (defn mbml-file->model
-  "Take an mbml file and write it to the appdb
+  "Take an mbml file and write it to the appdb.
+
+  Implment the mbml-file->model* multimethod to have it support a new entity-type.
 
   Args:
     file-path: Path to MBML file (string)
@@ -148,11 +195,7 @@
     (mbml-file->model \"/path/to/transform.yaml\")
     (mbml-file->model \"/path/to/transform.sql\")"
   [file-path]
-  (let [{:keys [entity] :as loaded} (parse-mbml-file file-path)]
-    ;; TODO(edpaget): for more complex models this will need to apply some kind of transformation
-    ;; before writing to the database
-    (t2/insert-returning-instance! (entity-type->model entity)
-                                   (merge
-                                    (select-keys loaded [:name :description :source :target])
-                                    (when (contains? loaded :body)
-                                      {:source (:body loaded)})))))
+  (binding [mbml.parser/*file* file-path]
+    (let [{:keys [identifier entity] :as mbml-map} (parse-mbml-file file-path)
+          existing-entity (t2/select-one (entity-type->model entity) :library_identifier identifier)]
+      (mbml-file->model* mbml-map existing-entity))))

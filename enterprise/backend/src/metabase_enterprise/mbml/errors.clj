@@ -7,8 +7,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
-   [metabase.util.malli.humanize :as mu.humanize]))
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]))
 
 ;;; ------------------------------------------ Error Type Definitions ------------------------------------------
 
@@ -20,6 +19,7 @@
    :yaml-parse-error (deferred-tru "YAML parsing error")
    :schema-validation (deferred-tru "Schema validation error")
    :frontmatter-error (deferred-tru "Front-matter extraction error")
+   :model-transformation-error (deferred-tru "Failed to create or update model")
    :io-error (deferred-tru "File I/O error")})
 
 ;;; ------------------------------------------ Error Context Helpers -------------------------------------------
@@ -208,3 +208,35 @@
     :suggestions [(deferred-tru "Use .yaml or .yml for pure YAML files")
                   (deferred-tru "Use .sql for SQL files with YAML front-matter")
                   (deferred-tru "Use .py for Python files with YAML front-matter")]}))
+
+;;; ----------------------------------------- Model Transformation Errors ---------------------------------
+
+(defn format-model-transformation-error
+  "Format errors when we fail to transform the result of a parse into a metabase model.
+
+  Args:
+    error-type: the type fof the transformation failure
+    model-type: the model type that error during construction
+    data: the map of data that was used to construct the model
+    file: the file data was read from
+    cause (optional): the original exception this is wrapping
+
+  Returns:
+    ex-info obj explaining the failure"
+  [error-type model-type data file & [cause]]
+  (error-context
+   :model-transformation-error
+   (case error-type
+     :missing-tags
+     (deferred-tru "Supplied tags do not exist on this instance: {0}" (->> data :tags (str/join ", ")))
+
+     :database-id
+     (deferred-tru "The database does not exist on this instance: {0}" (:database data))
+
+     (deferred-tru "Failed to create or update model: {0}" model-type))
+   {:file file
+    :data {:model-data data
+           :error-type error-type
+           :model-type model-type}
+    :cause cause
+    :context (deferred-tru "Failure during validation or construction of the metabase model.")}))

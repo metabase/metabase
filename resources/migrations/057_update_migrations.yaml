@@ -1099,6 +1099,37 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v57.2025-09-04T10:00:00
+      author: edpaget
+      comment: Add library_identifier column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: library_identifier
+                  remarks: Unique identifier for transforms within a library
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-09-04T10:01:00
+      author: edpaget
+      comment: Add unique constraint and index on transform.library_identifier
+      changes:
+        - addUniqueConstraint:
+            tableName: transform
+            columnNames: library_identifier
+            constraintName: unique_transform_library_identifier
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_library_identifier
+            columns:
+              - column:
+                  name: library_identifier
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
