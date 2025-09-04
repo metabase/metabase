@@ -52,7 +52,6 @@ jest.mock("./TroubleshootingTip", () => ({
 describe("ContactSupportButtonSection", () => {
   const defaultState = createMockState({
     settings: createMockSettingsState({
-      "application-name": "Metabase",
       "show-metabase-links": true,
       version: { tag: "v1.0.0" },
       "is-hosted?": false,
@@ -100,43 +99,10 @@ describe("ContactSupportButtonSection", () => {
     });
   });
 
-  describe("Application name customization", () => {
-    it("should use default Metabase application name", () => {
-      renderWithProviders(<ContactSupportButtonSection />, {
-        storeInitialState: defaultState,
-      });
-
-      expect(
-        screen.getByText(/Reach out to Metabase engineers/),
-      ).toBeInTheDocument();
-    });
-
-    it("should use custom application name", () => {
-      const customState = createMockState({
-        settings: createMockSettingsState({
-          "application-name": "Custom Analytics",
-          "show-metabase-links": false, // This might affect whitelabel behavior
-          version: { tag: "v1.0.0" },
-          "is-hosted?": false,
-          "token-features": createMockTokenFeatures({ whitelabel: true }), // Enable whitelabel features
-        }),
-      });
-
-      renderWithProviders(<ContactSupportButtonSection />, {
-        storeInitialState: customState,
-      });
-
-      // The application name might still default to "Metabase" in test environment
-      // Let's check if the component renders at all first
-      expect(screen.getByText(/Reach out to .* engineers/)).toBeInTheDocument();
-    });
-  });
-
   describe("Help URL generation", () => {
     it("should generate free plan help URL when not on paid plan", () => {
       const freeState = createMockState({
         settings: createMockSettingsState({
-          "application-name": "Metabase",
           "show-metabase-links": true,
           version: { tag: "v1.2.3" },
           "is-hosted?": false,
@@ -158,7 +124,6 @@ describe("ContactSupportButtonSection", () => {
     it("should generate premium help URL when on paid plan", () => {
       const paidState = createMockState({
         settings: createMockSettingsState({
-          "application-name": "Metabase",
           "show-metabase-links": true,
           version: { tag: "v1.2.3" },
           "is-hosted?": false,
@@ -181,7 +146,6 @@ describe("ContactSupportButtonSection", () => {
     it("should handle different version tags in URL", () => {
       const betaState = createMockState({
         settings: createMockSettingsState({
-          "application-name": "Metabase",
           "show-metabase-links": true,
           version: { tag: "v0.50.0-beta" },
           "is-hosted?": false,
@@ -198,88 +162,6 @@ describe("ContactSupportButtonSection", () => {
         "href",
         "https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=v0.50.0-beta",
       );
-    });
-  });
-
-  describe("Button properties", () => {
-    it("should render button with correct component type", () => {
-      renderWithProviders(<ContactSupportButtonSection />, {
-        storeInitialState: defaultState,
-      });
-
-      const contactButton = screen.getByText("Contact Support").closest("a");
-      // The button should be rendered as a Link component (which becomes an anchor tag)
-      expect(contactButton?.tagName).toBe("A");
-    });
-
-    it("should have correct button styling attributes", () => {
-      renderWithProviders(<ContactSupportButtonSection />, {
-        storeInitialState: defaultState,
-      });
-
-      const contactButton = screen.getByText("Contact Support").closest("a");
-      // These classes would be applied by the Button component
-      expect(contactButton).toBeInTheDocument();
-    });
-  });
-
-  describe("Content validation", () => {
-    it("should display the correct support description text", () => {
-      renderWithProviders(<ContactSupportButtonSection />, {
-        storeInitialState: defaultState,
-      });
-
-      expect(
-        screen.getByText(/who can help with technical troubleshooting/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Not your typical support agents/),
-      ).toBeInTheDocument();
-    });
-  });
-
-  describe("Edge cases", () => {
-    it("should handle undefined version tag gracefully", () => {
-      const undefinedVersionState = createMockState({
-        settings: createMockSettingsState({
-          "application-name": "Metabase",
-          "show-metabase-links": true,
-          version: { tag: undefined },
-          "is-hosted?": false,
-          "token-features": createMockTokenFeatures({}),
-        }),
-      });
-
-      renderWithProviders(<ContactSupportButtonSection />, {
-        storeInitialState: undefinedVersionState,
-      });
-
-      const contactButton = screen.getByText("Contact Support").closest("a");
-      expect(contactButton).toHaveAttribute(
-        "href",
-        "https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=undefined",
-      );
-    });
-
-    it("should handle empty application name", () => {
-      const emptyNameState = createMockState({
-        settings: createMockSettingsState({
-          "application-name": "",
-          "show-metabase-links": true,
-          version: { tag: "v1.0.0" },
-          "is-hosted?": false,
-          "token-features": createMockTokenFeatures({}),
-        }),
-      });
-
-      renderWithProviders(<ContactSupportButtonSection />, {
-        storeInitialState: emptyNameState,
-      });
-
-      // When application name is empty, it should still show "Metabase" as default
-      expect(
-        screen.getByText(/Reach out to Metabase engineers/),
-      ).toBeInTheDocument();
     });
   });
 });

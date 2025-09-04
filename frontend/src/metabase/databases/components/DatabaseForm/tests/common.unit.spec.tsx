@@ -18,7 +18,6 @@ jest.mock("../../DatabaseFormError", () => {
 describe("DatabaseForm", () => {
   it("should submit default values", async () => {
     const { onSubmit } = setup();
-
     const expectedDatabaseName = "My H2 Database";
     const expectedConnectionString = "file:/somewhere";
     await userEvent.type(
@@ -170,7 +169,7 @@ describe("DatabaseForm with provider name", () => {
 
   describe("connection error handling", () => {
     beforeEach(() => {
-      // jest.spyOn(utils, "useHasConnectionError").mockClear();
+      jest.spyOn(utils, "useHasConnectionError").mockClear();
     });
 
     it("shows error message when there is a connection error", () => {

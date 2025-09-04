@@ -4,14 +4,12 @@ import { t } from "ttag";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Flex } from "metabase/ui";
 
 import { TroubleshootingTip } from "./TroubleshootingTip";
 
 export const ContactSupportButtonSection = () => {
   const isPaidPlan = useSelector(getIsPaidPlan);
-  const applicationName = useSelector(getApplicationName);
   const { tag } = useSetting("version");
 
   const helpUrl = isPaidPlan
@@ -22,7 +20,8 @@ export const ContactSupportButtonSection = () => {
     <TroubleshootingTip
       body={
         <Flex direction="column" gap="md" align="flex-start">
-          {t`Reach out to ${applicationName} engineers who can help with technical troubleshooting. Not your typical support agents.`}
+          {/* eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins */}
+          {t`Reach out to Metabase engineers who can help with technical troubleshooting. Not your typical support agents.`}
           <Button
             component={Link}
             radius="md"

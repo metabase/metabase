@@ -79,7 +79,6 @@ describe("DatabaseFormError", () => {
 
   const defaultState = createMockState({
     settings: createMockSettingsState({
-      "application-name": "Metabase",
       "show-metabase-links": true,
       version: { tag: "v1.0.0" },
     }),
@@ -296,28 +295,6 @@ describe("DatabaseFormError", () => {
       // Should show all 5 tips when expanded
       const tips = screen.getAllByTestId("troubleshooting-tip");
       expect(tips).toHaveLength(5);
-    });
-  });
-
-  describe("Application name customization", () => {
-    it("should use custom application name from settings", () => {
-      const customState = createMockState({
-        settings: createMockSettingsState({
-          "application-name": "Custom Analytics",
-          "show-metabase-links": true,
-          version: { tag: "v1.0.0" },
-        }),
-      });
-
-      renderWithProviders(<DatabaseFormError />, {
-        storeInitialState: customState,
-      });
-
-      // The component uses the default "Metabase" since we're mocking the selector
-      // In a real test, we'd need to mock the whitelabel selector too
-      expect(
-        screen.getByText("Metabase tried, but couldn't connect"),
-      ).toBeInTheDocument();
     });
   });
 

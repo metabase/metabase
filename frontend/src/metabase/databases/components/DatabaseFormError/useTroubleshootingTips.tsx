@@ -1,29 +1,26 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
-import { jt, t } from "ttag";
+import { c, t } from "ttag";
 import { identity } from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
-import {
-  getApplicationName,
-  getShowMetabaseLinks,
-} from "metabase/selectors/whitelabel";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Code } from "metabase/ui";
 import type { State } from "metabase-types/store";
 
 import type { TipProps } from "./TroubleshootingTip";
 
 export const useTroubleshootingTips = (count?: number): TipProps[] => {
-  const applicationName = useSelector(getApplicationName);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const getDocPageUrl = useSelector(docPageUrlGetter);
 
   return useMemo(() => {
     const cloudIPLinkContent = renderDocsLinkMaybe(
-      t`${applicationName} Cloud IP addresses`,
+      // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+      t`Metabase Cloud IP addresses`,
       getDocPageUrl("cloud/ip-addresses-to-whitelist"),
       showMetabaseLinks,
     );
@@ -40,10 +37,15 @@ export const useTroubleshootingTips = (count?: number): TipProps[] => {
 
     return [
       {
-        title: t`Try allowing ${applicationName} IP addresses`,
+        // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+        title: t`Try allowing Metabase IP addresses`,
         body: (
           <>
-            {jt`If the database is behind a firewall or VPN, you may need to allow connections from the ${cloudIPLinkContent}.`}
+            {
+              // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+              c("{0} refers to 'Metabase Cloud IP addresses'")
+                .jt`If the database is behind a firewall or VPN, you may need to allow connections from the ${cloudIPLinkContent}.`
+            }
             <Code display="block" p="0.75rem" mt="sm" component="ul" lh="1rem">
               {metabaseIPAddresses.map((ip) => (
                 <li key={ip}>{ip}</li>
@@ -54,11 +56,15 @@ export const useTroubleshootingTips = (count?: number): TipProps[] => {
       },
       {
         title: t`Try using a secure connection (SSL)`,
-        body: jt`You’ll need an ${sslCertLinkContent} to do this.`,
+        body: c("{0} refers to 'SSL certificate'")
+          .jt`You’ll need an ${sslCertLinkContent} to do this.`,
       },
       {
-        title: t`Check ${applicationName} user permissions`,
-        body: jt`Check that ${applicationName} has the ${permissionsLinkContent} or user role for your database.`,
+        // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+        title: t`Check Metabase user permissions`,
+        body: // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+        c("{0} refers to 'correct permissions'")
+          .jt`Check that Metabase has the ${permissionsLinkContent} or user role for your database.`,
       },
       {
         title: t`Double-check connection settings`,
@@ -69,7 +75,7 @@ export const useTroubleshootingTips = (count?: number): TipProps[] => {
         body: t`Is the username and password correct? If possible, copy-paste the values to the form.`,
       },
     ].slice(0, count);
-  }, [applicationName, count, getDocPageUrl, showMetabaseLinks]);
+  }, [count, getDocPageUrl, showMetabaseLinks]);
 };
 
 /**

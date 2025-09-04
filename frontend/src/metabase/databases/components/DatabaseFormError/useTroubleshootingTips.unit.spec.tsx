@@ -1,7 +1,6 @@
 import { screen } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
-import * as whitelabelSelectors from "metabase/selectors/whitelabel";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks/settings";
@@ -35,15 +34,6 @@ jest.mock("react-router", () => ({
 describe("useTroubleshootingTips", () => {
   const defaultState = createMockState({
     settings: createMockSettingsState({
-      "application-name": "Metabase",
-      "show-metabase-links": true,
-      "token-features": createMockTokenFeatures({}),
-    }),
-  });
-
-  const customAppState = createMockState({
-    settings: createMockSettingsState({
-      "application-name": "Custom Analytics",
       "show-metabase-links": true,
       "token-features": createMockTokenFeatures({}),
     }),
@@ -51,7 +41,6 @@ describe("useTroubleshootingTips", () => {
 
   const noLinksState = createMockState({
     settings: createMockSettingsState({
-      "application-name": "Metabase",
       "show-metabase-links": false,
       "token-features": createMockTokenFeatures({}),
     }),
@@ -112,47 +101,6 @@ describe("useTroubleshootingTips", () => {
 
       const tips = screen.queryAllByTestId(/^tip-\d+$/);
       expect(tips.length).toBe(0);
-    });
-  });
-
-  describe("Application name customization", () => {
-    it("should use default Metabase application name", () => {
-      renderWithProviders(<TestComponent />, {
-        storeInitialState: defaultState,
-      });
-
-      const ipTipTitle = screen.getByTestId("tip-title-0");
-      const permissionsTipTitle = screen.getByTestId("tip-title-2");
-
-      expect(ipTipTitle).toHaveTextContent(/Metabase/);
-      expect(permissionsTipTitle).toHaveTextContent(/Metabase/);
-    });
-
-    it("should use custom application name", () => {
-      // Mock getApplicationName to return custom name
-      const mockGetApplicationName = jest.spyOn(
-        whitelabelSelectors,
-        "getApplicationName",
-      );
-      mockGetApplicationName.mockReturnValue("CustomAppName");
-
-      renderWithProviders(<TestComponent />, {
-        storeInitialState: customAppState,
-      });
-
-      const ipTipTitle = screen.getByTestId("tip-title-0");
-      const permissionsTipTitle = screen.getByTestId("tip-title-2");
-
-      // Verify that the custom application name is used in the tip titles
-      expect(ipTipTitle).toHaveTextContent(
-        "Try allowing CustomAppName IP addresses",
-      );
-      expect(permissionsTipTitle).toHaveTextContent(
-        "Check CustomAppName user permissions",
-      );
-
-      // Clean up mock
-      mockGetApplicationName.mockRestore();
     });
   });
 

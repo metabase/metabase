@@ -3,8 +3,6 @@ import { useMount } from "react-use";
 import slugg from "slugg";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Alert, Box, Button, Divider, Icon, Paper } from "metabase/ui";
 
 import { AdditionalHelpButtonGroup } from "./AdditionalHelpButtonGroup";
@@ -14,7 +12,6 @@ import { useDatabaseErrorDetails } from "./useDatabaseErrorDetails";
 import { useTroubleshootingTips } from "./useTroubleshootingTips";
 
 export const DatabaseFormError = () => {
-  const applicationName = useSelector(getApplicationName);
   const [showMoreTips, setShowMoreTips] = useState<boolean>(false);
   const { isHostAndPortError, errorMessage } = useDatabaseErrorDetails();
   const initialTipCount = isHostAndPortError ? 0 : 2;
@@ -24,7 +21,8 @@ export const DatabaseFormError = () => {
   const ref = useRef<HTMLDivElement>(null);
   const title = isHostAndPortError
     ? t`Hmm, we couldn't connect to the database`
-    : t`${applicationName} tried, but couldn't connect`;
+    : // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+      t`Metabase tried, but couldn't connect`;
 
   useMount(() => {
     if (ref.current) {
