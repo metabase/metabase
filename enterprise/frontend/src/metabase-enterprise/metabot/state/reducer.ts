@@ -43,7 +43,7 @@ export interface MetabotState {
   reactions: MetabotReactionsState;
   toolCalls: MetabotToolCall[];
   experimental: {
-    metabotIdOverride: string | undefined;
+    metabotReqIdOverride: string | undefined;
     profileOverride: string | undefined;
   };
 }
@@ -61,7 +61,7 @@ export const getMetabotInitialState = (): MetabotState => ({
   },
   toolCalls: [],
   experimental: {
-    metabotIdOverride: undefined,
+    metabotReqIdOverride: undefined,
     profileOverride: undefined,
   },
 });
@@ -156,7 +156,7 @@ export const metabot = createSlice({
       state.isProcessing = false;
       state.toolCalls = [];
       state.conversationId = uuid();
-      state.experimental.metabotIdOverride = undefined;
+      state.experimental.metabotReqIdOverride = undefined;
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -170,11 +170,11 @@ export const metabot = createSlice({
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;
     },
-    setMetabotIdOverride: (
+    setMetabotReqIdOverride: (
       state,
       action: PayloadAction<string | undefined>,
     ) => {
-      state.experimental.metabotIdOverride = action.payload;
+      state.experimental.metabotReqIdOverride = action.payload;
     },
     setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
       state.experimental.profileOverride = action.payload;

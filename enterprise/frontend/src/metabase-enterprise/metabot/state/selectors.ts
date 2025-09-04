@@ -106,22 +106,21 @@ export const getIsLongMetabotConversation = createSelector(
   },
 );
 
-export const getMetabotIdOverride = createSelector(
-  getMetabot,
-  (metabot) => metabot.experimental.metabotIdOverride,
+export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
+  isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
 );
 
-export const getMetabotId = createSelector(
-  getIsEmbedding,
-  getMetabotIdOverride,
-  (isEmbedding, metabotIdOverride) =>
-    metabotIdOverride ??
-    (isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT),
+export const getMetabotReqIdOverride = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.metabotReqIdOverride,
 );
 
 export const getMetabotRequestId = createSelector(
+  getMetabotReqIdOverride,
   getIsEmbedding,
-  (isEmbedding) => (isEmbedding ? METABOT_REQUEST_IDS.EMBEDDED : undefined),
+  (metabotReqIdOverride, isEmbedding) =>
+    metabotReqIdOverride ??
+    (isEmbedding ? METABOT_REQUEST_IDS.EMBEDDED : undefined),
 );
 
 export const getProfileOverride = createSelector(
