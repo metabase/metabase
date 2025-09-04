@@ -26,7 +26,7 @@ import { FileContentViewer } from "./FileContentViewer";
 function convertGitTreeToTreeItems(node: GitTreeNode): ITreeNodeItem {
   return {
     id: node.id,
-    name: node.name,
+    name: node.id,
     icon: node.type === "folder" ? "folder" : "document",
     children: node.children?.map(convertGitTreeToTreeItems),
   };
