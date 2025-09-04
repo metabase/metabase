@@ -13,7 +13,14 @@ export function parseTimestampWithTimezone(
   systemTimezone: string | undefined,
 ) {
   const date = parseTimestamp(timestamp);
-  return systemTimezone == null ? date : date.tz(systemTimezone);
+  if (systemTimezone == null) {
+    return date;
+  }
+  try {
+    return date.tz(systemTimezone);
+  } catch {
+    return date;
+  }
 }
 
 export function formatStatus(status: TransformRunStatus) {
