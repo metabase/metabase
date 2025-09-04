@@ -4,6 +4,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -312,7 +313,6 @@
   (sql-jdbc.execute/do-with-connection-with-options
    driver db-id {}
    (fn [^Connection conn]
-     (-> (.getMetaData conn)
-         sql-jdbc.describe-database/all-schemas
-         set
-         (contains? schema)))))
+     (->> (.getMetaData conn)
+          sql-jdbc.describe-database/all-schemas
+          (m/find-first #(= % schema))))))
