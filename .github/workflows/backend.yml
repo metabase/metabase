@@ -230,17 +230,17 @@ jobs:
           # Debug: Show current location and structure
           echo "📍 Current directory: $(pwd)"
           echo "📂 Repository root contents:"
-          ls -la | head -20
-          
+          ls -la
+
           # Verify python-runner directory exists
           if [ ! -d "python-runner" ]; then
             echo "❌ python-runner directory not found!"
             exit 1
           fi
-          
+
           echo "📂 python-runner directory contents:"
           ls -la python-runner/
-          
+
           # Verify Dockerfile exists
           if [ ! -f "python-runner/Dockerfile" ]; then
             echo "❌ python-runner/Dockerfile not found!"
