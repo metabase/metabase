@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { EmojiPicker } from "metabase/common/components/EmojiPicker";
 import {
   ActionIcon,
   Group,
@@ -12,7 +13,6 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import { EmojiPicker } from "metabase-enterprise/documents/components/EmojiPicker/EmojiPicker";
 import type { Comment } from "metabase-types/api";
 
 import S from "./Discussion.module.css";

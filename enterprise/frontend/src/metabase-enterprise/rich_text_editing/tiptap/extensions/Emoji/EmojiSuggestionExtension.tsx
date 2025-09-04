@@ -15,7 +15,7 @@ import Suggestion, {
   type SuggestionProps,
 } from "@tiptap/suggestion";
 
-import { EmojiPicker } from "metabase-enterprise/documents/components/EmojiPicker/EmojiPicker";
+import { EmojiPicker } from "metabase/common/components/EmojiPicker";
 
 export interface EmojiSuggestionOptions {
   suggestion: Partial<SuggestionOptions>;
