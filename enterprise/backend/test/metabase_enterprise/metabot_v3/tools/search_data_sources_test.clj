@@ -150,4 +150,3 @@
                   (is (some #(= (:id %) 1) results) "Table should be included")
                   (is (some #(= (:id %) 2) results) "Card in metabot collection should be included")
                   (is (not (some #(= (:id %) 3) results)) "Card in different collection should be excluded")))))))))))
-
