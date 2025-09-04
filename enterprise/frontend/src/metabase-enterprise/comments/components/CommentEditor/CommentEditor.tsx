@@ -165,7 +165,11 @@ export const CommentEditor = ({
       onKeyDownCapture={handleKeyDown}
     >
       <Box className={S.contentWrapper}>
-        <EditorContent editor={editor} className={S.content} />
+        <EditorContent
+          data-testid="comment-content"
+          editor={editor}
+          className={S.content}
+        />
       </Box>
 
       {!readonly && (

@@ -1,16 +1,75 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { DocumentId } from "metabase-types/api";
 
 const { H } = cy;
+const { Comments } = H;
 
-describe("document comments", () => {
+const IS_MAC = Cypress.platform === "darwin";
+const META_KEY = IS_MAC ? "Meta" : "Control";
+
+const HEADING_1_ID = "c2187a62-1093-61ee-3174-0bbe64c8bbfa";
+const HEADING_2_ID = "82999d0b-d7a7-c0f8-aedf-6ddf737edf78";
+const HEADING_3_ID = "190b1dd2-d875-18ae-0ba0-a13c91630c2b";
+const PARAGRAPH_ID = "b7fa322a-964e-d668-8d30-c772ef4f0022";
+const BULLET_LIST_ID = "3fd94c59-614d-bce7-37ef-c2f46871679a";
+const BLOCKQUOTE_ID = "e785b000-1651-c154-e0bd-7313f839bb50";
+const ORDERED_LIST_ID = "12fd2bdb-76f7-d07a-b61e-b2d2eee127b5";
+const CODE_BLOCK_ID = "b9fec4be-4b44-2c24-7073-10f23522cfd3";
+const CARD_EMBED_ID = "cce109c3-4cec-caf1-a569-89fa15410ae1";
+
+H.describeWithSnowplowEE("document comments", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.resetSnowplow();
   });
 
   it("allows to comment on every node", () => {
     createLoremIpsumDocument();
+
+    cy.log("does not need schema adjustments by default");
+    cy.findByRole("button", { name: "Save" }).should("not.exist");
+
+    cy.log("does not have any comments by default");
+    cy.findByRole("link", { name: "All comments" }).should("not.exist");
+
+    cy.get<DocumentId>("@documentId").then((documentId) => {
+      Comments.getDocumentNodeButton({
+        targetId: documentId,
+        childTargetId: HEADING_1_ID,
+      }).should("not.be.visible");
+
+      cy.findByRole("heading", { name: "Heading 1" }).realHover();
+      Comments.getDocumentNodeButton({
+        targetId: documentId,
+        childTargetId: HEADING_1_ID,
+      })
+        .should("be.visible")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+
+        Comments.getNewThreadInput().click();
+        cy.realType("Hello");
+        cy.realPress([META_KEY, "Enter"]);
+        Comments.getNewThreadInput().within(() => {
+          Comments.getPlaceholder().should("be.visible");
+        });
+      });
+
+      Comments.getDocumentNodeButton({
+        targetId: documentId,
+        childTargetId: HEADING_1_ID,
+        hasComments: true,
+      })
+        .should("be.visible")
+        .and("contain.text", "1");
+
+      cy.realPress("Escape");
+      H.modal().should("not.exist");
+    });
   });
 });
 
@@ -25,7 +84,7 @@ function createLoremIpsumDocument() {
           type: "heading",
           attrs: {
             level: 1,
-            _id: "c2187a62-1093-61ee-3174-0bbe64c8bbfa",
+            _id: HEADING_1_ID,
           },
           content: [
             {
@@ -38,7 +97,7 @@ function createLoremIpsumDocument() {
           type: "heading",
           attrs: {
             level: 2,
-            _id: "82999d0b-d7a7-c0f8-aedf-6ddf737edf78",
+            _id: HEADING_2_ID,
           },
           content: [
             {
@@ -51,7 +110,7 @@ function createLoremIpsumDocument() {
           type: "heading",
           attrs: {
             level: 3,
-            _id: "190b1dd2-d875-18ae-0ba0-a13c91630c2b",
+            _id: HEADING_3_ID,
           },
           content: [
             {
@@ -63,7 +122,7 @@ function createLoremIpsumDocument() {
         {
           type: "paragraph",
           attrs: {
-            _id: "b7fa322a-964e-d668-8d30-c772ef4f0022",
+            _id: PARAGRAPH_ID,
           },
           content: [
             {
@@ -75,7 +134,7 @@ function createLoremIpsumDocument() {
         {
           type: "bulletList",
           attrs: {
-            _id: "3fd94c59-614d-bce7-37ef-c2f46871679a",
+            _id: BULLET_LIST_ID,
           },
           content: [
             {
@@ -134,7 +193,7 @@ function createLoremIpsumDocument() {
         {
           type: "blockquote",
           attrs: {
-            _id: "e785b000-1651-c154-e0bd-7313f839bb50",
+            _id: BLOCKQUOTE_ID,
           },
           content: [
             {
@@ -156,7 +215,7 @@ function createLoremIpsumDocument() {
           attrs: {
             start: 1,
             type: null,
-            _id: "12fd2bdb-76f7-d07a-b61e-b2d2eee127b5",
+            _id: ORDERED_LIST_ID,
           },
           content: [
             {
@@ -216,7 +275,7 @@ function createLoremIpsumDocument() {
           type: "codeBlock",
           attrs: {
             language: null,
-            _id: "b9fec4be-4b44-2c24-7073-10f23522cfd3",
+            _id: CODE_BLOCK_ID,
           },
           content: [
             {
@@ -230,7 +289,7 @@ function createLoremIpsumDocument() {
           attrs: {
             id: ORDERS_QUESTION_ID,
             name: null,
-            _id: "cce109c3-4cec-caf1-a569-89fa15410ae1",
+            _id: CARD_EMBED_ID,
           },
         },
         {
@@ -244,4 +303,7 @@ function createLoremIpsumDocument() {
   });
 
   H.visitDocument("@documentId");
+  cy.findByRole("textbox", { name: "Document Title" })
+    .should("be.visible")
+    .and("have.value", "Lorem ipsum");
 }
