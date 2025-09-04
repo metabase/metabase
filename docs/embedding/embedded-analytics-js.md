@@ -33,10 +33,10 @@ Currently you can choose to embed:
 
 1. In Metabase, click on **+ New** button in top right corner and select **Embed**. Note that this will only be visible to admins.
 2. Choose the _type_ of entity to embed:
-    - dashboard
-    - question
-    - exploration (which will embed the Metabase query builder)
-    - browser
+    - Dashboard
+    - Question
+    - Exploration (which will embed the Metabase query builder)
+    - Browser
 3. Next, select the entity you want to embed. For browser, pick the collection you want people to start from.
 
 Once you've selected what you want to embed, click Next to customize your embed.
