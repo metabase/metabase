@@ -12,6 +12,8 @@
            (java.nio.file Files)
            (java.nio.file.attribute FileAttribute)))
 
+(set! *warn-on-reflection* true)
+
 (defn cleanup-temp-directory!
   "Clean up temporary directory and all its contents."
   [temp-dir]
@@ -80,7 +82,7 @@
 
 (api.macros/defendpoint :post "/import"
   "Reload Metabase content from Git repository source of truth.
-  
+
   This endpoint will:
   1. Fetch the latest changes from the configured git repository
   2. Load the updated content using the serialization/deserialization system
@@ -102,6 +104,96 @@
       {:status 500
        :body {:status "error"
               :message "Unexpected error occurred during reload"}})))
+
+(api.macros/defendpoint :get "/git"
+  "List items in the library"
+  []
+  (if-let [source (sources/get-source)]
+    (with-temp-directory dir
+      (log/info "Reloading Metabase configuration from source")
+      (try
+        (let [root-dir (io/file (sources/load-source! source (.toString dir)))
+              files (next (file-seq root-dir))
+              build-tree (fn build-tree [files parent-path]
+                           (->> files
+                                (filter #(not= (.getName %) ".git"))
+                                (filter #(not= (.getName %) ".github"))
+                                (filter #(not= (.getName %) ".gitignore"))
+                                (filter #(.startsWith (.toPath %) (.toPath parent-path)))
+                                (filter #(= (.getParent (.toPath %)) (.toPath parent-path)))
+                                (map (fn [file]
+                                       (let [rel-path (->> file .toPath (.relativize (.toPath root-dir)) .toString)]
+                                         (if (.isDirectory file)
+                                           {:id rel-path
+                                            :name (str "/" (.getName file))
+                                            :type "folder"
+                                            :children (build-tree files file)}
+                                           {:id rel-path
+                                            :name (str "/" (.getName file))
+                                            :type "file"}))))
+                                (sort-by :name)))]
+          {:id "root"
+           :name "metabase-library"
+           :type "folder"
+           :children (build-tree files root-dir)})
+
+        (catch Exception e
+          (log/errorf e "Failed to reload from git repository: %s" (.getMessage e))
+          (let [error-msg (cond
+                            (instance? java.net.UnknownHostException e)
+                            "Network error: Unable to reach git repository host"
+
+                            (str/includes? (.getMessage e) "Authentication failed")
+                            "Authentication failed: Please check your git credentials"
+
+                            (str/includes? (.getMessage e) "Repository not found")
+                            "Repository not found: Please check the repository URL"
+
+                            (str/includes? (.getMessage e) "branch")
+                            "Branch error: Please check the specified branch exists"
+
+                            :else
+                            (format "Failed to reload from git repository: %s" (.getMessage e)))]
+            {:status  :error
+             :message error-msg
+             :details {:error-type (type e)}}))))
+    {:status  :error
+     :message "Git source of truth is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
+
+(api.macros/defendpoint :get "/git/:path"
+  "List item in the library"
+  [{:keys [path]}]
+  (if-let [source (sources/get-source)]
+    (with-temp-directory dir
+      (log/info "Reloading Metabase configuration from source")
+      (try
+        (let [root-dir (io/file (sources/load-source! source (.toString dir)))
+              file (io/file root-dir path)]
+          (api/check-404 (when (.exists file)
+                           {:path    path
+                            :content (slurp file)})))
+        (catch Exception e
+          (log/errorf e "Failed to reload from git repository: %s" (.getMessage e))
+          (let [error-msg (cond
+                            (instance? java.net.UnknownHostException e)
+                            "Network error: Unable to reach git repository host"
+
+                            (str/includes? (.getMessage e) "Authentication failed")
+                            "Authentication failed: Please check your git credentials"
+
+                            (str/includes? (.getMessage e) "Repository not found")
+                            "Repository not found: Please check the repository URL"
+
+                            (str/includes? (.getMessage e) "branch")
+                            "Branch error: Please check the specified branch exists"
+
+                            :else
+                            (format "Failed to reload from git repository: %s" (.getMessage e)))]
+            {:status  :error
+             :message error-msg
+             :details {:error-type (type e)}}))))
+    {:status  :error
+     :message "Git source of truth is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/git-source-of-truth` routes."
