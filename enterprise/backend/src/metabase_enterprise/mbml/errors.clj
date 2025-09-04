@@ -137,25 +137,10 @@
   [error-type content & [file]]
   (let [file-ext (when file
                    (last (str/split file #"\.")))
-        suggestions (case error-type
-                      :missing-markers
-                      [(deferred-tru "Add METABASE_BEGIN and METABASE_END markers to your file")
-                       (if (= file-ext "sql")
-                         (deferred-tru "For SQL files, use: -- METABASE_BEGIN and -- METABASE_END")
-                         (deferred-tru "For Python files, use: # METABASE_BEGIN and # METABASE_END"))]
-
-                      :malformed-markers
-                      [(deferred-tru "Check that METABASE_BEGIN and METABASE_END markers are on separate lines")
-                       (deferred-tru "Ensure markers have proper comment syntax for the file type")
-                       (if (= file-ext "sql")
-                         (deferred-tru "SQL markers should be: -- METABASE_BEGIN / -- METABASE_END")
-                         (deferred-tru "Python markers should be: # METABASE_BEGIN / # METABASE_END"))]
-
-                      :multiple-blocks
-                      [(deferred-tru "Only one METABASE_BEGIN/METABASE_END block is allowed per file")
-                       (deferred-tru "Combine multiple metadata blocks into a single block")]
-
-                      [(deferred-tru "Check front-matter formatting and marker placement")])]
+        suggestions [(deferred-tru "Add METABASE_BEGIN and METABASE_END markers to your file")
+                     (if (= file-ext "sql")
+                       (deferred-tru "For SQL files, use: -- METABASE_BEGIN and -- METABASE_END")
+                       (deferred-tru "For Python files, use: # METABASE_BEGIN and # METABASE_END"))]]
     (error-context
      :frontmatter-error
      (if file

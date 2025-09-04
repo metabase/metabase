@@ -55,6 +55,7 @@
    [babashka.fs :as fs]
    [clojure.string :as str]
    [metabase-enterprise.mbml.errors :as mbml.errors]
+   [metabase-enterprise.mbml.parser :as mbml.parser]
    [metabase-enterprise.mbml.parser :as parser]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -81,10 +82,10 @@
   [content :- ms/NonBlankString
    file-type-hint :- [:maybe parser/FileType]]
   (let [file-type (or file-type-hint :yaml)
-        {:keys [metadata source]} (parser/extract-content content file-type)]
+        {:keys [metadata body]} (parser/extract-content content file-type)]
     (if metadata
       (let [parsed-data (parser/parse-yaml metadata)]
-        (parser/validate-mbml parsed-data source))
+        (parser/validate-mbml parsed-data body))
       (throw (ex-info "No MBML metadata found in content"
                       {:type :no-metadata-error
                        :content-preview (subs content 0 (min 200 (count content)))
@@ -120,7 +121,8 @@
       (when (str/blank? content)
         (throw (mbml.errors/format-file-error :empty-file-error file-path nil)))
 
-      (parse-mbml-string content file-type))
+      (binding [mbml.parser/*file* file-path]
+        (parse-mbml-string content file-type)))
 
     (catch java.io.FileNotFoundException e
       (throw (mbml.errors/format-file-error :file-not-found file-path e)))
@@ -150,4 +152,7 @@
     ;; TODO(edpaget): for more complex models this will need to apply some kind of transformation
     ;; before writing to the database
     (t2/insert-returning-instance! (entity-type->model entity)
-                                   (select-keys loaded [:name :description :source :target]))))
+                                   (merge
+                                    (select-keys loaded [:name :description :source :target])
+                                    (when (contains? loaded :body)
+                                      {:source (:body loaded)})))))

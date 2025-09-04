@@ -23,29 +23,25 @@
                   :suggestions ["Fix this" "Try that"]})]
 
       (is (instance? clojure.lang.ExceptionInfo error))
-      (is (= "Test error message" (.getMessage error)))
-
-      (let [data (ex-data error)]
-        (is (= :yaml-parse-error (:type data)))
-        (is (= "Test error message" (:message data)))
-        (is (= "test.yaml" (:file data)))
-        (is (= 42 (:line data)))
-        (is (= {:key "value"} (:data data)))
-        (is (= "Additional context" (:context data)))
-        (is (= ["Fix this" "Try that"] (:suggestions data)))
-        (is (instance? java.time.Instant (:timestamp data))))))
+      (is (= "Test error message" (ex-message error)))
+      (is (=? {:type :yaml-parse-error
+               :message "Test error message"
+               :file "test.yaml"
+               :line 42
+               :data {:key "value"}
+               :context "Additional context"
+               :suggestions ["Fix this" "Try that"]
+               :timestamp some?}
+              (ex-data error)))))
 
   (testing "error-context handles minimal inputs"
     (let [error (mbml.errors/error-context :file-not-found "File missing")]
       (is (instance? clojure.lang.ExceptionInfo error))
-      (is (= "File missing" (.getMessage error)))
-
-      (let [data (ex-data error)]
-        (is (= :file-not-found (:type data)))
-        (is (= "File missing" (:message data)))
-        (is (instance? java.time.Instant (:timestamp data)))
-        (is (nil? (:file data)))
-        (is (nil? (:line data))))))
+      (is (= "File missing" (ex-message error)))
+      (is (=? {:type :file-not-found
+               :message "File missing"
+               :timestamp some?}
+              (ex-data error)))))
 
   (testing "error-context handles cause exceptions"
     (let [root-cause (Exception. "Root problem")
@@ -56,11 +52,12 @@
                   :file "data.yaml"})]
 
       (is (instance? clojure.lang.ExceptionInfo error))
-      (is (= root-cause (.getCause error)))
-
-      (let [data (ex-data error)]
-        (is (= :io-error (:type data)))
-        (is (= "data.yaml" (:file data)))))))
+      (is (= root-cause (ex-cause error)))
+      (is (=? {:type :io-error
+               :file "data.yaml"
+               :message "IO failed"
+               :timestamp some?}
+              (ex-data error))))))
 
 ;;; ---------------------------------------- File Context Tests ------------------------------------------
 
@@ -92,39 +89,43 @@
           error (mbml.errors/format-yaml-error yaml-content cause "test.yaml")]
 
       (is (instance? clojure.lang.ExceptionInfo error))
-      (is (= cause (.getCause error)))
-
-      (let [data (ex-data error)]
-        (is (= :yaml-parse-error (:type data)))
-        (is (= "test.yaml" (:file data)))
-        (is (= yaml-content (get-in data [:data :yaml-content])))
-        (is (= 3 (get-in data [:data :line-count])))
-        (is (vector? (:suggestions data)))
-        (is (some #(re-find #"indentation" %) (:suggestions data))))))
+      (is (= cause (ex-cause error)))
+      (is (=? {:type :yaml-parse-error
+               :file "test.yaml"
+               :data {:yaml-content yaml-content
+                      :line-count 3}
+               :suggestions vector?
+               :message string?
+               :timestamp some?}
+              (ex-data error)))
+      (is (some #(re-find #"indentation" %) (:suggestions (ex-data error))))))
 
   (testing "format-yaml-error without file context"
     (let [yaml-content "bad:\nyaml"
           cause (Exception. "Parse error")
           error (mbml.errors/format-yaml-error yaml-content cause)]
 
-      (let [data (ex-data error)]
-        (is (= :yaml-parse-error (:type data)))
-        (is (nil? (:file data)))
-        (is (= yaml-content (get-in data [:data :yaml-content]))))))
+      (is (=? {:type :yaml-parse-error
+               :file nil
+               :data {:yaml-content yaml-content
+                      :line-count 2}
+               :message string?
+               :timestamp some?}
+              (ex-data error)))))
 
   (testing "format-yaml-error with empty content"
     (let [error (mbml.errors/format-yaml-error "" (Exception. "Empty"))]
-      (let [data (ex-data error)]
-        (is (= "" (get-in data [:data :yaml-content])))
-        (is (= 1 (get-in data [:data :line-count])))))) ; empty string creates 1 line
+      (is (=? {:data {:yaml-content ""
+                      :line-count 1}}
+              (ex-data error)))))
 
   (testing "format-yaml-error with large content provides context"
     (let [large-yaml (str/join "\n" (repeat 50 "line: value"))
           error (mbml.errors/format-yaml-error large-yaml (Exception. "Large file error"))]
-      (let [data (ex-data error)]
-        (is (= 50 (get-in data [:data :line-count])))
-        (is (string? (:context data)))
-        (is (re-find #"50 lines" (:context data)))))))
+      (is (=? {:data {:line-count 50}
+               :context #".*50 lines.*"
+               :type :yaml-parse-error}
+              (ex-data error))))))
 
 ;;; ------------------------------------- Schema Validation Error Tests -------------------------------------
 
@@ -137,14 +138,16 @@
           error (mbml.errors/format-schema-validation-error mock-exception invalid-data "transform.yaml")]
 
       (is (instance? clojure.lang.ExceptionInfo error))
-
-      (let [data (ex-data error)]
-        (is (= :schema-validation (:type data)))
-        (is (= "transform.yaml" (:file data)))
-        (is (= invalid-data (get-in data [:data :failed-data])))
-        (is (= mock-exception (ex-cause error)))
-        (is (vector? (:suggestions data)))
-        (is (some #(re-find #"required fields" %) (:suggestions data))))))
+      (is (=? {:type :schema-validation
+               :file "transform.yaml"
+               :data {:failed-data invalid-data
+                      :errors [{:path [:name] :message "missing required field"}
+                               {:path [:entity] :message "invalid entity type"}]}
+               :suggestions vector?
+               :message string?
+               :timestamp some?}
+              (ex-data error)))
+      (is (some #(re-find #"required fields" %) (:suggestions (ex-data error))))))
 
   (testing "format-schema-validation-error without file context"
     (let [mock-exception (ex-info "Validation failed"
@@ -152,18 +155,21 @@
           invalid-data {:name "test"}
           error (mbml.errors/format-schema-validation-error mock-exception invalid-data)]
 
-      (let [data (ex-data error)]
-        (is (= :schema-validation (:type data)))
-        (is (nil? (:file data)))
-        (is (= invalid-data (get-in data [:data :failed-data]))))))
+      (is (=? {:type :schema-validation
+               :file nil
+               :data {:failed-data invalid-data
+                      :errors [{:path [:identifier] :message "blank identifier"}]}
+               :message string?
+               :timestamp some?}
+              (ex-data error)))))
 
   (testing "format-schema-validation-error suggestions are comprehensive"
     (let [mock-exception (ex-info "Validation failed" {:error {:errors []}})
-          error (mbml.errors/format-schema-validation-error mock-exception {})]
-      (let [suggestions (:suggestions (ex-data error))]
-        (is (>= (count suggestions) 3))
-        (is (some #(re-find #"entity.*identifier.*database.*target" %) suggestions))
-        (is (some #(re-find #"Transform:v1" %) suggestions))))))
+          error (mbml.errors/format-schema-validation-error mock-exception {})
+          suggestions (:suggestions (ex-data error))]
+      (is (>= (count suggestions) 3))
+      (is (some #(re-find #"entity.*identifier.*database.*target" %) suggestions))
+      (is (some #(re-find #"Transform:v1" %) suggestions)))))
 
 ;;; --------------------------------------- Front-matter Error Tests ---------------------------------------
 
@@ -172,45 +178,25 @@
     (let [content "SELECT * FROM table -- no METABASE markers"
           error (mbml.errors/format-frontmatter-error :missing-markers content "query.sql")]
 
-      (let [data (ex-data error)]
-        (is (= :frontmatter-error (:type data)))
-        (is (= "query.sql" (:file data)))
-        (is (= :missing-markers (get-in data [:data :error-type])))
-        (is (= (count content) (get-in data [:data :content-length])))
-        (is (= "sql" (get-in data [:data :file-extension])))
-        (is (some #(re-find #"METABASE_BEGIN.*METABASE_END" %) (:suggestions data)))
-        (is (some #(re-find #"-- METABASE_BEGIN" %) (:suggestions data))))))
-
-  (testing "format-frontmatter-error for malformed markers"
-    (let [content "# METABASE_BEGIN\n# missing end marker"
-          error (mbml.errors/format-frontmatter-error :malformed-markers content "script.py")]
-
-      (let [data (ex-data error)]
-        (is (= :malformed-markers (get-in data [:data :error-type])))
-        (is (= "py" (get-in data [:data :file-extension])))
-        (is (some #(re-find #"separate lines" %) (:suggestions data)))
-        (is (some #(re-find #"# METABASE_BEGIN" %) (:suggestions data))))))
-
-  (testing "format-frontmatter-error for multiple blocks"
-    (let [content "# METABASE_BEGIN\ndata1\n# METABASE_END\n# METABASE_BEGIN\ndata2\n# METABASE_END"
-          error (mbml.errors/format-frontmatter-error :multiple-blocks content "multi.py")]
-
-      (let [data (ex-data error)]
-        (is (= :multiple-blocks (get-in data [:data :error-type])))
-        (is (some #(re-find #"Only one.*block.*allowed" %) (:suggestions data))))))
+      (is (=? {:type :frontmatter-error
+               :file "query.sql"
+               :data {:error-type :missing-markers
+                      :content-length (count content)
+                      :file-extension "sql"}
+               :suggestions vector?
+               :message string?
+               :timestamp some?}
+              (ex-data error)))
+      (is (some #(re-find #"METABASE_BEGIN.*METABASE_END" %) (:suggestions (ex-data error))))
+      (is (some #(re-find #"-- METABASE_BEGIN" %) (:suggestions (ex-data error))))))
 
   (testing "format-frontmatter-error without file extension"
     (let [error (mbml.errors/format-frontmatter-error :missing-markers "content" nil)]
-      (let [data (ex-data error)]
-        (is (nil? (get-in data [:data :file-extension])))
-        (is (nil? (:file data)))
-        (is (some #(re-find #"METABASE_BEGIN.*METABASE_END" %) (:suggestions data))))))
-
-  (testing "format-frontmatter-error for unknown error types"
-    (let [error (mbml.errors/format-frontmatter-error :unknown-error "content" "file.txt")]
-      (let [suggestions (:suggestions (ex-data error))]
-        (is (= 1 (count suggestions)))
-        (is (re-find #"Check front-matter formatting" (first suggestions)))))))
+      (is (=? {:data {:file-extension nil}
+               :file nil
+               :suggestions vector?}
+              (ex-data error)))
+      (is (some #(re-find #"METABASE_BEGIN.*METABASE_END" %) (:suggestions (ex-data error)))))))
 
 ;;; ---------------------------------------- File System Error Tests ----------------------------------------
 
@@ -221,37 +207,41 @@
 
       (is (instance? clojure.lang.ExceptionInfo error))
       (is (= cause (.getCause error)))
-
-      (let [data (ex-data error)]
-        (is (= :file-not-found (:type data)))
-        (is (= "missing.yaml" (:file data)))
-        (is (some #(re-find #"file path.*correct" %) (:suggestions data)))
-        (is (some #(re-find #"permission.*access" %) (:suggestions data))))))
+      (is (=? {:type :file-not-found
+               :file "missing.yaml"
+               :suggestions vector?
+               :message string?
+               :timestamp some?}
+              (ex-data error)))
+      (is (some #(re-find #"file path.*correct" %) (:suggestions (ex-data error))))
+      (is (some #(re-find #"permission.*access" %) (:suggestions (ex-data error))))))
 
   (testing "format-file-error for permission denied"
     (let [cause (Exception. "Access denied")
           error (mbml.errors/format-file-error :permission-denied "secure.yaml" cause)]
 
-      (let [data (ex-data error)]
-        (is (= :permission-denied (:type data)))
-        (is (= "secure.yaml" (:file data)))
-        (is (some #(re-find #"file permissions.*readable" %) (:suggestions data)))
-        (is (some #(re-find #"parent directory" %) (:suggestions data))))))
+      (is (=? {:type :permission-denied
+               :file "secure.yaml"
+               :suggestions vector?}
+              (ex-data error)))
+      (is (some #(re-find #"file permissions.*readable" %) (:suggestions (ex-data error))))
+      (is (some #(re-find #"parent directory" %) (:suggestions (ex-data error))))))
 
   (testing "format-file-error for I/O errors"
     (let [cause (Exception. "Disk full")
           error (mbml.errors/format-file-error :io-error "data.yaml" cause)]
 
-      (let [data (ex-data error)]
-        (is (= :io-error (:type data)))
-        (is (some #(re-find #"locked.*another process" %) (:suggestions data)))
-        (is (some #(re-find #"disk space.*resources" %) (:suggestions data))))))
+      (is (=? {:type :io-error
+               :suggestions vector?}
+              (ex-data error)))
+      (is (some #(re-find #"locked.*another process" %) (:suggestions (ex-data error))))
+      (is (some #(re-find #"disk space.*resources" %) (:suggestions (ex-data error))))))
 
   (testing "format-file-error for unknown error types"
-    (let [error (mbml.errors/format-file-error :unknown-error "file.txt" (Exception. "Unknown"))]
-      (let [suggestions (:suggestions (ex-data error))]
-        (is (= 1 (count suggestions)))
-        (is (re-find #"file accessibility.*permissions" (first suggestions))))))
+    (let [error (mbml.errors/format-file-error :unknown-error "file.txt" (Exception. "Unknown"))
+          suggestions (:suggestions (ex-data error))]
+      (is (= 1 (count suggestions)))
+      (is (re-find #"file accessibility.*permissions" (first suggestions)))))
 
   (testing "format-file-error message includes error type description"
     (let [error (mbml.errors/format-file-error :file-not-found "test.yaml" (Exception.))]
@@ -261,22 +251,26 @@
 
 (deftest ^:parallel format-unsupported-file-error-test
   (testing "format-unsupported-file-error basic functionality"
-    (let [error (mbml.errors/format-unsupported-file-error "document.txt")
-          data (ex-data error)]
-      (is (= :unsupported-format (:type data)))
-      (is (= "document.txt" (:file data)))
-      (is (some #(re-find #"\.yaml.*\.yml" %) (:suggestions data)))
-      (is (some #(re-find #"\.sql.*SQL.*front-matter" %) (:suggestions data)))
-      (is (some #(re-find #"\.py.*Python.*front-matter" %) (:suggestions data)))))
+    (let [error (mbml.errors/format-unsupported-file-error "document.txt")]
+      (is (=? {:type :unsupported-format
+               :file "document.txt"
+               :suggestions vector?
+               :message string?
+               :timestamp some?}
+              (ex-data error)))
+      (is (some #(re-find #"\.yaml.*\.yml" %) (:suggestions (ex-data error))))
+      (is (some #(re-find #"\.sql.*SQL.*front-matter" %) (:suggestions (ex-data error))))
+      (is (some #(re-find #"\.py.*Python.*front-matter" %) (:suggestions (ex-data error))))))
 
   (testing "format-unsupported-file-error message format"
     (let [error (mbml.errors/format-unsupported-file-error "bad.exe")]
       (is (re-find #"Unsupported file format.*bad\.exe" (.getMessage error)))))
 
   (testing "format-unsupported-file-error with various file types"
-    (let [error (mbml.errors/format-unsupported-file-error "unknown")
-          data (ex-data error)]
-      (is (= "unknown" (:file data))))))
+    (let [error (mbml.errors/format-unsupported-file-error "unknown")]
+      (is (=? {:file "unknown"
+               :type :unsupported-format}
+              (ex-data error))))))
 
 ;;; -------------------------------------- Internationalization Tests ------------------------------------
 

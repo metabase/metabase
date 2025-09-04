@@ -2,8 +2,7 @@
   "Comprehensive unit tests for MBML parser engine functions.
   
   Tests cover all parser engine functions:
-  - extract-sql-frontmatter: SQL comment block extraction
-  - extract-python-frontmatter: Python comment block extraction
+  - extract-frontmatter: Front-matter extraction for SQL and Python files
   - detect-file-type: File type detection from extensions
   - extract-content: Content extraction routing
   - parse-yaml: YAML parsing with error handling
@@ -137,127 +136,129 @@ database: test_db")
 
 (def whitespace-only-content "   \n\t  \n  ")
 
-;;; ---------------------------------- extract-sql-frontmatter Tests ------------------------------------
+;;; ---------------------------------- extract-frontmatter Tests ------------------------------------
 
-(deftest ^:parallel extract-sql-frontmatter-test
+(deftest ^:parallel extract-frontmatter-sql-test
   (testing "Extracts front-matter from valid SQL file"
-    (let [result (mbml.parser/extract-sql-frontmatter valid-sql-with-frontmatter)]
-      (is (map? result))
-      (is (contains? result :metadata))
-      (is (contains? result :source))
-      (is (string? (:metadata result)))
-      (is (string? (:source result)))
-      (is (str/includes? (:metadata result) "entity: model/Transform:v1"))
-      (is (str/includes? (:metadata result) "name: Customer Sales Analysis"))
-      (is (str/includes? (:source result) "SELECT"))
-      (is (str/includes? (:source result) "customers c"))))
+    (let [result (mbml.parser/extract-frontmatter valid-sql-with-frontmatter :sql)]
+      (is (=? {:metadata #(and (string? %)
+                               (str/includes? % "entity: model/Transform:v1")
+                               (str/includes? % "name: Customer Sales Analysis"))
+               :body #(and (string? %)
+                           (str/includes? % "SELECT")
+                           (str/includes? % "customers c"))}
+              result))))
 
-  (testing "Returns nil metadata for SQL without front-matter"
-    (let [result (mbml.parser/extract-sql-frontmatter sql-without-frontmatter)]
-      (is (map? result))
-      (is (nil? (:metadata result)))
-      (is (= sql-without-frontmatter (:source result)))))
+  (testing "Handles SQL without front-matter"
+    (is (thrown-with-msg? Exception #"Front-matter extraction failed"
+                          (mbml.parser/extract-frontmatter sql-without-frontmatter :sql))))
 
-  (testing "Returns nil metadata for incomplete front-matter (missing end marker)"
-    (let [result (mbml.parser/extract-sql-frontmatter sql-with-incomplete-frontmatter)]
-      (is (map? result))
-      (is (nil? (:metadata result)))
-      (is (= sql-with-incomplete-frontmatter (:source result)))))
+  (testing "Handles incomplete SQL front-matter (missing end marker)"
+    (is (thrown-with-msg? Exception #"Front-matter extraction failed"
+                          (mbml.parser/extract-frontmatter sql-with-incomplete-frontmatter :sql))))
 
   (testing "Handles indented markers correctly"
-    (let [result (mbml.parser/extract-sql-frontmatter sql-with-indented-markers)]
-      (is (map? result))
-      (is (string? (:metadata result)))
-      (is (str/includes? (:metadata result) "entity: model/Transform:v1"))
-      (is (str/includes? (:metadata result) "name: Indented Transform"))
-      (is (str/includes? (:source result) "SELECT * FROM indented_table"))))
+    (let [result (mbml.parser/extract-frontmatter sql-with-indented-markers :sql)]
+      (is (=? {:metadata #(and (string? %)
+                               (str/includes? % "entity: model/Transform:v1")
+                               (str/includes? % "name: Indented Transform"))
+               :body #(str/includes? % "SELECT * FROM indented_table")}
+              result))))
 
   (testing "Strips comment prefixes correctly"
-    (let [result (mbml.parser/extract-sql-frontmatter valid-sql-with-frontmatter)
-          metadata (:metadata result)]
-      (is (not (str/includes? metadata "--")))
-      (is (str/includes? metadata "entity:"))
-      (is (str/includes? metadata "tags:\n  - sales\n  - customer")))))
+    (let [result (mbml.parser/extract-frontmatter valid-sql-with-frontmatter :sql)]
+      (is (=? {:metadata #(and (not (str/includes? % "--"))
+                               (str/includes? % "entity:")
+                               (str/includes? % "tags:\n  - sales\n  - customer"))}
+              result)))))
 
-(deftest ^:parallel extract-sql-frontmatter-edge-cases-test
-  (testing "Handles empty content"
-    (is (thrown? Exception (mbml.parser/extract-sql-frontmatter empty-content))))
+(deftest ^:parallel extract-frontmatter-sql-edge-cases-test
+  (testing "Handles empty SQL content"
+    (is (thrown? Exception (mbml.parser/extract-frontmatter empty-content :sql))))
 
-  (testing "Handles whitespace-only content"
-    (is (thrown? Exception (mbml.parser/extract-sql-frontmatter whitespace-only-content))))
+  (testing "Handles whitespace-only SQL content"
+    (is (thrown? Exception (mbml.parser/extract-frontmatter whitespace-only-content :sql))))
 
-  (testing "Handles content with only begin marker"
-    (let [content "-- METABASE_BEGIN\n-- entity: test\nSELECT * FROM test;"
-          result (mbml.parser/extract-sql-frontmatter content)]
-      (is (nil? (:metadata result)))
-      (is (= content (:source result)))))
+  (testing "Handles SQL content with only begin marker"
+    (let [content "-- METABASE_BEGIN\n-- entity: test\nSELECT * FROM test;"]
+      (is (thrown-with-msg? Exception #"Front-matter extraction failed"
+                            (mbml.parser/extract-frontmatter content :sql)))))
 
-  (testing "Handles content with only end marker"
-    (let [content "-- entity: test\n-- METABASE_END\nSELECT * FROM test;"
-          result (mbml.parser/extract-sql-frontmatter content)]
-      (is (nil? (:metadata result)))
-      (is (= content (:source result))))))
+  (testing "Handles SQL content with only end marker"
+    (let [content "-- entity: test\n-- METABASE_END\nSELECT * FROM test;"]
+      (is (thrown-with-msg? Exception #"Front-matter extraction failed"
+                            (mbml.parser/extract-frontmatter content :sql))))))
 
-;;; --------------------------------- extract-python-frontmatter Tests ---------------------------------
+;;; --------------------------------- extract-frontmatter Python Tests ---------------------------------
 
-(deftest ^:parallel extract-python-frontmatter-test
+(deftest ^:parallel extract-frontmatter-python-test
   (testing "Extracts front-matter from valid Python file"
-    (let [result (mbml.parser/extract-python-frontmatter valid-python-with-frontmatter)]
-      (is (map? result))
-      (is (contains? result :metadata))
-      (is (contains? result :source))
-      (is (string? (:metadata result)))
-      (is (string? (:source result)))
-      (is (str/includes? (:metadata result) "entity: model/Transform:v1"))
-      (is (str/includes? (:metadata result) "name: Data Processing Pipeline"))
-      (is (str/includes? (:source result) "import pandas as pd"))
-      (is (str/includes? (:source result) "def process_data"))))
+    (let [result (mbml.parser/extract-frontmatter valid-python-with-frontmatter :python)]
+      (is (=? {:metadata #(and (string? %)
+                               (str/includes? % "entity: model/Transform:v1")
+                               (str/includes? % "name: Data Processing Pipeline"))
+               :body #(and (string? %)
+                           (str/includes? % "import pandas as pd")
+                           (str/includes? % "def process_data"))}
+              result))))
 
-  (testing "Returns nil metadata for Python without front-matter"
-    (let [result (mbml.parser/extract-python-frontmatter python-without-frontmatter)]
-      (is (map? result))
-      (is (nil? (:metadata result)))
-      (is (= python-without-frontmatter (:source result)))))
+  (testing "Handles Python without front-matter"
+    (is (thrown-with-msg? Exception #"Front-matter extraction failed"
+                          (mbml.parser/extract-frontmatter python-without-frontmatter :python))))
 
-  (testing "Returns nil metadata for incomplete front-matter (missing end marker)"
-    (let [result (mbml.parser/extract-python-frontmatter python-with-incomplete-frontmatter)]
-      (is (map? result))
-      (is (nil? (:metadata result)))
-      (is (= python-with-incomplete-frontmatter (:source result)))))
+  (testing "Handles incomplete Python front-matter (missing end marker)"
+    (is (thrown-with-msg? Exception #"Front-matter extraction failed"
+                          (mbml.parser/extract-frontmatter python-with-incomplete-frontmatter :python))))
 
   (testing "Handles indented markers correctly"
-    (let [result (mbml.parser/extract-python-frontmatter python-with-indented-markers)]
-      (is (map? result))
-      (is (string? (:metadata result)))
-      (is (str/includes? (:metadata result) "entity: model/Transform:v1"))
-      (is (str/includes? (:metadata result) "name: Indented Transform"))
-      (is (str/includes? (:source result) "print('Indented Python code')"))))
+    (let [result (mbml.parser/extract-frontmatter python-with-indented-markers :python)]
+      (is (=? {:metadata #(and (string? %)
+                               (str/includes? % "entity: model/Transform:v1")
+                               (str/includes? % "name: Indented Transform"))
+               :body #(str/includes? % "print('Indented Python code')")}
+              result))))
 
   (testing "Strips comment prefixes correctly"
-    (let [result (mbml.parser/extract-python-frontmatter valid-python-with-frontmatter)
-          metadata (:metadata result)]
-      (is (not (str/includes? metadata "#")))
-      (is (str/includes? metadata "entity:"))
-      (is (str/includes? metadata "tags:\n  - etl\n  - pipeline")))))
+    (let [result (mbml.parser/extract-frontmatter valid-python-with-frontmatter :python)]
+      (is (=? {:metadata #(and (not (str/includes? % "#"))
+                               (str/includes? % "entity:")
+                               (str/includes? % "tags:\n  - etl\n  - pipeline"))}
+              result)))))
 
-(deftest ^:parallel extract-python-frontmatter-edge-cases-test
-  (testing "Handles empty content"
-    (is (thrown? Exception (mbml.parser/extract-python-frontmatter empty-content))))
+(deftest ^:parallel extract-frontmatter-python-edge-cases-test
+  (testing "Handles empty Python content"
+    (is (thrown? Exception (mbml.parser/extract-frontmatter empty-content :python))))
 
-  (testing "Handles whitespace-only content"
-    (is (thrown? Exception (mbml.parser/extract-python-frontmatter whitespace-only-content))))
+  (testing "Handles whitespace-only Python content"
+    (is (thrown? Exception (mbml.parser/extract-frontmatter whitespace-only-content :python))))
 
-  (testing "Handles content with only begin marker"
-    (let [content "# METABASE_BEGIN\n# entity: test\nprint('hello')"
-          result (mbml.parser/extract-python-frontmatter content)]
-      (is (nil? (:metadata result)))
-      (is (= content (:source result)))))
+  (testing "Handles Python content with only begin marker"
+    (let [content "# METABASE_BEGIN\n# entity: test\nprint('hello')"]
+      (is (thrown-with-msg? Exception #"Front-matter extraction failed"
+                            (mbml.parser/extract-frontmatter content :python)))))
 
-  (testing "Handles content with only end marker"
-    (let [content "# entity: test\n# METABASE_END\nprint('hello')"
-          result (mbml.parser/extract-python-frontmatter content)]
-      (is (nil? (:metadata result)))
-      (is (= content (:source result))))))
+  (testing "Handles Python content with only end marker"
+    (let [content "# entity: test\n# METABASE_END\nprint('hello')"]
+      (is (thrown-with-msg? Exception #"Front-matter extraction failed"
+                            (mbml.parser/extract-frontmatter content :python))))))
+
+;;; ------------------------------------- *file* Dynamic Variable Tests ----------------------------------
+
+(deftest ^:parallel file-dynamic-variable-test
+  (testing "extract-frontmatter uses *file* in error messages when bound"
+    (binding [mbml.parser/*file* "test.sql"]
+      (try
+        (mbml.parser/extract-frontmatter sql-without-frontmatter :sql)
+        (is false "Should have thrown exception")
+        (catch Exception e
+          (is (str/includes? (ex-message e) "test.sql"))))))
+
+  (testing "extract-frontmatter works without *file* binding"
+    (try
+      (mbml.parser/extract-frontmatter sql-without-frontmatter :sql)
+      (is false "Should have thrown exception")
+      (catch Exception e
+        (is (not (str/includes? (ex-message e) "test.sql")))))))
 
 ;;; ------------------------------------ detect-file-type Tests --------------------------------------
 
@@ -296,43 +297,39 @@ database: test_db")
 (deftest ^:parallel extract-content-test
   (testing "Routes YAML files correctly"
     (let [result (mbml.parser/extract-content valid-yaml-content :yaml)]
-      (is (map? result))
-      (is (= valid-yaml-content (:metadata result)))
-      (is (nil? (:source result)))))
+      (is (=? {:metadata valid-yaml-content
+               :body nil}
+              result))))
 
   (testing "Routes SQL files correctly"
     (let [result (mbml.parser/extract-content valid-sql-with-frontmatter :sql)]
-      (is (map? result))
-      (is (string? (:metadata result)))
-      (is (string? (:source result)))
-      (is (str/includes? (:metadata result) "entity: model/Transform:v1"))
-      (is (str/includes? (:source result) "SELECT"))))
+      (is (=? {:metadata #(and (string? %)
+                               (str/includes? % "entity: model/Transform:v1"))
+               :body #(and (string? %)
+                           (str/includes? % "SELECT"))}
+              result))))
 
   (testing "Routes Python files correctly"
     (let [result (mbml.parser/extract-content valid-python-with-frontmatter :python)]
-      (is (map? result))
-      (is (string? (:metadata result)))
-      (is (string? (:source result)))
-      (is (str/includes? (:metadata result) "entity: model/Transform:v1"))
-      (is (str/includes? (:source result) "import pandas"))))
+      (is (=? {:metadata #(and (string? %)
+                               (str/includes? % "entity: model/Transform:v1"))
+               :body #(and (string? %)
+                           (str/includes? % "import pandas"))}
+              result))))
 
   (testing "Handles unknown file types"
     (let [result (mbml.parser/extract-content "some content" :unknown)]
-      (is (map? result))
-      (is (nil? (:metadata result)))
-      (is (= "some content" (:source result)))))
+      (is (=? {:metadata nil
+               :body "some content"}
+              result))))
 
   (testing "Handles SQL files without front-matter"
-    (let [result (mbml.parser/extract-content sql-without-frontmatter :sql)]
-      (is (map? result))
-      (is (nil? (:metadata result)))
-      (is (= sql-without-frontmatter (:source result)))))
+    (is (thrown-with-msg? Exception #"Front-matter extraction failed"
+                          (mbml.parser/extract-content sql-without-frontmatter :sql))))
 
   (testing "Handles Python files without front-matter"
-    (let [result (mbml.parser/extract-content python-without-frontmatter :python)]
-      (is (map? result))
-      (is (nil? (:metadata result)))
-      (is (= python-without-frontmatter (:source result))))))
+    (is (thrown-with-msg? Exception #"Front-matter extraction failed"
+                          (mbml.parser/extract-content python-without-frontmatter :python)))))
 
 (deftest ^:parallel extract-content-edge-cases-test
   (testing "Handles empty content"
@@ -346,12 +343,11 @@ database: test_db")
 (deftest ^:parallel parse-yaml-test
   (testing "Parses valid YAML content"
     (let [result (mbml.parser/parse-yaml valid-yaml-content)]
-      (is (map? result))
-      (is (= "model/Transform:v1" (:entity result)))
-      (is (= "YAML Transform" (:name result)))
-      (is (= "yaml_transform" (:identifier result)))
-      (is (vector? (:tags result)))
-      (is (= ["yaml" "config"] (:tags result)))))
+      (is (=? {:entity "model/Transform:v1"
+               :name "YAML Transform"
+               :identifier "yaml_transform"
+               :tags ["yaml" "config"]}
+              result))))
 
   (testing "Returns nil for empty content"
     (is (nil? (mbml.parser/parse-yaml empty-content)))
@@ -364,19 +360,17 @@ database: test_db")
   (testing "Parses YAML with nested structures"
     (let [nested-yaml "config:\n  database:\n    host: localhost\n    port: 5432\n  features:\n    - auth\n    - analytics"
           result (mbml.parser/parse-yaml nested-yaml)]
-      (is (map? result))
-      (is (map? (:config result)))
-      (is (= "localhost" (get-in result [:config :database :host])))
-      (is (= 5432 (get-in result [:config :database :port])))
-      (is (vector? (get-in result [:config :features])))
-      (is (= ["auth" "analytics"] (get-in result [:config :features])))))
+      (is (=? {:config {:database {:host "localhost"
+                                   :port 5432}
+                        :features ["auth" "analytics"]}}
+              result))))
 
   (testing "Handles YAML with special characters"
     (let [special-yaml "name: 'Transform with special chars: @#$%'\ndescription: \"Multi-line\ntext with newlines\""
           result (mbml.parser/parse-yaml special-yaml)]
-      (is (map? result))
-      (is (= "Transform with special chars: @#$%" (:name result)))
-      (is (str/includes? (:description result) "Multi-line")))))
+      (is (=? {:name "Transform with special chars: @#$%"
+               :description #(str/includes? % "Multi-line")}
+              result)))))
 
 (deftest ^:parallel parse-yaml-error-handling-test
   (testing "Provides structured error for YAML parse failure"
@@ -385,9 +379,9 @@ database: test_db")
       (is false "Should have thrown exception")
       (catch Exception e
         (let [data (ex-data e)]
-          (is (map? data))
-          (is (contains? data :message))
-          (is (contains? data :type))))))
+          (is (=? {:message string?
+                   :type some?}
+                  data))))))
 
   (testing "Handles various YAML syntax errors"
     (let [invalid-yamls ["unmatched: [array"
@@ -407,13 +401,13 @@ database: test_db")
                       :database "test_db"
                       :target {:type "table" :name "test_view"}}
           result (mbml.parser/validate-mbml valid-data nil)]
-      (is (map? result))
-      (is (= "model/Transform:v1" (:entity result)))
-      (is (= "Test Transform" (:name result)))
-      (is (= "test_transform" (:identifier result)))
-      (is (= "test_db" (:database result)))
-      (is (= {:type "table" :name "test_view"} (:target result)))
-      (is (not (contains? result :source)))))
+      (is (=? {:entity "model/Transform:v1"
+               :name "Test Transform"
+               :identifier "test_transform"
+               :database "test_db"
+               :target {:type "table" :name "test_view"}}
+              result))
+      (is (not (contains? result :body)))))
 
   (testing "Validates valid MBML entity with source code"
     (let [valid-data {:entity "model/Transform:v1"
@@ -423,8 +417,8 @@ database: test_db")
                       :target {:type "table" :name "test_view"}}
           source-code "SELECT * FROM test_table;"
           result (mbml.parser/validate-mbml valid-data source-code)]
-      (is (map? result))
-      (is (= source-code (:source result)))))
+      (is (=? {:body source-code}
+              result))))
 
   (testing "Validates MBML entity with optional fields"
     (let [valid-data {:entity "model/Transform:v1"
@@ -435,10 +429,9 @@ database: test_db")
                       :description "A complete transform with all fields"
                       :tags ["test" "complete"]}
           result (mbml.parser/validate-mbml valid-data nil)]
-      (is (map? result))
-      (is (= "A complete transform with all fields" (:description result)))
-      (is (vector? (:tags result)))
-      (is (= ["test" "complete"] (:tags result)))))
+      (is (=? {:description "A complete transform with all fields"
+               :tags ["test" "complete"]}
+              result))))
 
   (testing "Throws exception for missing required fields"
     (let [invalid-data {:entity "model/Transform:v1"
@@ -467,8 +460,8 @@ database: test_db")
       (mbml.parser/validate-mbml {:entity "invalid"} nil)
       (is false "Should have thrown exception")
       (catch Exception e
-        (is (string? (.getMessage e)))
-        (is (not (str/blank? (.getMessage e)))))))
+        (is (string? (ex-message e)))
+        (is (not (str/blank? (ex-message e)))))))
 
   (testing "Validates field constraints"
     (let [test-cases [{:entity "" ; empty entity
@@ -513,12 +506,12 @@ SELECT * FROM first_table;
 -- METABASE_END
 
 SELECT * FROM second_table;"
-          result (mbml.parser/extract-sql-frontmatter content)]
-      (is (string? (:metadata result)))
-      (is (str/includes? (:metadata result) "name: First Block"))
-      (is (not (str/includes? (:metadata result) "name: Second Block")))
-      (is (str/includes? (:source result) "SELECT * FROM first_table"))
-      (is (str/includes? (:source result) "SELECT * FROM second_table"))))
+          result (mbml.parser/extract-frontmatter content :sql)]
+      (is (=? {:metadata #(and (str/includes? % "name: First Block")
+                               (not (str/includes? % "name: Second Block")))
+               :body #(and (str/includes? % "SELECT * FROM first_table")
+                           (str/includes? % "SELECT * FROM second_table"))}
+              result))))
 
   (testing "Handles nested comment structures in SQL"
     (let [content "-- METABASE_BEGIN
@@ -536,19 +529,21 @@ SELECT * FROM second_table;"
 /* This is a block comment
    with -- line comment inside */
 SELECT * FROM test;"
-          result (mbml.parser/extract-sql-frontmatter content)]
-      (is (string? (:metadata result)))
-      (is (str/includes? (:metadata result) "description: |"))
-      (is (str/includes? (:metadata result) "This is a multi-line description"))
-      (is (str/includes? (:source result) "/* This is a block comment"))))
+          result (mbml.parser/extract-frontmatter content :sql)]
+      (is (=? {:metadata #(and (str/includes? % "description: |")
+                               (str/includes? % "This is a multi-line description"))
+               :body #(str/includes? % "/* This is a block comment")}
+              result))))
 
   (testing "Handles markers with different spacing"
     (let [variations ["--METABASE_BEGIN\n-- entity: test\n--METABASE_END"
                       "--  METABASE_BEGIN\n-- entity: test\n--  METABASE_END"
                       "-- METABASE_BEGIN \n-- entity: test\n-- METABASE_END "]]
       (doseq [content variations]
-        (let [result (mbml.parser/extract-sql-frontmatter (str content "\nSELECT 1;"))]
-          (is (string? (:metadata result)) (str "Should extract metadata from: " content)))))))
+        (let [result (mbml.parser/extract-frontmatter (str content "\nSELECT 1;") :sql)]
+          (is (=? {:metadata string?}
+                  result)
+              (str "Should extract metadata from: " content)))))))
 
 (deftest ^:parallel unicode-content-test
   (testing "Handles unicode characters in SQL frontmatter"
@@ -562,11 +557,11 @@ SELECT * FROM test;"
 -- METABASE_END
 
 SELECT * FROM test_tëst;"
-          result (mbml.parser/extract-sql-frontmatter content)]
-      (is (string? (:metadata result)))
-      (is (str/includes? (:metadata result) "Análisis de Données 数据分析"))
-      (is (str/includes? (:metadata result) "émojis 🚀"))
-      (is (str/includes? (:source result) "test_tëst"))))
+          result (mbml.parser/extract-frontmatter content :sql)]
+      (is (=? {:metadata #(and (str/includes? % "Análisis de Données 数据分析")
+                               (str/includes? % "émojis 🚀"))
+               :body #(str/includes? % "test_tëst")}
+              result))))
 
   (testing "Handles unicode characters in Python frontmatter"
     (let [content "# METABASE_BEGIN
@@ -579,11 +574,11 @@ SELECT * FROM test_tëst;"
 # METABASE_END
 
 print('Hello 世界')"
-          result (mbml.parser/extract-python-frontmatter content)]
-      (is (string? (:metadata result)))
-      (is (str/includes? (:metadata result) "Pythön Trànsförm"))
-      (is (str/includes? (:metadata result) "Unicode test with 中文"))
-      (is (str/includes? (:source result) "Hello 世界"))))
+          result (mbml.parser/extract-frontmatter content :python)]
+      (is (=? {:metadata #(and (str/includes? % "Pythön Trànsförm")
+                               (str/includes? % "Unicode test with 中文"))
+               :body #(str/includes? % "Hello 世界")}
+              result))))
 
   (testing "Handles unicode in YAML parsing"
     (let [yaml-content "entity: model/Transform:v1
@@ -596,9 +591,9 @@ tags:
   - tést
   - 测试"
           result (mbml.parser/parse-yaml yaml-content)]
-      (is (map? result))
-      (is (= "Transformación Ünicøde" (:name result)))
-      (is (str/includes? (:description result) "日本語"))
-      (is (str/includes? (:description result) "Русский"))
-      (is (= "tëst_db" (:database result)))
-      (is (= ["tést" "测试"] (:tags result))))))
+      (is (=? {:name "Transformación Ünicøde"
+               :description #(and (str/includes? % "日本語")
+                                  (str/includes? % "Русский"))
+               :database "tëst_db"
+               :tags ["tést" "测试"]}
+              result)))))

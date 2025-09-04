@@ -5,7 +5,7 @@
   - parse-mbml-file: Parse MBML from files on disk
   - parse-mbml-string: Parse MBML from string content
   
-  Alr test data is inline to ensure self-contained, reproducible tests."
+  All test data is inline to ensure self-contained, reproducible tests."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -124,41 +124,42 @@ SELECT * FROM incomplete;")
     (mt/with-temp-file [temp-file "transform.yaml"]
       (spit temp-file valid-yaml-content)
       (let [result (mbml.core/parse-mbml-file temp-file)]
-        (is (map? result))
-        (is (= "model/Transform:v1" (:entity result)))
-        (is (= "Customer Analysis Transform" (:name result)))
-        (is (= "customer-analysis" (:identifier result)))
-        (is (= "analytics-db" (:database result)))
-        (is (= "customer_analysis_results" (-> result :target :name)))
-        (is (vector? (:tags result)))
-        (is (= 2 (count (:tags result))))
-        (is (contains? result :source)))))
+        (is (=? {:entity "model/Transform:v1"
+                 :name "Customer Analysis Transform"
+                 :identifier "customer-analysis"
+                 :database "analytics-db"
+                 :target {:name "customer_analysis_results"}
+                 :tags ["analytics" "customer"]
+                 :source string?}
+                result)))))
 
   (testing "Parse valid SQL file with front-matter"
     (mt/with-temp-file [temp-file "transform.sql"]
       (spit temp-file valid-sql-with-frontmatter)
       (let [result (mbml.core/parse-mbml-file temp-file)]
-        (is (map? result))
-        (is (= "model/Transform:v1" (:entity result)))
-        (is (= "Sales Report Transform" (:name result)))
-        (is (= "sales-report" (:identifier result)))
-        (is (= "sales-db" (:database result)))
-        (is (= "monthly_sales_report" (-> result :target :name)))
-        (is (str/includes? (:source result) "SELECT"))
-        (is (str/includes? (:source result) "DATE_TRUNC")))))
+        (is (=? {:entity "model/Transform:v1"
+                 :name "Sales Report Transform"
+                 :identifier "sales-report"
+                 :database "sales-db"
+                 :target {:name "monthly_sales_report"}
+                 :body #(and (string? %)
+                             (str/includes? % "SELECT")
+                             (str/includes? % "DATE_TRUNC"))}
+                result)))))
 
   (testing "Parse valid Python file with front-matter"
     (mt/with-temp-file [temp-file "transform.py"]
       (spit temp-file valid-python-with-frontmatter)
       (let [result (mbml.core/parse-mbml-file temp-file)]
-        (is (map? result))
-        (is (= "model/Transform:v1" (:entity result)))
-        (is (= "Data Processing Transform" (:name result)))
-        (is (= "data-processing" (:identifier result)))
-        (is (= "warehouse-db" (:database result)))
-        (is (= "processed_data" (-> result :target :name)))
-        (is (str/includes? (:source result) "import pandas"))
-        (is (str/includes? (:source result) "def process_customer_data"))))))
+        (is (=? {:entity "model/Transform:v1"
+                 :name "Data Processing Transform"
+                 :identifier "data-processing"
+                 :database "warehouse-db"
+                 :target {:name "processed_data"}
+                 :body #(and (string? %)
+                             (str/includes? % "import pandas")
+                             (str/includes? % "def process_customer_data"))}
+                result))))))
 
 (deftest ^:parallel parse-mbml-file-error-handling-test
   (testing "File not found error"
@@ -204,7 +205,7 @@ SELECT * FROM incomplete;")
       (spit temp-file sql-without-frontmatter)
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"No MBML metadata"
+           #"Front-matter extraction failed"
            (mbml.core/parse-mbml-file temp-file)))))
 
   (testing "SQL file with incomplete front-matter"
@@ -212,7 +213,7 @@ SELECT * FROM incomplete;")
       (spit temp-file sql-with-incomplete-frontmatter)
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"No MBML metadata"
+           #"Front-matter extraction failed"
            (mbml.core/parse-mbml-file temp-file))))))
 
 ;;; ---------------------------------------- parse-mbml-string Tests ----------------------------------
@@ -220,43 +221,45 @@ SELECT * FROM incomplete;")
 (deftest ^:parallel parse-mbml-string-yaml-test
   (testing "Parse valid YAML content with explicit file type"
     (let [result (mbml.core/parse-mbml-string valid-yaml-content :yaml)]
-      (is (map? result))
-      (is (= "model/Transform:v1" (:entity result)))
-      (is (= "Customer Analysis Transform" (:name result)))
-      (is (= "customer-analysis" (:identifier result)))
-      (is (contains? result :source))))
+      (is (=? {:entity "model/Transform:v1"
+               :name "Customer Analysis Transform"
+               :identifier "customer-analysis"
+               :source string?}
+              result))))
 
   (testing "Parse valid YAML content without file type hint (defaults to :yaml)"
     (let [result (mbml.core/parse-mbml-string valid-yaml-content nil)]
-      (is (map? result))
-      (is (= "model/Transform:v1" (:entity result)))
-      (is (= "Customer Analysis Transform" (:name result))))))
+      (is (=? {:entity "model/Transform:v1"
+               :name "Customer Analysis Transform"}
+              result)))))
 
 (deftest ^:parallel parse-mbml-string-sql-test
   (testing "Parse valid SQL content with front-matter"
     (let [result (mbml.core/parse-mbml-string valid-sql-with-frontmatter :sql)]
-      (is (map? result))
-      (is (= "model/Transform:v1" (:entity result)))
-      (is (= "Sales Report Transform" (:name result)))
-      (is (= "sales-report" (:identifier result)))
-      (is (str/includes? (:source result) "SELECT"))
-      (is (not (str/includes? (:source result) "METABASE_BEGIN")))))
+      (is (=? {:entity "model/Transform:v1"
+               :name "Sales Report Transform"
+               :identifier "sales-report"
+               :body #(and (string? %)
+                           (str/includes? % "SELECT")
+                           (not (str/includes? % "METABASE_BEGIN")))}
+              result))))
 
   (testing "Parse SQL content without front-matter"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"No MBML metadata"
+         #"Front-matter extraction failed"
          (mbml.core/parse-mbml-string sql-without-frontmatter :sql)))))
 
 (deftest ^:parallel parse-mbml-string-python-test
   (testing "Parse valid Python content with front-matter"
     (let [result (mbml.core/parse-mbml-string valid-python-with-frontmatter :python)]
-      (is (map? result))
-      (is (= "model/Transform:v1" (:entity result)))
-      (is (= "Data Processing Transform" (:name result)))
-      (is (= "data-processing" (:identifier result)))
-      (is (str/includes? (:source result) "import pandas"))
-      (is (not (str/includes? (:source result) "METABASE_BEGIN"))))))
+      (is (=? {:entity "model/Transform:v1"
+               :name "Data Processing Transform"
+               :identifier "data-processing"
+               :body #(and (string? %)
+                           (str/includes? % "import pandas")
+                           (not (str/includes? % "METABASE_BEGIN")))}
+              result)))))
 
 (deftest ^:parallel parse-mbml-string-validation-test
   (testing "Schema validation with missing required fields"
@@ -300,7 +303,7 @@ SELECT * FROM incomplete;")
     ;; YAML content parsed as SQL should fail (no front-matter)
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"No MBML metadata"
+         #"Front-matter extraction failed"
          (mbml.core/parse-mbml-string valid-yaml-content :sql)))))
 
 ;;; ---------------------------------------- API Function Edge Cases ----------------------------------
@@ -331,22 +334,22 @@ SELECT * FROM incomplete;")
     (mt/with-temp-file [yaml-file "test.yml"]
       (spit yaml-file valid-yaml-content)
       (let [result (mbml.core/parse-mbml-file yaml-file)]
-        (is (= "Customer Analysis Transform" (:name result)))))
+        (is (=? {:name "Customer Analysis Transform"} result))))
 
     (mt/with-temp-file [yaml-file "test.YAML"]
       (spit yaml-file valid-yaml-content)
       (let [result (mbml.core/parse-mbml-file yaml-file)]
-        (is (= "Customer Analysis Transform" (:name result)))))
+        (is (=? {:name "Customer Analysis Transform"} result))))
 
     (mt/with-temp-file [sql-file "test.SQL"]
       (spit sql-file valid-sql-with-frontmatter)
       (let [result (mbml.core/parse-mbml-file sql-file)]
-        (is (= "Sales Report Transform" (:name result)))))
+        (is (=? {:name "Sales Report Transform"} result))))
 
     (mt/with-temp-file [py-file "test.PY"]
       (spit py-file valid-python-with-frontmatter)
       (let [result (mbml.core/parse-mbml-file py-file)]
-        (is (= "Data Processing Transform" (:name result)))))))
+        (is (=? {:name "Data Processing Transform"} result))))))
 
 (deftest ^:parallel error-context-preservation-test
   (testing "Error context includes relevant debugging information"
@@ -354,9 +357,9 @@ SELECT * FROM incomplete;")
       (mbml.core/parse-mbml-file "/nonexistent/file.yaml")
       (catch clojure.lang.ExceptionInfo e
         (let [data (ex-data e)]
-          (is (= :file-not-found (:type data)))
-          (is (contains? data :file))
-          (is (= "/nonexistent/file.yaml" (:file data))))))
+          (is (=? {:type :file-not-found
+                   :file "/nonexistent/file.yaml"}
+                  data)))))
 
     (mt/with-temp-file [temp-file "malformed.yaml"]
       (spit temp-file malformed-yaml-content)
@@ -364,7 +367,7 @@ SELECT * FROM incomplete;")
         (mbml.core/parse-mbml-file temp-file)
         (catch clojure.lang.ExceptionInfo e
           (let [data (ex-data e)]
-            (is (contains? data :type))
+            (is (=? {:type some?} data))
             (is (or (str/includes? (str data) "YAML")
                     (str/includes? (str data) "parse")))))))))
 
@@ -379,12 +382,12 @@ SELECT * FROM incomplete;")
         (mt/with-temp-file [temp-file (str "test." extension)]
           (spit temp-file content)
           (let [result (mbml.core/parse-mbml-file temp-file)]
-            (is (map? result))
-            (is (= "model/Transform:v1" (:entity result)))
-            (is (= expected-name (:name result)))
-            (is (contains? result :identifier))
-            (is (contains? result :database))
-            (is (contains? result :target))
+            (is (=? {:entity "model/Transform:v1"
+                     :name expected-name
+                     :identifier string?
+                     :database string?
+                     :target map?}
+                    result))
             (when (not= extension "yaml")
-              (is (contains? result :source)
+              (is (contains? result :body)
                   (str "Source code should be present for " extension " files")))))))))
