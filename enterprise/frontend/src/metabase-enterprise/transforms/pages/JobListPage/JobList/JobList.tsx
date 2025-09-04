@@ -78,7 +78,11 @@ export function JobList({ params }: { params: JobListParams }) {
                 ? parseTimestamp(job.last_run?.start_time).format("lll")
                 : null}
             </td>
-            <td className={S.nowrap}>{/* TODO: add next run  */}</td>
+            <td className={S.nowrap}>
+              {job.next_run?.start_time
+                ? parseTimestamp(job.next_run?.start_time).format("lll")
+                : null}
+            </td>
             <td className={S.nowrap}>{/* TODO: add number of transforms */}</td>
             <td>
               <TagList tags={tags} tagIds={job.tag_ids ?? []} />
