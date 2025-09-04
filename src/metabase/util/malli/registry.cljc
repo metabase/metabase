@@ -8,10 +8,20 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut])
+   [malli.util :as mut]
+   [metabase.util.malli.fn :as mu.fn])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
+
+(def ^:private cachable-fn-set
+  (into #{} (filter fn?) (keys (mc/default-schemas))))
+
+(defn cachable-fn?
+  "Only the functions installed in the default malli registry should be allowed.
+  All other fn objects are illegal because they may not be cachable."
+  [f]
+  (contains? cachable-fn-set f))
 
 (defn- schema-cache-key
   "Make schemas that aren't `=` to identical ones e.g.
@@ -23,6 +33,11 @@
   [x]
   (walk/postwalk
    (fn [form]
+     (when (and (fn? form) (not (cachable-fn? form)))
+       ;; TODO: throw in here once we've cleaned up all the bad fns in our schemas.
+       #_(user/log :cache_fn_problems
+                   (merge {:bad-fn form :schema x}
+                          (when-let [ec mu.fn/*error-context*] {:error-context ec}))))
      (cond-> form
        (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
        str))
