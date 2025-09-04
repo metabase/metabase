@@ -388,12 +388,14 @@ databaseChangeLog:
                   constraints:
                     primaryKey: true
                     nullable: false
+                  remarks: 'Conversation UUID'
               - column:
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+                  remarks: 'created_at'
               - column:
                   name: user_id
                   type: int
@@ -402,14 +404,15 @@ databaseChangeLog:
                     referencedTableName: core_user
                     referencedColumnNames: id
                     foreignKeyName: fk_metabot_conversation_user_id
+                  remarks: 'Reference to user having the conversation'
               - column:
                   name: summary
                   type: ${text.type}
-                  remarks: Auto-generated summary for the conversation
+                  remarks: 'Auto-generated summary for the conversation'
               - column:
                   name: state
                   type: ${text.type}
-                  remarks: Metabot conversation state
+                  remarks: 'Metabot conversation state'
             indexes:
               - index:
                   name: idx_metabot_conversation_user_id
@@ -433,12 +436,14 @@ databaseChangeLog:
                   constraints:
                     primaryKey: true
                     nullable: false
+                  remarks: 'Autoincrement PK'
               - column:
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+                  remarks: 'created_at'
               - column:
                   name: data
                   type: ${text.type}
@@ -465,6 +470,7 @@ databaseChangeLog:
                     referencedTableName: metabot_conversation
                     referencedColumnNames: id
                     foreignKeyName: fk_metabot_message_conversation_id
+                  remarks: 'Reference to a conversation'
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
