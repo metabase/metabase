@@ -117,6 +117,7 @@
                 {:conversation_id conversation-id
                  :data            message
                  :usage           usage
+                 :role            (:role message)
                  :total           (->> (vals usage)
                                        ;; NOTE: this filter is supporting backward-compatible usage format, can be
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`

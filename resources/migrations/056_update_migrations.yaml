@@ -451,6 +451,12 @@ databaseChangeLog:
                     nullable: false
                   remarks: 'Full message content'
               - column:
+                  name: role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+                  remarks: 'Role of the sender'
+              - column:
                   name: usage
                   type: ${text.type}
                   constraints:
