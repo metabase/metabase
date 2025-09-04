@@ -33,8 +33,8 @@ export function ScheduleSection({
     formatCronExpressionForUI(job.schedule),
   );
   const scheduleExplanation = getScheduleExplanation(schedule);
-  const reportTimezone = useSetting("report-timezone-long");
-  const timezoneOffset = timezoneToUTCOffset(reportTimezone);
+  const systemTimezone = useSetting("system-timezone") ?? "UTC";
+  const timezoneOffset = timezoneToUTCOffset(systemTimezone);
   const timezoneExplanation =
     timezoneOffset === "+00:00" ? "UTC" : `UTC${timezoneOffset}`;
 
