@@ -404,11 +404,11 @@ databaseChangeLog:
                     foreignKeyName: fk_metabot_conversation_user_id
               - column:
                   name: summary
-                  type: text
+                  type: ${text.type}
                   remarks: Auto-generated summary for the conversation
               - column:
                   name: state
-                  type: text
+                  type: ${text.type}
                   remarks: Metabot conversation state
             indexes:
               - index:
