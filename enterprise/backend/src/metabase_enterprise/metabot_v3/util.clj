@@ -1,7 +1,10 @@
 (ns metabase-enterprise.metabot-v3.util
   (:require
+   [clojure.set :as set]
    [clojure.walk :as walk]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]))
 
 (defn- safe-case-updater
   [f]
@@ -21,3 +24,46 @@
   (walk/walk #(cond-> % (coll? %) (recursive-update-keys f))
              #(cond-> % (map? %) (update-keys f))
              form))
+
+;;; AI SDK support
+
+(def TYPE-PREFIX
+  "AI SDK type to prefix"
+  {:text        "0:"
+   :data        "2:"
+   :error       "3:"
+   :finish      "d:"
+   :tool-call   "9:"
+   :tool-result "a:"})
+
+(def PREFIX-TYPE "AI SDK prefix to type" (set/map-invert TYPE-PREFIX))
+
+(defn aisdk-lines->message
+  "Convert chunks in AI SDK format into a single combined message."
+  [lines]
+  (let [chunks (mapv (fn [line] [(get PREFIX-TYPE (subs line 0 2))
+                                 (json/decode+kw (subs line 2))])
+                     lines)
+        types  (into #{} (map first chunks))
+        last-c (nth chunks (dec (count chunks)))]
+    (when-not (set/subset? types #{:text :tool-call :finish})
+      (log/error "Unhandled chunk types appeared" {:chunk-types types}))
+    (u/remove-nils
+     {:content    (apply str (for [[type c] chunks
+                                   :when    (= type :text)]
+                               c))
+      :tool-calls (-> (for [[type c] chunks
+                            :when    (= type :tool-call)]
+                        {:id        (:toolCallId c)
+                         :name      (:toolName c)
+                         :arguments (:args c)})
+                      vec
+                      not-empty)
+      :data       (apply merge
+                         (when-let [navigate-to (first (for [[type c] chunks
+                                                             :when    (and (= type :data)
+                                                                           (= (:type c) :navigate_to))]
+                                                         (:value c)))]
+                           {:navigate_to navigate-to}))
+      :metadata   {:usage (when (= (first last-c) :finish)
+                            (:usage (second last-c)))}})))
