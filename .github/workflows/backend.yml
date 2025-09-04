@@ -221,21 +221,6 @@ jobs:
 
           echo "✅ Python runner started successfully!"
 
-      - name: Verify Python Runner can access LocalStack
-        run: |
-          echo "🔗 Testing Python Runner connectivity to LocalStack..."
-
-          # Test if python-runner container can reach LocalStack (non-blocking)
-          if docker exec python-runner sh -c "curl -s http://localstack:4566/_localstack/health" >/dev/null 2>&1; then
-            echo "✅ Python Runner can reach LocalStack via 'localstack:4566'"
-          elif docker exec python-runner sh -c "curl -s http://host.docker.internal:4566/_localstack/health" >/dev/null 2>&1; then
-            echo "✅ Python Runner can reach LocalStack via 'host.docker.internal:4566'"
-          else
-            echo "⚠️ Python Runner connectivity to LocalStack is unclear, but continuing..."
-            echo "Network configuration (for debugging):"
-            docker network ls || echo "Failed to list networks"
-            docker inspect python-runner | jq -r '.[0].NetworkSettings.Networks' 2>/dev/null || echo "Failed to inspect container networks"
-          fi
       - name: Run Python Runner tests
         run: >-
           clojure -X:dev:ci:test:ee:ee-dev:drivers:drivers-dev :only metabase-enterprise.transforms.api-test
