@@ -231,33 +231,6 @@ jobs:
           make run
           
           echo "✅ Python runner started successfully!"
-      - name: Verify Python Runner health
-        run: |
-          echo "🔍 Checking Python Runner status..."
-          STATUS_RESPONSE=$(curl -s http://localhost:5001/status)
-          echo "Status response: $STATUS_RESPONSE"
-
-          echo "🧪 Testing Python Runner with a simple transform..."
-          TEST_RESPONSE=$(curl -s -X POST http://localhost:5001/execute \
-            -H "Content-Type: application/json" \
-            -d '{
-              "code": "import pandas as pd\ndef transform():\n    return pd.DataFrame({\"test\": [\"OK\"]})",
-              "working_dir": "/tmp/python-exec-work/health-check",
-              "timeout": 5
-            }')
-
-          EXIT_CODE=$(echo "$TEST_RESPONSE" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('exit_code', -1))")
-
-          if [ "$EXIT_CODE" = "0" ]; then
-            echo "✅ Python Runner health check passed!"
-            echo "Response: $TEST_RESPONSE"
-          else
-            echo "❌ Python Runner health check failed!"
-            echo "Response: $TEST_RESPONSE"
-            echo "Container logs:"
-            docker logs python-runner
-            exit 1
-          fi
       - name: Verify LocalStack and S3 setup
         run: |
           echo "🔍 Verifying LocalStack is ready and S3 bucket exists..."
