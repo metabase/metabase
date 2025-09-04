@@ -16,36 +16,40 @@
   [{:keys [user_id]}]
   (t2/select-one [:model/User :id :email :first_name :last_name] :id user_id))
 
-(defn get-user-reaction
-  "Get the current reaction for a user on a comment, returns nil if none"
-  [comment-id user-id]
-  (t2/select-one :model/CommentReaction
-                 :comment_id comment-id
-                 :user_id user-id))
-
-(defn set-reaction!
-  "Set or replace a user's reaction on a comment"
+(defn reaction-exists?
+  "Check if a reaction already exists for a given comment, user, and emoji"
   [comment-id user-id emoji]
-  (let [existing (get-user-reaction comment-id user-id)]
-    (if existing
-      ;; Update existing reaction if emoji is different
-      (when (not= (:emoji existing) emoji)
-        (t2/update! :model/CommentReaction (:id existing)
-                    {:emoji emoji}))
-      ;; Create new reaction
-      (t2/insert! :model/CommentReaction
-                  {:comment_id comment-id
-                   :user_id user-id
-                   :emoji emoji}))))
+  (t2/exists? :model/CommentReaction
+              :comment_id comment-id
+              :user_id user-id
+              :emoji emoji))
+
+(defn create-reaction!
+  "Create a new reaction"
+  [comment-id user-id emoji]
+  (t2/insert! :model/CommentReaction
+              {:comment_id comment-id
+               :user_id user-id
+               :emoji emoji}))
 
 (defn delete-reaction!
-  "Delete a user's reaction from a comment"
-  [comment-id user-id]
+  "Delete a specific reaction"
+  [comment-id user-id emoji]
   (t2/delete! :model/CommentReaction
               :comment_id comment-id
-              :user_id user-id))
+              :user_id user-id
+              :emoji emoji))
 
-;; Removed toggle-reaction since we now have set-reaction! for POST and delete-reaction! for DELETE
+(defn toggle-reaction
+  "Toggle a reaction - add it if it doesn't exist, remove it if it does"
+  [comment-id user-id emoji]
+  (if (reaction-exists? comment-id user-id emoji)
+    (do
+      (delete-reaction! comment-id user-id emoji)
+      {:reacted false})
+    (do
+      (create-reaction! comment-id user-id emoji)
+      {:reacted true})))
 
 (defn get-reactions-for-comments
   "Get all reactions for a list of comment IDs, grouped and formatted for API response.

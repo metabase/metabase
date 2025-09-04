@@ -188,7 +188,7 @@
     api/generic-204-no-content))
 
 (api.macros/defendpoint :post "/:comment-id/reaction"
-  "Set a reaction on a comment (replaces any existing reaction)"
+  "Toggle a reaction on a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
    {:keys [emoji]} :- [:map [:emoji [:string {:min 1 :max 10}]]]]
@@ -204,21 +204,9 @@
     (api/check-400 (not (entity-archived? (:target_type comment) (:target_id comment)))
                    "Cannot react to comments on archived entities")
 
-    ;; Set the reaction (replaces any existing)
-    (m.comment-reaction/set-reaction! comment-id api/*current-user-id* emoji)
-    api/generic-204-no-content))
+    ;; Toggle the reaction
+    (m.comment-reaction/toggle-reaction comment-id api/*current-user-id* emoji)))
 
-(api.macros/defendpoint :delete "/:comment-id/reaction"
-  "Remove user's reaction from a comment"
-  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
-   _query-params]
-  (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
-    ;; Check if user can read the target entity
-    (api/check-403 (can-read-entity? (:target_type comment) (:target_id comment)))
-
-    ;; Remove the reaction (no error if it doesn't exist)
-    (m.comment-reaction/delete-reaction! comment-id api/*current-user-id*)
-    api/generic-204-no-content))
 
 
 

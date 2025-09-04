@@ -3,7 +3,6 @@ import type {
   CommentId,
   CreateCommentRequest,
   CreateReactionRequest,
-  DeleteReactionRequest,
   ListCommentsRequest,
   UpdateCommentRequest,
 } from "metabase-types/api";
@@ -55,20 +54,14 @@ export const commentApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
     }),
 
-    createReaction: builder.mutation<void, CreateReactionRequest>({
+    toggleReaction: builder.mutation<
+      { reacted: boolean },
+      CreateReactionRequest
+    >({
       query: ({ id, emoji }) => ({
         method: "POST",
         url: `/api/ee/comment/${id}/reaction`,
         body: { emoji },
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("comment", id), listTag("comment")]),
-    }),
-
-    deleteReaction: builder.mutation<void, DeleteReactionRequest>({
-      query: ({ id }) => ({
-        method: "DELETE",
-        url: `/api/ee/comment/${id}/reaction`,
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
@@ -81,6 +74,5 @@ export const {
   useCreateCommentMutation,
   useUpdateCommentMutation,
   useDeleteCommentMutation,
-  useCreateReactionMutation,
-  useDeleteReactionMutation,
+  useToggleReactionMutation,
 } = commentApi;

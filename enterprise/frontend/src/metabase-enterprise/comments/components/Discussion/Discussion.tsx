@@ -7,9 +7,8 @@ import { useSelector } from "metabase/lib/redux";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import {
   useCreateCommentMutation,
-  useCreateReactionMutation,
   useDeleteCommentMutation,
-  useDeleteReactionMutation,
+  useToggleReactionMutation,
   useUpdateCommentMutation,
 } from "metabase-enterprise/api";
 import { getCommentsUrl } from "metabase-enterprise/comments/utils";
@@ -46,8 +45,7 @@ export const Discussion = ({
   const [createComment] = useCreateCommentMutation();
   const [updateComment] = useUpdateCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
-  const [createReaction] = useCreateReactionMutation();
-  const [deleteReaction] = useDeleteReactionMutation();
+  const [toggleReaction] = useToggleReactionMutation();
 
   const handleSubmit = (doc: DocumentContent) => {
     const effectiveChildTargetId =
@@ -92,11 +90,11 @@ export const Discussion = ({
   };
 
   const handleReaction = (comment: Comment, emoji: string) => {
-    createReaction({ id: comment.id, emoji });
+    toggleReaction({ id: comment.id, emoji });
   };
 
-  const handleReactionRemove = (comment: Comment) => {
-    deleteReaction({ id: comment.id });
+  const handleReactionRemove = (comment: Comment, emoji: string) => {
+    toggleReaction({ id: comment.id, emoji });
   };
 
   return (

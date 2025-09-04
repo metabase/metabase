@@ -1302,6 +1302,24 @@ databaseChangeLog:
             columns:
               - column:
                   name: comment_id
+
+  - changeSet:
+      id: v57.2025-09-02T10:00:00
+      author: anton
+      comment: Fix comment_reaction unique constraint to allow multiple reactions per user
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: comment_reaction
+      changes:
+        - dropUniqueConstraint:
+            tableName: comment_reaction
+            constraintName: unique_user_comment_reaction
+        - addUniqueConstraint:
+            tableName: comment_reaction
+            columnNames: comment_id, user_id, emoji
+            constraintName: unique_user_comment_emoji
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
