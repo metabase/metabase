@@ -55,11 +55,14 @@
               (is (instance? StreamingResponse res))
               (is (= "text/event-stream; charset=utf-8" (:content-type (.options ^StreamingResponse res))))
 
-              (let [body    (consume-streaming-response res)
-                    conv    (t2/select-one :model/MetabotConversation :id cid)
-                    message (t2/select-one :model/MetabotMessage :conversation_id cid)]
+              (let [body     (consume-streaming-response res)
+                    conv     (t2/select-one :model/MetabotConversation :id cid)
+                    messages (t2/select :model/MetabotMessage :conversation_id cid)]
                 (is (string? body))
-                (is (some? conv))
-                (is (=? {:total 10
-                         :data {:content "a1a2a3"}}
-                        message))))))))))
+                (is (=? {:user_id (mt/user->id :crowberto)}
+                        conv))
+                (is (=? [{:total 0
+                          :data  {:role "user" :content "stuff"}}
+                         {:total 10
+                          :data  {:role "assistant" :content "a1a2a3"}}]
+                        messages))))))))))

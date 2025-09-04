@@ -12230,14 +12230,14 @@ databaseChangeLog:
                   name: usage
                   type: ${text.type}
                   constraints:
-                    nullable: false
-                  remarks: '{"<model-name>": {"prompt": 1, "completion": 2}}'
+                    nullable: true
+                  remarks: 'Can be null for user messages; {"<model-name>": {"prompt": 1, "completion": 2}}'
               - column:
                   name: total
                   type: int
                   constraints:
                     nullable: false
-                  remarks: 'Just a sum of all prompt+completion from `usage`'
+                  remarks: 'A sum of all prompt+completion from `usage`'
               - column:
                   name: conversation_id
                   type: varchar(36)
