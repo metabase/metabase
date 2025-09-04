@@ -384,7 +384,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: char(36)
+                  type: varchar(36)
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -459,7 +459,7 @@ databaseChangeLog:
                   remarks: 'A sum of all prompt+completion from `usage`'
               - column:
                   name: conversation_id
-                  type: char(36)
+                  type: varchar(36)
                   constraints:
                     nullable: false
                     referencedTableName: metabot_conversation
