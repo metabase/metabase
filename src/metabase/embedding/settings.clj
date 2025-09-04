@@ -160,7 +160,7 @@
              (seq origins-string)
              (re-find #"localhost" origins-string))
     (throw (ex-info
-            "Localhost origins are not allowed on this instance."
+            "Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
             {:status-code 400}))))
 
 (defn- -embedding-app-origins-sdk!

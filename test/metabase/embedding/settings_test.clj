@@ -228,17 +228,17 @@
         (testing "localhost:* should be rejected"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Localhost origins are not allowed on this instance."
+               #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
                (embed.settings/embedding-app-origins-sdk! "localhost:*"))))
         (testing "localhost:3000 should be rejected"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Localhost origins are not allowed on this instance."
+               #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
                (embed.settings/embedding-app-origins-sdk! "localhost:3000"))))
         (testing "localhost mixed with other origins should be rejected"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Localhost origins are not allowed on this instance."
+               #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
                (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")))))))
 
   (testing "Should allow localhost origins when disable-cors-on-localhost is disabled"
