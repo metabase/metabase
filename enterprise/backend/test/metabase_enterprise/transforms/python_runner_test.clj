@@ -1,9 +1,13 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.python-runner-test
   (:require
    [clojure.core.async :as a]
+   [clojure.data.csv :as csv]
+   [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as jt]
+   [metabase-enterprise.transforms.execute :as execute]
    [metabase-enterprise.transforms.python-runner :as python-runner]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
@@ -152,3 +156,82 @@
                                 "Successfully saved output manifest with 2 fields\n")
                    :stderr ""}
                   result)))))))
+
+(defn- datetime-equal?
+  [expected-iso-str actual-pandas-str]
+  (let [formatter (jt/formatter "yyyy-MM-dd HH:mm:ssXXX")
+        expected-dt (jt/zoned-date-time expected-iso-str)
+        actual-dt (jt/offset-date-time formatter actual-pandas-str)]
+    (= (jt/to-millis-from-epoch expected-dt)
+       (jt/to-millis-from-epoch actual-dt))))
+
+(deftest transform-type-test
+  (mt/test-drivers [:postgres]
+    (mt/with-empty-db
+      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            _ (jdbc/execute! db-spec ["DROP TABLE IF EXISTS sample_table"])
+            _ (jdbc/execute! db-spec ["CREATE TABLE sample_table (
+                                                        id BIGSERIAL PRIMARY KEY,
+                                                        name VARCHAR(255),
+                                                        description TEXT,
+                                                        count BIGINT,
+                                                        price FLOAT,
+                                                        is_active BOOLEAN,
+                                                        created_date DATE,
+                                                        updated_at TIMESTAMP,
+                                                        scheduled_for TIMESTAMP WITH TIME ZONE
+                                                    )"])
+            _ (jdbc/execute! db-spec ["INSERT INTO sample_table
+                                                        (name, description, count, price, is_active, created_date, updated_at, scheduled_for)
+                                                      VALUES
+                                                        ('Product A', 'A sample product description', 100, 29.99, true, '2024-01-15', '2024-01-15 10:30:00', '2024-01-16 14:00:00+00'),
+                                                        ('Product B', 'Another product with longer description text', 50, 15.50, false, '2024-02-01', '2024-02-01 09:15:30', '2024-02-02 16:30:00-05'),
+                                                        ('Product C', NULL, 0, 0.0, true, '2024-03-10', '2024-03-10 18:45:15', '2024-03-11 08:00:00+02')"])
+
+            _ (sync/sync-database! (mt/db))
+
+            transform-code (str "import pandas as pd\n"
+                                "\n"
+                                "def transform(sample_table):\n"
+                                "    df = sample_table.copy()\n"
+                                "    df['scheduled_for'] = pd.to_datetime(df['scheduled_for'])\n"
+                                "    return df")
+            result (execute {:code transform-code
+                             :tables {"sample_table" (mt/id :sample_table)}})
+            csv-data (csv/read-csv (:output result))
+            headers (first csv-data)
+            rows (rest csv-data)
+            [row1 row2 row3] rows
+            header-to-index (zipmap headers (range))
+            get-col (fn [row col-name] (nth row (header-to-index col-name)))
+            metadata (some-> (:metadata result) (json/read-str :key-fn keyword))]
+
+        (is (= (set ["id" "name" "description" "count" "price" "is_active" "created_date" "updated_at" "scheduled_for"])
+               (set headers)))
+
+        (is (= "1" (get-col row1 "id")))
+        (is (= "Product A" (get-col row1 "name")))
+        (is (datetime-equal? "2024-01-16T14:00:00Z" (get-col row1 "scheduled_for")))
+
+        (is (= "2" (get-col row2 "id")))
+        (is (= "Product B" (get-col row2 "name")))
+        (is (datetime-equal? "2024-02-02T21:30:00Z" (get-col row2 "scheduled_for")))
+
+        (is (= "3" (get-col row3 "id")))
+        (is (= "Product C" (get-col row3 "name")))
+        (is (datetime-equal? "2024-03-11T06:00:00Z" (get-col row3 "scheduled_for")))
+
+        (testing "dtypes are preserved correctly using dtype->table-type"
+          (let [field-by-name (into {} (map (juxt :name :dtype) (:fields metadata)))
+                dtype->table-type #'execute/dtype->table-type]
+            (is (= :int (dtype->table-type (field-by-name "id"))))
+            (is (= :text (dtype->table-type (field-by-name "name"))))
+            (is (= :text (dtype->table-type (field-by-name "description"))))
+            (is (= :int (dtype->table-type (field-by-name "count"))))
+            (is (= :float (dtype->table-type (field-by-name "price"))))
+            (is (= :boolean (dtype->table-type (field-by-name "is_active"))))
+            (is (= :datetime (dtype->table-type (field-by-name "scheduled_for"))))
+
+            ;; TODO: ideally those would be preserved.. but they're "object" dtypes for now
+            (is (= :text (dtype->table-type (field-by-name "created_date"))))
+            (is (= :text (dtype->table-type (field-by-name "updated_at"))))))))))
