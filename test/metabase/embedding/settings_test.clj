@@ -7,7 +7,6 @@
    [metabase.embedding.settings :as embed.settings]
    [metabase.premium-features.token-check :as token-check]
    [metabase.premium-features.token-check-test :as token-check-test]
-   [metabase.server.settings :refer [disable-cors-on-localhost]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
