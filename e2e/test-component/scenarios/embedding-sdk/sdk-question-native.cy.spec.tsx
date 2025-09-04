@@ -115,4 +115,22 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
       });
     });
   });
+
+  it("should not show filter/summarize/breakout buttons for native questions", () => {
+    mountInteractiveQuestion({});
+
+    getSdkRoot().within(() => {
+      cy.log("should show native question data");
+      cy.findByText("test question").should("be.visible");
+
+      cy.log("should not show Filter button");
+      cy.findByText("Filter").should("not.exist");
+
+      cy.log("should not show Summarize button");
+      cy.findByText("Summarize").should("not.exist");
+
+      cy.log("should not show Group button");
+      cy.findByText("Group").should("not.exist");
+    });
+  });
 });
