@@ -32,6 +32,19 @@
   #{:snippets})
 
 (defn- add-template-tags [{old-tags :template_tags :as snippet}]
+  ;; Parse the snippet content to identify all template tags (like {{snippet: FilterA}} or {{var}}).
+  ;; For snippet references, we need to resolve them to snippet IDs while preserving reference stability.
+  ;;
+  ;; Key behavior for snippet references:
+  ;; 1. If a snippet with the exact referenced name exists in the DB, use its ID
+  ;; 2. Otherwise, preserve the existing snippet-id from old tags if available
+  ;;    (this maintains references even when the target snippet has been renamed)
+  ;; 3. If neither exists, keep the tag without a snippet-id (reference to non-existent snippet)
+  ;;
+  ;; This approach ensures that:
+  ;; - References remain stable when target snippets are renamed
+  ;; - References update to exact matches when the content is re-saved
+  ;; - Creating a new snippet with a referenced name will cause queries to switch to it on next save
   (let [snippet-tag? (fn [tag] (= (:type tag) :snippet))
         name->old-tag (into {} (comp (map val)
                                      (filter snippet-tag?)
@@ -39,14 +52,14 @@
                             old-tags)
         new-tags (lib/recognize-template-tags (:content snippet))
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
-                         (->> (t2/select-one-fn :id :model/NativeQuerySnippet :name snippet-name)
-                              (assoc tag :snippet-id)))]
-    (->> (fn [tag]
-           (if-not (snippet-tag? tag)
-             tag
-             (or (name->old-tag (:snippet-name tag))
-                 (set-snippet-id tag))))
-         (update-vals new-tags)
+                         ;; Check for exact match in database:
+                         (if-let [snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet
+                                                               :name snippet-name)]
+                           (assoc tag :snippet-id snippet-id)
+                           ;; Use previous reference if possible:
+                           (or (name->old-tag snippet-name) tag)))]
+    (->> (update-vals new-tags (fn [tag]
+                                 (cond-> tag (snippet-tag? tag) (set-snippet-id))))
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]

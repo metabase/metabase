@@ -105,3 +105,46 @@
           (let [updated-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id combined-id)]
             (is (= filter1-id (get-in updated-tags ["snippet: Filter One" :snippet-id])))
             (is (= filter2-id (get-in updated-tags ["snippet: Filter Two" :snippet-id])))))))))
+
+(deftest snippet-reference-prefers-exact-name-match-test
+  (testing "When a new snippet is created matching an old reference name, the reference should switch to the new snippet"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :namespace :snippets}
+                   ;; Step 1: Create "expensive" snippet (with intentional typo on `<`!)
+                   :model/NativeQuerySnippet {expensive-wrong-id :id} {:name "expensive"
+                                                                       :content "WHERE total < 100" ; Oops, wrong!
+                                                                       :collection_id coll-id}
+                   ;; Step 2: Create a query that references "expensive"
+                   :model/NativeQuerySnippet {query-id :id} {:name "Expensive Orders Query"
+                                                             :content "SELECT * FROM orders {{snippet: expensive}}"
+                                                             :collection_id coll-id}]
+
+      (testing "Initial reference points to the wrong 'expensive' snippet"
+        (let [tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id query-id)]
+          (is (= expensive-wrong-id (get-in tags ["snippet: expensive" :snippet-id])))))
+
+      ;; Step 3: Rename the wrong snippet to "affordable" (fixing the mistake)
+      (t2/update! :model/NativeQuerySnippet expensive-wrong-id {:name "affordable"})
+
+      (testing "After renaming, reference still points to same snippet (now 'affordable')"
+        (let [tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id query-id)]
+          (is (= expensive-wrong-id (get-in tags ["snippet: expensive" :snippet-id]))
+              "Reference persists even though snippet name changed")))
+
+      ;; Step 4: Create a new "expensive" snippet with correct logic
+      (mt/with-temp [:model/NativeQuerySnippet {expensive-correct-id :id} {:name "expensive"
+                                                                           :content "WHERE total > 100" ; Correct!
+                                                                           :collection_id coll-id}]
+
+        (testing "With a new snippet matching the reference name, existing queries keep old reference"
+          (let [tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id query-id)]
+            (is (= expensive-wrong-id (get-in tags ["snippet: expensive" :snippet-id]))
+                "Without re-saving, query still points to the old (now 'affordable') snippet")))
+
+        ;; Step 5: Re-save the query (simulating user editing and saving)
+        (t2/update! :model/NativeQuerySnippet query-id
+                    {:content "SELECT * FROM orders {{snippet: expensive}}"})
+
+        (testing "After re-saving the query, reference switches to the new exact-match snippet"
+          (let [tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id query-id)]
+            (is (= expensive-correct-id (get-in tags ["snippet: expensive" :snippet-id]))
+                "Reference now points to the new 'expensive' snippet with correct logic")))))))
