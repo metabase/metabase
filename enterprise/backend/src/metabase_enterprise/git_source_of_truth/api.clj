@@ -2,18 +2,11 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.git-source-of-truth.settings :as settings]
    [metabase-enterprise.git-source-of-truth.sources :as sources]
-   [metabase-enterprise.serialization.v2.extract :as serdes.extract]
-   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
-   [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase-enterprise.serialization.v2.storage :as serdes.storage]
+   [metabase-enterprise.mbml.core :as mbml]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import (java.io File)
            (java.nio.file Files)
@@ -54,9 +47,10 @@
     (with-temp-directory dir
       (log/info "Reloading Metabase configuration from source")
       (try
-        (serdes/with-cache
-          (serdes.load/load-metabase!
-           (serdes.ingest/ingest-yaml (sources/load-source! source (.toString dir)))))
+        ;; TODO this is silly
+        (doseq [file (next (file-seq (io/file (sources/load-source! source (.toString dir)))))
+                :when (not (.isDirectory file))]
+          (mbml/mbml-file->model (.getPath file)))
         (log/info "Successfully reloaded entities from git repository")
         {:status :success
          :message "Successfully reloaded from git repository"}
@@ -108,22 +102,6 @@
       {:status 500
        :body {:status "error"
               :message "Unexpected error occurred during reload"}})))
-
-(api.macros/defendpoint :post "/export"
-  "Exports Metabase content to the Git repository source of truth.
-
-  Requires superuser"
-  []
-  (api/check-superuser)
-  ;; Placeholder
-  (with-temp-directory tmp
-    (serdes/with-cache
-      (-> (serdes.extract/extract {:no-settings true
-                                   :include-database-secrets false})
-          (serdes.storage/store! tmp)))
-
-    (sources/push-branch! (sources/get-source) tmp))
-  "Success")
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/git-source-of-truth` routes."

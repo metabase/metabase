@@ -77,31 +77,31 @@
   (api/check-superuser)
   (t2/hydrate (t2/select :model/Transform) :last_run :transform_tag_ids :can_write))
 
-(api.macros/defendpoint :post "/"
-  "Create a new transform."
-  [_route-params
-   _query-params
-   body :- [:map
-            [:name :string]
-            [:description {:optional true} [:maybe :string]]
-            [:source ::transform-source]
-            [:target ::transform-target]
-            [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (api/check-superuser)
-  (check-database-feature body)
-  (api/check (not (transforms.util/target-table-exists? body))
-             403
-             (deferred-tru "A table with that name already exists."))
-  (t2/with-transaction [_]
-    (let [tag-ids (:tag_ids body)
-          transform (t2/insert-returning-instance!
-                     :model/Transform (select-keys body [:name :description :source :target :run_trigger]))]
+#_(api.macros/defendpoint :post "/"
+    "Create a new transform."
+    [_route-params
+     _query-params
+     body :- [:map
+              [:name :string]
+              [:description {:optional true} [:maybe :string]]
+              [:source ::transform-source]
+              [:target ::transform-target]
+              [:run_trigger {:optional true} ::run-trigger]
+              [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+    (api/check-superuser)
+    (check-database-feature body)
+    (api/check (not (transforms.util/target-table-exists? body))
+               403
+               (deferred-tru "A table with that name already exists."))
+    (t2/with-transaction [_]
+      (let [tag-ids (:tag_ids body)
+            transform (t2/insert-returning-instance!
+                       :model/Transform (select-keys body [:name :description :source :target :run_trigger]))]
       ;; Add tag associations if provided
-      (when (seq tag-ids)
-        (transform.model/update-transform-tags! (:id transform) tag-ids))
+        (when (seq tag-ids)
+          (transform.model/update-transform-tags! (:id transform) tag-ids))
       ;; Return with hydrated tag_ids
-      (t2/hydrate transform :transform_tag_ids))))
+        (t2/hydrate transform :transform_tag_ids))))
 
 (api.macros/defendpoint :get "/:id"
   "Get a specific transform."
@@ -136,39 +136,39 @@
                              :offset              (request/offset)
                              :limit               (request/limit)}))
 
-(api.macros/defendpoint :put "/:id"
-  "Update a transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   body :- [:map
-            [:name {:optional true} :string]
-            [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transform-source]
-            [:target {:optional true} ::transform-target]
-            [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (log/info "put transform" id)
-  (api/check-superuser)
-  (t2/with-transaction [_]
+#_(api.macros/defendpoint :put "/:id"
+    "Update a transform."
+    [{:keys [id]} :- [:map
+                      [:id ms/PositiveInt]]
+     _query-params
+     body :- [:map
+              [:name {:optional true} :string]
+              [:description {:optional true} [:maybe :string]]
+              [:source {:optional true} ::transform-source]
+              [:target {:optional true} ::transform-target]
+              [:run_trigger {:optional true} ::run-trigger]
+              [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+    (log/info "put transform" id)
+    (api/check-superuser)
+    (t2/with-transaction [_]
     ;; Cycle detection should occur within the transaction to avoid race
-    (let [old (t2/select-one :model/Transform id)
-          new (merge old body)
-          target-fields #(-> % :target (select-keys [:schema :name]))]
-      (check-database-feature new)
-      (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
-        (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
-                        {:status-code 400})))
-      (api/check (not (and (not= (target-fields old) (target-fields new))
-                           (transforms.util/target-table-exists? new)))
-                 403
-                 (deferred-tru "A table with that name already exists.")))
+      (let [old (t2/select-one :model/Transform id)
+            new (merge old body)
+            target-fields #(-> % :target (select-keys [:schema :name]))]
+        (check-database-feature new)
+        (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
+          (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                          {:status-code 400})))
+        (api/check (not (and (not= (target-fields old) (target-fields new))
+                             (transforms.util/target-table-exists? new)))
+                   403
+                   (deferred-tru "A table with that name already exists.")))
 
-    (t2/update! :model/Transform id (dissoc body :tag_ids))
+      (t2/update! :model/Transform id (dissoc body :tag_ids))
     ;; Update tag associations if provided
-    (when (contains? body :tag_ids)
-      (transform.model/update-transform-tags! id (:tag_ids body)))
-    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids)))
+      (when (contains? body :tag_ids)
+        (transform.model/update-transform-tags! id (:tag_ids body)))
+      (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids)))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a transform."
