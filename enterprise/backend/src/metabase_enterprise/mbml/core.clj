@@ -147,6 +147,7 @@
     (mbml-file->model \"/path/to/transform.sql\")"
   [file-path]
   (let [{:keys [entity] :as loaded} (parse-mbml-file file-path)]
-    ;; TODO(edpaget): for more copmlex models this will need to apply some kind of transformation
+    ;; TODO(edpaget): for more complex models this will need to apply some kind of transformation
     ;; before writing to the database
-    (t2/insert-returning-instance! (entity-type->model entity) loaded)))
+    (t2/insert-returning-instance! (entity-type->model entity)
+                                   (select-keys loaded [:name :description :source :target]))))
