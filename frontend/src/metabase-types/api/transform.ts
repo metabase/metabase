@@ -69,6 +69,7 @@ export type TransformJob = {
   // hydrated fields
   tag_ids?: TransformTagId[];
   last_run?: TransformRun | null;
+  next_run?: { start_time: string } | null;
 };
 
 export type CreateTransformRequest = {
