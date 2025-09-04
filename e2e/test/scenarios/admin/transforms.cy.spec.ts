@@ -957,7 +957,9 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.findByPlaceholderText("Name").should("have.value", "New job");
         cy.findByPlaceholderText("No description yet").should("have.value", "");
         getCronInput().should("have.value", "0 0 * * ?");
-        cy.findByText("This job will run at 12:00 AM").should("be.visible");
+        cy.findByText("This job will run at 12:00 AM, UTC-07:00").should(
+          "be.visible",
+        );
       });
     });
 
@@ -985,7 +987,9 @@ describe("scenarios > admin > transforms > jobs", () => {
           "Description",
         );
         getCronInput().should("have.value", "0 * * * ?");
-        cy.findByText("This job will run every hour").should("be.visible");
+        cy.findByText("This job will run every hour, UTC-07:00").should(
+          "be.visible",
+        );
         cy.findByText("daily").should("be.visible");
       });
     });
