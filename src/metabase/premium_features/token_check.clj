@@ -97,20 +97,27 @@
    :enabled-embedding-sdk         false
    :enabled-embedding-simple      false})
 
+(defenterprise metabot-stats
+  "Stats for Metabot"
+  metabase-enterprise.metabot-v3.core
+  []
+  {:metabot-tokens 0})
+
 (defn- stats-for-token-request
   []
-  (let [users (premium-features.settings/active-users-count)
-        ext-users (internal-stats/external-users-count)
+  (let [users                     (premium-features.settings/active-users-count)
+        ext-users                 (internal-stats/external-users-count)
         embedding-dashboard-count (internal-stats/embedding-dashboard-count)
-        embedding-question-count (internal-stats/embedding-question-count)
-        stats (merge (internal-stats/query-execution-last-utc-day)
-                     (embedding-settings embedding-dashboard-count embedding-question-count)
-                     {:users users
-                      :embedding-dashboard-count embedding-dashboard-count
-                      :embedding-question-count embedding-question-count
-                      :external-users ext-users
-                      :internal-users (- users ext-users)
-                      :domains (internal-stats/email-domain-count)})]
+        embedding-question-count  (internal-stats/embedding-question-count)
+        stats                     (merge (internal-stats/query-execution-last-utc-day)
+                                         (embedding-settings embedding-dashboard-count embedding-question-count)
+                                         (metabot-stats)
+                                         {:users                     users
+                                          :embedding-dashboard-count embedding-dashboard-count
+                                          :embedding-question-count  embedding-question-count
+                                          :external-users            ext-users
+                                          :internal-users            (- users ext-users)
+                                          :domains                   (internal-stats/email-domain-count)})]
     (log/info "Reporting embedding stats:" stats)
     stats))
 
