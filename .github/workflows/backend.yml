@@ -239,6 +239,7 @@ jobs:
           echo ""
           echo "🔎 Looking for python-runner specifically:"
           find . -maxdepth 2 -name "*python*" -type d 2>/dev/null || echo "No python directories found"
+          ls -la python-runner
           echo ""
           echo "📋 All top-level directories:"
           ls -d */ | sort
