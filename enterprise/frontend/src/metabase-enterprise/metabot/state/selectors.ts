@@ -106,8 +106,17 @@ export const getIsLongMetabotConversation = createSelector(
   },
 );
 
-export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
-  isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
+export const getMetabotIdOverride = createSelector(
+  getMetabot,
+  (metabot) => metabot.experimental.metabotIdOverride,
+);
+
+export const getMetabotId = createSelector(
+  getIsEmbedding,
+  getMetabotIdOverride,
+  (isEmbedding, metabotIdOverride) =>
+    metabotIdOverride ??
+    (isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT),
 );
 
 export const getMetabotRequestId = createSelector(
