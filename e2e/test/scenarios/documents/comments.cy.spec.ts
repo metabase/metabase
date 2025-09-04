@@ -25,7 +25,7 @@ H.describeWithSnowplowEE("document comments", () => {
     H.resetSnowplow();
   });
 
-  it("allows to comment on every node", () => {
+  it("allows to comment on every type of node", () => {
     createLoremIpsumDocument();
 
     cy.log("does not need schema adjustments by default");
