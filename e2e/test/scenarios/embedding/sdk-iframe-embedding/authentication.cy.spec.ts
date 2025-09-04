@@ -48,6 +48,25 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     assertDashboardLoaded(frame);
   });
 
+  it("cannot use existing user session when there is no session", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      element: "metabase-dashboard",
+      attributes: { dashboardId: ORDERS_DASHBOARD_ID },
+      metabaseConfig: { useExistingUserSession: true },
+    });
+
+    frame.within(() => {
+      cy.findByTestId("sdk-error-container")
+        .should("be.visible")
+        .and(
+          "contain",
+          "Could not load the test embed using your Metabase user session. Try using Google Chrome or use API keys for testing instead.",
+        );
+    });
+  });
+
   it("cannot use existing user session when useExistingUserSession is false", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
 
