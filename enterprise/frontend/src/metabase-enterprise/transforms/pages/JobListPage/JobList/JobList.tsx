@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { Card } from "metabase/ui";
 import {
   useListTransformJobsQuery,
@@ -16,10 +16,12 @@ import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import { getJobUrl } from "../../../urls";
+import { parseTimestampWithTimezone } from "../../../utils";
 
 import S from "./JobList.module.css";
 
 export function JobList() {
+  const systemTimezone = useSetting("system-timezone");
   const {
     data: jobs = [],
     isLoading: isLoadingJobs,
@@ -60,7 +62,10 @@ export function JobList() {
             <td>{job.name}</td>
             <td className={S.nowrap}>
               {job.last_run?.start_time
-                ? parseTimestamp(job.last_run?.start_time).format("lll")
+                ? parseTimestampWithTimezone(
+                    job.last_run?.start_time,
+                    systemTimezone,
+                  ).format("lll")
                 : null}
             </td>
             <td className={S.nowrap}>
@@ -70,7 +75,10 @@ export function JobList() {
                   message={job.last_run.message}
                   endTime={
                     job.last_run.end_time != null
-                      ? parseTimestamp(job.last_run.end_time).toDate()
+                      ? parseTimestampWithTimezone(
+                          job.last_run.end_time,
+                          systemTimezone,
+                        ).toDate()
                       : null
                   }
                 />

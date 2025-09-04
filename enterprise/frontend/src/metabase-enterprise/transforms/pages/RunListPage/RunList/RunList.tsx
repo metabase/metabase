@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { Card, Group, Stack } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
@@ -12,7 +12,7 @@ import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import type { RunListParams } from "../../../types";
 import { getRunListUrl, getTransformUrl } from "../../../urls";
-import { formatRunMethod } from "../../../utils";
+import { formatRunMethod, parseTimestampWithTimezone } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
 
 import S from "./RunList.module.css";
@@ -53,6 +53,7 @@ type RunTableProps = {
 };
 
 function RunTable({ runs }: RunTableProps) {
+  const systemTimezone = useSetting("system-timezone");
   const dispatch = useDispatch();
 
   const handleRowClick = (run: TransformRun) => {
@@ -79,9 +80,19 @@ function RunTable({ runs }: RunTableProps) {
             onClick={() => handleRowClick(run)}
           >
             <td>{run.transform?.name}</td>
-            <td>{parseTimestamp(run.start_time).format("lll")}</td>
             <td>
-              {run.end_time ? parseTimestamp(run.end_time).format("lll") : null}
+              {parseTimestampWithTimezone(
+                run.start_time,
+                systemTimezone,
+              ).format("lll")}
+            </td>
+            <td>
+              {run.end_time
+                ? parseTimestampWithTimezone(
+                    run.end_time,
+                    systemTimezone,
+                  ).format("lll")
+                : null}
             </td>
             <td>
               <RunStatusInfo
@@ -89,7 +100,10 @@ function RunTable({ runs }: RunTableProps) {
                 message={run.message}
                 endTime={
                   run.end_time != null
-                    ? parseTimestamp(run.end_time).toDate()
+                    ? parseTimestampWithTimezone(
+                        run.end_time,
+                        systemTimezone,
+                      ).toDate()
                     : null
                 }
               />

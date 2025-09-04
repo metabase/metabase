@@ -1,11 +1,20 @@
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type {
   Database,
   TransformRunMethod,
   TransformRunStatus,
 } from "metabase-types/api";
+
+export function parseTimestampWithTimezone(
+  timestamp: string,
+  systemTimezone: string | undefined,
+) {
+  const date = parseTimestamp(timestamp);
+  return systemTimezone == null ? date : date.tz(systemTimezone);
+}
 
 export function formatStatus(status: TransformRunStatus) {
   switch (status) {
