@@ -227,8 +227,17 @@ jobs:
           # Create mount directory
           mkdir -p /tmp/python-exec-work
           
-          cd python-runner
-          docker build -t metabase/python-runner:latest .
+          # Verify python-runner directory exists
+          if [ ! -d "python-runner" ]; then
+            echo "❌ python-runner directory not found!"
+            echo "Current directory: $(pwd)"
+            echo "Directory contents:"
+            ls -la
+            exit 1
+          fi
+          
+          # Build the Docker image from the python-runner directory
+          docker build -t metabase/python-runner:latest ./python-runner
           
           # Get the docker network used by service containers
           NETWORK=$(docker network ls --filter name=github --format "{{.Name}}")
