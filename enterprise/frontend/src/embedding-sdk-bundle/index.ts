@@ -6,6 +6,9 @@ import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 // This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
+// eslint-disable-next-line
+console.log(123);
+
 // Import the embedding SDK vendors side-effects
 import "metabase/embedding-sdk/vendors-side-effects";
 

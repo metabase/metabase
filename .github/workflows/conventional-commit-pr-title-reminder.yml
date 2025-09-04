@@ -62,8 +62,6 @@ jobs:
             const embeddingSourcesChanged = process.env.EMBEDDING_SOURCES_CHANGED === 'true';
             const embeddingSdkPackageSourcesChanged = process.env.EMBEDDING_SDK_PACKAGE_SOURCES_CHANGED === 'true';
 
-            console.log(embeddingSourcesChanged, embeddingSdkPackageSourcesChanged);
-
             if (embeddingSourcesChanged) {
               await updateCommentForEmbedding({github, context})
             } else if (embeddingSdkPackageSourcesChanged) {
