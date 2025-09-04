@@ -223,7 +223,7 @@ jobs:
 
       - name: Run Python Runner tests
         run: >-
-          clojure -X:dev:ci:test:ee:ee-dev:drivers:drivers-dev :only metabase-enterprise.transforms.api-test
+          clojure -X:dev:ee:ee-dev:driver:test:test/python-transform
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms.api-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
   "Tests for /api/transform endpoints."
   (:require
    [clojure.test :refer :all]
@@ -7,7 +7,6 @@
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
-   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
