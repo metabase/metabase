@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
+(ns metabase-enterprise.transforms.api-test
   "Tests for /api/transform endpoints."
   (:require
    [clojure.test :refer :all]
@@ -10,6 +10,7 @@
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -227,6 +228,7 @@
       (let [resp   (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" transform-id))
             status (some-> resp :last_run :status keyword)]
         (when-not (contains? #{:started :succeeded} status)
+          (println resp)
           (throw (ex-info (str "Transform run failed with status " status) {:resp resp})))
         (when-not (some? (:table resp))
           (Thread/sleep 100)
@@ -320,6 +322,31 @@
                 (is (true? (transforms.util/target-table-exists? original)))
                 (is (true? (transforms.util/target-table-exists? updated)))
                 (check-query-results table2-name [2 3 4 13] "Doohickey")))))))))
+
+(deftest execute-python-transform-test
+  (testing "transform execution with :transforms/table target"
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
+                                                                     :schema schema
+                                                                     :name   "target_table"}]
+              (let [original           {:name   "Gadget Products"
+                                        :source {:type  "python"
+                                                 :source-database (mt/id)
+                                                 :source-tables {"transforms_customers" (mt/id :transforms_customers)}
+                                                 :body  (str "import pandas as pd\n"
+                                                             "\n"
+                                                             "def transform():\n"
+                                                             "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
+                                        :target  (assoc target :database (mt/id))}
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                             original)]
+                (do (test-run transform-id)
+                    (wait-for-table table-name 5000))
+                (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
+                #_(check-query-results table-name [5 11 16] "Gadget")))))))))
 
 (deftest get-runs-filter-by-single-transform-id-test
   (testing "GET /api/ee/transform/run - filter by single transform ID"

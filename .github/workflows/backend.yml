@@ -226,22 +226,34 @@ jobs:
         run: |
           # Create mount directory
           mkdir -p /tmp/python-exec-work
+
+          # Debug: Show current location and structure
+          echo "📍 Current directory: $(pwd)"
+          echo "📂 Repository root contents:"
+          ls -la | head -20
           
           # Verify python-runner directory exists
           if [ ! -d "python-runner" ]; then
             echo "❌ python-runner directory not found!"
-            echo "Current directory: $(pwd)"
-            echo "Directory contents:"
-            ls -la
             exit 1
           fi
           
-          # Build the Docker image from the python-runner directory
-          docker build -t metabase/python-runner:latest ./python-runner
+          echo "📂 python-runner directory contents:"
+          ls -la python-runner/
           
+          # Verify Dockerfile exists
+          if [ ! -f "python-runner/Dockerfile" ]; then
+            echo "❌ python-runner/Dockerfile not found!"
+            exit 1
+          fi
+
+          # Build the Docker image from the python-runner directory
+          echo "🔨 Building Docker image..."
+          docker build -t metabase/python-runner:latest ./python-runner
+
           # Get the docker network used by service containers
           NETWORK=$(docker network ls --filter name=github --format "{{.Name}}")
-          
+
           docker run -d \
             --name python-runner \
             --network $NETWORK \
@@ -253,7 +265,7 @@ jobs:
             -e AWS_ENDPOINT_URL=http://localstack:4566 \
             --add-host host.docker.internal:host-gateway \
             metabase/python-runner:latest
-          
+
           # Wait for the service to be ready
           for i in {1..30}; do
             if curl -f http://localhost:5001/status; then
@@ -274,7 +286,7 @@ jobs:
           echo "🔍 Checking Python Runner status..."
           STATUS_RESPONSE=$(curl -s http://localhost:5001/status)
           echo "Status response: $STATUS_RESPONSE"
-          
+
           echo "🧪 Testing Python Runner with a simple transform..."
           TEST_RESPONSE=$(curl -s -X POST http://localhost:5001/execute \
             -H "Content-Type: application/json" \
@@ -283,9 +295,9 @@ jobs:
               "working_dir": "/tmp/python-exec-work/health-check",
               "timeout": 5
             }')
-          
+
           EXIT_CODE=$(echo "$TEST_RESPONSE" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('exit_code', -1))")
-          
+
           if [ "$EXIT_CODE" = "0" ]; then
             echo "✅ Python Runner health check passed!"
             echo "Response: $TEST_RESPONSE"
@@ -312,17 +324,17 @@ jobs:
             echo "⏳ Waiting for LocalStack... ($i/30)"
             sleep 2
           done
-          
+
           echo "📦 Creating S3 bucket..."
           aws --endpoint-url=http://localhost:4566 s3 mb s3://metabase-python-runner || true
-          
+
           echo "🔍 Verifying S3 bucket exists..."
           aws --endpoint-url=http://localhost:4566 s3 ls s3://metabase-python-runner
-          
+
       - name: Verify Python Runner can access LocalStack
         run: |
           echo "🔗 Testing Python Runner connectivity to LocalStack..."
-          
+
           # Test if python-runner container can reach LocalStack
           docker exec python-runner sh -c "curl -s http://localstack:4566/_localstack/health" || {
             echo "❌ Python Runner cannot reach LocalStack!"
@@ -331,12 +343,12 @@ jobs:
             docker inspect python-runner | jq '.[0].NetworkSettings.Networks'
             exit 1
           }
-          
+
           echo "✅ Python Runner can reach LocalStack!"
       - name: Run Python Runner tests
         run: >-
           clojure -X:dev:ci:test:ee:ee-dev:drivers:drivers-dev
-          :only metabase-enterprise.transforms.python-runner-test
+          :only metabase-enterprise.transforms.api-test
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()

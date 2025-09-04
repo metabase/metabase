@@ -5,9 +5,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.python-runner :as python-runner]
+   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
+   [metabase-enterprise.transforms.test-util :as transform.tu]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
