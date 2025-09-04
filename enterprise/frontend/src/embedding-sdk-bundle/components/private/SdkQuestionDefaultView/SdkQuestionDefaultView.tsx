@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -24,6 +24,7 @@ import {
   PopoverBackButton,
   Stack,
 } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import {
   FlexibleSizeComponent,
@@ -98,6 +99,16 @@ export const SdkQuestionDefaultView = ({
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
+
+  const isNativeQuestion = useMemo(() => {
+    if (!question) {
+      return false;
+    }
+
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    return isNative;
+  }, [question]);
 
   useEffect(() => {
     if (isNewQuestion && !isQuestionSaved) {
@@ -206,17 +217,25 @@ export const SdkQuestionDefaultView = ({
                         <ChartTypeDropdown />
                         <QuestionSettingsDropdown />
                       </Button.Group>
-                      <Divider
-                        mx="xs"
-                        orientation="vertical"
-                        // we have to do this for now because Mantine's divider overrides this color no matter what
-                        color="var(--mb-color-border) !important"
-                      />
+
+                      {!isNativeQuestion && (
+                        <Divider
+                          mx="xs"
+                          orientation="vertical"
+                          // we have to do this for now because Mantine's divider overrides this color no matter what
+                          color="var(--mb-color-border) !important"
+                        />
+                      )}
                     </>
                   )}
-                  <FilterDropdown />
-                  <SummarizeDropdown />
-                  <BreakoutDropdown />
+
+                  {!isNativeQuestion && (
+                    <>
+                      <FilterDropdown />
+                      <SummarizeDropdown />
+                      <BreakoutDropdown />
+                    </>
+                  )}
                 </>
               )}
             </Group>
