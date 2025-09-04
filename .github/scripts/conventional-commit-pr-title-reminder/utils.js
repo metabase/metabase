@@ -5,7 +5,9 @@ exports.updateCommentForEmbeddingSdkPackage =
 /** @param {import('@types/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
 async function updateCommentForEmbedding({ github, context }) {
   const githubUsername = context.payload.sender.login;
-  const comment = `${CONVENTIONAL_COMMIT_REMINDER_COMMENT_IDENTIFIER}
+
+  const commentTypeIdentifier = EMBEDDING_COMMENT_IDENTIFIER;
+  const comment = `${commentTypeIdentifier}
 @${githubUsername} You have modified embedding code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
 Here are all the supported types:
 - \`feat\`
@@ -24,13 +26,15 @@ For example, these are valid PR titles:
 - \`feat(sdk-bundle): Add interactive dashboard component\`
 - \`fix(embed-js): Fix API\``;
 
-  return updateComment(comment, { github, context });
+  return updateComment(comment, commentTypeIdentifier, { github, context });
 }
 
 /** @param {import('@types/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
 async function updateCommentForEmbeddingSdkPackage({ github, context }) {
   const githubUsername = context.payload.sender.login;
-  const comment = `${CONVENTIONAL_COMMIT_REMINDER_COMMENT_IDENTIFIER}
+
+  const commentTypeIdentifier = EMBEDDING_SDK_PACKAGE_COMMENT_IDENTIFIER;
+  const comment = `${commentTypeIdentifier}
 @${githubUsername} You have modified embedding SDK package code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
 Here are all the supported types that will be shown in the changelog:
 - \`feat\`
@@ -46,14 +50,19 @@ For example, these are valid PR titles:
 - \`feat(sdk-package): Support theming pie chart\`
 - \`fix(sdk-package): Fix static dashboard crash\``;
 
-  return updateComment(comment, { github, context });
+  return updateComment(comment, commentTypeIdentifier, { github, context });
 }
 
 /**
- * @param comment
+ * @param comment {string}
+ * @param commentTypeIdentifier {string}
  * @param {import('@types/github-script').AsyncFunctionArguments} AsyncFunctionArguments
  */
-async function updateComment(comment, { github, context }) {
+async function updateComment(
+  comment,
+  commentTypeIdentifier,
+  { github, context },
+) {
   const owner = context.repo.owner;
   const repo = context.repo.repo;
   const pullRequestNumber = context.issue.number;
@@ -65,38 +74,40 @@ async function updateComment(comment, { github, context }) {
 
   const existingComment = getExistingConventionalCommitReminderComment(
     comments.data,
+    commentTypeIdentifier,
   );
 
   if (existingComment) {
-    return await github.rest.issues.updateComment({
+    await github.rest.issues.deleteComment({
       owner,
       repo,
       comment_id: existingComment.id,
-      body: comment,
-    });
-  } else {
-    return await github.rest.issues.createComment({
-      owner,
-      repo,
-      issue_number: pullRequestNumber,
-      body: comment,
     });
   }
+
+  return await github.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: pullRequestNumber,
+    body: comment,
+  });
 }
 
-const CONVENTIONAL_COMMIT_REMINDER_COMMENT_IDENTIFIER =
-  "<!---conventional commit reminder comment ID-->";
+const EMBEDDING_COMMENT_IDENTIFIER =
+  "<!---embedding conventional comment identifier-->";
+const EMBEDDING_SDK_PACKAGE_COMMENT_IDENTIFIER =
+  "<!---embedding SDK package conventional comment identifier-->";
+
 /**
- * @typedef Comment
- * @property {string} body
- *
- * @param {Comment[]} comments
+ * @param comments {{body: string}[]}
+ * @param commentTypeIdentifier {string}
  */
-function getExistingConventionalCommitReminderComment(comments) {
+function getExistingConventionalCommitReminderComment(
+  comments,
+  commentTypeIdentifier,
+) {
   for (const comment of comments) {
-    if (
-      comment.body.startsWith(CONVENTIONAL_COMMIT_REMINDER_COMMENT_IDENTIFIER)
-    ) {
+    if (comment.body.startsWith(commentTypeIdentifier)) {
       return comment;
     }
   }
