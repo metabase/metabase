@@ -233,6 +233,7 @@ jobs:
           export PYTHON_RUNNER_MOUNT_PATH=/tmp/python-exec-work
 
           # Use the official make run command
+          cd python-runner
           make run
 
           echo "✅ Python runner started successfully!"
