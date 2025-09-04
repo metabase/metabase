@@ -45,7 +45,7 @@ export function DiscussionComment({
   const location = useLocation();
   const hash = location.hash?.substring(1);
   const isTarget = hash === getCommentNodeId(comment);
-  const isCurrentUsersComment = currentUser.id === comment.creator.id;
+  const isCurrentUsersComment = currentUser.id === comment.creator?.id;
 
   const handleEditClick = useCallback(() => {
     editingHandler.open();
@@ -90,7 +90,7 @@ export function DiscussionComment({
       className={cx(S.commentRoot, {
         [S.target]: isTarget,
       })}
-      bullet={<Avatar name={comment.creator.common_name} />}
+      bullet={<Avatar name={comment.creator?.common_name} />}
       id={getCommentNodeId(comment)}
     >
       {!isEditing && (
@@ -108,7 +108,7 @@ export function DiscussionComment({
 
       <Group gap="sm" align="center" wrap="nowrap">
         <Text fw={700} lh={1.3} truncate>
-          {comment.creator.common_name}
+          {comment.creator?.common_name}
         </Text>
 
         <Tooltip
