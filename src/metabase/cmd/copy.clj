@@ -356,6 +356,7 @@
     :model/HTTPAction
     :model/FieldUserSettings
     :model/QueryAction
+    :model/MetabotConversation
     :model/ModelIndexValue})
 
 (defmulti ^:private postgres-id-sequence-name
