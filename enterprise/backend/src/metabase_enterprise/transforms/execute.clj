@@ -248,9 +248,7 @@
                      :file temp-file}]
     ;; TODO: should be transactional, perharps go through driver/run-transform!
     (transforms.util/delete-target-table! transform)
-    ;; HACK:
-    (binding [api/*is-superuser?* true]
-      (table-creation/create-table-from-schema! driver (:id db) table-schema))
+    (table-creation/create-table-from-schema! driver (:id db) table-schema)
     (table-creation/insert-from-source! driver (:id db) table-name (mapv :name (:columns table-schema)) data-source)))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
