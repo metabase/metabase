@@ -808,8 +808,8 @@
                                                :aggregation  [[:sum $orders.quantity]]}
                                 :alias        "Orders"
                                 :condition    [:= $id &Orders.orders.product-id]
-                                ;; we can get title since product-id is remapped to title
-                                :fields       [&Orders.title
+                                ;; we can get products.title since orders.product-id is remapped to products.title
+                                :fields       [&Orders.products.title
                                                &Orders.*sum/Integer]}]
                     :fields   [$title $category]
                     :order-by [[:asc $id]]

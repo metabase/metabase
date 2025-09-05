@@ -6,9 +6,9 @@
 
 
   There are 3 mains ways to provide values to a parameter:
-  - chain-filter: see [metabase.parameters.chain-filter]
-  - field-values: see [metabase.parameters.field-values]
-  - custom-values: see [metabase.parameters.custom-values]"
+  - chain-filter: see  [[metabase.parameters.chain-filter]]
+  - field-values: see  [[metabase.parameters.field-values]]
+  - custom-values: see [[metabase.parameters.custom-values]]"
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -19,8 +19,10 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
@@ -176,15 +178,22 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mu/defn- card-mbql5-query :- ::lib.schema/query
+  [card :- [:map
+            [:database_id   ::lib.schema.id/database]
+            [:type          ::lib.schema.metadata/card.type]
+            [:dataset_query :map]]]
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
+    ;; Regular questions are used directly. If a model or metric has been used directly in this card, wrap it into a
+    ;; query against that model or metric.
+    (lib/query mp (if (= :question (:type card))
+                    (:dataset_query card)
+                    (lib.metadata/card mp (:id card))))))
+
 (defn- filterable-columns-for-query
   "Get filterable columns for query."
-  [database-id card stage-number]
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider database-id)
-        ;; Regular questions are used directly. If a model or metric has been used directly in this card, wrap it into
-        ;; a query against that model or metric.
-        query (lib/query metadata-provider (if (= :question (:type card))
-                                             (:dataset_query card)
-                                             (lib.metadata/card metadata-provider (:id card))))
+  [card stage-number]
+  (let [query (card-mbql5-query card)
         ;; for backward compatibility, append a filter stage only with explicit stage numbers
         query (cond-> query (>= stage-number 0) lib/ensure-filter-stage)]
     (when (and (>= stage-number -1) (< stage-number (lib/stage-count query)))
@@ -202,7 +211,7 @@
          (seq dataset-query)
          (pos-int? database-id))
     (assoc-in [:card-id->filterable-columns card-id stage-number]
-              (or (filterable-columns-for-query database-id card stage-number) []))))
+              (or (filterable-columns-for-query card stage-number) []))))
 
 (defn- field-id-from-dashcards-filterable-columns
   "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in
@@ -215,13 +224,32 @@
         filterable-columns (get-in ctx [:card-id->filterable-columns card-id stage-number])
         [_ dimension]      (->> (mbql.normalize/normalize-tokens param-target :ignore-path)
                                 (mbql.u/check-clause :dimension))]
+
     (if-some [field-id (lib.util.match/match-one dimension
                          ;; TODO it's basically a workaround for ignoring non-dimension parameter targets such as SQL variables
                          ;; TODO code is misleading; let's check for :dimension and drop the match call here
                          [:field (field-name :guard string?) _]
-                         (->> filterable-columns
-                              (lib/find-matching-column (lib/->pMBQL dimension))
-                              :id))]
+                         (let [card            (or (get-in param-dashcard-info [:dashcard :card])
+                                                   (throw (ex-info "Missing Card!" {:info param-dashcard-info})))
+                               query           (card-mbql5-query card)
+                               mbql5-dimension (lib/->pMBQL dimension)]
+                           ;; apparently we allow parameters for stages that don't exist yet, but just one additional
+                           ;; stage for so-called "post-aggregation" parameters. but we only allow parameters for
+                           ;; stage N+1, and no imaginary stages beyond that.
+                           (-> (cond
+                                 (> stage-number (count (:stages query)))
+                                 (do
+                                   (log/warnf "Ignoring parameter %s with stage number %d: Card query doesn't have that many stages"
+                                              (pr-str dimension)
+                                              stage-number)
+                                   nil)
+
+                                 (= stage-number (count (:stages query)))
+                                 (lib/find-matching-column (lib/append-stage query) stage-number mbql5-dimension filterable-columns)
+
+                                 :else
+                                 (lib/find-matching-column query stage-number mbql5-dimension filterable-columns))
+                               :id)))]
       (-> ctx
           (update :param-id->field-ids #(merge {param-id #{}} %))
           (update-in [:param-id->field-ids param-id] conj field-id))
@@ -289,9 +317,10 @@
               {:dashcard           dashcard
                :param-mapping      mapping
                :param-target-field (param-target->field-clause (:target mapping) (:card dashcard))}))]
-    (transduce (mapcat dashcard->param-dashcard-info)
-               field-id-into-context-rf
-               dashcards)))
+    (lib.metadata.jvm/with-metadata-provider-cache
+      (transduce (mapcat dashcard->param-dashcard-info)
+                 field-id-into-context-rf
+                 dashcards))))
 
 (declare card->template-tag-param-id->field-ids)
 

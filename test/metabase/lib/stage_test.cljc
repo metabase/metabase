@@ -169,20 +169,20 @@
                  {:id (meta/id :venues :price), :name "PRICE", :lib/source :source/table-defaults}
                  {:name "ID + 1", :lib/source :source/expressions}
                  {:name "ID + 2", :lib/source :source/expressions}
-                 {:id                       (meta/id :categories :id)
-                  :name                     "ID_2"
-                  :lib/source               :source/joins
-                  :source-alias             "Cat"
-                  :display-name             "ID"
-                  :lib/source-column-alias  "ID"
-                  :lib/desired-column-alias "Cat__ID"}
-                 {:id                       (meta/id :categories :name)
-                  :name                     "NAME_2"
-                  :lib/source               :source/joins
-                  :source-alias             "Cat"
-                  :display-name             "Name"
-                  :lib/source-column-alias  "NAME"
-                  :lib/desired-column-alias "Cat__NAME"}]
+                 {:id                           (meta/id :categories :id)
+                  :name                         "ID_2"
+                  :lib/source                   :source/joins
+                  :metabase.lib.join/join-alias "Cat"
+                  :display-name                 "ID"
+                  :lib/source-column-alias      "ID"
+                  :lib/desired-column-alias     "Cat__ID"}
+                 {:id                           (meta/id :categories :name)
+                  :name                         "NAME_2"
+                  :lib/source                   :source/joins
+                  :metabase.lib.join/join-alias "Cat"
+                  :display-name                 "Name"
+                  :lib/source-column-alias      "NAME"
+                  :lib/desired-column-alias     "Cat__NAME"}]
                 metadata))
         (testing ":long display names"
           (is (= ["ID"

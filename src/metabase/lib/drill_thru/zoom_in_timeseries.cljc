@@ -69,7 +69,7 @@
                :when (and (lib.util/clause-of-type? breakout-ref :field)
                           (lib.temporal-bucket/temporal-bucket breakout-ref))
                {:keys [column] :as dimension} dimensions
-               :when (and (lib.equality/find-matching-column breakout-ref [column])
+               :when (and (lib.equality/find-matching-column query stage-number breakout-ref [column])
                           (= (lib.temporal-bucket/raw-temporal-bucket breakout-ref)
                              (or (lib.temporal-bucket/raw-temporal-bucket column)
                                  ;; If query is multi-stage and column comes from a call

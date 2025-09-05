@@ -145,7 +145,7 @@
         (let [filter-cols (fn [query]
                             (let [cols (lib/visible-columns query)]
                               (for [[_< _opts agg _value] (lib/filters query -1)]
-                                (lib/find-matching-column agg cols))))
+                                (lib/find-matching-column query -1 agg cols))))
               cols-before (filter-cols before)
               cols-after  (filter-cols after)]
           (is (every? some? cols-before))
@@ -190,6 +190,6 @@
                 cols-after)))
       (testing "the refs to those breakouts are still aimed at the same columns as before, despite the name change"
         (let [[_- _opts _now days-ref] (first (lib/expressions after))]
-          (is (=? days-after (lib/find-matching-column days-ref cols-after))))
+          (is (=? days-after (lib/find-matching-column after -1 days-ref cols-after))))
         (let [[_= _opts months-ref _value] (first (lib/filters after))]
-          (is (=? months-after (lib/find-matching-column months-ref cols-after))))))))
+          (is (=? months-after (lib/find-matching-column after -1 months-ref cols-after))))))))

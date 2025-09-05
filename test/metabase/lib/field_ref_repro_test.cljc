@@ -72,11 +72,19 @@
           expression-ref (last (lib/fields query))]
       (is (=? [:expression {} "CATEGORY"]
               expression-ref))
-      ;; should return a column with properties like:
-      ;; {... :lib/source :source/expressions, :name "CATEGORY", :lib/desired-column-alias "CATEGORY_2"}
-      (is (nil? (lib.equality/find-matching-column
-                 expression-ref
-                 (lib/visible-columns query)))))))
+      (is (=? {:base-type               :type/Text
+               :display-name            "CATEGORY"
+               :effective-type          :type/Text
+               :name                    "CATEGORY"
+               :lib/expression-name     "CATEGORY"
+               :lib/source              :source/expressions
+               :lib/source-column-alias "CATEGORY"
+               :lib/type                :metadata/column}
+              (lib.equality/find-matching-column
+               query
+               -1
+               expression-ref
+               (lib/visible-columns query)))))))
 
 (deftest ^:parallel returned-columns-bad-field-refs-test
   (let [query (lib/query

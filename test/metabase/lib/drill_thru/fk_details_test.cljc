@@ -144,7 +144,6 @@
       (is (not (m/find-first #(= (:type %) :drill-thru/fk-details)
                              (lib/available-drill-thrus query -1 context)))))))
 
-`preserve-filters-for-other-fks-forming-multi-column-pk-test
 (deftest ^:parallel preserve-filters-for-other-fks-forming-multi-column-pk-test
   (testing "with multiple FKs forming a multi-column PK on another table"
     (let [provider (merged-mock/merged-mock-metadata-provider

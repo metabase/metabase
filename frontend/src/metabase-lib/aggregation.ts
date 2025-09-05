@@ -23,10 +23,17 @@ export function aggregationOperatorColumns(
 }
 
 export function selectedAggregationOperators(
+  query: Query,
+  stageIndex: number,
   operators: AggregationOperator[],
   clause: AggregationClause,
 ): AggregationOperator[] {
-  return ML.selected_aggregation_operators(operators, clause);
+  return ML.selected_aggregation_operators(
+    query,
+    stageIndex,
+    operators,
+    clause,
+  );
 }
 
 export function aggregate(

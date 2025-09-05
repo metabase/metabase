@@ -137,7 +137,7 @@
    column-ref   :- ::lib.schema.ref/ref
    column       :- ::lib.schema.metadata/column]
   (let [columns (lib.filter/filterable-columns query stage-number)]
-    (or (lib.equality/find-matching-column query stage-number column-ref columns)
+    (or (lib.equality/find-matching-column query stage-number column-ref columns {:find-matching-column/ignore-binning-and-bucketing? true})
         (and (:lib/source-uuid column)
              (m/find-first #(= (:lib/source-uuid %) (:lib/source-uuid column))
                            columns)))))

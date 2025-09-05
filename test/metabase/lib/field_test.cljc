@@ -203,17 +203,22 @@
   (let [date-field        (assoc (meta/field-metadata :people :birth-date)
                                  :base-type         :type/Text
                                  :effective-type    :type/Date
-                                 :coercion-strategy :Coercion/ISO8601->Date)
+                                 :coercion-strategy :Coercion/ISO8601->Date
+                                 :table-id          (meta/id :venues))
+        datetime-field    (assoc (meta/field-metadata :reviews :created-at)
+                                 :table-id (meta/id :venues))
         time-field        (assoc (meta/field-metadata :orders :created-at)
                                  :base-type      :type/Time
-                                 :effective-type :type/Time)
+                                 :effective-type :type/Time
+                                 :table-id       (meta/id :venues))
         metadata-provider (lib.tu/mock-metadata-provider
                            meta/metadata-provider
                            {:fields [date-field
+                                     datetime-field
                                      time-field]})
         query             (lib/query metadata-provider (meta/table-metadata :venues))]
     {:fields            {:date     date-field
-                         :datetime (meta/field-metadata :reviews :created-at)
+                         :datetime datetime-field
                          :time     time-field}
      :metadata-provider metadata-provider
      :query             query}))
@@ -1373,15 +1378,18 @@
                     (lib.metadata.calculation/returned-columns hidden)))
             (is (=? (map #(dissoc % :lib/source) exp-hidden)
                     (filter :selected? (lib.equality/mark-selected-columns
+                                        hidden
+                                        -1
                                         (lib.metadata.calculation/visible-columns hidden)
                                         (lib.metadata.calculation/returned-columns hidden)))))
-
             (testing "and showing it again"
               (let [shown (lib/add-field query -1 to-hide)]
                 (is (=? exp-shown
                         (lib.metadata.calculation/returned-columns shown)))
                 (is (=? (map #(dissoc % :lib/source) exp-shown)
                         (filter :selected? (lib.equality/mark-selected-columns
+                                            hidden
+                                            -1
                                             (lib.metadata.calculation/visible-columns shown)
                                             (lib.metadata.calculation/returned-columns shown)))))))))))))
 
@@ -1466,7 +1474,7 @@
                                (dissoc :id :table-id)))
           join-cols      [(-> (meta/field-metadata :products :category)
                               (assoc :lib/source :source/card
-                                     :source-alias "Products")
+                                     :lib/original-join-alias "Products")
                               (dissoc :id :table-id))]
           implicit-cols  (for [col (meta/fields :people)]
                            (-> (meta/field-metadata :people col)

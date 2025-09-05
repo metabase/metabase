@@ -63,7 +63,9 @@
   [card value-field-ref {:keys [query-string] :as _opts}]
   (let [metadata-provider (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
         query             (lib/query metadata-provider (lib.metadata/card metadata-provider (:id card)))
-        value-column      (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))
+        value-column      (or (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))
+                              (throw (ex-info "Failed to find column for legacy ref"
+                                              {:query query, :ref value-field-ref, :cols (lib/visible-columns query)})))
         textual?          (lib.types.isa/string? value-column)
         nonempty          ((if textual? lib/not-empty lib/not-null) value-column)
         query-filter      (when query-string

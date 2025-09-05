@@ -210,12 +210,14 @@
                                 (lib/aggregate (lib/count))
                                 (lib/breakout (-> (meta/field-metadata :orders :created-at)
                                                   (lib/with-temporal-bucket :year))))
-          created-at-col    (m/find-first #(= (:name %) "CREATED_AT")
-                                          (lib/returned-columns base-query))
-          _                 (is (some? created-at-col))
+          created-at-col    (fn [query]
+                              {:post [(some? %)]}
+                              (m/find-first #(= (:name %) "CREATED_AT")
+                                            (lib/returned-columns query)))
           multi-stage-query (lib.drill-thru.tu/append-filter-stage base-query "count")]
       (doseq [[query-type query] {"single-stage" base-query
                                   "multi-stage" multi-stage-query}
+              :let [created-at-col (created-at-col query)]
               [message context]  {"pivot cell (no column, value = NULL) (#36173)"
                                   {:value      :null
                                    :column     nil
