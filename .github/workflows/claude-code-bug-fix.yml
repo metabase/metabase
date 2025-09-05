@@ -103,12 +103,12 @@ jobs:
 
             // Format data for bash environment
             const formattedComments = issueComments.length > 0
-              ? issueComments.map(comment => 
+              ? issueComments.map(comment =>
                   `**Comment by @${comment.user.login} on ${comment.created_at}:**\n${comment.body}`
                 ).join('\n\n---\n\n')
               : '';
             const formattedReviews = prReviews.length > 0
-              ? prReviews.map(review => 
+              ? prReviews.map(review =>
                   `**Review by @${review.user.login} on ${review.submitted_at} (Changes Requested):**\n${review.body || 'No review comment provided'}`
                 ).join('\n\n---\n\n')
               : '';
