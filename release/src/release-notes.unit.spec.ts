@@ -82,6 +82,11 @@ describe("Release Notes", () => {
           { name: "Embedding/SDK" },
         ],
       },
+      {
+        number: 9,
+        title: "SDK Bundle Another Bug Issue",
+        labels: [{ name: "Type:Bug" }, { name: "Embedding/SDK" }],
+      },
     ] as Issue[];
 
     it("should generate release notes", () => {
@@ -95,7 +100,7 @@ describe("Release Notes", () => {
         "### Enhancements | 2.3\n\n**Querying**\n\n- Feature Issue (#2)",
       );
       expect(notes).toContain(
-        "### Bug fixes | 2.3\n\n**Embedding**\n\n- Bug Issue (#1)\n- SDK Bundle Bug Issue (#8)",
+        "### Bug fixes | 2.3\n\n**Embedding**\n\n- Bug Issue (#1)\n- SDK Bundle Bug Issue (#8)\n- SDK Bundle Another Bug Issue (#9)",
       );
       expect(notes).toContain(
         "### Already Fixed | 2.3\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",

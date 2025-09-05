@@ -94,20 +94,19 @@ type ProductCategory =
   | "Visualization"
   | "Other";
 
-// Product area labels take the form of "Category/Subcategory", e.g., "Querying/MBQL"
-// We're only interested in the main product category, e.g., "Querying"
-// The position in list matters, as it determines the order in which issue labels are tested against items in this list
-const productCategories: ProductCategory[] = [
-  "Administration",
-  "Database",
-  "Embedding",
-  "Operation",
-  "Organization",
-  "Querying",
-  "Reporting",
-  "Visualization",
-  otherProductCategory,
-];
+// Map of product categories in release notes and PR/Issue labels sub-strings that used to route issues to those categories
+// The position in labels sub-strings list matters, as it determines the order in which these strings are tested against the actual label
+const productCategories: Record<ProductCategory, readonly string[]> = {
+  Administration: ["Administration"],
+  Database: ["Database"],
+  Embedding: ["Embedding", "SDK"],
+  Operation: ["Operation"],
+  Organization: ["Organization"],
+  Querying: ["Querying"],
+  Reporting: ["Reporting"],
+  Visualization: ["Visualization"],
+  [otherProductCategory]: ["Other"],
+};
 
 type CategoryIssueMap = Record<Partial<ProductCategory>, Issue[]>;
 
@@ -133,17 +132,25 @@ const getLabels = (issue: Issue): string[] => {
   return issue.labels.map((label) => label.name || "");
 };
 
-const hasCategory = (issue: Issue, categoryName: ProductCategory): boolean => {
+const hasCategory = (issue: Issue, labelSubString: string): boolean => {
   const labels = getLabels(issue);
-  return labels.some((label) => label.includes(categoryName));
+  return labels.some((label) => label.includes(labelSubString));
 };
 
 export const getProductCategory = (issue: Issue): ProductCategory => {
-  const category = productCategories.find((categoryName) =>
-    hasCategory(issue, categoryName),
-  );
+  for (const [productCategory, labelSubStrings] of Object.entries(
+    productCategories,
+  )) {
+    const isMatching = labelSubStrings.some((labelSubString) =>
+      hasCategory(issue, labelSubString),
+    );
 
-  return category ?? otherProductCategory;
+    if (isMatching) {
+      return productCategory as ProductCategory;
+    }
+  }
+
+  return otherProductCategory;
 };
 
 // Format issues for a single product category
