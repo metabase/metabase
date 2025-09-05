@@ -165,7 +165,7 @@
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
    It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
-  [driver {:keys [table schema]}]
+  [driver tables transforms {:keys [table schema]}]
   (let [normalized-table (normalize-name driver table)
         normalized-schema (or (some->> schema (normalize-name driver))
                               (default-schema driver))
@@ -175,19 +175,22 @@
     (or (some (fn [{:keys [name schema id]}]
                 (when (matches? name schema)
                   {:table id}))
-              (driver-api/tables (driver-api/metadata-provider)))
+              tables)
         (some (fn [{:keys [id] {:keys [name schema]} :target}]
                 (when (matches? name schema)
                   {:transform id}))
-              (t2/select [:model/Transform :id :target])))))
+              transforms))))
 
 (defmethod driver/native-query-deps :sql
   [driver query]
-  (->> query
-       macaw/parsed-query
-       macaw/query->components
-       :tables
-       (into #{} (keep #(->> % :component (find-table-or-transform driver))))))
+  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
+        transforms (t2/select [:model/Transform :id :target])]
+    (->> query
+         macaw/parsed-query
+         macaw/query->components
+         :tables
+         (map :component)
+         (into #{} (keep #(find-table-or-transform driver db-tables transforms %))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

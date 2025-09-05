@@ -877,16 +877,17 @@
 
 (defmethod driver/native-query-deps :bigquery-cloud-sdk
   [driver query]
-  (into #{} (comp
-             (map :component)
-             (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
-             (map #(let [parts (str/split (:table %) #"\.")]
-                     {:schema (first parts) :table (second parts)}))
-             (keep #(driver.sql/find-table-or-transform driver %)))
-        (-> query
-            macaw/parsed-query
-            macaw/query->components
-            :tables)))
+  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
+        transforms (t2/select [:model/Transform :id :target])]
+    (->> query
+         macaw/parsed-query
+         macaw/query->components
+         :tables
+         (map :component)
+         (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
+         (map #(let [parts (str/split (:table %) #"\.")]
+                 {:schema (first parts) :table (second parts)}))
+         (into #{} (keep #(driver.sql/find-table-or-transform driver db-tables transforms %))))))
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
   [driver conn-spec schema]
