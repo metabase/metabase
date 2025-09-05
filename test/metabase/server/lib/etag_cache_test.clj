@@ -62,10 +62,10 @@
 
 (deftest with-etag-returns-304-on-wildcard
   (testing "If-None-Match: * (or with whitespace) returns 304 and only adds ETag"
-    (doseq [if-none-match-values ["*" "   *   "]]
+    (doseq [if-none-match-value ["*" "   *   " "*  " "  *"]]
       (let [resp (lib.etag-cache/with-etag
                    {:status 200 :headers {} :body "dummy js"}
-                   {:headers {"if-none-match" if-none-match-values}})]
+                   {:headers {"if-none-match" if-none-match-value}})]
         (is (= 304 (:status resp)))
         (is (= "" (:body resp)))
         (is (= (format "\"%s\"" config/mb-version-hash)

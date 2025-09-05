@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.server.lib.etag-cache :as lib.etag-cache]
-   [metabase.server.middleware.embedding-sdk-bundle :as bund]
+   [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -20,7 +20,7 @@
                                              {:status 304
                                               :headers {"ETag" "\"abc\""}
                                               :body ""})]
-      (let [handler (bund/serve-bundle-handler)
+      (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
             resp    (handler {:headers {"if-none-match" "\"abc\""}})]
         (is (= 304 (:status resp)))
         (is (= "" (:body resp)))
@@ -36,7 +36,7 @@
                                 ;; with-etag returns a 200 response with an ETag applied
                   lib.etag-cache/with-etag (fn [base _req]
                                              (update base :headers assoc "ETag" "\"abc\""))]
-      (let [handler (bund/serve-bundle-handler)
+      (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
             resp    (handler {:headers {}})]
         (is (= 200 (:status resp)))
         (is (= cache-header (get-in resp [:headers "Cache-Control"])))
@@ -52,7 +52,7 @@
                                          ;; If it were called in dev, we’d see this exception
                     lib.etag-cache/with-etag (fn [& _]
                                                (throw (ex-info "with-etag should not be called in dev" {})))]
-        (let [handler (bund/serve-bundle-handler)
+        (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
               resp    (handler {:headers {}})]
           (is (= 200 (:status resp)))
           (is (= "no-store" (get-in resp [:headers "Cache-Control"])))
@@ -65,7 +65,7 @@
         (with-redefs [config/is-prod? true
                       response/resource-response (constantly nil)
                       lib.etag-cache/with-etag (fn [& args] (throw (ex-info "Not expected for 404" {:args args})))]
-          (let [handler (bund/serve-bundle-handler)
+          (let [handler (mw.embedding-sdk-bundle/serve-bundle-handler)
                 resp    (handler {:headers {}})]
             (is (= 404 (:status resp)))
             (is (= "no-store" (get-in resp [:headers "Cache-Control"])))
