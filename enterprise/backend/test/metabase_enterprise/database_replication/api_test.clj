@@ -102,7 +102,7 @@
         (mt/with-temporary-setting-values [is-hosted? true, store-api-url "foo", api-key "foo", database-replication-connections {}]
           (mt/with-temp [:model/Database db {:engine :postgres :details db-details}]
             (let [url (str "ee/database-replication/connection/" (:id db))
-                  body {:replicationSchemaFilters {:schema-filters-type "exclude"
+                  body {:replicationSchemaFilters {:schema-filters-type "exclusion"
                                                    :schema-filters-patterns "not_pub*"}}]
               (testing "previews"
                 (let [resp (mt/user-http-request :crowberto :post 200 (str url "/preview") body)]
@@ -132,7 +132,7 @@
                   (is (= (dissoc hm-conn :id)
                          {:type "pg_replication",
                           :secret {:credentials (assoc db-details :port 5432 :dbtype "postgresql")
-                                   :schema-filters [{:type "exclude", :patterns "not_pub*"}]}}))))
+                                   :schema-filters [{:type "exclusion", :patterns "not_pub*"}]}}))))
               (testing "deletes"
                 (mt/user-http-request :crowberto :delete 204 url)
                 (is (= 0 (count @hm-state)))
