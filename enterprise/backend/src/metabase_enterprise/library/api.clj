@@ -1,8 +1,8 @@
-(ns metabase-enterprise.git-source-of-truth.api
+(ns metabase-enterprise.library.api
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.git-source-of-truth.sources :as sources]
+   [metabase-enterprise.library.sources :as sources]
    [metabase-enterprise.mbml.core :as mbml]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -37,13 +37,13 @@
 (defmacro with-temp-directory
   "Makes a temp dir and then deletes it outside the form."
   [binding & body]
-  `(let [~binding (.toFile (Files/createTempDirectory "git-source-of-truth-" (into-array FileAttribute [])))]
+  `(let [~binding (.toFile (Files/createTempDirectory "library-" (into-array FileAttribute [])))]
      (try ~@body
           (finally
             (cleanup-temp-directory! ~binding)))))
 
 (defn- reload-from-git!
-  "Reloads the Metabase entities from the library"
+  "Reloads the Metabase entities from the "
   []
   (if-let [source (sources/get-source)]
     (with-temp-directory dir
@@ -85,7 +85,7 @@
              :message error-msg
              :details {:error-type (type e)}}))))
     {:status :error
-     :message "Git source of truth is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
+     :message "Library source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
 (api.macros/defendpoint :post "/import"
   "Reload Metabase content from Git repository source of truth.
@@ -112,8 +112,8 @@
        :body {:status "error"
               :message "Unexpected error occurred during reload"}})))
 
-(api.macros/defendpoint :get "/git"
-  "List items in the library"
+(api.macros/defendpoint :get "/source"
+  "List items in the source repository"
   []
   (if-let [source (sources/get-source)]
     (with-temp-directory dir
@@ -140,7 +140,7 @@
                                             :type "file"}))))
                                 (sort-by :name)))]
           {:id "root"
-           :name "metabase-library"
+           :name "metabase-"
            :type "folder"
            :children (build-tree files root-dir)})
 
@@ -165,13 +165,13 @@
              :message error-msg
              :details {:error-type (type e)}}))))
     {:status  :error
-     :message "Git source of truth is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
+     :message "Library source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
 (def ^:private entity-type->fe-type
   {"model/Transform:v1" "transform"})
 
-(api.macros/defendpoint :get "/git/:path"
-  "List item in the library"
+(api.macros/defendpoint :get "/source/:path"
+  "List item in the "
   [{:keys [path]}]
   (if-let [source (sources/get-source)]
     (with-temp-directory dir
@@ -206,8 +206,8 @@
              :message error-msg
              :details {:error-type (type e)}}))))
     {:status  :error
-     :message "Git source of truth is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
+     :message "Library source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/git-source-of-truth` routes."
+  "`/api/ee/library` routes."
   (api.macros/ns-handler *ns* +auth))

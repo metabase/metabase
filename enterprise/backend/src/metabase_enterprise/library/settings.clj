@@ -1,6 +1,6 @@
-(ns metabase-enterprise.git-source-of-truth.settings
+(ns metabase-enterprise.library.settings
   (:require
-   [metabase-enterprise.git-source-of-truth.git :as git]
+   [metabase-enterprise.library.git :as git]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -16,8 +16,8 @@
   (fn [new-value]
     (setting/set-value-of-type! :string original-key new-value)
     (if (git/can-access-branch-in-repository? (setting/get :git-sync-url)
-                                                 (setting/get :git-sync-import-branch)
-                                                 (setting/get :git-sync-token))
+                                              (setting/get :git-sync-import-branch)
+                                              (setting/get :git-sync-token))
       (git-sync-configured! true)
       (git-sync-configured! false))))
 

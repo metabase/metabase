@@ -24,27 +24,27 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
     importGit: builder.mutation({
       query: () => ({
         method: "POST",
-        url: "/api/ee/git-source-of-truth/import",
+        url: "/api/ee/library/import",
       }),
       invalidatesTags: [tag("git-tree"), tag("git-file-content")],
     }),
     exportGit: builder.mutation({
       query: () => ({
         method: "POST",
-        url: "/api/ee/git-source-of-truth/export",
+        url: "/api/ee/library/export",
       }),
     }),
     getRepositoryTree: builder.query<GitTreeNode, void>({
       query: () => ({
         method: "GET",
-        url: "/api/ee/git-source-of-truth/git",
+        url: "/api/ee/library/source",
       }),
       providesTags: [tag("git-tree")],
     }),
     getFileContent: builder.query<GitFileContent, string>({
       query: (path) => ({
         method: "GET",
-        url: `/api/ee/git-source-of-truth/git/${encodeURIComponent(path)}`,
+        url: `/api/ee/library/source/${encodeURIComponent(path)}`,
       }),
       providesTags: [tag("git-file-content")],
     }),

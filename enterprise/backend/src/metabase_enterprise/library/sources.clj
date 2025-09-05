@@ -1,8 +1,8 @@
-(ns metabase-enterprise.git-source-of-truth.sources
+(ns metabase-enterprise.library.sources
   (:require
    [clojure.java.io :as io]
-   [metabase-enterprise.git-source-of-truth.git :as git]
-   [metabase-enterprise.git-source-of-truth.settings :as settings]
+   [metabase-enterprise.library.git :as git]
+   [metabase-enterprise.library.settings :as settings]
    [metabase.util.log :as log])
   (:import
    (java.io File)

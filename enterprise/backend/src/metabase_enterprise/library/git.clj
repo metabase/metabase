@@ -1,4 +1,4 @@
-(ns metabase-enterprise.git-source-of-truth.git
+(ns metabase-enterprise.library.git
   (:require
    [clojure.java.io :as io]
    [metabase.util.log :as log])
