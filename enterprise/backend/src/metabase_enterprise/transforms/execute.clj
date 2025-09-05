@@ -227,7 +227,7 @@
         table-schema {:name table-name
                       :columns (mapv (fn [{:keys [name dtype]}]
                                        {:name name
-                                        :type (transforms.util/dtype->table-type dtype)
+                                        :type (transforms.util/dtype->base-type dtype)
                                         :nullable? true})
                                      (:fields metadata))}
         data-source {:type :csv-file

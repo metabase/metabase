@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
    [metabase.util.log :as log]
@@ -104,13 +105,10 @@
   (case (-> transform :target :type)
     "table"             :transforms/table))
 
-(mr/def ::data-type
-  [:enum :boolean :int :float :date :datetime :offset-datetime :text])
-
 (mr/def ::column-definition
   [:map
    [:name :string]
-   [:type ::data-type]
+   [:type ::lib.schema.common/base-type]
    [:nullable? {:optional true} :boolean]])
 
 (mr/def ::table-definition
@@ -119,31 +117,19 @@
    [:columns [:sequential ::column-definition]]
    [:primary-key {:optional true} [:sequential :string]]])
 
-(defmulti data-type->database-type
-  "Maps generic data types to driver-specific database types."
-  {:arglists '([driver data-type])}
-  (fn [driver & _] driver)
-  :hierarchy #'driver/hierarchy)
-
-(mu/defmethod data-type->database-type :default
-  [driver :- :keyword
-   data-type :- ::data-type]
-  (let [upload-type (keyword "metabase.upload" (name data-type))]
-    (driver/upload-type->database-type driver upload-type)))
-
-(defn dtype->table-type
-  "dtype to data type"
+(defn dtype->base-type
+  "Maps pandas dtype strings directly to Metabase base types in the type hierarchy."
   [dtype-str]
   (cond
-    (str/starts-with? dtype-str "int") :int
-    (str/starts-with? dtype-str "float") :float
-    (str/starts-with? dtype-str "bool") :boolean
+    (str/starts-with? dtype-str "int") :type/Integer
+    (str/starts-with? dtype-str "float") :type/Float
+    (str/starts-with? dtype-str "bool") :type/Boolean
     ;; datetime64[ns, timezone] indicates timezone-aware datetime
-    (str/starts-with? dtype-str "datetime64[ns, ") :offset-datetime
-    (str/starts-with? dtype-str "datetime") :datetime
+    (str/starts-with? dtype-str "datetime64[ns, ") :type/DateTimeWithTZ
+    (str/starts-with? dtype-str "datetime") :type/DateTime
     ;; this is not a real dtype, pandas uses 'object', but we override it if there's source or custom field metadata
-    (str/starts-with? dtype-str "date") :date
-    :else :text))
+    (str/starts-with? dtype-str "date") :type/Date
+    :else :type/Text))
 
 (mu/defn create-table-from-schema!
   "Create a table from a table-schema"
@@ -151,8 +137,7 @@
    database-id :- pos-int?
    table-schema :- ::table-definition]
   (let [{:keys [columns] table-name :name} table-schema
-        column-definitions (into {} (map (fn [{:keys [name type]}]
-                                           [name (data-type->database-type driver type)]))
+        column-definitions (into {} (map (fn [{:keys [name type]}] [name (driver/type->database-type driver type)]))
                                  columns)
         primary-key-opts (select-keys table-schema [:primary-key])]
     (log/infof "Creating table %s with %d columns" table-name (count columns))
