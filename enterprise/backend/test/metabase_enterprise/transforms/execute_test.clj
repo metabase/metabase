@@ -138,8 +138,8 @@
           table-schema {:name    (if schema-name
                                    (keyword schema-name table-name)
                                    (keyword table-name))
-                        :columns [{:name "id" :type :int :nullable? false}
-                                  {:name "name" :type :text :nullable? true}]}]
+                        :columns [{:name "id" :type :type/Integer :nullable? false}
+                                  {:name "name" :type :type/Text :nullable? true}]}]
       (mt/as-admin
         (testing "create-table-from-schema! should create the table successfully"
           (transforms.util/create-table-from-schema! driver db-id table-schema)
