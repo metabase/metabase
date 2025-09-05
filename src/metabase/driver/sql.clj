@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [potemkin :as p]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
