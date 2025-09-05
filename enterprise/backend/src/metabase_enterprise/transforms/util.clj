@@ -9,7 +9,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
