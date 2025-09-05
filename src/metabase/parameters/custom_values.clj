@@ -9,7 +9,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -69,15 +68,12 @@
    {:keys [query-string] :as _opts}]
   ;; query will use `:source-card` if Card is Model or Metric but will use the Card's query directly if it is a
   (let [query           (params/card->query card)
-        value-column    (or (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))
-                            (throw (ex-info (format "Failed to find column for legacy ref %s" (pr-str value-field-ref))
-                                            {:query query, :ref value-field-ref, :cols (lib/visible-columns query)})))
-        ;; since the query we're building will add a breakout and filters using this column to a subsequent stage,
-        ;; to "do this the right way" we should update this metadata so it is ready for use in subsequent stages. But
-        ;; to do THAT the right way we need to be using a returned column (so we can use the desired alias in the
-        ;; current last stage as the source alias in the new stage). Kind of annoying but we are doing wacko stuff
-        ;; here I guess.
-        value-column    (-> (lib.equality/find-matching-column query -1 value-column (lib/returned-columns query))
+        value-column    (-> (or (lib/find-column-for-legacy-ref query value-field-ref (lib/returned-columns query))
+                                (throw (ex-info (format "Failed to find column for legacy ref %s" (pr-str value-field-ref))
+                                                {:query query, :ref value-field-ref, :cols (lib/returned-columns query)})))
+                            ;; since the query we're building will add a breakout and filters using this column to a
+                            ;; subsequent stage, to "do this the right way" we should update this metadata so it is
+                            ;; ready for use in subsequent stages.
                             lib/update-keys-for-col-from-previous-stage)
         textual?        (lib.types.isa/string? value-column)
         nonempty-filter ((if textual? lib/not-empty lib/not-null) value-column)
