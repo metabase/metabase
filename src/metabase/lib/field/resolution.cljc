@@ -38,8 +38,6 @@
                          (some? v))))
          more)))
 
-
-
 (mu/defn- add-parent-column-metadata
   "If this is a nested column, add metadata about the parent column."
   [metadata-providerable             :- ::lib.schema.metadata/metadata-providerable

@@ -75,8 +75,7 @@
               :effective-type               :type/Integer
               :id                           (mt/id :orders :product_id)
               :lib/desired-column-alias     "Orders__PRODUCT_ID"
-              :display-name                 "Orders → Product ID"
-              :source-alias                 "Orders"}
+              :display-name                 "Orders → Product ID"}
              {:metabase.lib.join/join-alias "Orders"
               :lib/type                     :metadata/column
               :base-type                    :type/Integer
@@ -85,8 +84,7 @@
               :lib/source-column-alias      "sum"
               :effective-type               :type/Integer
               :lib/desired-column-alias     "Orders__sum"
-              :display-name                 "Orders → Sum of Quantity"
-              :source-alias                 "Orders"}]
+              :display-name                 "Orders → Sum of Quantity"}]
             (binding [lib.metadata.calculation/*display-name-style* :long]
               (lib.metadata.calculation/returned-columns mlv2-query))))))
 
