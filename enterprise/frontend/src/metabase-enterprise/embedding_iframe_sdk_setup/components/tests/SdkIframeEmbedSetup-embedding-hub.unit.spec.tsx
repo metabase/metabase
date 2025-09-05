@@ -21,7 +21,10 @@ describe("Embed flow > embedding hub step completion tracking", () => {
     "updates setting on $trigger with $authMethod",
     async ({ authMethod, trigger }) => {
       mockLocation(`auth_method=${authMethod}`);
-      setup({ jwtReady: authMethod === "sso" });
+      setup({
+        jwtReady: authMethod === "sso",
+        simpleEmbeddingEnabled: true,
+      });
 
       await userEvent.click(screen.getByRole("button", { name: "Next" }));
       await userEvent.click(screen.getByRole("button", { name: "Next" }));

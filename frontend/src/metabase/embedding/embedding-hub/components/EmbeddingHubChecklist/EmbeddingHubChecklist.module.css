@@ -2,7 +2,7 @@
 .completedControl:not([data-css-specificity-hack="🪗"]) {
   background: linear-gradient(
     to right,
-    var(--mb-base-color-palm-10) 3rem,
+    color-mix(in srgb, var(--mb-color-success) 15%, white) 3rem,
     transparent 3rem
   ) !important;
 }
