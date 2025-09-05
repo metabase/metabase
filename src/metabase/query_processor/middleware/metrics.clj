@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.metrics
+  (:refer-clojure :exclude [select-keys some])
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.lib.core :as lib]
@@ -10,7 +10,8 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [select-keys some]]))
 
 (defn- filters->condition
   [filters]
@@ -95,7 +96,7 @@
   [aggregation condition]
   (cond->> aggregation
     (seq condition)
-    (walk/postwalk
+    (perf/postwalk
      (fn [form]
        (if-not (and (vector? form)
                     (not (map-entry? form)))

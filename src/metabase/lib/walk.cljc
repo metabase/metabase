@@ -1,5 +1,6 @@
 (ns metabase.lib.walk
   "Tools for walking and transforming a query."
+  (:refer-clojure :exclude [mapv])
   (:require
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -12,7 +13,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv]]))
 
 (declare walk-stages*)
 

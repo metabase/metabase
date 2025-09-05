@@ -1,4 +1,5 @@
 (ns metabase.lib.normalize
+  (:refer-clojure :exclude [some])
   (:require
    [malli.core :as mc]
    [malli.error :as me]
@@ -9,7 +10,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 (defn- lib-type [x]
   (when (map? x)
