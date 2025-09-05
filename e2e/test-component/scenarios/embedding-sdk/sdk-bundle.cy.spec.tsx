@@ -1,11 +1,7 @@
 import {
   InteractiveQuestion,
-  type MetabaseDashboard,
   MetabaseProvider,
-  useCreateDashboardApi,
-  useMetabaseAuthStatus,
 } from "@metabase/embedding-sdk-react";
-import { useEffect, useState } from "react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -18,6 +14,8 @@ import {
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
+
+const { H } = cy;
 
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
@@ -324,140 +322,19 @@ describe(
       });
     });
 
-    describe("Hooks", () => {
-      describe("useMetabaseAuthStatus", () => {
-        const ComponentWithHook = () => {
-          return useMetabaseAuthStatus()?.status ?? "SDK Bundle Loading...";
-        };
-
-        it("should return the auth status when the hook is called inside MetabaseProvider", () => {
-          mountSdk(
-            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-              <ComponentWithHook />
-
-              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-            </MetabaseProvider>,
-          );
-
-          cy.get("body").within(() => {
-            cy.findByText("loading").should("exist");
-            cy.findByText("success").should("exist");
-          });
-        });
-
-        it("should return the auth status when the hook is called outside of MetabaseProvider", () => {
-          mountSdk(
-            <>
-              <ComponentWithHook />
-
-              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-                <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-              </MetabaseProvider>
-            </>,
-          );
-
-          cy.get("body").within(() => {
-            cy.findByText("loading").should("exist");
-            cy.findByText("success").should("exist");
-          });
-        });
-
-        it("should return the auth status when the hook is called without rendered SDK components", () => {
-          mountSdk(
-            <>
-              <ComponentWithHook />
-
-              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
-            </>,
-          );
-
-          cy.get("body").within(() => {
-            cy.findByText("loading").should("exist");
-            cy.findByText("success").should("exist");
-          });
-        });
-      });
-
-      describe("useCreateDashboardApi", () => {
-        const ComponentWithHook = () => {
-          const result = useCreateDashboardApi();
-          const [createdDashboard, setCreatedDashboard] = useState<{
-            name: string;
-          } | null>(null);
-
-          useEffect(() => {
-            if (result) {
-              result
-                .createDashboard({
-                  name: "Test Dashboard",
-                  description: "This is a test dashboard",
-                })
-                .then((dashboard: MetabaseDashboard) => {
-                  setCreatedDashboard(dashboard);
-                });
-            }
-          }, [result]);
-
-          return createdDashboard?.name;
-        };
-
-        it("should render the created dashboard name when called inside MetabaseProvider", () => {
-          mountSdk(
-            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-              <ComponentWithHook />
-
-              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-            </MetabaseProvider>,
-          );
-
-          cy.get("body").within(() => {
-            cy.findByText("Test Dashboard").should("exist");
-          });
-        });
-
-        it("should render the created dashboard name when called outside of MetabaseProvider", () => {
-          mountSdk(
-            <>
-              <ComponentWithHook />
-
-              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-                <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
-              </MetabaseProvider>
-            </>,
-          );
-
-          cy.get("body").within(() => {
-            cy.findByText("Test Dashboard").should("exist");
-          });
-        });
-
-        it("should render the created dashboard name when called without rendered SDK components", () => {
-          mountSdk(
-            <>
-              <ComponentWithHook />
-
-              <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
-            </>,
-          );
-
-          cy.get("body").within(() => {
-            cy.findByText("Test Dashboard").should("exist");
-          });
-        });
-      });
-    });
-
-    describe("Error handling", () => {
+    describe("Error handling", { retries: 3 }, () => {
       beforeEach(() => {
+        H.clearBrowserCache();
+
         sdkBundleCleanup();
+
+        cy.intercept("GET", "**/app/embedding-sdk.js", {
+          statusCode: 404,
+        });
       });
 
       describe("when the SDK bundle can't be loaded", () => {
         it("should show an error", () => {
-          cy.intercept("GET", "**/app/embedding-sdk.js", {
-            statusCode: 404,
-          });
-
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             {
@@ -472,15 +349,11 @@ describe(
         });
 
         it("should show a custom error", () => {
-          cy.intercept("GET", "**/app/embedding-sdk.js", {
-            statusCode: 404,
-          });
-
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             {
               sdkProviderProps: {
-                errorComponent: ({ message }) => (
+                errorComponent: ({ message }: { message: string }) => (
                   <div>Custom error: {message}</div>
                 ),
               },

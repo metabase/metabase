@@ -19,12 +19,13 @@
   (str "WITH s AS (SELECT version() AS ver, splitByChar('.', ver) AS verSplit) "
        "SELECT s.ver, toInt32(verSplit[1]), toInt32(verSplit[2]) FROM s"))
 
-(def ^:private ^{:arglists '([db-details])} get-clickhouse-version
+(def ^:private ^{:arglists '([database])} get-clickhouse-version
   (memoize/ttl
-   (fn [db-details]
+   ^{:clojure.core.memoize/args-fn (fn [[database]] (:details database))}
+   (fn [database]
      (sql-jdbc.execute/do-with-connection-with-options
       :clickhouse
-      (sql-jdbc.conn/connection-details->spec :clickhouse db-details)
+      (sql-jdbc.conn/db->pooled-connection-spec database)
       nil
       (fn [^java.sql.Connection conn]
         (with-open [stmt (.createStatement conn)
@@ -37,7 +38,7 @@
 
 (defmethod driver/dbms-version :clickhouse
   [_driver db]
-  (get-clickhouse-version (:details db)))
+  (get-clickhouse-version db))
 
 (defn is-at-least?
   "Is ClickHouse version at least `major.minor` (e.g., 24.4)?"

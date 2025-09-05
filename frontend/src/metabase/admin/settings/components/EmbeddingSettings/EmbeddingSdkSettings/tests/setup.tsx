@@ -21,7 +21,6 @@ import { EmbeddingSdkSettings } from "../EmbeddingSdkSettings";
 
 export interface SetupOpts {
   showSdkEmbedTerms?: Settings["show-sdk-embed-terms"];
-  showSimpleEmbedTerms?: Settings["show-simple-embed-terms"];
   isEmbeddingSdkEnabled?: Settings["enable-embedding-sdk"];
   isEmbeddingSimpleEnabled?: Settings["enable-embedding-simple"];
   isHosted?: Settings["is-hosted?"];
@@ -31,7 +30,6 @@ export interface SetupOpts {
 
 export async function setup({
   showSdkEmbedTerms = true,
-  showSimpleEmbedTerms = true,
   isEmbeddingSdkEnabled = false,
   isEmbeddingSimpleEnabled = false,
   isHosted = false,
@@ -40,7 +38,6 @@ export async function setup({
 }: SetupOpts = {}) {
   const settings = createMockSettings({
     "show-sdk-embed-terms": showSdkEmbedTerms,
-    "show-simple-embed-terms": showSimpleEmbedTerms,
     "enable-embedding-sdk": isEmbeddingSdkEnabled,
     "enable-embedding-simple": isEmbeddingSimpleEnabled,
     "is-hosted?": isHosted,

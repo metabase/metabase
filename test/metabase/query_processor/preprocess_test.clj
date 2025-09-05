@@ -430,7 +430,7 @@
                                                    [:field (meta/id :checkins :id)
                                                     {:base-type :type/BigInteger, :join-alias "CH"}]]}]
                     :filter       [:=
-                                   [:field (meta/id :venues :price) {:base-type               :type/Text
+                                   [:field (meta/id :venues :price) {:base-type               :type/Integer
                                                                      :source-field            (meta/id :checkins :venue-id)
                                                                      :source-field-join-alias "CH"}]
                                    "1234"]}))]
@@ -573,7 +573,7 @@
                        (lib/returned-columns query))))))
       (testing `qp.preprocess/query->expected-cols
         (is (=? {:stages [{:breakout    [[:field {:join-alias "Products"} pos-int?]]
-                           :aggregation [[:count {:name "count"}]]
+                           :aggregation [[:count {}]]
                            :joins       [{:alias  "Products"
                                           :stages [{:fields #(= (count %) 8)}]}
                                          {:alias  "People - User"

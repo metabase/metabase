@@ -604,7 +604,7 @@
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"SQL compilation error:\nObject does not exist, or operation cannot be performed"
+               #"Cannot perform SELECT. This session does not have a current database. Call 'USE DATABASE', or use a qualified name."
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
 

@@ -1459,3 +1459,44 @@ describe("admin > settings > updates", () => {
     });
   });
 });
+
+describe("admin > settings > nav", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.visit("/admin/settings");
+  });
+
+  it("should navigate properly", () => {
+    // sadly we can't test this in unit tests with the current state of react-router and redux 😭
+    cy.log("clicking sidebar nav links should navigate there");
+
+    cy.url().should("include", "/admin/settings/general");
+    cy.findByTestId("admin-layout-sidebar").findByText(/email/i).click();
+    cy.findByTestId("admin-layout-content").findByText(/email/i);
+    cy.url().should("include", "/admin/settings/email");
+
+    cy.log(
+      "clicking folders should expand and collapse them, but not navigate",
+    );
+
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/api keys/i)
+      .should("not.be.visible");
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/authentication/i)
+      .click();
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/api keys/i)
+      .should("be.visible");
+    // still on email page
+    cy.findByTestId("admin-layout-content").findByText(/email/i);
+    cy.url().should("include", "/admin/settings/email");
+    // navigate to sub-item
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/api keys/i)
+      .click();
+    cy.findByTestId("admin-layout-content").findByText(/No API keys here yet/i);
+    cy.url().should("include", "/admin/settings/authentication/api-keys");
+  });
+});
