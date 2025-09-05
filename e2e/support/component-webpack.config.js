@@ -31,6 +31,11 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, "dist"),
   },
+  devServer: {
+    // Makes "Invalid Host/Origin header" errors go away.
+    // Cypress component tests seem to run on `127.0.0.1`
+    allowedHosts: ["localhost", "127.0.0.1"],
+  },
   module: {
     rules: [
       {
