@@ -33,7 +33,7 @@ const ACTION_ICON_SIZE = "md";
 
 export function DiscussionActionPanel({
   canResolve,
-  canReact,
+  canReact = true,
   comment,
   onResolve,
   onReopen,
