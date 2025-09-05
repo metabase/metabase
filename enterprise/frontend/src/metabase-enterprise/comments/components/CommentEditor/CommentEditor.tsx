@@ -196,9 +196,13 @@ export const CommentEditor = ({
 
       {!readonly && (
         <EditorBubbleMenu
+          className={S.bubbleMenu}
           editor={editor}
           disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
           allowedFormatting={ALLOWED_FORMATTING}
+          options={{
+            placement: "top",
+          }}
         />
       )}
     </Flex>

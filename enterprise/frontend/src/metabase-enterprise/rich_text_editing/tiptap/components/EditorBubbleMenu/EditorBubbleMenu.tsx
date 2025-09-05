@@ -1,4 +1,5 @@
 /* eslint-disable import/no-unresolved */ // -- this is a valid import for Tiptap's BubbleMenu
+import type { BubbleMenuOptions } from "@tiptap/extension-bubble-menu";
 import type { EditorState } from "@tiptap/pm/state";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 // @ts-expect-error - BubbleMenu is a Tiptap extension that is registered through @tiptap/extension-bubble-menu
@@ -33,12 +34,16 @@ interface EditorBubbleMenuProps {
   editor: TiptapEditor;
   disallowedNodes: string[];
   allowedFormatting?: FormattingOptions;
+  options?: BubbleMenuOptions["options"];
+  className?: string;
 }
 
 export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   editor,
   disallowedNodes,
   allowedFormatting = DEFAULT_ALLOWED_FORMATTING,
+  options,
+  className,
 }) => {
   const forceUpdate = useForceUpdate();
 
@@ -53,7 +58,9 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   }, [editor, forceUpdate]);
   return (
     <BubbleMenu
+      className={className}
       editor={editor}
+      options={options}
       shouldShow={({
         editor,
         state,

@@ -1,4 +1,5 @@
 .container {
+  position: relative;
   border: 1px solid var(--mb-color-border);
   box-shadow: var(--mantine-shadow-xs);
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
@@ -190,4 +191,9 @@
   &.canSubmit:hover {
     color: var(--mb-color-brand);
   }
+}
+
+.bubbleMenu {
+  position: fixed;
+  z-index: 1;
 }
