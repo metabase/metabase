@@ -118,7 +118,7 @@
                                           :external-users            ext-users
                                           :internal-users            (- users ext-users)
                                           :domains                   (internal-stats/email-domain-count)})]
-    (log/info "Reporting embedding stats:" stats)
+    (log/info "Reporting Metabase stats:" stats)
     stats))
 
 (defn- token-status-url [token base-url]
