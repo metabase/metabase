@@ -12,7 +12,8 @@
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
-        schema (or schema (driver.sql/default-schema driver/*driver*))]
+        default-schema (some-> driver/*driver* driver.sql/default-schema)
+        schema (or schema default-schema "public")]
     {:source {:type :query
               :query query}
      :name (str "transform_" name)
