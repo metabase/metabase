@@ -82,45 +82,44 @@
 
 (deftest search-data-sources-test
   (mt/with-test-user :rasta
-    (mt/with-premium-features #{:content-verification}
-      (let [order-table {:id 1
-                         :model "table"
-                         :table_name "orders"
-                         :name "Orders"
-                         :description "Order table"
-                         :database_id 42
-                         :table_schema "public"}
-            dashboard {:id 2
-                       :model "dashboard"
-                       :name "Sales Dashboard"
-                       :description "Dashboard for sales"
-                       :verified true}]
+    (let [order-table {:id 1
+                       :model "table"
+                       :table_name "orders"
+                       :name "Orders"
+                       :description "Order table"
+                       :database_id 42
+                       :table_schema "public"}
+          dashboard {:id 2
+                     :model "dashboard"
+                     :name "Sales Dashboard"
+                     :description "Dashboard for sales"
+                     :verified true}]
 
-        (with-redefs [perms/impersonated-user? (fn [] false)
-                      perms/sandboxed-user? (fn [] false)
-                      api/*current-user-id* 1]
-          (testing "search-data-sources returns transformed and deduplicated results for multiple keywords"
-            (with-redefs [search/search (fn [_] {:data [order-table]})]
-              (let [args {:keywords ["orders" "sales"]
-                          :entity-types ["table"]}
-                    results (sds/search-data-sources args)
-                    expected [(sds/transform-search-result order-table)]]
-                (is (= expected results)))))
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    api/*current-user-id* 1]
+        (testing "search-data-sources returns transformed and deduplicated results for multiple keywords"
+          (with-redefs [search/search (fn [_] {:data [order-table]})]
+            (let [args {:keywords ["orders" "sales"]
+                        :entity-types ["table"]}
+                  results (sds/search-data-sources args)
+                  expected [(sds/transform-search-result order-table)]]
+              (is (= expected results)))))
 
-          (testing "search-data-sources handles multiple results and deduplication"
-            (with-redefs [search/search (fn [_] {:data [order-table
-                                                        order-table
-                                                        dashboard]})]
-              (let [args {:keywords ["orders"]
-                          :entity-types ["table" "dashboard"]}
-                    results (sds/search-data-sources args)
-                    expected [(sds/transform-search-result order-table)
-                              (sds/transform-search-result dashboard)]]
-                (is (= expected results)))))
+        (testing "search-data-sources handles multiple results and deduplication"
+          (with-redefs [search/search (fn [_] {:data [order-table
+                                                      order-table
+                                                      dashboard]})]
+            (let [args {:keywords ["orders"]
+                        :entity-types ["table" "dashboard"]}
+                  results (sds/search-data-sources args)
+                  expected [(sds/transform-search-result order-table)
+                            (sds/transform-search-result dashboard)]]
+              (is (= expected results)))))
 
-          (testing "search-data-sources handles empty results"
-            (with-redefs [search/search (fn [_] {:data []})]
-              (let [args {:keywords ["none"]
-                          :entity-types ["table"]}
-                    results (sds/search-data-sources args)]
-                (is (empty? results))))))))))
+        (testing "search-data-sources handles empty results"
+          (with-redefs [search/search (fn [_] {:data []})]
+            (let [args {:keywords ["none"]
+                        :entity-types ["table"]}
+                  results (sds/search-data-sources args)]
+              (is (empty? results)))))))))
