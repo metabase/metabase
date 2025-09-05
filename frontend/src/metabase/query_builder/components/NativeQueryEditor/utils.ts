@@ -4,7 +4,7 @@ import { getEngineNativeType } from "metabase/lib/engine";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
 import {
-  MIN_EDITOR_RESIZE_MARGIN,
+  EDITOR_HEIGHT_OFFSET,
   MIN_HEIGHT_LINES,
   SCROLL_MARGIN,
 } from "./constants";
@@ -65,7 +65,7 @@ export function calcInitialEditorHeight({
 
 export function getEditorMaxHeight(viewHeight?: number | "full") {
   return typeof viewHeight === "number"
-    ? viewHeight - MIN_EDITOR_RESIZE_MARGIN
+    ? viewHeight - EDITOR_HEIGHT_OFFSET
     : undefined;
 }
 
