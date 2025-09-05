@@ -51,6 +51,7 @@ H.describeWithSnowplowEE("document comments", () => {
       childTargetId: string,
       getNodeElement: () => Cypress.Chainable<JQuery<E>>,
     ) {
+      cy.get("body").click(0, 0);
       Comments.getDocumentNodeButton({ targetId, childTargetId }).should(
         "not.be.visible",
       );
