@@ -238,38 +238,53 @@
     (driver/insert-from-source! driver (:id db) table-name (mapv :name (:columns table-schema)) data-source)))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
-  (with-open [log-thread-ref (open-log-thread! run-id message-log)]
-    (let [driver                           (:engine db)
-          {:keys [source-tables body]}     source
-          {:keys [body status] :as result} (call-python-runner-api! body source-tables run-id cancel-chan)
-          {:keys [events]}   body]
+  (with-open [log-thread-ref     (open-log-thread! run-id message-log)
+              shared-storage-ref (python-runner/open-s3-shared-storage! (:source-tables source))]
+    (let [driver                        (:engine db)
+          server-url                    (transforms.settings/python-execution-server-url)
+          _                             (python-runner/copy-tables-to-s3! {:run-id                  run-id
+                                                                           :shared-storage @shared-storage-ref
+                                                                           :table-name->id (:source-tables source)
+                                                                           :cancel-chan    cancel-chan})
+          _                             (python-runner/open-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+          {:keys [status body] :as response}
+          (python-runner/execute-python-code-http-call!
+           {:server-url     server-url
+            :code           (:body source)
+            :run-id         run-id
+            :table-name->id (:source-tables source)
+            :shared-storage @shared-storage-ref})
+          {:keys [exit_code]} body
+          ;; TODO temporary to keep more code stable while refactoring
+          ;; no need to materialize these early (i.e output we can stream directly into a tmp file or db if small)
+          {:keys [output output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
       (.close log-thread-ref)           ; early close to force any writes to flush
       (when (seq events)
         (replace-python-logs! message-log events))
       (if (not= 200 status)
-        (throw (ex-info (debug-info-str body)
+        (throw (ex-info (debug-info-str {:exit-code exit_code :events events}) ;; todo do better here
                         {:status-code     400
                          :api-status-code status
                          :body            body
+                         :events          events
                          :error           (:error body)}))
         (try
-          (let [temp-file (File/createTempFile "transform-output-" ".csv")
-                csv-data  (:output body)
-                metadata  (-> body :metadata json/decode+kw)]
-            (when-not (seq (:fields metadata))
+          (let [temp-file (File/createTempFile "transform-output-" ".csv")]
+            (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
-                              {:metadata metadata
-                               :raw-body body})))
+                              {:metadata output-manifest
+                               :raw-body body
+                               :events   events})))
             (try
               (with-open [writer (io/writer temp-file)]
-                (.write writer ^String csv-data))
+                (.write writer ^String output))
               (let [file-size (.length temp-file)]
                 (transforms.instrumentation/with-stage-timing [run-id :data-transfer :file-to-dwh]
-                  (transfer-file-to-db driver db transform metadata temp-file))
+                  (transfer-file-to-db driver db transform output-manifest temp-file))
                 (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil))
               (finally
                 (.delete temp-file))))
-          result
+          response
           (catch Exception e
             (log/error e "Failed to to create resulting table")
             (throw (ex-info "Failed to create the resulting table" {:error (.getMessage e)}))))))))

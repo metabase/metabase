@@ -12,6 +12,7 @@
    [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
    [metabase.task.core :as task]
@@ -50,12 +51,26 @@
 
 (def ^:private test-id 1)
 
-(defn- reconstruct-logs [{:keys [events] :as body}]
-  (assoc body :stdout (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
-         :stderr (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))))
-
 (defn- execute [{:keys [code tables]}]
-  (reconstruct-logs (:body (python-runner/execute-python-code test-id code (or tables {}) (a/promise-chan)))))
+  (with-open [shared-storage-ref (python-runner/open-s3-shared-storage! (or tables {}))]
+    (let [server-url     (transforms.settings/python-execution-server-url)
+          cancel-chan    (a/promise-chan)
+          table-name->id (or tables {})
+          _              (python-runner/copy-tables-to-s3! {:run-id         test-id
+                                                            :shared-storage @shared-storage-ref
+                                                            :table-name->id table-name->id
+                                                            :cancel-chan    cancel-chan})
+          response       (python-runner/execute-python-code-http-call! {:server-url     server-url
+                                                                        :code           code
+                                                                        :run-id         test-id
+                                                                        :table-name->id table-name->id
+                                                                        :shared-storage @shared-storage-ref})
+          {:keys [output events]} (python-runner/read-output-objects @shared-storage-ref)]
+      ;; not sure about munging this all together but its what tests expect for now
+      (merge (:body response)
+             {:output output
+              :stdout (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
+              :stderr (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))
 
 (deftest ^:parallel transform-function-basic-test
   (testing "executes transform function and returns CSV output"
@@ -74,8 +89,7 @@
     (let [result (execute {:code (str "import pandas as pd\n"
                                       "\n"
                                       "# No transform function defined")})]
-      (is (=? {:error     "Execution failed"
-               :exit-code 1
+      (is (=? {:exit_code 1
                :stderr    "ERROR: User script must define a 'transform()' function"
                :stdout    ""}
               result)))))
@@ -84,8 +98,7 @@
   (testing "handles transform function returning non-DataFrame"
     (let [result (execute {:code (str "def transform():\n"
                                       "    return 'not a dataframe'")})]
-      (is (=? {:error     "Execution failed"
-               :exit-code 1
+      (is (=? {:exit_code 1
                :stderr    "ERROR: Transform function must return a pandas DataFrame, got <class 'str'>"
                :stdout    ""}
               result)))))
@@ -103,8 +116,7 @@
                                  "    raise ValueError('Something went wrong')\n"
                                  "ValueError: Something went wrong")
           stderr-pattern    (template->regex expected-template)]
-      (is (=? {:error     "Execution failed"
-               :exit-code 1
+      (is (=? {:exit_code 1
                :stderr    #(re-matches stderr-pattern %)
                :stdout    ""
                :timeout   false}
