@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.python-runner :as python-runner]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
