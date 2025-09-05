@@ -376,7 +376,7 @@ databaseChangeLog:
   - changeSet:
       id: v56.2025-09-03T17:15:00
       author: piranha
-      comment: Added 0.56.0 -- add metabot_conversation
+      comment: metabot_conversation table
       changes:
         - createTable:
             tableName: metabot_conversation
@@ -413,17 +413,24 @@ databaseChangeLog:
                   name: state
                   type: ${text.type}
                   remarks: 'Metabot conversation state'
-            indexes:
-              - index:
-                  name: idx_metabot_conversation_user_id
-                  columns:
-                    - column:
-                        name: user_id
 
   - changeSet:
       id: v56.2025-09-03T17:15:01
       author: piranha
-      comment: Added 0.56.0 -- add metabot_message
+      comment: Index on metabot_conversation.user_id
+      changes:
+        - createIndex:
+            indexName: idx_metabot_conversation_user_id
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: user_id
+      rollback: # will be dropped with table
+
+  - changeSet:
+      id: v56.2025-09-03T17:15:02
+      author: piranha
+      comment: metabot_message table
       changes:
         - createTable:
             tableName: metabot_message
@@ -477,6 +484,19 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_metabot_message_conversation_id
                   remarks: 'Reference to a conversation'
+
+  - changeSet:
+      id: v56.2025-09-03T17:15:04
+      author: piranha
+      comment: Index on metabot_message.conversation_id
+      changes:
+        - createIndex:
+            indexName: idx_metabot_message_conversation_id
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: conversation_id
+      rollback: # will be dropped with table
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
