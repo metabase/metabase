@@ -284,16 +284,10 @@
   [{:keys [table-id model-id]}]
   (cond
     model-id
-    (let [card (metabot-v3.tools.u/get-card model-id)
-          mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
-          base-query (lib/query mp (lib.metadata/card mp model-id))]
-      [(metabot-v3.tools.u/card-field-id-prefix model-id) base-query])
+    [(metabot-v3.tools.u/card-field-id-prefix model-id) (metabot-v3.tools.u/card-query model-id)]
 
     table-id
-    (let [table (metabot-v3.tools.u/get-table table-id :db_id)
-          mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))
-          base-query (lib/query mp (lib.metadata/table mp table-id))]
-      [(metabot-v3.tools.u/table-field-id-prefix table-id) base-query])
+    [(metabot-v3.tools.u/table-field-id-prefix table-id) (metabot-v3.tools.u/table-query table-id)]
 
     :else
     (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true}))))
