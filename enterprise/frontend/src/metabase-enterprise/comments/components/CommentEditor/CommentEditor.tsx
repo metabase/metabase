@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { METAKEY } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { EditorBubbleMenu } from "metabase-enterprise/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
 import type { FormattingOptions } from "metabase-enterprise/rich_text_editing/tiptap/components/EditorBubbleMenu/types";
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
@@ -179,15 +179,17 @@ export const CommentEditor = ({
       </Box>
 
       {!readonly && (
-        <ActionIcon
-          aria-label={t`Send`}
-          className={cx(S.submitBtn, { [S.canSubmit]: content })}
-          disabled={!content}
-          variant="subtle"
-          onClick={submitDoc}
-        >
-          <Icon tooltip={t`Send (${METAKEY} + Enter)`} name="arrow_up" />
-        </ActionIcon>
+        <Tooltip disabled={!content} label={t`Send (${METAKEY} + Enter)`}>
+          <ActionIcon
+            aria-label={t`Send`}
+            className={cx(S.submitBtn, { [S.canSubmit]: content })}
+            disabled={!content}
+            variant="subtle"
+            onClick={submitDoc}
+          >
+            <Icon name="arrow_up" />
+          </ActionIcon>
+        </Tooltip>
       )}
 
       {!readonly && (
