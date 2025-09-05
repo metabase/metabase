@@ -1,4 +1,36 @@
+exports.isConventionalTitle = isConventionalTitle;
 exports.updateCommentForEmbedding = updateCommentForEmbedding;
+
+const TYPES = new Set([
+  "feat",
+  "fix",
+  "perf",
+  "docs",
+  "style",
+  "refactor",
+  "test",
+  "build",
+  "ci",
+]);
+
+/**
+ * @param title {string}
+ */
+function isConventionalTitle(title) {
+  const match = /^(\w+)\(([^)]+)\):/.exec(title);
+
+  if (!match) {
+    return false;
+  }
+
+  const [, type, rawScopes] = match;
+  const scopes = rawScopes
+    .split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+
+  return TYPES.has(type) && scopes.length > 0;
+}
 
 /** @param {import('@types/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
 async function updateCommentForEmbedding({ github, context }) {
@@ -22,7 +54,7 @@ Please also make sure to include a scope.
 For example, these are valid PR titles:
 - \`feat(sdk-bundle): Add interactive dashboard component\`
 - \`fix(sdk-package): Fixed MetabaseProviderPropsStore logic\`
-- \`fix(embed-js): Fix API\``;
+- \`fix(sdk-package, embed-js): Fix API\``;
 
   return updateComment(comment, { github, context });
 }
