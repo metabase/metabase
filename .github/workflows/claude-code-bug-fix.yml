@@ -53,14 +53,14 @@ jobs:
                 github,
                 manualIssueNumber: '${{ github.event.inputs.issue_number }}'
               });
-              
+
               const { issueNumber, issueData, employeeComments, prReviews, triggerType, isIssueAuthorEmployee } = result;
 
               // Check employee status and fail if not authorized
               if (!result.isIssueAuthorEmployee && '${{ github.event.inputs.override_employee_check }}' !== 'true') {
                   core.setFailed(`User ${result.issueData.user.login} is not a Metabase employee. Skipping bug fix automation.`);
-              } 
-              
+              }
+
               core.setOutput('issue_number', issueNumber);
               core.setOutput('issue_data', JSON.stringify(issueData));
               core.setOutput('issue_comments', JSON.stringify(employeeComments));
@@ -102,12 +102,12 @@ jobs:
             const branchName = `claude-fix/issue-${issueNumber}-${kebabTitle}`;
 
             // Format data for bash environment
-            const formattedComments = issueComments.length > 0 
+            const formattedComments = issueComments.length > 0
               ? issueComments.map(comment => 
                   `**Comment by @${comment.user.login} on ${comment.created_at}:**\n${comment.body}`
                 ).join('\n\n---\n\n')
               : '';
-            const formattedReviews = prReviews.length > 0 
+            const formattedReviews = prReviews.length > 0
               ? prReviews.map(review => 
                   `**Review by @${review.user.login} on ${review.submitted_at} (Changes Requested):**\n${review.body || 'No review comment provided'}`
                 ).join('\n\n---\n\n')
