@@ -133,7 +133,7 @@
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
       (lib/query mp (lib.metadata/table mp table-id)))))
 
-(defn metabot-scope-query
+(defn metabot-metrics-and-models-query
   "Return the metric and model cards in metabot scope visible to the current user.
 
   Takes a metabot-id and returns all metric and model cards in that metabot's collection
@@ -169,7 +169,7 @@
             api/*is-superuser?* true]
     (t2/select-fn-vec #(select-keys % [:id :name :type])
                       :model/Card
-                      (metabot-scope-query 1)))
+                      (metabot-metrics-and-models-query 1)))
   -)
 
 (defn get-metrics-and-models
@@ -177,5 +177,5 @@
 
   Only cards visible to the current user are returned."
   [metabot-id]
-  (t2/select :model/Card (-> (metabot-scope-query metabot-id)
+  (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id)
                              (assoc :order-by [:id]))))

@@ -47,6 +47,7 @@ export const {
   toolCallStart,
   toolCallEnd,
   setProfileOverride,
+  setMetabotReqIdOverride,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -102,6 +103,13 @@ export const executeSlashCommand = createAsyncThunk<void, SlashCommand>(
           dispatch(setProfileOverride(args[0]));
         } else {
           dispatch(addUndo({ message: "/profile <name>" }));
+        }
+      })
+      .with({ cmd: "metabot" }, ({ args }) => {
+        if (args.length <= 1) {
+          dispatch(setMetabotReqIdOverride(args[0]));
+        } else {
+          dispatch(addUndo({ message: "/metabot <name>" }));
         }
       })
       .otherwise(() => {

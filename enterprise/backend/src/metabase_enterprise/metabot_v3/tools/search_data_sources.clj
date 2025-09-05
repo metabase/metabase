@@ -63,42 +63,68 @@
        :verified (boolean (or (:verified result)  ; Fallback to False if not provided
                               (= "verified" (:moderated_status result))))})))
 
+(defn- build-search-context
+  "Build the search context for a given search term"
+  [term database-id search-models search-limit verified?]
+  (search/search-context
+   (cond-> {:search-string term
+            :models (set search-models)
+            :table-db-id database-id
+            :current-user-id api/*current-user-id*
+            :is-impersonated-user? (perms/impersonated-user?)
+            :is-sandboxed-user? (perms/sandboxed-user?)
+            :is-superuser? api/*is-superuser?*
+            :current-user-perms @api/*current-user-permissions-set*
+            :context :metabot
+            :archived false
+            :limit search-limit
+            :offset 0}
+     verified? (assoc :verified true))))
+
+(defn- filter-by-collection
+  "Filter search results by collection, always including tables"
+  [metabot-coll-id results]
+  (if metabot-coll-id
+    (filter (fn [result]
+              (or (= (:model result) "table")
+                  (= (get-in result [:collection :id]) metabot-coll-id)))
+            results)
+    results))
+
+(defn- dedupe-by-id-and-model
+  "Remove duplicate results based on id and model"
+  [results]
+  (vals (m/index-by (juxt :id :model) results)))
+
+(defn- search-for-term
+  "Execute a search for a single term"
+  [{:keys [term database-id search-models search-limit verified?]}]
+  (-> (build-search-context term database-id search-models search-limit verified?)
+      search/search
+      :data))
+
 (defn search-data-sources
   "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [keywords description database-id entity-types limit metabot-id]}]
-  (let [;; Default to all entity types if none specified
+  (let [metabot-entity-id (get-in metabot-v3.config/metabot-config [metabot-id :entity-id] metabot-id)
+        metabot (t2/select-one :model/Metabot :entity_id metabot-entity-id)
+        metabot-coll-id (:collection_id metabot)
+
+        normalized-description (when-not (str/blank? description) description)
         entity-types (if (seq entity-types)
                        entity-types
                        ["table" "model" "question" "dashboard" "metric"])
-        normalized-description (if (and (string? description) (str/blank? description)) nil description)
+
         search-terms (distinct (concat (or keywords []) (when normalized-description [normalized-description])))
-        search-models (set (keep entity-type->search-model entity-types))
-        metabot (t2/select-one :model/Metabot :entity_id (get-in metabot-v3.config/metabot-config [metabot-id :entity-id] metabot-id))
-        use-verified-content? (if metabot-id
-                                (:use_verified_content metabot)
-                                false)
-        ;; Run a search for each term in the search terms
-        all-results (mapcat
-                     (fn [term]
-                       (let [search-context (search/search-context (merge
-                                                                    {:search-string term
-                                                                     :models search-models
-                                                                     :table-db-id database-id
-                                                                     ;;TODO: Do we need those impersonated, sandboxed, superuser checks?
-                                                                     :current-user-id api/*current-user-id*
-                                                                     :is-impersonated-user? (perms/impersonated-user?)
-                                                                     :is-sandboxed-user? (perms/sandboxed-user?)
-                                                                     :is-superuser? api/*is-superuser?*
-                                                                     :current-user-perms @api/*current-user-permissions-set*
-                                                                     :context :metabot
-                                                                     :archived false
-                                                                     :limit (or limit 50)
-                                                                     :offset 0}
-                                                                    (when use-verified-content?
-                                                                      {:verified true})))
-                             search-results (search/search search-context)]
-                         (:data search-results)))
-                     search-terms)
-        unique-results (vals (m/index-by (juxt :id :model) all-results))]
-    (map transform-search-result unique-results)))
+        search-models (keep entity-type->search-model entity-types)
+        search-limit (or limit (if metabot-coll-id 75 50))]
+    (->> search-terms
+         (mapcat #(search-for-term {:term %
+                                    :database-id database-id
+                                    :search-models search-models
+                                    :search-limit search-limit
+                                    :verified? (:use_verified_content metabot)}))
+         (filter-by-collection metabot-coll-id)
+         dedupe-by-id-and-model
+         (map transform-search-result))))

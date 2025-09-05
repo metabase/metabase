@@ -5,7 +5,8 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest transform-search-result-test
   (testing "table result transformation"
@@ -81,45 +82,71 @@
       (is (= expected (sds/transform-search-result result))))))
 
 (deftest search-data-sources-test
-  (mt/with-test-user :rasta
-    (let [order-table {:id 1
-                       :model "table"
-                       :table_name "orders"
-                       :name "Orders"
-                       :description "Order table"
-                       :database_id 42
-                       :table_schema "public"}
-          dashboard {:id 2
-                     :model "dashboard"
-                     :name "Sales Dashboard"
-                     :description "Dashboard for sales"
-                     :verified true}]
+  (mt/with-premium-features #{:content-verification}
+    (mt/with-test-user :rasta
+      (let [order-table {:id 1
+                         :model "table"
+                         :table_name "orders"
+                         :name "Orders"
+                         :description "Order table"
+                         :database_id 42
+                         :table_schema "public"}
+            dashboard {:id 2
+                       :model "dashboard"
+                       :name "Sales Dashboard"
+                       :description "Dashboard for sales"
+                       :verified true}]
 
-      (with-redefs [perms/impersonated-user? (fn [] false)
-                    perms/sandboxed-user? (fn [] false)
-                    api/*current-user-id* 1]
-        (testing "search-data-sources returns transformed and deduplicated results for multiple keywords"
-          (with-redefs [search/search (fn [_] {:data [order-table]})]
-            (let [args {:keywords ["orders" "sales"]
-                        :entity-types ["table"]}
-                  results (sds/search-data-sources args)
-                  expected [(sds/transform-search-result order-table)]]
-              (is (= expected results)))))
+        (with-redefs [perms/impersonated-user? (fn [] false)
+                      perms/sandboxed-user? (fn [] false)
+                      api/*current-user-id* 1]
+          (testing "search-data-sources returns transformed and deduplicated results for multiple keywords"
+            (with-redefs [search/search (fn [_] {:data [order-table]})]
+              (let [args {:keywords ["orders" "sales"]
+                          :entity-types ["table"]}
+                    results (sds/search-data-sources args)
+                    expected [(sds/transform-search-result order-table)]]
+                (is (= expected results)))))
 
-        (testing "search-data-sources handles multiple results and deduplication"
-          (with-redefs [search/search (fn [_] {:data [order-table
-                                                      order-table
-                                                      dashboard]})]
-            (let [args {:keywords ["orders"]
-                        :entity-types ["table" "dashboard"]}
-                  results (sds/search-data-sources args)
-                  expected [(sds/transform-search-result order-table)
-                            (sds/transform-search-result dashboard)]]
-              (is (= expected results)))))
+          (testing "search-data-sources handles multiple results and deduplication"
+            (with-redefs [search/search (fn [_] {:data [order-table
+                                                        order-table
+                                                        dashboard]})]
+              (let [args {:keywords ["orders"]
+                          :entity-types ["table" "dashboard"]}
+                    results (sds/search-data-sources args)
+                    expected [(sds/transform-search-result order-table)
+                              (sds/transform-search-result dashboard)]]
+                (is (= expected results)))))
 
-        (testing "search-data-sources handles empty results"
-          (with-redefs [search/search (fn [_] {:data []})]
-            (let [args {:keywords ["none"]
-                        :entity-types ["table"]}
-                  results (sds/search-data-sources args)]
-              (is (empty? results)))))))))
+          (testing "search-data-sources handles empty results"
+            (with-redefs [search/search (fn [_] {:data []})]
+              (let [args {:keywords ["none"]
+                          :entity-types ["table"]}
+                    results (sds/search-data-sources args)]
+                (is (empty? results)))))
+
+          (testing "search-data-sources with metabot collection and verified content"
+            (let [metabot {:entity_id "test-bot"
+                           :collection_id 100
+                           :use_verified_content true}
+                  table-result {:id 1 :model "table" :name "orders"}
+                  card-in-collection {:id 2 :model "card" :name "Q1" :collection {:id 100} :verified true}
+                  card-other-collection {:id 3 :model "card" :name "Q2" :collection {:id 200} :verified true}]
+
+              (with-redefs [t2/select-one (fn [model & _]
+                                            (is (= :model/Metabot model) "Should query for Metabot model")
+                                            metabot)
+                            search/search (fn [context]
+                                            ;; Verify that verified flag is set when metabot has use_verified_content
+                                            (is (true? (:verified context)))
+                                            {:data [table-result card-in-collection card-other-collection]})]
+
+                (let [results (sds/search-data-sources {:keywords ["test"]
+                                                        :metabot-id "test-bot"
+                                                        :entity-types ["table" "question"]})]
+                  ;; Should only return table and card in collection 100
+                  (is (= 2 (count results)))
+                  (is (some #(= (:id %) 1) results) "Table should be included")
+                  (is (some #(= (:id %) 2) results) "Card in metabot collection should be included")
+                  (is (not (some #(= (:id %) 3) results)) "Card in different collection should be excluded"))))))))))
