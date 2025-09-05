@@ -10,6 +10,7 @@ import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 
 export default class LeafletMap extends Component {
   constructor(props) {
@@ -260,4 +261,60 @@ export default class LeafletMap extends Component {
     } = this.props;
     return _.findWhere(cols, { name: settings["map.metric_column"] });
   }
+
+  _createMarker = (rowIndex) => {
+    const marker = L.marker([0, 0], { icon: this.pinMarkerIcon });
+    const { onHoverChange, onVisualizationClick, settings } = this.props;
+    if (onHoverChange) {
+      marker.on("mousemove", (e) => {
+        const {
+          series: [
+            {
+              data: { cols, rows },
+            },
+          ],
+        } = this.props;
+        const hover = {
+          dimensions: cols.map((col, colIndex) => ({
+            value: rows[rowIndex][colIndex],
+            column: col,
+          })),
+          element: marker._icon,
+        };
+        onHoverChange(hover);
+      });
+      marker.on("mouseout", () => {
+        onHoverChange(null);
+      });
+    }
+    if (onVisualizationClick) {
+      marker.on("click", () => {
+        const {
+          series: [
+            {
+              data: { cols, rows },
+            },
+          ],
+        } = this.props;
+        // if there is a primary key then associate a pin with it
+        const pkIndex = _.findIndex(cols, isPK);
+        const hasPk = pkIndex >= 0;
+
+        const data = cols.map((col, index) => ({
+          col,
+          value: rows[rowIndex][index],
+        }));
+
+        onVisualizationClick({
+          value: hasPk ? rows[rowIndex][pkIndex] : null,
+          column: hasPk ? cols[pkIndex] : null,
+          element: marker._icon,
+          origin: { row: rows[rowIndex], cols },
+          settings,
+          data,
+        });
+      });
+    }
+    return marker;
+  };
 }
