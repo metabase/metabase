@@ -1679,6 +1679,14 @@
            warehouse-schema
            warehouses}}
 
+  enterprise/comments
+  {:team "UX East"
+   :api  #{metabase-enterprise.comments.api
+           metabase-enterprise.comments.init}
+   :uses #{api
+           models
+           util}}
+
   enterprise/documents
   {:team "UX West"
    :api  #{metabase-enterprise.documents.api

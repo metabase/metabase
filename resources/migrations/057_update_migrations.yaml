@@ -1142,13 +1142,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: is_deleted
-                  type: ${boolean.type}
-                  remarks: Soft delete flag
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-              - column:
                   name: is_resolved
                   type: ${boolean.type}
                   remarks: Whether this comment thread is resolved
@@ -1168,12 +1161,10 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: entity_id
-                  type: char(21)
-                  remarks: Random NanoID tag for unique identity
+                  name: deleted_at
+                  type: ${timestamp_type}
                   constraints:
                     nullable: true
-                    unique: true
         - addForeignKeyConstraint:
             baseTableName: comment
             baseColumnNames: creator_id
@@ -1208,30 +1199,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: parent_comment_id
-
-  - changeSet:
-      id: v57.2025-08-24T10:01:00
-      author: anton
-      comment: Convert comment content from text to JSON format
-      changes:
-        - sql:
-            sql: >-
-              UPDATE comment
-              SET content = CONCAT('{"text":"', REPLACE(REPLACE(IFNULL(content, ''), '"', '\\"'), CHAR(10), '\\n'), '"}')
-              WHERE content IS NOT NULL;
-            dbms: "mysql"
-        - sql:
-            sql: >-
-              UPDATE comment
-              SET content = '{"text":"' || REPLACE(REPLACE(COALESCE(content, ''), '"', '\"'), CHR(10), '\n') || '"}'
-              WHERE content IS NOT NULL;
-            dbms: "postgresql"
-        - sql:
-            sql: >-
-              UPDATE comment
-              SET content = '{"text":"' || REPLACE(REPLACE(IFNULL(content, ''), '"', '""'), CHAR(10), '\n') || '"}'
-              WHERE content IS NOT NULL;
-            dbms: "h2"
 
   - changeSet:
       id: v57.2025-09-01T17:15:00
@@ -1294,31 +1261,14 @@ databaseChangeLog:
             onDelete: CASCADE
         - addUniqueConstraint:
             tableName: comment_reaction
-            columnNames: comment_id, user_id
-            constraintName: unique_user_comment_reaction
+            columnNames: comment_id, user_id, emoji
+            constraintName: unique_user_comment_emoji
         - createIndex:
             tableName: comment_reaction
             indexName: idx_comment_reaction_comment_id
             columns:
               - column:
                   name: comment_id
-
-  - changeSet:
-      id: v57.2025-09-02T10:00:00
-      author: anton
-      comment: Fix comment_reaction unique constraint to allow multiple reactions per user
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: comment_reaction
-      changes:
-        - dropUniqueConstraint:
-            tableName: comment_reaction
-            constraintName: unique_user_comment_reaction
-        - addUniqueConstraint:
-            tableName: comment_reaction
-            columnNames: comment_id, user_id, emoji
-            constraintName: unique_user_comment_emoji
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

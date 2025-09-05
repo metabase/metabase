@@ -18,7 +18,7 @@ export interface Comment {
   creator: BaseUser;
   content: DocumentContent;
 
-  is_deleted: boolean;
+  deleted_at: boolean;
   is_resolved: boolean;
 
   created_at: string;
@@ -53,7 +53,7 @@ export interface CreateCommentRequest {
 export interface UpdateCommentRequest {
   id: CommentId;
   content?: DocumentContent;
-  is_deleted?: boolean;
+  deleted_at?: boolean;
   is_resolved?: boolean;
 }
 

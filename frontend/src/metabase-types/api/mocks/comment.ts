@@ -19,7 +19,7 @@ export function createMockComment(comment?: Partial<Comment>): Comment {
     creator: createMockUser(),
     content: createMockDocumentContent(),
 
-    is_deleted: false,
+    deleted_at: null,
     is_resolved: false,
 
     created_at: "2024-01-01T00:00:00Z",

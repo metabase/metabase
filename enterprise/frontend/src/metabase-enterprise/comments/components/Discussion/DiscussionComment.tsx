@@ -59,7 +59,7 @@ export function DiscussionComment({
     [comment, onEdit, editingHandler],
   );
 
-  if (comment.is_deleted) {
+  if (comment.deleted_at) {
     return (
       <Timeline.Item
         classNames={{
