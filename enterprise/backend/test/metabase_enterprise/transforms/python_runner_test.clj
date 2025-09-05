@@ -405,4 +405,4 @@
                    [name (transforms.util/dtype->base-type dtype)]))))
 
         ;; cleanup
-        #_(driver/drop-table! driver db-id (:name table-schema))))))
+        (driver/drop-table! driver db-id (:name table-schema))))))
