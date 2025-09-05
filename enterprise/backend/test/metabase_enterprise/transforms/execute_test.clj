@@ -6,10 +6,13 @@
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -125,3 +128,21 @@
                           ["2024-01-21T00:00:00Z" 19.99]
                           ["2024-01-23T00:00:00Z" 14.99]]
                          query-result)))))))))))
+
+(deftest create-table-from-schema!-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (let [driver       driver/*driver*
+          db-id        (mt/id)
+          table-name   (mt/random-name)
+          schema-name  (sql.tx/session-schema driver)
+          table-schema {:name    (if schema-name
+                                   (keyword schema-name table-name)
+                                   (keyword table-name))
+                        :columns [{:name "id" :type :int :nullable? false}
+                                  {:name "name" :type :text :nullable? true}]}]
+      (mt/as-admin
+        (testing "create-table-from-schema! should create the table successfully"
+          (transforms.util/create-table-from-schema! driver db-id table-schema)
+          (let [table-exists? (driver/table-exists? driver db-id {:schema schema-name :name table-name})]
+            (is (some? table-exists?) "Table should exist in the database schema")
+            (driver/drop-table! driver db-id (:name table-schema))))))))

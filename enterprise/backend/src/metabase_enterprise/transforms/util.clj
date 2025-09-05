@@ -1,9 +1,12 @@
 (ns metabase-enterprise.transforms.util
   (:require
+   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -100,3 +103,57 @@
   [transform]
   (case (-> transform :target :type)
     "table"             :transforms/table))
+
+(mr/def ::data-type
+  [:enum :boolean :int :float :date :datetime :offset-datetime :text])
+
+(mr/def ::column-definition
+  [:map
+   [:name :string]
+   [:type ::data-type]
+   [:nullable? {:optional true} :boolean]])
+
+(mr/def ::table-definition
+  [:map
+   [:name :keyword]
+   [:columns [:sequential ::column-definition]]
+   [:primary-key {:optional true} [:sequential :string]]])
+
+(defmulti data-type->database-type
+  "Maps generic data types to driver-specific database types."
+  {:arglists '([driver data-type])}
+  (fn [driver & _] driver)
+  :hierarchy #'driver/hierarchy)
+
+(mu/defmethod data-type->database-type :default
+  [driver :- :keyword
+   data-type :- ::data-type]
+  (let [upload-type (keyword "metabase.upload" (name data-type))]
+    (driver/upload-type->database-type driver upload-type)))
+
+(defn dtype->table-type
+  "dtype to data type"
+  [dtype-str]
+  (cond
+    (str/starts-with? dtype-str "int") :int
+    (str/starts-with? dtype-str "float") :float
+    (str/starts-with? dtype-str "bool") :boolean
+    ;; datetime64[ns, timezone] indicates timezone-aware datetime
+    (str/starts-with? dtype-str "datetime64[ns, ") :offset-datetime
+    (str/starts-with? dtype-str "datetime") :datetime
+    ;; this is not a real dtype, pandas uses 'object', but we override it if there's source or custom field metadata
+    (str/starts-with? dtype-str "date") :date
+    :else :text))
+
+(mu/defn create-table-from-schema!
+  "Create a table from a table-schema"
+  [driver :- :keyword
+   database-id :- pos-int?
+   table-schema :- ::table-definition]
+  (let [{:keys [columns] table-name :name} table-schema
+        column-definitions (into {} (map (fn [{:keys [name type]}]
+                                           [name (data-type->database-type driver type)]))
+                                 columns)
+        primary-key-opts (select-keys table-schema [:primary-key])]
+    (log/infof "Creating table %s with %d columns" table-name (count columns))
+    (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))

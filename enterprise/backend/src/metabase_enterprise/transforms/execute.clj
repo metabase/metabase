@@ -10,7 +10,6 @@
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
-   [metabase.driver.table-creation :as table-creation]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -177,7 +176,7 @@
                     (recur))
                   :else
                   (do
-                    (log/warnf "Unexpected status polling for logs %s %s, run-id:" status body run-id)
+                    (log/warnf "Unexpected status polling for logs %s %s, run-id: %s" status body run-id)
                     (log/debug "Exiting due to poll error")))))))
       (catch InterruptedException _)
       (catch Throwable e
@@ -223,32 +222,20 @@
              "======"
              (format "exit code %d" exit-code)]))
 
-(defn- dtype->table-type [dtype-str]
-  (cond
-    (str/starts-with? dtype-str "int") :int
-    (str/starts-with? dtype-str "float") :float
-    (str/starts-with? dtype-str "bool") :boolean
-    ;; datetime64[ns, timezone] indicates timezone-aware datetime
-    (str/starts-with? dtype-str "datetime64[ns, ") :offset-datetime
-    (str/starts-with? dtype-str "datetime") :datetime
-    ;; this is not a real dtype, pandas uses 'object', but we override it if there's source or custom field metadata
-    (str/starts-with? dtype-str "date") :date
-    :else :text))
-
 (defn- transfer-file-to-db [driver db {:keys [target] :as transform} metadata temp-file]
   (let [table-name (transforms.util/qualified-table-name driver target)
         table-schema {:name table-name
                       :columns (mapv (fn [{:keys [name dtype]}]
                                        {:name name
-                                        :type (dtype->table-type dtype)
+                                        :type (transforms.util/dtype->table-type dtype)
                                         :nullable? true})
                                      (:fields metadata))}
         data-source {:type :csv-file
                      :file temp-file}]
     ;; TODO: should be transactional, perharps go through driver/run-transform!
     (transforms.util/delete-target-table! transform)
-    (table-creation/create-table-from-schema! driver (:id db) table-schema)
-    (table-creation/insert-from-source! driver (:id db) table-name (mapv :name (:columns table-schema)) data-source)))
+    (transforms.util/create-table-from-schema! driver (:id db) table-schema)
+    (driver/insert-from-source! driver (:id db) table-name (mapv :name (:columns table-schema)) data-source)))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
   (with-open [log-thread-ref (open-log-thread! run-id message-log)]
