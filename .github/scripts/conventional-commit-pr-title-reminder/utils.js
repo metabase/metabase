@@ -78,19 +78,20 @@ async function updateComment(comment, { github, context }) {
   );
 
   if (existingComment) {
-    await github.rest.issues.deleteComment({
+    return await github.rest.issues.updateComment({
       owner,
       repo,
       comment_id: existingComment.id,
+      body: comment,
+    });
+  } else {
+    return await github.rest.issues.createComment({
+      owner,
+      repo,
+      issue_number: pullRequestNumber,
+      body: comment,
     });
   }
-
-  return await github.rest.issues.createComment({
-    owner,
-    repo,
-    issue_number: pullRequestNumber,
-    body: comment,
-  });
 }
 
 const CONVENTIONAL_COMMENT_IDENTIFIER =

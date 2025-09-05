@@ -94,8 +94,10 @@ type ProductCategory =
   | "Visualization"
   | "Other";
 
-// Map of product categories in release notes and PR/Issue labels sub-strings that used to route issues to those categories
-// The position in labels sub-strings list matters, as it determines the order in which these strings are tested against the actual label
+// Map `Map<ProductCategory, LabelPart[]>`:
+// - `ProductCategory` is product categories in release notes
+// - `LabelPart` is PR/Issue labels parts that used to route issues to those categories
+// The item position in labels parts list determines the order in which these strings are tested against the actual label
 const productCategories: Record<ProductCategory, readonly string[]> = {
   Administration: ["Administration"],
   Database: ["Database"],
@@ -132,17 +134,17 @@ const getLabels = (issue: Issue): string[] => {
   return issue.labels.map((label) => label.name || "");
 };
 
-const hasCategory = (issue: Issue, labelSubString: string): boolean => {
+const hasCategory = (issue: Issue, labelPart: string): boolean => {
   const labels = getLabels(issue);
-  return labels.some((label) => label.includes(labelSubString));
+  return labels.some((label) => label.includes(labelPart));
 };
 
 export const getProductCategory = (issue: Issue): ProductCategory => {
-  for (const [productCategory, labelSubStrings] of Object.entries(
+  for (const [productCategory, labelParts] of Object.entries(
     productCategories,
   )) {
-    const isMatching = labelSubStrings.some((labelSubString) =>
-      hasCategory(issue, labelSubString),
+    const isMatching = labelParts.some((labelPart) =>
+      hasCategory(issue, labelPart),
     );
 
     if (isMatching) {
