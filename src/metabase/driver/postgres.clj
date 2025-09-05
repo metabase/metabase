@@ -1034,6 +1034,31 @@
                            :type   driver-api/qp.error-type.invalid-query}))
           (throw e))))))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for Postgres that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:text])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/Float [_] [:float])
+(defmethod type->database-type :type/Decimal [_] [:float])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithLocalTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/TimeWithLocalTZ [_] [:time-with-time-zone])
+(defmethod type->database-type :type/UUID [_] [:uuid])
+(defmethod type->database-type :type/JSON [_] [:jsonb])
+(defmethod type->database-type :type/SerializedJSON [_] [:jsonb])
+(defmethod type->database-type :type/IPAddress [_] [:inet])
+
+(defmethod driver/type->database-type :postgres
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
   (case upload-type

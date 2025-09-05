@@ -230,6 +230,31 @@
     "BIGNUMERIC" :type/Decimal
     :type/*))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for BigQuery that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/Array [_] ["ARRAY"])
+(defmethod type->database-type :type/Boolean [_] ["BOOLEAN"])
+(defmethod type->database-type :type/Float [_] ["FLOAT"])
+(defmethod type->database-type :type/Integer [_] ["INTEGER"])
+(defmethod type->database-type :type/Number [_] ["INTEGER"])
+(defmethod type->database-type :type/Dictionary [_] ["RECORD"])
+(defmethod type->database-type :type/Text [_] ["STRING"])
+(defmethod type->database-type :type/TextLike [_] ["STRING"])
+(defmethod type->database-type :type/Date [_] ["DATE"])
+(defmethod type->database-type :type/DateTime [_] ["DATETIME"])
+(defmethod type->database-type :type/DateTimeWithLocalTZ [_] ["TIMESTAMP"])
+(defmethod type->database-type :type/Time [_] ["TIME"])
+(defmethod type->database-type :type/JSON [_] ["JSON"])
+(defmethod type->database-type :type/SerializedJSON [_] ["JSON"])
+(defmethod type->database-type :type/Decimal [_] ["NUMERIC"])
+
+(defmethod driver/type->database-type :bigquery-cloud-sdk
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defn- field->database+base-type
   "Returns a normalized `database-type` and its `base-type` for a type from BigQuery Field type.
 

@@ -779,6 +779,28 @@
     :metabase.upload/datetime                 [:datetime]
     :metabase.upload/offset-datetime          [:timestamp]))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for MySQL that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:text])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/Float [_] [:double])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:datetime])
+(defmethod type->database-type :type/DateTimeWithLocalTZ [_] [:timestamp])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/JSON [_] [:json])
+(defmethod type->database-type :type/SerializedJSON [_] [:json])
+
+(defmethod driver/type->database-type :mysql
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/allowed-promotions :mysql
   [_driver]
   {:metabase.upload/int     #{:metabase.upload/float}
