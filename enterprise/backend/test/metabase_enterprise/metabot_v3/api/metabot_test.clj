@@ -342,6 +342,28 @@
                       (mt/user-http-request :crowberto :delete 204 url)
                       (is (nil? (current-prompt-ids))))))))))))))
 
+(deftest metabot-prompt-suggestions-with-feature-toggle-test
+  (testing "GET /api/ee/metabot-v3/metabot/:id/prompt-suggestions"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temp [:model/Metabot {metabot-id :id} {:name "Test Metabot"}
+                     :model/Collection {collection-id :id} {:name "Test Collection"}
+                     :model/Card {card-id :id} {:name "Test Card"
+                                                :collection_id collection-id}
+                     :model/MetabotEntity _ {:metabot_id metabot-id
+                                             :model "dataset"
+                                             :model_id card-id}]
+
+        (testing "when metabot feature is disabled"
+          (mt/with-temp-env-var-value! ["MB_METABOT_FEATURE_ENABLED" "false"]
+            (testing "should deny access for regular users"
+              (is (= "Metabot is disabled."
+                     (mt/user-http-request :rasta :get 403
+                                           (format "ee/metabot-v3/metabot/%d/prompt-suggestions" metabot-id)))))
+
+            (testing "should allow access for admins"
+              (is (map? (mt/user-http-request :crowberto :get 200
+                                              (format "ee/metabot-v3/metabot/%d/prompt-suggestions" metabot-id)))))))))))
+
 (deftest metabot-list-test
   (testing "GET /api/ee/metabot-v3/metabot"
     (mt/with-premium-features #{:metabot-v3}
@@ -431,3 +453,4 @@
           (mt/user-http-request :crowberto :delete 204
                                 (format "ee/metabot-v3/metabot/%d/entities/dataset/%d"
                                         metabot-id 99999)))))))
+
