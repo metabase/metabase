@@ -59,11 +59,11 @@
                          :arguments (:args c)})
                       vec
                       not-empty)
-      :data       (apply merge
-                         (when-let [navigate-to (first (for [[type c] chunks
-                                                             :when    (and (= type :data)
-                                                                           (= (:type c) :navigate_to))]
-                                                         (:value c)))]
-                           {:navigate_to navigate-to}))
+      :data       (merge
+                   (when-let [navigate-to (first (for [[type c] chunks
+                                                       :when    (and (= type :data)
+                                                                     (= (:type c) :navigate_to))]
+                                                   (:value c)))]
+                     {:navigate_to navigate-to}))
       :metadata   {:usage (when (= (first last-c) :finish)
                             (:usage (second last-c)))}})))
