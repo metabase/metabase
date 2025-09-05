@@ -174,7 +174,7 @@
   (assoc model :source {:type "query"
                         :query (if (string? (or body source))
                                  (lib/native-query (lib.metadata.jvm/application-database-metadata-provider database-id) (or body source))
-                                 (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id) #p (serdes/import-mbql (or body source))))}))
+                                 (serdes/import-mbql (or body source)))}))
 
 (defmethod mbml-file->unsaved-model* :model/Transform:v1
   [{:keys [tags database identifier] :as mbml-map}]
