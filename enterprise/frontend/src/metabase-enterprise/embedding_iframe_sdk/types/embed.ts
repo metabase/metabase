@@ -1,13 +1,13 @@
+import type { MetabaseError } from "embedding-sdk-bundle/errors";
+import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
 import type {
   CollectionBrowserListColumns,
   EmbeddingEntityType,
   EntityTypeFilterKeys,
   MetabaseTheme,
   SqlParameterValues,
-} from "embedding-sdk-bundle";
-import type { MetabaseError } from "embedding-sdk-bundle/errors";
-import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
+} from "embedding-sdk-package";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { CollectionId } from "metabase-types/api";
 
@@ -108,10 +108,10 @@ export interface BrowserEmbedOptions {
   /** Which entities to show on the question's data picker */
   dataPickerEntityTypes?: EmbeddingEntityType[];
 
-  /** Whether to show the "New Exploration" button. Defaults to true. */
+  /** Whether to show the "New exploration" button. Defaults to true. */
   withNewQuestion?: boolean;
 
-  /** Whether to show the "New Dashboard" button. Defaults to true. Only applies when readOnly is false. */
+  /** Whether to show the "New dashboard" button. Defaults to true. Only applies when readOnly is false. */
   withNewDashboard?: boolean;
 
   template?: never;

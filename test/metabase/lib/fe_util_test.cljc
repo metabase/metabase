@@ -438,7 +438,13 @@
             filter-clause (lib/= (m/find-first #(= (:name %) "NAME") (lib/filterable-columns query)) "test")
             filter-parts  (lib.fe-util/string-filter-parts query -1 filter-clause)]
         (is (=? {:field-id (meta/id :venues :name)}
-                (lib.field/field-values-search-info query (:column filter-parts))))))))
+                (lib.field/field-values-search-info query (:column filter-parts))))))
+    (testing "should create case-insensitive filter clauses unless `case-sensitive` is explicitly set to `true`"
+      (doseq [operator [:contains :does-not-contain :starts-with :ends-with]]
+        (are [expected options] (=? expected (lib/options (lib.fe-util/string-filter-clause operator column ["A"] options)))
+          {:case-sensitive false} {}
+          {:case-sensitive false} {:case-sensitive false}
+          {:case-sensitive true} {:case-sensitive true})))))
 
 (deftest ^:parallel number-filter-parts-test
   (let [query         (lib.tu/venues-query)

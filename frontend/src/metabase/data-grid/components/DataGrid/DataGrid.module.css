@@ -40,6 +40,14 @@
 .row {
   display: flex;
   width: 100%;
+
+  &.active {
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-brand),
+      transparent 90%
+    );
+  }
 }
 
 .headerCell {

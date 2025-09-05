@@ -1,14 +1,14 @@
 import fetch from "node-fetch";
 
-import { getMilestoneIssues } from "./github";
 import type {
-  Issue,
   ReleaseChannel,
   ReleaseProps,
   VersionInfo,
   VersionInfoFile,
 } from "./types";
 import {
+  getMajorVersion,
+  getMinorVersion,
   getVersionType,
   isEnterpriseVersion,
   isPatchVersion,
@@ -16,26 +16,25 @@ import {
 
 const generateVersionInfo = ({
   version,
-  milestoneIssues,
 }: {
   version: string;
-  milestoneIssues: Issue[];
 }): VersionInfo => {
+  const majorVersion = getMajorVersion(version);
+  const minorVersion = getMinorVersion(version);
+
   return {
     version,
     released: new Date().toISOString().slice(0, 10),
     patch: ["patch", "minor"].includes(getVersionType(version)),
-    highlights: milestoneIssues.map?.(issue => issue.title) ?? [],
+    highlights: [ `see https://www.metabase.com/changelog/${majorVersion}#metabase-${majorVersion}${minorVersion}}` ],
   };
 };
 
 export const generateVersionInfoJson = ({
   version,
   existingVersionInfo,
-  milestoneIssues,
 }: {
   version: string;
-  milestoneIssues: Issue[];
   existingVersionInfo: VersionInfoFile;
 }) => {
   const isAlreadyReleased =
@@ -49,7 +48,7 @@ export const generateVersionInfoJson = ({
     return existingVersionInfo;
   }
 
-  const newVersionInfo = generateVersionInfo({ version, milestoneIssues });
+  const newVersionInfo = generateVersionInfo({ version });
 
   return {
     ...existingVersionInfo,
@@ -119,25 +118,14 @@ export const getVersionInfoUrl = (version: string) => {
 // for adding a new release to version info
 export async function getVersionInfo({
   version,
-  github,
-  owner,
-  repo,
 }: ReleaseProps) {
   const url = getVersionInfoUrl(version);
   const existingFile = (await fetch(url).then(r =>
     r.json(),
   )) as VersionInfoFile;
 
-  const milestoneIssues = await getMilestoneIssues({
-    version,
-    github,
-    owner,
-    repo,
-  });
-
   const newVersionJson = generateVersionInfoJson({
     version,
-    milestoneIssues,
     existingVersionInfo: existingFile,
   });
 
