@@ -386,22 +386,18 @@ export const ListViewConfiguration = ({
           data-testid="list-view-preview"
         >
           <Text fw="bold">{t`Preview`}</Text>
-          {previewSample ? (
-            <ListViewItem
-              row={previewSample}
-              cols={cols}
-              settings={settings as ComputedVisualizationSettings}
-              entityIcon={selectedEntityIcon}
-              imageColumn={undefined}
-              titleColumn={selectedTitleColumn}
-              subtitleColumn={selectedSubtitleColumn}
-              rightColumns={selectedRightColumns}
-              onClick={() => {}}
-              style={{ cursor: "default" }}
-            />
-          ) : (
-            <Text c="text-medium">{t`No data to preview`}</Text>
-          )}
+          <ListViewItem
+            row={previewSample}
+            cols={cols}
+            settings={settings as ComputedVisualizationSettings}
+            entityIcon={selectedEntityIcon}
+            imageColumn={undefined}
+            titleColumn={selectedTitleColumn}
+            subtitleColumn={selectedSubtitleColumn}
+            rightColumns={selectedRightColumns}
+            onClick={() => {}}
+            style={{ cursor: "default" }}
+          />
         </Stack>
       </Stack>
 
@@ -415,30 +411,9 @@ export const ListViewConfiguration = ({
 };
 
 function generatePreviewSample(rows: RowValues[], cols: Lib.ColumnMetadata[]) {
-  if (!rows.length) {
-    return null;
-  }
+  const sample = rows[0] || Array(cols.length).fill(null);
 
-  // Start with the first row as our sample
-  const sample = [...rows[0]];
-
-  // Track which positions still need non-null values
-  const nullPositions = new Set<number>();
-  sample.forEach((value, index) => {
-    if (value === null || value === undefined) {
-      nullPositions.add(index);
-    }
-  });
-
-  // If first row has all non-null values, we're done
-  if (nullPositions.size === 0) {
-    return sample;
-  }
-
-  for (const position of nullPositions) {
-    const col = cols[position];
-    sample[position] = getColumnExample(col);
-  }
-
-  return sample;
+  return sample.map((value, index) =>
+    value == null ? getColumnExample(cols[index]) : value,
+  );
 }
