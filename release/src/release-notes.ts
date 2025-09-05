@@ -86,7 +86,6 @@ const otherProductCategory = "Other";
 type ProductCategory =
   | "Administration"
   | "Database"
-  | "SDK"
   | "Embedding"
   | "Operation"
   | "Organization"
@@ -101,7 +100,6 @@ type ProductCategory =
 const productCategories: ProductCategory[] = [
   "Administration",
   "Database",
-  "SDK",
   "Embedding",
   "Operation",
   "Organization",

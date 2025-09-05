@@ -95,7 +95,7 @@ describe("Release Notes", () => {
         "### Enhancements | 2.3\n\n**Querying**\n\n- Feature Issue (#2)",
       );
       expect(notes).toContain(
-        "### Bug fixes | 2.3\n\n**Embedding**\n\n- Bug Issue (#1)\n\n**SDK**\n\n- SDK Bundle Bug Issue (#8)",
+        "### Bug fixes | 2.3\n\n**Embedding**\n\n- Bug Issue (#1)\n- SDK Bundle Bug Issue (#8)",
       );
       expect(notes).toContain(
         "### Already Fixed | 2.3\n\nIssues confirmed to have been fixed in a previous release.\n\n**Embedding**\n\n- Issue Already Fixed (#3)",
