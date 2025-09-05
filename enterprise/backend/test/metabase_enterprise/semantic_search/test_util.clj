@@ -320,20 +320,24 @@
      (index-all!)
      ret#))
 
+;; TODO: When we are parallelizing tests, we'd have to make 
+;;       - `with-test-db!` use thread-safe version of with-redefs or similar,
+;;       - instead of `default-test-db` we could make unique database per test by means of eg. some counter.
 (defmacro with-index!
   "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
   [& body]
-  `(with-indexable-documents!
-     (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
-                   semantic.index-metadata/default-index-metadata mock-index-metadata
-                   semantic.index/model-table-suffix              mock-table-suffix]
-       (with-open [_# (open-temp-index-and-metadata!)]
-         (binding [search.ingestion/*force-sync* true]
-           (blocking-index!
-            (semantic.pgvector-api/gate-updates! (semantic.env/get-pgvector-datasource!)
-                                                 mock-index-metadata
-                                                 (search.ingestion/searchable-documents)))
-           ~@body)))))
+  `(with-test-db! default-test-db
+     (with-indexable-documents!
+       (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
+                     semantic.index-metadata/default-index-metadata mock-index-metadata
+                     semantic.index/model-table-suffix              mock-table-suffix]
+         (with-open [_# (open-temp-index-and-metadata!)]
+           (binding [search.ingestion/*force-sync* true]
+             (blocking-index!
+              (semantic.pgvector-api/gate-updates! (semantic.env/get-pgvector-datasource!)
+                                                   mock-index-metadata
+                                                   (search.ingestion/searchable-documents)))
+             ~@body))))))
 
 (defn table-exists-in-db?
   "Check if a table actually exists in the database"
