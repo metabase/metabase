@@ -229,12 +229,13 @@ describe("admin > database > add", () => {
           "contain.text",
           "QA Postgres12",
         );
-        editDatabase();
 
         cy.findAllByTestId("database-connection-info-section").should(
           "contain.text",
           "Connected",
         );
+
+        editDatabase();
 
         cy.findByLabelText(/Choose when syncs and scans happen/).should(
           "have.attr",
@@ -654,7 +655,7 @@ describe("scenarios > admin > databases > sample database", () => {
   it("allows to save the default schedule (metabase#57198)", () => {
     visitDatabase(SAMPLE_DB_ID);
     editDatabase();
-    H.modal().findByText("Show advanced options").click();
+    cy.findByRole("button", { name: /Show advanced options/ }).click();
     cy.findByLabelText(/Choose when syncs and scans happen/).click({
       force: true,
     });

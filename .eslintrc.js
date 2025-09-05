@@ -180,6 +180,7 @@ module.exports = {
     {
       files: ["*.js", "*.jsx", "*.ts", "*.tsx"],
       rules: {
+        "jtag-missing-key": "error",
         "no-unconditional-metabase-links-render": "error",
         "no-color-literals": "error",
         "no-literal-metabase-strings": "error",

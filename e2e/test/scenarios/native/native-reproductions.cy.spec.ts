@@ -400,6 +400,7 @@ describe("issue 52806", () => {
     cy.visit("/");
     H.newButton("SQL query").click();
     H.NativeEditor.focus().type("select {{x}}");
+    cy.location().should((location) => expect(location.search).to.eq("?x="));
     cy.findByTestId("main-logo-link").click();
     H.modal().button("Discard changes").click();
     cy.findByTestId("home-page");

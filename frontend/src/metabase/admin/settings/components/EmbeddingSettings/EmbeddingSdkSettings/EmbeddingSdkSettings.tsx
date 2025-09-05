@@ -44,6 +44,7 @@ export function EmbeddingSdkSettings() {
 
   const isReactSdkEnabled = useSetting("enable-embedding-sdk");
   const isReactSdkFeatureEnabled = PLUGIN_EMBEDDING_SDK.isEnabled();
+  const isLocalhostCorsDisabled = useSetting("disable-cors-on-localhost");
 
   const isSimpleEmbedEnabled = useSetting("enable-embedding-simple");
   const isSimpleEmbedFeatureEnabled =
@@ -129,6 +130,10 @@ export function EmbeddingSdkSettings() {
     )
     .otherwise(() => null);
 
+  const corsHintText = isLocalhostCorsDisabled
+    ? t`Separate values with a space. Localhost is not allowed. Changes will take effect within one minute.`
+    : t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`;
+
   return (
     <SettingsPageWrapper title={t`Modular embedding`}>
       <UpsellDevInstances location="embedding-page" />
@@ -193,6 +198,15 @@ export function EmbeddingSdkSettings() {
 
             {isSimpleEmbedFeatureEnabled ? (
               <Group gap="md">
+                <LinkButton
+                  size="compact-xs"
+                  variant="outline"
+                  to="/embed-js"
+                  fz="sm"
+                >
+                  {t`Try it out`}
+                </LinkButton>
+
                 <Button
                   size="compact-xs"
                   variant="outline"
@@ -203,21 +217,13 @@ export function EmbeddingSdkSettings() {
                 >
                   {t`Documentation`}
                 </Button>
-
-                <LinkButton
-                  size="compact-xs"
-                  variant="outline"
-                  to="/embed-js"
-                  fz="sm"
-                >
-                  {t`Try it out`}
-                </LinkButton>
               </Group>
             ) : (
               <UpsellEmbeddingButton
                 url="https://www.metabase.com/product/embedded-analytics"
                 campaign="embedded-analytics-js"
                 location="embedding-page"
+                size="default"
               />
             )}
           </Group>
@@ -244,7 +250,7 @@ export function EmbeddingSdkSettings() {
                   <HoverCard.Dropdown>
                     <Box p="md" w={270}>
                       <Text lh="lg" c="text-medium">
-                        {t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`}
+                        {corsHintText}
                       </Text>
                     </Box>
                   </HoverCard.Dropdown>

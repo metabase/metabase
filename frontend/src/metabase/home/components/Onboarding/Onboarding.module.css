@@ -1,5 +1,5 @@
 .page {
-  background-color: var(--mb-base-color-white);
+  background-color: var(--mb-color-bg-white);
 
   @media screen and (--breakpoint-min-lg) {
     background-image: url("~assets/img/onboarding_bg.svg");
@@ -29,7 +29,7 @@
 .control:not([data-css-specificity-hack="🪗"]) {
   background: linear-gradient(
     to right,
-    var(--mb-base-color-blue-10) 3rem,
+    var(--mb-color-background-hover) 3rem,
     transparent 3rem
   );
   border: 1px solid var(--mb-color-border);
@@ -41,8 +41,8 @@
   &:hover {
     background: linear-gradient(
       to right,
-      var(--mb-base-color-brand-20) 3rem,
-      var(--mb-base-color-brand-10) 3rem
+      var(--mb-color-icon-secondary) 3rem,
+      var(--mb-color-background-hover) 3rem
     );
     color: var(--mb-color-brand);
   }
@@ -58,7 +58,7 @@
       background: linear-gradient(
         to right,
         var(--mb-color-brand) 3rem,
-        var(--mb-base-color-brand-10) 3rem
+        var(--mb-color-background-hover) 3rem
       );
 
       .label,
@@ -88,7 +88,7 @@
   width: 3rem;
 
   [data-active="true"] & {
-    color: var(--mb-base-color-white);
+    color: var(--mb-color-text-white);
   }
 }
 
@@ -106,7 +106,7 @@
 
 .support {
   align-items: center;
-  background-color: var(--mb-base-color-blue-10);
+  background-color: var(--mb-color-background-hover);
   border-radius: 0.5rem;
   display: flex;
   flex-wrap: wrap;
