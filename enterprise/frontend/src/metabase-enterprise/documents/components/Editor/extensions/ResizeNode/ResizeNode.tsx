@@ -4,22 +4,24 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
+import type React from "react";
 import { useRef, useState } from "react";
 
-import { Box } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 
 import S from "./ResizeNode.module.css";
 
 export const ResizeNode: Node<{
   HTMLAttributes: {
     height: number;
+    minHeight: number;
   };
 }> = Node.create({
   name: "resizeNode",
   group: "block",
   content: "block",
   atom: true,
-  draggable: true,
+  draggable: false,
   selectable: true,
 
   addAttributes() {
@@ -27,6 +29,10 @@ export const ResizeNode: Node<{
       height: {
         default: 442,
         parseHTML: (element) => element.getAttribute("data-height"),
+      },
+      minHeight: {
+        default: 250,
+        parseHTML: (element) => element.getAttribute("data-min-height"),
       },
     };
   },
@@ -47,6 +53,7 @@ export const ResizeNode: Node<{
         {
           "data-type": ResizeNode.name,
           "data-height": node.attrs.height,
+          "data-min-height": node.attrs.minHeight,
         },
         this.options.HTMLAttributes,
       ),
@@ -62,15 +69,23 @@ const ResizeNodeView = ({
   node: { attrs },
   updateAttributes,
 }: NodeViewProps) => {
+  const { minHeight } = attrs;
+
   const [height, setHeight] = useState(attrs.height);
   const _height = useRef(attrs.height);
 
+  const computeHeight = (delta: number) => {
+    const newHeight = _height.current + delta;
+
+    return newHeight < minHeight ? minHeight : newHeight;
+  };
+
   const handleDrag = (delta: number) => {
-    setHeight(_height.current + delta);
+    setHeight(computeHeight(delta));
   };
 
   const handleDragEnd = (delta: number) => {
-    const newHeight = _height.current + delta;
+    const newHeight = computeHeight(delta);
     setHeight(newHeight);
     updateAttributes({
       height: newHeight,
@@ -79,7 +94,7 @@ const ResizeNodeView = ({
   };
 
   return (
-    <NodeViewWrapper style={{ height }}>
+    <NodeViewWrapper style={{ height }} className={S.wrapper}>
       <NodeViewContent className={S.content} />
       <DragHandle onDrag={handleDrag} onDragEnd={handleDragEnd} />
     </NodeViewWrapper>
@@ -116,12 +131,8 @@ const DragHandle = ({
   };
 
   return (
-    <Box
-      w={100}
-      bg="grey"
-      h={20}
-      onMouseDown={handleMouseDown}
-      style={{ cursor: "pointer", position: "relative", zIndex: 100 }}
-    ></Box>
+    <Flex justify="center" className={S.dragContainer} contentEditable={false}>
+      <Box className={S.dragHandle} onMouseDown={handleMouseDown} />
+    </Flex>
   );
 };
