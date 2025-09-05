@@ -1088,7 +1088,9 @@ describe("scenarios > admin > transforms > jobs", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getJobPage().within(() => {
         getCronInput().clear().type("0 * * * ?").blur();
-        cy.findByText("This job will run every hour").should("be.visible");
+        cy.findByText("This job will run every hour, UTC-07:00").should(
+          "be.visible",
+        );
       });
       H.undoToast().findByText("Job schedule updated").should("be.visible");
       getJobPage().within(() => {
