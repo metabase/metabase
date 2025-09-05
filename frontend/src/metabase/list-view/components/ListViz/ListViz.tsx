@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -12,6 +13,10 @@ import {
 import { Box } from "metabase/ui";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import type {
   ColumnSettingDefinition,
   VisualizationProps,
@@ -30,10 +35,8 @@ import type { DatasetColumn, Series } from "metabase-types/api";
 
 import { ListView } from "../ListView/ListView";
 import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
-import {
-  getMinSize,
-  getDefaultSize,
-} from "metabase/visualizations/shared/utils/sizes";
+
+import S from "./ListViz.module.css";
 
 const vizDefinition = {
   identifier: "list",
@@ -248,6 +251,7 @@ export const ListViz = ({
   settings,
   onVisualizationClick,
   queryBuilderMode,
+  isDashboard,
 }: VisualizationProps) => {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
@@ -326,7 +330,13 @@ export const ListViz = ({
   };
 
   return (
-    <Box w="100%" h="100%" pos="absolute">
+    <Box
+      w="100%"
+      pos="absolute"
+      className={cx(S.ListViz, {
+        [S.listViewDashcard]: isDashboard,
+      })}
+    >
       {isShowingListViewConfiguration ? (
         <ListViewConfiguration
           data={data}
@@ -337,6 +347,7 @@ export const ListViz = ({
         />
       ) : (
         <ListView
+          className={isDashboard ? S.dashboardListView : undefined}
           data={data}
           settings={settings}
           sortedColumnName={sortedColumnName}
