@@ -69,6 +69,7 @@
                                 "jetty-ee9-nested" {:resource "EPL.txt"}
                                 "jetty-ee9-security" {:resource "EPL.txt"}
                                 "jetty-ee9-webapp" {:resource "EPL.txt"}}
+ "org.eclipse.jetty.ee"        {"jetty-ee-webapp" {:resource "EPL.txt"}}
  "org.eclipse.jetty.websocket" {"jetty-websocket-core-server" {:resource "EPL.txt"}
                                 "jetty-websocket-core-common" {:resource "EPL.txt"}}
  "org.fusesource.leveldbjni"   {"leveldbjni-all" {:resource "BSD.txt"}}
