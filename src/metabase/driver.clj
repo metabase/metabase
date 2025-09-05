@@ -1297,7 +1297,11 @@
 (defmethod insert-from-source! [::driver :csv-file]
   [driver db-id table-name column-names {:keys [file]}]
   (let [csv-rows (csv/read-csv (io/reader file))
-        data-rows (rest csv-rows)]
+        header-rows (first csv-rows)
+        data-rows (map (fn [rows]
+                         (let [m (zipmap header-rows rows)]
+                           (mapv #(get m %) column-names)))
+                       (rest csv-rows))]
     (insert-from-source! driver db-id table-name column-names {:type :rows :data data-rows})))
 
 (defmulti add-columns!
