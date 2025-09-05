@@ -227,6 +227,7 @@
     ;; datetime64[ns, timezone] indicates timezone-aware datetime
     (str/starts-with? dtype-str "datetime64[ns, ") :offset-datetime
     (str/starts-with? dtype-str "datetime") :datetime
+    ;; this is not a real dtype, pandas uses 'object', but we override it if there's source or custom field metadata
     (str/starts-with? dtype-str "date") :date
     :else :text))
 

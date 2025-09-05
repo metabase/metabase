@@ -75,21 +75,33 @@
       :type/Date           :date
       :type/Text           :text)))
 
+(defn- closest-ancestor [t pred]
+  (loop [remaining (conj clojure.lang.PersistentQueue/EMPTY [t])]
+    (when-let [t (first remaining)]
+      (if (pred t)
+        t
+        (recur (into (pop t) (parents t)))))))
+
+(defn- effective-semantic-type-i-think
+  "Kinda sketchy but maybe reasonable way to infer the effective-semantic-type"
+  [{:keys [base_type effective_type semantic_type]}]
+  (or semantic_type (closest-ancestor  (or effective_type base_type) #(isa? % :Semantic/*))))
+
 (defn- generate-manifest
   "Generate a metadata manifest for the table columns."
   [table-id cols-meta]
   {:version        "0.1.0"
    :fields         (mapv (fn [col-meta]
                            {:name           (:name col-meta)
-                            :database_type  (when (:base_type col-meta)
-                                              (str (:base_type col-meta)))
-                            :upload_type    (when (:base_type col-meta)
-                                              (name (base-type->upload-type (:base_type col-meta))))
-                            :semantic_type  (when (:semantic_type col-meta)
-                                              (str (:semantic_type col-meta)))
-                            :effective_type (when (:effective_type col-meta)
-                                              (str (:effective_type col-meta)))
-                            :field_id       (:id col-meta)})
+                            :base_type      (some-> (:base_type col-meta) name)
+                            :database_type  (some-> (:database_type col-meta) name)
+                            :upload_type    (some-> (base-type->upload-type (:base_type col-meta)) name)
+                            ;; replace nil values with values indicating how they behave in practice.
+                            ;; there may be better ways of doing this already, but i worry it's just implicit in QP
+                            :semantic_type  (some-> (effective-semantic-type-i-think col-meta) name)
+                            :effective_type (some-> (or (:effective_type col-meta) (:database_type col-meta)) name)
+                            ;; TODO get this passed through
+                            #_#_:field_id       (:id col-meta)})
                          cols-meta)
    :table_metadata {:table_id table-id}})
 

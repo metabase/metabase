@@ -2,7 +2,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
-   [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -11,7 +10,9 @@
    [metabase-enterprise.transforms.python-runner :as python-runner]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -129,6 +130,76 @@
                  :stderr ""}
                 result))))))
 
+(deftest transform-function-with-pass-thru
+  (testing "transform function successfully connects to PostgreSQL database and reads data"
+    (mt/test-drivers #{:postgres}
+      (mt/with-empty-db
+        (let [db-spec        (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              _              (jdbc/execute! db-spec ["DROP TABLE IF EXISTS students"])
+              _              (jdbc/execute! db-spec ["CREATE TABLE students (id INTEGER PRIMARY KEY, name VARCHAR(100), score INTEGER)"])
+              _              (jdbc/execute! db-spec ["INSERT INTO students (id, name, score) VALUES (1, 'Alice', 85), (2, 'Bob', 92), (3, 'Charlie', 88), (4, 'Dana', 90)"])
+
+              _              (sync/sync-database! (mt/db))
+
+              transform-code (str "import pandas as pd\n"
+                                  "\n"
+                                  "def transform(students):\n"
+                                  "    return students")
+              result         (execute {:code   transform-code
+                                       :tables {"students" (mt/id :students)}})]
+
+          (is (=? {:output   "id,name,score\n1,Alice,85\n2,Bob,92\n3,Charlie,88\n4,Dana,90\n"
+                   :metadata #(= (json/decode+kw %)
+                                 {:version         "0.1.0"
+                                  :fields          [{:base_type      "Integer",
+                                                     :dtype          "int64",
+                                                     :database_type  "int4",
+                                                     :effective_type "int4",
+                                                     :name           "id",
+                                                     :semantic_type  nil,
+                                                     :upload_type    "int"}
+                                                    {:base_type      "Text",
+                                                     :dtype          "object",
+                                                     :database_type  "varchar",
+                                                     :effective_type "varchar",
+                                                     :name           "name",
+                                                     :semantic_type  nil,
+                                                     :upload_type    "text"}
+                                                    {:base_type      "Integer",
+                                                     :dtype          "int64",
+                                                     :database_type  "int4",
+                                                     :effective_type "int4",
+                                                     :name           "score",
+                                                     :semantic_type  nil,
+                                                     :upload_type    "int"}],
+                                  :source_metadata {:fields         [{:base_type      "Integer",
+                                                                      :dtype          "int64",
+                                                                      :database_type  "int4",
+                                                                      :effective_type "int4",
+                                                                      :name           "id",
+                                                                      :semantic_type  nil,
+                                                                      :upload_type    "int"}
+                                                                     {:base_type      "Text",
+                                                                      :dtype          "object",
+                                                                      :database_type  "varchar",
+                                                                      :effective_type "varchar",
+                                                                      :name           "name",
+                                                                      :semantic_type  nil,
+                                                                      :upload_type    "text"}
+                                                                     {:base_type      "Integer",
+                                                                      :dtype          "int64",
+                                                                      :database_type  "int4",
+                                                                      :effective_type "int4",
+                                                                      :name           "score",
+                                                                      :semantic_type  nil,
+                                                                      :upload_type    "int"}],
+                                                    :table_metadata {:table_id (mt/id :students)},
+                                                    :version        "0.1.0"}})
+                   :stdout   (str "Successfully saved 4 rows to CSV\n"
+                                  "Successfully saved output manifest with 3 fields")
+                   :stderr   ""}
+                  result)))))))
+
 (deftest transform-function-with-working-database-test
   (testing "transform function successfully connects to PostgreSQL database and reads data"
     (mt/test-drivers #{:postgres}
@@ -153,11 +224,14 @@
               result         (execute {:code   transform-code
                                        :tables {"students" (mt/id :students)}})]
 
-          (is (=? {:output "student_count,average_score\n4,88.75\n"
-                   :metadata "{\n  \"version\": \"0.1.0\",\n  \"fields\": [\n    {\n      \"name\": \"student_count\",\n      \"dtype\": \"int64\"\n    },\n    {\n      \"name\": \"average_score\",\n      \"dtype\": \"float64\"\n    }\n  ],\n  \"table_metadata\": {}\n}"
-                   :stdout  (str "Successfully saved 1 rows to CSV\n"
-                                 "Successfully saved output manifest with 2 field")
-                   :stderr ""}
+          (is (=? {:output   "student_count,average_score\n4,88.75\n"
+                   :metadata #(= (json/decode+kw %)
+                                 {:version        "0.1.0",
+                                  :fields         [{:name "student_count", :dtype "int64"}
+                                                   {:name "average_score", :dtype "float64"}]})
+                   :stdout   (str "Successfully saved 1 rows to CSV\n"
+                                  "Successfully saved output manifest with 2 fields")
+                   :stderr   ""}
                   result)))))))
 
 (defn- datetime-equal?
@@ -206,7 +280,7 @@
             [row1 row2 row3] rows
             header-to-index (zipmap headers (range))
             get-col (fn [row col-name] (nth row (header-to-index col-name)))
-            metadata (some-> (:metadata result) (json/read-str :key-fn keyword))]
+            metadata (some-> (:metadata result) json/decode+kw)]
 
         (is (= (set ["id" "name" "description" "count" "price" "is_active" "created_date" "updated_at" "scheduled_for"])
                (set headers)))
@@ -224,17 +298,16 @@
         (is (datetime-equal? "2024-03-11T06:00:00Z" (get-col row3 "scheduled_for")))
 
         (testing "dtypes are preserved correctly using dtype->table-type"
-          (let [field-by-name (into {} (map (juxt :name :dtype) (:fields metadata)))
-                dtype->table-type #'execute/dtype->table-type]
-            (is (= :int (dtype->table-type (field-by-name "id"))))
-            (is (= :text (dtype->table-type (field-by-name "name"))))
-            (is (= :text (dtype->table-type (field-by-name "description"))))
-            (is (= :int (dtype->table-type (field-by-name "count"))))
-            (is (= :float (dtype->table-type (field-by-name "price"))))
-            (is (= :boolean (dtype->table-type (field-by-name "is_active"))))
-            (is (= :offset-datetime (dtype->table-type (field-by-name "scheduled_for"))))
-            (is (= :datetime (dtype->table-type (field-by-name "updated_at"))))
-
-            ;; TODO: ideally this would be :date but it's "object" dtypes as there's no
-            ;; and there's no date dtype
-            (is (= :text (dtype->table-type (field-by-name "created_date"))))))))))
+          (let [dtype->table-type #'execute/dtype->table-type]
+            (is (= {"id"            :int
+                    "name"          :text
+                    "description"   :text
+                    "count"         :int
+                    "price"         :float
+                    "is_active"     :boolean
+                    ;; Our hack works
+                    "created_date"  :date
+                    "updated_at"    :datetime
+                    "scheduled_for" :offset-datetime}
+                   (u/for-map [{:keys [name dtype]} (:fields metadata)]
+                     [name (dtype->table-type dtype)])))))))))
