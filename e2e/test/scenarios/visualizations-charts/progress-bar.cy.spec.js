@@ -109,8 +109,16 @@ describe("scenarios > visualizations > progress chart", () => {
       // Should NOT show Value field selector since we only have one numeric column
       cy.findByText("Value").should("not.exist");
 
-      // Goal setting should still be visible
+      // Goal setting should still be visible with no dropdown since no other columns
       cy.findByText("Goal").should("be.visible");
+
+      // No dropdown icon should be visible since there are no other columns for goal
+      cy.findByPlaceholderText("Enter goal value")
+        .parent()
+        .parent()
+        .within(() => {
+          cy.icon("chevrondown").should("not.exist");
+        });
     });
   });
 
@@ -142,16 +150,11 @@ describe("scenarios > visualizations > progress chart", () => {
       cy.findByText("Sum of Total").click();
     });
 
-    // Switch goal to Column mode
     H.vizSettingsSidebar().within(() => {
-      cy.findByText("Column").should("be.visible");
-      cy.findByText("Column").click();
-
-      // Open goal column dropdown
-      cy.findByPlaceholderText("Select column").click();
+      cy.findByText("Goal").parent().parent().icon("chevrondown").click();
     });
 
-    // Should show Count and Average of Quantity, but NOT Sum of Total
+    // Should show Count and Average of Quantity, but not Sum of Total
     H.popover().within(() => {
       cy.findByText("Count").should("be.visible");
       cy.findByText("Average of Quantity").should("be.visible");
@@ -161,9 +164,9 @@ describe("scenarios > visualizations > progress chart", () => {
       cy.findByText("Count").click();
     });
 
-    // Goal should show Count selected
+    // Goal should show Count selected in the input
     H.vizSettingsSidebar().within(() => {
-      cy.findByDisplayValue("Count").should("exist");
+      cy.findByText("Count").should("exist");
     });
   });
 
