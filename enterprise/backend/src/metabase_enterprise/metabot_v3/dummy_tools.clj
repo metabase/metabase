@@ -85,7 +85,7 @@
                      #(-> % (dissoc :operators :field-values) col->index))
          default-temporal-breakout (when with-default-temporal-breakout?
                                      (->> breakouts
-                                          (map #(lib/find-matching-column metric-query -1 % visible-cols))
+                                          (map #(lib/find-matching-column metric-query -1 % visible-cols {:find-matching-column/ignore-binning-and-bucketing? true}))
                                           (m/find-first lib.types.isa/temporal?)))
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (cond-> {:id id

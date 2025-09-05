@@ -1,6 +1,7 @@
 (ns metabase.lib.expression
   (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float])
   (:require
+   [better-cond.core :as b]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
@@ -16,6 +17,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.expression.conditional :as lib.schema.expression.conditional]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -54,19 +56,43 @@
                    (:expressions stage)))))
 
 (mu/defn- -resolve-expression :- [:map
-                                  [:stage-number [:or :int [:= ::card]]]
-                                  [:expression   [:ref ::lib.schema.mbql-clause/clause]]]
-  [query stage-number expression-name]
-  (or (when-let [resolved (maybe-resolve-expression query stage-number expression-name)]
-        {:stage-number stage-number, :expression resolved})
-      (log/warnf "Expression %s does not exist in stage %d"
-                 (pr-str expression-name) (lib.util/canonical-stage-index query stage-number))
-      (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-        (u/prog1 (-resolve-expression query previous-stage-number expression-name)
-          (when <>
-            (log/warn (u/format-color :red "Found expression %s in previous stage. Next time, use a :field name ref!"
-                                      (pr-str expression-name))))))
-      (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
+                                  [:stage-number [:maybe :int]]
+                                  [:expression   [:ref ::lib.schema.mbql-clause/clause]]
+                                  [:card-id      {:optional true} ::lib.schema.id/card]]
+  [query stage-number expression-name :- :string]
+  (b/cond
+    :let [resolved (maybe-resolve-expression query stage-number expression-name)]
+    resolved
+    {:stage-number stage-number, :expression resolved}
+
+    :do
+    (log/warnf "Expression %s does not exist in stage %d"
+               (pr-str expression-name) (lib.util/canonical-stage-index query stage-number))
+
+    :let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+    previous-stage-number
+    (u/prog1 (-resolve-expression query previous-stage-number expression-name)
+      (when <>
+        (log/warn (u/format-color :red "Found expression %s in previous stage. Next time, use a :field name ref!"
+                                  (pr-str expression-name)))))
+
+    :let [source-card-id          (when (lib.util/first-stage? query stage-number)
+                                    (lib.util/source-card-id query))
+          resolved-in-source-card (when source-card-id
+                                    (when-let [source-card (lib.metadata/card query source-card-id)]
+                                      (-resolve-expression ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.query/query)
+                                                            (lib.metadata/->metadata-provider query)
+                                                            (:dataset-query source-card))
+                                                           stage-number
+                                                           expression-name)))]
+    resolved-in-source-card
+    (do
+      (log/warn (u/format-color :red "Found expression %s in source card %d. Next time, use a :field name ref!"
+                                (pr-str expression-name) source-card-id))
+      (assoc resolved-in-source-card :stage-number nil, :card-id source-card-id))
+
+    :else
+    (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                       {:expression-name expression-name
                        :query           query
                        :stage-number    stage-number}))))
@@ -89,34 +115,37 @@
 
 (mu/defmethod lib.metadata.calculation/metadata-method :expression :- ::lib.metadata.calculation/visible-column
   [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
-  (let [{resolved-stage-number :stage-number, resolved-expression :expression} (-resolve-expression query stage-number expression-name)
+  (let [{resolved-stage-number :stage-number
+         resolved-expression   :expression
+         resolved-card-id      :card-id} (-resolve-expression query stage-number expression-name)
         expr-type (or (:base-type opts)
                       (lib.metadata.calculation/type-of query stage-number resolved-expression))
-        col (merge {:lib/type                :metadata/column
-                    ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
-                    ;; of the expression definition??
-                    :lib/source-uuid         (:lib/uuid opts)
-                    :name                    expression-name
-                    :lib/expression-name     expression-name
-                    :lib/source-column-alias expression-name
-                    :display-name            (or (:display-name opts)
-                                                 (lib.metadata.calculation/display-name query stage-number resolved-expression))
-                    :base-type               expr-type
-                    :effective-type          expr-type
-                    :lib/source              :source/expressions}
-                   (when-let [converted-timezone (lib.util.match/match-one resolved-expression
-                                                   :convert-timezone
-                                                   (let [[_convert-timezone _opts _expr source-tz] &match]
-                                                     source-tz))]
-                     {:converted-timezone converted-timezone})
-                   (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                     {:metabase.lib.field/temporal-unit unit})
-                   (when lib.metadata.calculation/*propagate-binning-and-bucketing*
-                     (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                       {:inherited-temporal-unit unit})))]
+        col       (merge {:lib/type                :metadata/column
+                          :lib/source-uuid         (lib.options/uuid resolved-expression)
+                          :name                    expression-name
+                          :lib/expression-name     expression-name
+                          :lib/source-column-alias expression-name
+                          :display-name            (or (:display-name opts)
+                                                       (lib.metadata.calculation/display-name query stage-number resolved-expression))
+                          :base-type               expr-type
+                          :effective-type          expr-type
+                          :lib/source              :source/expressions}
+                         (when-let [converted-timezone (lib.util.match/match-one resolved-expression
+                                                         :convert-timezone
+                                                         (let [[_convert-timezone _opts _expr source-tz] &match]
+                                                           source-tz))]
+                           {:converted-timezone converted-timezone})
+                         (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
+                           {:metabase.lib.field/temporal-unit unit})
+                         (when lib.metadata.calculation/*propagate-binning-and-bucketing*
+                           (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
+                             {:inherited-temporal-unit unit})))]
     (cond-> col
       (not= resolved-stage-number stage-number)
-      lib.field.util/update-keys-for-col-from-previous-stage)))
+      lib.field.util/update-keys-for-col-from-previous-stage
+
+      resolved-card-id
+      (assoc :lib/source :source/card, :lib/card-id resolved-card-id))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
   [query stage-number [_expression opts _expr-name, :as expr-clause]]
