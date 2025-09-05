@@ -6,12 +6,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.transforms.execute :as execute]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.python-runner :as python-runner]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
@@ -164,42 +164,42 @@
                                                      :effective_type "int4",
                                                      :name           "id",
                                                      :semantic_type  nil,
-                                                     :upload_type    "int"}
+                                                     :root_type      "Integer"}
                                                     {:base_type      "Text",
                                                      :dtype          "object",
                                                      :database_type  "varchar",
                                                      :effective_type "varchar",
                                                      :name           "name",
                                                      :semantic_type  nil,
-                                                     :upload_type    "text"}
+                                                     :root_type      "Text"}
                                                     {:base_type      "Integer",
                                                      :dtype          "int64",
                                                      :database_type  "int4",
                                                      :effective_type "int4",
                                                      :name           "score",
                                                      :semantic_type  nil,
-                                                     :upload_type    "int"}],
+                                                     :root_type      "Integer"}],
                                   :source_metadata {:fields         [{:base_type      "Integer",
                                                                       :dtype          "int64",
                                                                       :database_type  "int4",
                                                                       :effective_type "int4",
                                                                       :name           "id",
                                                                       :semantic_type  nil,
-                                                                      :upload_type    "int"}
+                                                                      :root_type      "Integer"}
                                                                      {:base_type      "Text",
                                                                       :dtype          "object",
                                                                       :database_type  "varchar",
                                                                       :effective_type "varchar",
                                                                       :name           "name",
                                                                       :semantic_type  nil,
-                                                                      :upload_type    "text"}
+                                                                      :root_type      "Text"}
                                                                      {:base_type      "Integer",
                                                                       :dtype          "int64",
                                                                       :database_type  "int4",
                                                                       :effective_type "int4",
                                                                       :name           "score",
                                                                       :semantic_type  nil,
-                                                                      :upload_type    "int"}],
+                                                                      :root_type      "Integer"}],
                                                     :table_metadata {:table_id (mt/id :students)},
                                                     :version        "0.1.0"}})
                    :stdout   (str "Successfully saved 4 rows to CSV\n"
@@ -303,21 +303,19 @@
         (is (= "3" (get-col row3 "id")))
         (is (= "Product C" (get-col row3 "name")))
         (is (datetime-equal? "2024-03-11T06:00:00Z" (get-col row3 "scheduled_for")))
-
-        (testing "dtypes are preserved correctly using dtype->table-type"
-          (let [dtype->table-type #'execute/dtype->table-type]
-            (is (= {"id"            :int
-                    "name"          :text
-                    "description"   :text
-                    "count"         :int
-                    "price"         :float
-                    "is_active"     :boolean
-                    ;; Our hack works
-                    "created_date"  :date
-                    "updated_at"    :datetime
-                    "scheduled_for" :offset-datetime}
-                   (u/for-map [{:keys [name dtype]} (:fields metadata)]
-                     [name (dtype->table-type dtype)])))))))))
+        (testing "dtypes are preserved correctly"
+          (is (= {"id"            :type/Integer
+                  "name"          :type/Text
+                  "description"   :type/Text
+                  "count"         :type/Integer
+                  "price"         :type/Float
+                  "is_active"     :type/Boolean
+                  ;; Our hack works
+                  "created_date"  :type/Date
+                  "updated_at"    :type/DateTime
+                  "scheduled_for" :type/DateTimeWithTZ}
+                 (u/for-map [{:keys [name dtype]} (:fields metadata)]
+                   [name (transforms.util/dtype->base-type dtype)]))))))))
 
 (deftest python-transform-scheduled-job-test
   (mt/test-helpers-set-global-values!
