@@ -870,11 +870,11 @@
                       (.executeUpdate stmt sql))}))
 
 (defmethod driver/execute-raw-queries! :sql-jdbc
-  [driver connection-details queries]
+  [driver conn-spec queries]
   (try
     (do-with-connection-with-options
      driver
-     connection-details
+     conn-spec
      {:write? true}
      (fn [^Connection conn]
        (.setAutoCommit conn false)

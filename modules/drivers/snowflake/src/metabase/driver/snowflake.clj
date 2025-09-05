@@ -868,13 +868,13 @@
            (.next rs)))))))
 
 (defmethod driver/run-transform! [:snowflake :table]
-  [driver {:keys [connection-details query output-table]} opts]
+  [driver {:keys [conn-spec query output-table]} opts]
   (let [driver (keyword driver)
         queries (cond->> [(driver/compile-transform driver
                                                     {:query query
                                                      :output-table output-table})]
                   (:overwrite? opts) (cons (driver/compile-drop-table driver output-table)))
-        db-name-val (some connection-details [:db :dbname])
+        db-name-val (some conn-spec [:db :dbname])
         quoted-db (if (and (= (first db-name-val) \")
                            (= (last db-name-val) \"))
                     db-name-val
@@ -882,4 +882,12 @@
         all-queries (if db-name-val
                       (cons [(str "USE DATABASE " quoted-db)] queries)
                       queries)]
-    {:rows-affected (last (driver/execute-raw-queries! driver connection-details all-queries))}))
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec all-queries))}))
+
+(defmethod driver/create-schema-if-needed! :snowflake
+  [driver conn-spec schema]
+  (let [queries [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]
+        db-name-val (or (:db conn-spec) (:dbname conn-spec))
+        all-queries (cond->> queries
+                      db-name-val (cons [(format "USE DATABASE \"%s\"" db-name-val)]))]
+    (driver/execute-raw-queries! driver conn-spec all-queries)))
