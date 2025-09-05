@@ -1,6 +1,7 @@
 import type { Transform } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
+import { tag } from "./tags";
 
 export type GitTreeNode = {
   id: string;
@@ -25,6 +26,7 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/ee/git-source-of-truth/import",
       }),
+      invalidatesTags: [tag("git-tree"), tag("git-file-content")],
     }),
     exportGit: builder.mutation({
       query: () => ({
@@ -37,12 +39,14 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/git-source-of-truth/git",
       }),
+      providesTags: [tag("git-tree")],
     }),
     getFileContent: builder.query<GitFileContent, string>({
       query: (path) => ({
         method: "GET",
         url: `/api/ee/git-source-of-truth/git/${encodeURIComponent(path)}`,
       }),
+      providesTags: [tag("git-file-content")],
     }),
   }),
 });

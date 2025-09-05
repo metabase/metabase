@@ -3,9 +3,13 @@ import { t } from "ttag";
 
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 import {
   Box,
+  Button,
   Flex,
   Icon,
   Loader,
@@ -19,6 +23,7 @@ import {
   type GitTreeNode,
   useGetFileContentQuery,
   useGetRepositoryTreeQuery,
+  useImportGitMutation,
 } from "metabase-enterprise/api";
 
 import { FileContentViewer } from "./FileContentViewer";
@@ -64,8 +69,11 @@ export const LibraryView = () => {
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [filterValue, setFilterValue] = useState("");
   const debouncedFilter = useDebouncedValue(filterValue, 300);
+  const importBranch = useSetting("git-sync-import-branch");
+  const [importGit, { isLoading: isImporting }] = useImportGitMutation();
+  const dispatch = useDispatch();
 
-  const { data: treeData, isLoading: isTreeLoading } =
+  const { data: treeData, isFetching: isTreeFetching } =
     useGetRepositoryTreeQuery();
   const {
     data: fileContent,
@@ -78,6 +86,26 @@ export const LibraryView = () => {
   const handleNodeSelect = (item: ITreeNodeItem) => {
     if (!item.children) {
       setSelectedFilePath(item.id as string);
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      await importGit({}).unwrap();
+      dispatch(
+        addUndo({
+          message: importBranch
+            ? t`Successfully imported from ${importBranch}`
+            : t`Successfully imported from git`,
+        }),
+      );
+    } catch (error) {
+      dispatch(
+        addUndo({
+          message: t`Failed to import from git`,
+          error: true,
+        }),
+      );
     }
   };
 
@@ -111,8 +139,8 @@ export const LibraryView = () => {
               size="sm"
             />
           </Box>
-          <ScrollArea flex={1} pb="md">
-            {isTreeLoading ? (
+          <ScrollArea flex={1}>
+            {isTreeFetching ? (
               <Flex justify="center" align="center" h="200px">
                 <Loader size="sm" />
               </Flex>
@@ -137,6 +165,22 @@ export const LibraryView = () => {
               />
             )}
           </ScrollArea>
+          <Box
+            p="md"
+            style={{
+              borderTop: "1px solid var(--mb-color-border)",
+            }}
+          >
+            <Button
+              variant="filled"
+              fullWidth
+              leftSection={<Icon name="download" />}
+              onClick={handleImport}
+              loading={isImporting}
+            >
+              {importBranch ? t`Import from ${importBranch}` : t`Import`}
+            </Button>
+          </Box>
         </Flex>
       </Box>
 
