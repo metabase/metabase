@@ -234,7 +234,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
       })}
       data-type="flexContainer"
     >
-      <Box ref={containerRef}>
+      <Box h="100%" ref={containerRef}>
         <NodeViewContent
           className={styles.flexContent}
           style={{

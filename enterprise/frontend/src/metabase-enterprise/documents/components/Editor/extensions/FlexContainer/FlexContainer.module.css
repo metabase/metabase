@@ -5,6 +5,7 @@
   border-radius: var(--mantine-radius-md);
   position: relative;
   max-width: 900px;
+  height: 100%;
 }
 
 .flexContainer.selected {
@@ -15,6 +16,7 @@
 .flexContent > :global(div[data-node-view-wrapper]) {
   display: grid;
   width: 100%;
+  height: 100%;
   gap: 1rem;
   grid-template-columns: var(--mb-card-container-col-widths);
 }
@@ -22,8 +24,8 @@
 .flexContent {
   position: relative;
   width: 100%;
+  height: 100%;
   box-sizing: border-box;
-  /* Grid layout will be applied via inline styles */
 }
 
 /* Ensure CardEmbed nodes within flex container take appropriate space */
