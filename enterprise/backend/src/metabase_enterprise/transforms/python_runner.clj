@@ -61,19 +61,17 @@
       (qp.store/with-metadata-provider db-id
         (driver/execute-reducible-query driver query {:canceled-chan cancel-chan} respond)))))
 
-;; imported from metabase.upload.types
-(defn- base-type->upload-type
+(defn- root-type
   [base-type]
   (when base-type
     (condp #(isa? %2 %1) base-type
-      :type/Float          :float
-      :type/BigInteger     :int
-      :type/Integer        :int
-      :type/Boolean        :boolean
-      :type/DateTimeWithTZ :offset-datetime
-      :type/DateTime       :datetime
-      :type/Date           :date
-      :type/Text           :text)))
+      :type/Float :type/Float
+      :type/Integer :type/Integer
+      :type/Boolean :type/Boolean
+      :type/DateTimeWithTZ :type/DateTimeWithTZ
+      :type/DateTime :type/Datetime
+      :type/Date :type/Date
+      :type/Text :type/Text)))
 
 (defn- closest-ancestor [t pred]
   (loop [remaining (conj clojure.lang.PersistentQueue/EMPTY [t])]
@@ -85,7 +83,7 @@
 (defn- effective-semantic-type-i-think
   "Kinda sketchy but maybe reasonable way to infer the effective-semantic-type"
   [{:keys [base_type effective_type semantic_type]}]
-  (or semantic_type (closest-ancestor  (or effective_type base_type) #(isa? % :Semantic/*))))
+  (or semantic_type (closest-ancestor (or effective_type base_type) #(isa? % :Semantic/*))))
 
 (defn- generate-manifest
   "Generate a metadata manifest for the table columns."
@@ -95,13 +93,13 @@
                            {:name           (:name col-meta)
                             :base_type      (some-> (:base_type col-meta) name)
                             :database_type  (some-> (:database_type col-meta) name)
-                            :upload_type    (some-> (base-type->upload-type (:base_type col-meta)) name)
+                            :root_type      (some-> (root-type (:base_type col-meta)) name)
                             ;; replace nil values with values indicating how they behave in practice.
                             ;; there may be better ways of doing this already, but i worry it's just implicit in QP
                             :semantic_type  (some-> (effective-semantic-type-i-think col-meta) name)
                             :effective_type (some-> (or (:effective_type col-meta) (:database_type col-meta)) name)
                             ;; TODO get this passed through
-                            #_#_:field_id       (:id col-meta)})
+                            #_#_:field_id   (:id col-meta)})
                          cols-meta)
    :table_metadata {:table_id table-id}})
 
