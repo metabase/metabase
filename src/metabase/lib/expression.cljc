@@ -93,9 +93,9 @@
 
     :else
     (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
-                      {:expression-name expression-name
-                       :query           query
-                       :stage-number    stage-number}))))
+                    {:expression-name expression-name
+                     :query           query
+                     :stage-number    stage-number}))))
 
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't

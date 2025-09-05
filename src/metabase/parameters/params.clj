@@ -206,10 +206,10 @@
     ;; a query against that model or metric.
     (if (= :question (:type card))
       (let [{card-query :dataset_query, result-metadata :result_metadata} card]
-           (cond-> (lib/query mp card-query)
-             result-metadata (lib/update-query-stage -1 (fn [stage]
-                                                          (->> (assoc stage :lib/stage-metadata (lib.util/->stage-metadata result-metadata))
-                                                               (lib/normalize ::lib.schema/stage))))))
+        (cond-> (lib/query mp card-query)
+          result-metadata (lib/update-query-stage -1 (fn [stage]
+                                                       (->> (assoc stage :lib/stage-metadata (lib.util/->stage-metadata result-metadata))
+                                                            (lib/normalize ::lib.schema/stage))))))
       (lib/query mp (lib.metadata/card mp (u/the-id card))))))
 
 (mu/defn- ensure-query-for-card :- ::context

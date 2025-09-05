@@ -125,38 +125,38 @@
   [col-1 col-2]
   (or
     ;; two column metadatas with different IDs are NEVER equal.
-    (columns-not-equal-by-fn-when-non-nil-in-both :id col-1 col-2)
+   (columns-not-equal-by-fn-when-non-nil-in-both :id col-1 col-2)
     ;; from the same source.
-    (columns-not-equal-by-fn-when-non-nil-in-both :lib/source col-1 col-2)
+   (columns-not-equal-by-fn-when-non-nil-in-both :lib/source col-1 col-2)
     ;; same join alias
-    (columns-not-equal-by-fn :metabase.lib.join/join-alias col-1 col-2)
+   (columns-not-equal-by-fn :metabase.lib.join/join-alias col-1 col-2)
     ;; same FK Field (for implicitly joined columns)
-    (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-id col-1 col-2)
-    (columns-not-equal-by-fn :fk-join-alias col-1 col-2)
+   (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-id col-1 col-2)
+   (columns-not-equal-by-fn :fk-join-alias col-1 col-2)
     ;; TODO (Cam 9/4/25) -- not super clear that this ought to be a reason for columns to be considered different since
     ;; `:fk-field-name` doesn't really seem to be super important... but this check seems to be needed, otherwise when
     ;; a there are multiple remappings from Col A => Col B (e.g. in a self-join) we'll potentially accidentally match
     ;; the wrong one. Maybe we can figure out a better way to make sure that doesn't happen.
-    (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-name col-1 col-2)
+   (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-name col-1 col-2)
     ;;
     ;; columns that don't have the same binning or temporal bucketing are never the same.
     ;;
     ;; same binning
-    (columns-not-equal-by-fn :metabase.lib.field/binning col-1 col-2)
+   (columns-not-equal-by-fn :metabase.lib.field/binning col-1 col-2)
     ;; same bucketing
-    (when (columns-not-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
-      'temporal-bucket)
+   (when (columns-not-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
+     'temporal-bucket)
     ;; check `:inherited-temporal-unit` as well if both columns have it.
-    (when (columns-not-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2)
-      :inherited-temporal-unit)
+   (when (columns-not-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2)
+     :inherited-temporal-unit)
     ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
     ;; some reason they do not)
-    (let [k (m/find-first (fn [k]
-                            (and (k col-1)
-                                 (k col-2)))
-                          [:lib/source-column-alias :name])]
-      (assert k "No key common to both columns")
-      (columns-not-equal-by-fn k col-1 col-2))))
+   (let [k (m/find-first (fn [k]
+                           (and (k col-1)
+                                (k col-2)))
+                         [:lib/source-column-alias :name])]
+     (assert k "No key common to both columns")
+     (columns-not-equal-by-fn k col-1 col-2))))
 
 (defmethod = :metadata/column
   [col-1 col-2]

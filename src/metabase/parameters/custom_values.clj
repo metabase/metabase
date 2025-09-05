@@ -10,7 +10,6 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -79,7 +78,7 @@
         ;; current last stage as the source alias in the new stage). Kind of annoying but we are doing wacko stuff
         ;; here I guess.
         value-column    (-> (lib.equality/find-matching-column query -1 value-column (lib/returned-columns query))
-                            lib.field.util/update-keys-for-col-from-previous-stage)
+                            lib/update-keys-for-col-from-previous-stage)
         textual?        (lib.types.isa/string? value-column)
         nonempty-filter ((if textual? lib/not-empty lib/not-null) value-column)
         query-filter    (when query-string
