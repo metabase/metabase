@@ -1371,6 +1371,26 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti type->database-type
+  "Returns the database type for a given Metabase type (from the type hierarchy) as a HoneySQL spec."
+  {:added "0.57.0", :arglists '([driver base-type])}
+  (fn [driver base-type] [driver base-type])
+  :hierarchy #'hierarchy)
+
+(defmethod type->database-type :default
+  [driver base-type]
+  ;; fallback
+  (let [upload-type (cond
+                      (isa? base-type :type/Integer) :metabase.upload/int
+                      (isa? base-type :type/Float) :metabase.upload/float
+                      (isa? base-type :type/Boolean) :metabase.upload/boolean
+                      (isa? base-type :type/DateTimeWithTZ) :metabase.upload/offset-datetime
+                      (isa? base-type :type/DateTime) :metabase.upload/datetime
+                      (isa? base-type :type/Date) :metabase.upload/date
+                      (isa? base-type :type/Text) :metabase.upload/text
+                      :else :metabase.upload/text)]
+    (upload-type->database-type driver upload-type)))
+
 (defmulti allowed-promotions
   "Returns a mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
   In the context of uploads, this permits certain appends or replacements of an existing csv table
