@@ -142,6 +142,7 @@ export const CommentEditor = ({
     if (!isEmpty && onSubmit) {
       onSubmit(content);
       editor.commands.clearContent(true);
+      editor.commands.blur();
     }
   };
   const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
