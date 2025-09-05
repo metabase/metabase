@@ -1147,7 +1147,7 @@
   drivers.
 
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0", :arglists '([driver connection-details queries])}
+  {:added "0.57.0", :arglists '([driver conn-spec queries])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1158,7 +1158,7 @@
   types."
   {:added "0.57.0",
    :arglists '([driver
-                {:keys [transform-type connection-details query output-table] :as _transform-details}
+                {:keys [transform-type conn-spec query output-table] :as _transform-details}
                 {:keys [overwrite?] :as _opts}])}
   (fn [driver transform-details _opts]
     [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
@@ -1183,7 +1183,24 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti connection-details
+(defmulti schema-exists?
+  "Checks if a schema exists in the given database."
+  {:added "0.57.0" :arglists '([driver db-id schema])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod schema-exists? :default [_driver _db-id _schema] false)
+
+(defmulti create-schema-if-needed!
+  "Creates a schema if it does not already exist.
+   Used to create new schemas for transforms."
+  {:added "0.57.0" :arglists '([driver conn-spec schema])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod create-schema-if-needed! :default [_driver _conn-spec _schema] nil)
+
+(defmulti connection-spec
   "Get connection details for a given driver and db object"
   {:added "0.57.0", :arglists '([driver db])}
   dispatch-on-initialized-driver
@@ -1471,11 +1488,3 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
-
-(defmulti set-database-used!
-  "Sets the database to be used on a connection. Called prior to query execution for drivers that support USE DATABASE like commands."
-  {:added "0.56.0" :arglists '([driver conn db])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod set-database-used! ::driver [_driver _conn _db] nil)

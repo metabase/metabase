@@ -8,12 +8,13 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.test.util :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import (java.io Closeable)
-           (java.sql Timestamp)
+           (java.sql Timestamp SQLException)
            (java.time Duration Instant)
            (org.postgresql.util PGobject)))
 
@@ -326,3 +327,37 @@
                    :indexer_last_seen_hash "bar"
                    :indexer_last_seen      (:gated_at (:last-seen watermark))}
                   index2-meta)))))))
+
+(deftest gate-documents-metrics-test
+  (mt/with-prometheus-system! [_ system]
+    (let [pgvector       semantic.tu/db
+          index-metadata (semantic.tu/unique-index-metadata)
+          t1             (ts "2025-01-01T00:01:00Z")
+          c1             {:model "card" :id "123" :searchable_text "Dog Training Guide"}
+          d1             {:model "dashboard" :id "456" :searchable_text "Elephant Migration"}
+          version        semantic.gate/search-doc->gate-doc
+          sut            semantic.gate/gate-documents!]
+      (with-open [_ (open-tables! pgvector index-metadata)]
+        (let [docs [(version c1 t1) (version d1 t1)]]
+          (testing "Gating triggers write metrics"
+            (sut pgvector index-metadata docs)
+            (is (=? {:sum #(and (number? %) (> % 0)) :count (partial == 1) :buckets #(= 11 (count %))}
+                    (mt/metric-value system :metabase-search/semantic-gate-write-ms)))
+            (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-documents)))
+            (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-modified))))
+          (testing ":metabase-search/semantic-gate-write-modified is not increased if documets are gated"
+            (sut pgvector index-metadata docs)
+            (is (== 4 (mt/metric-value system :metabase-search/semantic-gate-write-documents)))
+            (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-modified))))
+          (testing ":metabase-search/semantic-gate-timeout-ms is updated on timeout"
+            (with-redefs [semantic.gate/execute-upsert!
+                          (fn [& _] (throw (org.postgresql.util.PSQLException.
+                                            "ERROR: canceling statement due to statement timeout"
+                                            org.postgresql.util.PSQLState/QUERY_CANCELED)))]
+              (let [ex (try
+                         (sut pgvector index-metadata docs)
+                         (catch Exception e e))]
+                (is (and (instance? SQLException ex)
+                         (= "57014" (.getSQLState ^SQLException ex)))))
+              (is (=? {:sum #(and (number? %) (> % 0)) :count (partial == 1) :buckets #(= 11 (count %))}
+                      (mt/metric-value system :metabase-search/semantic-gate-timeout-ms))))))))))

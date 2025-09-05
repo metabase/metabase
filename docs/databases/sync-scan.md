@@ -115,7 +115,7 @@ To use this endpoint, you must pass a string via the `MB_API_KEY` environment va
 
 We created the `notify` endpoint so that people could tell their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) finishes.
 
-See our [API docs](/docs/latest/api.html).
+See our [API docs](../api.html).
 
 ## How database syncs work
 

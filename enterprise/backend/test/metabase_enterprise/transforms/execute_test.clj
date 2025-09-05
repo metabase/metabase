@@ -6,11 +6,15 @@
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -125,3 +129,98 @@
                           ["2024-01-21T00:00:00Z" 19.99]
                           ["2024-01-23T00:00:00Z" 14.99]]
                          query-result)))))))))))
+
+(deftest transform-schema-created-if-needed-test
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
+    (mt/dataset transforms-dataset/transforms-test
+      (with-transform-cleanup! [target-table {:type   "table"
+                                              :schema (str "transform_schema_" (mt/random-name))
+                                              :name   "widget_products"}]
+        (let [mp (mt/metadata-provider)
+              transforms-products (lib.metadata/table mp (mt/id :transforms_products))
+              products-category (lib.metadata/field mp (mt/id :transforms_products :category))
+              products-id (lib.metadata/field mp (mt/id :transforms_products :id))
+              query (-> (lib/query mp transforms-products)
+                        (lib/filter (lib/= products-category "Widget"))
+                        (lib/order-by products-id :asc))]
+          (mt/with-temp [:model/Transform transform {:name   "transform"
+                                                     :source {:type  :query
+                                                              :query query}
+                                                     :target target-table}]
+            (transforms.execute/run-mbql-transform! transform {:run-method :manual})
+            (let [table-result      (wait-for-table (:name target-table) 10000)
+                  query-result (->> (lib/query mp table-result)
+                                    (qp/process-query)
+                                    (mt/formatted-rows [int str str 2.0 str])
+                                    (sort-by first <))]
+              (is (= [[1 "Widget A" "Widget" 19.99 "2024-01-01T10:00:00Z"]
+                      [7 "Widget B" "Widget" 24.99 "2024-01-07T10:00:00Z"]
+                      [9 "Widget C" "Widget" 14.99 "2024-01-09T10:00:00Z"]
+                      [10 "Widget D" "Widget" 34.99 "2024-01-10T10:00:00Z"]
+                      [15 "Widget E" "Widget" 44.99 "2024-01-15T10:00:00Z"]]
+                     query-result)))))))))
+
+;; TODO(rileythomp, 2025-08-28): Make this test driver agnostic
+(deftest no-create-schema-permissions-test
+  (mt/test-driver :postgres
+    (mt/dataset transforms-dataset/transforms-test
+      (let [details (:details (mt/db))
+            password (:password details)
+            no-schema-user (u/lower-case-en (mt/random-name))
+            spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))]
+        (try
+          (driver/execute-raw-queries! driver/*driver* spec
+                                       [[(format "CREATE ROLE %s WITH LOGIN PASSWORD '%s';" no-schema-user password)]
+                                        [(format "REVOKE CREATE ON DATABASE \"%s\" FROM %s;" (:db details) no-schema-user)]
+                                        [(format "GRANT USAGE ON SCHEMA public TO %s;" no-schema-user)]
+                                        [(format "GRANT SELECT ON ALL TABLES IN SCHEMA public TO %s;" no-schema-user)]
+                                        [(format "GRANT CREATE ON SCHEMA public TO %s;" no-schema-user)]])
+          (mt/with-temp [:model/Database db {:engine :postgres
+                                             :details (assoc details
+                                                             :user no-schema-user)}]
+            (mt/with-db db
+              (sync/sync-database! db {:scan :schema})
+              (let [mp (mt/metadata-provider)
+                    transforms-products (lib.metadata/table mp (mt/id :transforms_products))
+                    products-category (lib.metadata/field mp (mt/id :transforms_products :category))
+                    products-id (lib.metadata/field mp (mt/id :transforms_products :id))
+                    query (-> (lib/query mp transforms-products)
+                              (lib/filter (lib/= products-category "Widget"))
+                              (lib/order-by products-id :asc))]
+                (testing "user without create schema permissions should be able to create tables in existing schema"
+                  (with-transform-cleanup! [target-table {:type   "table"
+                                                          :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                                                          :name   "widget_products"}]
+                    (mt/with-temp [:model/Transform transform {:name   "transform"
+                                                               :source {:type  :query
+                                                                        :query query}
+                                                               :target target-table}]
+                      (transforms.execute/run-mbql-transform! transform {:run-method :manual})
+                      (let [table-result      (wait-for-table (:name target-table) 10000)
+                            query-result (->> (lib/query mp table-result)
+                                              (qp/process-query)
+                                              (mt/formatted-rows [int str str 2.0 str])
+                                              (sort-by first <))]
+                        (is (= [[1 "Widget A" "Widget" 19.99 "2024-01-01T10:00:00Z"]
+                                [7 "Widget B" "Widget" 24.99 "2024-01-07T10:00:00Z"]
+                                [9 "Widget C" "Widget" 14.99 "2024-01-09T10:00:00Z"]
+                                [10 "Widget D" "Widget" 34.99 "2024-01-10T10:00:00Z"]
+                                [15 "Widget E" "Widget" 44.99 "2024-01-15T10:00:00Z"]]
+                               query-result))))))
+                (testing "user without create schema permissions should not be able to create a new schema"
+                  (with-transform-cleanup! [target-table {:type   "table"
+                                                          :schema (str "transform_schema_" (mt/random-name))
+                                                          :name   "widget_products"}]
+                    (mt/with-temp [:model/Transform transform {:name   "transform"
+                                                               :source {:type  :query
+                                                                        :query query}
+                                                               :target target-table}]
+
+                      (is (thrown-with-msg?
+                           clojure.lang.ExceptionInfo
+                           #"ERROR: permission denied for database transforms-test"
+                           (transforms.execute/run-mbql-transform! transform {:run-method :manual})))))))))
+          (finally
+            (driver/execute-raw-queries! driver/*driver* spec
+                                         [[(format "DROP OWNED BY %s;" no-schema-user)]
+                                          [(format "DROP ROLE IF EXISTS %s;" no-schema-user)]])))))))

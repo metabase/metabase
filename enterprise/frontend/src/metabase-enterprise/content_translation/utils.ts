@@ -43,8 +43,11 @@ export const translateContentString: TranslateContentStringFunction = (
     return msgid;
   }
 
+  const lowerCaseMsgId = msgid.toLowerCase();
+
   const msgstr = dictionary?.find(
-    (row) => row.locale === locale && row.msgid === msgid,
+    (row) =>
+      row.locale === locale && row.msgid.toLowerCase() === lowerCaseMsgId,
   )?.msgstr;
 
   if (!msgstr || !msgstr.trim()) {

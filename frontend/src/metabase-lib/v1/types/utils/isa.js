@@ -40,6 +40,10 @@ export function isTypeFK(type) {
   return isa(type, TYPE.FK);
 }
 
+export function isTypeCurrency(type) {
+  return isa(type, TYPE.Currency);
+}
+
 export function isFieldType(type, field) {
   if (!field) {
     return false;

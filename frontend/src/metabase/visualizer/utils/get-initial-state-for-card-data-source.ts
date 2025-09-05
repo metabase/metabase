@@ -185,7 +185,7 @@ export function getInitialStateForCardDataSource(
       }
 
       if (Array.isArray(originalValue)) {
-        // When there're no sensible metrics/dimensions,
+        // When there are no sensible metrics/dimensions,
         // "graph.dimensions" and "graph.metrics" are `[null]`
         if (originalValue.filter(Boolean).length === 0) {
           return;

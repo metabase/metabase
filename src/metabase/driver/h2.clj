@@ -277,9 +277,9 @@
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
 (defmethod driver/execute-raw-queries! :h2
-  [driver connection-details queries]
+  [driver conn-spec queries]
   ;; FIXME: need to check the equivalent of check-native-query-not-using-default-user and check-action-commands-allowed
-  ((get-method driver/execute-raw-queries! :sql-jdbc) driver connection-details queries))
+  ((get-method driver/execute-raw-queries! :sql-jdbc) driver conn-spec queries))
 
 (defn- dateadd [unit amount expr]
   (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone" "date"} expr)]

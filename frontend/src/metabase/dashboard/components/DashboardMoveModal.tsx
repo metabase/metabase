@@ -77,6 +77,7 @@ const DashboardMoveToast = ({
         .jt`Dashboard moved to ${
         collection ? (
           <Link
+            key="link"
             className={S.CollectionLink}
             to={Urls.collection(collection)}
             style={{ marginInlineStart: ".25em" }}

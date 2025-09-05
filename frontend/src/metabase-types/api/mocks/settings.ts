@@ -220,6 +220,7 @@ export const createMockSettings = (
   "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
   "development-mode?": false,
+  "disable-cors-on-localhost": false,
   "ee-ai-features-enabled": false,
   "ee-openai-model": "",
   "ee-openai-api-key": "",

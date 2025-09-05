@@ -231,8 +231,7 @@
                    ;; of `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
                    ;; see https://github.com/metabase/metabase/issues/27856
-                   (cond-> (:quote-db-name details)
-                     (update :db quote-name))
+                   (update :db quote-name)
                    (cond-> use-password
                      (dissoc :private-key))
                    ;; password takes precedence if `use-password` is missing
@@ -868,20 +867,27 @@
          (with-open [rs (.getTables metadata db-name schema-name table-name nil)]
            (.next rs)))))))
 
-(defmethod driver/set-database-used! :snowflake [_driver conn db]
-  (let [sql (format "USE DATABASE \"%s\"" (db-name db))]
-    (with-open [stmt (.createStatement ^java.sql.Connection conn)]
-      (.execute stmt sql))))
-
 (defmethod driver/run-transform! [:snowflake :table]
-  [driver {:keys [connection-details query output-table]} opts]
+  [driver {:keys [conn-spec query output-table]} opts]
   (let [driver (keyword driver)
         queries (cond->> [(driver/compile-transform driver
                                                     {:query query
                                                      :output-table output-table})]
                   (:overwrite? opts) (cons (driver/compile-drop-table driver output-table)))
-        db-name-val (some connection-details [:db :dbname])
+        db-name-val (some conn-spec [:db :dbname])
+        quoted-db (if (and (= (first db-name-val) \")
+                           (= (last db-name-val) \"))
+                    db-name-val
+                    (quote-name db-name-val))
         all-queries (if db-name-val
-                      (cons [(format "USE DATABASE \"%s\"" db-name-val)] queries)
+                      (cons [(str "USE DATABASE " quoted-db)] queries)
                       queries)]
-    {:rows-affected (last (driver/execute-raw-queries! driver connection-details all-queries))}))
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec all-queries))}))
+
+(defmethod driver/create-schema-if-needed! :snowflake
+  [driver conn-spec schema]
+  (let [queries [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]
+        db-name-val (or (:db conn-spec) (:dbname conn-spec))
+        all-queries (cond->> queries
+                      db-name-val (cons [(format "USE DATABASE \"%s\"" db-name-val)]))]
+    (driver/execute-raw-queries! driver conn-spec all-queries)))

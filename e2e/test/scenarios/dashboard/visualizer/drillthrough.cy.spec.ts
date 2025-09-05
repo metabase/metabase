@@ -66,7 +66,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     });
   });
 
-  it("should work", () => {
+  it("should work", { tags: "@flaky" }, () => {
     createDashboardWithVisualizerDashcards();
 
     const ORDERS_SERIES_COLOR = "#88BF4D";

@@ -20,7 +20,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   getError,
   getFields,
-  getForeignKeys,
   getHasSingleSchema,
   getIsEditing,
   getIsFormulaExpanded,
@@ -66,7 +65,6 @@ const mapStateToProps = (state, props) => {
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
     user: getUser(state, props),
-    foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     hasSingleSchema: getHasSingleSchema(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),

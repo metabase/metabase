@@ -402,7 +402,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
         <span>
           {c(
             "{0} is a name of a variable being used by row and column security",
-          ).jt`${(<strong>{target[1][1]}</strong>)} variable`}
+          ).jt`${(<strong key="strong">{target[1][1]}</strong>)} variable`}
         </span>
       );
     } else if (target[0] === "dimension") {
@@ -442,7 +442,8 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
               <span>
                 {c(
                   "{0} is a name of a field being used by row and column security",
-                ).jt`${(<strong>{columnInfo.displayName}</strong>)} field`}
+                )
+                  .jt`${(<strong key="strong">{columnInfo.displayName}</strong>)} field`}
               </span>
             );
           }}

@@ -162,7 +162,7 @@ For code samples, see the [static embedding reference app](https://github.com/me
 
 ## Interactive embedding authenticates and authorizes people in one flow
 
-Interactive embedding integrates with SSO ([JWT](/docs/latest/people-and-groups/authenticating-with-jwt) or [SAML](/docs/latest/people-and-groups/authenticating-with-saml)) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
+Interactive embedding integrates with SSO ([JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
 
 - [Tables](../permissions/data.md)
 - [Rows](../permissions/row-and-column-security.md#row-level-security-filter-by-a-column-in-the-table)
@@ -250,5 +250,5 @@ When Customer 1 logs in, they'll see a different filtered version of the Account
 ## Further reading
 
 - [Configuring permissions for different customer schemas](../permissions/embedding.md)
-- [Why interactive embedding?](/blog/why-full-app-embedding)
-- [The five stages of embedding grief](/learn/grow-your-data-skills/analytics/embedding-mistakes)
+- [Why interactive embedding?](https://www.metabase.com/blog/why-full-app-embedding)
+- [The five stages of embedding grief](https://www.metabase.com/learn/grow-your-data-skills/analytics/embedding-mistakes)

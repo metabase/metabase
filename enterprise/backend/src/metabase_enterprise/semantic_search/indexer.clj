@@ -26,6 +26,8 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase.analytics.core :as analytics]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
@@ -89,6 +91,14 @@
       (log/debugf "Marked indexer as stalled for index %s at %s" (:table-name index) timestamp))
     timestamp))
 
+(defn- observe-poll-to-poll-interval [poll-result watermark]
+  (let [{new-poll-time :poll-time} poll-result
+        {:keys [last-poll]} watermark]
+    (when last-poll
+      ;; distance between polls
+      (let [idle-time-ms (- (inst-ms new-poll-time) (inst-ms last-poll))]
+        (analytics/observe! :metabase-search/semantic-indexer-poll-to-poll-interval-ms idle-time-ms)))))
+
 (defn indexing-step
   "Runs a single blocking step of the indexing loop."
   [pgvector index-metadata index indexing-state]
@@ -115,19 +125,25 @@
 
           (clear-stall-if-needed []
             (when (:stalled-at @indexing-state)
+              (analytics/set! :metabase-search/semantic-indexer-stalled 0)
               (clear-stall! pgvector index-metadata index)
               (vswap! indexing-state assoc :stalled-at nil)))]
     (let [poll-result           (poll)
           {:keys [update-candidates]} poll-result
+          _                     (observe-poll-to-poll-interval poll-result (:watermark @indexing-state))
           novel-candidates      (remove-redundant-candidates update-candidates)
           documents-query       {:select [:id :gated_at :model :model_id :document]
                                  :from   [(keyword (:gate-table-name index-metadata))]
                                  :where  [:in :id (sort (map :id novel-candidates))]}
           documents-sql         (sql/format documents-query :quoted true)
+          lookup-start          (u/start-timer)
           gate-docs             (when (seq novel-candidates) (jdbc/execute! pgvector documents-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+          lookup-duration-ms    (u/since-ms lookup-start)
           updates               (filter :document gate-docs)
           deletes               (remove :document gate-docs)
           ^Timestamp stalled-at (:stalled-at @indexing-state)]
+
+      (when (seq novel-candidates) (analytics/inc! :metabase-search/semantic-indexer-read-documents-ms lookup-duration-ms))
 
       (when (seq gate-docs)
         (log/infof "Found gate updates: %d updates, %d deletes" (count updates) (count deletes)))
@@ -152,15 +168,21 @@
          ;; DLQ processing hasn't been initialized (keeping this while in flux, ensures DLQ is 'optional').
          (nil? (:next-dlq-run @indexing-state)))
         (try
-          (when (seq updates)
-            (log/debugf "Processing %d index updates in normal mode for index %s" (count updates) (:table-name index))
-            (semantic.index/upsert-index! pgvector index (map semantic.gate/gate-doc->search-doc updates)))
-          (doseq [[model deletes] (group-by :model deletes)]
-            (when (seq deletes)
-              (log/debugf "Processing %d index deletes for model %s in normal mode for index %s" (count deletes) model (:table-name index)))
-            (semantic.index/delete-from-index! pgvector index model (map :model_id deletes)))
-          (clear-stall-if-needed)
-          (move-to-next-watermark poll-result)
+          ;; index changes
+          (let [index-start-time (u/start-timer)]
+            (when (seq updates)
+              (log/debugf "Processing %d index updates in normal mode for index %s" (count updates) (:table-name index))
+              (semantic.index/upsert-index! pgvector index (map semantic.gate/gate-doc->search-doc updates)))
+            (doseq [[model deletes] (group-by :model deletes)]
+              (when (seq deletes)
+                (log/debugf "Processing %d index deletes for model %s in normal mode for index %s" (count deletes) model (:table-name index)))
+              (semantic.index/delete-from-index! pgvector index model (map :model_id deletes)))
+            (analytics/inc! :metabase-search/semantic-indexer-write-indexing-ms (u/since-ms index-start-time)))
+          ;; update metadata/watermark
+          (let [metadata-start-time (u/start-timer)]
+            (clear-stall-if-needed)
+            (move-to-next-watermark poll-result)
+            (analytics/inc! :metabase-search/semantic-indexer-write-metadata-ms (u/since-ms metadata-start-time)))
           (log/debugf "Processed %d gate documents successfully in normal mode for index %s" (count gate-docs) (:table-name index))
           (catch InterruptedException ie (throw ie))
           (catch Throwable t
@@ -186,6 +208,7 @@
         ;; according to appropriate policies.
         :else
         (do
+          (analytics/set! :metabase-search/semantic-indexer-stalled 1)
           (log/debugf "Processing %d documents in stalled mode (using DLQ) for index %s" (count gate-docs) (:table-name index))
           (let [{:keys [failures]} (semantic.dlq/try-batch! pgvector index gate-docs)]
             (when (seq failures)
@@ -215,9 +238,12 @@
                                   (.instant clock)
                                   (:last-seen-change @indexing-state))))))
 
-;; having a var is handy for tests
+;; having a var is handy for tests, and observing sleeps
 (defn- sleep [ms]
-  (Thread/sleep (long ms)))
+  (let [start-time (u/start-timer)]
+    (Thread/sleep (long ms))
+    (analytics/inc! :metabase-search/semantic-indexer-sleep-ms (u/since-ms start-time))
+    nil))
 
 (defn on-indexing-idle
   "Runs any loop idle behaviour (such as waiting), called after each step."
@@ -328,6 +354,10 @@
          :poll-limit dlq-poll-limit)
 
         now (.instant clock)]
+
+    (analytics/inc! :metabase-search/semantic-indexer-dlq-successes success-count)
+    (analytics/inc! :metabase-search/semantic-indexer-dlq-failures failure-count)
+    (analytics/inc! :metabase-search/semantic-indexer-dlq-loop-ms (.toMillis run-time))
 
     (log/debugf "DLQ step completed for index %s: exit-reason=%s, run-time=%s, successes=%d, failures=%d"
                 (:table-name index) exit-reason run-time success-count failure-count)
@@ -454,11 +484,13 @@
           (log/warnf "DLQ table does not exist for index %s" (:table-name index)))
 
         (try
-          (indexing-loop
-           pgvector
-           index-metadata
-           index
-           indexing-state)
+          (let [loop-start-time (u/start-timer)]
+            (indexing-loop
+             pgvector
+             index-metadata
+             index
+             indexing-state)
+            (analytics/inc! :metabase-search/semantic-indexer-loop-ms (u/since-ms loop-start-time)))
 
           (catch InterruptedException ie (throw ie))
           (catch Throwable t

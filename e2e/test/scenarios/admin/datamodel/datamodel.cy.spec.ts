@@ -175,7 +175,9 @@ describe("scenarios > admin > datamodel", () => {
           .click();
 
         cy.location("pathname").should("eq", "/admin/databases/create");
-        H.modal().should("be.visible").and("contain.text", "Add a database");
+        cy.findByRole("heading", { name: "Add a database" }).should(
+          "be.visible",
+        );
       });
     });
 

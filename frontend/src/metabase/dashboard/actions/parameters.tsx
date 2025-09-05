@@ -861,7 +861,8 @@ export const setParameterTemporalUnits = createThunkAction(
         ...parameter,
         temporal_units: temporalUnits,
         default:
-          parameter.default && temporalUnits.includes(parameter.default)
+          parameter.default &&
+          temporalUnits.includes(parameter.default as TemporalUnit)
             ? parameter.default
             : undefined,
       }));

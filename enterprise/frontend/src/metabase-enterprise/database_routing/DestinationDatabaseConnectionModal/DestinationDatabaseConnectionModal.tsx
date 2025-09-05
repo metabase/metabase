@@ -144,6 +144,7 @@ export const DestinationDatabaseConnectionModalInner = ({
             engine: { fieldState: "hidden" },
           }}
           autofocusFieldName="name"
+          formLocation="admin"
         />
       </LoadingAndErrorWrapper>
     </Modal>

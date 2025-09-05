@@ -4,7 +4,7 @@
 
   a {
     color: var(--mb-color-text-primary);
-    text-decoration: underline solid var(--mb-base-color-gray-40) 1px;
+    text-decoration: underline solid var(--mb-color-border) 1px;
 
     &:hover {
       color: var(--mb-color-brand);

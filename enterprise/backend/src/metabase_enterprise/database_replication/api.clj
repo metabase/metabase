@@ -41,8 +41,8 @@
     (constantly true)
     (let [pat (driver.s/schema-pattern->re-pattern patterns)
           f   (case type
-                "include" some?
-                "exclude" nil?)]
+                "inclusion" some?
+                "exclusion" nil?)]
       (fn [table-schema]
         (f (re-matches pat table-schema))))))
 
@@ -137,7 +137,7 @@
    [:replicationSchemaFilters
     {:optional true}
     [:map
-     [:schema-filters-type [:enum "include" "exclude" "all"]]
+     [:schema-filters-type [:enum "inclusion" "exclusion" "all"]]
      [:schema-filters-patterns :string]]]])
 
 (api.macros/defendpoint :post "/connection/:database-id/preview"

@@ -147,11 +147,11 @@ export const QuestionMoveConfirmModal = ({
                 return (
                   <List.Item key={`card-${cd.card_id}`}>
                     <Text>{jt`${(
-                      <Text component="span" fw={700}>
+                      <Text key="name" component="span" fw={700}>
                         {card?.name}
                       </Text>
                     )} will be removed from ${(
-                      <DashboardNames names={dashboardNames} />
+                      <DashboardNames key="names" names={dashboardNames} />
                     )}`}</Text>
                   </List.Item>
                 );

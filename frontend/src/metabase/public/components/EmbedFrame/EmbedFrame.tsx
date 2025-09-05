@@ -272,8 +272,8 @@ export const EmbedFrame = ({
               isFixedWidth={dashboard?.width === "fixed"}
             >
               <ParametersListComponent
-                question={question}
-                dashboard={dashboard}
+                cardId={question?.id()}
+                dashboardId={dashboard?.id}
                 parameters={valuePopulatedParameters}
                 setParameterValue={setParameterValue}
                 hideParameters={hideParameters}

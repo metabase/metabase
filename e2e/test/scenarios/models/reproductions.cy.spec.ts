@@ -1217,7 +1217,7 @@ describe("issue 34514", () => {
     assertBackToEmptyState();
   });
 
-  it("should allow browser history navigation between tabs (metabase#34514)", () => {
+  it("should allow browser history navigation between tabs (metabase#34514, metabase#45787)", () => {
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Tables").click();
       cy.wait("@fetchTables");
@@ -1230,13 +1230,15 @@ describe("issue 34514", () => {
 
     cy.findByTestId("editor-tabs-columns-name").click();
     assertMetadataTabState();
+    cy.get("@dataset.all").should("have.length", 1);
 
     cy.go("back");
-    cy.wait(["@dataset", "@fetchDatabase"]); // This should be removed when (metabase#45787) is fixed
     assertQueryTabState();
+    cy.get("@dataset.all").should("have.length", 1);
 
     cy.go("back");
     assertBackToEmptyState();
+    cy.get("@dataset.all").should("have.length", 1);
   });
 
   function assertQueryTabState() {

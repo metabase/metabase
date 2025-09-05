@@ -879,7 +879,6 @@ describe("cartesian", () => {
       combineWithCartesianChart(
         nextState,
         settings,
-        {},
         createMockDataset({
           data: { cols: [newMetricColumn, newDimensionColumn] },
         }),
@@ -969,7 +968,6 @@ describe("cartesian", () => {
       combineWithCartesianChart(
         nextState,
         settings,
-        {},
         createMockDataset({
           data: {
             cols: [
@@ -1065,7 +1063,6 @@ describe("cartesian", () => {
         combineWithCartesianChart(
           nextState,
           settings,
-          {},
           createMockDataset({
             data: {
               cols: [stringDimension, anotherStringDimension, dateDimension],
@@ -1135,7 +1132,6 @@ describe("cartesian", () => {
         combineWithCartesianChart(
           nextState,
           settings,
-          {},
           createMockDataset({
             data: {
               cols: [stringDimension, dateDimension, numericDimension],
@@ -1203,7 +1199,6 @@ describe("cartesian", () => {
         combineWithCartesianChart(
           nextState,
           settings,
-          {},
           createMockDataset({
             data: {
               cols: [dateDimension, anotherDateDimension, stringDimension],
@@ -1270,7 +1265,6 @@ describe("cartesian", () => {
         combineWithCartesianChart(
           nextState,
           settings,
-          {},
           createMockDataset({
             data: {
               cols: [stringDimension, dateDimension, anotherStringDimension],

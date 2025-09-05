@@ -11,3 +11,4 @@ export * from "./is-visualizer-dashboard-card";
 export * from "./merge-data";
 export * from "./split-series";
 export * from "./get-visualization-columns";
+export * from "./update-viz-settings-with-refs";

@@ -1,4 +1,11 @@
-import { createElement, useCallback, useEffect, useMemo } from "react";
+import {
+  createElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParam } from "react-use";
 import { match } from "ts-pattern";
 
@@ -12,6 +19,7 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
+import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
 import S from "./SdkIframeEmbedPreview.module.css";
 
 // we import the equivalent of embed.js so that we don't add extra loading time
@@ -26,11 +34,14 @@ declare global {
 
 export const SdkIframeEmbedPreview = () => {
   const { settings } = useSdkIframeEmbedSetupContext();
+  const [isLoading, setIsLoading] = useState(true);
 
   const localeOverride = useSearchParam("locale");
 
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
+
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const defineMetabaseConfig = useCallback(
     (metabaseConfig: SdkIframeEmbedBaseSettings) => {
@@ -78,12 +89,32 @@ export const SdkIframeEmbedPreview = () => {
     defineMetabaseConfig(metabaseConfig);
   }, [metabaseConfig, defineMetabaseConfig]);
 
+  // Show a "fake" loading indicator when componentName changes.
+  // Embed JS has its own loading indicator, but it shows up after the iframe loads.
+  useEffect(() => {
+    if (containerRef.current) {
+      const embed = containerRef.current.querySelector(settings.componentName);
+      const handleReady = () => setIsLoading(false);
+
+      if (embed) {
+        setIsLoading(true);
+        embed.addEventListener("ready", handleReady);
+
+        return () => {
+          embed.removeEventListener("ready", handleReady);
+        };
+      }
+    }
+  }, [settings.componentName]);
+
   return (
     <Card
       className={S.EmbedPreviewIframe}
       id="iframe-embed-container"
       bg={settings.theme?.colors?.background}
       h="100%"
+      ref={containerRef}
+      pos="relative"
     >
       {match(settings)
         .with(
@@ -138,6 +169,8 @@ export const SdkIframeEmbedPreview = () => {
           }),
         )
         .exhaustive()}
+
+      <EmbedPreviewLoadingOverlay isVisible={isLoading} />
     </Card>
   );
 };

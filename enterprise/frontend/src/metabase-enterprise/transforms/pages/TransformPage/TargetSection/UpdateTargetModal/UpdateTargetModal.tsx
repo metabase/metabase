@@ -2,13 +2,17 @@ import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { hasFeature } from "metabase/admin/databases/utils";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormSelect,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
@@ -26,6 +30,7 @@ import {
   useDeleteTransformTargetMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 
 type UpdateTargetModalProps = {
@@ -85,12 +90,23 @@ function UpdateTargetForm({
   const [shouldDeleteTarget, setShouldDeleteTarget] = useState(false);
 
   const {
+    data: database,
+    isLoading: isDatabaseLoading,
+    error: databaseError,
+  } = useGetDatabaseQuery(databaseId ? { id: databaseId } : skipToken);
+
+  const {
     data: schemas = [],
-    isLoading,
-    error,
+    isLoading: isSchemasLoading,
+    error: schemasError,
   } = useListDatabaseSchemasQuery(
     databaseId ? { id: databaseId, include_hidden: true } : skipToken,
   );
+
+  const isLoading = isDatabaseLoading || isSchemasLoading;
+  const error = databaseError ?? schemasError;
+
+  const supportsSchemas = database && hasFeature(database, "schemas");
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -113,8 +129,12 @@ function UpdateTargetForm({
       {({ dirty }) => (
         <Form>
           <Stack gap="lg">
-            {schemas.length > 1 && (
-              <FormSelect name="schema" label={t`Schema`} data={schemas} />
+            {supportsSchemas && (
+              <SchemaFormSelect
+                name="schema"
+                label={t`Schema`}
+                data={schemas}
+              />
             )}
             <FormTextInput name="name" label={t`Table name`} />
             {table != null && (
@@ -122,7 +142,7 @@ function UpdateTargetForm({
                 value={shouldDeleteTarget.toString()}
                 label={t`Keep the old target table, or delete it?`}
                 description={jt`You can keep or delete ${(
-                  <strong>{target.name}</strong>
+                  <strong key="strong">{target.name}</strong>
                 )}. Deleting it can’t be undone, and will break queries that used it. Please be careful!`}
                 onChange={(value) => setShouldDeleteTarget(value === "true")}
               >

@@ -97,6 +97,7 @@ export const VisualizationPreview = ({ rawSeries, result, error }) => {
     <Visualization
       rawSeries={rawSeries}
       error={err}
+      queryBuilderMode="notebook"
       className={cx(CS.bordered, CS.shadowed, CS.rounded, CS.bgWhite, {
         [CS.p2]: err,
       })}

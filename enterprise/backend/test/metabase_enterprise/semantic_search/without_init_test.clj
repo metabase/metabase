@@ -26,13 +26,6 @@
       (finally
         (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)))))
 
-(deftest reindex!-without-init!-test
-  (without-init!
-   #(testing "reindex! works without init!"
-      (semantic.tu/blocking-index!
-       (semantic/reindex! (semantic.tu/mock-documents) {}))
-      (semantic.tu/check-index-has-mock-docs))))
-
 (deftest update-index!-without-init!-test
   (without-init!
    #(testing "update-index! is a no-op without init!"

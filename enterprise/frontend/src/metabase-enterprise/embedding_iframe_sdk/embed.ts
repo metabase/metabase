@@ -9,7 +9,10 @@ import {
   MetabaseError,
 } from "embedding-sdk-bundle/errors";
 
-import { DISABLE_UPDATE_FOR_KEYS } from "./constants";
+import {
+  ALLOWED_EMBED_SETTING_KEYS_MAP,
+  DISABLE_UPDATE_FOR_KEYS,
+} from "./constants";
 import type {
   SdkIframeEmbedEvent,
   SdkIframeEmbedEventHandler,
@@ -50,6 +53,7 @@ const setupConfigWatcher = () => {
     },
     set(newVal: Record<string, unknown>) {
       assertFieldCanBeUpdated(newVal);
+      assertValidMetabaseConfigField(newVal);
 
       currentConfig = { ...currentConfig, ...newVal };
       proxyConfig = createProxy(currentConfig);
@@ -96,6 +100,23 @@ function assertFieldCanBeUpdated(newValues: Partial<SdkIframeEmbedSettings>) {
       currentConfig[field] !== newValues[field]
     ) {
       raiseError(`${field} cannot be updated after the embed is created`);
+    }
+  }
+}
+
+type AllowedMetabaseConfigKey =
+  (typeof ALLOWED_EMBED_SETTING_KEYS_MAP.base)[number];
+
+function assertValidMetabaseConfigField(
+  newValues: Partial<SdkIframeEmbedSettings>,
+) {
+  for (const field in newValues) {
+    if (
+      !ALLOWED_EMBED_SETTING_KEYS_MAP.base.includes(
+        field as AllowedMetabaseConfigKey,
+      )
+    ) {
+      raiseError(`${field} is not a valid configuration name`);
     }
   }
 }

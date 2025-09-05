@@ -61,12 +61,17 @@
     (log/info "Creating trigger for transform job" job-id "with schedule" schedule)
     (task/add-trigger! (build-trigger job-id schedule))))
 
+(defn existing-trigger
+  "Return the existing trigger for `job-id-or-trigger`, or nil, if the trigger doesn't exist."
+  [job-id-or-trigger]
+  (first (task/existing-triggers (job-key job-id-or-trigger)
+                                 (trigger-key job-id-or-trigger))))
+
 (defn- delete-trigger!
   "Delete the trigger for a transform job."
   ([job-id-or-trigger]
    (if (number? job-id-or-trigger)
-     (if-let [trigger (first (task/existing-triggers (job-key job-id-or-trigger)
-                                                     (trigger-key job-id-or-trigger)))]
+     (if-let [trigger (existing-trigger job-id-or-trigger)]
        (delete-trigger! trigger)
        (log/info "No trigger for this transform job exists"))
      (do

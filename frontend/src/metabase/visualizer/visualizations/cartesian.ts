@@ -16,6 +16,7 @@ import {
   extractReferencedColumns,
   isDraggedColumnItem,
   shouldSplitVisualizerSeries,
+  updateVizSettingsWithRefs,
 } from "metabase/visualizer/utils";
 import {
   isDate,
@@ -27,6 +28,7 @@ import {
 import type {
   Dataset,
   DatasetColumn,
+  VisualizationSettings,
   VisualizerColumnReference,
   VisualizerDataSource,
   VisualizerDataSourceId,
@@ -495,9 +497,9 @@ function sortDimensionsByXAxisScale(
 export function combineWithCartesianChart(
   state: VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
   dataset: Dataset,
   dataSource: VisualizerDataSource,
+  vizSettings: VisualizationSettings | null = null,
 ) {
   const { data } = dataset;
 
@@ -505,6 +507,8 @@ export function combineWithCartesianChart(
   const dimensions = data.cols.filter(
     (col) => isDimension(col) && !isMetric(col),
   );
+
+  const columnsToRefs: Record<string, string> = {};
 
   metrics.forEach((column) => {
     const isCompatible = !!findColumnSlotForCartesianChart({
@@ -525,6 +529,7 @@ export function combineWithCartesianChart(
         columnRef,
         dataSource,
       );
+      columnsToRefs[column.name] = columnRef.name;
     }
   });
 
@@ -552,6 +557,19 @@ export function combineWithCartesianChart(
         columnRef,
         dataSource,
       );
+      columnsToRefs[column.name] = columnRef.name;
     }
   });
+
+  if (vizSettings && vizSettings.column_settings) {
+    const remappedSettings = updateVizSettingsWithRefs(
+      vizSettings,
+      columnsToRefs,
+    );
+
+    state.settings.column_settings = {
+      ...state.settings.column_settings,
+      ...remappedSettings.column_settings,
+    };
+  }
 }

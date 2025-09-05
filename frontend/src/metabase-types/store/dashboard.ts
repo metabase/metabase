@@ -9,6 +9,7 @@ import type {
   DashboardTabId,
   ParameterId,
   ParameterValueOrArray,
+  ParameterValuesMap,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =
@@ -101,8 +102,11 @@ export interface DashboardState {
   dashcards: Record<DashCardId, StoreDashcard>;
   dashcardData: DashCardDataMap;
 
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
+  parameterValues: Record<
+    ParameterId,
+    ParameterValueOrArray | undefined | null
+  >;
+  draftParameterValues: ParameterValuesMap;
 
   loadingDashCards: DashboardCardsLoadingState;
   loadingControls: DashboardLoadingControls;

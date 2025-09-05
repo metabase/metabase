@@ -13,9 +13,9 @@ import {
 } from "metabase/ui";
 import type { TransformRunStatus } from "metabase-types/api";
 
+import { FilterFieldSet } from "../../../../components/FilterFieldSet";
+import { FILTER_WIDGET_MIN_WIDTH } from "../../../../constants";
 import { formatStatus } from "../../../../utils";
-import { FilterFieldSet } from "../FilterFieldSet";
-import { MIN_WIDTH } from "../constants";
 
 const STATUSES: TransformRunStatus[] = [
   "started",
@@ -98,7 +98,7 @@ function StatusFilterForm({
   };
 
   return (
-    <Box component="form" miw={MIN_WIDTH} onSubmit={handleSubmit}>
+    <Box component="form" miw={FILTER_WIDGET_MIN_WIDTH} onSubmit={handleSubmit}>
       <Checkbox.Group value={statuses} onChange={handleChange}>
         <Stack p="md">
           {STATUSES.map((status) => (

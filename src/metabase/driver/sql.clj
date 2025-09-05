@@ -116,10 +116,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [connection-details output-table] :as transform-details} {:keys [overwrite?]}]
+  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
   (let [queries (cond->> [(driver/compile-transform driver transform-details)]
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
-    {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."

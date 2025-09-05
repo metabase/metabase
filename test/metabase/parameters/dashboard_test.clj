@@ -9,8 +9,11 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users :web-server))
 
 (deftest ^:parallel param->fields-test
   (testing "param->fields"
@@ -50,6 +53,29 @@
              {:values [[4 "A"] [5 "C"] [6 "D"]]}
              {:values [[1] [2] [3]]}
              {:values [[4 "A"] [2 "B"] [5 "C"]]}])))))
+
+(deftest ^:sequential dashboard-parameters
+  (mt/dataset test-data
+    (let [created-at (mt/id :orders :created_at)]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
+                     :model/Dashboard {dashboard-id :id} {:parameters [{:id        "p1"
+                                                                        :name      "when"
+                                                                        :slug      "p1"
+                                                                        :type      "date/all-options"}]}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                             :card_id card-id
+                                                             :parameter_mappings [{:card_id      card-id
+                                                                                   :parameter_id "p1"
+                                                                                   :target       ["dimension" ["field" created-at nil]]}]}]
+        (doseq [value ["thismonth" "lastmonth" "past3days~"
+                       "next3days~" "past3days" "next3days" "Q2-2025"]]
+          (testing (format "Can use a relative filter of this %s" value)
+            (let [response (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query"
+                                                                      dashboard-id dashcard-id card-id)
+                                                 {:parameters [{:id "p1"
+                                                                :value value
+                                                                :type "date/all-options"}]})]
+              (is (= "completed" (:status response))))))))))
 
 (deftest ^:sequential dashboard-remapping-multi-field-permissions-test
   "Test for issue #47951: Dashboard filters should show remapped values even when

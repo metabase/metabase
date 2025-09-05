@@ -208,10 +208,8 @@ describe("Add data modal", () => {
         cy.location("search").should("eq", "?engine=snowflake");
       });
 
-      H.modal().within(() => {
-        cy.findByText("Add a database").should("be.visible");
-        cy.findByLabelText("Database type").should("have.value", "Snowflake");
-      });
+      cy.findByRole("heading", { name: "Add a database" }).should("be.visible");
+      cy.findByLabelText("Database type").should("have.value", "Snowflake");
     });
 
     it("should not offer to add data when in full app embedding", () => {

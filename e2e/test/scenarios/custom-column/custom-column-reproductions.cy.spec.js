@@ -2460,3 +2460,38 @@ describe("issue 61010", () => {
       .should("be.visible");
   });
 });
+
+describe("issue 62987", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        query: { "source-table": ORDERS_ID },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+  });
+
+  it("should be possible to complete non-aggregation functions in custom aggregation (metabase#62987)", () => {
+    H.CustomExpressionEditor.type("Coun");
+    H.CustomExpressionEditor.completion("CountIf").should("be.visible").click();
+
+    H.CustomExpressionEditor.type("notEm", { focus: false });
+    H.CustomExpressionEditor.completion("notEmpty")
+      .should("be.visible")
+      .click();
+
+    H.CustomExpressionEditor.value().should("eq", "CountIf(notEmpty(column))");
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByText("CountIf").should("be.visible");
+      cy.findByText("notEmpty").should("be.visible");
+    });
+  });
+});

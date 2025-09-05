@@ -32,7 +32,7 @@ export interface PreviewDatabaseReplicationResponse {
 }
 
 export interface ReplicationSchemaFilters {
-  "schema-filters-type": "include" | "exclude" | "all";
+  "schema-filters-type": "inclusion" | "exclusion" | "all";
   "schema-filters-patterns": string;
 }
 

@@ -52,6 +52,8 @@ jobs:
         run: yarn run lint-prettier-pure
       - name: Run ESLint linter
         run: yarn run lint-eslint-pure
+      - name: Run CSS linter
+        run: yarn run lint-css
 
   fe-type-check:
     if: ${{ !inputs.skip }}

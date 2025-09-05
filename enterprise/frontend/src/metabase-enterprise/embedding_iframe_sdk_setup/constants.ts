@@ -22,7 +22,7 @@ export const getEmbedExperiences = () =>
     {
       value: "chart",
       title: t`Chart`,
-      description: t`Embed a single chart or visualization`,
+      description: t`Embed a single chart`,
     },
     {
       value: "exploration",
@@ -32,7 +32,7 @@ export const getEmbedExperiences = () =>
     {
       value: "browser",
       title: t`Browser`,
-      description: t`Embed a browser to manage dashboards and questions`,
+      description: t`Embed a browser to manage dashboards and charts`,
     },
   ] satisfies {
     title: string;

@@ -18,7 +18,6 @@ import {
   getDatabase,
   getError,
   getFields,
-  getForeignKeys,
   getIsEditing,
   getIsFormulaExpanded,
   getLoading,
@@ -38,7 +37,6 @@ const mapStateToProps = (state, props) => {
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
     user: getUser(state, props),
-    foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
   };

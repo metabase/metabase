@@ -8,8 +8,19 @@ import type {
   TransformRunStatus,
 } from "metabase-types/api";
 
-export function parseLocalTimestamp(timestamp: string) {
-  return parseTimestamp(timestamp, null, true);
+export function parseTimestampWithTimezone(
+  timestamp: string,
+  systemTimezone: string | undefined,
+) {
+  const date = parseTimestamp(timestamp);
+  if (systemTimezone == null) {
+    return date;
+  }
+  try {
+    return date.tz(systemTimezone);
+  } catch {
+    return date;
+  }
 }
 
 export function formatStatus(status: TransformRunStatus) {

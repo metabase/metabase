@@ -25,7 +25,6 @@
   background: var(--mb-color-bg-white);
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-xl);
-  flex-shrink: 0;
   cursor: pointer;
   color: var(--mb-color-text-primary);
   flex: 0 0 auto;
