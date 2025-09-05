@@ -16,7 +16,8 @@ import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId } from "./user";
 
-export type RegularCollectionId = number;
+// Collection ID can be either a numeric or entity id
+export type RegularCollectionId = number | string;
 
 export type CollectionId =
   | RegularCollectionId

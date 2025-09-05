@@ -34,6 +34,9 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     cy.intercept("DELETE", "/api/ee/transform/*/table").as(
       "deleteTransformTable",
     );
+    cy.intercept("GET", "/api/ee/transform/*/dependencies").as(
+      "transformDependencies",
+    );
     cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
@@ -228,6 +231,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.modal().within(() => {
         cy.button("Save").click();
         cy.wait("@createTransform");
+        cy.wait("@transformDependencies");
       });
 
       getSchemaLink()
@@ -1097,6 +1101,93 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       assertTableDoesNotExistError();
     });
   });
+
+  describe("dependencies", () => {
+    it("should render a table of dependencies", () => {
+      createMbqlTransform({
+        name: "Transform A",
+        targetTable: "table_a",
+        visitTransform: true,
+      }).then(runTransformAndWaitForSuccess);
+
+      createMbqlTransform({
+        name: "Transform B",
+        sourceTable: "table_a",
+        targetTable: "table_b",
+        visitTransform: true,
+      }).then(runTransformAndWaitForSuccess);
+
+      createMbqlTransform({
+        name: "Transform C",
+        sourceTable: "table_b",
+        targetTable: "table_c",
+        visitTransform: true,
+      });
+
+      H.main().findByText("Dependencies").scrollIntoView().should("be.visible");
+      getContentTable().within(() => {
+        // 1 transform plus the header row
+        cy.findAllByRole("row").should("have.length", 2);
+
+        // Check the existence and also their order
+        cy.findAllByRole("row").eq(1).should("contain", "Transform B");
+      });
+    });
+
+    it("should no dependencies table if the transform has no dependencies", () => {
+      createMbqlTransform({ name: "Transform A", visitTransform: true });
+      H.main().findByText("Dependencies").should("not.exist");
+    });
+  });
+});
+
+describe("scenarios > admin > transforms > databases without :schemas", () => {
+  const DB_NAME = "QA MySQL8";
+
+  beforeEach(() => {
+    H.restore("mysql-8");
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    cy.intercept("PUT", "/api/field/*").as("updateField");
+    cy.intercept("POST", "/api/ee/transform").as("createTransform");
+    cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
+    cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
+    cy.intercept("DELETE", "/api/ee/transform/*/table").as(
+      "deleteTransformTable",
+    );
+    cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
+    cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
+    cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
+  });
+
+  it("should be not be possible to create a new schema when updating a transform target", () => {
+    createMbqlTransform({
+      databaseId: WRITABLE_DB_ID,
+      sourceTable: "ORDERS",
+      visitTransform: true,
+      targetSchema: null,
+    });
+
+    getTransformPage().button("Change target").click();
+
+    H.modal().findByLabelText("Schema").should("not.exist");
+  });
+
+  it("should be not be possible to create a new schema when the database does not support schemas", () => {
+    cy.log("create a new transform");
+    visitTransformListPage();
+    getTransformListPage().button("Create a transform").click();
+    H.popover().findByText("Query builder").click();
+
+    H.entityPickerModal().within(() => {
+      cy.findByText(DB_NAME).click();
+      cy.findByText("Orders").click();
+    });
+    getQueryEditor().button("Save").click();
+    H.modal().findByLabelText("Schema").should("not.exist");
+  });
 });
 
 describe("scenarios > admin > transforms > databases without :schemas", () => {
@@ -1174,7 +1265,9 @@ describe("scenarios > admin > transforms > jobs", () => {
         cy.findByPlaceholderText("Name").should("have.value", "New job");
         cy.findByPlaceholderText("No description yet").should("have.value", "");
         getCronInput().should("have.value", "0 0 * * ?");
-        cy.findByText("This job will run at 12:00 AM").should("be.visible");
+        cy.findByText("This job will run at 12:00 AM, UTC-07:00").should(
+          "be.visible",
+        );
       });
     });
 
@@ -1202,7 +1295,9 @@ describe("scenarios > admin > transforms > jobs", () => {
           "Description",
         );
         getCronInput().should("have.value", "0 * * * ?");
-        cy.findByText("This job will run every hour").should("be.visible");
+        cy.findByText("This job will run every hour, UTC-07:00").should(
+          "be.visible",
+        );
         cy.findByText("daily").should("be.visible");
       });
     });
@@ -1263,7 +1358,9 @@ describe("scenarios > admin > transforms > jobs", () => {
       H.createTransformJob({ name: "New job" }, { visitTransformJob: true });
       getJobPage().within(() => {
         getCronInput().clear().type("0 * * * ?").blur();
-        cy.findByText("This job will run every hour").should("be.visible");
+        cy.findByText("This job will run every hour, UTC-07:00").should(
+          "be.visible",
+        );
       });
       H.undoToast().findByText("Job schedule updated").should("be.visible");
       getJobPage().within(() => {
@@ -1370,6 +1467,216 @@ describe("scenarios > admin > transforms > jobs", () => {
           cy.findByText(tagName).should("be.visible"),
         );
       });
+    });
+  });
+
+  describe("filtering", () => {
+    it("should be able to filter jobs ", () => {
+      cy.log("run hourly job so know that was recently run");
+      visitJobListPage();
+
+      getContentTable().findByText("Hourly job").click();
+      runJobAndWaitForSuccess();
+
+      visitJobListPage();
+
+      function testLastRunFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+
+        cy.log("last run at - add a filter");
+        getLastRunAtFilterWidget().click();
+        H.popover().findByText("Today").click();
+
+        getLastRunAtFilterWidget().should("contain", "Today");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("not.exist");
+          cy.findByText("Weekly job").should("not.exist");
+          cy.findByText("Monthly job").should("not.exist");
+        });
+
+        cy.log("last run at filter - update a filter");
+        getLastRunAtFilterWidget().click();
+        H.popover().findByText("Week").click();
+        getLastRunAtFilterWidget().should("contain", "This week");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("not.exist");
+          cy.findByText("Weekly job").should("not.exist");
+          cy.findByText("Monthly job").should("not.exist");
+        });
+
+        cy.log("last run at filter - remove filter");
+        getLastRunAtFilterWidget().button("Remove filter").click();
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+      }
+
+      function testNextRunFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+
+        cy.log("next run - add a filter");
+        getNextRunFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("Relative date range…").click();
+          cy.findByText("Current").click();
+          cy.findByText("Week").click();
+        });
+
+        getNextRunFilterWidget().should("contain", "This week");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("not.exist");
+          cy.findByText("Monthly job").should("not.exist");
+        });
+
+        cy.log("next run filter - update a filter");
+        getNextRunFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("Next").click();
+          cy.findByDisplayValue(30).clear().type("2");
+          cy.button("Apply").click();
+        });
+        getNextRunFilterWidget().should("contain", "Next 2 weeks");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("not.exist");
+          cy.findByText("Daily job").should("not.exist");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("not.exist");
+        });
+
+        cy.log("next run filter - remove filter");
+        getNextRunFilterWidget().button("Remove filter").click();
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+      }
+
+      function testTagFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+
+        cy.log("tag filter - add a filter");
+        getTagFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("hourly").click();
+          cy.button("Add filter").click();
+        });
+        getTagFilterWidget().findByText("hourly").should("be.visible");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("not.exist");
+          cy.findByText("Weekly job").should("not.exist");
+          cy.findByText("Monthly job").should("not.exist");
+        });
+
+        cy.log("tag filter - update a filter");
+        getTagFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("hourly").click();
+          cy.findByText("weekly").click();
+          cy.button("Update filter").click();
+        });
+
+        getTagFilterWidget().findByText("weekly").should("be.visible");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("not.exist");
+          cy.findByText("Daily job").should("not.exist");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("not.exist");
+        });
+
+        cy.log("tag filter - multiple options");
+        getTagFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("monthly").click();
+          cy.button("Update filter").click();
+        });
+        getTagFilterWidget().findByText("2 tags").should("be.visible");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("not.exist");
+          cy.findByText("Daily job").should("not.exist");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+
+        cy.log("tag filter - remove filter");
+        getTagFilterWidget().button("Remove filter").click();
+        getTagFilterWidget().findByText("2 tags").should("not.exist");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+      }
+
+      testLastRunFilter();
+      testNextRunFilter();
+      testTagFilter();
+    });
+  });
+
+  describe("dependencies", () => {
+    it("should render a table of dependencies", () => {
+      createMbqlTransform({
+        name: "Transform A",
+        targetTable: "table_a",
+        visitTransform: true,
+      }).then(runTransformAndWaitForSuccess);
+
+      createMbqlTransform({
+        name: "Transform B",
+        sourceTable: "table_a",
+        targetTable: "table_b",
+        visitTransform: true,
+      }).then(runTransformAndWaitForSuccess);
+
+      createMbqlTransform({
+        name: "Transform C",
+        sourceTable: "table_b",
+        targetTable: "table_c",
+        visitTransform: true,
+      });
+
+      H.main().findByText("Dependencies").scrollIntoView().should("be.visible");
+      getContentTable().within(() => {
+        // 1 transform plus the header row
+        cy.findAllByRole("row").should("have.length", 2);
+
+        // Check the existence and also their order
+        cy.findAllByRole("row").eq(1).should("contain", "Transform B");
+      });
+    });
+
+    it("should no dependencies table if the transform has no dependencies", () => {
+      createMbqlTransform({ name: "Transform A", visitTransform: true });
+      H.main().findByText("Dependencies").should("not.exist");
     });
   });
 });
@@ -1569,11 +1876,157 @@ describe("scenarios > admin > transforms > runs", () => {
       });
     }
 
+    function testRunMethodFilter() {
+      cy.log("no filters");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("run method filter - add a filter");
+      getRunMethodFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Manual").click();
+        cy.button("Add filter").click();
+      });
+      getRunMethodFilterWidget().findByText("Manual").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("run method filter - update a filter");
+      getRunMethodFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Manual").click();
+        cy.findByText("Schedule").click();
+        cy.button("Update filter").click();
+      });
+      getRunMethodFilterWidget().findByText("Schedule").should("be.visible");
+      H.main().findByText("No runs yet").should("be.visible");
+
+      cy.log("run method filter - multiple options");
+      getRunMethodFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Manual").click();
+        cy.button("Update filter").click();
+      });
+      getRunMethodFilterWidget()
+        .findByText("Schedule, Manual")
+        .should("be.visible");
+
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("run method filter - remove filter");
+      getRunMethodFilterWidget().button("Remove filter").click();
+      getRunMethodFilterWidget()
+        .findByText("Schedule, Manual")
+        .should("not.exist");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+    }
+
+    function testStartAtFilter() {
+      cy.log("no filters");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("today");
+      getStartAtFilterWidget().click();
+      H.popover().findByText("Today").click();
+      getStartAtFilterWidget().findByText("Today").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      getStartAtFilterWidget().button("Remove filter").click();
+      getStartAtFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Relative date range…").click();
+        cy.findByText("Include today").click();
+        cy.button("Apply").click();
+      });
+      getStartAtFilterWidget()
+        .findByText("Previous 30 days or today")
+        .should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      getStartAtFilterWidget().button("Remove filter").click();
+      getStartAtFilterWidget().click();
+      H.popover().findByText("Previous week").click();
+      getStartAtFilterWidget().findByText("Previous week").should("be.visible");
+      H.main().findByText("No runs yet").should("be.visible");
+
+      getStartAtFilterWidget().button("Remove filter").click();
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+    }
+
+    function testEndAtFilter() {
+      cy.log("no filters");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      cy.log("today");
+      getEndAtFilterWidget().click();
+      H.popover().findByText("Today").click();
+      getEndAtFilterWidget().findByText("Today").should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      getEndAtFilterWidget().button("Remove filter").click();
+      getEndAtFilterWidget().click();
+      H.popover().within(() => {
+        cy.findByText("Relative date range…").click();
+        cy.findByText("Include today").click();
+        cy.button("Apply").click();
+      });
+      getEndAtFilterWidget()
+        .findByText("Previous 30 days or today")
+        .should("be.visible");
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+
+      getEndAtFilterWidget().button("Remove filter").click();
+      getEndAtFilterWidget().click();
+      H.popover().findByText("Previous week").click();
+      getEndAtFilterWidget().findByText("Previous week").should("be.visible");
+      H.main().findByText("No runs yet").should("be.visible");
+
+      getEndAtFilterWidget().button("Remove filter").click();
+      getContentTable().within(() => {
+        cy.findByText("MBQL transform").should("be.visible");
+        cy.findByText("SQL transform").should("be.visible");
+      });
+    }
+
     createInitialData();
     getNavSidebar().findByText("Runs").click();
     testTransformFilter();
     testStatusFilter();
     testTagFilter();
+    testRunMethodFilter();
+    testStartAtFilter();
+    testEndAtFilter();
   });
 });
 
@@ -1645,12 +2098,32 @@ function getTransformFilterWidget() {
   return cy.findByRole("group", { name: "Transform" });
 }
 
+function getLastRunAtFilterWidget() {
+  return cy.findByRole("group", { name: "Last run at" });
+}
+
+function getNextRunFilterWidget() {
+  return cy.findByRole("group", { name: "Next run" });
+}
+
 function getStatusFilterWidget() {
   return cy.findByRole("group", { name: "Status" });
 }
 
 function getTagFilterWidget() {
   return cy.findByRole("group", { name: "Tags" });
+}
+
+function getRunMethodFilterWidget() {
+  return cy.findByRole("group", { name: "Run method" });
+}
+
+function getStartAtFilterWidget() {
+  return cy.findByRole("group", { name: "Start at" });
+}
+
+function getEndAtFilterWidget() {
+  return cy.findByRole("group", { name: "End at" });
 }
 
 function visitTransformListPage() {
@@ -1668,7 +2141,7 @@ function visitRunListPage() {
 function runTransformAndWaitForSuccess() {
   getRunButton().click();
   getRunButton().should("have.text", "Ran successfully");
-  getTableLink().should("have.attr", "href");
+  return getTableLink().should("have.attr", "href");
 }
 
 function runTransformAndWaitForFailure() {
@@ -1709,6 +2182,7 @@ function createMbqlTransform({
             type: "query",
             query: {
               "source-table": tableId,
+              limit: 5,
             },
           },
         },

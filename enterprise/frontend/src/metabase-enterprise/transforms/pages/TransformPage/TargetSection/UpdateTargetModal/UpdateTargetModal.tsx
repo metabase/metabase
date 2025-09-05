@@ -142,7 +142,7 @@ function UpdateTargetForm({
                 value={shouldDeleteTarget.toString()}
                 label={t`Keep the old target table, or delete it?`}
                 description={jt`You can keep or delete ${(
-                  <strong>{target.name}</strong>
+                  <strong key="strong">{target.name}</strong>
                 )}. Deleting it can’t be undone, and will break queries that used it. Please be careful!`}
                 onChange={(value) => setShouldDeleteTarget(value === "true")}
               >
