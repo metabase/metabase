@@ -103,7 +103,7 @@
       Date           (.toInstant ^Date t)
       OffsetDateTime (.toInstant ^OffsetDateTime t)
       ZonedDateTime  (.toInstant ^ZonedDateTime t)
-      LocalDateTime  (recur (.atZone ^LocalDateTime t (ZoneId/systemDefault)))
+      LocalDateTime  (recur (.atZone ^LocalDateTime t (t/zone-id)))
       String         (recur (u.date/parse t))
       LocalTime      (recur (.atDate ^LocalTime t (t/local-date)))
       OffsetTime     (recur (.atDate ^OffsetTime t (t/local-date)))
