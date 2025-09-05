@@ -12,6 +12,7 @@ import cx from "classnames";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -498,15 +499,20 @@ export const CardEmbedComponent = memo(
                   />
                 ) : (
                   <Box className={styles.titleContainer}>
-                    <Text
-                      size="md"
-                      color="text-dark"
-                      fw={700}
-                      onClick={handleTitleClick}
-                      c="pointer"
-                    >
-                      {displayName}
-                    </Text>
+                    <Ellipsified lines={1} tooltip={displayName}>
+                      <Text
+                        className={styles.titleText}
+                        size="md"
+                        color="text-dark"
+                        fw={700}
+                        c="pointer"
+                        truncate="end"
+                        onClick={handleTitleClick}
+                      >
+                        {displayName}
+                      </Text>
+                    </Ellipsified>
+
                     {canWrite && (
                       <Icon
                         name="pencil"

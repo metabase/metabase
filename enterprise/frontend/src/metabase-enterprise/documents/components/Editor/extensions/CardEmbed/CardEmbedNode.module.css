@@ -51,11 +51,19 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  overflow: hidden;
+  flex-shrink: 1;
+}
+
+.titleText {
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 .titleEditIcon {
   opacity: 0;
   transition: opacity 0.2s ease;
+  flex-shrink: 0;
 }
 
 .titleContainer:hover .titleEditIcon {
