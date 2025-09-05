@@ -21,3 +21,9 @@
     color 100ms;
   border-radius: 6px;
 }
+
+.commandButton:hover,
+.commandButton[aria-selected="true"] {
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-background-hover);
+}
