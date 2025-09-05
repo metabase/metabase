@@ -32,8 +32,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; If I won't find any use for following muted code in follow-up tasks I'll delete it -- lbrdnk
-
 (def default-test-db "my_test_db")
 
 (defn- alt-db-name-url
@@ -61,27 +59,89 @@
   [db-name & body]
   `(do-with-temp-datasource! ~db-name (fn [] ~@body)))
 
+(defmulti do-with-setup-test-db!
+  "Setup pgvector database for tests."
+  (fn [mode _thunk] mode))
+
+(defmethod do-with-setup-test-db! :blank
+  [_mode thunk]
+  (thunk))
+
+(defmethod do-with-setup-test-db! :initialized
+  [_mode thunk]
+  ;; TODO: Consider caller provided index-metadata and embedding-model.
+  (let [pgvector (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.env/get-index-metadata)
+        embedding-model (semantic.env/get-configured-embedding-model)]
+    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+    (thunk)))
+
+(declare blocking-index!
+         with-indexable-documents!)
+
+(defmethod do-with-setup-test-db! :gated-mock-documents
+  [mode thunk]
+  ((get-method do-with-setup-test-db! :initialized)
+   mode
+   (fn []
+     (with-indexable-documents!
+       (let [pgvector (semantic.env/get-pgvector-datasource!)
+             index-metadata (semantic.env/get-index-metadata)]
+         (semantic.pgvector-api/gate-updates! pgvector
+                                              index-metadata
+                                              (search.ingestion/searchable-documents))
+         (thunk))))))
+
+(defmethod do-with-setup-test-db! :indexed-mock-documents
+  [_mode thunk]
+  ((get-method do-with-setup-test-db! :gated-mock-documents)
+   (fn []
+     (blocking-index! (thunk)))))
+
+;; Reminder: this can be adjusted so (1) each database is unique and (2) redefs are thread local (latter is not simple
+;; but possible I believe), so we can take advantage of parallel tests.
 (defn do-with-test-db!
   "Impl [[with-test-db]]"
-  [db-name thunk]
+  [{:keys [dbname mode cleanup]
+    :or {dbname default-test-db
+         mode :blank
+         cleanup :before}
+    :as _opts}
+   thunk]
   (with-temp-datasource! "postgres"
     (try
+      (when (#{:before :both} cleanup)
+        (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                       [(str "DROP DATABASE IF EXISTS " dbname " (FORCE)")]))
+      (log/debugf "Creating database %s" dbname)
       (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
-                     [(str "DROP DATABASE IF EXISTS " db-name " (FORCE)")])
-      (log/fatal "creating database")
-      (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
-                     [(str "CREATE DATABASE " db-name)])
-      (log/fatal "created database")
+                     [(str "CREATE DATABASE " dbname)])
+      (log/debugf "Created test pgvector database %s" dbname)
       (catch java.sql.SQLException e
-        (log/fatal "creation failed")
+        (log/debugf "Creation of test pgvector database %s failed" dbname)
         (throw e))))
-  (with-temp-datasource! db-name
-    (thunk)))
+
+  (with-temp-datasource! dbname
+    (do-with-setup-test-db! mode thunk))
+
+  (when (#{:after :both} cleanup)
+    (with-temp-datasource! "postgres"
+      (try
+        (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                       [(str "DROP DATABASE IF EXISTS " dbname " (FORCE)")])
+        (catch java.sql.SQLException e
+          (log/debugf "Test pgvector database teardown %s failed" dbname)
+          (throw e))))))
 
 (defmacro with-test-db!
   "Drop, create database dbname on pgvector and redefine datasource accordingly. Not thread safe."
-  [db-name & body]
-  `(do-with-test-db! ~db-name (fn [] ~@body)))
+  [opts & body]
+  `(do-with-test-db! ~opts (fn [] ~@body)))
+
+(defmacro with-test-db-defaults!
+  "Tiny wrapper to avoid at this point redundant {} arg of [[with-test-db!]]."
+  [& body]
+  `(with-test-db! {} ~@body))
 
 (defmacro with-weights
   "Execute `body` overriding search weights with `weight-map`."
@@ -107,6 +167,7 @@
 
 (declare db)
 
+;; Reminder: This may become redundant.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn ensure-no-migration-table-fixture [f]
   (semantic.db.migration/drop-migration-table! db)
@@ -258,7 +319,9 @@
 
 (declare cleanup-index-metadata!)
 
-(defn open-temp-index-and-metadata! ^Closeable []
+(defn open-temp-index-and-metadata!
+  "First ensure that db is empty. Then perform initialization, including migration. Do the cleanup on close."
+  ^Closeable []
   (closeable
    (do (cleanup-index-metadata! db mock-index-metadata)
        (semantic.pgvector-api/init-semantic-search! db mock-index-metadata mock-embedding-model)
@@ -384,7 +447,7 @@
 (defn do-with-index!
   "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
   [thunk]
-  (with-test-db! default-test-db
+  (with-test-db-defaults!
     (with-indexable-documents!
       (with-redefs [semantic.embedding/get-configured-model        (fn [] mock-embedding-model)
                     semantic.index-metadata/default-index-metadata mock-index-metadata
