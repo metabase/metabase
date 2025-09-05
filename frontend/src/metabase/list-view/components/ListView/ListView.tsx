@@ -1,7 +1,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
+import cx from "classnames";
 import { type CSSProperties, useMemo, useRef } from "react";
 import { t } from "ttag";
-import cx from "classnames";
 
 import { Icon, Stack, Text } from "metabase/ui";
 import { useObjectDetail } from "metabase/visualizations/components/TableInteractive/hooks/use-object-detail";

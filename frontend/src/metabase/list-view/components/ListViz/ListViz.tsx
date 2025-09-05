@@ -280,7 +280,7 @@ export const ListViz = ({
     }
     const query = question.query();
     return data.cols.map((col) => Lib.fromLegacyColumn(query, -1, col));
-  }, [data]);
+  }, [data, question]);
 
   // Get the entity type from the question's source table
   const entityType = useMemo(() => {

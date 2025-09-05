@@ -30,7 +30,7 @@ import {
   Text,
 } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
 
 import { ENTITY_ICONS, getEntityIcon, useListColumns } from "./ListView";
