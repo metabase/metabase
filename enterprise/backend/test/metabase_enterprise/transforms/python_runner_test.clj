@@ -372,8 +372,8 @@
             row-values   [[1
                            19.99
                            true
-                           "2024-01-01T12:00:00Z"
-                           "2024-01-01T12:00:00"
+                           (if (= driver/*driver* :mysql) "2024-01-01 12:00:00" "2024-01-01T12:00:00Z")
+                           (if (= driver/*driver* :mysql) "2024-01-01 12:00:00" "2024-01-01T12:00:00")
                            "2024-01-01"
                            "Sample product"]]
             _ (driver/insert-from-source! driver db-id qualified-table-name
@@ -397,7 +397,7 @@
           (is (= {"id"           :type/Integer
                   "price"        :type/Float
                   "active"       :type/Boolean
-                  "created_tz"   :type/DateTimeWithTZ
+                  "created_tz"   (if (= driver/*driver* :mysql) :type/DateTime :type/DateTimeWithTZ)
                   "created_at"   :type/DateTime
                   "created_date" :type/Date
                   "description"  :type/Text}

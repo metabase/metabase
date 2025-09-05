@@ -262,7 +262,7 @@
     :FLOAT4                     :type/Float
     :FLOAT8                     :type/Float
     :DOUBLE                     :type/Float
-    (keyword "DOUBLE PRECISON") :type/Float
+    (keyword "DOUBLE PRECISION") :type/Float
     :REAL                       :type/Float
     :VARCHAR                    :type/Text
     :CHAR                       :type/Text
@@ -302,7 +302,7 @@
 (defmethod type->database-type :type/DateTimeWithLocalTZ [_] [:TIMESTAMPTZ])
 (defmethod type->database-type :type/DateTimeWithTZ [_] [:TIMESTAMPLTZ])
 (defmethod type->database-type :type/Decimal [_] [:DECIMAL])
-(defmethod type->database-type :type/Float [_] [(keyword "DOUBLE PRECISON")])
+(defmethod type->database-type :type/Float [_] [:DOUBLE])
 (defmethod type->database-type :type/Number [_] [:BIGINT])
 (defmethod type->database-type :type/Text [_] [:TEXT])
 (defmethod type->database-type :type/Time [_] [:TIME])
