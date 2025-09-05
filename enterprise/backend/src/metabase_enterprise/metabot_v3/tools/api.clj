@@ -21,6 +21,7 @@
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
+   [metabase-enterprise.metabot-v3.tools.search :as metabot-v3.tools.search]
    [metabase-enterprise.metabot-v3.tools.search-data-sources :as metabot-v3.tools.search-data-sources]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
@@ -647,6 +648,24 @@
           #(set/rename-keys % {:database_id :database-id
                                :entity_types :entity-types})}]])
 
+(mr/def ::search-arguments
+  [:and
+   [:map
+    [:term_queries     {:optional true} [:maybe [:sequential :string]]]
+    [:semantic_queries {:optional true} [:maybe [:sequential :string]]]
+    [:entity_types     {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric" "database"]]]]
+    [:database_id      {:optional true} [:maybe :int]]
+    [:created_at       {:optional true} [:maybe ms/NonBlankString]]
+    [:last_edited_at   {:optional true} [:maybe ms/NonBlankString]]
+    [:limit            {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:term_queries     :term-queries
+                               :semantic_queries :semantic-queries
+                               :database_id      :database-id
+                               :created_at       :created-at
+                               :last_edited_at   :last-edited-at
+                               :entity_types     :entity-types})}]])
+
 (mr/def ::search-table-result
   "Schema for table/model search results"
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
@@ -1001,6 +1020,37 @@
         (metabot-v3.context/log :llm.log/be->llm)))
     (catch Exception e
       (log/error e "Error in search-data-sources")
+      (doto (-> {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))))
+
+(api.macros/defendpoint :post "/search" :- [:merge ::search-data-sources-result ::tool-request]
+  "Enhanced search with term and semantic queries using Reciprocal Rank Fusion."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments {:optional true} ::search-arguments]]
+                                                    ::tool-request]
+   request]
+  (println "TSP in new search")
+  (def tsp-arguments arguments)
+  (metabot-v3.context/log (assoc body :api :search) :llm.log/llm->be)
+  (try
+    (let [options (mc/encode ::search-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))
+          _ (def tsp-options options)
+          metabot-id (:metabot-v3/metabot-id request)
+          results (metabot-v3.tools.search/search
+                   (assoc options :metabot-id metabot-id))
+          response-data {:data results
+                         :total_count (count results)}]
+      (doto (-> (mc/decode ::search-data-sources-result
+                           {:structured_output response-data}
+                           (mtx/transformer {:name :tool-api-response}))
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))
+    (catch Exception e
+      (log/error e "Error in search")
       (doto (-> {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}
                 (assoc :conversation_id conversation_id))
         (metabot-v3.context/log :llm.log/be->llm)))))
