@@ -175,7 +175,9 @@ export const CommentEditor = ({
 
       {!readonly && (
         <ActionIcon
+          aria-label={t`Send`}
           className={cx(S.submitBtn, { [S.canSubmit]: content })}
+          disabled={!content}
           variant="subtle"
           onClick={submitDoc}
         >

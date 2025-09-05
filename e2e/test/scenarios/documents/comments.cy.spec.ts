@@ -111,7 +111,7 @@ H.describeWithSnowplowEE("document comments", () => {
     create1ParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((targetId) => {
-      H.documentContent().findByText("Lorem ipsum dolor sit amet.").realHover();
+      getParagraph().realHover();
       Comments.getDocumentNodeButton({ targetId, childTargetId: PARAGRAPH_ID })
         .should("be.visible")
         .click();
@@ -143,7 +143,7 @@ H.describeWithSnowplowEE("document comments", () => {
       Comments.getDocumentNodeButtons()
         .filter(":visible")
         .should("have.length", 1);
-      H.documentContent().findByText("lor sit amet.").parent().realHover();
+      getParagraph("lor sit amet").realHover();
       Comments.getDocumentNodeButtons()
         .filter(":visible")
         .should("have.length", 2)
@@ -197,6 +197,57 @@ H.describeWithSnowplowEE("document comments", () => {
       .should("be.visible")
       .and("have.value", "Lorem ipsum");
     cy.findByRole("button", { name: "Save" }).should("not.exist");
+  });
+
+  it("allows to create / update / delete comments", () => {
+    create1ParagraphDocument();
+
+    cy.get<DocumentId>("@documentId").then((targetId) => {
+      getParagraph().realHover();
+      Comments.getDocumentNodeButton({ targetId, childTargetId: PARAGRAPH_ID })
+        .should("be.visible")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+
+        cy.log("does not allow to send empty comments");
+        Comments.getNewThreadInput().click();
+        cy.realPress([META_KEY, "Enter"]);
+        cy.findByLabelText("Send").should("be.disabled");
+        Comments.getCommentInput().should("not.exist");
+
+        cy.log(
+          "allows to start threads and add replies with keyboard shortcut",
+        );
+        Comments.getNewThreadInput().click();
+        cy.realType("1st thread");
+        cy.realPress([META_KEY, "Enter"]);
+
+        Comments.getCommentInput().click();
+        cy.realType("Reply 1");
+        cy.realPress([META_KEY, "Enter"]);
+
+        Comments.getCommentInput().click();
+        cy.realType("Reply 2");
+        cy.realPress([META_KEY, "Enter"]);
+
+        cy.log("allows to start threads and add replies with the button");
+        Comments.getNewThreadInput().click();
+        cy.realType("2nd thread");
+        cy.findAllByLabelText("Send").should("have.length", 2).eq(1).click();
+
+        Comments.getCommentInput().eq(1).click();
+        cy.realType("Reply A");
+        cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
+
+        Comments.getCommentInput().eq(1).click();
+        cy.realType("Reply B");
+        cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
+
+        cy.findByLabelText("Close").click();
+      });
+    });
   });
 });
 
@@ -462,45 +513,45 @@ function create1ParagraphDocument() {
     .and("have.value", "Lorem ipsum");
 }
 
-function getHeading1() {
+function getHeading1(name = "Heading 1") {
   return H.documentContent().findByRole("heading", {
-    name: "Heading 1",
+    name,
     level: 1,
   });
 }
 
-function getHeading2() {
+function getHeading2(name = "Heading 2") {
   return H.documentContent().findByRole("heading", {
-    name: "Heading 2",
+    name,
     level: 2,
   });
 }
 
-function getHeading3() {
+function getHeading3(name = "Heading 3") {
   return H.documentContent().findByRole("heading", {
-    name: "Heading 3",
+    name,
     level: 3,
   });
 }
 
-function getParagraph() {
-  return H.documentContent().findByText("Lorem ipsum dolor sit amet.").parent();
+function getParagraph(text = "Lorem ipsum dolor sit amet.") {
+  return H.documentContent().findByText(text).parent();
 }
 
-function getBulletList() {
-  return H.documentContent().findByText("Bullet A").closest("ul");
+function getBulletList(text = "Bullet A") {
+  return H.documentContent().findByText(text).closest("ul");
 }
 
-function getBlockquote() {
-  return H.documentContent().findByText("A famous quote").closest("blockquote");
+function getBlockquote(text = "A famous quote") {
+  return H.documentContent().findByText(text).closest("blockquote");
 }
 
-function getOrderedList() {
-  return H.documentContent().findByText("Item 1").closest("ol");
+function getOrderedList(text = "Item 1") {
+  return H.documentContent().findByText(text).closest("ol");
 }
 
-function getCodeBlock() {
-  return H.documentContent().findByText("while (true) {}").closest("pre");
+function getCodeBlock(text = "while (true) {}") {
+  return H.documentContent().findByText(text).closest("pre");
 }
 
 function getEmbed() {
