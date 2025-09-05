@@ -106,6 +106,57 @@ H.describeWithSnowplowEE("document comments", () => {
       }).should("be.visible");
     }
   });
+
+  it("allows to split a paragraph in two, and then to comment on both paragraphs", () => {
+    create1ParagraphDocument();
+
+    cy.get<DocumentId>("@documentId").then((targetId) => {
+      H.documentContent().findByText("Lorem ipsum dolor sit amet.").realHover();
+      Comments.getDocumentNodeButton({ targetId, childTargetId: PARAGRAPH_ID })
+        .should("be.visible")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+
+        Comments.getNewThreadInput().click();
+        cy.realType("Hello");
+        cy.realPress([META_KEY, "Enter"]);
+        Comments.getNewThreadInput().within(() => {
+          Comments.getPlaceholder().should("be.visible");
+        });
+        cy.findByLabelText("Close").click();
+      });
+
+      H.documentContent().click();
+      cy.realType("{leftarrow}".repeat("lor sit amet.".length));
+      cy.realType("{enter}");
+      cy.findByRole("button", { name: "Save" }).click();
+      cy.findByRole("button", { name: "Save" }).should("not.exist");
+
+      Comments.getDocumentNodeButton({
+        targetId,
+        childTargetId: PARAGRAPH_ID,
+        hasComments: true,
+      }).should("be.visible");
+
+      Comments.getDocumentNodeButtons()
+        .filter(":visible")
+        .should("have.length", 1);
+      H.documentContent().findByText("lor sit amet.").parent().realHover();
+      Comments.getDocumentNodeButtons()
+        .filter(":visible")
+        .should("have.length", 2)
+        .last()
+        .should("not.contain.text", "1")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+        cy.findByText("Hello").should("not.exist");
+      });
+    });
+  });
 });
 
 function createLoremIpsumDocument() {
@@ -332,6 +383,35 @@ function createLoremIpsumDocument() {
           attrs: {
             _id: "b0ab4c7e-7802-c6f7-2708-0f63bdd0b129",
           },
+        },
+      ],
+    },
+  });
+
+  H.visitDocument("@documentId");
+  cy.findByRole("textbox", { name: "Document Title" })
+    .should("be.visible")
+    .and("have.value", "Lorem ipsum");
+}
+
+function create1ParagraphDocument() {
+  H.createDocument({
+    idAlias: "documentId",
+    name: "Lorem ipsum",
+    document: {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: {
+            _id: PARAGRAPH_ID,
+          },
+          content: [
+            {
+              type: "text",
+              text: "Lorem ipsum dolor sit amet.",
+            },
+          ],
         },
       ],
     },
