@@ -280,7 +280,7 @@ describe("issue 20517", () => {
     H.createQuestion(modelDetails).then(({ body: { id } }) => {
       cy.intercept("POST", `/api/card/${id}/query`).as("modelQuery");
       cy.intercept("PUT", `/api/card/${id}`).as("updateModel");
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@modelQuery");
     });
   });
@@ -563,7 +563,7 @@ describe(
         cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
         // Let's go straight to the model metadata editor
-        cy.visit(`/model/${id}/metadata`);
+        cy.visit(`/model/${id}/columns`);
         cy.findByText("Database column this maps to").should("be.visible");
 
         // The first column `ID` is automatically selected
@@ -1039,7 +1039,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       mapModelColumnToDatabase({ table: "Orders", field: "ID" });
@@ -1149,7 +1149,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       mapModelColumnToDatabase({ table: "Orders", field: "ID" });
@@ -1348,7 +1348,7 @@ FROM
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       selectModelColumn("source orders");
@@ -2117,7 +2117,7 @@ describe("issue 40252", () => {
       .should("be.enabled")
       .click();
 
-    cy.url().should("not.contain", "/metadata");
+    cy.url().should("not.contain", "/columns");
 
     cy.wait("@dataset");
 
