@@ -492,7 +492,7 @@
                       [id (-> card card->metric-card delay)]))))
           cards)))
 
-(defn- metadata-field [metadata-type]
+(defn- metadata-property [metadata-type]
   (case metadata-type
     :metadata/table                :tables
     :metadata/column               :fields
@@ -534,7 +534,7 @@
   (some-> metadata :databases deref (get database-id) deref))
 
 (defn- metadatas [metadata metadata-type ids]
-  (let [k          (metadata-field metadata-type)
+  (let [k          (metadata-property metadata-type)
         metadatas* (some-> metadata k deref)]
     (into []
           (keep (fn [id]
@@ -542,7 +542,7 @@
           ids)))
 
 (defn- metadatas-by-name [metadata metadata-type names]
-  (let [k          (-> metadata-type metadata-field by-name-field)
+  (let [k          (-> metadata-type metadata-property by-name-field)
         metadatas* (some-> metadata k deref)]
     (into [] (comp (distinct)
                    (keep #(get metadatas* %)))

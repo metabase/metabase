@@ -1069,13 +1069,12 @@
                                                                :snippet-name "filter2"
                                                                :name "snippet: filter2"
                                                                :display-name "Filter 2"
-                                                               :id "ghi789"}}}]}
-          deps (lib/dependent-metadata query nil :question)]
+                                                               :id "ghi789"}}}]}]
       (is (=? [{:type :database}
                {:type :schema}
                {:type :native-query-snippet :id 10}
                {:type :native-query-snippet :id 20}]
-              deps)))))
+              (lib/dependent-metadata query nil :question))))))
 
 (deftest ^:parallel recursive-snippet-dependencies-test
   (testing "Recursive snippet dependencies should be resolved"
@@ -1123,15 +1122,14 @@
                                                                           :snippet-name "filter1"
                                                                           :name "snippet: filter1"
                                                                           :display-name "Filter 1"
-                                                                          :id "test-id-1"}}}]})
-          deps (lib/dependent-metadata query nil :question)]
+                                                                          :id "test-id-1"}}}]})]
       (is (=? [{:type :database}
                {:type :schema}
                {:type :native-query-snippet :id 10}
                {:type :native-query-snippet :id 30}
                {:type :native-query-snippet :id 50}
                {:type :native-query-snippet :id 40}]
-              deps)))))
+              (lib/dependent-metadata query nil :question))))))
 
 (deftest ^:parallel table-or-card-dependent-metadata-test
   (testing "start from table"
