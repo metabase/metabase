@@ -16,6 +16,7 @@
    [metabase.sync.core :as sync]
    [metabase.task.core :as task]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -346,3 +347,62 @@
                                     :done?   true?
                                     :timeout 30000})))
                 (is (true? (t2/exists? :model/Table :name (:name target))))))))))))
+
+(deftest transform-type-roundtrip-test
+  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver}
+    (mt/with-empty-db
+      (let [driver       driver/*driver*
+            db-id        (mt/id)
+            table-name   (mt/random-name)
+            schema-name  (sql.tx/session-schema driver)
+            qualified-table-name (if schema-name
+                                   (keyword schema-name table-name)
+                                   (keyword table-name))
+            table-schema {:name    qualified-table-name
+                          :columns [{:name "id"            :type :type/Integer  :nullable? false}
+                                    {:name "price"         :type :type/Float    :nullable? true}
+                                    {:name "active"        :type :type/Boolean  :nullable? true}
+                                    {:name "created_tz"    :type :type/DateTimeWithTZ :nullable? true}
+                                    {:name "created_at"    :type :type/DateTime :nullable? true}
+                                    {:name "created_date"  :type :type/Date     :nullable? true}
+                                    {:name "description"   :type :type/Text     :nullable? true}]}
+            _ (mt/as-admin
+                (transforms.util/create-table-from-schema! driver db-id table-schema))
+
+            row-values   [[1
+                           19.99
+                           true
+                           "2024-01-01T12:00:00Z"
+                           "2024-01-01T12:00:00"
+                           "2024-01-01"
+                           "Sample product"]]
+            _ (driver/insert-from-source! driver db-id qualified-table-name
+                                          (mapv :name (:columns table-schema))
+                                          {:type :rows :data row-values})
+
+            _ (sync/sync-database! (mt/db))
+            transform-code (str "import pandas as pd\n"
+                                "\n"
+                                "def transform(" table-name "):\n"
+                                "    return " table-name)
+            result (execute {:code transform-code
+                             :tables {table-name (mt/id (keyword table-name))}})
+            metadata (some-> (:metadata result) json/decode+kw)]
+
+        (testing "All expected columns are present"
+          (is (= #{"id" "price" "active" "created_tz" "created_at" "created_date" "description"}
+                 (set (map :name (:fields metadata))))))
+
+        (testing "dtypes are preserved correctly"
+          (is (= {"id"           :type/Integer
+                  "price"        :type/Float
+                  "active"       :type/Boolean
+                  "created_tz"   :type/DateTimeWithTZ
+                  "created_at"   :type/DateTime
+                  "created_date" :type/Date
+                  "description"  :type/Text}
+                 (u/for-map [{:keys [name dtype]} (:fields metadata)]
+                   [name (transforms.util/dtype->base-type dtype)]))))
+
+        ;; cleanup
+        #_(driver/drop-table! driver db-id (:name table-schema))))))
