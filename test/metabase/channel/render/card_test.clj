@@ -107,7 +107,7 @@
 
 (deftest ^:parallel detect-pulse-chart-type-test-5
   (testing "Progress charts are correctly identified"
-    (is (= :progress
+    (is (= :javascript_visualization
            (channel.render/detect-pulse-chart-type {:display :progress}
                                                    {}
                                                    {:cols [{:base_type :type/Number}]
@@ -137,7 +137,6 @@
                                                                   :rows [["A" 2]
                                                                          ["B" 3]]}))
       :funnel
-      :progress
       :table)))
 
 (deftest ^:parallel detect-pulse-chart-type-test-8
