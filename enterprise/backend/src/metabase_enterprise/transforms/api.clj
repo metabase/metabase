@@ -71,20 +71,14 @@
     (api/check-400 (driver.u/supports? (:engine database) feature database)
                    (deferred-tru "The database does not support the requested transform target type."))))
 
-(defn- localize-timestamps
-  [run]
-  (-> run
-      (u/update-some :start_time transforms.util/local-timestamp-string)
-      (u/update-some :end_time   transforms.util/local-timestamp-string)))
-
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
    _query-params]
   (api/check-superuser)
   (-> (t2/select :model/Transform)
-      (t2/hydrate :last_run :transform_tag_ids :can_write)
-      (->> (map #(update % :last_run localize-timestamps)))))
+      (t2/hydrate :last_run :transform_tag_ids)
+      (->> (map #(update % :last_run transforms.util/localize-run-timestamps)))))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform."
@@ -122,7 +116,8 @@
         database-id (source-database-id transform)
         target-table (transforms.util/target-table database-id target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :can_write)
+        (t2/hydrate :last_run :transform_tag_ids)
+        (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table))))
 
 (api.macros/defendpoint :get "/:id/dependencies"
@@ -155,7 +150,7 @@
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))
-      (update :data #(map localize-timestamps %))))
+      (update :data #(map transforms.util/localize-run-timestamps %))))
 
 (api.macros/defendpoint :put "/:id"
     "Update a transform."
