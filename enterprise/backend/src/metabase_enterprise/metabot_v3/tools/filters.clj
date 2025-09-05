@@ -320,6 +320,7 @@
         returned-cols (lib/returned-columns query)]
     {:type :query
      :query-id query-id
+     ;; existing usage, don't do this going forward -- use Lib instead and persist MBQL 5 to the app DB
      :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
@@ -330,6 +331,7 @@
   [{:keys [table-id model-id] :as arguments}]
   (try
     (cond
+      (and table-id model-id) (throw (ex-info "Cannot provide both table_id and model_id" {:agent-error? true}))
       (int? model-id) {:structured-output (query-datasource* arguments)}
       (int? table-id) {:structured-output (query-datasource* arguments)}
       model-id        {:output (str "Invalid model_id " model-id)}
