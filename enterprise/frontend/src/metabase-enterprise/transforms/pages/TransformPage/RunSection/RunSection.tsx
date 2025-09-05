@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
 import {
@@ -18,7 +19,6 @@ import { RunErrorInfo } from "../../../components/RunErrorInfo";
 import { SplitSection } from "../../../components/SplitSection";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 import { getRunListUrl } from "../../../urls";
-import { parseLocalTimestamp } from "../../../utils";
 
 type RunSectionProps = {
   transform: Transform;
@@ -69,7 +69,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
   }
 
   const { status, end_time, message } = last_run;
-  const endTime = end_time != null ? parseLocalTimestamp(end_time) : null;
+  const endTime = end_time != null ? parseTimestamp(end_time) : null;
   const endTimeText = endTime != null ? endTime.fromNow() : null;
 
   const runsInfo = (

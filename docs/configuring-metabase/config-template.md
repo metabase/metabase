@@ -134,7 +134,7 @@ config:
     email-smtp-username: null
     email-smtp-username-override: null
     embedding-app-origins-interactive: null
-    embedding-app-origins-sdk: localhost:*
+    embedding-app-origins-sdk: ""
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false

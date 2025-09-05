@@ -124,6 +124,9 @@ export type ListTransformRunsRequest = {
   statuses?: TransformRunStatus[];
   transform_ids?: TransformId[];
   transform_tag_ids?: TransformTagId[];
+  start_time?: string;
+  end_time?: string;
+  run_methods?: TransformRunMethod[];
 } & PaginationRequest;
 
 export type ListTransformRunsResponse = {

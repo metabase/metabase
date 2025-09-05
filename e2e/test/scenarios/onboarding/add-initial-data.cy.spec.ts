@@ -208,10 +208,8 @@ describe("Add data modal", () => {
         cy.location("search").should("eq", "?engine=snowflake");
       });
 
-      H.modal().within(() => {
-        cy.findByText("Add a database").should("be.visible");
-        cy.findByLabelText("Database type").should("have.value", "Snowflake");
-      });
+      cy.findByRole("heading", { name: "Add a database" }).should("be.visible");
+      cy.findByLabelText("Database type").should("have.value", "Snowflake");
     });
 
     it("should not offer to add data when in full app embedding", () => {
@@ -382,6 +380,14 @@ describe("Add data modal", () => {
       H.tableInteractiveBody()
         .should("contain", "value1")
         .and("contain", "value2");
+    });
+
+    it("should be hidden for non-admins without upload permissions", () => {
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.findByRole("tab", { name: /^Data/i }).within(() => {
+        cy.findByLabelText("Add data").should("not.exist");
+      });
     });
   });
 });
