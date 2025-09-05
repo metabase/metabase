@@ -17,7 +17,7 @@ import { getCommentNodeId } from "metabase-enterprise/comments/utils";
 import { useDocumentState } from "metabase-enterprise/documents/hooks/use-document-state";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
-import type { DocumentContent } from "metabase-types/api";
+import type { Comment, DocumentContent } from "metabase-types/api";
 
 import S from "./CommentsSidesheet.module.css";
 
@@ -76,12 +76,18 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
   }, [childTargetId, closeSidebar, openCommentSidebar]);
 
   const resolvedComments = useMemo(
-    () => targetComments?.filter((comment) => comment.is_resolved) ?? [],
+    () =>
+      targetComments
+        ? getFilteredComments(targetComments, (comment) => comment.is_resolved)
+        : [],
     [targetComments],
   );
 
   const activeComments = useMemo(
-    () => targetComments?.filter((comment) => !comment.is_resolved) ?? [],
+    () =>
+      targetComments
+        ? getFilteredComments(targetComments, (comment) => !comment.is_resolved)
+        : [],
     [targetComments],
   );
 
@@ -234,3 +240,24 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     </Modal.Root>
   );
 };
+
+function getFilteredComments(
+  comments: Comment[],
+  condition: (comment: Comment) => boolean,
+) {
+  if (!comments) {
+    return [];
+  }
+
+  const parentComments = comments.filter(condition);
+  const parentCommentIds = new Set(parentComments.map((thread) => thread.id));
+
+  return [
+    ...parentComments,
+    ...comments.filter(
+      (comment) =>
+        comment.parent_comment_id &&
+        parentCommentIds.has(comment.parent_comment_id),
+    ),
+  ];
+}
