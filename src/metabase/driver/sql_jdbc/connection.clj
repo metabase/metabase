@@ -376,5 +376,5 @@
   (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (can-connect-with-spec? jdbc-spec)))
 
-(defmethod driver/connection-details :sql-jdbc [driver db]
-  (connection-details->spec driver (:details db)))
+(defmethod driver/connection-spec :sql-jdbc [_driver db]
+  (db->pooled-connection-spec  db))

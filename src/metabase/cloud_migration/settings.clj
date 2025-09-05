@@ -25,7 +25,7 @@
 (defn- store-url-default
   "Returns the default store URL, with support for environment variable override in dev mode only."
   []
-  (if-some [env-url (and config/is-dev? (config/config-str :mb-store-url))]
+  (if-some [env-url (when config/is-dev? (config/config-str :mb-store-url))]
     (str env-url)
     (str "https://store" (when (default-to-staging?) ".staging") ".metabase.com")))
 
@@ -42,15 +42,6 @@
   ;; code. -- Cam
   :visibility :admin
   :default    (store-url-default)
-  :doc        false
-  :export?    false)
-
-(defsetting store-api-url
-  (deferred-tru "Store API URL.")
-  :type       :string
-  :encryption :no
-  :visibility :internal
-  :default    (str "https://store-api" (when (default-to-staging?) ".staging") ".metabase.com")
   :doc        false
   :export?    false)
 

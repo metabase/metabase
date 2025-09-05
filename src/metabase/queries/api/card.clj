@@ -639,7 +639,9 @@
                                                                       (:entity_id card-before-update))})
           card-updates                       (merge card-updates
                                                     (when (and (some? type)
-                                                               is-model-after-update?)
+                                                               is-model-after-update?
+                                                               ;; leave display unchanged if explicitly set to "list"
+                                                               (not (= :list (keyword (get card-updates :display)))))
                                                       {:display :table})
                                                     (when (and
                                                            (api/column-will-change? :dashboard_id

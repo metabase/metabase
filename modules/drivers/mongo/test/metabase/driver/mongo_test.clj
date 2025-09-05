@@ -122,12 +122,15 @@
                                           :field_ref    [:field "count" {:base-type :type/Integer}]}]
                       :native_form      {:collection "venues"
                                          :query      native-query}
-                      :results_timezone "UTC"}}
+                      :results_timezone "UTC"
+                      :results_metadata {:columns [{:name           "count"
+                                                    :base_type      :type/Integer
+                                                    :effective_type :type/Integer}]}}}
          (-> (qp/process-query {:native   {:query      native-query
                                            :collection "venues"}
                                 :type     :native
                                 :database (mt/id)})
-             (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
+             (m/dissoc-in [:data :insights]))))))
 
 (deftest ^:parallel nested-native-query-test
   (mt/test-driver :mongo
