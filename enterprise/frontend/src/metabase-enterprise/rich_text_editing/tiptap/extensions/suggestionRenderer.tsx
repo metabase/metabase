@@ -56,7 +56,7 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
             padding: 4,
             apply({ availableHeight, elements }) {
               // Dynamically adjust max height based on available space
-              const maxHeight = Math.min(400, availableHeight - 8);
+              const maxHeight = Math.min(460, availableHeight - 8);
               Object.assign(elements.floating.style, {
                 maxHeight: `${maxHeight}px`,
                 overflow: "auto",
