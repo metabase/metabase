@@ -6,7 +6,7 @@ export type NumberFormatOptions = {
     | "decimal"
     | "scientific"
     | "percentage"
-    | "filesize";
+    | "datameasure";
   currency?: string;
   currency_style?: "symbol" | "code" | "name";
   number_separators?: ".,";

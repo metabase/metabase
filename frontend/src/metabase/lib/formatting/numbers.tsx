@@ -22,7 +22,7 @@ const PRECISION_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
   maximumFractionDigits: 2,
 });
 
-export type FileSizeUnitSystem = "binary" | "decimal";
+export type DataMeasureUnitSystem = "binary" | "decimal";
 
 export type FormatNumberOptions = {
   _numberFormatter?: Intl.NumberFormat | null;
@@ -31,8 +31,8 @@ export type FormatNumberOptions = {
   currency_in_header?: boolean;
   currency_style?: string;
   decimals?: string | number;
-  filesize_unit_system?: FileSizeUnitSystem;
-  filesize_unit_in_header?: boolean;
+  datameasure_unit_system?: DataMeasureUnitSystem;
+  datameasure_unit_in_header?: boolean;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
   minimumIntegerDigits?: number;
@@ -106,8 +106,8 @@ export function formatNumber(
 
   if (options.compact) {
     return formatNumberCompact(number, options);
-  } else if (options.number_style === "filesize") {
-    return formatNumberFileSize(number, options);
+  } else if (options.number_style === "datameasure") {
+    return formatNumberDataMeasure(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
   } else {
@@ -208,9 +208,9 @@ export function numberFormatterForOptions(
     ...options,
   };
 
-  // filesize is a custom format, not supported by Intl.NumberFormat
-  // Return null for filesize - formatNumber will handle it specially
-  if (options.number_style === "filesize") {
+  // datameasure is a custom format, not supported by Intl.NumberFormat
+  // Return null for datameasure - formatNumber will handle it specially
+  if (options.number_style === "datameasure") {
     return null;
   }
 
@@ -272,14 +272,18 @@ function formatNumberCompact(
       minimumFractionDigits: 1,
     });
   }
+  if (options.number_style === "datameasure") {
+    // Compact data measures should still show units but with abbreviated numbers
+    return formatNumberDataMeasure(value, options);
+  }
   return _formatNumberCompact(value, options);
 }
 
-function formatNumberFileSize(
+function formatNumberDataMeasure(
   value: number | bigint,
   options: FormatNumberJsxOptions,
 ): string {
-  const unitSystem = options.filesize_unit_system || "binary";
+  const unitSystem = options.datameasure_unit_system || "binary";
   const units =
     unitSystem === "binary" ? FILESIZE_UNITS_BINARY : FILESIZE_UNITS_DECIMAL;
   const base =
@@ -315,9 +319,15 @@ function formatNumberFileSize(
     formatted = parseFloat(scaledValue.toFixed(2)).toString();
   }
 
+  // Apply custom number separators if specified
+  const separators = options.number_separators;
+  if (separators && separators !== DEFAULT_NUMBER_SEPARATORS) {
+    formatted = replaceNumberSeparators(formatted, separators);
+  }
+
   // Handle unit display
   const unit = units[unitIndex];
-  if (options.type === "cell" && options.filesize_unit_in_header) {
+  if (options.type === "cell" && options.datameasure_unit_in_header) {
     // Unit will be shown in header, just return the number
     return (value < 0 ? "-" : "") + formatted;
   }

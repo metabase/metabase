@@ -254,9 +254,9 @@ export const NUMBER_COLUMN_SETTINGS = {
         },
         {
           get name() {
-            return t`File size`;
+            return t`Data size`;
           },
-          value: "filesize",
+          value: "datameasure",
         },
       ],
     },
@@ -324,7 +324,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     readDependencies: ["number_style"],
   },
-  filesize_unit_system: {
+  datameasure_unit_system: {
     get title() {
       return t`Unit system`;
     },
@@ -338,10 +338,10 @@ export const NUMBER_COLUMN_SETTINGS = {
       };
     },
     getDefault: getDefaultFileSizeUnitSystem,
-    getHidden: (column, settings) => settings["number_style"] !== "filesize",
+    getHidden: (column, settings) => settings["number_style"] !== "datameasure",
     readDependencies: ["number_style"],
   },
-  filesize_unit_in_header: {
+  datameasure_unit_in_header: {
     get title() {
       return t`Where to display the unit`;
     },
@@ -361,7 +361,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         return false;
       }
       return (
-        settings["number_style"] !== "filesize" ||
+        settings["number_style"] !== "datameasure" ||
         series[0].card.display !== "table"
       );
     },
@@ -429,8 +429,8 @@ export const NUMBER_COLUMN_SETTINGS = {
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
     getValue: (column, settings) => {
-      // filesize doesn't use Intl.NumberFormat, so return null
-      if (settings["number_style"] === "filesize") {
+      // datameasure doesn't use Intl.NumberFormat, so return null
+      if (settings["number_style"] === "datameasure") {
         return null;
       }
       return numberFormatterForOptions(settings);
@@ -454,8 +454,8 @@ export const NUMBER_COLUMN_SETTINGS = {
         }
         return getCurrency(settings["currency"], settings["currency_style"]);
       } else if (
-        settings["number_style"] === "filesize" &&
-        settings["filesize_unit_in_header"]
+        settings["number_style"] === "datameasure" &&
+        settings["datameasure_unit_in_header"]
       ) {
         return t`Bytes`;
       }
@@ -466,7 +466,7 @@ export const NUMBER_COLUMN_SETTINGS = {
       "currency",
       "currency_style",
       "currency_header_only",
-      "filesize_unit_in_header",
+      "datameasure_unit_in_header",
     ],
   },
 };

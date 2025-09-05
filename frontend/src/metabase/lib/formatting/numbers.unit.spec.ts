@@ -97,62 +97,68 @@ describe("formatNumber with scale (multiply function)", () => {
   });
 });
 
-describe("formatNumber with file size", () => {
+describe("formatNumber with data measure", () => {
   describe("binary units (default)", () => {
     it("should format bytes correctly", () => {
-      expect(formatNumber(0, { number_style: "filesize" })).toBe("0 B");
-      expect(formatNumber(512, { number_style: "filesize" })).toBe("512 B");
-      expect(formatNumber(1023, { number_style: "filesize" })).toBe("1023 B");
+      expect(formatNumber(0, { number_style: "datameasure" })).toBe("0 B");
+      expect(formatNumber(512, { number_style: "datameasure" })).toBe("512 B");
+      expect(formatNumber(1023, { number_style: "datameasure" })).toBe(
+        "1023 B",
+      );
     });
 
     it("should format KiB correctly", () => {
-      expect(formatNumber(1024, { number_style: "filesize" })).toBe("1 KiB");
-      expect(formatNumber(1536, { number_style: "filesize" })).toBe("1.5 KiB");
-      expect(formatNumber(1048575, { number_style: "filesize" })).toBe(
+      expect(formatNumber(1024, { number_style: "datameasure" })).toBe("1 KiB");
+      expect(formatNumber(1536, { number_style: "datameasure" })).toBe(
+        "1.5 KiB",
+      );
+      expect(formatNumber(1048575, { number_style: "datameasure" })).toBe(
         "1024 KiB",
       );
     });
 
     it("should format MiB correctly", () => {
-      expect(formatNumber(1048576, { number_style: "filesize" })).toBe("1 MiB");
-      expect(formatNumber(1572864, { number_style: "filesize" })).toBe(
+      expect(formatNumber(1048576, { number_style: "datameasure" })).toBe(
+        "1 MiB",
+      );
+      expect(formatNumber(1572864, { number_style: "datameasure" })).toBe(
         "1.5 MiB",
       );
     });
 
     it("should format GiB correctly", () => {
-      expect(formatNumber(1073741824, { number_style: "filesize" })).toBe(
+      expect(formatNumber(1073741824, { number_style: "datameasure" })).toBe(
         "1 GiB",
       );
-      expect(formatNumber(1610612736, { number_style: "filesize" })).toBe(
+      expect(formatNumber(1610612736, { number_style: "datameasure" })).toBe(
         "1.5 GiB",
       );
     });
 
     it("should format TiB correctly", () => {
-      expect(formatNumber(1099511627776, { number_style: "filesize" })).toBe(
+      expect(formatNumber(1099511627776, { number_style: "datameasure" })).toBe(
         "1 TiB",
       );
-      expect(formatNumber(1649267441664, { number_style: "filesize" })).toBe(
+      expect(formatNumber(1649267441664, { number_style: "datameasure" })).toBe(
         "1.5 TiB",
       );
     });
 
     it("should format PiB correctly", () => {
-      expect(formatNumber(1125899906842624, { number_style: "filesize" })).toBe(
-        "1 PiB",
-      );
-      expect(formatNumber(1688849860263936, { number_style: "filesize" })).toBe(
-        "1.5 PiB",
-      );
+      expect(
+        formatNumber(1125899906842624, { number_style: "datameasure" }),
+      ).toBe("1 PiB");
+      expect(
+        formatNumber(1688849860263936, { number_style: "datameasure" }),
+      ).toBe("1.5 PiB");
     });
   });
 
   describe("decimal units", () => {
     it("should format with decimal units when specified", () => {
       const options: FormatNumberOptions = {
-        number_style: "filesize",
-        filesize_unit_system: "decimal",
+        number_style: "datameasure",
+        datameasure_unit_system: "decimal",
       };
       expect(formatNumber(1000, options)).toBe("1 KB");
       expect(formatNumber(1500, options)).toBe("1.5 KB");
@@ -170,8 +176,8 @@ describe("formatNumber with file size", () => {
   describe("header unit display", () => {
     it("should omit unit when filesize_unit_in_header is true", () => {
       const options = {
-        number_style: "filesize",
-        filesize_unit_in_header: true,
+        number_style: "datameasure",
+        datameasure_unit_in_header: true,
         type: "cell",
       };
       expect(formatNumber(1536, options)).toBe("1.5");
@@ -180,8 +186,8 @@ describe("formatNumber with file size", () => {
 
     it("should include unit when filesize_unit_in_header is false", () => {
       const options = {
-        number_style: "filesize",
-        filesize_unit_in_header: false,
+        number_style: "datameasure",
+        datameasure_unit_in_header: false,
         type: "cell",
       };
       expect(formatNumber(1536, options)).toBe("1.5 KiB");
@@ -193,21 +199,21 @@ describe("formatNumber with file size", () => {
     it("should respect decimals setting", () => {
       expect(
         formatNumber(1536, {
-          number_style: "filesize",
+          number_style: "datameasure",
           decimals: 0,
         }),
       ).toBe("2 KiB");
 
       expect(
         formatNumber(1536, {
-          number_style: "filesize",
+          number_style: "datameasure",
           decimals: 3,
         }),
       ).toBe("1.500 KiB");
 
       expect(
         formatNumber(1536, {
-          number_style: "filesize",
+          number_style: "datameasure",
           decimals: 1,
         }),
       ).toBe("1.5 KiB");
@@ -216,7 +222,7 @@ describe("formatNumber with file size", () => {
     it("should not show decimals for bytes", () => {
       expect(
         formatNumber(512, {
-          number_style: "filesize",
+          number_style: "datameasure",
           decimals: 2,
         }),
       ).toBe("512 B");
@@ -224,12 +230,14 @@ describe("formatNumber with file size", () => {
   });
 
   describe("negative values", () => {
-    it("should handle negative file sizes", () => {
-      expect(formatNumber(-1024, { number_style: "filesize" })).toBe("-1 KiB");
-      expect(formatNumber(-1536, { number_style: "filesize" })).toBe(
+    it("should handle negative data measures", () => {
+      expect(formatNumber(-1024, { number_style: "datameasure" })).toBe(
+        "-1 KiB",
+      );
+      expect(formatNumber(-1536, { number_style: "datameasure" })).toBe(
         "-1.5 KiB",
       );
-      expect(formatNumber(-1048576, { number_style: "filesize" })).toBe(
+      expect(formatNumber(-1048576, { number_style: "datameasure" })).toBe(
         "-1 MiB",
       );
     });
@@ -238,13 +246,13 @@ describe("formatNumber with file size", () => {
   describe("edge cases", () => {
     it("should handle very large numbers", () => {
       expect(
-        formatNumber(1125899906842624 * 1000, { number_style: "filesize" }),
+        formatNumber(1125899906842624 * 1000, { number_style: "datameasure" }),
       ).toBe("1000 PiB");
     });
 
     it("should handle fractional bytes", () => {
-      expect(formatNumber(0.5, { number_style: "filesize" })).toBe("1 B"); // Rounds up
-      expect(formatNumber(0.1, { number_style: "filesize" })).toBe("0 B");
+      expect(formatNumber(0.5, { number_style: "datameasure" })).toBe("1 B"); // Rounds up
+      expect(formatNumber(0.1, { number_style: "datameasure" })).toBe("0 B");
     });
   });
 });

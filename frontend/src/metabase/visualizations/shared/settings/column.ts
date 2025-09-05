@@ -1,6 +1,6 @@
 import {
   isCurrency,
-  isFileSize,
+  isDataMeasure,
   isPercentage,
 } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
@@ -17,8 +17,8 @@ export function getDefaultNumberStyle(
     return "percent";
   }
 
-  if (isFileSize(column)) {
-    return "filesize";
+  if (isDataMeasure(column)) {
+    return "datameasure";
   }
 
   return "decimal";
