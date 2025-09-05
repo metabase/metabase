@@ -34,6 +34,9 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     cy.intercept("DELETE", "/api/ee/transform/*/table").as(
       "deleteTransformTable",
     );
+    cy.intercept("GET", "/api/ee/transform/*/dependencies").as(
+      "transformDependencies",
+    );
     cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
@@ -228,6 +231,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       H.modal().within(() => {
         cy.button("Save").click();
         cy.wait("@createTransform");
+        cy.wait("@transformDependencies");
       });
 
       getSchemaLink()
