@@ -2,6 +2,7 @@
   "API client for interfacing with Harbormaster on store-api-url."
   (:require
    [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [martian.clj-http :as martian-http]
    [martian.core :as martian]
@@ -135,7 +136,8 @@
    {:headers {"Authorization" (str "Bearer " api-key)}}))
 
 (def ^:private create-client-memo
-  (memoize create-client))
+  (memoize/ttl create-client
+               :ttl/threshold (m.util/minutes->ms 5)))
 
 (defn- client []
   (let [store-api-url (store-api/store-api-url)
