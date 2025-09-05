@@ -91,7 +91,6 @@ H.describeWithSnowplowEE("document comments", () => {
 
       cy.log("can close the sidebar with a keyboard shortcut");
       cy.realPress("Escape");
-      cy.realPress("Escape"); // TODO: remove this, this is because of a bug #21
       H.modal().should("not.exist");
 
       getNodeElement()
