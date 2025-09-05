@@ -72,6 +72,7 @@ export const BulletListNodeView = ({ node, editor, getPos }: NodeViewProps) => {
   return (
     <>
       <NodeViewWrapper
+        aria-expanded={isOpen}
         className={cx(S.root, {
           [S.open]: isOpen,
         })}

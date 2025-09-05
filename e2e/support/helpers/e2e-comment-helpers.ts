@@ -2,6 +2,7 @@ import type { DocumentId } from "metabase-types/api";
 
 export const Comments = {
   getDocumentNodeButton,
+  getDocumentNodeButtons,
   getNewThreadInput,
   getCommentInput,
   getPlaceholder,
@@ -18,9 +19,13 @@ function getDocumentNodeButton({
 }) {
   const threadUrl = `/document/${targetId}/comments/${childTargetId}${hasComments ? "" : "?new=true"}`;
 
-  return cy
-    .findAllByRole("link", { name: "Comments" })
-    .filter((_, element) => element.getAttribute("href") === threadUrl);
+  return getDocumentNodeButtons().filter(
+    (_, element) => element.getAttribute("href") === threadUrl,
+  );
+}
+
+function getDocumentNodeButtons() {
+  return cy.findAllByRole("link", { name: "Comments" });
 }
 
 function getNewThreadInput() {

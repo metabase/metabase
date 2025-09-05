@@ -75,6 +75,7 @@ export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
   return (
     <>
       <NodeViewWrapper
+        aria-expanded={isOpen}
         className={cx(S.root, {
           [S.open]: isOpen,
         })}

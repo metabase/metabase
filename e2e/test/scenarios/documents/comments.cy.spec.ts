@@ -55,6 +55,9 @@ H.describeWithSnowplowEE("document comments", () => {
         "not.be.visible",
       );
 
+      getNodeElement()
+        .closest("[data-node-view-wrapper]")
+        .should("have.attr", "aria-expanded", "false");
       getNodeElement().scrollIntoView();
       getNodeElement().realHover();
       Comments.getDocumentNodeButton({ targetId, childTargetId })
@@ -72,6 +75,11 @@ H.describeWithSnowplowEE("document comments", () => {
         });
       });
 
+      cy.log("highlights related document node");
+      getNodeElement()
+        .closest("[data-node-view-wrapper]")
+        .should("have.attr", "aria-expanded", "true");
+
       cy.log("shows comments button when comments for the node are open");
       Comments.getDocumentNodeButton({
         targetId,
@@ -85,6 +93,10 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.realPress("Escape");
       cy.realPress("Escape"); // TODO: remove this, this is because of a bug #21
       H.modal().should("not.exist");
+
+      getNodeElement()
+        .closest("[data-node-view-wrapper]")
+        .should("have.attr", "aria-expanded", "false");
 
       cy.log("shows comments button when node has unresolved comments");
       Comments.getDocumentNodeButton({
@@ -353,7 +365,7 @@ function getHeading3() {
 }
 
 function getParagraph() {
-  return H.documentContent().findByText("Lorem ipsum dolor sit amet.");
+  return H.documentContent().findByText("Lorem ipsum dolor sit amet.").parent();
 }
 
 function getBulletList() {
@@ -361,9 +373,7 @@ function getBulletList() {
 }
 
 function getBlockquote() {
-  return H.documentContent()
-    .findByText("A famous quote")
-    .closest("[data-node-view-wrapper]");
+  return H.documentContent().findByText("A famous quote").closest("blockquote");
 }
 
 function getOrderedList() {
@@ -371,7 +381,7 @@ function getOrderedList() {
 }
 
 function getCodeBlock() {
-  return H.documentContent().findByText("while (true) {}");
+  return H.documentContent().findByText("while (true) {}").closest("pre");
 }
 
 function getEmbed() {

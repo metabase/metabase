@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "metabase/lib/redux";
 import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
+import { CommentsMenu } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
 import {
   getChildTargetId,
   getCurrentDocument,
@@ -19,9 +20,8 @@ import {
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
 
-import { CommentsMenu } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
-import S from "../extensions.module.css";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
+import S from "../extensions.module.css";
 
 export const CustomHeading = Heading.extend({
   addAttributes() {
@@ -88,6 +88,7 @@ export const HeadingNodeView = ({ node }: NodeViewProps) => {
   return (
     <>
       <NodeViewWrapper
+        aria-expanded={isOpen}
         className={cx(S.root, {
           [S.open]: isOpen,
         })}

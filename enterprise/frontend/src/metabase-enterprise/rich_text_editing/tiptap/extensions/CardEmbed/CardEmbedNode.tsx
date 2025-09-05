@@ -310,6 +310,7 @@ export const CardEmbedComponent = memo(
     if (isLoading && !card) {
       return (
         <NodeViewWrapper
+          aria-expanded={isOpen}
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen,
           })}
@@ -341,6 +342,7 @@ export const CardEmbedComponent = memo(
     if (error) {
       return (
         <NodeViewWrapper
+          aria-expanded={isOpen}
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen,
           })}
@@ -368,6 +370,7 @@ export const CardEmbedComponent = memo(
     return (
       <>
         <NodeViewWrapper
+          aria-expanded={isOpen}
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen,
           })}
