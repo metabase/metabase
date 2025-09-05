@@ -249,9 +249,7 @@
       (:qp/stage-had-source-card stage)
       (let [card-id (:qp/stage-had-source-card stage)]
         (when-some [card (lib.metadata/card query card-id)]
-          ;; card returned columns should be the same regardless of which stage number we pass in, so always use the
-          ;; last stage so we can hit the cache more often
-          (when-some [card-cols (not-empty (cond->> (lib.metadata.calculation/returned-columns query 0 card)
+          (when-some [card-cols (not-empty (cond->> (lib.metadata.calculation/returned-columns query card)
                                              ;; if we have `id` then filter out anything that is definitely not a
                                              ;; match
                                              (:id col) (filter #(= (:id %) (:id col)))))]
@@ -284,6 +282,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    join-alias   :- ::lib.schema.join/alias
+   source-field :- [:maybe ::lib.schema.id/field]
    id-or-name   :- ::id-or-name]
   (log/debugf "Resolving %s (join alias = %s) in joins in stage %s" (pr-str id-or-name) (pr-str join-alias) (pr-str stage-number))
   ;; find the matching join.
@@ -296,7 +295,10 @@
                     (pr-str id-or-name)
                     (pr-str join-alias)
                     (pr-str stage-number))
-        (let [join-cols (lib.metadata.calculation/returned-columns query stage-number join)]
+        (let [join-cols (cond->> (lib.join/join-returned-columns-relative-to-parent-stage query stage-number join nil)
+                          source-field (remove (fn [col]
+                                                 (when-some [col-source-field ((some-fn :fk-field-id :lib/original-fk-field-id) col)]
+                                                   (not= col-source-field source-field)))))]
           (when-some [col (resolve-in-previous-stage-metadata-and-update-keys query join-cols id-or-name)]
             (-> col
                 (as-> $col (lib.join/column-from-join query stage-number $col join-alias))
@@ -540,10 +542,10 @@
           (when (= (count parts) 2)
             (let [[join-alias field-name] parts]
               (log/debugf "Split field name into join alias %s and field name %s" (pr-str join-alias) (pr-str field-name))
-              (resolve-in-join query stage-number join-alias field-name)))))
+              (resolve-in-join query stage-number join-alias nil field-name)))))
       (some (fn [join]
               (log/debugf "Looking for match in join %s" (pr-str (:alias join)))
-              (resolve-in-join query stage-number (:alias join) id-or-name))
+              (resolve-in-join query stage-number (:alias join) nil id-or-name))
             (:joins (lib.util/query-stage query stage-number)))
       (do
         (log/debugf "Failed to find a match in one of the query's joins in stage %s" (pr-str stage-number))
@@ -605,7 +607,7 @@
     (u/prog1 (-> (merge-metadata
                   {:lib/type :metadata/column}
                   (or (when join-alias
-                        (resolve-in-join query stage-number join-alias id-or-name))
+                        (resolve-in-join query stage-number join-alias source-field id-or-name))
                       (when source-field
                         (resolve-in-implicit-join query stage-number source-field id-or-name))
                       (resolve-from-previous-stage-or-source query stage-number id-or-name)
@@ -620,7 +622,7 @@
                          {:lib/source                   :source/joins
                           :metabase.lib.join/join-alias join-alias})))
                   (options-metadata opts)
-                  {:lib/original-ref field-ref})
+                  {:lib/original-ref-for-result-metadata-purposes-only field-ref})
                  (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))
                  ;; `:lib/desired-column-alias` needs to be recalculated in the context of the stage where the ref
                  ;; appears, go ahead and remove it so we don't accidentally try to use it when it may or may not be
@@ -640,4 +642,9 @@
            (when (and (pos-int? stage-number)
                       (#{:source/table-defaults :source/native} (:lib/source <>)))
              (throw (ex-info "A column can only come from a :source-table or native query in the first stage of a query"
-                             {:query query, :stage-number stage-number, :field-ref field-ref, :col <>}))))))))
+                             {:query query, :stage-number stage-number, :field-ref field-ref, :col <>})))
+           (when-let [source-field (:source-field opts)]
+             (when-let [resolved-source-field ((some-fn :fk-field-id :lib/original-fk-field-id) <>)]
+               (when-not (= resolved-source-field source-field)
+                 (throw (ex-info "Resolved column has different :source-field"
+                                 {:query query, :stage-number stage-number, :field-ref field-ref, :col <>}))))))))))

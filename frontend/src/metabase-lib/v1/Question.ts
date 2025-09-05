@@ -66,6 +66,11 @@ export type QuestionCreatorOpts = {
   dataset_query?: DatasetQuery;
 };
 
+export type QuestionDashboardProps = {
+  dashboardId?: DashboardId;
+  dashcardId?: DashCardId;
+};
+
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
@@ -438,13 +443,14 @@ class Question {
     return this.setQuery(query);
   }
 
-  composeQuestionAdhoc(): Question {
+  composeQuestionAdhoc(options: QuestionCreatorOpts = {}): Question {
     if (!this.isSaved()) {
       return this;
     }
-
     const query = this.composeQuestion().query();
-    return Question.create({ metadata: this.metadata() }).setQuery(query);
+    return Question.create({ metadata: this.metadata(), ...options }).setQuery(
+      query,
+    );
   }
 
   /**
@@ -508,12 +514,15 @@ class Question {
     );
   }
 
+  getDashboardProps(): QuestionDashboardProps {
+    const { dashboardId, dashcardId } = this.card();
+    return { dashboardId, dashcardId };
+  }
+
   setDashboardProps({
     dashboardId,
     dashcardId,
-  }:
-    | { dashboardId: DashboardId; dashcardId: DashCardId }
-    | { dashboardId: undefined; dashcardId: undefined }): Question {
+  }: QuestionDashboardProps): Question {
     const card = chain(this.card())
       .assoc("dashboardId", dashboardId)
       .assoc("dashcardId", dashcardId)

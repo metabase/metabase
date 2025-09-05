@@ -52,10 +52,6 @@
   "Used to decide if routing details should be used for a db."
   false)
 
-(def ^:dynamic *use-routing-dataset*
-  "Used to override the dataset name for routing tests."
-  false)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+

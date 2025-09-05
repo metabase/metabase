@@ -10,6 +10,7 @@
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.test-util :as driver.tu]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -17,10 +18,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (org.apache.sshd.server SshServer)
-   (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -288,6 +286,41 @@
           (is (= 77
                  (categories-row-count))))))))
 
+(defn- unset-entity-key! [table-id]
+  (t2/update! :model/Field
+              {:table_id      table-id
+               :semantic_type :type/PK}
+              {:semantic_type nil}))
+
+(deftest table-row-create-no-pk
+  (testing "table.row/create"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (let [db-id    (mt/id)
+              table-id (mt/id :categories)
+              name-col (format-field-name :name)]
+          (unset-entity-key! table-id)
+          (is (= 75
+                 (categories-row-count)))
+          (is (= {:status-code               400
+                  :errors                    [{:index 0, :error "Cannot edit a table without it having at least one entity key configured.", :type :data-editing/no-pk, :status-code 400, :table-id table-id}
+                                              {:index 1, :error "Cannot edit a table without it having at least one entity key configured.", :type :data-editing/no-pk, :status-code 400, :table-id table-id}]
+                  :results                   []
+                  :metabase.util.log/context {:action :table.row/create, :db-id db-id}}
+                 (try
+                   (actions/perform-action-v2! :table.row/create
+                                               test-scope
+                                               [{:database db-id, :table-id table-id, :row {name-col "NEW_A"}}
+                                                {:database db-id, :table-id table-id, :row {name-col "NEW_B"}}])
+                   ::did-not-throw
+                   (catch Exception e
+                     (or (ex-data e) ::did-not-throw-ex-info)))))
+          (is (= []
+                 (mt/rows (mt/run-mbql-query categories {:filter   [:starts-with $name "NEW"]
+                                                         :order-by [[:asc $id]]}))))
+          (is (= 75
+                 (categories-row-count))))))))
+
 (deftest table-row-create-failure-test
   (testing "table.row/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -350,6 +383,32 @@
                                                  :table-id table-id
                                                  :row      {(format-field-name :id) 74}}])))))
           (is (= 73 (categories-row-count))))))))
+
+(deftest table-row-delete-no-pk
+  (testing "table.row/delete"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (let [db-id    (mt/id)
+              table-id (mt/id :categories)]
+          (unset-entity-key! table-id)
+
+          (is (= 75 (categories-row-count)))
+          (is (= {:type                      :data-editing/no-pk
+                  :status-code               400
+                  :table-id                  table-id
+                  :metabase.util.log/context {:action :table.row/delete
+                                              :db-id  db-id}}
+                 (try
+                   (actions/perform-action-v2! :table.row/delete
+                                               test-scope
+                                               [{:database db-id
+                                                 :table-id table-id
+                                                 :row      {}}])
+                   ::did-not-throw
+                   (catch Exception e
+                     (or (ex-data e) ::did-not-throw-ex-info)))))
+          (testing "nothing was deleted"
+            (is (= 75 (categories-row-count)))))))))
 
 (deftest table-row-delete-failure-test
   (testing "table.row/delete"
@@ -445,6 +504,43 @@
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
 
+(deftest table-row-update-no-pk
+  (testing "table.row/update"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (with-actions-test-data-and-actions-permissively-enabled!
+        (let [db-id    (mt/id)
+              table-id (mt/id :categories)]
+          (unset-entity-key! table-id)
+          (is (= [[1 "African"]
+                  [2 "American"]
+                  [3 "Artisan"]]
+                 (first-three-categories)))
+
+          (is (= {:type                      :data-editing/no-pk
+                  :status-code               400
+                  :table-id                  table-id
+                  :metabase.util.log/context {:action :table.row/update
+                                              :db-id  db-id}}
+                 (try
+                   (let [id   (format-field-name :id)
+                         name (format-field-name :name)]
+                     (actions/perform-action-v2! :table.row/update
+                                                 test-scope
+                                                 (for [row [{id 1, name "Seed Bowl"}
+                                                            {id 2, name "Millet Treat"}]]
+                                                   {:database db-id
+                                                    :table-id table-id
+                                                    :row      row})))
+                   ::did-not-throw
+                   (catch Exception e
+                     (or (ex-data e) ::did-not-throw-ex-info)))))
+
+          (testing "rows should NOT be updated in the DB"
+            (is (= [[1 "African"]
+                    [2 "American"]
+                    [3 "Artisan"]]
+                   (first-three-categories)))))))))
+
 (deftest table-row-update-failure-test
   (testing "table.row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -504,26 +600,6 @@
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
 
-(defn basic-auth-ssh-server ^java.io.Closeable [username password]
-  (try
-    (let [password-auth    (reify org.apache.sshd.server.auth.password.PasswordAuthenticator
-                             (authenticate [_ auth-username auth-password _session]
-                               (and
-                                (= auth-username username)
-                                (= auth-password password))))
-          keypair-provider (org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider.)
-          sshd             (doto (SshServer/setUpDefaultServer)
-                             (.setPort 0)
-                             (.setKeyPairProvider keypair-provider)
-                             (.setPasswordAuthenticator password-auth)
-                             (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)
-                             .start)]
-      sshd)
-    (catch Throwable e
-      (throw (ex-info (format "Error starting SSH mock server with password")
-                      {:username username :password password}
-                      e)))))
-
 (deftest actions-on-ssh-tunneled-db
   ;; testing actions against dbs with ssh tunnels. Use an in-memory ssh server that just forwards to the correct port
   ;; through localhost. Since it is local, it's possible for the application to ignore the ssh tunnel and just talk to
@@ -532,10 +608,10 @@
   ;; through the ssh tunnel
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
     (let [username "username", password "password"]
-      (with-open [ssh-server (basic-auth-ssh-server username password)]
+      (with-open [ssh-server (driver.tu/basic-auth-ssh-server username password)]
         (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
           (with-actions-test-data-and-actions-permissively-enabled!
-            (let [ssh-port (.getPort ^SshServer ssh-server)
+            (let [ssh-port (.getPort ssh-server)
                   table-id (mt/id :categories)]
               (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
                 (t2/update! 'Database (mt/id)

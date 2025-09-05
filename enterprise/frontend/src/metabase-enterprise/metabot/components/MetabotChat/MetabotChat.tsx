@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { c, jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
@@ -15,11 +15,11 @@ import {
   Stack,
   Text,
   Textarea,
-  UnstyledButton,
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
+import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
-import { useMetabotAgent } from "../../hooks";
+import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
 
 import Styles from "./MetabotChat.module.css";
 import { Messages } from "./MetabotChatMessage";
@@ -28,6 +28,8 @@ import { useScrollManager } from "./hooks";
 
 export const MetabotChat = () => {
   const metabot = useMetabotAgent();
+  const { handleSubmitInput, handleRetryMessage, handleResetInput } =
+    useMetabotChatHandlers();
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -44,32 +46,8 @@ export const MetabotChat = () => {
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
-  const handleSubmitInput = (input: string) => {
-    if (metabot.isDoingScience) {
-      return;
-    }
-
-    const trimmedInput = input.trim();
-    if (!trimmedInput.length || metabot.isDoingScience) {
-      return;
-    }
-    metabot.setPrompt("");
-    metabot.promptInputRef?.current?.focus();
-    metabot.submitInput(trimmedInput).catch((err) => console.error(err));
-  };
-
-  const handleRetryMessage = (messageId: string) => {
-    if (metabot.isDoingScience) {
-      return;
-    }
-
-    metabot.setPrompt("");
-    metabot.promptInputRef?.current?.focus();
-    metabot.retryMessage(messageId).catch((err) => console.error(err));
-  };
-
   const handleClose = () => {
-    metabot.setPrompt("");
+    handleResetInput();
     metabot.setVisible(false);
   };
 
@@ -161,6 +139,7 @@ export const MetabotChat = () => {
                 errorMessages={metabot.errorMessages}
                 onRetryMessage={handleRetryMessage}
                 isDoingScience={metabot.isDoingScience}
+                showFeedbackButtons
               />
 
               {/* loading */}
@@ -177,21 +156,7 @@ export const MetabotChat = () => {
               <div ref={fillerRef} data-testid="metabot-message-filler" />
 
               {/* long convo warning */}
-              {metabot.isLongConversation && (
-                <Text lh={1} c="text-light" m={0} ta="center">
-                  {jt`This chat is getting long. You can ${(
-                    <UnstyledButton
-                      key="reset"
-                      data-testid="metabot-reset-long-chat"
-                      display="inline"
-                      c="brand"
-                      td="underline"
-                      onClick={() => metabot.resetConversation()}
-                    >{c("'it' refers to a chat with an AI agent")
-                      .t`clear it`}</UnstyledButton>
-                  )}.`}
-                </Text>
-              )}
+              {metabot.isLongConversation && <MetabotResetLongChatButton />}
             </Box>
           )}
         </Box>
