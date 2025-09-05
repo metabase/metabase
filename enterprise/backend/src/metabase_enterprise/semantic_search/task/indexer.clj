@@ -1,6 +1,5 @@
 (ns metabase-enterprise.semantic-search.task.indexer
   (:require
-   #_[metabase-enterprise.semantic-search.db.connection :as semantic.db.connection]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -37,10 +36,6 @@
         (try
           (vreset! execution-thread-ref (Thread/currentThread))
           (semantic-search.indexer/quartz-job-run! (semantic.env/get-pgvector-datasource!) (semantic.env/get-index-metadata))
-          ;; TODO: w-tx should be nogo here, move lower or add wrapper on exe
-          #_(semantic.db.connection/with-write-tx
-              [tx]
-              (semantic-search.indexer/quartz-job-run! tx (semantic.env/get-index-metadata)))
           (finally
             (locking execution-thread-ref
               (vreset! execution-thread-ref nil)))))))
@@ -53,7 +48,7 @@
         (.interrupt execution-thread)))))
 
 (def ^:private ^Duration startup-delay (Duration/parse "PT10S"))
-(def ^:private ^Duration run-frequency (Duration/parse "PT10S"))
+(def ^:private ^Duration run-frequency (Duration/parse "PT20S"))
 
 (defmethod task/init! ::SemanticSearchIndexer [_]
   (when (premium-features/has-feature? :semantic-search)

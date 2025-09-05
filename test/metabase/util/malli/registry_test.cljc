@@ -5,18 +5,48 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.registry-test-macro :refer [with-returning-cache-miss-count]]))
 
 (deftest ^:parallel cache-handle-regexes-test
   (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
                 " something smart to avoid creating infinite cache entries")
-    (mr/validate [:re #"\d{4}"] "1234")
-    (:validator @@#'mr/cache)
-    (let [before-count (count (:validator @@#'mr/cache))]
-      (mr/validate [:re #"\d{4}"] "1234")
-      (mr/validate [:re #"\d{4}"] "1234")
-      (is (= (count (:validator @@#'mr/cache))
-             before-count)))))
+    (let [unique-schema [:re {:id (rand)} #"\d{4}"]]
+      (is (= 1 (with-returning-cache-miss-count
+                 (mr/validate unique-schema "1234"))))
+      (is (= 0 (with-returning-cache-miss-count
+                 (mr/validate unique-schema "1234")
+                 (mr/validate unique-schema "1234")))
+          "Calling validate with a previously cached schema does not miss cache"))))
+
+(deftest ^:parallel cache-handle-composed-regexes-test
+  (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
+                " something smart to avoid creating infinite cache entries")
+    (let [unique-id (rand)]
+      (is (= 1 (with-returning-cache-miss-count
+                 (mr/validate [:and {:id unique-id} :string [:re #"\d{4}"]] "1234"))))
+      (let [validator-key-set (set (keys (:validator @@#'mr/cache)))]
+        (is (contains? validator-key-set
+                       (#'mr/schema-cache-key [:and {:id unique-id} :string [:re #"\d{4}"]])))
+        (is (not (contains? validator-key-set
+                            [:and {:id unique-id} :string [:re #"\d{4}"]]))))
+      (is (= 0
+             (with-returning-cache-miss-count
+               (mr/validate [:and {:id unique-id} :string [:re #"\d{4}"]] "1234")
+               (mr/validate [:and {:id unique-id} :string [:re #"\d{4}"]] "1234")))
+          "Calling validate with a previously cached schema does not miss cache")
+      (is (= 3
+             (with-returning-cache-miss-count
+               ;; one
+               (mr/validate [:and {:id unique-id} [:re #"\d{1}"] :string] "1234")
+               (mr/validate [:and {:id unique-id} [:re #"\d{1}"] :string] "1234")
+               ;; two
+               (mr/validate [:and {:id unique-id} [:re #"\d{2}"] :string] "1234")
+               (mr/validate [:and {:id unique-id} [:re #"\d{2}"] :string] "1234")
+               ;; three
+               (mr/validate [:and {:id unique-id} [:re #"\d{3}"] :string] "1234")
+               (mr/validate [:and {:id unique-id} [:re #"\d{3}"] :string] "1234")))
+          "Calling validate multiple times with the 'same' schema does not miss cache"))))
 
 (mr/def ::int
   :int)

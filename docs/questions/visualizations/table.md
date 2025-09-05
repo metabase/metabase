@@ -290,7 +290,7 @@ You can set as many rules on a table as you want, and change the order in which 
 
 ## Adding tables to dashboards
 
-When you add a table to a dashboard, you can add [custom destinations](../../dashboards/interactive.md#custom-destinations) to individual columns, wire up filter widgets, and more. To see an example of a table used in a dashboard, check out our article on [building a record lookup tool with Metabase](/learn/metabase-basics/querying-and-dashboards/dashboards/build-a-record-lookup-tool).
+When you add a table to a dashboard, you can add [custom destinations](../../dashboards/interactive.md#custom-destinations) to individual columns, wire up filter widgets, and more. To see an example of a table used in a dashboard, check out our article on [building a record lookup tool with Metabase](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/build-a-record-lookup-tool).
 
 ## Table pagination on dashboard cards
 

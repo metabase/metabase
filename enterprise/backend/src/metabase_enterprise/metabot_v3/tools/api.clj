@@ -13,6 +13,7 @@
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
+   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
     :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
@@ -32,7 +33,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (defn- decode-ai-service-token
   [token]
@@ -853,9 +855,11 @@
                                                     [:map [:arguments ::get-tables-arguments]]
                                                     ::tool-request]]
   (metabot-v3.context/log (assoc body :api :get-tables) :llm.log/llm->be)
-  (let [arguments (mc/encode ::get-tables-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+  (let [arguments (mc/encode ::get-tables-arguments arguments (mtx/transformer {:name :tool-api-request}))
+        database-id (:database-id arguments)]
     (doto (-> (mc/decode ::get-tables-result
-                         (metabot-v3.dummy-tools/get-tables arguments)
+                         {:structured-output {:database (t2/select-one [:model/Database :id :name :description :engine] database-id)
+                                              :tables   (table-utils/database-tables database-id)}}
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))

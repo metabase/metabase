@@ -3,17 +3,16 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clj-http.client :as http]
-   [clj-time.core :as time]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
-   [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.streaming-response :as sr]
@@ -38,7 +37,7 @@
   ([user-id metabot-id]
    (let [secret (buddy-hash/sha256 (metabot-v3.settings/site-uuid-for-metabot-tools))
          claims {:user       user-id
-                 :exp        (time/plus (time/now) (time/seconds (metabot-v3.settings/metabot-ai-service-token-ttl)))
+                 :exp        (t/plus (t/instant) (t/seconds (metabot-v3.settings/metabot-ai-service-token-ttl)))
                  :metabot-id metabot-id}]
      (jwt/encrypt claims secret {:alg :dir, :enc :a128cbc-hs256}))))
 
@@ -130,9 +129,9 @@
                         :context         context
                         :conversation_id conversation-id
                         :profile_id      profile-id
-                        :state           state
-                        :user_id         api/*current-user-id*}
-                       (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en))
+                        :user_id         api/*current-user-id*
+                        :state           state}
+                       (u/deep-kebab->snake-keys))
           _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Service:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "application/json"
@@ -188,9 +187,9 @@
                         :context         context
                         :conversation_id conversation-id
                         :profile_id      profile-id
-                        :state           state
-                        :user_id         api/*current-user-id*}
-                       (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en))
+                        :user_id         api/*current-user-id*
+                        :state           state}
+                       (u/deep-kebab->snake-keys))
           _        (metabot-v3.context/log body :llm.log/be->llm)
           _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "text/event-stream"
@@ -207,11 +206,11 @@
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
         (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-                               ;; Response from the AI Service will send response parts separated by newline
+          ;; Response from the AI Service will send response parts separated by newline
           (with-open [response-lines ^BufferedReader (io/reader (:body response))]
             (loop []
-                                   ;; Grab the next line and write it to the output stream with appended newline (frontend depends on it)
-                                   ;; Immediately flush so it get's sent to the frontend as soon as possible
+              ;; Grab the next line and write it to the output stream with appended newline (frontend depends on it)
+              ;; Immediately flush so it get's sent to the frontend as soon as possible
               (when-let [line (.readLine response-lines)]
                 (.write os (.getBytes (str line "\n") "UTF-8"))
                 (.flush os)

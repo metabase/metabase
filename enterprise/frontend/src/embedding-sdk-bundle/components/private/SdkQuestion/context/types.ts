@@ -79,10 +79,11 @@ type SdkQuestionConfig = {
    * @internal
    *
    * When provided, this dashboard will be used to navigate back to the dashboard from other view
-   * instead of the state from Redux in `qb.parentDashboard.dashboardId`
+   * instead of the state from Redux in `qb.parentEntity.dashboardId`
    */
   backToDashboard?: {
     id: DashboardId;
+    model: "dashboard";
     name: string;
   };
 };

@@ -200,8 +200,7 @@
                                                     $user_id
                                                     [:value 5 {:base_type :type/Integer
                                                                :semantic_type :type/FK
-                                                               :database_type "INTEGER"
-                                                               :name "USER_ID"}]]]
+                                                               :database_type "INTEGER"}]]]
                                           ::row-level-restrictions/gtap? true
                                           :query-permissions/gtapped-table $$checkins}
                            :joins [{:source-query
@@ -212,8 +211,7 @@
                                               $venues.price
                                               [:value 1 {:base_type :type/Integer
                                                          :semantic_type :type/Category
-                                                         :database_type "INTEGER"
-                                                         :name "PRICE"}]]
+                                                         :database_type "INTEGER"}]]
                                      ::row-level-restrictions/gtap? true
                                      :query-permissions/gtapped-table $$venues}
                                     :alias "v"
@@ -900,8 +898,7 @@
                                         [:value "Widget" {:base_type :type/Text
                                                           :semantic_type (t2/select-one-fn :semantic_type :model/Field
                                                                                            :id (mt/id :products :category))
-                                                          :database_type "CHARACTER VARYING"
-                                                          :name "CATEGORY"}]]
+                                                          :database_type "CHARACTER VARYING"}]]
                                        (get-in (-> drill-thru-query
                                                    qp.preprocess/preprocess
                                                    ;; legacy usage -- don't do things like this going forward

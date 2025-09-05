@@ -1205,7 +1205,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.location("pathname").should(
         "equal",
-        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+        `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       );
 
       H.datasetEditBar().findByText("Query").click();
@@ -1214,7 +1214,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.location("pathname").should(
         "equal",
-        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+        `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       );
 
       cy.go("forward");
@@ -1238,7 +1238,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       // This should work, but doesn't (metabase#55486)
       // cy.location("pathname").should(
       //   "equal",
-      //   `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      //   `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       // );
 
       H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
@@ -1308,6 +1308,26 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         "DistinctIf(column, condition)",
       );
     });
+  });
+
+  it("should not render detail view column in preview (metabase#63070)", () => {
+    function openPreview() {
+      cy.findByTestId("step-preview-button").click();
+    }
+
+    function verifyPreviewIsRendered() {
+      cy.findByTestId("table-scroll-container").should("contain", "37.65");
+    }
+
+    function verifyIndexColumnsNotRendered() {
+      cy.findAllByTestId("row-id-cell").should("have.length", 0);
+    }
+
+    H.openOrdersTable({ mode: "notebook" });
+
+    openPreview();
+    verifyPreviewIsRendered();
+    verifyIndexColumnsNotRendered();
   });
 });
 

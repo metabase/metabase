@@ -54,6 +54,8 @@ export interface DataGridProps<TData>
   showRowsCount?: boolean;
   isColumnReorderingDisabled?: boolean;
   theme?: DataGridTheme;
+  zoomedRowIndex?: number;
+  tableFooterExtraButtons?: React.ReactNode;
 }
 
 export const DataGrid = function DataGrid<TData>({
@@ -72,10 +74,12 @@ export const DataGrid = function DataGrid<TData>({
   getTotalHeight,
   getVisibleRows,
   isColumnReorderingDisabled,
+  zoomedRowIndex,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
   onWheel,
+  tableFooterExtraButtons,
 }: DataGridProps<TData>) {
   const {
     virtualColumns,
@@ -281,6 +285,7 @@ export const DataGrid = function DataGrid<TData>({
 
                 const dataIndex =
                   virtualRow != null ? virtualRow.index : row.index;
+                const active = zoomedRowIndex === dataIndex;
 
                 return (
                   <div
@@ -291,7 +296,9 @@ export const DataGrid = function DataGrid<TData>({
                     data-index={dataIndex}
                     data-allow-page-break-after="true"
                     data-row-selected={row.getIsSelected()}
-                    className={cx(S.row, classNames?.row)}
+                    className={cx(S.row, classNames?.row, {
+                      [S.active]: active,
+                    })}
                     style={{
                       ...virtualRowStyles,
                       ...styles?.row,
@@ -321,7 +328,9 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor: stickyElementsBackgroundColor,
+                            backgroundColor: active
+                              ? undefined
+                              : stickyElementsBackgroundColor,
                             ...styles?.bodyCell,
                           }
                         : {
@@ -389,6 +398,7 @@ export const DataGrid = function DataGrid<TData>({
             showRowsCount={showRowsCount}
             style={styles?.footer}
             className={classNames?.footer}
+            tableFooterExtraButtons={tableFooterExtraButtons}
           />
         </div>
         {measureRoot}

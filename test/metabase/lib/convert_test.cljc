@@ -268,11 +268,11 @@
     (is (= original
            (lib.convert/->legacy-MBQL (lib.convert/->pMBQL original))))))
 
-(defn- test-round-trip [query]
-  (testing (str "original =\n" (u/pprint-to-str query))
-    (let [converted (lib.convert/->pMBQL query)]
-      (testing (str "\npMBQL =\n" (u/pprint-to-str converted))
-        (is (= query
+(defn- test-round-trip [x]
+  (testing (str "original =\n" (u/pprint-to-str x))
+    (let [converted (lib.convert/->pMBQL x)]
+      (testing (str "\nMBQL 5 =\n" (u/pprint-to-str converted))
+        (is (= x
                (lib.convert/->legacy-MBQL converted)))))))
 
 (deftest ^:parallel round-trip-test
@@ -414,7 +414,7 @@
 
 (deftest ^:parallel round-trip-literal-expression-test
   ;; Some cases of literal expressions are already covered in round-trip-test, above.
-  (are [query] (test-round-trip query)
+  (are [x] (test-round-trip x)
     [:value false {:base_type :type/Boolean}]
 
     [:value true nil]
