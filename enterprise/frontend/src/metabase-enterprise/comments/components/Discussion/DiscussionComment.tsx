@@ -91,6 +91,7 @@ export function DiscussionComment({
         [S.target]: isTarget,
       })}
       bullet={<Avatar name={comment.creator?.common_name} />}
+      data-testid="discussion-comment"
       id={getCommentNodeId(comment)}
     >
       {!isEditing && (

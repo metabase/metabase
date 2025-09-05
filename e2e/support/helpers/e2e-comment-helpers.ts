@@ -5,6 +5,7 @@ export const Comments = {
   getDocumentNodeButtons,
   getNewThreadInput,
   getCommentInput,
+  getCommentByText,
   getPlaceholder,
 };
 
@@ -42,4 +43,8 @@ function getCommentInput() {
 
 function getPlaceholder() {
   return cy.get("[data-placeholder]");
+}
+
+function getCommentByText(text: string) {
+  return cy.findByText(text).closest("[data-testid='discussion-comment']");
 }

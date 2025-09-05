@@ -245,7 +245,33 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("Reply B");
         cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
 
-        cy.findByLabelText("Close").click();
+        cy.log("allows to delete a comment");
+        Comments.getCommentByText("Reply A").realHover();
+        Comments.getCommentByText("Reply A")
+          .findByLabelText("More actions")
+          .click();
+      });
+
+      H.popover().findByText("Delete").click();
+
+      H.modal().within(() => {
+        cy.findByText("Reply A").should("not.exist");
+        cy.findByText("This comment was deleted.").should("not.exist");
+
+        cy.log("allows to delete a comment that starts a thread");
+        Comments.getCommentByText("1st thread").realHover();
+        Comments.getCommentByText("1st thread")
+          .findByLabelText("More actions")
+          .click();
+      });
+
+      H.popover().findByText("Delete").click();
+
+      H.modal().within(() => {
+        cy.findByText("1st thread").should("not.exist");
+        cy.findByText("This comment was deleted.").should("be.visible");
+        cy.findByText("Reply 1").should("be.visible");
+        cy.findByText("Reply 2").should("be.visible");
       });
     });
   });

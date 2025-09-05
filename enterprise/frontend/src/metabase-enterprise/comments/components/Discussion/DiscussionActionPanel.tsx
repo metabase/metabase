@@ -85,6 +85,7 @@ export function DiscussionActionPanel({
         {canResolve && (
           <Tooltip label={comment.is_resolved ? t`Re-open` : t`Resolve`}>
             <ActionIcon
+              aria-label={comment.is_resolved ? t`Re-open` : t`Resolve`}
               size={ACTION_ICON_SIZE}
               onClick={() =>
                 comment.is_resolved ? onReopen?.(comment) : onResolve?.(comment)
@@ -105,6 +106,7 @@ export function DiscussionActionPanel({
             <Popover.Target>
               <Tooltip label={t`More actions`} disabled={popoverOpened}>
                 <ActionIcon
+                  aria-label={t`More actions`}
                   size={ACTION_ICON_SIZE}
                   onClick={() => setPopoverOpened((opened) => !opened)}
                 >
