@@ -291,7 +291,7 @@
   (expression-clause-with-in operator (into [column] values)
                              (if (#{:is-empty :not-empty := :!=} operator)
                                {}
-                               options)))
+                               {:case-sensitive (:case-sensitive options false)})))
 
 (mu/defn string-filter-parts :- [:maybe StringFilterParts]
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match

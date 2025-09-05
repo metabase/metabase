@@ -11,8 +11,11 @@ import {
   getBrokenUpTextMatcher,
   renderWithProviders,
   screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import registerVisualizations from "metabase/visualizations/register";
 import type { Field } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import {
@@ -28,6 +31,8 @@ import {
 } from "metabase-types/store/mocks";
 
 import ObjectDetail from "./ObjectDetail";
+
+registerVisualizations();
 
 const PRODUCTS_TABLE = createProductsTable();
 const ORDERS_TABLE = createOrdersTable();
@@ -47,12 +52,14 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
   setupDatabasesEndpoints([]);
   setupActionsEndpoints([]);
   const productsId = checkNotNull(findField(PRODUCTS_TABLE.fields, "ID"));
-  const ordersProductId = checkNotNull(
-    findField(ORDERS_TABLE.fields, "PRODUCT_ID"),
-  );
-  const reviewsProductId = checkNotNull(
-    findField(REVIEWS_TABLE.fields, "PRODUCT_ID"),
-  );
+  const ordersProductId = {
+    ...checkNotNull(findField(ORDERS_TABLE.fields, "PRODUCT_ID")),
+    table: ORDERS_TABLE,
+  };
+  const reviewsProductId = {
+    ...checkNotNull(findField(REVIEWS_TABLE.fields, "PRODUCT_ID")),
+    table: REVIEWS_TABLE,
+  };
   setupTableEndpoints(PRODUCTS_TABLE, [
     {
       origin: ordersProductId,
@@ -151,6 +158,11 @@ describe("ObjectDetail", () => {
   it("should render foreign key count when no table is hidden", async () => {
     setup();
 
+    await waitFor(() => {
+      expect(screen.getAllByTestId("loading-indicator")).toHaveLength(2);
+    });
+    await waitForLoaderToBeRemoved();
+
     expect(
       await screen.findByText(
         getBrokenUpTextMatcher(
@@ -169,6 +181,11 @@ describe("ObjectDetail", () => {
 
   it("should render related objects count only for foreign keys referencing non-hidden tables (metabase#32654)", async () => {
     setup({ hideOrdersTable: true });
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("loading-indicator")).toHaveLength(2);
+    });
+    await waitForLoaderToBeRemoved();
 
     expect(
       await screen.findByText(

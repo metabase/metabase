@@ -1,5 +1,6 @@
 import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -13,6 +14,7 @@ import { Box, Button, Flex, Text } from "metabase/ui";
 import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 
 import { getEngines } from "../../selectors";
+import type { FormLocation } from "../../types";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
   getSubmitValues,
@@ -52,7 +54,7 @@ interface DatabaseFormProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
-  location: "admin" | "setup" | "embedding_setup";
+  location: FormLocation;
   /**
    * Whether to show the sample database indicator in the engine list and change the "I'll add my data later" button to "Continue with sample data"
    */
@@ -147,7 +149,7 @@ interface DatabaseFormBodyProps {
   config: DatabaseFormConfig;
   showSampleDatabase?: boolean;
   ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
-  location: "admin" | "setup" | "embedding_setup";
+  location: FormLocation;
 }
 
 const DatabaseFormBody = ({
@@ -175,14 +177,20 @@ const DatabaseFormBody = ({
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];
   }, [engine, values, isAdvanced]);
 
+  const px = match(location)
+    .with("setup", () => "sm")
+    .with("embedding_setup", () => "xl")
+    .with("admin", () => "xl")
+    .with("full-page", () => undefined)
+    .exhaustive();
+  const mah = location === "full-page" ? "100%" : "calc(100vh - 20rem)";
+
   return (
-    <Form data-testid="database-form" pt="md">
-      <Box
-        mah="calc(100vh - 20rem)"
-        style={{ overflowY: "auto" }}
-        px={location === "setup" ? "sm" : "xl"}
-        mb="md"
-      >
+    <Form
+      data-testid="database-form"
+      pt={location === "full-page" ? undefined : "md"}
+    >
+      <Box mah={mah} style={{ overflowY: "auto" }} px={px} mb="md">
         {engineFieldState !== "hidden" && (
           <>
             <DatabaseEngineField
@@ -219,6 +227,7 @@ const DatabaseFormBody = ({
             autoFocus={autofocusFieldName === field.name}
             data-kek={field.name}
             engineKey={engineKey}
+            engine={engine}
           />
         ))}
       </Box>
@@ -228,6 +237,7 @@ const DatabaseFormBody = ({
         onCancel={onCancel}
         showSampleDatabase={showSampleDatabase}
         ContinueWithoutDataSlot={ContinueWithoutDataSlot}
+        location={location}
       />
     </Form>
   );
@@ -239,6 +249,7 @@ interface DatabaseFormFooterProps {
   onCancel?: () => void;
   showSampleDatabase?: boolean;
   ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
+  location: FormLocation;
 }
 
 const DatabaseFormFooter = ({
@@ -247,6 +258,7 @@ const DatabaseFormFooter = ({
   onCancel,
   showSampleDatabase,
   ContinueWithoutDataSlot,
+  location,
 }: DatabaseFormFooterProps) => {
   const { values } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
@@ -258,7 +270,10 @@ const DatabaseFormFooter = ({
 
   if (isAdvanced) {
     return (
-      <FormFooter data-testid="form-footer" px="xl">
+      <FormFooter
+        data-testid="form-footer"
+        px={location === "full-page" ? undefined : "xl"}
+      >
         <FormErrorMessage />
         <Flex justify="space-between" align="center" w="100%">
           {isNew ? (
