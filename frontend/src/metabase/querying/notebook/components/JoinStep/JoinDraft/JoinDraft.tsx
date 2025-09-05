@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { Box, Flex, Text } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
@@ -139,9 +139,9 @@ export function JoinDraft({
       </NotebookCell>
       {rhsTable && (
         <>
-          <Box mt="1.5rem">
-            <Text color="brand" fw="bold">{t`on`}</Text>
-          </Box>
+          <Flex className={S.JoinConditionOn}>
+            <Text c="brand" fw="bold">{t`on`}</Text>
+          </Flex>
           <NotebookCell
             className={S.JoinConditionCell}
             color={color}

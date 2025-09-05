@@ -11,3 +11,8 @@
   gap: 0.5rem;
   padding: 0.5rem;
 }
+
+.JoinConditionOn {
+  align-self: stretch;
+  align-items: center;
+}
