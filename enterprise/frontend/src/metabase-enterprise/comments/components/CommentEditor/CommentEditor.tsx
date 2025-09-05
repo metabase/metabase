@@ -78,7 +78,12 @@ export const CommentEditor = ({
             };
           },
         }),
-        CustomStarterKit.configure({ link: false }),
+        CustomStarterKit.configure({
+          link: false,
+          trailingNode: false,
+          heading: false,
+          horizontalRule: false,
+        }),
         SmartLink.configure({
           HTMLAttributes: { class: "smart-link" },
           siteUrl,

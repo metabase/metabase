@@ -67,6 +67,31 @@
   margin: 0;
 }
 
+/* Code */
+
+.content
+  :global(.ProseMirror)
+  :global(pre):not(:global(.editor-style-boundary) *) {
+  background-color: var(--mb-base-color-orion-5);
+  color: var(--mb-color-text-dark);
+  padding: 0.5rem;
+  border-radius: var(--mantine-radius-xs);
+  overflow-x: auto;
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  border: 1px solid var(--mb-base-color-orion-10);
+}
+
+.content
+  :global(.ProseMirror)
+  :global(pre code):not(:global(.editor-style-boundary) *) {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  border: none;
+}
+
 .content
   :global(.ProseMirror)
   :global(code):not(:global(.editor-style-boundary) *) {
@@ -77,6 +102,69 @@
   font-size: 0.875rem;
   color: var(--mb-color-text-dark);
   border: 1px solid var(--mb-base-color-orion-10);
+}
+
+/* Blockquote styling */
+.content
+  :global(.ProseMirror)
+  :global(blockquote):not(:global(.editor-style-boundary) *) {
+  border-left: 3px solid var(--mb-base-color-orion-20);
+  margin: 0 0 0.5rem 0;
+  color: var(--mb-color-text-medium);
+  font-style: italic;
+  background-color: var(--mb-base-color-orion-5);
+  padding: 0.5rem;
+  padding-left: 0.75rem;
+  border-radius: var(--mantine-radius-xs);
+}
+
+/* List styling */
+.content
+  :global(.ProseMirror)
+  :where(:global(ul), :global(ol)):not(:global(.editor-style-boundary) *) {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(ul):not(:global(.editor-style-boundary) *) {
+  list-style-type: disc;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(ol):not(:global(.editor-style-boundary) *) {
+  list-style-type: decimal;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(li):not(:global(.editor-style-boundary) *) {
+  margin: 0 0 0.25rem 0;
+  line-height: 1.5;
+  display: list-item;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(ul ul):not(:global(.editor-style-boundary) *) {
+  list-style-type: circle;
+  margin-top: 0.25rem;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(ul ul ul):not(:global(.editor-style-boundary) *) {
+  list-style-type: square;
+}
+
+.content
+  :global(.ProseMirror)
+  :where(:global(li > ul), :global(li > ol)):not(
+    :global(.editor-style-boundary) *
+  ) {
+  margin-top: 0.25rem;
 }
 
 /* Placeholder styling */
