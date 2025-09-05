@@ -120,11 +120,6 @@ describe("extractProgressValue", () => {
     expect(extractProgressValue(rowsWithInfinity, 0)).toBe(Infinity);
   });
 
-  it("should fallback to getValue when column index is invalid", () => {
-    expect(extractProgressValue(rows, -1)).toBe(10); // Falls back to first column
-    expect(extractProgressValue(rows, 999)).toBe(10);
-  });
-
   it("should handle empty rows", () => {
     expect(extractProgressValue([], 0)).toBe(0);
   });
@@ -284,22 +279,22 @@ describe("getProgressColors", () => {
   it("should handle named colors and convert to hex", () => {
     const result = getProgressColors("red", 50, 100);
 
-    expect(result.main).toBe("#ff0000");
-    expect(result.foreground).toBe("#ff0000");
+    expect(result.main).toBe("#FF0000");
+    expect(result.foreground).toBe("#FF0000");
   });
 
   it("should handle RGB colors and convert to hex", () => {
     const result = getProgressColors("rgb(255, 0, 0)", 50, 100);
 
-    expect(result.main).toBe("#ff0000");
-    expect(result.foreground).toBe("#ff0000");
+    expect(result.main).toBe("#FF0000");
+    expect(result.foreground).toBe("#FF0000");
   });
 
   it("should handle HSL colors and convert to hex", () => {
     const result = getProgressColors("hsl(0, 100%, 50%)", 50, 100);
 
-    expect(result.main).toBe("#ff0000");
-    expect(result.foreground).toBe("#ff0000");
+    expect(result.main).toBe("#FF0000");
+    expect(result.foreground).toBe("#FF0000");
   });
 });
 

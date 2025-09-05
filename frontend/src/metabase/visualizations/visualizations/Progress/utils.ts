@@ -52,7 +52,7 @@ export const extractProgressValue = (
   rows: RowValues[],
   columnIndex: number,
 ): number => {
-  if (rows[0] && columnIndex !== -1) {
+  if (rows[0] != null) {
     const rawValue = rows[0][columnIndex];
     if (rawValue === null || rawValue === undefined) {
       return 0;
