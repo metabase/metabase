@@ -185,6 +185,8 @@
 
   @media screen and (max-width: 70em) {
     &.isNavBarOpen {
+      gap: 0.25rem;
+
       .ViewHeaderActionPanel {
         margin-left: 0;
       }
