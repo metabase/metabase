@@ -24,7 +24,7 @@ Once you're happy with the changes in your dev instance, you can [export your ch
 
 ## Even if you self-host, dev instance tokens can save you money
 
-While it's true that you can use your production token to test multiple Metabases, you'll still get charged for test user accounts in each of those Metabases. In that case, it might make sense to get a dev instance token so you're only charged a flat rate for as many dev instances as you like, with as many test users as you need.
+While it's true that you can use your production token to test multiple Metabases when self-hosting, you'll still get charged for test user accounts in each of those Metabases. In that case, it might make sense to get a dev instance token so you're only charged a flat rate for as many dev instances as you like, with as many test users as you need.
 
 ## You can't use development instances in production
 
