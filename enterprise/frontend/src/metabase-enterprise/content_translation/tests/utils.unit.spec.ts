@@ -101,13 +101,13 @@ describe("content translation utils", () => {
       ).toBe("Whitespace Translation");
     });
 
-    it("should handle case sensitivity", () => {
+    it("should be case insensitive for msgid (metabase#61795)", () => {
       expect(translateContentString(mockDictionary, "es", "hello")).toBe(
-        "hello",
-      ); // no match
-      expect(translateContentString(mockDictionary, "ES", "Hello")).toBe(
-        "Hello",
-      ); // no match
+        "Hola",
+      );
+      expect(translateContentString(mockDictionary, "es", "WORLD")).toBe(
+        "Mundo",
+      );
     });
   });
 

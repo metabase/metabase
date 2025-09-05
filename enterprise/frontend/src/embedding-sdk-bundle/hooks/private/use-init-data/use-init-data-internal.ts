@@ -2,10 +2,6 @@ import { useEffect } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { getEmbeddingSdkPackageBuildData } from "embedding-sdk-bundle/lib/get-embedding-sdk-package-build-data";
-import { useLazySelector } from "embedding-sdk-bundle/sdk-shared/hooks/use-lazy-selector";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/hooks/use-metabase-provider-props-store";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-bundle/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { initAuth } from "embedding-sdk-bundle/store/auth";
 import {
   setFetchRefreshTokenFn,
@@ -15,6 +11,10 @@ import {
 import { getFetchRefreshTokenFn } from "embedding-sdk-bundle/store/selectors";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
+import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import registerVisualizations from "metabase/visualizations/register";
@@ -56,7 +56,8 @@ export const useInitDataInternal = ({
     reduxStore.getState().sdk.loginStatus.status === "uninitialized";
 
   const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
-  const sdkPackageVersion = getEmbeddingSdkPackageBuildData().version ?? null;
+  const sdkPackageVersion =
+    getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ?? null;
 
   // We have to initialize the API fields before other possible API calls
   if (api.basename !== authConfig.metabaseInstanceUrl) {

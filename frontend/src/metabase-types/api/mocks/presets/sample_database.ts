@@ -2,7 +2,6 @@ import type {
   Database,
   DatasetColumn,
   Field,
-  FieldDimensionOption,
   GetFieldValuesResponse,
   Table,
 } from "metabase-types/api";
@@ -250,24 +249,6 @@ export const SAMPLE_DB_FIELD_VALUES = [
   PEOPLE_STATE_VALUES,
 ];
 
-const DEFAULT_NUMERIC_BINNING_OPTION: FieldDimensionOption = {
-  name: "Auto bin",
-  mbql: ["field", null, { binning: { strategy: "default" } }],
-  type: "type/Number",
-};
-
-const DEFAULT_COORDINATE_BINNING_OPTION: FieldDimensionOption = {
-  name: "Auto bin",
-  mbql: ["field", null, { binning: { strategy: "default" } }],
-  type: "type/Coordinate",
-};
-
-const DEFAULT_TEMPORAL_BUCKETING_OPTION: FieldDimensionOption = {
-  name: "Day",
-  mbql: ["field", null, { "temporal-unit": "day" }],
-  type: "type/DateTime",
-};
-
 export const createSampleDatabase = (opts?: Partial<Database>): Database =>
   createMockDatabase({
     id: SAMPLE_DB_ID,
@@ -300,7 +281,6 @@ export const createOrdersTable = (opts?: Partial<Table>): Table =>
       createOrdersCreatedAtField(),
       createOrdersQuantityField(),
     ],
-    dimension_options: createTableDimensionOptions(),
     ...opts,
   });
 
@@ -326,7 +306,6 @@ export const createPeopleTable = (opts?: Partial<Table>): Table =>
       createPeopleLatitudeField(),
       createPeopleCreatedAtField(),
     ],
-    dimension_options: createTableDimensionOptions(),
     ...opts,
   });
 
@@ -348,7 +327,6 @@ export const createProductsTable = (opts?: Partial<Table>): Table =>
       createProductsRatingField(),
       createProductsCreatedAtField(),
     ],
-    dimension_options: createTableDimensionOptions(),
     ...opts,
   });
 
@@ -367,7 +345,6 @@ export const createReviewsTable = (opts?: Partial<Table>): Table =>
       createReviewsBodyField(),
       createReviewsCreatedAtField(),
     ],
-    dimension_options: createTableDimensionOptions(),
     ...opts,
   });
 
@@ -430,8 +407,6 @@ export const createOrdersSubtotalField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
-    dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 340,
@@ -459,8 +434,6 @@ export const createOrdersTaxField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
-    dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 797,
@@ -488,8 +461,6 @@ export const createOrdersTotalField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
-    dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 4426,
@@ -517,8 +488,6 @@ export const createOrdersDiscountField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Discount",
-    default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
-    dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 701,
@@ -548,8 +517,6 @@ export const createOrdersCreatedAtField = (opts?: Partial<Field>): Field =>
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
     description: "The timestamp the order was created",
-    default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
-    dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 9998,
@@ -573,8 +540,6 @@ export const createOrdersQuantityField = (opts?: Partial<Field>): Field =>
     base_type: "type/Integer",
     effective_type: "type/Integer",
     semantic_type: "type/Quantity",
-    default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
-    dimension_options: createNumericFieldBinningOptions(),
     has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -738,8 +703,6 @@ export const createPeopleLongitudeField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Longitude",
-    default_dimension_option: DEFAULT_COORDINATE_BINNING_OPTION,
-    dimension_options: createCoordinateFieldBinningOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2491,
@@ -814,8 +777,6 @@ export const createPeopleBirthDateField = (opts?: Partial<Field>): Field =>
     base_type: "type/Date",
     effective_type: "type/Date",
     semantic_type: null,
-    default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
-    dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2308,
@@ -862,8 +823,6 @@ export const createPeopleLatitudeField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Latitude",
-    default_dimension_option: DEFAULT_COORDINATE_BINNING_OPTION,
-    dimension_options: createCoordinateFieldBinningOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2491,
@@ -891,8 +850,6 @@ export const createPeopleCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
-    default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
-    dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2500,
@@ -1023,8 +980,6 @@ export const createProductsPriceField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
-    dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 170,
@@ -1052,8 +1007,6 @@ export const createProductsRatingField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Score",
-    default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
-    dimension_options: createNumericFieldBinningOptions(),
     has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -1082,8 +1035,6 @@ export const createProductsCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
-    default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
-    dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -1212,8 +1163,6 @@ export const createReviewsCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
-    default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
-    dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 1112,
@@ -1227,267 +1176,6 @@ export const createReviewsCreatedAtField = (opts?: Partial<Field>): Field =>
     }),
     ...opts,
   });
-
-function createTemporalBucketingOptions(): Record<
-  string,
-  FieldDimensionOption
-> {
-  return {
-    "0": {
-      name: "Day",
-      mbql: ["field", null, { "temporal-unit": "day" }],
-      type: "type/Date",
-    },
-    "1": {
-      name: "Week",
-      mbql: ["field", null, { "temporal-unit": "week" }],
-      type: "type/Date",
-    },
-    "2": {
-      name: "Month",
-      mbql: ["field", null, { "temporal-unit": "month" }],
-      type: "type/Date",
-    },
-    "3": {
-      name: "Quarter",
-      mbql: ["field", null, { "temporal-unit": "quarter" }],
-      type: "type/Date",
-    },
-    "4": {
-      name: "Year",
-      mbql: ["field", null, { "temporal-unit": "year" }],
-      type: "type/Date",
-    },
-    "5": {
-      name: "Day of week",
-      mbql: ["field", null, { "temporal-unit": "day-of-week" }],
-      type: "type/Date",
-    },
-    "6": {
-      name: "Day of month",
-      mbql: ["field", null, { "temporal-unit": "day-of-month" }],
-      type: "type/Date",
-    },
-    "7": {
-      name: "Day of year",
-      mbql: ["field", null, { "temporal-unit": "day-of-year" }],
-      type: "type/Date",
-    },
-    "8": {
-      name: "Week of year",
-      mbql: ["field", null, { "temporal-unit": "week-of-year" }],
-      type: "type/Date",
-    },
-    "9": {
-      name: "Month of year",
-      mbql: ["field", null, { "temporal-unit": "month-of-year" }],
-      type: "type/Date",
-    },
-    "10": {
-      name: "Quarter of year",
-      mbql: ["field", null, { "temporal-unit": "quarter-of-year" }],
-      type: "type/Date",
-    },
-    "11": {
-      name: "Minute",
-      mbql: ["field", null, { "temporal-unit": "minute" }],
-      type: "type/DateTime",
-    },
-    "12": {
-      name: "Hour",
-      mbql: ["field", null, { "temporal-unit": "hour" }],
-      type: "type/DateTime",
-    },
-    "13": {
-      name: "Day",
-      mbql: ["field", null, { "temporal-unit": "day" }],
-      type: "type/DateTime",
-    },
-    "14": {
-      name: "Week",
-      mbql: ["field", null, { "temporal-unit": "week" }],
-      type: "type/DateTime",
-    },
-    "15": {
-      name: "Month",
-      mbql: ["field", null, { "temporal-unit": "month" }],
-      type: "type/DateTime",
-    },
-    "16": {
-      name: "Quarter",
-      mbql: ["field", null, { "temporal-unit": "quarter" }],
-      type: "type/DateTime",
-    },
-    "17": {
-      name: "Year",
-      mbql: ["field", null, { "temporal-unit": "year" }],
-      type: "type/DateTime",
-    },
-    "18": {
-      name: "Minute of hour",
-      mbql: ["field", null, { "temporal-unit": "minute-of-hour" }],
-      type: "type/DateTime",
-    },
-    "19": {
-      name: "Hour of day",
-      mbql: ["field", null, { "temporal-unit": "hour-of-day" }],
-      type: "type/DateTime",
-    },
-    "20": {
-      name: "Day of week",
-      mbql: ["field", null, { "temporal-unit": "day-of-week" }],
-      type: "type/DateTime",
-    },
-    "21": {
-      name: "Day of month",
-      mbql: ["field", null, { "temporal-unit": "day-of-month" }],
-      type: "type/DateTime",
-    },
-    "22": {
-      name: "Day of year",
-      mbql: ["field", null, { "temporal-unit": "day-of-year" }],
-      type: "type/DateTime",
-    },
-    "23": {
-      name: "Week of year",
-      mbql: ["field", null, { "temporal-unit": "week-of-year" }],
-      type: "type/DateTime",
-    },
-    "24": {
-      name: "Month of year",
-      mbql: ["field", null, { "temporal-unit": "month-of-year" }],
-      type: "type/DateTime",
-    },
-    "25": {
-      name: "Quarter of year",
-      mbql: ["field", null, { "temporal-unit": "quarter-of-year" }],
-      type: "type/DateTime",
-    },
-    "26": {
-      name: "Minute",
-      mbql: ["field", null, { "temporal-unit": "minute" }],
-      type: "type/Time",
-    },
-    "27": {
-      name: "Hour",
-      mbql: ["field", null, { "temporal-unit": "hour" }],
-      type: "type/Time",
-    },
-    "28": {
-      name: "Minute of hour",
-      mbql: ["field", null, { "temporal-unit": "minute-of-hour" }],
-      type: "type/Time",
-    },
-  };
-}
-``;
-function createNumericBinningOptions(): Record<string, FieldDimensionOption> {
-  return {
-    "29": {
-      name: "Auto bin",
-      mbql: ["field", null, { binning: { strategy: "default" } }],
-      type: "type/Number",
-    },
-    "30": {
-      name: "10 bins",
-      mbql: [
-        "field",
-        null,
-        { binning: { strategy: "num-bins", "num-bins": 10 } },
-      ],
-      type: "type/Number",
-    },
-    "31": {
-      name: "50 bins",
-      mbql: [
-        "field",
-        null,
-        { binning: { strategy: "num-bins", "num-bins": 50 } },
-      ],
-      type: "type/Number",
-    },
-    "32": {
-      name: "100 bins",
-      mbql: [
-        "field",
-        null,
-        { binning: { strategy: "num-bins", "num-bins": 100 } },
-      ],
-      type: "type/Number",
-    },
-    "33": { name: "Don't bin", mbql: null, type: "type/Number" },
-  };
-}
-
-function createCoordinateBinningOptions(): Record<
-  string,
-  FieldDimensionOption
-> {
-  return {
-    "34": {
-      name: "Auto bin",
-      mbql: ["field", null, { binning: { strategy: "default" } }],
-      type: "type/Coordinate",
-    },
-    "35": {
-      name: "Bin every 0.1 degrees",
-      mbql: [
-        "field",
-        null,
-        { binning: { strategy: "bin-width", "bin-width": 0.1 } },
-      ],
-      type: "type/Coordinate",
-    },
-    "36": {
-      name: "Bin every 1 degree",
-      mbql: [
-        "field",
-        null,
-        { binning: { strategy: "bin-width", "bin-width": 1 } },
-      ],
-      type: "type/Coordinate",
-    },
-    "37": {
-      name: "Bin every 10 degrees",
-      mbql: [
-        "field",
-        null,
-        { binning: { strategy: "bin-width", "bin-width": 10 } },
-      ],
-      type: "type/Coordinate",
-    },
-    "38": {
-      name: "Bin every 20 degrees",
-      mbql: [
-        "field",
-        null,
-        { binning: { strategy: "bin-width", "bin-width": 20 } },
-      ],
-      type: "type/Coordinate",
-    },
-    "39": { name: "Don't bin", mbql: null, type: "type/Coordinate" },
-  };
-}
-
-function createTableDimensionOptions() {
-  return {
-    ...createTemporalBucketingOptions(),
-    ...createNumericBinningOptions(),
-    ...createCoordinateBinningOptions(),
-  };
-}
-
-function createTemporalFieldBucketingOptions() {
-  return Object.values(createTemporalBucketingOptions());
-}
-
-function createNumericFieldBinningOptions() {
-  return Object.values(createNumericBinningOptions());
-}
-
-function createCoordinateFieldBinningOptions() {
-  return Object.values(createCoordinateBinningOptions());
-}
 
 export const createOrdersIdDatasetColumn = (
   opts?: Partial<DatasetColumn>,

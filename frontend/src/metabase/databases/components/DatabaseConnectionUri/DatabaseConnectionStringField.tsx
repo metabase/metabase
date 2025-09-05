@@ -8,6 +8,7 @@ import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
 
+import type { FormLocation } from "../../types";
 import { setDatabaseFormValues } from "../../utils/schema";
 
 import {
@@ -31,7 +32,7 @@ export function DatabaseConnectionStringField({
     shouldValidate?: boolean,
   ) => Promise<void | FormikErrors<DatabaseData>>;
   engineKey: string | undefined;
-  location: "admin" | "setup" | "embedding_setup";
+  location: FormLocation;
 }) {
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
   const { start: delayedClearStatus, clear: clearTimeout } = useTimeout(
