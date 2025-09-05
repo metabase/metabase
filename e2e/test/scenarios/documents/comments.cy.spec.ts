@@ -157,6 +157,47 @@ H.describeWithSnowplowEE("document comments", () => {
       });
     });
   });
+
+  it("upgrades existing documents without _id attribute", () => {
+    H.createDocument({
+      idAlias: "documentId",
+      name: "Lorem ipsum",
+      document: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            /* Intentionally commented out: */
+            // attrs: {
+            //   _id: PARAGRAPH_ID,
+            // },
+            content: [
+              {
+                type: "text",
+                text: "Lorem ipsum dolor sit amet.",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    H.visitDocument("@documentId");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .should("be.visible")
+      .and("have.value", "Lorem ipsum");
+
+    cy.log("document is dirty after schema migration");
+    cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+    cy.findByRole("button", { name: "Save" }).should("not.exist");
+
+    cy.reload();
+
+    cy.log("document is not dirty after persisting the missing _id");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .should("be.visible")
+      .and("have.value", "Lorem ipsum");
+    cy.findByRole("button", { name: "Save" }).should("not.exist");
+  });
 });
 
 function createLoremIpsumDocument() {
@@ -387,7 +428,6 @@ function createLoremIpsumDocument() {
       ],
     },
   });
-
   H.visitDocument("@documentId");
   cy.findByRole("textbox", { name: "Document Title" })
     .should("be.visible")
@@ -416,7 +456,6 @@ function create1ParagraphDocument() {
       ],
     },
   });
-
   H.visitDocument("@documentId");
   cy.findByRole("textbox", { name: "Document Title" })
     .should("be.visible")
