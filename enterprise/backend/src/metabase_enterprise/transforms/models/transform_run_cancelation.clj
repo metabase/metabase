@@ -14,14 +14,10 @@
   ([run-id]
    (mark-cancel-started-run! run-id {}))
   ([run-id properties]
-   (t2/insert! :model/TransformRunCancelation
-               (assoc properties
-                      :run_id run-id)
-               {:where [:exists {:select [1]
-                                 :from   [:transform_run]
-                                 :where  [:and
-                                          [:= :transform_run.id run-id]
-                                          :transform_run.is_active]}]})))
+   (when (t2/exists? :transform_run :id run-id :is_active true)
+     (t2/insert! :model/TransformRunCancelation
+                 (assoc properties
+                        :run_id run-id)))))
 
 (defn reducible-canceled-local-runs
   "Return a reducible sequence of local canceled runs."

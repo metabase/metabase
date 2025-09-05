@@ -22,6 +22,7 @@ import { LocalizationSettingsPage } from "./settings/components/SettingsPages/Lo
 import { MapsSettingsPage } from "./settings/components/SettingsPages/MapsSettingsPage";
 import { NotificationSettingsPage } from "./settings/components/SettingsPages/NotificationSettingsPage";
 import { PublicSharingSettingsPage } from "./settings/components/SettingsPages/PublicSharingSettingsPage";
+import { PythonRunnerSettingsPage } from "./settings/components/SettingsPages/PythonRunnerSettingsPage";
 import { UpdatesSettingsPage } from "./settings/components/SettingsPages/UpdatesSettingsPage";
 import { UploadSettingsPage } from "./settings/components/SettingsPages/UploadSettingsPage";
 
@@ -63,6 +64,7 @@ export const getSettingsRoutes = () => (
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />
     <Route path="uploads" component={UploadSettingsPage} />
+    <Route path="python-runner" component={PythonRunnerSettingsPage} />
     <Route path="public-sharing" component={PublicSharingSettingsPage} />
     <Route
       path="embedding-in-other-applications"

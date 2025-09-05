@@ -1,10 +1,14 @@
 (ns metabase-enterprise.transforms.util
   (:require
+   [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDateTime OffsetDateTime ZonedDateTime ZoneId)
@@ -19,12 +23,23 @@
     (keyword schema name)
     (keyword name)))
 
+(defn query-transform?
+  "Check if this is a query transform: native query / mbql query."
+  [transform]
+  (= :query (-> transform :source :type keyword)))
+
+(defn python-transform?
+  "Check if this is a Python transform."
+  [transform]
+  (= :python (-> transform :source :type keyword)))
+
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
-  [{:keys [source target] :as _transform}]
-  (let [db-id (-> source :query :database)
-        {driver :engine :as database} (t2/select-one :model/Database db-id)]
-    (driver/table-exists? driver database target)))
+  [{:keys [source target] :as transform}]
+  (when (query-transform? transform)
+    (let [db-id (-> source :query :database)
+          {driver :engine :as database} (t2/select-one :model/Database db-id)]
+      (driver/table-exists? driver database target))))
 
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."
@@ -64,7 +79,9 @@
   [{:keys [id target source], :as _transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (-> source :query :database)
+          database-id (or (-> source :query :database)
+                          ;; python transform target
+                          (-> target :database))
           {driver :engine :as database} (t2/select-one :model/Database database-id)]
       (driver/drop-transform-target! driver database target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)
@@ -91,7 +108,6 @@
   [transform]
   (case (-> transform :target :type)
     "table"             :transforms/table))
-
 (defn local-timestamp
   "Convert the timestamp t to a ZonedDateTime instance in the system timezone."
   [t]
@@ -109,3 +125,41 @@
   "Convert the timestamp t to a string encoding the it in the system timezone."
   [t]
   (-> t local-timestamp str))
+
+(mr/def ::column-definition
+  [:map
+   [:name :string]
+   [:type ::lib.schema.common/base-type]
+   [:nullable? {:optional true} :boolean]])
+
+(mr/def ::table-definition
+  [:map
+   [:name :keyword]
+   [:columns [:sequential ::column-definition]]
+   [:primary-key {:optional true} [:sequential :string]]])
+
+(defn dtype->base-type
+  "Maps pandas dtype strings directly to Metabase base types in the type hierarchy."
+  [dtype-str]
+  (cond
+    (str/starts-with? dtype-str "int") :type/Integer
+    (str/starts-with? dtype-str "float") :type/Float
+    (str/starts-with? dtype-str "bool") :type/Boolean
+    ;; datetime64[ns, timezone] indicates timezone-aware datetime
+    (str/starts-with? dtype-str "datetime64[ns, ") :type/DateTimeWithTZ
+    (str/starts-with? dtype-str "datetime") :type/DateTime
+    ;; this is not a real dtype, pandas uses 'object', but we override it if there's source or custom field metadata
+    (str/starts-with? dtype-str "date") :type/Date
+    :else :type/Text))
+
+(mu/defn create-table-from-schema!
+  "Create a table from a table-schema"
+  [driver :- :keyword
+   database-id :- pos-int?
+   table-schema :- ::table-definition]
+  (let [{:keys [columns] table-name :name} table-schema
+        column-definitions (into {} (map (fn [{:keys [name type]}] [name (driver/type->database-type driver type)]))
+                                 columns)
+        primary-key-opts (select-keys table-schema [:primary-key])]
+    (log/infof "Creating table %s with %d columns" table-name (count columns))
+    (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))

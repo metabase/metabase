@@ -8,14 +8,16 @@
    [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -73,6 +75,26 @@
                                    :target {:type   "table"
                                             :schema schema
                                             :name   table-name}})))))))
+
+(deftest create-python-transform-test
+  (mt/with-premium-features #{:transforms}
+    (mt/dataset transforms-dataset/transforms-test
+      (with-transform-cleanup! [table-name "gadget_products"]
+        (let [schema    (get-test-schema)
+              transform-payload {:name   "My beautiful python runner"
+                                 :source {:type            "python"
+                                          :body            "print('hello world')"
+                                          :source-tables   {}}
+                                 :target {:type     "table"
+                                          :schema   schema
+                                          :name     table-name
+                                          :database (mt/id)}}
+              transform (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                              transform-payload)]
+          (is (= "print('hello chris')"
+                 (-> (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id transform))
+                                           (assoc-in transform-payload [:source :body] "print('hello chris')"))
+                     :source :body))))))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -320,6 +342,32 @@
                 (is (true? (transforms.util/target-table-exists? original)))
                 (is (true? (transforms.util/target-table-exists? updated)))
                 (check-query-results table2-name [2 3 4 13] "Doohickey")))))))))
+
+(deftest execute-python-transform-test
+  (testing "transform execution with :transforms/table target"
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
+                                                                     :schema schema
+                                                                     :name   "target_table"}]
+              (let [original           {:name   "Gadget Products"
+                                        :source {:type  "python"
+                                                 :source-database (mt/id)
+                                                 :source-tables {"transforms_customers" (mt/id :transforms_customers)}
+                                                 :body  (str "import pandas as pd\n"
+                                                             "\n"
+                                                             "def transform():\n"
+                                                             "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
+                                        :target  (assoc target :database (mt/id))}
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                             original)]
+                (do (test-run transform-id)
+                    (wait-for-table table-name 5000))
+                (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
+                (is (= [["Alice" 25] ["Bob" 30]]
+                       (transforms.tu/table-rows table-name)))))))))))
 
 (deftest get-runs-filter-by-single-transform-id-test
   (testing "GET /api/ee/transform/run - filter by single transform ID"

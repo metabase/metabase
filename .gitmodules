@@ -1,0 +1,4 @@
+[submodule "python-runner"]
+	path = python-runner
+	url = https://github.com/metabase/python-runner-container.git
+	branch = prototype

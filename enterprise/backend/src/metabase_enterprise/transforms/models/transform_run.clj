@@ -147,11 +147,11 @@
                         :message   "Canceled by user but could not guarantee run stopped."})
     (cancel/delete-old-canceling-runs!)))
 
-(defn running-run-for-run-id
+(defn running-run-for-transform-id
   "Return a single active transform run or nil."
-  [id]
+  [transform-id]
   (t2/select-one :model/TransformRun
-                 :id id
+                 :transform_id transform-id
                  :is_active true))
 
 (defn- timestamp-constraint

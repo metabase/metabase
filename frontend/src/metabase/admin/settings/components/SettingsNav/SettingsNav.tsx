@@ -24,6 +24,7 @@ export function SettingsNav() {
   const hasSaml = useHasTokenFeature("sso_saml");
   const hasJwt = useHasTokenFeature("sso_jwt");
   const hasScim = useHasTokenFeature("scim");
+  const hasTransforms = useHasTokenFeature("transforms");
 
   return (
     <AdminNavWrapper>
@@ -88,6 +89,13 @@ export function SettingsNav() {
       </SettingsNavItem>
       <NavDivider />
       <SettingsNavItem path="uploads" label={t`Uploads`} icon="upload" />
+      {hasTransforms && (
+        <SettingsNavItem
+          path="python-runner"
+          label={t`Python Runner`}
+          icon="snippet"
+        />
+      )}
       <SettingsNavItem
         path="public-sharing"
         label={t`Public sharing`}

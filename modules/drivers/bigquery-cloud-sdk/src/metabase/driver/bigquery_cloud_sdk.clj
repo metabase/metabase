@@ -12,6 +12,7 @@
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -229,6 +230,31 @@
     "NUMERIC"    :type/Decimal
     "BIGNUMERIC" :type/Decimal
     :type/*))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for BigQuery that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/Array [_] ["ARRAY"])
+(defmethod type->database-type :type/Boolean [_] ["BOOLEAN"])
+(defmethod type->database-type :type/Float [_] ["FLOAT"])
+(defmethod type->database-type :type/Integer [_] ["INTEGER"])
+(defmethod type->database-type :type/Number [_] ["INTEGER"])
+(defmethod type->database-type :type/Dictionary [_] ["RECORD"])
+(defmethod type->database-type :type/Text [_] ["STRING"])
+(defmethod type->database-type :type/TextLike [_] ["STRING"])
+(defmethod type->database-type :type/Date [_] ["DATE"])
+(defmethod type->database-type :type/DateTime [_] ["DATETIME"])
+(defmethod type->database-type :type/DateTimeWithTZ [_] ["TIMESTAMP"])
+(defmethod type->database-type :type/Time [_] ["TIME"])
+(defmethod type->database-type :type/JSON [_] ["JSON"])
+(defmethod type->database-type :type/SerializedJSON [_] ["JSON"])
+(defmethod type->database-type :type/Decimal [_] ["NUMERIC"])
+
+(defmethod driver/type->database-type :bigquery-cloud-sdk
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defn- field->database+base-type
   "Returns a normalized `database-type` and its `base-type` for a type from BigQuery Field type.
@@ -835,6 +861,21 @@
   [_driver table]
   (let [table-str (get-table-str table)]
     [(str "DROP TABLE IF EXISTS " table-str)]))
+
+(defmethod driver/create-table! :bigquery-cloud-sdk
+  [driver database-id table-name column-definitions & {:keys [primary-key]}]
+  (let [sql (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+
+(defmethod driver/drop-table! :bigquery-cloud-sdk
+  [driver database-id table-name]
+  (let [sql (driver/compile-drop-table table-name)]
+    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+
+(defmethod driver/insert-into! :bigquery-cloud-sdk
+  [driver db-id table-name column-names values]
+  (let [sqls (#'driver.sql-jdbc/insert-into!-sqls driver table-name column-names values)]
+    (driver/execute-raw-queries! driver (t2/select-one :model/Database db-id) sqls)))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
   [_driver connection-details queries]
