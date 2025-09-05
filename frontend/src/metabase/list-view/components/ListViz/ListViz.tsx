@@ -30,6 +30,10 @@ import type { DatasetColumn, Series } from "metabase-types/api";
 
 import { ListView } from "../ListView/ListView";
 import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
+import {
+  getMinSize,
+  getDefaultSize,
+} from "metabase/visualizations/shared/utils/sizes";
 
 const vizDefinition = {
   identifier: "list",
@@ -37,6 +41,8 @@ const vizDefinition = {
   getUiName: () => t`List`,
   hidden: true,
 
+  minSize: getMinSize("list"),
+  defaultSize: getDefaultSize("list"),
   checkRenderable: () => {},
   isSensible: () => true,
 
