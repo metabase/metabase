@@ -644,6 +644,10 @@
   ;; this is just for easier debugging
   (let [stage-number (lib.util/canonical-stage-index query stage-number)]
     (log/debugf "Resolving %s in stage %d" (lib.util.log/format-field query id-or-name) stage-number)
+    (when-let [source-card-id (lib.util/source-card-id query)]
+      (log/debugf "Query has source Card %d" source-card-id))
+    (when-let [source-table-id (lib.util/source-table-id query)]
+      (log/debugf "Query has source %s" (lib.util.log/format-table query source-table-id)))
     (u/prog1 (-> (merge-metadata
                   {:lib/type :metadata/column}
                   (or (when join-alias
