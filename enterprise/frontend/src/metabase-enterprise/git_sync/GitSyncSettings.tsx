@@ -8,16 +8,12 @@ import { AdminSettingInput } from "metabase/admin/settings/components/widgets/Ad
 import ActionButton from "metabase/common/components/ActionButton";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
-import {
-  useExportGitMutation,
-  useImportGitMutation,
-} from "metabase-enterprise/api";
+import { useImportGitMutation } from "metabase-enterprise/api";
 
 export const GitSyncSettings = () => {
   const [importGit, { isLoading: isImporting }] = useImportGitMutation();
-  const [exportGit, { isLoading: isExporting }] = useExportGitMutation();
 
-  const isLoading = isImporting || isExporting;
+  const isLoading = isImporting;
 
   return (
     <SettingsPageWrapper title={t`Git sync settings`}>
@@ -48,13 +44,6 @@ export const GitSyncSettings = () => {
         title={t`Sync control`}
         description={t`Manually trigger a git sync to push any local changes to the remote repository and pull down any changes from the remote repository.`}
       >
-        <AdminSettingInput
-          name="git-sync-read-only"
-          // eslint-disable-next-line
-          description={t`Make this instance read only, preventing any changes except when pulled from git.`}
-          title={t`Read only mode`}
-          inputType="boolean"
-        />
         <Flex gap="md" align="end">
           <AdminSettingInput
             name="git-sync-import-branch"
@@ -77,31 +66,6 @@ export const GitSyncSettings = () => {
             <Group align="center" gap="sm">
               <Icon name="download" />
               {t`Import`}
-            </Group>
-          </ActionButton>
-        </Flex>
-        <Flex gap="md" align="end">
-          <AdminSettingInput
-            name="git-sync-export-branch"
-            // eslint-disable-next-line
-            description={t`Metabase will save all content to this branch`}
-            title={t`Export branch`}
-            inputType="text"
-            w="20rem"
-          />
-          <ActionButton
-            primary
-            actionFn={() => exportGit({}).unwrap()}
-            variant="filled"
-            failedText={t`Sync failed`}
-            activeText={t`Syncing...`}
-            successText={t`Synced`}
-            useLoadingSpinner
-            disabled={isLoading}
-          >
-            <Group align="center" gap="sm">
-              <Icon name="upload" />
-              {t`Export`}
             </Group>
           </ActionButton>
         </Flex>
