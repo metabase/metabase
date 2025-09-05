@@ -52,7 +52,9 @@
 
 (defn- lint-require* [node current-ns config]
   (let [[_require & args]   (:children node)
-        required-namespaces (keep unwrap-require args)]
+        required-namespaces (->> (keep unwrap-require args)
+                                 ;; :reload, :reload-all
+                                 (remove keyword?))]
     (lint* node current-ns config required-namespaces)))
 
 (defn- lint-requiring-resolve* [node current-ns config]
