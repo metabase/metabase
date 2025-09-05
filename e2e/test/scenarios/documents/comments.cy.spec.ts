@@ -143,7 +143,7 @@ H.describeWithSnowplowEE("document comments", () => {
       Comments.getDocumentNodeButtons()
         .filter(":visible")
         .should("have.length", 1);
-      getParagraph("lor sit amet").realHover();
+      getParagraph("lor sit amet.").realHover();
       Comments.getDocumentNodeButtons()
         .filter(":visible")
         .should("have.length", 2)
