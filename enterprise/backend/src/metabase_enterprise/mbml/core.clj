@@ -16,7 +16,7 @@
   database: db-name
   target: my_taget_table
   source: | #sql
-    SELECT * FROM source_table_name WHERE type = 'gadget'; S
+    SELECT * FROM source_table_name WHERE type = 'gadget';
   ```
 
   ```sql

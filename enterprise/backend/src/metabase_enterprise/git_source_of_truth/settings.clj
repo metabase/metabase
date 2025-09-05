@@ -15,7 +15,7 @@
 (defn- set-repo-with-verification!-fn [original-key]
   (fn [new-value]
     (setting/set-value-of-type! :string original-key new-value)
-    (if #p (git/can-access-branch-in-repository? (setting/get :git-sync-url)
+    (if (git/can-access-branch-in-repository? (setting/get :git-sync-url)
                                                  (setting/get :git-sync-import-branch)
                                                  (setting/get :git-sync-token))
       (git-sync-configured! true)

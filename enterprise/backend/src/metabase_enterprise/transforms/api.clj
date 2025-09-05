@@ -157,7 +157,7 @@
                                        :limit  (request/limit)))
       (update :data #(map localize-timestamps %))))
 
-#_(api.macros/defendpoint :put "/:id"
+(api.macros/defendpoint :put "/:id"
     "Update a transform."
     [{:keys [id]} :- [:map
                       [:id ms/PositiveInt]]
