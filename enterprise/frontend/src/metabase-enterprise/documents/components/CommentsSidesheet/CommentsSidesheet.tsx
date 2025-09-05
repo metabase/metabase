@@ -249,7 +249,9 @@ function getFilteredComments(
     return [];
   }
 
-  const parentComments = comments.filter(condition);
+  const parentComments = comments.filter(
+    (comment) => !comment.parent_comment_id && condition(comment),
+  );
   const parentCommentIds = new Set(parentComments.map((thread) => thread.id));
 
   return [
