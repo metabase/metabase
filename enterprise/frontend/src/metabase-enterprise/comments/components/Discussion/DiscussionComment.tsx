@@ -77,6 +77,7 @@ export function DiscussionComment({
         </Text>
         <DiscussionActionPanel
           canResolve={canResolve}
+          canReact={false}
           comment={comment}
           onResolve={onResolve}
           onCopyLink={onCopyLink}

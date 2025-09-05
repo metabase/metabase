@@ -19,6 +19,7 @@ import S from "./Discussion.module.css";
 
 export type DiscussionActionPanelProps = {
   canResolve?: boolean;
+  canReact?: boolean;
   comment: Comment;
   onResolve?: (comment: Comment) => void;
   onReopen?: (comment: Comment) => void;
@@ -32,6 +33,7 @@ const ACTION_ICON_SIZE = "md";
 
 export function DiscussionActionPanel({
   canResolve,
+  canReact,
   comment,
   onResolve,
   onReopen,
@@ -62,26 +64,28 @@ export function DiscussionActionPanel({
       p="0.125rem"
     >
       <Group gap="0">
-        <Popover
-          position="bottom-end"
-          opened={emojiPickerOpened}
-          onChange={setEmojiPickerOpened}
-        >
-          <Popover.Target>
-            <Tooltip label={t`Add reaction`} disabled={emojiPickerOpened}>
-              <ActionIcon
-                size={ACTION_ICON_SIZE}
-                onClick={() => setEmojiPickerOpened((opened) => !opened)}
-              >
-                {/* TODO: add reaction icon */}
-                <Icon name="bolt" />
-              </ActionIcon>
-            </Tooltip>
-          </Popover.Target>
-          <Popover.Dropdown>
-            <EmojiPicker onEmojiSelect={handleReaction} />
-          </Popover.Dropdown>
-        </Popover>
+        {canReact && (
+          <Popover
+            position="bottom-end"
+            opened={emojiPickerOpened}
+            onChange={setEmojiPickerOpened}
+          >
+            <Popover.Target>
+              <Tooltip label={t`Add reaction`} disabled={emojiPickerOpened}>
+                <ActionIcon
+                  size={ACTION_ICON_SIZE}
+                  onClick={() => setEmojiPickerOpened((opened) => !opened)}
+                >
+                  {/* TODO: add reaction icon */}
+                  <Icon name="bolt" />
+                </ActionIcon>
+              </Tooltip>
+            </Popover.Target>
+            <Popover.Dropdown>
+              <EmojiPicker onEmojiSelect={handleReaction} />
+            </Popover.Dropdown>
+          </Popover>
+        )}
         {canResolve && (
           <Tooltip label={comment.is_resolved ? t`Re-open` : t`Resolve`}>
             <ActionIcon
