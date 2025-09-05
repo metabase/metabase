@@ -9,7 +9,7 @@ Read the main Embedded analytics SDK changelog [here](https://www.metabase.com/c
 ### Features
 
 - the Embedding SDK now contains 2 parts:
-  - the SDK package (`@metabase/embedding-sdk-react`), that is now a light-wave library that loads the main Embedding SDK code from a Metabase Instance.
+  - the SDK package (`@metabase/embedding-sdk-react`), that is now a lightweight library that loads the main Embedding SDK code from a Metabase Instance.
   - the SDK bundle, that is released together with Metabase and is served from a Metabase Instance.
 
 ## Legacy changelog (before `@metabase/embedding-sdk-react@57`)

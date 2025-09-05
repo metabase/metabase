@@ -12,7 +12,6 @@ jobs:
     timeout-minutes: 3
     outputs:
       frontend_embedding_sources: ${{ steps.changes.outputs.frontend_embedding_sources }}
-      frontend_embedding_sdk_package_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_package_sources }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -28,7 +27,9 @@ jobs:
     permissions:
       pull-requests: write
     needs: [ files-changed ]
-    if: ${{ !cancelled() }}
+    if: |
+      !cancelled() &&
+      needs.files-changed.outputs.frontend_embedding_sources == 'true'
     steps:
       - name: Check if the PR title is already following Conventional Commits style
         uses: actions/github-script@v7
@@ -52,18 +53,8 @@ jobs:
       - name: Remind PR authors to use conventional commit in the title
         if: ${{ steps.is-conventional-commit.outputs.result != 'true' }}
         uses: actions/github-script@v7
-        env:
-          EMBEDDING_SOURCES_CHANGED: ${{ needs.files-changed.outputs.frontend_embedding_sources }}
-          EMBEDDING_SDK_PACKAGE_SOURCES_CHANGED: ${{ needs.files-changed.outputs.frontend_embedding_sdk_package_sources }}
         with:
           script: |
-            const { updateCommentForEmbedding, updateCommentForEmbeddingSdkPackage } = require(".github/scripts/conventional-commit-pr-title-reminder/utils.js")
+            const { updateCommentForEmbedding } = require(".github/scripts/conventional-commit-pr-title-reminder/utils.js")
 
-            const embeddingSourcesChanged = process.env.EMBEDDING_SOURCES_CHANGED === 'true';
-            const embeddingSdkPackageSourcesChanged = process.env.EMBEDDING_SDK_PACKAGE_SOURCES_CHANGED === 'true';
-
-            if (embeddingSourcesChanged) {
               await updateCommentForEmbedding({github, context})
-            } else if (embeddingSdkPackageSourcesChanged) {
-              await updateCommentForEmbeddingSdkPackage({github, context})
-            }
