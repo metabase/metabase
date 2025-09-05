@@ -32,12 +32,10 @@ export const useCardEmbedDnD = (editor: TiptapEditor | null) => {
         let targetPos = -1;
         let sourceNode: any = null;
         let targetNode: any = null;
-        let targetTablePos = -1;
-        let targetTable: any = null;
-        let targetRowPos = -1;
-        let sourceTablePos = -1;
-        let sourceTable: any = null;
-        let sourceRowPos = -1;
+        let targetFlexContainerPos = -1;
+        let targetFlexContainer: any = null;
+        let sourceFlexContainerPos = -1;
+        let sourceFlexContainer: any = null;
 
         editor.state.doc.descendants((node, pos) => {
           if (
@@ -47,7 +45,7 @@ export const useCardEmbedDnD = (editor: TiptapEditor | null) => {
             sourcePos = pos;
             sourceNode = node;
 
-            // Check if the source CardEmbed is inside a table
+            // Check if the source CardEmbed is inside a FlexContainer
             const currentPos = pos;
             editor.state.doc.nodesBetween(
               0,
@@ -57,14 +55,9 @@ export const useCardEmbedDnD = (editor: TiptapEditor | null) => {
                   nodePos <= currentPos &&
                   currentPos < nodePos + node.nodeSize
                 ) {
-                  if (node.type.name === "table") {
-                    sourceTablePos = nodePos;
-                    sourceTable = node;
-                  } else if (
-                    node.type.name === "tableRow" &&
-                    nodePos < currentPos
-                  ) {
-                    sourceRowPos = nodePos;
+                  if (node.type.name === "flexContainer") {
+                    sourceFlexContainerPos = nodePos;
+                    sourceFlexContainer = node;
                   }
                 }
               },
@@ -77,7 +70,7 @@ export const useCardEmbedDnD = (editor: TiptapEditor | null) => {
             targetPos = pos;
             targetNode = node;
 
-            // Check if this CardEmbed is inside a table by walking up the tree
+            // Check if this CardEmbed is inside a FlexContainer by walking up the tree
             const currentPos = pos;
             editor.state.doc.nodesBetween(
               0,
@@ -87,14 +80,9 @@ export const useCardEmbedDnD = (editor: TiptapEditor | null) => {
                   nodePos <= currentPos &&
                   currentPos < nodePos + node.nodeSize
                 ) {
-                  if (node.type.name === "table") {
-                    targetTablePos = nodePos;
-                    targetTable = node;
-                  } else if (
-                    node.type.name === "tableRow" &&
-                    nodePos < currentPos
-                  ) {
-                    targetRowPos = nodePos;
+                  if (node.type.name === "flexContainer") {
+                    targetFlexContainerPos = nodePos;
+                    targetFlexContainer = node;
                   }
                 }
               },
@@ -105,202 +93,170 @@ export const useCardEmbedDnD = (editor: TiptapEditor | null) => {
         if (sourcePos !== -1 && targetPos !== -1 && sourceNode && targetNode) {
           const tr = editor.state.tr;
 
-          // Check if both source and target are in the same table
-          const bothInSameTable =
-            sourceTablePos !== -1 &&
-            targetTablePos !== -1 &&
-            sourceTablePos === targetTablePos;
+          // Check if both source and target are in the same FlexContainer
+          const bothInSameFlexContainer =
+            sourceFlexContainerPos !== -1 &&
+            targetFlexContainerPos !== -1 &&
+            sourceFlexContainerPos === targetFlexContainerPos;
 
-          if (bothInSameTable) {
-            // Swap positions within the same table
-            const table = sourceTable;
-            const row = table.content.content
-              ? table.content.content[0]
-              : table.content[0];
-            const rowContent = row.content.content
-              ? row.content.content
-              : row.content;
+          if (bothInSameFlexContainer) {
+            // Swap positions within the same FlexContainer
+            const flexContainer = sourceFlexContainer;
+            const containerContent = flexContainer.content.content
+              ? flexContainer.content.content
+              : flexContainer.content;
 
-            // Find the cell indices for source and target
-            let sourceCellIndex = -1;
-            let targetCellIndex = -1;
-            let cellPos = sourceRowPos + 1; // Start after row opening tag
+            // Find the indices for source and target CardEmbeds
+            let sourceIndex = -1;
+            let targetIndex = -1;
+            let childPos = sourceFlexContainerPos + 1; // Start after container opening tag
 
-            for (let i = 0; i < rowContent.length; i++) {
-              const cell = rowContent[i];
-              if (cellPos <= sourcePos && sourcePos < cellPos + cell.nodeSize) {
-                sourceCellIndex = i;
+            for (let i = 0; i < containerContent.length; i++) {
+              const child = containerContent[i];
+              if (
+                childPos <= sourcePos &&
+                sourcePos < childPos + child.nodeSize
+              ) {
+                sourceIndex = i;
               }
-              if (cellPos <= targetPos && targetPos < cellPos + cell.nodeSize) {
-                targetCellIndex = i;
+              if (
+                childPos <= targetPos &&
+                targetPos < childPos + child.nodeSize
+              ) {
+                targetIndex = i;
               }
-              cellPos += cell.nodeSize;
+              childPos += child.nodeSize;
             }
 
-            if (sourceCellIndex !== -1 && targetCellIndex !== -1) {
-              // Create new row content with swapped cells
-              const newRowContent = [...rowContent];
+            if (sourceIndex !== -1 && targetIndex !== -1) {
+              // Create new container content with reordered CardEmbeds
+              const newContainerContent = [...containerContent];
 
               if (direction === "left") {
-                // Insert source before target, remove source from old position
-                const sourceCell = newRowContent[sourceCellIndex];
-                newRowContent.splice(sourceCellIndex, 1); // Remove source
+                // Insert source before target
+                const sourceChild = newContainerContent[sourceIndex];
+                newContainerContent.splice(sourceIndex, 1); // Remove source
 
                 // Adjust target index if source was before it
                 const adjustedTargetIndex =
-                  sourceCellIndex < targetCellIndex
-                    ? targetCellIndex - 1
-                    : targetCellIndex;
-                newRowContent.splice(adjustedTargetIndex, 0, sourceCell); // Insert before target
+                  sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+                newContainerContent.splice(adjustedTargetIndex, 0, sourceChild);
               } else {
-                // Insert source after target, remove source from old position
-                const sourceCell = newRowContent[sourceCellIndex];
-                newRowContent.splice(sourceCellIndex, 1); // Remove source
+                // Insert source after target
+                const sourceChild = newContainerContent[sourceIndex];
+                newContainerContent.splice(sourceIndex, 1); // Remove source
 
                 // Adjust target index if source was before it
                 const adjustedTargetIndex =
-                  sourceCellIndex < targetCellIndex
-                    ? targetCellIndex - 1
-                    : targetCellIndex;
-                newRowContent.splice(adjustedTargetIndex + 1, 0, sourceCell); // Insert after target
+                  sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+                newContainerContent.splice(
+                  adjustedTargetIndex + 1,
+                  0,
+                  sourceChild,
+                );
               }
 
-              // Create the updated table
-              const newTable = {
-                type: "table",
-                attrs: table.attrs,
-                content: [
-                  {
-                    type: "tableRow",
-                    content: newRowContent.map((cell) =>
-                      cell.toJSON ? cell.toJSON() : cell,
-                    ),
-                  },
-                ],
+              // Create the updated FlexContainer
+              const newFlexContainer = {
+                type: "flexContainer",
+                attrs: flexContainer.attrs,
+                content: newContainerContent.map((child) =>
+                  child.toJSON ? child.toJSON() : child,
+                ),
               };
 
-              // Replace the entire table
+              // Replace the entire FlexContainer
               tr.replaceWith(
-                sourceTablePos,
-                sourceTablePos + table.nodeSize,
-                editor.schema.nodeFromJSON(newTable),
+                sourceFlexContainerPos,
+                sourceFlexContainerPos + flexContainer.nodeSize,
+                editor.schema.nodeFromJSON(newFlexContainer),
               );
             }
-          } else if (targetTablePos !== -1 && targetTable) {
-            // Target is already in a table - add a new cell to the existing row
-            const newCell = {
-              type: "tableCell",
-              content: [sourceNode.toJSON()],
-            };
+          } else if (targetFlexContainerPos !== -1 && targetFlexContainer) {
+            // Target is already in a FlexContainer - add the source CardEmbed to it
+            const containerContent = targetFlexContainer.content.content
+              ? targetFlexContainer.content.content
+              : targetFlexContainer.content;
 
-            // Find the target row content
-            const targetRow = targetTable.content.content
-              ? targetTable.content.content[0]
-              : targetTable.content[0];
-            const rowContent = targetRow.content.content
-              ? targetRow.content.content
-              : targetRow.content;
-            const newRowContent = [...rowContent];
+            // Check if FlexContainer already has 3 CardEmbeds (maximum allowed)
+            if (containerContent.length >= 3) {
+              return; // Don't allow more than 3 CardEmbeds
+            }
 
-            // Insert the new cell at the appropriate position based on direction
+            const newContainerContent = [...containerContent];
+
+            // Insert the source CardEmbed at the appropriate position based on direction
             if (direction === "left") {
-              // Find the index of the target cell and insert before it
-              let targetCellIndex = 0;
-              let cellPos = targetRowPos + 1; // Start after row opening tag
+              // Find the index of the target CardEmbed and insert before it
+              let targetIndex = 0;
+              let childPos = targetFlexContainerPos + 1; // Start after container opening tag
 
-              for (let i = 0; i < rowContent.length; i++) {
-                const cell = rowContent[i];
+              for (let i = 0; i < containerContent.length; i++) {
+                const child = containerContent[i];
                 if (
-                  cellPos <= targetPos &&
-                  targetPos < cellPos + cell.nodeSize
+                  childPos <= targetPos &&
+                  targetPos < childPos + child.nodeSize
                 ) {
-                  targetCellIndex = i;
+                  targetIndex = i;
                   break;
                 }
-                cellPos += cell.nodeSize;
+                childPos += child.nodeSize;
               }
 
-              newRowContent.splice(
-                targetCellIndex,
-                0,
-                editor.schema.nodeFromJSON(newCell),
-              );
+              newContainerContent.splice(targetIndex, 0, sourceNode);
             } else {
-              // Insert after the target cell
-              let targetCellIndex = 0;
-              let cellPos = targetRowPos + 1;
+              // Insert after the target CardEmbed
+              let targetIndex = 0;
+              let childPos = targetFlexContainerPos + 1;
 
-              for (let i = 0; i < rowContent.length; i++) {
-                const cell = rowContent[i];
+              for (let i = 0; i < containerContent.length; i++) {
+                const child = containerContent[i];
                 if (
-                  cellPos <= targetPos &&
-                  targetPos < cellPos + cell.nodeSize
+                  childPos <= targetPos &&
+                  targetPos < childPos + child.nodeSize
                 ) {
-                  targetCellIndex = i + 1;
+                  targetIndex = i + 1;
                   break;
                 }
-                cellPos += cell.nodeSize;
+                childPos += child.nodeSize;
               }
 
-              newRowContent.splice(
-                targetCellIndex,
-                0,
-                editor.schema.nodeFromJSON(newCell),
-              );
+              newContainerContent.splice(targetIndex, 0, sourceNode);
             }
 
-            // Create the new resizable table with updated row
-            const newTable = {
-              type: "table",
-              attrs: { resizable: true },
-              content: [
-                {
-                  type: "tableRow",
-                  content: newRowContent.map((cell) =>
-                    cell.toJSON ? cell.toJSON() : cell,
-                  ),
-                },
-              ],
+            // Create the new FlexContainer with updated content
+            const newFlexContainer = {
+              type: "flexContainer",
+              attrs: targetFlexContainer.attrs,
+              content: newContainerContent.map((child) =>
+                child.toJSON ? child.toJSON() : child,
+              ),
             };
 
-            // Replace the table and remove the source node
+            // Replace the FlexContainer and remove the source node
             tr.delete(sourcePos, sourcePos + sourceNode.nodeSize);
 
-            // Adjust table position if source was before it
-            const adjustedTablePos =
-              sourcePos < targetTablePos
-                ? targetTablePos - sourceNode.nodeSize
-                : targetTablePos;
+            // Adjust container position if source was before it
+            const adjustedContainerPos =
+              sourcePos < targetFlexContainerPos
+                ? targetFlexContainerPos - sourceNode.nodeSize
+                : targetFlexContainerPos;
             tr.replaceWith(
-              adjustedTablePos,
-              adjustedTablePos + targetTable.nodeSize,
-              editor.schema.nodeFromJSON(newTable),
+              adjustedContainerPos,
+              adjustedContainerPos + targetFlexContainer.nodeSize,
+              editor.schema.nodeFromJSON(newFlexContainer),
             );
           } else {
-            // Target is not in a table - create a new table with two columns
+            // Target is not in a FlexContainer - create a new FlexContainer with both CardEmbeds
             const leftCardEmbed =
               direction === "left" ? sourceNode.toJSON() : targetNode.toJSON();
             const rightCardEmbed =
               direction === "left" ? targetNode.toJSON() : sourceNode.toJSON();
 
-            const tableContent = {
-              type: "table",
-              attrs: { resizable: true },
-              content: [
-                {
-                  type: "tableRow",
-                  content: [
-                    {
-                      type: "tableCell",
-                      content: [leftCardEmbed],
-                    },
-                    {
-                      type: "tableCell",
-                      content: [rightCardEmbed],
-                    },
-                  ],
-                },
-              ],
+            const flexContainerContent = {
+              type: "flexContainer",
+              attrs: {},
+              content: [leftCardEmbed, rightCardEmbed],
             };
 
             // Delete nodes in reverse order to maintain positions
@@ -312,9 +268,12 @@ export const useCardEmbedDnD = (editor: TiptapEditor | null) => {
               tr.delete(sourcePos, sourcePos + sourceNode.nodeSize);
             }
 
-            // Insert the table at the position of whichever node was first
+            // Insert the FlexContainer at the position of whichever node was first
             const insertPos = Math.min(sourcePos, targetPos);
-            tr.insert(insertPos, editor.schema.nodeFromJSON(tableContent));
+            tr.insert(
+              insertPos,
+              editor.schema.nodeFromJSON(flexContainerContent),
+            );
           }
 
           editor.view.dispatch(tr);

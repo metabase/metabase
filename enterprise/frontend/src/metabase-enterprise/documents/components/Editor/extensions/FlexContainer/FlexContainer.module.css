@@ -1,0 +1,76 @@
+.flexContainer {
+  display: block;
+  width: 100%;
+  margin: 1rem 0;
+  border-radius: var(--mantine-radius-md);
+  position: relative;
+  max-width: 900px;
+}
+
+.flexContainer.selected {
+  outline: 2px solid var(--mb-color-brand);
+  outline-offset: 2px;
+}
+
+.flexContent > :global(div[data-node-view-wrapper]) {
+  display: grid;
+  width: 100%;
+  gap: 1rem;
+  grid-template-columns: var(--mb-card-container-col-widths);
+}
+
+.flexContent {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  /* Grid layout will be applied via inline styles */
+}
+
+/* Ensure CardEmbed nodes within flex container take appropriate space */
+.flexContent > :global(.react-renderer) {
+  min-width: 0; /* Allow items to shrink below their natural width */
+}
+
+/* Resize handles */
+.resizeHandle {
+  position: absolute;
+  top: calc(50% - 2rem);
+  width: 0.25rem;
+  height: 4rem;
+  margin-left: -0.125rem;
+  cursor: col-resize;
+  background-color: transparent;
+  border-radius: 100px;
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    background-color 0.2s ease;
+  z-index: 10;
+}
+
+.flexContainer:hover .resizeHandle {
+  opacity: 1;
+  background-color: var(--mb-color-text-secondary-inverse);
+}
+
+.flexContainer.resizing {
+  user-select: none;
+}
+
+.flexContainer.resizing .resizeHandle {
+  opacity: 1;
+}
+
+/* Visual feedback for empty container */
+.flexContainer:empty::after {
+  content: "Drop CardEmbed items here";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--mb-color-text-light);
+  font-style: italic;
+  border: 2px dashed var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-bg-light);
+}

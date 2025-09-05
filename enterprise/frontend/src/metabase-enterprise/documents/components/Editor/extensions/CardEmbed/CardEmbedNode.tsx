@@ -59,10 +59,12 @@ const DropZone = ({ id, side, disabled }: DropZoneProps) => {
         position: "absolute",
         top: 0,
         bottom: 0,
-        width: "20px",
-        [side]: "-10px",
-        backgroundColor: isOver ? "rgba(59, 130, 246, 0.3)" : "transparent",
-        border: isOver ? "2px dashed #3b82f6" : "none",
+        width: "0.25rem",
+        [side]: "-0.75rem",
+        borderRadius: "0.125rem",
+        backgroundColor: isOver
+          ? "var(--mb-base-color-blue-30)"
+          : "transparent",
         zIndex: 10,
         pointerEvents: "all",
       }}
@@ -98,7 +100,6 @@ export const CardEmbed: Node<{
   name: "cardEmbed",
   group: "block",
   atom: true,
-  draggable: true,
   selectable: true,
 
   addAttributes() {

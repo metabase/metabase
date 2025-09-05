@@ -27,6 +27,7 @@ import { CommandExtension } from "./extensions/Command/CommandExtension";
 import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "./extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
+import { FlexContainer } from "./extensions/FlexContainer/FlexContainer";
 import { MentionExtension } from "./extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
 import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
@@ -46,6 +47,7 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   MetabotNode.name,
   SmartLink.name,
   Image.name,
+  FlexContainer.name,
   "codeBlock",
 ];
 
@@ -123,6 +125,7 @@ export const Editor: React.FC<EditorProps> = ({
         placeholder: t`Start writing, press "/" to open command palette, or "@" to insert a link...`,
       }),
       CardEmbed,
+      FlexContainer,
       MentionExtension.configure({
         suggestion: {
           allow: ({ state }) => !isMetabotBlock(state),
