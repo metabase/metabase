@@ -290,7 +290,28 @@ H.describeWithSnowplowEE("document comments", () => {
         Comments.getCommentByText("My Reply 1")
           .findByRole("textbox")
           .should("have.attr", "contenteditable", "false");
+
+        cy.log("allows to cancel editing a comment with Esc");
+        Comments.getCommentByText("Reply 2").realHover();
+        Comments.getCommentByText("Reply 2")
+          .findByLabelText("More actions")
+          .click();
       });
+
+      H.popover().findByText("Edit").click();
+      Comments.getCommentByText("Reply 2")
+        .findByRole("textbox")
+        .should("have.attr", "contenteditable", "true");
+
+      cy.realPress("Escape");
+      Comments.getCommentByText("Reply 2")
+        .findByRole("textbox")
+        .should("have.attr", "contenteditable", "false");
+      H.modal().should("be.visible");
+
+      cy.log("subsequent Esc should close the modal");
+      cy.realPress("Escape");
+      H.modal().should("not.exist");
     });
   });
 });
