@@ -154,27 +154,31 @@
                                                    post-python))}))))
 
 (defn- log-loop! [run-id message-log]
-  ;; TODO ensure we poll only for this run-id
-  (let [poll python-runner/get-logs]
+  (let [poll #(python-runner/get-logs run-id)]
     (try
       (loop []
         (if (.isInterrupted (Thread/currentThread))
           (log/debug "Message update loop interrupted")
           (do (Thread/sleep 1000)
               (let [{:keys [status body]} (poll)]
-                (if-not (= 200 status)
-                  (do
-                    (log/warnf "Something went wrong polling the logs %s %s" status body)
-                    (log/debug "Exiting due to poll error"))
+                (cond
+                  (<= 200 status 299)
                   (let [{:keys [execution_id events]} body]
-
                     (if-not (= run-id execution_id)
                       (do (log/debugf "Run id did not match expected: %s actual: %s" run-id execution_id)
                           (recur))
                       (do
                         (replace-python-logs! message-log events)
                         (save-log-as-message! run-id message-log)
-                        (recur)))))))))
+                        (recur))))
+                  (= 404 status)
+                  (do
+                    (log/debugf "No logs yet (or run finished), run-id: %s" run-id)
+                    (recur))
+                  :else
+                  (do
+                    (log/warnf "Unexpected status polling for logs %s %s, run-id:" status body run-id)
+                    (log/debug "Exiting due to poll error")))))))
       (catch InterruptedException _)
       (catch Throwable e
         (log/errorf e "An exception was caught during msg update loop, run-id: %s" run-id)))))

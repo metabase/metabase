@@ -278,13 +278,14 @@
   "Return the logs of the current running python process"
   ;; TODO: we should be given an id for the expected job, se we don't return unrelated logs
   ;;       if the job has already finished, we could fethc the logs from the db instead
-  []
+  [run-id]
   (let [server-url (transforms.settings/python-execution-server-url)]
     (http/get (str server-url "/logs")
               {:content-type     :json
                :accept           :json
                :throw-exceptions false
-               :as               :json})))
+               :as               :json
+               :query-params     {:request_id run-id}})))
 
 (defn execute-python-code
   "Execute Python code using the Python execution server."
