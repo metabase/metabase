@@ -101,9 +101,7 @@
   "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id] :as search-args}]
-  (println "TSP in new search impl")
-  (def tsp-search-args search-args)
+           entity-types limit metabot-id]}]
   (let [search-models (if (seq entity-types)
                         (set (distinct (keep entity-type->search-model entity-types)))
                         (set (vals entity-type->search-model)))
@@ -137,8 +135,5 @@
                           (:data search-results)))
                       all-queries)
         ;; Use RRF to combine and reorder results
-        fused-results (reciprocal-rank-fusion result-lists)
-        _ (def tsp-all-queries all-queries)
-        _ (def tsp-results result-lists)
-        _ (def tsp-fused fused-results)]
+        fused-results (reciprocal-rank-fusion result-lists)]
     (map transform-search-result fused-results)))

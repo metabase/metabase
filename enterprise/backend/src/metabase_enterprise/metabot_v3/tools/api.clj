@@ -1032,8 +1032,6 @@
                                                     [:map [:arguments {:optional true} ::search-arguments]]
                                                     ::tool-request]
    request]
-  (println "TSP in new search")
-  (def tsp-arguments arguments)
   (metabot-v3.context/log (assoc body :api :search) :llm.log/llm->be)
   (try
     (let [options (mc/encode ::search-arguments
