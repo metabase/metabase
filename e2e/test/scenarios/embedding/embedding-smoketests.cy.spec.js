@@ -116,6 +116,19 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       });
     });
 
+    it("should show the sdk upsell link in oss", () => {
+      cy.visit("/admin/settings/embedding-in-other-applications/sdk");
+
+      mainPage().within(() => {
+        cy.findByRole("link", { name: "Try for free" })
+          .should("have.attr", "href")
+          .and(
+            "eq",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=embedding-page&source_plan=oss",
+          );
+      });
+    });
+
     it("should not let you embed the question", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
