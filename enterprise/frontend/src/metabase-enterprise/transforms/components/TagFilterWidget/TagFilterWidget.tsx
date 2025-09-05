@@ -13,8 +13,11 @@ import {
 } from "metabase/ui";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 
+import {
+  FILTER_WIDGET_MAX_HEIGHT,
+  FILTER_WIDGET_MIN_WIDTH,
+} from "../../constants";
 import { FilterFieldSet } from "../FilterFieldSet";
-import { MAX_HEIGHT, MIN_WIDTH } from "../constants";
 
 type TagFilterWidgetProps = {
   tagIds: TransformTagId[];
@@ -94,9 +97,9 @@ function TagFilterForm({
   };
 
   return (
-    <Box component="form" miw={MIN_WIDTH} onSubmit={handleSubmit}>
+    <Box component="form" miw={FILTER_WIDGET_MIN_WIDTH} onSubmit={handleSubmit}>
       {tags.length > 0 ? (
-        <Box mah={MAX_HEIGHT} style={{ overflow: "auto" }}>
+        <Box mah={FILTER_WIDGET_MAX_HEIGHT} style={{ overflow: "auto" }}>
           <Checkbox.Group
             value={tagIds.map(getTagIdValue)}
             onChange={handleChange}
