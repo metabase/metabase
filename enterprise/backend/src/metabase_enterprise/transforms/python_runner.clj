@@ -64,14 +64,14 @@
 (defn- root-type
   [base-type]
   (when base-type
-    (condp #(isa? %2 %1) base-type
-      :type/Float :type/Float
-      :type/Integer :type/Integer
-      :type/Boolean :type/Boolean
-      :type/DateTimeWithTZ :type/DateTimeWithTZ
-      :type/DateTime :type/DateTime
-      :type/Date :type/Date
-      :type/Text :type/Text)))
+    (some #(when (isa? base-type %) %)
+          [:type/Float
+           :type/Integer
+           :type/Boolean
+           :type/DateTimeWithTZ
+           :type/DateTime
+           :type/Date
+           :type/Text])))
 
 (defn- closest-ancestor [t pred]
   (loop [remaining (conj clojure.lang.PersistentQueue/EMPTY [t])]
