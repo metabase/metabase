@@ -130,6 +130,7 @@ export function DiscussionComment({
       <Box mt={isEditing ? "sm" : "xs"}>
         <CommentEditor
           autoFocus
+          data-testid="comment-editor"
           initialContent={comment.content}
           onSubmit={handleEditingSubmit}
           readonly={!isEditing}

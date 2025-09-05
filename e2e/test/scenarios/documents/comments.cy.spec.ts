@@ -26,7 +26,7 @@ H.describeWithSnowplowEE("document comments", () => {
   });
 
   it("allows to comment on every type of node", () => {
-    createLoremIpsumDocument();
+    createAndVisitLoremIpsumDocument();
 
     cy.log("does not need schema adjustments by default");
     cy.findByRole("button", { name: "Save" }).should("not.exist");
@@ -108,7 +108,7 @@ H.describeWithSnowplowEE("document comments", () => {
   });
 
   it("allows to split a paragraph in two, and then to comment on both paragraphs", () => {
-    create1ParagraphDocument();
+    create1AndVisitParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((targetId) => {
       getParagraph().realHover();
@@ -200,7 +200,7 @@ H.describeWithSnowplowEE("document comments", () => {
   });
 
   it("allows to create / update / delete comments", () => {
-    create1ParagraphDocument();
+    create1AndVisitParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((targetId) => {
       getParagraph().realHover();
@@ -314,9 +314,83 @@ H.describeWithSnowplowEE("document comments", () => {
       H.modal().should("not.exist");
     });
   });
+
+  describe("comment editor", () => {
+    it("supports mentions and can mention yourself", () => {
+      create1AndVisitParagraphDocument();
+      getParagraph().realHover();
+
+      cy.get<DocumentId>("@documentId").then((targetId) => {
+        Comments.getDocumentNodeButton({
+          targetId,
+          childTargetId: PARAGRAPH_ID,
+        })
+          .should("be.visible")
+          .click();
+      });
+
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+        Comments.getNewThreadInput().click();
+      });
+
+      cy.realType("@");
+      H.documentSuggestionDialog().within(() => {
+        cy.findByText("Lorem ipsum").should("be.visible");
+        cy.findByText("First collection").should("be.visible");
+        cy.findByText("Browse all").should("be.visible");
+        cy.findByText("Bobby Tables").should("not.exist");
+      });
+
+      cy.realType("tAbLe");
+      H.documentSuggestionDialog().within(() => {
+        cy.findByText("Lorem ipsum").should("not.exist");
+        cy.findByText("Bobby Tables").should("be.visible");
+        cy.findByText("No Collection Tableton").should("be.visible");
+        cy.findByText("Most viewed content").should("be.visible");
+      });
+
+      cy.realType("s");
+      H.documentSuggestionDialog().within(() => {
+        cy.findByText("Bobby Tables").should("be.visible");
+        cy.findByText("Bobby Tables's Personal Collection").should(
+          "be.visible",
+        );
+        cy.findByText("No Collection Tableton").should("not.exist");
+      });
+
+      cy.realPress("Enter");
+      H.documentSuggestionDialog().should("not.exist");
+
+      cy.log("closes suggestion dialog but not the comments modal on Esc");
+      cy.realType(" @no");
+      H.documentSuggestionDialog().should("be.visible");
+      cy.realPress("Escape");
+      H.documentSuggestionDialog().should("not.exist");
+      H.modal().should("be.visible");
+
+      cy.realType("{backspace}{backspace}{backspace}@none");
+      H.documentSuggestionDialog().findByText("None Tableton").click();
+
+      H.modal().within(() => {
+        Comments.getNewThreadInput()
+          .findByText("@Bobby Tables")
+          .should("be.visible");
+        Comments.getNewThreadInput()
+          .findByText("@None Tableton")
+          .should("be.visible");
+
+        cy.realPress([META_KEY, "Enter"]);
+
+        cy.findByText("a few seconds ago").should("be.visible");
+        cy.findByText("@Bobby Tables").should("be.visible");
+        cy.findByText("@None Tableton").should("be.visible");
+      });
+    });
+  });
 });
 
-function createLoremIpsumDocument() {
+function createAndVisitLoremIpsumDocument() {
   H.createDocument({
     idAlias: "documentId",
     name: "Lorem ipsum",
@@ -550,7 +624,7 @@ function createLoremIpsumDocument() {
     .and("have.value", "Lorem ipsum");
 }
 
-function create1ParagraphDocument() {
+function create1AndVisitParagraphDocument() {
   H.createDocument({
     idAlias: "documentId",
     name: "Lorem ipsum",

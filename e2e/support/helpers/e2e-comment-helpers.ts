@@ -30,15 +30,11 @@ function getDocumentNodeButtons() {
 }
 
 function getNewThreadInput() {
-  return cy.get(
-    '[data-testid="comment-content"]:has([data-placeholder="Add a comment…"])',
-  );
+  return cy.findByTestId("new-thread-editor");
 }
 
 function getCommentInput() {
-  return cy.get(
-    '[data-testid="comment-content"]:has([data-placeholder="Reply…"])',
-  );
+  return cy.findByTestId("comment-editor");
 }
 
 function getPlaceholder() {

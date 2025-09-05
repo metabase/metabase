@@ -37,6 +37,7 @@ const ALLOWED_FORMATTING: FormattingOptions = {
 interface Props {
   active?: boolean;
   autoFocus?: boolean;
+  "data-testid"?: string;
   initialContent?: DocumentContent | null;
   placeholder?: string;
   readonly?: boolean;
@@ -49,6 +50,7 @@ interface Props {
 export const CommentEditor = ({
   active = true,
   autoFocus = false,
+  "data-testid": dataTestId,
   initialContent,
   placeholder = t`Reply…`,
   readonly = false,
@@ -172,7 +174,7 @@ export const CommentEditor = ({
     >
       <Box className={S.contentWrapper}>
         <EditorContent
-          data-testid="comment-content"
+          data-testid={dataTestId}
           editor={editor}
           className={S.content}
         />

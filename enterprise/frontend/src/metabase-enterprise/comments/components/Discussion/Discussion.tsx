@@ -121,6 +121,7 @@ export const Discussion = ({
           >
             <CommentEditor
               active={false}
+              data-testid="comment-editor"
               onChange={(document) => setNewComment(document)}
               onSubmit={handleSubmit}
             />

@@ -218,6 +218,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
                 <Box p="xl">
                   <CommentEditor
                     autoFocus={shouldAutoOpenNewComment}
+                    data-testid="new-thread-editor"
                     placeholder={t`Add a comment…`}
                     onChange={(document) => setNewComment(document)}
                     onSubmit={handleSubmit}
