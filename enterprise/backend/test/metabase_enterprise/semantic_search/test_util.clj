@@ -133,6 +133,9 @@
           (log/debugf "Test pgvector database teardown %s failed" dbname)
           (throw e))))))
 
+;; TODO: When we are parallelizing tests, we'd have to make 
+;;       - `with-test-db!` use thread-safe version of with-redefs or similar,
+;;       - instead of `default-test-db` we could make unique database per test by means of eg. some counter.
 (defmacro with-test-db!
   "Drop, create database dbname on pgvector and redefine datasource accordingly. Not thread safe."
   [opts & body]
