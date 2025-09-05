@@ -1,0 +1,11 @@
+.content {
+  & > [data-node-view-content-react] {
+    height: 100%;
+
+    & > :global(.node-cardEmbed) {
+      height: 100%;
+    }
+  }
+
+  height: 100%;
+}
