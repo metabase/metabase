@@ -83,6 +83,19 @@ const databaseTestCases = [
     ],
   },
   {
+    engine: "OceanBase",
+    connectionString:
+      "jdbc:oceanbase://localhost:2881/test?user=root&password=123456",
+    expectedFields: [
+      { label: "Host", value: "localhost" },
+      { label: "Port", value: "2881" },
+      { label: "Database name", value: "test" },
+      { label: "Display name", value: "test" },
+      { label: "Username", value: "root" },
+      { label: "Password", value: "123456" },
+    ],
+  },
+  {
     engine: "Oracle",
     connectionString:
       "jdbc:oracle:thin:testuser/testpass@mydbhost:1521/mydbservice?ssl_server_cert_dn=ServerDN",

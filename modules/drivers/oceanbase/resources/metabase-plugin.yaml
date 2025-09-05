@@ -1,0 +1,28 @@
+info:
+  name: Metabase OceanBase Driver
+  version: 1.0.0
+  description: Allows Metabase to connect to OceanBase databases with automatic MySQL/Oracle compatibility mode detection.
+driver:
+  name: oceanbase
+  display-name: OceanBase
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - merge:
+        - host
+        - placeholder: localhost
+    - merge:
+        - port
+        - placeholder: 2881
+    - merge:
+        - dbname
+        - name: db
+          placeholder: Database name
+          required: true
+    - user
+    - password
+init:
+  - step: load-namespace
+    namespace: metabase.driver.oceanbase
+  - step: register-jdbc-driver
+    class: com.oceanbase.jdbc.Driver

@@ -28704,3 +28704,27 @@ msgstr "按国家/地区获取的用户"
 msgid "Top 10 countries by sales"
 msgstr "销售额排名前 10 的国家/地区"
 
+#: metabase/driver/oceanbase.clj:1
+msgid "OceanBase Database"
+msgstr "OceanBase 数据库"
+
+#: metabase/driver/oceanbase.clj:2
+msgid "Distributed database with MySQL/Oracle compatibility"
+msgstr "支持 MySQL/Oracle 兼容的分布式数据库"
+
+#: metabase/driver/oceanbase.clj:3
+msgid "Auto-detects compatibility mode"
+msgstr "自动检测兼容模式"
+
+#: metabase/driver/oceanbase.clj:4
+msgid "Port number (default: 2881)"
+msgstr "端口号（默认：2881）"
+
+#: metabase/driver/oceanbase.clj:5
+msgid "Username"
+msgstr "用户名"
+
+#: metabase/driver/oceanbase.clj:6
+msgid "Password"
+msgstr "密码"
+

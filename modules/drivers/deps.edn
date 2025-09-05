@@ -15,6 +15,7 @@
   metabase/druid-jdbc         {:local/root "druid-jdbc"}
   metabase/hive-like          {:local/root "hive-like"}
   metabase/mongo              {:local/root "mongo"}
+  metabase/oceanbase          {:local/root "oceanbase"}
   metabase/oracle             {:local/root "oracle"}
   metabase/presto-jdbc        {:local/root "presto-jdbc"}
   metabase/redshift           {:local/root "redshift"}

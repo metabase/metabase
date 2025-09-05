@@ -37,6 +37,7 @@ export const ELEVATED_ENGINES = [
   "redshift",
   "bigquery-cloud-sdk",
   "snowflake",
+  "oceanbase",
 ];
 
 export const ENGINE_LOGO: Record<string, string> = {
@@ -50,6 +51,7 @@ export const ENGINE_LOGO: Record<string, string> = {
   h2: "h2.svg",
   mongo: "mongo.svg",
   mysql: "mysql.svg",
+  oceanbase: "oceanbase.svg",
   oracle: "oracle.svg",
   postgres: "postgres.svg",
   presto: "presto.svg",
@@ -76,6 +78,7 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
     },
     description: <DatabaseSshDescription />,
   },
+
   "use-jvm-timezone": {
     get title() {
       return t`Use the Java Virtual Machine (JVM) timezone`;

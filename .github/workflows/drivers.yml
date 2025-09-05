@@ -184,6 +184,56 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
+  be-tests-oceanbase-ee:
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: oceanbase
+      MB_OCEANBASE_TEST_HOST: localhost
+      MB_OCEANBASE_TEST_PORT: 2881
+      MB_OCEANBASE_TEST_USER: root@test
+      MB_OCEANBASE_TEST_PASSWORD: "123456"
+      MB_OCEANBASE_TEST_DB: test
+    services:
+      oceanbase:
+        image: oceanbase/oceanbase-ce:latest
+        ports:
+          - "2881:2881"
+        env:
+          MODE: SLIM
+          OB_DATAFILE_SIZE: 1G
+          OB_SYS_PASSWORD: "123456"
+          OB_TENANT_PASSWORD: "123456"
+        options: >-
+          --health-cmd "obclient -h127.0.0.1 -P2881 -uroot@test -p123456 -e 'SELECT 1;' || exit 1"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 30
+          --health-start-period 30s
+    name: OceanBase
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test OceanBase driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-oceanbase-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
   be-tests-druid-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
@@ -1138,6 +1188,7 @@ jobs:
       - be-tests-sqlite-ee
       - be-tests-sqlserver
       # - be-tests-starburst-ee
+      - be-tests-oceanbase-ee
       # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
       # - be-tests-vertica-ee
       - be-tests-clickhouse-ee
