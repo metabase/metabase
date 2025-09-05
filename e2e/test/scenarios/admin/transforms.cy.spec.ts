@@ -1190,55 +1190,6 @@ describe("scenarios > admin > transforms > databases without :schemas", () => {
   });
 });
 
-describe("scenarios > admin > transforms > databases without :schemas", () => {
-  const DB_NAME = "QA MySQL8";
-
-  beforeEach(() => {
-    H.restore("mysql-8");
-    cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-
-    cy.intercept("PUT", "/api/field/*").as("updateField");
-    cy.intercept("POST", "/api/ee/transform").as("createTransform");
-    cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
-    cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
-    cy.intercept("DELETE", "/api/ee/transform/*/table").as(
-      "deleteTransformTable",
-    );
-    cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
-    cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
-    cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
-  });
-
-  it("should be not be possible to create a new schema when updating a transform target", () => {
-    createMbqlTransform({
-      databaseId: WRITABLE_DB_ID,
-      sourceTable: "ORDERS",
-      visitTransform: true,
-      targetSchema: null,
-    });
-
-    getTransformPage().button("Change target").click();
-
-    H.modal().findByLabelText("Schema").should("not.exist");
-  });
-
-  it("should be not be possible to create a new schema when the database does not support schemas", () => {
-    cy.log("create a new transform");
-    visitTransformListPage();
-    getTransformListPage().button("Create a transform").click();
-    H.popover().findByText("Query builder").click();
-
-    H.entityPickerModal().within(() => {
-      cy.findByText(DB_NAME).click();
-      cy.findByText("Orders").click();
-    });
-    getQueryEditor().button("Save").click();
-    H.modal().findByLabelText("Schema").should("not.exist");
-  });
-});
-
 describe("scenarios > admin > transforms > jobs", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
