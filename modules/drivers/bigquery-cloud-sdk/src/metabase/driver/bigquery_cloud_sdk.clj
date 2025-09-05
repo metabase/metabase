@@ -245,7 +245,7 @@
 (defmethod type->database-type :type/TextLike [_] ["STRING"])
 (defmethod type->database-type :type/Date [_] ["DATE"])
 (defmethod type->database-type :type/DateTime [_] ["DATETIME"])
-(defmethod type->database-type :type/DateTimeWithLocalTZ [_] ["TIMESTAMP"])
+(defmethod type->database-type :type/DateTimeWithTZ [_] ["TIMESTAMP"])
 (defmethod type->database-type :type/Time [_] ["TIME"])
 (defmethod type->database-type :type/JSON [_] ["JSON"])
 (defmethod type->database-type :type/SerializedJSON [_] ["JSON"])

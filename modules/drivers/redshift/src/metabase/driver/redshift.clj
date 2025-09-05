@@ -551,7 +551,7 @@
 (defmethod type->database-type :type/Boolean [_] [:boolean])
 (defmethod type->database-type :type/Date [_] [:date])
 (defmethod type->database-type :type/DateTime [_] [:timestamp])
-(defmethod type->database-type :type/DateTimeWithLocalTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp-with-time-zone])
 (defmethod type->database-type :type/Time [_] [:time])
 
 (defmethod driver/type->database-type :redshift

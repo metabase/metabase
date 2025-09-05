@@ -792,7 +792,7 @@
 (defmethod type->database-type :type/Boolean [_] [:boolean])
 (defmethod type->database-type :type/Date [_] [:date])
 (defmethod type->database-type :type/DateTime [_] [:datetime])
-(defmethod type->database-type :type/DateTimeWithLocalTZ [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp])
 (defmethod type->database-type :type/Time [_] [:time])
 (defmethod type->database-type :type/JSON [_] [:json])
 (defmethod type->database-type :type/SerializedJSON [_] [:json])

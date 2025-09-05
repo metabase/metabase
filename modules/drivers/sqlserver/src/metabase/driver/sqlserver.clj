@@ -127,7 +127,7 @@
 (defmethod type->database-type :type/Boolean [_] [:bit])
 (defmethod type->database-type :type/Date [_] [:date])
 (defmethod type->database-type :type/DateTime [_] [:datetime2])
-(defmethod type->database-type :type/DateTimeWithZoneOffset [_] [:datetimeoffset])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:datetimeoffset])
 (defmethod type->database-type :type/Decimal [_] [:decimal])
 (defmethod type->database-type :type/Float [_] [:float])
 (defmethod type->database-type :type/Integer [_] [:int])
