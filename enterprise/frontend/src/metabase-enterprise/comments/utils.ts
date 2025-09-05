@@ -26,15 +26,24 @@ export function getCommentThreads(
     );
   }
 
-  return sortedThreadStartingComments.map((parent) => ({
-    id: parent.id,
-    comments: [
-      parent,
-      ...comments.filter((comment) => {
-        return comment.parent_comment_id === parent.id;
-      }),
-    ],
-  }));
+  const threads: CommentThread[] = [];
+
+  sortedThreadStartingComments.forEach((parent) => {
+    const childComments = comments.filter((comment) => {
+      return comment.parent_comment_id === parent.id;
+    });
+    const isActiveThread =
+      !parent.is_deleted ||
+      childComments.some((comment) => !comment.is_deleted);
+    if (isActiveThread) {
+      threads.push({
+        id: parent.id,
+        comments: [parent, ...childComments],
+      });
+    }
+  });
+
+  return threads;
 }
 
 export function getTargetChildCommentThreads(
