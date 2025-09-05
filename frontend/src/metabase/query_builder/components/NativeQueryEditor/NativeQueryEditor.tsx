@@ -321,7 +321,10 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               this.state.isCollapsing && S.collapsing,
             )}
             minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
-            maxConstraints={[Infinity, getEditorMaxHeight(viewHeight)]}
+            maxConstraints={[
+              Infinity,
+              getEditorMaxHeight(viewHeight) ?? Infinity,
+            ]}
             axis="y"
             handle={dragHandle}
             resizeHandles={["s"]}
