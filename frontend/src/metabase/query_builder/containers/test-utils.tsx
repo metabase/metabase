@@ -284,10 +284,12 @@ export const setup = async ({
         <Route path="/model">
           <Route path="new" component={NewModelOptions} />
           <Route path="query" component={TestQueryBuilder} />
+          <Route path="columns" component={TestQueryBuilder} />
           <Route path="metadata" component={TestQueryBuilder} />
           <Route path="notebook" component={TestQueryBuilder} />
           <Route path=":slug" component={TestQueryBuilder} />
           <Route path=":slug/query" component={TestQueryBuilder} />
+          <Route path=":slug/columns" component={TestQueryBuilder} />
           <Route path=":slug/metadata" component={TestQueryBuilder} />
           <Route path=":slug/notebook" component={TestQueryBuilder} />
         </Route>

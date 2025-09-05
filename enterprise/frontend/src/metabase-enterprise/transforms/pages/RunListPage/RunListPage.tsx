@@ -37,7 +37,15 @@ type RunListPageBodyProps = {
 };
 
 function RunListPageBody({ params }: RunListPageBodyProps) {
-  const { page = 0, statuses, transformIds, transformTagIds } = params;
+  const {
+    page = 0,
+    statuses,
+    transformIds,
+    transformTagIds,
+    startTime,
+    endTime,
+    runMethods,
+  } = params;
   const {
     data,
     isLoading: isLoadingRuns,
@@ -48,6 +56,9 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
     statuses,
     transform_ids: transformIds,
     transform_tag_ids: transformTagIds,
+    start_time: startTime,
+    end_time: endTime,
+    run_methods: runMethods,
   });
   const {
     data: transforms = [],

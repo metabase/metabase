@@ -23,3 +23,5 @@ export interface EngineFieldProps {
   description?: ReactNode;
   placeholder?: string;
 }
+
+export type FormLocation = "admin" | "setup" | "embedding_setup" | "full-page";

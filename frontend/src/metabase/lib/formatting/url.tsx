@@ -9,6 +9,7 @@ import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behav
 import { isURL } from "metabase-lib/v1/types/utils/isa";
 
 import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
+import { removeNewLines } from "./strings";
 import type { OptionsType } from "./types";
 import { formatValue, getRemappedValue } from "./value";
 
@@ -34,7 +35,7 @@ export function getUrlProtocol(url: string) {
 }
 
 export function formatUrl(value: string, options: OptionsType = {}) {
-  const { jsx, rich, column } = options;
+  const { jsx, rich, column, collapseNewlines } = options;
 
   const url = getLinkUrl(value, options);
 
@@ -63,27 +64,29 @@ export function formatUrl(value: string, options: OptionsType = {}) {
     // Even when no URL is found, return a formatted value
     return formatValue(value, { ...options, view_as: null });
   } else {
-    return value;
+    return collapseNewlines ? removeNewLines(value) : value;
   }
 }
 
 function getLinkText(value: string, options: OptionsType) {
-  const { view_as, link_text, clicked } = options;
+  const { view_as, link_text, clicked, collapseNewlines } = options;
 
   const isExplicitLink = view_as === "link";
   const hasCustomizedText = link_text && clicked;
 
+  let text;
   if (isExplicitLink && hasCustomizedText) {
-    return renderLinkTextForClick(
+    text = renderLinkTextForClick(
       link_text,
       getDataFromClicked(clicked) as any,
     );
+  } else {
+    text =
+      getRemappedValue(value, options) ||
+      formatValue(value, { ...options, view_as: null });
   }
 
-  return (
-    getRemappedValue(value, options) ||
-    formatValue(value, { ...options, view_as: null })
-  );
+  return collapseNewlines ? removeNewLines(text) : text;
 }
 
 function getLinkUrl(
