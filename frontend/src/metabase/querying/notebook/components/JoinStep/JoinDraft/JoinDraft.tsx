@@ -105,7 +105,7 @@ export function JoinDraft({
   );
 
   return (
-    <Flex miw="100%" gap="1rem">
+    <Flex miw="100%" gap="sm">
       <NotebookCell className={S.JoinCell} color={color}>
         <Flex direction="row" gap={6}>
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
