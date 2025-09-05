@@ -630,12 +630,11 @@
       (testing "different columns"
         (is (int? (:id created-at)))
         (is (nil? (:id ca-expr))))
-
       (testing "both refs should match correctly"
         (is (= created-at
-               (lib.equality/find-matching-column (lib/ref created-at) columns)))
+               (lib.equality/find-matching-column query -1 (lib/ref created-at) columns)))
         (is (= ca-expr
-               (lib.equality/find-matching-column (lib/ref ca-expr)    columns)))))))
+               (lib.equality/find-matching-column query -1 (lib/ref ca-expr)    columns)))))))
 
 (deftest ^:parallel disambiguate-matches-using-temporal-unit-if-needed-test
   (let [created-at-month (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)
@@ -644,6 +643,8 @@
                  created-at-year]]
       (is (= col
              (lib.equality/find-matching-column
+              (lib/query meta/metadata-provider (meta/table-metadata :orders))
+              -1
               (lib/ref col)
               [created-at-month
                created-at-year]))))))
@@ -656,9 +657,13 @@
                    latitude-20]]
         (is (= col
                (lib.equality/find-matching-column
+                (lib/query meta/metadata-provider (meta/table-metadata :people))
+                -1
                 (lib/ref col)
                 [latitude-10
-                 latitude-20]))))))
+                 latitude-20])))))))
+
+(deftest ^:parallel disambiguate-matches-using-binning-if-needed-test-2
   (testing "'num-bins' binning strategy"
     (let [total-10 (lib/with-binning (meta/field-metadata :orders :total) {:strategy :num-bins, :num-bins 10})
           total-20 (lib/with-binning (meta/field-metadata :orders :total) {:strategy :num-bins, :num-bins 20})]
@@ -666,6 +671,8 @@
                    total-20]]
         (is (= col
                (lib.equality/find-matching-column
+                (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                -1
                 (lib/ref col)
                 [total-10
                  total-20])))))))
@@ -750,6 +757,8 @@
           cols  (lib/visible-columns query)]
       (is (=? {:name "ID_2", :lib/source-column-alias "Products__ID"}
               (lib.equality/find-matching-column
+               query
+               -1
                [:field
                 {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000002"}
                 "Products__ID"]
@@ -759,13 +768,14 @@
   (let [field-ref [:field {:lib/uuid                "86e6d41c-d693-4f08-ae30-7ad411da8ec7"
                            :effective-type          :type/DateTime
                            :base-type               :type/DateTime
-                           :inherited-temporal-unit :month} 39]
+                           :inherited-temporal-unit :month}
+                   (meta/id :orders :created-at)]
         cols      [{:base-type                 :type/DateTime
                     :created-at                "2025-06-24T20:58:39.593446-07:00"
                     :description               "The date and time an order was submitted."
                     :display-name              "Created At: Year"
                     :effective-type            :type/DateTime
-                    :id                        39
+                    :id                        (meta/id :orders :created-at)
                     :inherited-temporal-unit   :year
                     :last-analyzed             "2025-06-24T20:58:41.088313-07:00"
                     :lib/deduplicated-name     "CREATED_AT"
@@ -778,14 +788,14 @@
                     :lib/type                  :metadata/column
                     :name                      "CREATED_AT"
                     :semantic-type             :type/CreationTimestamp
-                    :table-id                  5
+                    :table-id                  (meta/id :orders)
                     :updated-at                "2025-06-24T20:58:41.088313-07:00"}
                    {:base-type                 :type/DateTime
                     :created-at                "2025-06-24T20:58:39.593446-07:00"
                     :description               "The date and time an order was submitted."
                     :display-name              "Created At: Month"
                     :effective-type            :type/DateTime
-                    :id                        39
+                    :id                        (meta/id :orders :created-at)
                     :inherited-temporal-unit   :month
                     :last-analyzed             "2025-06-24T20:58:41.088313-07:00"
                     :lib/deduplicated-name     "CREATED_AT_2"
@@ -798,10 +808,15 @@
                     :lib/type                  :metadata/column
                     :name                      "CREATED_AT"
                     :semantic-type             :type/CreationTimestamp
-                    :table-id                  5
+                    :table-id                  (meta/id :orders)
                     :updated-at                "2025-06-24T20:58:41.088313-07:00"}]]
     (is (=? {:display-name "Created At: Month"}
-            (lib.equality/find-matching-column field-ref cols)))))
+            (lib.equality/find-matching-column
+             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                 lib/append-stage)
+             -1
+             field-ref
+             cols)))))
 
 (deftest ^:parallel mark-selected-columns-works-for-js-use-cases-test
   (testing "Does mark-selected-columns actually work for the uses cases in [[metabase.lib.js/visible-columns*]] now?"

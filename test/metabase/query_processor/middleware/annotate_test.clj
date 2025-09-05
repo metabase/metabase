@@ -252,9 +252,10 @@
                                 :limit        1})))
                 fields     #{%orders.discount %products.title %people.source}]
             (is (= [{:display_name "Discount"
-                     :field_ref    [:field %orders.discount nil]}
+                     :field_ref    [:field "DISCOUNT" nil]}
                     {:display_name "Products → Title"
-                     :field_ref    [:field %products.title nil]}
+                     :field_ref    [:field "Products__TITLE" nil]}
+                    ;; TODO (Cam 7/23/25) -- ideally this would be using a field name ref.
                     {:display_name "Q → Source"
                      :field_ref    [:field %people.source {:join-alias "Q"}]}]
                    (->> (:cols (add-column-info base-query {}))

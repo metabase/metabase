@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [malli.error :as me]
    [metabase.lib.core :as lib]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.test-metadata :as meta]
@@ -76,3 +77,35 @@
               :alias     "Cat"
               :condition [:= [:field {} 2] [:field {:join-alias "Cat"} 3]]
               :fields    [[:field {} 4]]})))))
+
+(deftest ^:parallel normalize-join-add-strategy-and-fields-test
+  (let [join {:lib/type    :mbql/join
+              :lib/options {:lib/uuid "d7ebb6bd-e7ac-411a-9d09-d8b18329ad46"}
+              :stages      [{:lib/type    :mbql.stage/mbql
+                             :source-card 1}]
+              :alias       "checkins_by_user"
+              :conditions  [[:=
+                             {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
+                             [:field
+                              {:lib/uuid "a2eb96a0-420b-4465-817d-f3c9f789eff4"}
+                              (meta/id :users :id)]
+                             [:field
+                              {:base-type  :type/Integer
+                               :join-alias "checkins_by_user"
+                               :lib/uuid   "b23a769d-774a-4eb5-8fb8-1f6a33c9a8d5"}
+                              "USER_ID"]]]}]
+    (testing "should infer correct schema to normalize with"
+      (is (= ::lib.schema.join/join
+             (#'lib.normalize/infer-schema join))))
+    (testing "should add default values during normalization"
+      (is (=? {:strategy :left-join
+               :fields   :none}
+              (lib/normalize join)))
+      (testing "(via lib/query)"
+        (is (=? {:stages [{:joins [{:strategy :left-join, :fields :none}]}]}
+                (lib/query
+                 meta/metadata-provider
+                 {:database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table (meta/id :checkins)
+                              :joins        [join]}]})))))))

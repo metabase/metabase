@@ -194,6 +194,9 @@
     :source/table-defaults        (:table-id col)
     (:source/joins
      :source/implicitly-joinable) (let [join-alias (or (:metabase.lib.join/join-alias col)
+                                                       ;; TODO (Cam 8/29/25) -- determine why this is suddenly necessary
+                                                       (:alias (m/find-first #(= (:fk-field-id %) (:fk-field-id col))
+                                                                             (:joins (get-in query stage-path))))
                                                        (throw (ex-info (format "Column with source %s is missing join alias" (:lib/source col))
                                                                        {:col col})))]
                                     (or (escaped-join-alias query stage-path join-alias)

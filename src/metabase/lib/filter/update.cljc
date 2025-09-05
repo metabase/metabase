@@ -18,6 +18,7 @@
   (:require
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -32,13 +33,14 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.time :as u.time]))
 
-(defn- is-ref-for-column? [expr column]
-  (and (lib.util/clause-of-type? expr :field)
-       (lib.equality/find-matching-column expr [column])))
+(defn- is-ref-for-column? [query stage-number expr column]
+  (when (lib.util/clause-of-type? expr :field)
+    (let [resolved (lib.field.resolution/resolve-field-ref query stage-number expr)]
+      (lib.equality/= resolved column))))
 
-(defn- contains-ref-for-column? [expr column]
+(defn- contains-ref-for-column? [query stage-number expr column]
   (letfn [(ref-for-column? [expr]
-            (is-ref-for-column? expr column))]
+            (is-ref-for-column? query stage-number expr column))]
     (lib.util.match/match-lite-recursive expr
       (x :guard ref-for-column?) true)))
 
@@ -46,10 +48,12 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
-   matches?     :- fn?]
+   matches?     :- [:=>
+                    [:cat ::lib.schema/query #_stage-number :int #_expr :any ::lib.schema.metadata/column]
+                    :any]]
   (reduce
    (fn [query [_tag _opts expr :as filter-clause]]
-     (if (matches? expr column)
+     (if (matches? query stage-number expr column)
        (lib.remove-replace/remove-clause query stage-number filter-clause)
        query))
    query
@@ -142,7 +146,7 @@
      ([{:keys [query]}]
       query)
      ([{:keys [query has-seen-column?], :as m} breakout]
-      (if (is-ref-for-column? breakout column)
+      (if (is-ref-for-column? query stage-number breakout column)
         (let [query' (if has-seen-column?
                        ;; already seen a breakout for this column: remove other breakouts.
                        (lib.remove-replace/remove-clause query stage-number breakout)

@@ -71,8 +71,11 @@
   Returns true iff `column` satisfies [[lib.types.isa/primary-key?]] and `column` is found in the stage's non-joined
   visible-columns."
   [query stage-number column]
+  (println "col" (pr-str ((juxt :id :metabase.lib.join/join-alias :lib/source-column-alias :name) column)))
   (boolean (and (lib.types.isa/primary-key? column)
-                (find-column-in-visible-columns-ignoring-joins query stage-number column))))
+                (metabase.util/prog1 (find-column-in-visible-columns-ignoring-joins query stage-number column)
+                  (println "<>" (pr-str ((juxt :id :metabase.lib.join/join-alias :lib/source-column-alias :name) <>))) ; NOCOMMIT
+))))
 
 (defn foreign-key?
   "Is `column` a foreign key of `query`?

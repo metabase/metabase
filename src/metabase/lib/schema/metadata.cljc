@@ -489,6 +489,9 @@
     ;; here and if it's actually used for anything important in Lib or the QP (I suspect it's not).
     [:settings {:optional true} [:maybe [:map-of {:decode/normalize lib.schema.common/normalize-map-no-kebab-case} :keyword :any]]]
     ;;
+    ;; Populated by sync. Whether this column is `AUTOINCREMENT` or equivalent, e.g. a Postgres `SERIAL` column.
+    [:database-is-auto-increment {:optional true} [:maybe :boolean]]
+    ;;
     ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
     ;; legacy viz settings. This should not be used for anything other than that.
     [:field-ref {:optional true} [:maybe [:ref :metabase.legacy-mbql.schema/Reference]]]

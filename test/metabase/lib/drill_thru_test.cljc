@@ -1135,7 +1135,6 @@
                                                                (meta/field-metadata :products :id))])))
         source-table-pk       (m/find-first #(= (:id %) (meta/id :orders :id))
                                             (lib/returned-columns orders+products-query))
-
         joined-table-pk       (m/find-first #(= (:id %) (meta/id :products :id))
                                             (lib/returned-columns orders+products-query))
         source-table-fk       (m/find-first #(= (:id %) (meta/id :orders :product-id))
