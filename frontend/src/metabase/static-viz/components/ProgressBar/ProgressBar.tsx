@@ -99,7 +99,7 @@ export const ProgressBar = ({
 
   const barMessage = getProgressMessage(metrics);
   const valueText = metrics.hasValidValue
-    ? formatValue(data.value, format)
+    ? String(formatValue(data.value, format) ?? "—")
     : "—";
 
   const valueTextShift = calculatePointerLabelShift(
@@ -183,11 +183,11 @@ export const ProgressBar = ({
           alignmentBaseline="baseline"
           x={layout.margin.left}
         >
-          {formatValue(0, format)}
+          {String(formatValue(0, format) ?? "0")}
         </Text>
         <Text fontSize={layout.fontSize} textAnchor="end" x={xMax}>
           {metrics.hasValidGoal
-            ? t`Goal ${formatValue(data.goal, format)}`
+            ? t`Goal ${String(formatValue(data.goal, format) ?? data.goal)}`
             : t`Goal: Not set`}
         </Text>
       </Group>
