@@ -219,6 +219,23 @@
     [:limit {:optional true} [:maybe :int]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
+(mr/def ::query-datasource-arguments
+  [:and
+   [:map
+    [:table_id {:optional true} :int]
+    [:model_id {:optional true} :int]
+    [:fields {:optional true} [:maybe [:sequential ::field]]]
+    [:filters {:optional true} [:maybe [:sequential ::filter]]]
+    [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
+    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
+    [:order_by {:optional true} [:maybe [:sequential [:map
+                                                      [:field ::field]
+                                                      [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]]]
+    [:limit {:optional true} [:maybe :int]]]
+   [:fn {:error/message "Exactly one of table_id and model_id required"}
+    #(= (count (select-keys % [:table_id :model_id])) 1)]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
 (mr/def ::count
   [:and
    :int
@@ -950,6 +967,23 @@
                              arguments (mtx/transformer {:name :tool-api-request}))]
     (doto (-> (mc/decode ::filtering-result
                          (metabot-v3.tools.filters/query-model arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+;; TODO tsplude - drop the `/query-model` endpoint and filter logic in favor of this
+(api.macros/defendpoint :post "/query-datasource" :- [:merge ::filtering-result ::tool-request]
+  "Construct a query from a model or table data source."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::query-datasource-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :query-datasource) :llm.log/llm->be)
+  (let [arguments (mc/encode ::query-datasource-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::filtering-result
+                         (metabot-v3.tools.filters/query-datasource arguments)
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
