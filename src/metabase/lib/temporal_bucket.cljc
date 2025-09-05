@@ -468,9 +468,9 @@
                                     original-effective-type)
           options                 (-> options
                                       (assoc :temporal-unit unit
-                                             :effective-type new-effective-type
-                                             :metabase.lib.field/original-effective-type original-effective-type)
-                                      (m/assoc-some :metabase.lib.field/original-temporal-unit original-temporal-unit))]
+                                             :effective-type new-effective-type)
+                                      (m/assoc-some :metabase.lib.field/original-effective-type original-effective-type
+                                                    :metabase.lib.field/original-temporal-unit  original-temporal-unit))]
       [tag options id-or-name])
     ;; `unit` is `nil`: remove the temporal bucket and remember it :metabase.lib.field/original-temporal-unit.
     (let [original-effective-type (:metabase.lib.field/original-effective-type options)
@@ -510,3 +510,25 @@
   (if-some [temporal-unit (:unit column-metadata)]
     (update column-metadata :display_name ensure-ends-with-temporal-unit temporal-unit)
     column-metadata))
+
+(def ^:private valid-units-for-date     (conj lib.schema.temporal-bucketing/date-bucketing-units :default))
+(def ^:private valid-units-for-time     (conj lib.schema.temporal-bucketing/time-bucketing-units :default))
+(def ^:private valid-units-for-datetime lib.schema.temporal-bucketing/temporal-bucketing-units)
+
+(defmulti valid-units-for-type
+  "Returns valid temporal units for `a-type`."
+  {:arglists '([a-type])}
+  keyword)
+
+(defmethod valid-units-for-type :type/*        [_] valid-units-for-datetime)
+(defmethod valid-units-for-type :type/Date     [_] valid-units-for-date)
+(defmethod valid-units-for-type :type/Time     [_] valid-units-for-time)
+(defmethod valid-units-for-type :type/DateTime [_] valid-units-for-datetime)
+
+(mu/defn compatible-temporal-unit?
+  "Check whether some column of `a-type` can be bucketted by the`temporal-unit`. Any column can be bucketed by `nil`
+  temporal unit."
+  [a-type        :- ::lib.schema.common/base-type
+   temporal-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]]
+  (or (nil? temporal-unit)
+      (contains? (valid-units-for-type a-type) temporal-unit)))

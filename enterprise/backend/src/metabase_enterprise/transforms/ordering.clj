@@ -6,9 +6,11 @@
    [flatland.ordered.set :refer [ordered-set]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -16,7 +18,10 @@
 (defn- transform-deps [transform]
   (let [query (-> (get-in transform [:source :query])
                   transforms.util/massage-sql-query
-                  qp.preprocess/preprocess)]
+                  qp.preprocess/preprocess
+                  ;; legacy usage -- don't do things like this going forward
+                  #_{:clj-kondo/ignore [:discouraged-var]}
+                  lib/->legacy-MBQL)]
     (case (:type query)
       :native (driver/native-query-deps (-> (qp.store/metadata-provider)
                                             lib.metadata/database
@@ -121,7 +126,8 @@
 
 (defn available-transforms
   "Given an ordering (see transform-ordering), a set of running transform ids, and a set of completed transform ids,
-  computes which transforms are currently able to be run."
+  computes which transforms are currently able to be run.  Returns transform ids in the order that they appear in the
+  ordering map.  If you want them returned in a specific order, use a map with ordered keys, e.g., a sorted-map."
   [ordering running complete]
   (for [[transform-id deps] ordering
         :when (and (not (or (running transform-id)

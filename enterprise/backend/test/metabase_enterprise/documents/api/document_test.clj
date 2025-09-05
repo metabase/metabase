@@ -778,11 +778,10 @@
                 (is (= 2 (count cloned-cards))))
 
               (testing "should update AST correctly"
-                (let [[associated-embed unassociated-embed] (get-in result [:document :content])]
-                  (is (= (:id (first cloned-cards))
-                         (get-in associated-embed [:attrs :id])))
-                  (is (= (:id (second cloned-cards))
-                         (get-in unassociated-embed [:attrs :id])))))))
+                (let [associated-ids (set (keep #(get-in % [:attrs :id]) (get-in result [:document :content])))]
+                  (is (= #{(:id (first cloned-cards))
+                           (:id (second cloned-cards))}
+                         associated-ids))))))
 
           (testing "original associated card should remain with its document"
             (let [original-associated (t2/select-one :model/Card :id associated-card)]
@@ -836,13 +835,10 @@
               (is (= "Card Without Document" (:name cloned-card))))
 
             (testing "should update AST correctly"
-              (let [[existing-embed cloned-embed] (get-in result [:document :content])]
-                  ;; Card already in document should keep same ID
-                (is (= existing-card-in-doc
-                       (get-in existing-embed [:attrs :id])))
-                  ;; Card without document should have cloned ID
-                (is (= (:id cloned-card)
-                       (get-in cloned-embed [:attrs :id])))))))))))
+              (let [associated-ids (set (keep #(get-in % [:attrs :id]) (get-in result [:document :content])))]
+                (is (= #{existing-card-in-doc
+                         (:id cloned-card)}
+                       associated-ids))))))))))
 
 (deftest put-document-clone-existing-cards-test
   (testing "PUT /api/ee/document/:id - clones existing cards and substitutes IDs in AST"

@@ -1,13 +1,11 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import FormSelect from "metabase/common/components/FormSelect";
-import type { SelectChangeEvent } from "metabase/common/components/Select";
-
-import type { EngineOption } from "../../types";
+import { FormSelect } from "metabase/forms";
+import type { SelectOption } from "metabase/ui";
 
 export interface DatabaseEngineSelectProps {
-  options: EngineOption[];
+  options: SelectOption[];
   disabled: boolean;
   onChange: (engine: string) => void;
 }
@@ -18,8 +16,8 @@ const DatabaseEngineSelect = ({
   onChange,
 }: DatabaseEngineSelectProps): JSX.Element => {
   const handleChange = useCallback(
-    (event: SelectChangeEvent<string>) => {
-      onChange(event.target.value);
+    (value: string) => {
+      onChange(value);
     },
     [onChange],
   );
@@ -27,11 +25,13 @@ const DatabaseEngineSelect = ({
   return (
     <FormSelect
       name="engine"
-      title={t`Database type`}
+      label={t`Database type`}
       placeholder={t`Select a database`}
-      options={options}
+      data={options}
       disabled={disabled}
       onChange={handleChange}
+      mb="md"
+      searchable
     />
   );
 };

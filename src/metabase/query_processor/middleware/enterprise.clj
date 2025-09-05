@@ -8,7 +8,9 @@
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util.i18n :as i18n]))
+   [metabase.query-processor.schema :as qp.schema]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
 
 ;;;; Pre-processing middleware
 
@@ -66,9 +68,9 @@
   [qp]
   qp)
 
-(defn swap-destination-db-middleware
+(mu/defn swap-destination-db-middleware :- ::qp.schema/qp
   "Helper middleware wrapper for [[swap-destination-db]] to make sure we do [[defenterprise]] dispatch correctly on each QP run rather than just once when we combine all of the QP middleware"
-  [qp]
+  [qp :- ::qp.schema/qp]
   (fn [query rff]
     ((swap-destination-db qp) query rff)))
 

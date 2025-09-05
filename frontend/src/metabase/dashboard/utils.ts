@@ -37,7 +37,7 @@ import type {
 import type { SelectedTabId } from "metabase-types/store";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
-  if (after.parameters && before.embedding_params) {
+  if (after.parameters && before.embedding_params && before.enable_embedding) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
       const slugParam = _.find(before.parameters, (param) => {
         return param.slug === embedSlug;
@@ -207,11 +207,9 @@ export function showVirtualDashCardInfoText(
   dashcard: DashboardCard,
   isMobile: boolean,
 ) {
-  if (isVirtualDashCard(dashcard)) {
-    return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
-  } else {
-    return true;
-  }
+  const dashcardAreaSize = dashcard.size_y * dashcard.size_x;
+
+  return isMobile || (dashcardAreaSize >= 12 && dashcard.size_x > 3);
 }
 
 export function getAllDashboardCards(dashboard: Dashboard) {

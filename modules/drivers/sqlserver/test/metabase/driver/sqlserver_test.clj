@@ -5,7 +5,6 @@
    [colorize.core :as colorize]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -15,6 +14,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
+   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
@@ -177,7 +177,7 @@
                                              :order-by     [[:asc $id]]}
                               :order-by     [[:asc $id]]})
                            qp.preprocess/preprocess
-                           (m/dissoc-in [:query :limit]))]
+                           (lib/limit nil))]
       (mt/with-metadata-provider (mt/id)
         (is (= {:query  ["SELECT"
                          "  \"source\".\"name\" AS \"name\""

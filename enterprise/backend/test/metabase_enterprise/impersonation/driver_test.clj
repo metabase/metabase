@@ -604,7 +604,7 @@
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"SQL compilation error:\nObject does not exist, or operation cannot be performed"
+               #"Cannot perform SELECT. This session does not have a current database. Call 'USE DATABASE', or use a qualified name."
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
 
@@ -684,10 +684,9 @@
 
                 (sync/sync-database! database {:scan :schema})
 
-                (let [tables-set #(->> (driver/do-with-resilient-connection
+                (let [tables-set #(->> (driver/describe-database
                                         driver/*driver*
-                                        (t2/select-one :model/Database (mt/id))
-                                        driver/describe-database)
+                                        (t2/select-one :model/Database (mt/id)))
                                        :tables
                                        set)
                       default-table-set (tables-set)
@@ -696,7 +695,8 @@
                                 (fn [driver db options f]
                                   (do-with-resolved-connection driver db options
                                                                (fn [conn]
-                                                                 (driver/set-role! driver/*driver* conn role-a)
+                                                                 (when-not (:connection db)
+                                                                   (driver/set-role! driver/*driver* conn role-a))
                                                                  (f conn))))]
                     (is (= default-table-set (tables-set)))))))))))))
 

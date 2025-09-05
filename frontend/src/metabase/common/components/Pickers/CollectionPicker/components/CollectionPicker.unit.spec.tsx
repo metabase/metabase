@@ -128,11 +128,13 @@ interface SetupOpts {
     model: "collection";
   };
   onItemSelect?: (item: CollectionPickerItem) => void;
+  shouldDisableItem?: (item: CollectionPickerItem) => boolean;
 }
 
 const setup = ({
   initialValue = { id: "root", model: "collection" },
   onItemSelect = jest.fn<void, [CollectionPickerItem]>(),
+  shouldDisableItem,
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
 
@@ -157,6 +159,7 @@ const setup = ({
         onInit={jest.fn()}
         onItemSelect={onItemSelect}
         onPathChange={setPath}
+        shouldDisableItem={shouldDisableItem}
       />
     );
   }
@@ -242,5 +245,19 @@ describe("CollectionPicker", () => {
         screen.queryByTestId("item-picker-level-2"),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("should allow disabling certain items in the collection picker", async () => {
+    act(() => {
+      setup({
+        initialValue: { id: 1, model: "collection" },
+        shouldDisableItem: () => true,
+      });
+    });
+
+    const links = await screen.findAllByRole("link");
+    for (const link of links) {
+      expect(link).toHaveAttribute("data-disabled", "true");
+    }
   });
 });

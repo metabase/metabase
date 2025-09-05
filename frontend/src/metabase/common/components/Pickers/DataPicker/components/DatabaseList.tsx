@@ -12,6 +12,7 @@ interface Props {
   isLoading: boolean;
   selectedItem: DataPickerFolderItem | null;
   onClick: (item: DataPickerFolderItem) => void;
+  shouldDisableItem?: (item: DataPickerFolderItem) => boolean;
 }
 
 const isFolder = () => true;
@@ -23,12 +24,14 @@ export const DatabaseList = ({
   isLoading,
   selectedItem,
   onClick,
+  shouldDisableItem,
 }: Props) => {
   const items: DataPickerFolderItem[] | undefined = useMemo(() => {
     return databases?.map((database) => ({
       id: database.id,
       model: "database",
       name: database.name,
+      database,
     }));
   }, [databases]);
 
@@ -48,10 +51,13 @@ export const DatabaseList = ({
         items={items}
         selectedItem={selectedItem}
         onClick={onClick}
+        shouldDisableItem={(item) => shouldDisableItem?.(item) || false}
+        containerProps={{
+          pb: "1rem",
+        }}
         navLinkProps={(isSelected) => ({
           px: "1.5rem",
           py: "1.25rem",
-          mb: "1rem",
           rightSection: null,
           style: {
             border: isSelected ? undefined : "1px solid var(--mb-color-border)",

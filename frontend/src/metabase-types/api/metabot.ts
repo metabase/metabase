@@ -245,3 +245,9 @@ export interface MetabotGenerateContentResponse {
   description: string;
   error: string | null;
 }
+
+/* Metabot v3 - Add-on Purchase Types */
+
+export interface PurchaseMetabotAddOnRequest {
+  terms_of_service: boolean;
+}

@@ -9,10 +9,17 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+;; `reindex!` below is ok in a parallel test since it's not actually executing anything
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                        (thunk))))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))

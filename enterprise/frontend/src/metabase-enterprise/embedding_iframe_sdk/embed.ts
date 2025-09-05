@@ -4,9 +4,15 @@ import {
   openSamlLoginPopup,
   validateSessionToken,
 } from "embedding/auth-common";
-import { INVALID_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
+import {
+  INVALID_AUTH_METHOD,
+  MetabaseError,
+} from "embedding-sdk-bundle/errors";
 
-import { DISABLE_UPDATE_FOR_KEYS } from "./constants";
+import {
+  ALLOWED_EMBED_SETTING_KEYS_MAP,
+  DISABLE_UPDATE_FOR_KEYS,
+} from "./constants";
 import type {
   SdkIframeEmbedEvent,
   SdkIframeEmbedEventHandler,
@@ -47,6 +53,7 @@ const setupConfigWatcher = () => {
     },
     set(newVal: Record<string, unknown>) {
       assertFieldCanBeUpdated(newVal);
+      assertValidMetabaseConfigField(newVal);
 
       currentConfig = { ...currentConfig, ...newVal };
       proxyConfig = createProxy(currentConfig);
@@ -93,6 +100,23 @@ function assertFieldCanBeUpdated(newValues: Partial<SdkIframeEmbedSettings>) {
       currentConfig[field] !== newValues[field]
     ) {
       raiseError(`${field} cannot be updated after the embed is created`);
+    }
+  }
+}
+
+type AllowedMetabaseConfigKey =
+  (typeof ALLOWED_EMBED_SETTING_KEYS_MAP.base)[number];
+
+function assertValidMetabaseConfigField(
+  newValues: Partial<SdkIframeEmbedSettings>,
+) {
+  for (const field in newValues) {
+    if (
+      !ALLOWED_EMBED_SETTING_KEYS_MAP.base.includes(
+        field as AllowedMetabaseConfigKey,
+      )
+    ) {
+      raiseError(`${field} is not a valid configuration name`);
     }
   }
 }
@@ -288,6 +312,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     this._iframe.style.width = "100%";
     this._iframe.style.height = "100%";
     this._iframe.style.border = "none";
+    this._iframe.style.minHeight = "600px";
 
     this._iframe.setAttribute("data-metabase-embed", "true");
 
@@ -487,6 +512,17 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "entity-types",
 ]);
 
+const MetabaseManageContentElement = createCustomElement("metabase-browser", [
+  "initial-collection",
+  "collection-visible-columns",
+  "collection-page-size",
+  "collection-entity-types",
+  "data-picker-entity-types",
+  "with-new-question",
+  "with-new-dashboard",
+  "read-only",
+]);
+
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
   (window as any)["metabase.embed"] = {
@@ -494,4 +530,8 @@ if (typeof window !== "undefined") {
   };
 }
 
-export { MetabaseDashboardElement, MetabaseQuestionElement };
+export {
+  MetabaseDashboardElement,
+  MetabaseQuestionElement,
+  MetabaseManageContentElement,
+};

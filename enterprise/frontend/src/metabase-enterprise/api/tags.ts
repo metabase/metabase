@@ -19,6 +19,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "transform",
   "transform-tag",
   "transform-job",
+  "transform-job-via-tag",
   "transform-run",
 ] as const;
 
@@ -53,7 +54,10 @@ export function invalidateTags(
 export function provideTransformTags(
   transform: Transform,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform", transform.id)];
+  return [
+    idTag("transform", transform.id),
+    ...(transform.tag_ids?.flatMap((tag) => idTag("transform-tag", tag)) ?? []),
+  ];
 }
 
 export function provideTransformListTags(
@@ -92,7 +96,11 @@ export function provideTransformTagListTags(
 export function provideTransformJobTags(
   job: TransformJob,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform-job", job.id)];
+  return [
+    idTag("transform-job", job.id),
+    ...(job.tag_ids?.map((tagId) => idTag("transform-job-via-tag", tagId)) ??
+      []),
+  ];
 }
 
 export function provideTransformJobListTags(

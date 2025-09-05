@@ -17,6 +17,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -50,12 +51,14 @@
 (declare exists?)
 
 (defn- sync-tracking-atoms! []
-  (reset! *indexes* (into {}
-                          (for [[status table-name] (search-index-metadata/indexes :appdb *index-version-id*)]
-                            (if (exists? table-name)
-                              [status (keyword table-name)]
-                                ;; For debugging, make it clear why we are not tracking the given metadata.
-                              [(keyword (name status) "not-found") (keyword table-name)])))))
+  (let [indexes (into {}
+                      (for [[status table-name] (search-index-metadata/indexes :appdb *index-version-id*)]
+                        (if (exists? table-name)
+                          [status (keyword table-name)]
+                          ;; For debugging, make it clear why we are not tracking the given metadata.
+                          [(keyword (name status) "not-found") (keyword table-name)])))]
+    (log/debugf "Sync tracking atoms: %s" indexes)
+    (reset! *indexes* indexes)))
 
 ;; This exists only to be mocked.
 (defn- now [] (System/nanoTime))
@@ -79,9 +82,11 @@
   (:pending @*indexes*))
 
 (defn gen-table-name
-  "Generate a unique table name to use as a search index table."
-  []
-  (keyword (str/replace (str "search_index__" (u/lower-case-en (u/generate-nano-id))) #"-" "_")))
+  "Generate a unique table name to use as a search index table. If no suffix is provided, none will be used"
+  ([]
+   (gen-table-name ""))
+  ([suffix]
+   (keyword (str (str/replace (str "search_index__" (u/lower-case-en (u/generate-nano-id))) #"-" "_") suffix))))
 
 (defn- table-name [kw]
   (cond-> (name kw)
@@ -119,14 +124,14 @@
   ;; Delete metadata around indexes that are no longer needed.
   (search-index-metadata/delete-obsolete! *index-version-id*)
   ;; Drop any indexes that are no longer referenced.
-  (let [dropped (volatile! 0)]
+  (let [dropped (volatile! [])]
     (doseq [table (orphan-indexes)]
       (try
         (t2/query (sql.helpers/drop-table table))
-        (vswap! dropped inc)
+        (vswap! dropped conj table)
         ;; Deletion could fail if it races with other instances
         (catch ExceptionInfo _)))
-    (log/infof "Dropped %d stale indexes" @dropped)))
+    (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped)))
 
 (defn- ->db-type [t]
   (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))
@@ -190,10 +195,13 @@
     (let [{:keys [pending]} (sync-tracking-atoms!)]
       (or pending
           (let [table-name (gen-table-name)]
+            (log/infof "Creating pending index %s" table-name)
             ;; We may fail to insert a new metadata row if we lose a race with another instance.
             (when (search-index-metadata/create-pending! :appdb *index-version-id* table-name)
               (create-table! table-name))
-            (:pending (sync-tracking-atoms!)))))))
+            (let [pending (:pending (sync-tracking-atoms!))]
+              (log/infof "New pending index %s" pending)
+              pending))))))
 
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
@@ -205,9 +213,11 @@
        (reset! *indexes* {:pending nil, :active pending})))
     ;; Ensure the metadata is updated and pruned.
     (let [{:keys [pending]} (sync-tracking-atoms!)]
+      (log/infof "Activating pending index %s" pending)
       (when pending
-        (reset! *indexes* {:pending nil
-                           :active  (keyword (search-index-metadata/active-pending! :appdb *index-version-id*))}))
+        (let [active (keyword (search-index-metadata/active-pending! :appdb *index-version-id*))]
+          (reset! *indexes* {:pending nil :active active})
+          (log/infof "Activated pending index %s" active)))
       ;; Clean up while we're here
       (delete-obsolete-tables!)
       ;; Did *we* do a rotation?
@@ -332,10 +342,14 @@
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
   []
+  (log/infof "Resetting appdb index for version %s, active table: %s" *index-version-id*
+             (pr-str (active-table)))
   ;; stop tracking any pending table
   (when-let [table-name (pending-table)]
     (when-not *mocking-tables*
-      (search-index-metadata/delete-index! :appdb *index-version-id* table-name))
+      (let [deleted (search-index-metadata/delete-index! :appdb *index-version-id* table-name)]
+        (when (pos? deleted)
+          (log/infof "Deleted %d pending indices" deleted))))
     (swap! *indexes* assoc :pending nil))
   (maybe-create-pending!)
   (activate-table!))
@@ -358,11 +372,18 @@
   [& body]
   `(if @#'*mocking-tables*
      ~@body
-     (let [table-name# (gen-table-name)]
+     (let [table-name#      (gen-table-name "_temp")
+           version#         (str (string/random-string 8) "-temp")]
        (binding [*mocking-tables* true
                  *indexes*        (atom {:active table-name#})]
          (try
+           (t2/insert! :model/SearchIndexMetadata {:engine     :appdb
+                                                   :version    version#
+                                                   :lang_code  (i18n/site-locale-string)
+                                                   :status     :pending
+                                                   :index_name (name table-name#)})
            (create-table! table-name#)
            ~@body
            (finally
-             (#'drop-table! table-name#)))))))
+             (#'drop-table! table-name#)
+             (t2/delete! :model/SearchIndexMetadata :version version#)))))))

@@ -39,10 +39,12 @@ describe("getUpdateButtonProps", () => {
   });
 
   describe("required parameters", () => {
-    it("without both values, shows reset", () => {
-      expect(getUpdateButtonProps([], [], ["CA", "WA"], true)).toStrictEqual({
+    it("when value equals unsaved equals default, shows disabled reset", () => {
+      expect(
+        getUpdateButtonProps(["CA", "WA"], ["CA", "WA"], ["CA", "WA"], true),
+      ).toStrictEqual({
         label: "Set to default",
-        isDisabled: false,
+        isDisabled: true,
       });
     });
 
@@ -52,6 +54,15 @@ describe("getUpdateButtonProps", () => {
       ).toStrictEqual({
         label: "Set to default",
         isDisabled: true,
+      });
+    });
+
+    it("when value is default but unsaved is empty, shows enabled reset", () => {
+      expect(
+        getUpdateButtonProps(["CA", "WA"], [], ["CA", "WA"], true),
+      ).toStrictEqual({
+        label: "Set to default",
+        isDisabled: false,
       });
     });
 
@@ -85,6 +96,15 @@ describe("getUpdateButtonProps", () => {
     it("when value does not equal default, and unsaved is empty, shows Set to default", () => {
       expect(
         getUpdateButtonProps(["WA"], [], ["CA", "WA"], true),
+      ).toStrictEqual({
+        label: "Set to default",
+        isDisabled: false,
+      });
+    });
+
+    it("when value is different from default and unsaved equals default, shows enabled reset", () => {
+      expect(
+        getUpdateButtonProps(["NY"], ["CA", "WA"], ["CA", "WA"], true),
       ).toStrictEqual({
         label: "Set to default",
         isDisabled: false,

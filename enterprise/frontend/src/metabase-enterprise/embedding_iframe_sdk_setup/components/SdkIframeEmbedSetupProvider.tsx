@@ -5,9 +5,10 @@ import {
   useMemo,
   useState,
 } from "react";
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
+import { useSearchQuery } from "metabase/api";
 import { useUserSetting } from "metabase/common/hooks";
 
 import { trackEmbedWizardSettingsUpdated } from "../analytics";
@@ -42,8 +43,20 @@ export const SdkIframeEmbedSetupProvider = ({
 
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
-  const { recentDashboards, recentQuestions, addRecentItem, isRecentsLoading } =
-    useRecentItems();
+  const {
+    recentDashboards,
+    recentQuestions,
+    recentCollections,
+    addRecentItem,
+    isRecentsLoading,
+  } = useRecentItems();
+
+  const { data: searchData } = useSearchQuery({
+    limit: 0,
+    models: ["dataset"],
+  });
+
+  const modelCount = searchData?.total ?? 0;
 
   const defaultSettings = useMemo(() => {
     return getDefaultSdkIframeEmbedSettings(
@@ -56,7 +69,25 @@ export const SdkIframeEmbedSetupProvider = ({
     "select-embed-experience",
   );
 
-  const settings = rawSettings ?? defaultSettings;
+  const settings = useMemo(() => {
+    const latestSettings = rawSettings ?? defaultSettings;
+
+    // Append entity-types=model if there are more than 2 models in the instance.
+    if (modelCount > 2) {
+      return match(latestSettings)
+        .with({ componentName: "metabase-question" }, (settings) => ({
+          ...settings,
+          entityTypes: ["model" as const],
+        }))
+        .with({ componentName: "metabase-browser" }, (settings) => ({
+          ...settings,
+          dataPickerEntityTypes: ["model" as const],
+        }))
+        .otherwise((settings) => settings);
+    }
+
+    return latestSettings;
+  }, [defaultSettings, modelCount, rawSettings]);
 
   // Which embed experience are we setting up?
   const experience = useMemo(
@@ -65,8 +96,10 @@ export const SdkIframeEmbedSetupProvider = ({
         settings,
       )
         .with({ template: "exploration" }, () => "exploration")
-        .with({ questionId: P.nonNullable }, () => "chart")
-        .otherwise(() => "dashboard"),
+        .with({ componentName: "metabase-question" }, () => "chart")
+        .with({ componentName: "metabase-browser" }, () => "browser")
+        .with({ componentName: "metabase-dashboard" }, () => "dashboard")
+        .exhaustive(),
     [settings],
   );
 
@@ -119,6 +152,7 @@ export const SdkIframeEmbedSetupProvider = ({
     updateSettings,
     recentDashboards,
     recentQuestions,
+    recentCollections,
     addRecentItem,
     isEmbedSettingsLoaded,
     isLoadingParameters,

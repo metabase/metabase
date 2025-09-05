@@ -1,5 +1,11 @@
-//
-import { createElement, useCallback, useEffect, useMemo } from "react";
+import {
+  createElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParam } from "react-use";
 import { match } from "ts-pattern";
 
@@ -10,8 +16,10 @@ import { Card } from "metabase/ui";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
+import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
 import S from "./SdkIframeEmbedPreview.module.css";
 
 // we import the equivalent of embed.js so that we don't add extra loading time
@@ -26,11 +34,14 @@ declare global {
 
 export const SdkIframeEmbedPreview = () => {
   const { settings } = useSdkIframeEmbedSetupContext();
+  const [isLoading, setIsLoading] = useState(true);
 
   const localeOverride = useSearchParam("locale");
 
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
+
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const defineMetabaseConfig = useCallback(
     (metabaseConfig: SdkIframeEmbedBaseSettings) => {
@@ -39,28 +50,34 @@ export const SdkIframeEmbedPreview = () => {
     [],
   );
 
-  // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
-  // some color will not be reset to the default (e.g. text color, CSS variables).
-  // We can remove this block once EMB-696 is fixed.
-  const defaultTheme: MetabaseTheme = useMemo(() => {
-    const colors = Object.fromEntries(
-      getConfigurableThemeColors().map((color) => [
-        color.key,
-        applicationColors?.[color.originalColorKey] ??
-          defaultMetabaseColors[color.originalColorKey],
-      ]),
+  const derivedTheme = useMemo(() => {
+    // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
+    // some color will not be reset to the default (e.g. text color, CSS variables).
+    // We can remove this block once EMB-696 is fixed.
+    const defaultTheme: MetabaseTheme = {
+      colors: Object.fromEntries(
+        getConfigurableThemeColors().map((color) => [
+          color.key,
+          applicationColors?.[color.originalColorKey] ??
+            defaultMetabaseColors[color.originalColorKey],
+        ]),
+      ),
+    };
+
+    return getDerivedDefaultColorsForEmbedFlow(
+      settings.theme ?? defaultTheme,
+      applicationColors ?? undefined,
     );
-    return { colors };
-  }, [applicationColors]);
+  }, [applicationColors, settings.theme]);
 
   const metabaseConfig = useMemo(
     () => ({
       instanceUrl,
       useExistingUserSession: true,
-      theme: settings.theme ?? defaultTheme,
+      theme: derivedTheme,
       ...(localeOverride ? { locale: localeOverride } : {}),
     }),
-    [instanceUrl, localeOverride, settings.theme, defaultTheme],
+    [instanceUrl, localeOverride, derivedTheme],
   );
 
   // initial configuration, needed so that the element finds the config on first render
@@ -72,12 +89,32 @@ export const SdkIframeEmbedPreview = () => {
     defineMetabaseConfig(metabaseConfig);
   }, [metabaseConfig, defineMetabaseConfig]);
 
+  // Show a "fake" loading indicator when componentName changes.
+  // Embed JS has its own loading indicator, but it shows up after the iframe loads.
+  useEffect(() => {
+    if (containerRef.current) {
+      const embed = containerRef.current.querySelector(settings.componentName);
+      const handleReady = () => setIsLoading(false);
+
+      if (embed) {
+        setIsLoading(true);
+        embed.addEventListener("ready", handleReady);
+
+        return () => {
+          embed.removeEventListener("ready", handleReady);
+        };
+      }
+    }
+  }, [settings.componentName]);
+
   return (
     <Card
       className={S.EmbedPreviewIframe}
       id="iframe-embed-container"
       bg={settings.theme?.colors?.background}
       h="100%"
+      ref={containerRef}
+      pos="relative"
     >
       {match(settings)
         .with(
@@ -122,7 +159,18 @@ export const SdkIframeEmbedPreview = () => {
               : undefined,
           }),
         )
+        .with({ componentName: "metabase-browser" }, (s) =>
+          createElement("metabase-browser", {
+            "read-only": s.readOnly,
+            "initial-collection": s.initialCollection,
+            "collection-visible-columns": s.collectionVisibleColumns
+              ? JSON.stringify(s.collectionVisibleColumns)
+              : undefined,
+          }),
+        )
         .exhaustive()}
+
+      <EmbedPreviewLoadingOverlay isVisible={isLoading} />
     </Card>
   );
 };

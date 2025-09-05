@@ -18,7 +18,7 @@
 (mr/def ::transform-details
   [:map
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
-   [:connection-details :any]
+   [:conn-spec :any]
    [:query :string]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
 
@@ -35,13 +35,15 @@
   ([target database _run-id]
    ;; sync the new table (note that even a failed sync status means that the execution succeeded)
    (log/info "Syncing target" (pr-str target) "for transform")
-   (transforms.util/activate-table! database target)))
+   (transforms.util/activate-table-and-mark-computed! database target)))
 
 (defn run-transform!
   "Run a compiled transform"
-  [run-id driver transform-details opts]
+  [run-id driver {:keys [db-id conn-spec output-schema] :as transform-details} opts]
   ;; local run is responsible for status
   (try
+    (when-not (driver/schema-exists? driver db-id output-schema)
+      (driver/create-schema-if-needed! driver conn-spec output-schema))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
       (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
@@ -65,9 +67,11 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           transform-details {:transform-type (keyword (:type target))
-                              :connection-details (driver/connection-details driver database)
+           transform-details {:db-id db
+                              :transform-type (keyword (:type target))
+                              :conn-spec (driver/connection-spec driver database)
                               :query (transforms.util/compile-source source)
+                              :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
            opts {:overwrite? true}]
        (when-not (driver.u/supports? driver feature database)

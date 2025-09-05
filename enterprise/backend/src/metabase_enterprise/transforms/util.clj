@@ -1,10 +1,16 @@
 (ns metabase-enterprise.transforms.util
   (:require
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.util Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -41,13 +47,12 @@
      (sync/sync-table! table)
      table)))
 
-(defn activate-table!
+(defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
   [database target]
   (when-let [table (sync-table! database target {:create? true})]
-    ;; TODO this should probably be a function in the sync module
-    (when (not (:active table))
-      (t2/update! :model/Table (:id table) {:active true}))))
+    (when (or (not (:active table)) (not (= (:data_authority table) :computed)))
+      (t2/update! :model/Table (:id table) {:active true, :data_authority :computed}))))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."
@@ -88,3 +93,32 @@
   [transform]
   (case (-> transform :target :type)
     "table"             :transforms/table))
+
+(defn ->instant
+  "Convert a temporal value `t` to an Instant in the system timezone."
+  ^Instant [t]
+  (when t
+    (condp instance? t
+      Instant        t
+      Date           (.toInstant ^Date t)
+      OffsetDateTime (.toInstant ^OffsetDateTime t)
+      ZonedDateTime  (.toInstant ^ZonedDateTime t)
+      LocalDateTime  (recur (.atZone ^LocalDateTime t (t/zone-id)))
+      String         (recur (u.date/parse t))
+      LocalTime      (recur (.atDate ^LocalTime t (t/local-date)))
+      OffsetTime     (recur (.atDate ^OffsetTime t (t/local-date)))
+      LocalDate      (recur (.atStartOfDay ^LocalDate t))
+      (throw (ex-info (str "Cannot convert temporal " t " of type " (type t) " to an Instant")
+                      {:temporal t})))))
+
+(defn utc-timestamp-string
+  "Convert the timestamp t to a string encoding the it in the system timezone."
+  [t]
+  (-> t ->instant str))
+
+(defn localize-run-timestamps
+  "Convert the timestamps of a `run` to ISO strings in UTC."
+  [run]
+  (-> run
+      (u/update-some :start_time utc-timestamp-string)
+      (u/update-some :end_time   utc-timestamp-string)))

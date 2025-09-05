@@ -41,7 +41,7 @@ const databaseTestCases = [
     expectedFields: [
       { label: "Host", value: "localhost" },
       { label: "Port", value: "8443" },
-      { label: "Databases", value: "testdb" },
+      { label: "Databases", value: "All" },
       { label: "Display name", value: "testdb" },
       { label: "Username", value: "testuser" },
       { label: "Additional JDBC connection string options", value: "ssl=true" },
@@ -253,7 +253,7 @@ describe("Database connection strings", () => {
     );
 
     cy.findByLabelText("Port").should("have.value", "1111");
-    cy.findByLabelText("Database type").should("have.text", "PostgreSQL");
+    cy.findByLabelText("Database type").should("have.value", "PostgreSQL");
   });
 
   describe("actual database connections", { tags: "@external" }, () => {

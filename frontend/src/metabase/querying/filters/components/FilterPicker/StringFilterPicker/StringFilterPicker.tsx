@@ -27,6 +27,7 @@ export function StringFilterPicker({
   withSubmitButton,
   onChange,
   onBack,
+  readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -83,6 +84,7 @@ export function StringFilterPicker({
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
         onBack={onBack}
+        readOnly={readOnly}
       >
         <FilterOperatorPicker
           value={operator}

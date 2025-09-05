@@ -1,13 +1,26 @@
 import { t } from "ttag";
 
+import { hasFeature } from "metabase/admin/databases/utils";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type {
+  Database,
   TransformRunMethod,
   TransformRunStatus,
 } from "metabase-types/api";
 
-export function parseLocalTimestamp(timestamp: string) {
-  return parseTimestamp(timestamp, null, true);
+export function parseTimestampWithTimezone(
+  timestamp: string,
+  systemTimezone: string | undefined,
+) {
+  const date = parseTimestamp(timestamp);
+  if (systemTimezone == null) {
+    return date;
+  }
+  try {
+    return date.tz(systemTimezone);
+  } catch {
+    return date;
+  }
 }
 
 export function formatStatus(status: TransformRunStatus) {
@@ -30,4 +43,16 @@ export function formatRunMethod(trigger: TransformRunMethod) {
     case "cron":
       return t`Schedule`;
   }
+}
+
+export function doesDatabaseSupportTransforms(database?: Database): boolean {
+  if (!database) {
+    return false;
+  }
+
+  return (
+    !database.is_sample &&
+    !database.is_audit &&
+    hasFeature(database, "transforms/table")
+  );
 }

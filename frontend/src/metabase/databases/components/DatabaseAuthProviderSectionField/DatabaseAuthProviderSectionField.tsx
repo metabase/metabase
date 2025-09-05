@@ -2,9 +2,8 @@ import { useField } from "formik";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import FormField from "metabase/common/components/FormField";
-
-import { SectionButton } from "./DatabaseAuthProviderSectionField.styled";
+import { FormField } from "metabase/forms";
+import { Button } from "metabase/ui";
 
 export interface DatabaseAuthProviderSectionFieldProps {
   name: string;
@@ -21,9 +20,14 @@ const DatabaseAuthProviderSectionField = ({
 
   return (
     <FormField>
-      <SectionButton type="button" onClick={handleClick}>
+      <Button
+        w="fit-content"
+        variant="subtle"
+        size="compact-sm"
+        onClick={handleClick}
+      >
         {value ? t`Use password` : t`Use an authentication provider`}
-      </SectionButton>
+      </Button>
     </FormField>
   );
 };

@@ -4,7 +4,7 @@ title: "Metabase config file template"
 
 # Metabase config file template
 
-You can generate the following docs by changing into the top-level Metabase directory and running:
+You can generate this doc page by changing into the top-level Metabase directory and running:
 
 ```
 clojure -M:doc:ee config-template
@@ -69,7 +69,6 @@ config:
   settings:
     admin-email: null
     aggregated-query-row-limit: null
-    ai-service-base-url: http://localhost:8000
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -119,9 +118,6 @@ config:
     db-query-timeout-minutes: 20
     default-maps-enabled: true
     download-row-limit: null
-    ee-ai-features-enabled: false
-    ee-openai-api-key: null
-    ee-openai-model: gpt-4-turbo-preview
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
     email-from-name: null
@@ -138,7 +134,7 @@ config:
     email-smtp-username: null
     email-smtp-username-override: null
     embedding-app-origins-interactive: null
-    embedding-app-origins-sdk: localhost:*
+    embedding-app-origins-sdk: ""
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
@@ -160,6 +156,7 @@ config:
     help-link-custom-destination: https://www.metabase.com/help/premium
     http-channel-host-strategy: external-only
     humanization-strategy: simple
+    index-update-thread-count: 2
     install-analytics-database: true
     jdbc-data-warehouse-max-connection-pool-size: 15
     jwt-attribute-email: email
@@ -242,7 +239,6 @@ config:
     saml-user-provisioning-enabled: true
     scim-enabled: null
     sdk-encryption-validation-key: null
-    search-engine: appdb
     search-language: null
     search-typeahead-enabled: true
     send-email-on-first-login-from-new-device: true
@@ -257,7 +253,6 @@ config:
     show-homepage-data: true
     show-homepage-xrays: true
     show-metabase-links: true
-    show-metabot: true
     show-static-embed-terms: true
     site-locale: en
     site-name: Metabase

@@ -371,13 +371,16 @@
                   (u/id db-or-id-or-spec)     db-or-id-or-spec
                   ;; otherwise it's a spec and we can't get the db
                   :else nil)]
-    (set-role-if-supported! driver conn db)
-    (driver/set-database-used! driver conn db))
+    (set-role-if-supported! driver conn db))
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (let [read-only? (not write?)]
+    (let [read-only? (not (or write?
+                              ;; we need to set autoCommit to false which causes postgresql
+                              ;; to enforce readOnly which will break queries that rely on
+                              ;; ddl statements, etc (#61892)
+                              (and (-> options :download?) (= driver :postgres))))]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
         ;; to be a hint to the driver to enable database optimizations
@@ -619,7 +622,7 @@
 
 (defn- arrays->vectors
   [obj]
-  (if (.isArray (class obj))
+  (if (some-> obj class .isArray)
     (mapv arrays->vectors obj)
     obj))
 
@@ -832,8 +835,12 @@
 ;;; |                                                 Actions Stuff                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/execute-write-query! :sql-jdbc
-  [driver {{sql :query, :keys [params]} :native}]
+(mu/defmethod driver/execute-write-query! :sql-jdbc
+  [driver                                 :- :keyword
+   {{sql :query, :keys [params]} :native} :- [:map
+                                              [:type   [:= :native]]
+                                              [:native [:map
+                                                        [:query :string]]]]]
   {:pre [(string? sql)]}
   (try
     (do-with-connection-with-options
@@ -863,11 +870,11 @@
                       (.executeUpdate stmt sql))}))
 
 (defmethod driver/execute-raw-queries! :sql-jdbc
-  [driver connection-details queries]
+  [driver conn-spec queries]
   (try
     (do-with-connection-with-options
      driver
-     connection-details
+     conn-spec
      {:write? true}
      (fn [^Connection conn]
        (.setAutoCommit conn false)
