@@ -9,6 +9,8 @@
    [[metabase.driver.sql-jdbc]] for more details."
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.auth-provider.core :as auth-provider]
@@ -1276,6 +1278,27 @@
   {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti insert-from-source!
+  "Inserts data from a data source into an existing table.
+   This abstracts away the conversion and insertion process, allowing drivers
+   to optimize based on the data source type. Returns number of rows inserted. "
+  {:added "0.57.0", :arglists '([driver database-id table-name column-names data-source])}
+  (fn [driver _ _ _ data-source]
+    [(dispatch-on-initialized-driver driver) (:type data-source)])
+  :hierarchy #'hierarchy)
+
+(defmethod insert-from-source! [::driver :rows]
+  [driver db-id table-name column-names {:keys [data]}]
+  (when (seq data)
+    (insert-into! driver db-id table-name column-names data))
+  (count data))
+
+(defmethod insert-from-source! [::driver :csv-file]
+  [driver db-id table-name column-names {:keys [file]}]
+  (let [csv-rows (csv/read-csv (io/reader file))
+        data-rows (rest csv-rows)]
+    (insert-from-source! driver db-id table-name column-names {:type :rows :data data-rows})))
 
 (defmulti add-columns!
   "Add columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
