@@ -47,3 +47,9 @@
            (drop-target! target#))))
     `(mt/with-model-cleanup [:model/Transform]
        ~@body)))
+
+(defn table-rows
+  [table-name]
+  (mt/rows (mt/process-query {:database (mt/id)
+                              :query    {:source-table (t2/select-one-pk :model/Table :name table-name)}
+                              :type     :query})))

@@ -5,14 +5,21 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time.api :as jt]
+   [java-time.api :as t]
    [metabase-enterprise.transforms.execute :as execute]
+   [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.python-runner :as python-runner]
+   [metabase-enterprise.transforms.schedule :as transforms.schedule]
+   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
+   [metabase-enterprise.transforms.test-util :as transforms.tu]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -236,11 +243,11 @@
 
 (defn- datetime-equal?
   [expected-iso-str actual-pandas-str]
-  (let [formatter   (jt/formatter "yyyy-MM-dd HH:mm:ssXXX")
-        expected-dt (jt/zoned-date-time expected-iso-str)
-        actual-dt   (jt/offset-date-time formatter actual-pandas-str)]
-    (= (jt/to-millis-from-epoch expected-dt)
-       (jt/to-millis-from-epoch actual-dt))))
+  (let [formatter   (t/formatter "yyyy-MM-dd HH:mm:ssXXX")
+        expected-dt (t/zoned-date-time expected-iso-str)
+        actual-dt   (t/offset-date-time formatter actual-pandas-str)]
+    (= (t/to-millis-from-epoch expected-dt)
+       (t/to-millis-from-epoch actual-dt))))
 
 (deftest transform-type-test
   (mt/test-drivers #{:postgres}
@@ -311,3 +318,34 @@
                     "scheduled_for" :offset-datetime}
                    (u/for-map [{:keys [name dtype]} (:fields metadata)]
                      [name (dtype->table-type dtype)])))))))))
+
+(deftest python-transform-scheduled-job-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-temp-scheduler!
+      (task/init! ::transforms.schedule/RunTransform)
+      (mt/test-drivers #{:h2 :postgres}
+        (mt/with-premium-features #{:transforms}
+          (mt/dataset transforms-dataset/transforms-test
+            (transforms.tu/with-transform-cleanup! [target {:type   "table"
+                                                            :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                                                            :name   "target_table"}]
+              (mt/with-temp
+                [:model/TransformTag {tag-id :id}       {:name "every second"}
+                 :model/Transform    {transform-id :id} {:name   "Gadget Products"
+                                                         :source {:type  "python"
+                                                                  :source-database (mt/id)
+                                                                  :source-tables {"transforms_customers" (mt/id :transforms_customers)}
+                                                                  :body  (str "import pandas as pd\n"
+                                                                              "\n"
+                                                                              "def transform():\n"
+                                                                              "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
+                                                         :target  (assoc target :database (mt/id))}
+                 :model/TransformTransformTag   _  {:transform_id transform-id :tag_id tag-id :position 0}
+                 :model/TransformJob {job-id :id :as job} {:schedule "* * * * * ? *"}
+                 :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 0}]
+                (transforms.schedule/initialize-job! job)
+                (transforms.schedule/update-job! job-id "* * * * * ? *")
+                (is (true? (u/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (mt/db) target))
+                                    :done?   true?
+                                    :timeout 30000})))
+                (is (true? (t2/exists? :model/Table :name (:name target))))))))))))
