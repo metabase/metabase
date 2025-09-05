@@ -47,6 +47,13 @@
   [gate-contents id]
   (some #(when (= (:id %) id) %) gate-contents))
 
+(defn- clear-gate-table!
+  "Clear all entries from the gate table to ensure clean test state"
+  [pgvector gate-table-name]
+  (jdbc/execute! pgvector
+                 (-> {:delete-from [(keyword gate-table-name)]}
+                     (sql/format :quoted true))))
+
 (deftest repair-index-integration-test
   (testing "repair-index! properly handles document additions and deletions via gate table"
     (mt/with-premium-features #{:semantic-search}
@@ -54,6 +61,7 @@
         (let [pgvector       semantic.tu/db
               index-metadata semantic.tu/mock-index-metadata
               gate-table     (:gate-table-name index-metadata)
+              _              (clear-gate-table! pgvector gate-table)
               initial-docs   [(create-test-document "card" 1 "Dog Training Guide")
                               (create-test-document "card" 2 "Cat Behavior Study")
                               (create-test-document "dashboard" 3 "Animal Stats")]]
