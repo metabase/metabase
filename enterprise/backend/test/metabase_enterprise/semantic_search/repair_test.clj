@@ -87,17 +87,17 @@
         (let [pgvector       semantic.tu/db
               index-metadata semantic.tu/mock-index-metadata
               gate-table     (:gate-table-name index-metadata)
-              initial-docs   [(create-test-document "card" 1 "Dog Training Guide")]]
+              initial-docs   [(create-test-document "card" 6 "Dog Training Guide")]]
           (semantic.core/update-index! initial-docs)
           (semantic.tu/index-all!)
 
           (testing "repair table is cleaned up after successful repair"
             (let [test-repair-table-name "repair_table_cleanup_test"]
               (with-redefs [semantic.repair/repair-table-name (constantly test-repair-table-name)]
-                (semantic.core/repair-index! [(create-test-document "card" 2 "New Test Card")])
+                (semantic.core/repair-index! [(create-test-document "card" 7 "New Test Card")])
 
                 (let [gate-contents (gate-table-contents pgvector gate-table)]
-                  (is (tombstone? (gate-entry-by-id gate-contents "card_1")))
-                  (is (some? (gate-entry-by-id gate-contents "card_2")))
+                  (is (tombstone? (gate-entry-by-id gate-contents "card_6")))
+                  (is (some? (gate-entry-by-id gate-contents "card_7")))
                   (is (not (semantic.util/table-exists? pgvector test-repair-table-name))
                       "Repair table should be cleaned up after repair-index! completes"))))))))))
