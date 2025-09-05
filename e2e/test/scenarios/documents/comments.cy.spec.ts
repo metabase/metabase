@@ -272,6 +272,24 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.findByText("This comment was deleted.").should("be.visible");
         cy.findByText("Reply 1").should("be.visible");
         cy.findByText("Reply 2").should("be.visible");
+
+        cy.log("allows to edit a comment");
+        Comments.getCommentByText("Reply 1").realHover();
+        Comments.getCommentByText("Reply 1")
+          .findByLabelText("More actions")
+          .click();
+      });
+
+      H.popover().findByText("Edit").click();
+      cy.log("editor should be autofocused when editing");
+      cy.realType("My ");
+      cy.realPress([META_KEY, "Enter"]);
+
+      H.modal().within(() => {
+        Comments.getCommentByText("My Reply 1").should("be.visible");
+        Comments.getCommentByText("My Reply 1")
+          .findByRole("textbox")
+          .should("have.attr", "contenteditable", "false");
       });
     });
   });
