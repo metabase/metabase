@@ -371,7 +371,7 @@
 
             row-values   [[1
                            19.99
-                           true
+                           (if (= driver/*driver* :sqlserver) 1 true)
                            (if (= driver/*driver* :mysql) "2024-01-01 12:00:00" "2024-01-01T12:00:00Z")
                            (if (= driver/*driver* :mysql) "2024-01-01 12:00:00" "2024-01-01T12:00:00")
                            "2024-01-01"
@@ -386,7 +386,7 @@
                                 "def transform(" table-name "):\n"
                                 "    return " table-name)
             result (execute {:code transform-code
-                             :tables {table-name (mt/id (keyword table-name))}})
+                             :tables {table-name (mt/id qualified-table-name)}})
             metadata (some-> (:metadata result) json/decode+kw)]
 
         (testing "All expected columns are present"
