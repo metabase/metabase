@@ -548,7 +548,6 @@
 (defmethod type->database-type :type/Text [_] [[:varchar 65535]])
 (defmethod type->database-type :type/Number [_] [:bigint])
 (defmethod type->database-type :type/Float [_] [(keyword "double precision")])
-(defmethod type->database-type :type/Decimal [_] [:numeric])
 (defmethod type->database-type :type/Boolean [_] [:boolean])
 (defmethod type->database-type :type/Date [_] [:date])
 (defmethod type->database-type :type/DateTime [_] [:timestamp])
