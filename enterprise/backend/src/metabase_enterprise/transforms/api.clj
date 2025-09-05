@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.api
   (:require
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as trasnforms.canceling]
@@ -275,20 +276,21 @@
         cancel-chan (a/promise-chan)]
     (trasnforms.canceling/chan-start-run! run-id cancel-chan)
     (try
-      (let [{:keys [body status]} (transforms.execute/call-python-runner-api! (:code body) (:tables body) run-id cancel-chan)]
+      (let [{:keys [response output events]} (transforms.execute/test-python-transform! (:code body) (:tables body) run-id cancel-chan)
+            {:keys [body status]} response]
         (if (= status 200)
           (do
             (log/info "Python test execution succeeded")
             (-> (response/response {:message (deferred-tru "Python code executed successfully")
-                                    :result  {:body body}})
+                                    :result  {:body (assoc body :output output)}})
                 (assoc :status 200)))
           (do
             (log/error "Error executing Python test code")
             (-> (response/response {:message   (deferred-tru "Python code execution failed")
-                                    :error     (:error body)
-                                    :stdout    (:stdout body)
-                                    :stderr    (:stderr body)
-                                    :exit_code (:exit-code body)})
+                                    :error     body
+                                    :stdout    (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
+                                    :stderr    (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))
+                                    :exit_code (:exit_code (:exit_code body))})
                 (assoc :status status)))))
       (finally
         (trasnforms.canceling/chan-end-run! run-id)))))
