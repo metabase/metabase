@@ -264,6 +264,14 @@ export const ListViz = ({
     return {};
   }, [question]);
 
+  const columnsMetadata = useMemo(() => {
+    if (!question) {
+      return [];
+    }
+    const query = question.query();
+    return data.cols.map((col) => Lib.fromLegacyColumn(query, -1, col));
+  }, [data]);
+
   // Get the entity type from the question's source table
   const entityType = useMemo(() => {
     if (!question) {
@@ -319,6 +327,7 @@ export const ListViz = ({
           settings={settings}
           entityType={entityType}
           onChange={updateListSettings}
+          columnsMetadata={columnsMetadata}
         />
       ) : (
         <ListView

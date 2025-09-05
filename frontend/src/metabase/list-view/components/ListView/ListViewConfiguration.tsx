@@ -11,13 +11,14 @@ import {
 } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   ReorderableTagsInput,
   SortablePill,
 } from "metabase/common/components/ReorderableTagsInput/ReorderableTagsInput";
+import { getColumnExample } from "metabase/query_builder/components/expressions/CombineColumns/util";
 import {
   ActionIcon,
   Box,
@@ -29,7 +30,8 @@ import {
   Text,
 } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetColumn, DatasetData } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
 
 import { ENTITY_ICONS, getEntityIcon, useListColumns } from "./ListView";
 import S from "./ListView.module.css";
@@ -52,6 +54,7 @@ export const ListViewConfiguration = ({
   entityType,
   onChange,
   settings,
+  columnsMetadata,
 }: {
   data: DatasetData;
   entityType?: string;
@@ -61,6 +64,7 @@ export const ListViewConfiguration = ({
     entityIcon?: string;
   }) => void;
   settings?: ComputedVisualizationSettings;
+  columnsMetadata: Lib.ColumnMetadata[];
 }) => {
   const { cols } = data;
 
@@ -125,7 +129,10 @@ export const ListViewConfiguration = ({
     .map(findColByName)
     .filter(Boolean) as DatasetColumn[];
 
-  const firstRow = data.rows?.[0];
+  const previewSample = useMemo(
+    () => generatePreviewSample(data.rows, columnsMetadata),
+    [data.rows, columnsMetadata],
+  );
 
   const onConfigurationChange = ({
     left = leftValues,
@@ -379,9 +386,9 @@ export const ListViewConfiguration = ({
           data-testid="list-view-preview"
         >
           <Text fw="bold">{t`Preview`}</Text>
-          {firstRow ? (
+          {previewSample ? (
             <ListViewItem
-              row={firstRow}
+              row={previewSample}
               cols={cols}
               settings={settings as ComputedVisualizationSettings}
               entityIcon={selectedEntityIcon}
@@ -406,3 +413,32 @@ export const ListViewConfiguration = ({
     </DndContext>
   );
 };
+
+function generatePreviewSample(rows: RowValues[], cols: Lib.ColumnMetadata[]) {
+  if (!rows.length) {
+    return null;
+  }
+
+  // Start with the first row as our sample
+  const sample = [...rows[0]];
+
+  // Track which positions still need non-null values
+  const nullPositions = new Set<number>();
+  sample.forEach((value, index) => {
+    if (value === null || value === undefined) {
+      nullPositions.add(index);
+    }
+  });
+
+  // If first row has all non-null values, we're done
+  if (nullPositions.size === 0) {
+    return sample;
+  }
+
+  for (const position of nullPositions) {
+    const col = cols[position];
+    sample[position] = getColumnExample(col);
+  }
+
+  return sample;
+}
