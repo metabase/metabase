@@ -33,7 +33,7 @@ export function EmojiPicker({
   const searchValue = controlledSearch ?? search;
 
   return (
-    <Paper radius="sm">
+    <Paper data-testid="emoji-picker" radius="sm">
       <Picker.Root
         className={S.root}
         emojibaseUrl={EMOJIBASE_URL}

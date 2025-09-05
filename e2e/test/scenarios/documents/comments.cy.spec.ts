@@ -387,6 +387,72 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.findByText("@None Tableton").should("be.visible");
       });
     });
+
+    it("supports emojis", () => {
+      create1AndVisitParagraphDocument();
+      getParagraph().realHover();
+
+      cy.get<DocumentId>("@documentId").then((targetId) => {
+        Comments.getDocumentNodeButton({
+          targetId,
+          childTargetId: PARAGRAPH_ID,
+        })
+          .should("be.visible")
+          .click();
+      });
+
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+        Comments.getNewThreadInput().click();
+      });
+
+      cy.realType(":s");
+      Comments.getEmojiPicker()
+        .should("be.visible")
+        .and("contain.text", "😄")
+        .and("contain.text", "💦");
+
+      cy.log("can filter emojis");
+      cy.realType("mile");
+      Comments.getEmojiPicker()
+        .should("be.visible")
+        .and("contain.text", "😄")
+        .and("not.contain.text", "💦");
+
+      cy.log("can use arrow keys for navigation within the emoji picker");
+      cy.realPress("Tab"); // TODO: remove this, this is bug #26
+      cy.realPress("ArrowDown");
+      cy.realPress("ArrowRight");
+      cy.realPress("Enter");
+
+      Comments.getEmojiPicker().should("not.exist");
+
+      cy.log("can submit first suggestion with Enter");
+      cy.realType(":eggplant{enter}");
+
+      cy.log("closes suggestion dialog but not the comments modal on Esc");
+      cy.realType(":eg");
+      cy.realPress("Escape");
+      Comments.getEmojiPicker().should("not.exist");
+      H.modal().should("be.visible");
+
+      cy.log("can use mouse to select emoji");
+      cy.realType("g");
+      Comments.getEmojiPicker().findByText("🥚").click();
+
+      H.modal().within(() => {
+        Comments.getNewThreadInput()
+          .should("contain.text", "😊")
+          .and("contain.text", "🍆")
+          .and("contain.text", "🥚");
+
+        cy.realPress([META_KEY, "Enter"]);
+
+        cy.contains("😊").should("be.visible");
+        cy.contains("🍆").should("be.visible");
+        cy.contains("🥚").should("be.visible");
+      });
+    });
   });
 });
 

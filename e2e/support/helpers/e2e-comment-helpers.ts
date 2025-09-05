@@ -7,6 +7,7 @@ export const Comments = {
   getCommentInput,
   getCommentByText,
   getPlaceholder,
+  getEmojiPicker,
 };
 
 function getDocumentNodeButton({
@@ -43,4 +44,8 @@ function getPlaceholder() {
 
 function getCommentByText(text: string) {
   return cy.findByText(text).closest("[data-testid='discussion-comment']");
+}
+
+function getEmojiPicker() {
+  return cy.findByTestId("emoji-picker");
 }
