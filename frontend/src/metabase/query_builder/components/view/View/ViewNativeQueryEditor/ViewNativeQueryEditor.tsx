@@ -22,16 +22,17 @@ import type {
 
 import NativeQueryEditorS from "./ViewNativeQueryEditor.module.css";
 
-interface ViewNativeQueryEditorProps {
-  height?: number;
-  card?: Card;
+const EDITOR_HEIGHT_OFFSET = 150;
 
+type ViewNativeQueryEditorProps = {
+  card?: Card;
   question: Question;
   query: NativeQuery;
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
-  viewHeight: number;
+  viewHeight: number | null;
+  containerHeight: number | null;
   highlightedLineNumbers?: number[];
 
   isInitiallyOpen?: boolean;
@@ -76,10 +77,17 @@ interface ViewNativeQueryEditorProps {
   cancelQuery?: () => void;
   closeSnippetModal: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
-}
+};
 
 export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
-  const { question, height, isNativeEditorOpen, card, onSetDatabaseId } = props;
+  const {
+    question,
+    card,
+    viewHeight,
+    containerHeight,
+    isNativeEditorOpen,
+    onSetDatabaseId,
+  } = props;
 
   const legacyNativeQuery = question.legacyNativeQuery();
   const highlightedLineNumbers = useSelector(
@@ -103,11 +111,19 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
       <NativeQueryEditor
         {...props}
         query={legacyNativeQuery}
-        viewHeight={height}
+        viewHeight={viewHeight ?? "full"}
         highlightedLineNumbers={highlightedLineNumbers}
         isInitiallyOpen={isNativeEditorOpen}
         datasetQuery={card && card.dataset_query}
         onSetDatabaseId={onSetDatabaseId}
+        resizableBoxProps={{
+          maxConstraints: [
+            Infinity,
+            containerHeight != null
+              ? containerHeight - EDITOR_HEIGHT_OFFSET
+              : Infinity,
+          ],
+        }}
       />
     </Box>
   );

@@ -1,7 +1,9 @@
 import cx from "classnames";
+import { type Ref, forwardRef } from "react";
 import type { ResizableBoxProps } from "react-resizable";
 
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import type {
   SelectionRange,
@@ -30,13 +32,13 @@ import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
 
-interface ViewMainContainerProps {
+interface ViewMainContainerOwnProps {
   question: Question;
   query: NativeQuery;
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
-  viewHeight: number;
+  viewHeight: number | null;
   highlightedLineNumbers?: number[];
 
   isInitiallyOpen?: boolean;
@@ -93,7 +95,15 @@ interface ViewMainContainerProps {
   updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
 }
 
-export const ViewMainContainer = (props: ViewMainContainerProps) => {
+type ViewMainContainerProps = ViewMainContainerOwnProps & {
+  width: number | null;
+  height: number | null;
+};
+
+const ViewMainContainerInner = forwardRef(function ViewMainContainerInner(
+  props: ViewMainContainerProps,
+  ref: Ref<HTMLDivElement>,
+) {
   const {
     queryBuilderMode,
     mode,
@@ -104,6 +114,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     setParameterValue,
     isLiveResizable,
     updateQuestion,
+    height,
   } = props;
 
   if (queryBuilderMode === "notebook") {
@@ -117,6 +128,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
 
   return (
     <Box
+      ref={ref}
       component="main"
       className={cx(ViewMainContainerS.QueryBuilderMain, {
         [ViewMainContainerS.isSidebarOpen]: isSidebarOpen,
@@ -124,7 +136,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       data-testid="query-builder-main"
     >
       {isNative ? (
-        <ViewNativeQueryEditor {...props} />
+        <ViewNativeQueryEditor {...props} containerHeight={height} />
       ) : (
         <SyncedParametersList
           className={ViewMainContainerS.StyledSyncedParametersList}
@@ -152,4 +164,8 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       <ViewFooter className={CS.flexNoShrink} />
     </Box>
   );
-};
+});
+
+export const ViewMainContainer = ExplicitSize<ViewMainContainerOwnProps>({
+  refreshMode: "debounceLeading",
+})(ViewMainContainerInner);

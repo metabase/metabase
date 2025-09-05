@@ -54,7 +54,6 @@ import {
   calcInitialEditorHeight,
   canFormatForEngine,
   formatQuery,
-  getEditorMaxHeight,
 } from "./utils";
 
 type OwnProps = {
@@ -63,7 +62,7 @@ type OwnProps = {
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
-  viewHeight: number;
+  viewHeight?: number | "full";
   placeholder?: string;
   highlightedLineNumbers?: number[];
 
@@ -255,7 +254,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       runQuery,
       highlightedLineNumbers,
       placeholder,
-      viewHeight,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -321,10 +319,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               this.state.isCollapsing && S.collapsing,
             )}
             minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
-            maxConstraints={[
-              Infinity,
-              getEditorMaxHeight(viewHeight) ?? Infinity,
-            ]}
             axis="y"
             handle={dragHandle}
             resizeHandles={["s"]}

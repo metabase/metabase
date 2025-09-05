@@ -3,11 +3,7 @@ import type { FormatOptionsWithLanguage, SqlLanguage } from "sql-formatter";
 import { getEngineNativeType } from "metabase/lib/engine";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
-import {
-  EDITOR_HEIGHT_OFFSET,
-  MIN_HEIGHT_LINES,
-  SCROLL_MARGIN,
-} from "./constants";
+import { MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";
 
 const LINE_HEIGHT = 16;
 
@@ -36,7 +32,7 @@ export function getMaxAutoSizeLines(viewHeight: number) {
 
 type GetVisibleLinesCountParams = {
   query?: NativeQuery;
-  viewHeight: number | "full";
+  viewHeight?: number | "full";
 };
 
 function getVisibleLinesCount({
@@ -55,18 +51,12 @@ export function calcInitialEditorHeight({
   query,
   viewHeight,
 }: GetVisibleLinesCountParams) {
-  if (viewHeight === "full") {
+  if (viewHeight === "full" || viewHeight == null) {
     // override for action editor
     return FULL_HEIGHT;
   }
   const lines = getVisibleLinesCount({ query, viewHeight });
   return getEditorLineHeight(lines);
-}
-
-export function getEditorMaxHeight(viewHeight?: number | "full") {
-  return typeof viewHeight === "number"
-    ? viewHeight - EDITOR_HEIGHT_OFFSET
-    : undefined;
 }
 
 const formatSql = async (sql: string, options: FormatOptionsWithLanguage) => {
