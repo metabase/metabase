@@ -551,7 +551,7 @@
                  (map :lib/desired-column-alias
                       (condp = f
                         #'lib/returned-columns
-                        (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true})
+                        (lib/returned-columns query -1 -1 {:include-remaps? true})
 
                         #'qp.preprocess/query->expected-cols
                         (qp.preprocess/query->expected-cols query)))))))
