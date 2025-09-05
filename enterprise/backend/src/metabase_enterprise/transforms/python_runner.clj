@@ -69,7 +69,7 @@
       :type/Integer :type/Integer
       :type/Boolean :type/Boolean
       :type/DateTimeWithTZ :type/DateTimeWithTZ
-      :type/DateTime :type/Datetime
+      :type/DateTime :type/DateTime
       :type/Date :type/Date
       :type/Text :type/Text)))
 
