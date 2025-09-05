@@ -47,8 +47,18 @@ const pluginFunc = (option, dayjsClass, dayjsFactory) => {
     const [, dateTime] = match;
     const offset = formatOffset(match);
 
+    // Fix millisecond parsing for timestamps with fewer than 3 decimal places
+    let adjustedDateTime = dateTime;
+    const millisecondsMatch = dateTime.match(/(\.\d{1,2})$/);
+    if (millisecondsMatch) {
+      const [, ms] = millisecondsMatch;
+      // Pad milliseconds to 3 digits (e.g., .01 -> .010, .1 -> .100)
+      const paddedMs = ms.padEnd(4, "0"); // .xxx format
+      adjustedDateTime = dateTime.replace(/\.\d{1,2}$/, paddedMs);
+    }
+
     return dayjsFactory(
-      dateTime,
+      adjustedDateTime,
       {
         $offset: offset,
         ...format,
