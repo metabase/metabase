@@ -58,6 +58,7 @@
    [metabase-enterprise.mbml.parser :as mbml.parser]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.models.serialization :as serdes]
    [metabase.lib.core :as lib]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -171,7 +172,9 @@
 (defn- update-source-query
   [{:keys [source body] :as model} database-id]
   (assoc model :source {:type "query"
-                        :query (lib/native-query (lib.metadata.jvm/application-database-metadata-provider database-id) (or body source))}))
+                        :query (if (string? (or body source))
+                                 (lib/native-query (lib.metadata.jvm/application-database-metadata-provider database-id) (or body source))
+                                 (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id) #p (serdes/import-mbql (or body source))))}))
 
 (defmethod mbml-file->unsaved-model* :model/Transform:v1
   [{:keys [tags database identifier] :as mbml-map}]

@@ -54,7 +54,7 @@
 
 (mr/def ::source
   "Schema for source code content (SQL or Python). Optional string field."
-  [:maybe :string])
+  [:maybe [:or :string :map]])
 
 ;;; ------------------------------------------ Transform:v1 Schema -----------------------------------------------
 
