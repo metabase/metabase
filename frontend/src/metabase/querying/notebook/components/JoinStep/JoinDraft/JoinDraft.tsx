@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { Flex, Text } from "metabase/ui";
+import { Flex, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
@@ -146,6 +146,7 @@ export function JoinDraft({
             className={S.JoinConditionCell}
             color={color}
             data-testid="new-join-condition"
+            p={rem("6px")}
           >
             <JoinConditionDraft
               query={query}

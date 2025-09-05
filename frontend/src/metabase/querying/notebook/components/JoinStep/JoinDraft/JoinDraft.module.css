@@ -1,10 +1,12 @@
 .JoinCell {
   flex: 1;
   align-self: stretch;
+  flex-basis: 50%;
 }
 
 .JoinConditionCell {
   flex: 1;
+  flex-basis: 50%;
   flex-direction: column;
   align-items: start;
   justify-content: center;
