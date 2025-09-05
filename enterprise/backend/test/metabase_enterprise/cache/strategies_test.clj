@@ -85,7 +85,7 @@
                             (-> (qp/process-query query) (dissoc :data))))))))))))))
 
 (deftest e2e-advanced-caching
-  (binding [search.ingestion/*force-sync* true]
+  (binding [search.ingestion/*disable-updates* true]
     (mt/with-empty-h2-app-db!
       (mt/with-premium-features #{:cache-granular-controls}
         (mt/dataset (mt/dataset-definition "caching1"
