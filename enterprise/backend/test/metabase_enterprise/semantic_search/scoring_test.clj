@@ -256,45 +256,43 @@
 
 (deftest bookmark-test
   (mt/with-premium-features #{:semantic-search}
-    ;; TODO (BOT-360) enable for :mysql
-    (when-not (= :mysql (mdb/db-type))
-      (let [crowberto (mt/user->id :crowberto)
-            rasta     (mt/user->id :rasta)]
-        (mt/with-temp [:model/Card {c1 :id} {}
-                       :model/Card {c2 :id} {}]
-          (testing "bookmarked items are ranker higher"
-            (with-index-contents!
-              [{:model "card" :id c1 :name "card normal"}
-               {:model "card" :id c2 :name "card crowberto loved"}]
-              (mt/with-temp [:model/CardBookmark _ {:card_id c2 :user_id crowberto}
-                             :model/CardBookmark _ {:card_id c1 :user_id rasta}]
-                (is (= [["card" c2 "card crowberto loved"]
-                        ["card" c1 "card normal"]]
-                       (search-results :bookmarked "card" {:current-user-id crowberto})))))))
+    (let [crowberto (mt/user->id :crowberto)
+          rasta     (mt/user->id :rasta)]
+      (mt/with-temp [:model/Card {c1 :id} {}
+                     :model/Card {c2 :id} {}]
+        (testing "bookmarked items are ranker higher"
+          (with-index-contents!
+            [{:model "card" :id c1 :name "card normal"}
+             {:model "card" :id c2 :name "card crowberto loved"}]
+            (mt/with-temp [:model/CardBookmark _ {:card_id c2 :user_id crowberto}
+                           :model/CardBookmark _ {:card_id c1 :user_id rasta}]
+              (is (= [["card" c2 "card crowberto loved"]
+                      ["card" c1 "card normal"]]
+                     (search-results :bookmarked "card" {:current-user-id crowberto})))))))
 
-        (mt/with-temp [:model/Dashboard {d1 :id} {}
-                       :model/Dashboard {d2 :id} {}]
-          (testing "bookmarked dashboard"
-            (with-index-contents!
-              [{:model "dashboard" :id d1 :name "dashboard normal"}
-               {:model "dashboard" :id d2 :name "dashboard crowberto loved"}]
-              (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id d2 :user_id crowberto}
-                             :model/DashboardBookmark _ {:dashboard_id d1 :user_id rasta}]
-                (is (= [["dashboard" d2 "dashboard crowberto loved"]
-                        ["dashboard" d1 "dashboard normal"]]
-                       (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
+      (mt/with-temp [:model/Dashboard {d1 :id} {}
+                     :model/Dashboard {d2 :id} {}]
+        (testing "bookmarked dashboard"
+          (with-index-contents!
+            [{:model "dashboard" :id d1 :name "dashboard normal"}
+             {:model "dashboard" :id d2 :name "dashboard crowberto loved"}]
+            (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id d2 :user_id crowberto}
+                           :model/DashboardBookmark _ {:dashboard_id d1 :user_id rasta}]
+              (is (= [["dashboard" d2 "dashboard crowberto loved"]
+                      ["dashboard" d1 "dashboard normal"]]
+                     (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
 
-        (mt/with-temp [:model/Collection {c1 :id} {}
-                       :model/Collection {c2 :id} {}]
-          (testing "bookmarked collection"
-            (with-index-contents!
-              [{:model "collection" :id c1 :name "collection normal"}
-               {:model "collection" :id c2 :name "collection crowberto loved"}]
-              (mt/with-temp [:model/CollectionBookmark _ {:collection_id c2 :user_id crowberto}
-                             :model/CollectionBookmark _ {:collection_id c1 :user_id rasta}]
-                (is (= [["collection" c2 "collection crowberto loved"]
-                        ["collection" c1 "collection normal"]]
-                       (search-results :bookmarked "collection" {:current-user-id crowberto})))))))))))
+      (mt/with-temp [:model/Collection {c1 :id} {}
+                     :model/Collection {c2 :id} {}]
+        (testing "bookmarked collection"
+          (with-index-contents!
+            [{:model "collection" :id c1 :name "collection normal"}
+             {:model "collection" :id c2 :name "collection crowberto loved"}]
+            (mt/with-temp [:model/CollectionBookmark _ {:collection_id c2 :user_id crowberto}
+                           :model/CollectionBookmark _ {:collection_id c1 :user_id rasta}]
+              (is (= [["collection" c2 "collection crowberto loved"]
+                      ["collection" c1 "collection normal"]]
+                     (search-results :bookmarked "collection" {:current-user-id crowberto}))))))))))
 
 (deftest user-recency-test
   (mt/with-premium-features #{:semantic-search}
