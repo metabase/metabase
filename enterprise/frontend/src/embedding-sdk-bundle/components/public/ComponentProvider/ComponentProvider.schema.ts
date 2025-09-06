@@ -48,7 +48,7 @@ const rawPropsSchema = strictObject({
       dashboard: optional(any()),
     }),
   ),
-  reduxStore: any(),
+  reduxStore: optional(any()),
   theme: optional(
     strictObject({
       fontSize: optional(any()),
