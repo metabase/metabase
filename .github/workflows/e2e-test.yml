@@ -123,7 +123,7 @@ jobs:
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
           SPLIT_OUTPUT_FILE: "newTimes.json"
-          SPLIT_TIME_THRESHOLD: 5.0
+          SPLIT_TIME_THRESHOLD: 0.01 # 1% threshold for changes
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
@@ -146,6 +146,49 @@ jobs:
           --env grepTags="${{inputs.tags}}+-@skip",grepOmitFiltered=true \
           --spec "$SPEC_PATH" \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Extract chunk-specific timings
+        id: extract-timings
+        if: inputs.split_index >= 0
+        shell: bash
+        run: |
+          echo "=== EXTRACTING CHUNK-SPECIFIC TIMINGS ==="
+
+          # Extract the JSON timing data that cypress-split outputs for this chunk
+          echo "Looking for cypress-split timing output in logs..."
+
+          if ! grep -q "cypress-split: here are passing spec timings" cypress-output.log; then
+            echo "❌ ERROR: cypress-split timing output not found in logs"
+            exit 1
+          fi
+
+          echo "✅ Found cypress-split timing output"
+
+          # Extract the JSON block that follows "cypress-split: here are passing spec timings"
+          CHUNK_TIMING_JSON=$(sed -n '/cypress-split: here are passing spec timings/,/^}/p' cypress-output.log | tail -n +2)
+
+          if [ -z "$CHUNK_TIMING_JSON" ]; then
+            echo "❌ ERROR: Could not extract timing JSON from cypress-split output"
+            exit 1
+          fi
+
+          echo "✅ Successfully extracted chunk timing data"
+          echo "$CHUNK_TIMING_JSON" > chunkTimings.json
+
+          # Validate the JSON is well-formed
+          if ! jq empty chunkTimings.json 2>/dev/null; then
+            echo "❌ ERROR: Extracted timing data is not valid JSON"
+            echo "Content:"
+            cat chunkTimings.json
+            exit 1
+          fi
+
+          echo "Chunk timing data for this run:"
+          cat chunkTimings.json
+
+          SPEC_COUNT=$(jq '.durations | length' chunkTimings.json)
+          echo "✅ Extracted timing data for $SPEC_COUNT specs in this chunk"
+          echo "============================="
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -176,6 +219,14 @@ jobs:
         with:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
           path: ./cypress/test-results
+
+      - name: Upload Timing Data
+        uses: actions/upload-artifact@v4
+        if: steps.extract-timings.outcome == 'success'
+        with:
+          name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
+          path: chunkTimings.json
+          retention-days: 1 # gets merged immediately by parent workflow
 
       - name: Publish Summary
         if: failure()
