@@ -17,7 +17,7 @@
   :visibility :settings-manager
   :default "https://api.openai.com"
   :export? false
-  :doc "This feature is experimental.")
+  :doc false)
 
 (defsetting ee-openai-api-key
   (deferred-tru "The OpenAI API Key used in Metabase Enterprise.")
