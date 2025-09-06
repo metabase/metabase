@@ -54,12 +54,29 @@
              :query    {:source-query {:source-table 1}
                         :fields       [[:field 2 nil]
                                        [:field 3 {:temporal-unit :month}]]
-                        :aggregation  [[:count]]}}))))
+                        :aggregation  [[:count]]}})))))
+
+(deftest ^:parallel ->pMBQL-idempotency-test-2
   (testing ":field clause"
     (are [clause expected] (=? expected
                                (lib.convert/->pMBQL (lib.convert/->pMBQL clause)))
       [:field 2 nil]                     [:field {:lib/uuid string?} 2]
       [:field 3 {:temporal-unit :month}] [:field {:lib/uuid string?, :temporal-unit :month} 3])))
+
+(deftest ^:parallel ->pMBQL-idempotency-test-3
+  (testing "Calling ->pMBQL on something already MBQL 5 should no-op instead of adding duplicate options maps"
+    (let [clause [[:=
+                   {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
+                   [:field
+                    {:lib/uuid "a2eb96a0-420b-4465-817d-f3c9f789eff4"}
+                    (meta/id :users :id)]
+                   [:field
+                    {:base-type  :type/Integer
+                     :join-alias "checkins_by_user"
+                     :lib/uuid   "b23a769d-774a-4eb5-8fb8-1f6a33c9a8d5"}
+                    "USER_ID"]]]]
+      (is (= clause
+             (lib.convert/->pMBQL clause))))))
 
 (deftest ^:parallel ->pMBQL-joins-test
   (is (=? {:lib/type :mbql/query
@@ -161,7 +178,8 @@
                                      :stages      [{:lib/type     :mbql.stage/mbql
                                                     :source-table (meta/id :checkins)}]}]}]}
             (lib.convert/->pMBQL original)))
-    (is (= original
+    (is (= (update-in original [:query :joins] (fn [joins]
+                                                 (mapv #(assoc % :fields :none) joins)))
            (-> original lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
 
 (deftest ^:parallel ->pMBQL-join-fields-test
@@ -334,7 +352,8 @@
                                          [:field 23402 nil]
                                          [:field 23100 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                           :strategy     :left-join
-                          :fk-field-id  23402}]}}
+                          :fk-field-id  23402
+                          :fields       :none}]}}
 
     {:database 1
      :type     :query
@@ -346,7 +365,8 @@
      :query    {:joins        [{:source-table 3
                                 :alias        "Cat"
                                 :condition    [:= [:field 2 nil] [:field 2 nil]]
-                                :fields       [[:field 1 {:join-alias "Cat"}]]}]
+                                :fields       [[:field 1 {:join-alias "Cat"}]]
+                                :strategy     :left-join}]
                 :limit        1
                 :source-table 4}}
 
@@ -628,7 +648,8 @@
               :query {:joins [{:alias "__join"
                                :strategy :left-join
                                :condition [:= [:field 388 nil] 1]
-                               :source-table 44}]
+                               :source-table 44
+                               :fields :none}]
                       :source-table 43
                       :fields [[:field 390 nil]
                                [:field 391 nil]
@@ -686,14 +707,16 @@
                                                                          [:field 382 {:base-type :type/Integer}]
                                                                          [:field 351 {:base-type :type/BigInteger
                                                                                       :join-alias "Products"}]]
-                                                             :source-table 45}
+                                                             :source-table 45
+                                                             :fields :none}
                                                             {:alias "People - User"
                                                              :strategy :left-join
                                                              :condition [:=
                                                                          [:field 381 {:base-type :type/Integer}]
                                                                          [:field 370 {:base-type :type/BigInteger
                                                                                       :join-alias "People - User"}]]
-                                                             :source-table 40}]}
+                                                             :source-table 40
+                                                             :fields :none}]}
                                      :source-metadata [{:semantic_type :type/Category
                                                         :table_id 45
                                                         :name "CATEGORY"
@@ -941,7 +964,7 @@
                                                      {:join-alias                                 "O"
                                                       :temporal-unit                              :year
                                                       :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ}
-                                                     (meta/id :orders :created-at)]]]}]}]}
+                                                     "CREATED_AT"]]]}]}]}
                   query)))
         (is (=? {:query {:joins [{:alias        "O"
                                   :condition    [:=
@@ -951,7 +974,7 @@
                                                    :temporal-unit                              :year
                                                    :metabase.lib.field/original-effective-type (symbol "nil #_\"key is not present.\"")}]
                                                  [:field
-                                                  (meta/id :orders :created-at)
+                                                  "CREATED_AT"
                                                   {:base-type                                  :type/DateTimeWithLocalTZ
                                                    :join-alias                                 "O"
                                                    :temporal-unit                              :year
@@ -1498,13 +1521,13 @@
     (let [query {:lib/type :mbql/query
                  :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table 1
-                             :joins        [{:lib/type :mbql/join
-                                             :alias    "J"
-                                             :stages   [{:lib/type     :mbql.stage/mbql
-                                                         :source-table 2
-                                                         :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
-                                                                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
-                                             :fields   [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]
+                             :joins        [{:lib/type   :mbql/join
+                                             :alias      "J"
+                                             :stages     [{:lib/type     :mbql.stage/mbql
+                                                           :source-table 2
+                                                           :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+                                                                          [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
+                                             :fields     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]
                                              :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1 2]]}]}]}]
       (is (= {:type  :query
               :query {:source-table 1
@@ -1514,12 +1537,21 @@
                                                                     [:field 2 nil]]}
                                       :fields       [[:field 1 {:join-alias "J"}]]
                                       :condition    [:= 1 2]}]}}
-             (lib.convert/->legacy-MBQL query)
-             ;; make sure roundtripping doesn't introduce extra stages.
-             (-> query
-                 lib.convert/->legacy-MBQL
-                 lib.convert/->pMBQL
-                 lib.convert/->legacy-MBQL))))))
+             (lib.convert/->legacy-MBQL query)))
+      (testing "make sure roundtripping doesn't introduce extra stages."
+        (is (= {:type  :query
+                :query {:source-table 1
+                        :joins        [{:alias        "J"
+                                        :source-query {:source-table 2
+                                                       :fields       [[:field 1 nil]
+                                                                      [:field 2 nil]]}
+                                        :fields       [[:field 1 {:join-alias "J"}]]
+                                        :condition    [:= 1 2]
+                                        :strategy     :left-join}]}}
+               (-> query
+                   lib.convert/->legacy-MBQL
+                   lib.convert/->pMBQL
+                   lib.convert/->legacy-MBQL)))))))
 
 (deftest ^:parallel join-with-fields-in-last-stage-to-legacy-test-2
   (testing "converting a join whose last stage has :fields to legacy should put :fields in :source-query even if join does not have :fields"
@@ -1540,12 +1572,21 @@
                                                      :fields       [[:field 1 nil]
                                                                     [:field 2 nil]]}
                                       :condition    [:= 1 2]}]}}
-             (lib.convert/->legacy-MBQL query)
-             ;; make sure roundtripping doesn't introduce extra stages.
-             (-> query
-                 lib.convert/->legacy-MBQL
-                 lib.convert/->pMBQL
-                 lib.convert/->legacy-MBQL))))))
+             (lib.convert/->legacy-MBQL query)))
+      (testing "make sure roundtripping doesn't introduce extra stages."
+        (is (= {:type  :query
+                :query {:source-table 1
+                        :joins        [{:alias        "J"
+                                        :source-query {:source-table 2
+                                                       :fields       [[:field 1 nil]
+                                                                      [:field 2 nil]]}
+                                        :condition    [:= 1 2]
+                                        :fields       :none
+                                        :strategy     :left-join}]}}
+               (-> query
+                   lib.convert/->legacy-MBQL
+                   lib.convert/->pMBQL
+                   lib.convert/->legacy-MBQL)))))))
 
 (deftest ^:parallel do-not-add-extra-stages-to-join-test
   (is (=? {:stages [{:source-table 45060

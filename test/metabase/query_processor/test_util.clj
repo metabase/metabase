@@ -85,43 +85,15 @@
   [table-kw field-kw]
   (->> (merge
         (col-defaults)
-        (if (qp.store/initialized?)
-          (-> (lib.metadata/field (qp.store/metadata-provider) (data/id table-kw field-kw))
+        (let [mp (if (qp.store/initialized?)
+                   (qp.store/metadata-provider)
+                   (data/metadata-provider))]
+          (-> (lib.metadata/field mp (data/id table-kw field-kw))
               (select-keys [:lib/type :id :table-id :semantic-type :base-type :effective-type :coercion-strategy :name :display-name :fingerprint])
               #_{:clj-kondo/ignore [:deprecated-var]}
               qp.store/->legacy-metadata
-              (dissoc :lib/type))
-          (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
-                          :coercion_strategy :name :display_name :fingerprint]
-                         :id (data/id table-kw field-kw)))
-        {:field_ref [:field (data/id table-kw field-kw) nil]})
+              (dissoc :lib/type))))
        (m/filter-vals some?)))
-
-(defn- expected-column-names
-  "Get a sequence of keyword names of Fields belonging to a Table in the order they'd normally appear in QP results."
-  [table-kw]
-  (case table-kw
-    :categories [:id :name]
-    :checkins   [:id :date :user_id :venue_id]
-    :users      [:id :name :last_login]
-    :venues     [:id :name :category_id :latitude :longitude :price]
-    (throw (IllegalArgumentException. (format "Sorry, we don't know the default columns for Table %s." table-kw)))))
-
-(defn expected-cols
-  "Get a sequence of Fields belonging to a Table as they would appear in the Query Processor results in `:cols`. The
-  second arg, `cols`, is optional; if not supplied, this function will return all columns for that Table in the
-  default order.
-
-    ;; all columns in default order
-    (qp.test/cols :users)
-
-    ;; users.id, users.name, and users.last_login
-    (qp.test/cols :users [:id :name :last_login])"
-  ([table-kw]
-   (expected-cols table-kw (expected-column-names table-kw)))
-
-  ([table-kw cols]
-   (mapv (partial col table-kw) cols)))
 
 (defn- backfill-effective-type [{:keys [base_type effective_type] :as col}]
   (cond-> col

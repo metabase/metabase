@@ -187,12 +187,13 @@
                lib/joins
                first
                lib/join-fields)))
-    (is (nil? (-> query
-                  (lib/remove-clause (first fields))
-                  (lib/remove-clause (second fields))
-                  lib/joins
-                  first
-                  lib/join-fields)))
+    (is (= :none
+           (-> query
+               (lib/remove-clause (first fields))
+               (lib/remove-clause (second fields))
+               lib/joins
+               first
+               lib/join-fields)))
     (testing "removing with dependent should cascade"
       (is (=? {:stages [{:joins [{:fields [(second fields)]}]} (complement :filters)]}
               (-> query
@@ -230,7 +231,7 @@
                                  [:field {:join-alias "Venues"} (meta/id :venues :category-id)]
                                  [:field {} (meta/id :categories :id)]]]
                    ;; No :fields :all because it gets removed on joins when there are aggregations/breakouts.
-                   :fields (symbol "nil #_\"key is not present.\"")
+                   :fields :none
                    :alias "Venues"}]}]}
               (lib/replace-clause query'
                                   (first aggs)
@@ -301,11 +302,11 @@
                     (lib/expression "yiy" (lib/ref a1-column)))
           a0-ref (first (lib/aggregations query 0))]
       (testing "Base: Second stage field refs are identified as sum and sum_2"
-        (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+        (is (=? {:stages [{:lib/type :mbql.stage/mbql
                            :aggregation [[:sum {} [:field {} (meta/id :orders :total)]]
                                          [:sum {} [:field {} (meta/id :orders :subtotal)]]]
                            :breakout [[:field {} (meta/id :orders :user-id)]]}
-                          {:lib/type :mbql.stage/mbql,
+                          {:lib/type :mbql.stage/mbql
                            :expressions
                            [[:field
                              {:base-type :type/Float
@@ -319,10 +320,10 @@
                              "sum_2"]]}]}
                 query)))
       (testing "Second stage field ref indetifier is adjusted from sum_2 to sum."
-        (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+        (is (=? {:stages [{:lib/type :mbql.stage/mbql
                            :aggregation [[:sum {} [:field {} (meta/id :orders :subtotal)]]]
                            :breakout [[:field {} (meta/id :orders :user-id)]]}
-                          {:lib/type :mbql.stage/mbql,
+                          {:lib/type :mbql.stage/mbql
                            :expressions
                            [[:field
                              {:base-type :type/Float
@@ -800,7 +801,7 @@
       (testing "Simple renaming"
         (let [renamed {:lib/type :mbql/query
                        :database (meta/id)
-                       :stages [{:lib/type :mbql.stage/mbql,
+                       :stages [{:lib/type :mbql.stage/mbql
                                  :source-table (meta/id :checkins)
                                  :joins [{:lib/type :mbql/join
                                           :stages [{:lib/type :mbql.stage/mbql
@@ -815,7 +816,7 @@
                                                          {:base-type :type/BigInteger
                                                           :effective-type :type/BigInteger
                                                           :join-alias "locale"}
-                                                         (meta/id :venues :id)]]],
+                                                         "ID"]]]
                                           :alias "locale"}]
                                  :filters [[:>
                                             {}
@@ -823,7 +824,7 @@
                                              {:base-type :type/BigInteger
                                               :effective-type :type/BigInteger
                                               :join-alias "locale"}
-                                             (meta/id :venues :id)]
+                                             "ID"]
                                             3]]}]}]
           (testing "by name"
             (is (=? renamed
@@ -844,7 +845,7 @@
                                        (lib/with-join-alias "Users"))))
               renamed {:lib/type :mbql/query
                        :database (meta/id)
-                       :stages [{:lib/type :mbql.stage/mbql,
+                       :stages [{:lib/type :mbql.stage/mbql
                                  :source-table (meta/id :checkins)
                                  :joins [{:lib/type :mbql/join
                                           :stages [{:lib/type :mbql.stage/mbql
@@ -859,7 +860,7 @@
                                                          {:base-type :type/BigInteger
                                                           :effective-type :type/BigInteger
                                                           :join-alias "alias"}
-                                                         (meta/id :venues :id)]]],
+                                                         "ID"]]]
                                           :alias "alias"}
                                          {:lib/type :mbql/join
                                           :stages [{:lib/type :mbql.stage/mbql
@@ -874,7 +875,7 @@
                                                          {:base-type :type/BigInteger
                                                           :effective-type :type/BigInteger
                                                           :join-alias "alias_2"}
-                                                         (meta/id :users :id)]]],
+                                                         "ID"]]]
                                           :alias "alias_2"}]
                                  :filters [[:>
                                             {}
@@ -882,7 +883,7 @@
                                              {:base-type :type/BigInteger
                                               :effective-type :type/BigInteger
                                               :join-alias "alias"}
-                                             (meta/id :venues :id)]
+                                             "ID"]
                                             3]]}]}]
           (testing "by name"
             (is (=? renamed
@@ -919,7 +920,7 @@
     (testing "Removing the last join"
       (let [result {:lib/type :mbql/query
                     :database (meta/id)
-                    :stages   [{:lib/type     :mbql.stage/mbql,
+                    :stages   [{:lib/type     :mbql.stage/mbql
                                 :source-table (meta/id :checkins)}]
                     :joins    (symbol "nil #_\"key is not present.\"")
                     :filters  (symbol "nil #_\"key is not present.\"")}]
@@ -947,7 +948,7 @@
                        (lib/breakout (lib.options/ensure-uuid filter-field)))
             result {:lib/type :mbql/query
                     :database (meta/id)
-                    :stages [{:lib/type :mbql.stage/mbql,
+                    :stages [{:lib/type :mbql.stage/mbql
                               :source-table (meta/id :checkins)
                               :joins [{:lib/type :mbql/join
                                        :stages [{:lib/type :mbql.stage/mbql
@@ -963,15 +964,15 @@
                                                       {:base-type :type/BigInteger
                                                        :effective-type :type/BigInteger
                                                        :join-alias join-alias}
-                                                      (meta/id :venues :id)]]],
+                                                      "ID"]]]
                                        :alias join-alias}]
                               :filters [[:>
                                          {}
                                          [:field
-                                          {:base-type :type/BigInteger,
-                                           :effective-type :type/BigInteger,
+                                          {:base-type :type/BigInteger
+                                           :effective-type :type/BigInteger
                                            :join-alias join-alias}
-                                          (meta/id :venues :id)]
+                                          "ID"]
                                          3]]}
                              {:filters  (symbol "nil #_\"key is not present.\"")
                               :breakout (symbol "nil #_\"key is not present.\"")}]}]
@@ -1085,14 +1086,14 @@
       (testing "effects are reflected in subsequent stages"
         (is (=? {:stages [{:joins [{:fields :none, :alias join-alias}
                                    {:fields :all, :alias users-alias}]
-                           :filters [[:> {} [:field {:join-alias join-alias} (meta/id :venues :id)] 3]]}
+                           :filters [[:> {} [:field {:join-alias join-alias} "ID"] 3]]}
                           {:filters [[:not-null {} [:field {} last-login-name]]]
                            :breakout [[:field {} last-login-name]]}]}
                 (lib/replace-clause query 0 join0 (lib/with-join-fields join0 :none)))))
       (testing "replacing with nil removes the join"
         (is (=? {:stages
                  [{:joins [{:fields :all, :alias join-alias}]
-                   :filters [[:> {} [:field {:join-alias join-alias} (meta/id :venues :id)] 3]]}
+                   :filters [[:> {} [:field {:join-alias join-alias} "ID"] 3]]}
                   {:filters [[:< {} [:field {} price-name] 3]]}]}
                 (lib/replace-clause query 0 join1 nil)))))))
 
@@ -1164,9 +1165,8 @@
                     (lib/join (lib/join-clause (meta/table-metadata :orders) [(lib/= (lib/with-join-alias (meta/field-metadata :products :id) "Products")
                                                                                      (lib/with-join-alias (meta/field-metadata :orders :product-id) "Orders"))]))
                     (lib/join (meta/table-metadata :people)))]
-      (is (=?
-           {:stages [(complement :joins)]}
-           (lib/remove-clause query -1 (first (lib/joins query))))))))
+      (is (=? {:stages [{:joins (symbol "nil #_\"key is not present.\"")}]}
+              (lib/remove-clause query -1 (first (lib/joins query))))))))
 
 (deftest ^:parallel removing-aggregation-leaves-breakouts
   (testing "Removing aggregation leaves breakouts (#28609)"
@@ -1237,7 +1237,7 @@
                                     (meta/field-metadata :orders :total))
                              100)
                       (lib/with-expression-name "Tax Rate"))]
-    (is (=? {:lib/type :mbql/query,
+    (is (=? {:lib/type :mbql/query
              :stages
              [{:lib/type :mbql.stage/mbql
                :source-table (meta/id :orders)
@@ -1270,7 +1270,7 @@
                                     :display-name "Avg Tax"}
                               [:field {:effective-type :type/Float} (meta/id :orders :tax)]]]
                :breakout [[:field {:effective-type :type/Integer} (meta/id :orders :user-id)]]}
-              {:lib/type :mbql.stage/mbql,
+              {:lib/type :mbql.stage/mbql
                :filters [[:> {} [:field {:effective-type :type/Float} "Avg Tax"] 0.06]]}]}
             (lib/replace-clause query 0 orig-agg new-agg)))))
 
@@ -1446,7 +1446,7 @@
                                       (lib/with-expression-name
                                         (lib/* (lib/length (meta/field-metadata :venues :name)) 2)
                                         "double name len"))]
-    (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+    (is (=? {:stages [{:lib/type :mbql.stage/mbql
                        :expressions [[:* {:lib/expression-name "double price"}
                                       [:field {:effective-type :type/Integer} (meta/id :venues :price)] 2]
                                      [:* {:lib/expression-name "double name len"}
@@ -1455,7 +1455,7 @@
                                  [:> {} [:expression {:effective-type :type/Integer} "double name len"] 9]]
                        :breakout [[:expression {:effective-type :type/Integer} "double name len"]]
                        :aggregation [[:sum {} [:expression {:effective-type :type/Integer} "double price"]]]}
-                      {:lib/type :mbql.stage/mbql,
+                      {:lib/type :mbql.stage/mbql
                        :filters [[:> {} [:field {:effective-type :type/Integer} "sum"] 20]]
                        :order-by [[:desc {} [:field {:effective-type :type/Integer} "sum"]]
                                   [:asc {} [:field {:effective-type :type/Integer} "double name len"]]]}
@@ -1471,7 +1471,7 @@
         replaced (lib/replace-clause q 0
                                      (first (lib/breakouts q 0))
                                      (lib/ref (meta/field-metadata :venues :id)))]
-    (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+    (is (=? {:stages [{:lib/type :mbql.stage/mbql
                        :expressions [[:* {:lib/expression-name "double price"}
                                       [:field {:effective-type :type/Integer} (meta/id :venues :price)] 2]
                                      [:length {:lib/expression-name "name length"}
@@ -1481,7 +1481,7 @@
                        :breakout [[:field {:effective-type :type/BigInteger}
                                    (meta/id :venues :id)]]
                        :aggregation [[:sum {} [:expression {:effective-type :type/Integer} "double price"]]]}
-                      {:lib/type :mbql.stage/mbql,
+                      {:lib/type :mbql.stage/mbql
                        :filters [[:> {} [:field {:effective-type :type/Integer} "sum"] 20]]
                        :order-by [[:desc {} [:field {:effective-type :type/Integer} "sum"]]
                                   [:asc {} [:field {:effective-type :type/BigInteger} "ID"]]]}
@@ -1499,7 +1499,7 @@
                                      (lib/with-expression-name
                                        (lib/min (lib/length (meta/field-metadata :venues :name)))
                                        "min name len"))]
-    (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+    (is (=? {:stages [{:lib/type :mbql.stage/mbql
                        :expressions [[:* {:lib/expression-name "double price"}
                                       [:field {:effective-type :type/Integer} (meta/id :venues :price)] 2]
                                      [:length {:lib/expression-name "name length"}
@@ -1508,10 +1508,10 @@
                                  [:> {} [:expression {:effective-type :type/Integer} "name length"] 9]]
                        :breakout [[:expression {:effective-type :type/Integer} "name length"]]
                        :aggregation [[:min {:name           "min name len"
-                                            :display-name   "min name len",
+                                            :display-name   "min name len"
                                             :effective-type :type/Integer}
                                       [:length {} [:field {:effective-type :type/Text} (meta/id :venues :name)]]]]}
-                      {:lib/type :mbql.stage/mbql,
+                      {:lib/type :mbql.stage/mbql
                        :filters [[:> {} [:field {:effective-type :type/Integer} "min name len"] 20]]
                        :order-by [[:desc {} [:field {:effective-type :type/Integer} "min name len"]]
                                   [:asc {} [:field {:base-type :type/Integer} "name length"]]]}
@@ -1592,13 +1592,13 @@
                              [:distinct {:name "product count"} [:field {:effective-type :type/BigInteger}
                                                                  (meta/id :products :id)]]]}
               {:joins [{:stages
-                        [{:source-table (meta/id :orders)}],
+                        [{:source-table (meta/id :orders)}]
                         :fields [[:field {:effective-type :type/DateTimeWithLocalTZ
                                           :join-alias "Orders - Min of Created At"}
                                   (meta/id :orders :created-at)]
                                  [:field {:effective-type :type/Integer
                                           :join-alias "Orders - Min of Created At"}
-                                  (meta/id :orders :quantity)]],
+                                  (meta/id :orders :quantity)]]
                         :conditions [[:< {}
                                       [:field {:effective-type :type/DateTimeWithLocalTZ} "max"]
                                       [:field {:effective-type :type/DateTimeWithLocalTZ
@@ -1608,13 +1608,15 @@
                :filters [[:< {}
                           [:field {:effective-type :type/Float
                                    :join-alias "Orders - Min of Created At"}
-                           (meta/id :orders :total)]
+                           "TOTAL"]
                           100]
                          [:> {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ} "max"]] 6]
                          [:= {} [:field {:effective-type :type/Integer} "product count"] 3]]}]}
             (lib/replace-clause join-query 0
                                 (first (lib/aggregations join-query 0))
-                                (lib/max (by-name (lib/orderable-columns join-query 0) "CREATED_AT"))))))
+                                (lib/max (by-name (lib/orderable-columns join-query 0) "CREATED_AT")))))))
+
+(deftest ^:parallel replace-unrelated-type-affecting-join-test-2
   (testing "removed when types conflict"
     (is (=? {:stages
              [{:breakout [[:field {:effective-type :type/Text} (meta/id :products :category)]

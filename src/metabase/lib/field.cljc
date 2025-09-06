@@ -410,15 +410,21 @@
       (set/rename-keys old->new)))
 
 (mu/defn- column-metadata->field-ref :- :mbql.clause/field
-  [metadata :- ::lib.schema.metadata/column]
-  (let [inherited-column? (lib.field.util/inherited-column? metadata)
+  [col :- ::lib.schema.metadata/column]
+  (let [inherited-column? (lib.field.util/inherited-column? col)
         options           (merge {:lib/uuid       (str (random-uuid))
-                                  :effective-type (column-metadata-effective-type metadata)}
-                                 (select-renamed-keys metadata field-ref-propagated-keys)
+                                  :effective-type (column-metadata-effective-type col)}
+                                 (select-renamed-keys col field-ref-propagated-keys)
                                  (when-not inherited-column?
-                                   (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))
-        id-or-name        (or (lib.field.util/inherited-column-name metadata)
-                              ((some-fn :id :lib/deduplicated-name :lib/original-name :name) metadata))]
+                                   (select-renamed-keys col field-ref-propagated-keys-for-non-inherited-columns)))
+        id-or-name        (or (lib.field.util/inherited-column-name col)
+                              (when (and (= lib.ref/*ref-style* :ref.style/default)
+                                         ;; TODO (Cam 8/29/25) -- should implicitly joined columns use name refs too?
+                                         ;; I think I determined the answer was no
+                                         ;; in [[metabase.lib.field.resolution/resolve-name-in-implicit-join-this-stage]].
+                                         (= (:lib/source col) :source/joins))
+                                ((some-fn :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) col))
+                              ((some-fn :id :lib/deduplicated-name :lib/original-name :name) col))]
     [:field options id-or-name]))
 
 (mu/defmethod lib.ref/ref-method :metadata/column :- ::lib.schema.ref/ref
