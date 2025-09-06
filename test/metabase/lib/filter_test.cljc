@@ -483,12 +483,12 @@
          :effective-type :type/Boolean
          :semantic-type  nil))
 
-(defn- check-display-names [tests]
+(defn- check-display-names [source-table tests]
   (let [metadata-provider (lib/composed-metadata-provider
                            (lib.tu/mock-metadata-provider
                             {:fields [last-online-time is-active]})
                            meta/metadata-provider)
-        query (lib/query metadata-provider (meta/table-metadata :venues))]
+        query (lib/query metadata-provider (meta/table-metadata source-table))]
     (doseq [{exp :name [op & args] :clause options :options} tests]
       (testing exp
         (is (= exp (lib/display-name
@@ -501,6 +501,7 @@
   (let [created-at (meta/field-metadata :products :created-at)
         created-at-with #(lib/with-temporal-bucket created-at %1)]
     (check-display-names
+     :products
      [{:clause [:= (created-at-with :year) "2023-10-02T00:00:00.000Z"]
        :name "Created At is Jan 1 – Dec 31, 2023"}
       {:clause [:during created-at "2023-10-02" :year]
@@ -526,6 +527,7 @@
   (let [created-at (meta/field-metadata :products :created-at)
         created-at-with #(lib/with-temporal-bucket created-at %1)]
     (check-display-names
+     :products
      [{:clause [:= (created-at-with :hour-of-day) 0]
        :name "Created At: Hour of day is on 12 AM"}
       {:clause [:= (lib/get-hour created-at) 0]
@@ -644,6 +646,7 @@
 
 (deftest ^:parallel time-frontend-filter-display-names-test
   (check-display-names
+   :people
    [{:clause [:< last-online-time "00:00:00.000"], :name "Last Online Time is before 12:00 AM"}
     {:clause [:> last-online-time "12:00:00.000"], :name "Last Online Time is after 12:00 PM"}
     {:clause [:between last-online-time "12:00:00.000" "00:00:00.000"],
@@ -654,6 +657,7 @@
 (deftest ^:parallel pk-frontend-filter-display-names-test
   (let [pk (meta/field-metadata :venues :id)]
     (check-display-names
+     :venues
      [{:clause [:= pk 1], :name "ID is 1"}
       {:clause [:= pk 4], :name "ID is 4"}
       {:clause [:= pk 1 2], :name "ID is 2 selections"}
@@ -673,12 +677,14 @@
   (let [longitude (meta/field-metadata :venues :longitude)
         latitude (meta/field-metadata :venues :latitude)]
     (check-display-names
+     :venues
      [{:clause [:inside longitude latitude 1 2 3 4],
        :name "Longitude is between 3 and 1 and Latitude is between 2 and 4"}])))
 
 (deftest ^:parallel fk-frontend-filter-display-names-test
   (let [fk (meta/field-metadata :orders :user-id)]
     (check-display-names
+     :orders
      [{:clause [:= fk 1], :name "User ID is 1"}
       {:clause [:= fk 11], :name "User ID is 11"}
       {:clause [:= fk 1 2], :name "User ID is 2 selections"}
@@ -697,6 +703,7 @@
 (deftest ^:parallel string-frontend-filter-display-names-test
   (let [nam (meta/field-metadata :venues :name)]
     (check-display-names
+     :venues
      [{:clause [:= nam "ABC"], :name "Name is ABC"}
       {:clause [:= nam "A" "B"], :name "Name is 2 selections"}
       {:clause [:= nam "A" "B" "C"], :name "Name is 3 selections"}
@@ -720,6 +727,7 @@
 
 (deftest ^:parallel boolean-frontend-filter-display-names-test
   (check-display-names
+   :orders
    [{:clause [:= is-active true], :name "Is Active is true"}
     {:clause [:= is-active false], :name "Is Active is false"}
     {:clause [:is-null is-active], :name "Is Active is empty"}
@@ -730,6 +738,7 @@
 (deftest ^:parallel number-frontend-filter-display-names-test
   (let [tax (meta/field-metadata :orders :tax)]
     (check-display-names
+     :orders
      [{:clause [:= tax 1], :name "Tax is equal to 1"}
       {:clause [:= tax 7], :name "Tax is equal to 7"}
       {:clause [:= tax 7 10], :name "Tax is equal to 2 selections"}
@@ -756,6 +765,7 @@
         pos-clause (lib.expression/value pos-value)
         neg-clause (lib.expression/value neg-value)]
     (check-display-names
+     :orders
      [{:clause [:= id pos-clause], :name (str "ID is " pos-value)}
       {:clause [:!= id pos-clause], :name (str "ID is not " pos-value)}
       {:clause [:> id pos-clause], :name (str "ID is greater than " pos-value)}
@@ -769,6 +779,7 @@
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
     (check-display-names
+     :products
      [{:clause [:time-interval created-at -1 :minute], :name "Created At is in the previous minute"}
       {:clause [:time-interval created-at -3 :minute], :name "Created At is in the previous 3 minutes"}
       {:clause [:time-interval created-at -1 :hour], :name "Created At is in the previous hour"}
@@ -831,6 +842,7 @@
 (deftest ^:parallel specific-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
     (check-display-names
+     :products
      [{:clause [:= created-at "2023-10-03"], :name "Created At is on Oct 3, 2023"}
       {:clause [:= created-at "2023-10-03T12:30:00"],
        :name "Created At is on Oct 3, 2023, 12:30 PM"}

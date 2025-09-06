@@ -1143,20 +1143,18 @@
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
                              (mt/metadata-provider)
-                             mt/id)]
-      (qp.store/with-metadata-provider metadata-provider
-        (let [legacy-query (lib.convert/->legacy-MBQL
-                            (lib.tu.mocks-31769/query metadata-provider))]
-          (mt/with-native-query-testing-context legacy-query
-            (let [results (qp/process-query legacy-query)]
-              (is (= [["Products → Category"                     "Products__CATEGORY"]
-                      ["Count"                                   "count"]
-                      ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
-                     (map (juxt :display_name :lib/desired-column-alias)
-                          (mt/cols results))))
-              (is (= [["Doohickey" 3976 "Doohickey"]
-                      ["Gadget"    4939 "Gadget"]]
-                     (mt/rows results))))))))))
+                             mt/id)
+          query             (lib.tu.mocks-31769/query metadata-provider)]
+      (mt/with-native-query-testing-context query
+        (let [results (qp/process-query query)]
+          (is (= [["Products → Category"                     "Products__CATEGORY"]
+                  ["Count"                                   "count"]
+                  ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
+                 (map (juxt :display_name :lib/desired-column-alias)
+                      (mt/cols results))))
+          (is (= [["Doohickey" 3976 "Doohickey"]
+                  ["Gadget"    4939 "Gadget"]]
+                 (mt/rows results))))))))
 
 (deftest ^:parallel test-13000
   (testing "Should join MBQL Saved Questions (#13000, #13649, #13744)"

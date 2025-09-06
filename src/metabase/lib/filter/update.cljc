@@ -18,7 +18,6 @@
   (:require
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -34,9 +33,8 @@
    [metabase.util.time :as u.time]))
 
 (defn- is-ref-for-column? [query stage-number expr column]
-  (when (lib.util/clause-of-type? expr :field)
-    (let [resolved (lib.field.resolution/resolve-field-ref query stage-number expr)]
-      (lib.equality/= resolved column))))
+  (and (lib.util/clause-of-type? expr :field)
+       (lib.equality/find-matching-column query stage-number expr [column])))
 
 (defn- contains-ref-for-column? [query stage-number expr column]
   (letfn [(ref-for-column? [expr]

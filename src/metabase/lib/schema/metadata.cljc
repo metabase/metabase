@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.metadata
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
@@ -190,7 +191,14 @@
                   (and (:id m) (not (pos-int? (:id m))))
                   (dissoc :id)))
         ;; remove deprecated `:ident` and `:model/inner_ident` keys (normalized to `:model/inner-ident`)
-        (dissoc :ident :model/inner-ident))))
+        (dissoc :ident :model/inner-ident)
+        ;; rename source-alias to the appropriate key
+        (as-> $col (cond-> $col
+                     (:source-alias $col) (set/rename-keys {:source-alias (case (:lib/source $col)
+                                                                            (nil :source/joins :source/implicitly-joinable)
+                                                                            :metabase.lib.join/join-alias
+                                                                            #_else
+                                                                            :lib/original-join-alias)}))))))
 
 (def ^:private column-validate-for-source-specs
   "Schemas to use to validate columns with a given `:lib/source`. Since a lot of these schemas are applicable to
@@ -206,6 +214,12 @@
     :schema  [:fn
               {:error/message ":lib/expression-name is required for columns with :source/expressions"}
               :lib/expression-name]}
+   ;; TODO (Cam 9/4/25) -- you would think a requirement like this would be obvious and easy to enable but it actually
+   ;; breaks a handful of tests... I still want to enable it at some point but we need to go fix up all those tests.
+   #_{:include :source/table-defaults
+      :schema  [:fn
+                {:error/message ":table-id is required for columns with :source/table-defaults"}
+                :table-id]}
    ;; Current stage join alias (`:metabase.lib.join/join-alias`) should only be set for columns whose `:lib/source` is
    ;; `:source/joins`
    {:exclude :source/joins
@@ -318,7 +332,7 @@
   [:and
    [:map
     {:error/message    "Valid column metadata"
-     :decode/normalize normalize-column}
+     :decode/normalize #'normalize-column}
     [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword, :default :metadata/column} :metadata/column]]
     ;;
     ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have
@@ -356,18 +370,6 @@
     ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
     ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
     [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;;
-    ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
-    ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can
-    ;; remove it.
-    ;;
-    ;; TODO (Cam 6/19/25) -- yes, we should remove this key, I've tried to do so but a few places are still
-    ;; setting (AND USING!) it. It actually appears that this gets propagated beyond the current stage where the join
-    ;; has happened and has thus taken on a purposes as a 'previous stage join alias' column. We should use
-    ;; `:lib/original-join-alias` instead to serve this purpose since `:source-alias` is not set or used correctly.
-    ;; Check out experimental https://github.com/metabase/metabase/pull/59772 where I updated this schema to 'ban'
-    ;; this key so we can root out anywhere trying to use it. (QUE-1403)
-    [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
     ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
     ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
     ;; allowed to join on the results of something else)
@@ -507,7 +509,9 @@
     [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]]
    ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
    ::kebab-cased-map
-   [:ref ::column.validate-for-source]])
+   [:ref ::column.validate-for-source]
+   (lib.schema.common/disallowed-keys
+    {:source-alias ":source-alias is deprecated, set :metabase.lib.join/current-join-alias or :lib/original-join-alias instead"})])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."

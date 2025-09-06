@@ -45,7 +45,9 @@
 
 (mr/def ::stage.common
   [:map
-   [:parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]])
+   [:parameters         {:optional true} [:ref ::lib.schema.parameter/parameters]]
+   ;; TODO (Cam 9/4/25) -- make this non-`:maybe` and have normalization code remove it if it's `nil`
+   [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]])
 
 (mr/def ::stage.native
   [:and
@@ -59,7 +61,6 @@
                                              (not (and (= k :collection)
                                                        (nil? v))))))}
      [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
-     [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
      ;; Only restriction is that, if present, it is non-nil.
      ;; It is valid to have a blank query like `{:type :native}` in legacy.
@@ -203,9 +204,8 @@
    [:merge
     ::stage.common
     [:map
-     {:decode/normalize normalize-mbql-stage}
+     {:decode/normalize #'normalize-mbql-stage}
      [:lib/type           [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
-     [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
      [:joins              {:optional true} [:ref ::join/joins]]
      [:expressions        {:optional true} [:ref ::expression/expressions]]
      [:breakout           {:optional true} [:ref ::breakouts]]
@@ -260,7 +260,7 @@
 (mr/def ::stage
   [:and
    {:default          {:lib/type :mbql.stage/mbql}
-    :decode/normalize normalize-stage
+    :decode/normalize #'normalize-stage
     :encode/serialize #(dissoc %
                                ;; this stuff is all added at runtime by QP middleware.
                                :params
@@ -369,7 +369,7 @@
 (mr/def ::stages
   [:and
    [:sequential {:min              1
-                 :decode/normalize normalize-stages
+                 :decode/normalize #'normalize-stages
                  :default          []}
     [:ref ::stage]]
    [:cat
@@ -393,7 +393,7 @@
   [:and
    [:map
     {:decode/normalize common/normalize-map
-     :encode/serialize serialize-query}
+     :encode/serialize #'serialize-query}
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword, :default :mbql/query}
                 :mbql/query]]

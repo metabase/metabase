@@ -581,7 +581,7 @@
                                                            (meta/id :products :title)))
           query        (lib/query
                         mp
-                        (mt/mbql-query orders
+                        (lib.tu.macros/mbql-query orders
                           {:aggregation [[:sum [:field (meta/id :orders :total)]]]
                            :breakout    [[:field
                                           (meta/id :orders :product-id)

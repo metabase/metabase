@@ -255,15 +255,12 @@
    join-alias   :- ::lib.schema.join/alias]
   (-> col
       (assoc
-       ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
-       ;; keys for join aliases.
-       :source-alias              join-alias
        :lib/original-join-alias   join-alias
        :lib/source                :source/joins
        ::join-alias               join-alias
        :lib/original-name         ((some-fn :lib/original-name :name) col)
        :lib/original-display-name (or (:lib/original-display-name col)
-                                      (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))
+                                      (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias))))
       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
 
@@ -341,7 +338,7 @@
             identity))
          (lib.metadata.calculation/returned-columns query stage-number join options))))
 
-(mu/defn join-fields-to-add-to-parent-stage :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
+(mu/defn join-fields-to-add-to-parent-stage :- [:maybe ::lib.metadata.calculation/visible-columns]
   "The resolved `:fields` from a join, which we automatically append to the parent stage's `:fields`."
   [query
    stage-number
@@ -359,10 +356,13 @@
                         ;; for an example of where this happens. Having it here will cause `lib.equality` to fail to
                         ;; find a match.
                         ;;
+                        ;; TODO (Cam 9/4/25) -- not sure if this is still true after the recent `lib.equality` rewrite.
+                        ;;
                         ;; TODO (Cam 8/29/25) -- investigate how this is happening and consider whether Join `:fields`
                         ;; should disallow refs with `:source-field`/remove it automatically.
                         :let      [field-ref (lib.options/update-options field-ref dissoc :source-field)
-                                   match (or (lib.equality/find-matching-column query stage-number field-ref cols)
+                                   match (or (lib.equality/find-matching-column query stage-number field-ref cols
+                                                                                {:find-matching-column/ignore-binning-and-bucketing? true})
                                              (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
                                                         (pr-str join-alias)
                                                         (pr-str field-ref)
@@ -513,7 +513,7 @@
   [query stage-number home-cols cond-fields]
   (when (seq cond-fields)
     (let [cond-home-cols (keep #(lib.equality/find-matching-column query stage-number % home-cols) cond-fields)]
-          ;; first choice: the leftmost FK or PK in the condition referring to a home column
+      ;; first choice: the leftmost FK or PK in the condition referring to a home column
       (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
           ;; otherwise the leftmost home column in the condition
           (first cond-home-cols)
@@ -584,10 +584,15 @@
         (cond
           ;; no sides obviously belong to joined
           (not (or lhs-alias rhs-alias))
-          (if (lib.equality/find-matching-column query stage-number rhs home-cols)
-            [op op-opts (with-join-alias lhs join-alias) rhs]
-            [op op-opts lhs (with-join-alias rhs join-alias)])
 
+          (let [potential-home-cols (cond-> #{}
+                                      (lib.equality/find-matching-column query stage-number lhs home-cols) (conj :lhs)
+                                      (lib.equality/find-matching-column query stage-number rhs home-cols) (conj :rhs))]
+            ;; if there's still any ambiguity as to whether LHS or RHS is the home column, assume LHS. Only use RHS if
+            ;; it's a potential home column and LHS is not.
+            (case potential-home-cols
+              (#{:lhs :rhs} #{:lhs} #{}) [op op-opts lhs (with-join-alias rhs join-alias)]
+              #{:rhs}                    [op op-opts (with-join-alias lhs join-alias) rhs]))
           ;; both sides seem to belong to joined assuming this resulted from
           ;; overly fuzzy matching, we remove the join alias from the LHS
           ;; unless the RHS seems to belong to home too while the LHS doesn't
@@ -818,7 +823,9 @@
                                         columns)]
     (concat pk fk other)))
 
-(defn- mark-selected-column [query stage-number existing-column-or-nil columns]
+(defn- mark-selected-column
+  "Mark selected columns in join conditions."
+  [query stage-number existing-column-or-nil columns]
   (if-not existing-column-or-nil
     columns
     (mapv (fn [column]
@@ -878,8 +885,7 @@
                       (contains? join-aliases-to-ignore col-join-alias))))
           (mark-selected-column query
                                 stage-number
-                                (when (or (lib.util/clause-of-type? lhs-expression-or-nil :field)
-                                          (lib.util/clause-of-type? lhs-expression-or-nil :expression))
+                                (when (lib.util/clause-of-type? lhs-expression-or-nil #{:field :expression})
                                   lhs-expression-or-nil))
           sort-join-condition-columns))))
 
@@ -1034,18 +1040,16 @@
   (let [join-alias (lib.join.util/current-join-alias a-join)]
     (map (fn [col]
            (-> col
-               (with-join-alias join-alias)
-               ;; TODO (Cam 6/25/25) -- remove `:source-alias` since it is busted
-               (assoc :source-alias join-alias))))))
+               (with-join-alias join-alias))))))
 
 (defn- xform-mark-selected-joinable-columns
   "Mark the column metadatas in `cols` as `:selected` if they appear in `a-join`'s `:fields`."
-  [a-join]
+  [query stage-number a-join]
   (let [j-fields (join-fields a-join)]
     (case j-fields
       :all        (map #(assoc % :selected? true))
       (:none nil) (map #(assoc % :selected? false))
-      (mapcat #(lib.equality/mark-selected-columns [%] j-fields)))))
+      (mapcat #(lib.equality/mark-selected-columns query stage-number [%] j-fields)))))
 
 (def ^:private xform-fix-source-for-joinable-columns
   (map #(assoc % :lib/source :source/joins)))
@@ -1069,7 +1073,7 @@
           (if a-join
             (comp xform-fix-source-for-joinable-columns
                   (xform-add-join-alias a-join)
-                  (xform-mark-selected-joinable-columns a-join))
+                  (xform-mark-selected-joinable-columns query stage-number a-join))
             identity)
           cols)))
 

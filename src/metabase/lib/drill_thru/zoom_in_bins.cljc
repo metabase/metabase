@@ -103,8 +103,7 @@
    stage-number                         :- :int
    {{:keys [semantic-type] :as column} :column, :keys [value], :as _context}  :- ::lib.schema.drill-thru/context]
   (when (and column value (not= value :null)
-             (or (not (or (= semantic-type :type/Latitude)
-                          (= semantic-type :type/Longitude)))
+             (or (not (#{:type/Latitude :type/Longitude} semantic-type))
                  (not (has-lat-lon? query stage-number))))
     (when-let [existing-breakout (first (lib.breakout/existing-breakouts query
                                                                          (lib.underlying/top-level-stage-number query)
@@ -158,10 +157,12 @@
   ;; filters to top-level-stage-number breaks the binning.
   (let [top-level-stage-number (lib.underlying/top-level-stage-number query)
         resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)
-        old-filters (filter (fn [[operator _opts filter-column]]
-                              (and (#{:>= :<} operator)
-                                   (lib.equality/find-matching-column filter-column [column])))
-                            (lib.filter/filters query stage-number))]
+        old-filters (filterv (fn [[operator _opts filter-expr]]
+                               (and (#{:>= :<} operator)
+                                    (lib.equality/find-matching-column
+                                     query stage-number filter-expr [column]
+                                     {:find-matching-column/ignore-binning-and-bucketing? true})))
+                             (lib.filter/filters query stage-number))]
     (-> (reduce #(lib.remove-replace/remove-clause %1 stage-number %2) query old-filters)
         (update-breakout top-level-stage-number column resolved-column new-binning)
         (lib.filter/filter stage-number (lib.filter/>= resolved-column min-value))

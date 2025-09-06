@@ -132,9 +132,6 @@
    stage-number
    {join-alias           :metabase.lib.join/join-alias
     original-join-alias  :lib/original-join-alias
-    ;; TODO (Cam 6/19/25) -- `:source-alias` is deprecated, see description for column metadata
-    ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
-    source-alias         :source-alias
     fk-field-id          :fk-field-id
     original-fk-field-id :lib/original-fk-field-id
     table-id             :table-id
@@ -142,8 +139,7 @@
    style
    display-name]
   (let [join-alias        (or join-alias
-                              original-join-alias
-                              source-alias)
+                              original-join-alias)
         fk-field-id       (or fk-field-id original-fk-field-id)
         join-display-name (when (and (= style :long)
                                      ;; don't prepend a join display name if `:display-name` already contains one! Legacy
@@ -417,22 +413,8 @@
   [col :- ::lib.schema.metadata/column]
   (let [inherited-column? (lib.field.util/inherited-column? col)
         options           (merge {:lib/uuid       (str (random-uuid))
-                                  :base-type      (:base-type col)
                                   :effective-type (column-metadata-effective-type col)}
                                  (select-renamed-keys col field-ref-propagated-keys)
-                                 ;; MEGA HACK! QP result metadata includes `:source-alias` (which is basically any
-                                 ;; join alias that was ever used for the column); if that is present then we need to
-                                 ;; generate field refs that use as a join alias because even tho that sounds
-                                 ;; completely broken that is traditionally what we've done. Taking this out
-                                 ;; breakouts [[metabase.lib.drill-thru.column-filter-test/column-filter-join-alias-test]].
-                                 ;;
-                                 ;; TODO (Cam 6/26/25) -- figure out if we can actually take this out or not.
-                                 (when-let [source-alias (and (not inherited-column?)
-                                                              (not (:fk-field-id col))
-                                                              (not= :source/implicitly-joinable
-                                                                    (:lib/source col))
-                                                              (:source-alias col))]
-                                   {:join-alias source-alias})
                                  (when-not inherited-column?
                                    (select-renamed-keys col field-ref-propagated-keys-for-non-inherited-columns)))
         id-or-name        (or (lib.field.util/inherited-column-name col)
@@ -450,8 +432,7 @@
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
-    #_else
-    (column-metadata->field-ref metadata)))
+    #_else               (column-metadata->field-ref metadata)))
 
 (defn- expression-columns
   "Return the [[::lib.schema.metadata/column]] for all the expressions in a stage of a query."

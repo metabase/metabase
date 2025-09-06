@@ -8,11 +8,12 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
+   [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
@@ -59,20 +60,31 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
-(defn- values-from-card-query
-  [card value-field-ref {:keys [query-string] :as _opts}]
-  (let [metadata-provider (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
-        query             (lib/query metadata-provider (lib.metadata/card metadata-provider (:id card)))
-        value-column      (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))
-        textual?          (lib.types.isa/string? value-column)
-        nonempty          ((if textual? lib/not-empty lib/not-null) value-column)
-        query-filter      (when query-string
-                            (if textual?
-                              (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
-                              (lib/= value-column query-string)))]
+(mu/defn- values-from-card-query :- ::lib.schema/query
+  [card :- [:map
+            [:id          ::lib.schema.id/card]
+            [:database_id ::lib.schema.id/database]]
+   value-field-ref
+   {:keys [query-string] :as _opts}]
+  ;; query will use `:source-card` if Card is Model or Metric but will use the Card's query directly if it is a
+  (let [query           (params/card->query card)
+        value-column    (-> (or (lib/find-column-for-legacy-ref query value-field-ref (lib/returned-columns query))
+                                (throw (ex-info (format "Failed to find column for legacy ref %s" (pr-str value-field-ref))
+                                                {:query query, :ref value-field-ref, :cols (lib/returned-columns query)})))
+                            ;; since the query we're building will add a breakout and filters using this column to a
+                            ;; subsequent stage, to "do this the right way" we should update this metadata so it is
+                            ;; ready for use in subsequent stages.
+                            lib/update-keys-for-col-from-previous-stage)
+        textual?        (lib.types.isa/string? value-column)
+        nonempty-filter ((if textual? lib/not-empty lib/not-null) value-column)
+        query-filter    (when query-string
+                          (if textual?
+                            (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
+                            (lib/= value-column query-string)))]
     (-> query
+        lib/append-stage
         (lib/limit *max-rows*)
-        (lib/filter nonempty)
+        (lib/filter nonempty-filter)
         (cond-> #_query query-filter (lib/filter query-filter))
         (lib/breakout value-column)
         ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only

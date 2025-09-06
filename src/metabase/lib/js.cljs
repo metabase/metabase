@@ -901,8 +901,8 @@
   Returns the same list of `agg-operators` with those adjustments made.
 
   > **Code health:** Healthy"
-  [agg-operators agg-clause]
-  (to-array (lib.core/selected-aggregation-operators (seq agg-operators) agg-clause)))
+  [a-query stage-number agg-operators agg-clause]
+  (to-array (lib.core/selected-aggregation-operators a-query stage-number (seq agg-operators) agg-clause)))
 
 ;; # Filtering
 ;; Filters work in a similar way to aggregations and order-by, but are more complex since they can have several

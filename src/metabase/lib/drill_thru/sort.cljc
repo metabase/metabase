@@ -35,12 +35,14 @@
   (lib.equality/find-matching-column query
                                      stage-number
                                      column-ref
-                                     (lib.order-by/orderable-columns query stage-number)))
+                                     (lib.order-by/orderable-columns query stage-number)
+                                     {:find-matching-column/ignore-binning-and-bucketing? true}))
 
 (mu/defn- existing-order-by-clause :- [:maybe ::lib.schema.order-by/order-by]
   [query stage-number column]
   (m/find-first (fn [[_direction _opts expr, :as _asc-or-desc-clause]]
-                  (lib.equality/find-matching-column query stage-number expr [column]))
+                  (lib.equality/find-matching-column query stage-number expr [column]
+                                                     {:find-matching-column/ignore-binning-and-bucketing? true}))
                 (lib.order-by/order-bys query stage-number)))
 
 (mu/defn- existing-order-by-direction :- [:maybe ::lib.schema.order-by/direction]

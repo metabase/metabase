@@ -91,7 +91,7 @@
                       (->> (lib/returned-columns mbql-query)
                            (map #(-> %
                                      (assoc :lib/source :source/native)
-                                     (dissoc :lib/breakout? :lib/expression-name :metabase.lib.join/join-alias))))
+                                     (dissoc :lib/breakout? :lib/expression-name :metabase.lib.join/join-alias :fk-field-id))))
                       (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
                         ;; Not all the input queries passed to this are real. Some of them are skeletons used
                         ;; as test expectations. If we fail to generate the returned columns, just return nil.
@@ -264,7 +264,7 @@
                      true                   (map #(assoc % ::was-breakout-in-original-query? (:lib/breakout? %)))
                      (= query-kind :native) (map #(-> %
                                                       (assoc :lib/source :source/native)
-                                                      (dissoc :lib/breakout? :lib/expression-name :metabase.lib.join/join-alias))))
+                                                      (dissoc :lib/breakout? :lib/expression-name :metabase.lib.join/join-alias :fk-field-id))))
         by-name    (m/index-by :name cols)
         col        (get by-name column-name)
         refs       (update-vals by-name lib/ref)
@@ -475,15 +475,13 @@
    & variants]
   (assert (even? (count variants)) "variants must come in variant-desc and variant-case pairs")
 
-  (when-not (= "SKIP" base-desc)
-    (testing base-desc
-      (test-fn base-case)))
+  (testing base-desc
+    (test-fn base-case))
 
   (doseq [[variant-desc variant-case-or-fn] (partition 2 variants)]
-    (when-not (= "SKIP" variant-desc)
-      (testing variant-desc
-        (test-fn (merge base-case
-                        (cond (fn? variant-case-or-fn) (variant-case-or-fn base-case)
-                              (map? variant-case-or-fn) variant-case-or-fn
-                              :else (throw (ex-info "Invalid variant case. Must be a fn or map."
-                                                    {:variant-case variant-case-or-fn})))))))))
+    (testing variant-desc
+      (test-fn (merge base-case
+                      (cond (fn? variant-case-or-fn) (variant-case-or-fn base-case)
+                            (map? variant-case-or-fn) variant-case-or-fn
+                            :else (throw (ex-info "Invalid variant case. Must be a fn or map."
+                                                  {:variant-case variant-case-or-fn}))))))))
