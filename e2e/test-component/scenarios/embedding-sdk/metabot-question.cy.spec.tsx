@@ -115,7 +115,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     });
   });
 
-  it("should start a new conversation when clicking a `start new convesation` button", () => {
+  it("should start a new conversation when clicking a `start new conversation` button", () => {
     setup(metabotResponse);
 
     mountSdkContent(<MetabotQuestion />);
@@ -133,7 +133,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       cy.findByTestId("metabot-new-conversation").click();
 
       cy.findAllByTestId("metabot-chat-message").should("not.exist");
-      cy.findByTestId("metabot-chat-input").should("not.have.text");
+      cy.findByTestId("metabot-chat-input").should("have.value", "");
 
       cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
 
