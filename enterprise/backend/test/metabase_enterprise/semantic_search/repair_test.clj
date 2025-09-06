@@ -47,6 +47,13 @@
   [gate-contents id]
   (some #(when (= (:id %) id) %) gate-contents))
 
+(defn- clear-gate-table!
+  "Clear all entries from the gate table to ensure clean test state"
+  [pgvector gate-table-name]
+  (jdbc/execute! pgvector
+                 (-> {:delete-from [(keyword gate-table-name)]}
+                     (sql/format :quoted true))))
+
 (deftest repair-index-integration-test
   (testing "repair-index! properly handles document additions and deletions via gate table"
     (mt/with-premium-features #{:semantic-search}
@@ -54,6 +61,7 @@
         (let [pgvector       semantic.tu/db
               index-metadata semantic.tu/mock-index-metadata
               gate-table     (:gate-table-name index-metadata)
+              _              (clear-gate-table! pgvector gate-table)
               initial-docs   [(create-test-document "card" 1 "Dog Training Guide")
                               (create-test-document "card" 2 "Cat Behavior Study")
                               (create-test-document "dashboard" 3 "Animal Stats")]]
@@ -87,17 +95,17 @@
         (let [pgvector       semantic.tu/db
               index-metadata semantic.tu/mock-index-metadata
               gate-table     (:gate-table-name index-metadata)
-              initial-docs   [(create-test-document "card" 1 "Dog Training Guide")]]
+              initial-docs   [(create-test-document "card" 6 "Dog Training Guide")]]
           (semantic.core/update-index! initial-docs)
           (semantic.tu/index-all!)
 
           (testing "repair table is cleaned up after successful repair"
             (let [test-repair-table-name "repair_table_cleanup_test"]
               (with-redefs [semantic.repair/repair-table-name (constantly test-repair-table-name)]
-                (semantic.core/repair-index! [(create-test-document "card" 2 "New Test Card")])
+                (semantic.core/repair-index! [(create-test-document "card" 7 "New Test Card")])
 
                 (let [gate-contents (gate-table-contents pgvector gate-table)]
-                  (is (tombstone? (gate-entry-by-id gate-contents "card_1")))
-                  (is (some? (gate-entry-by-id gate-contents "card_2")))
+                  (is (tombstone? (gate-entry-by-id gate-contents "card_6")))
+                  (is (some? (gate-entry-by-id gate-contents "card_7")))
                   (is (not (semantic.util/table-exists? pgvector test-repair-table-name))
                       "Repair table should be cleaned up after repair-index! completes"))))))))))
