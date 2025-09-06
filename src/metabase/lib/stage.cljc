@@ -33,25 +33,20 @@
 
 (mu/defn- existing-stage-metadata :- [:maybe ::lib.metadata.calculation/returned-columns]
   "Return existing stage metadata attached to a stage if is already present: return it as-is, but only if this is a
-  native stage or a source-Card or a metric stage. If it's any other sort of stage then ignore the metadata, it's
-  probably wrong; we can recalculate the correct metadata anyway."
+  native stage. If it's any other sort of stage then ignore the metadata, it's probably wrong; we can recalculate the
+  correct metadata anyway."
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
-    (when-let [metadata (:lib/stage-metadata stage)]
-      (when (or (= stage-type :mbql.stage/native)
-                source-card)
-        (let [source-type (case stage-type
-                            :mbql.stage/native :source/native
-                            :mbql.stage/mbql   :source/card)]
-          (not-empty
-           (into []
-                 (comp (map #(assoc % :lib/source source-type))
-                       ;; do not truncate the desired column aliases coming back from a native query, because if a
-                       ;; native query returns a 'crazy long' column name then we need to use that in the next stage.
-                       ;; See [[metabase.lib.stage-test/propagate-crazy-long-native-identifiers-test]]
-                       (lib.field.util/add-source-and-desired-aliases-xform query (lib.util/non-truncating-unique-name-generator)))
-                 (:columns metadata))))))))
+  (let [{stage-type :lib/type, :as stage} (lib.util/query-stage query stage-number)]
+    (when (= stage-type :mbql.stage/native)
+      (when-let [cols (not-empty (get-in stage [:lib/stage-metadata :columns]))]
+        (into []
+              (comp (map #(assoc % :lib/source :source/native))
+                    ;; do not truncate the desired column aliases coming back from a native query, because if a
+                    ;; native query returns a 'crazy long' column name then we need to use that in the next stage.
+                    ;; See [[metabase.lib.stage-test/propagate-crazy-long-native-identifiers-test]]
+                    (lib.field.util/add-source-and-desired-aliases-xform query (lib.util/non-truncating-unique-name-generator)))
+              cols)))))
 
 (mu/defn- breakouts-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query
