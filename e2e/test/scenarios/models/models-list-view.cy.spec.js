@@ -123,6 +123,17 @@ describe("scenarios > models list view", () => {
         cy.findByText("2.07").should("not.exist");
       });
 
+      cy.log("Verify that empty column preview displays placeholder value");
+      cy.get("@rightColumns").within(() => {
+        cy.get("input").type("DISC");
+      });
+      H.popover().within(() => {
+        cy.findByText("DISCOUNT").click();
+      });
+      cy.get("@listPreview").within(() => {
+        cy.findByText("$123.46").should("be.visible");
+      });
+
       cy.log("Update list item icon");
       cy.get("@listPreview").within(() => {
         cy.findByRole("img").should("have.attr", "aria-label", "document icon");

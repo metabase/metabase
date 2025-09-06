@@ -1,4 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
+import cx from "classnames";
 import { type CSSProperties, useMemo, useRef } from "react";
 import { t } from "ttag";
 
@@ -23,6 +24,7 @@ export interface ListViewProps {
   onSortClick: (column: DatasetColumn) => void;
   entityType?: string;
   isInteractive?: boolean;
+  className?: string;
 }
 
 export function ListView({
@@ -33,6 +35,7 @@ export function ListView({
   onSortClick,
   entityType,
   isInteractive,
+  className,
 }: ListViewProps) {
   const { cols, rows } = data;
 
@@ -57,7 +60,7 @@ export function ListView({
   return (
     <Stack
       data-testid="list-view"
-      className={styles.listViewContainer}
+      className={cx(styles.listViewContainer, className)}
       style={{ "--grid-columns": Math.max(rightColumns.length, 1) }}
     >
       <Stack className={styles.listContainer}>

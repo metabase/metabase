@@ -6,6 +6,7 @@
   height: 100%;
   gap: var(--mantine-spacing-xs);
   padding-top: var(--mantine-spacing-xl);
+  padding-inline: var(--mantine-spacing-sm);
 }
 
 .listContainer {

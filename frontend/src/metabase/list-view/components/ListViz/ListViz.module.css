@@ -1,0 +1,11 @@
+.ListViz {
+  height: 100%;
+
+  &.listViewDashcard {
+    height: calc(100% - 2.25rem);
+
+    .dashboardListView {
+      padding-top: 1rem;
+    }
+  }
+}
