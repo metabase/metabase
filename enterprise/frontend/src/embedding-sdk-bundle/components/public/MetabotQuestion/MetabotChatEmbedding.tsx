@@ -81,20 +81,20 @@ export const MetabotChatEmbedding = () => {
           metabot.isDoingScience && Styles.innerContainerLoading,
           inputExpanded && Styles.innerContainerExpanded,
         )}
-        gap="sm"
       >
         <Flex
-          w="33px"
-          h="24px"
+          w="16px"
+          h="16px"
           style={{
             flexShrink: 0,
           }}
           justify="center"
+          align="center"
         >
           {metabot.isDoingScience ? (
             <Loader size="sm" />
           ) : (
-            <Icon name="ai" c="var(--mb-color-brand)" size="1.5rem" />
+            <Icon name="ai" c="var(--mb-color-brand)" size="1rem" />
           )}
         </Flex>
         <Textarea
