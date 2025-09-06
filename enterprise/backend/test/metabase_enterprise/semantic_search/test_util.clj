@@ -15,6 +15,7 @@
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase.search.config :as search.config]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -81,6 +82,18 @@
   "Drop, create database dbname on pgvector and redefine datasource accordingly. Not thread safe."
   [db-name & body]
   `(do-with-test-db! ~db-name (fn [] ~@body)))
+
+(defmacro with-weights
+  "Execute `body` overriding search weights with `weight-map`."
+  [weight-map & body]
+  `(mt/with-dynamic-fn-redefs [search.config/weights (constantly ~weight-map)]
+     ~@body))
+
+(defmacro with-only-semantic-weights
+  "Execute `body` with only the semantic search hybrid scorer weights active."
+  [& body]
+  `(with-weights {:rrf 1}
+     ~@body))
 
 (def ^:private init-delay
   (delay
