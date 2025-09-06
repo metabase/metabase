@@ -1097,6 +1097,53 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.MigrateClickHouseDetailsToMultiDB"
 
+  - changeSet:
+      id: v57.2025-08-26T10:51:08
+      author: jds
+      comment: Add synced_to_source_of_truth column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: synced_to_source_of_truth
+                  remarks: Whether this transform is synced to the git source of truth
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-04T10:00:00
+      author: edpaget
+      comment: Add library_identifier column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: library_identifier
+                  remarks: Unique identifier for transforms within a library
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-09-04T10:01:00
+      author: edpaget
+      comment: Add unique constraint and index on transform.library_identifier
+      changes:
+        - addUniqueConstraint:
+            tableName: transform
+            columnNames: library_identifier
+            constraintName: unique_transform_library_identifier
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_library_identifier
+            columns:
+              - column:
+                  name: library_identifier
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

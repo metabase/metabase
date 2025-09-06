@@ -125,6 +125,7 @@ export default class ActionButton extends Component {
       failedClassName,
       forceActiveStyle,
       children,
+      disabled,
       ...props
     } = this.props;
     const { active, result } = this.state;
@@ -146,6 +147,7 @@ export default class ActionButton extends Component {
               })
         }
         onClick={this.onClick}
+        disabled={disabled}
       >
         {active ? (
           useLoadingSpinner ? (
