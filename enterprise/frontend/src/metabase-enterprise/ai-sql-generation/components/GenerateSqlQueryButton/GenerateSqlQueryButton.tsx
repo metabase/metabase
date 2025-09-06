@@ -3,6 +3,7 @@ import { t } from "ttag";
 import type { GenerateSqlQueryButtonProps } from "metabase/plugins";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import { useLazyGenerateSqlQueryQuery } from "metabase-enterprise/api";
+import { useMetabotEnabled } from "metabase-enterprise/metabot/hooks";
 import * as Lib from "metabase-lib";
 import type { GenerateSqlQueryRequest } from "metabase-types/api";
 
@@ -14,6 +15,11 @@ export function GenerateSqlQueryButton({
 }: GenerateSqlQueryButtonProps) {
   const [generateSql, { isFetching }] = useLazyGenerateSqlQueryQuery();
   const request = getRequest(query, selectedQueryText);
+  const isMetabotEnabled = useMetabotEnabled();
+
+  if (!isMetabotEnabled) {
+    return null;
+  }
 
   const handleClick = async () => {
     if (request == null) {

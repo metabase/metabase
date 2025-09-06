@@ -4,7 +4,11 @@ import { Button } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 export function FixSqlQueryButton() {
-  const { submitInput } = useMetabotAgent();
+  const { submitInput, isEnabled } = useMetabotAgent();
+
+  if (!isEnabled) {
+    return null;
+  }
 
   const handleClick = () => submitInput("Fix this SQL query");
 

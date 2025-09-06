@@ -14,16 +14,18 @@ export interface MetabotProps {
 }
 
 export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
-  const { visible, setVisible } = useMetabotAgent();
+  const { visible, setVisible, isEnabled } = useMetabotAgent();
 
   useEffect(() => {
-    return tinykeys(window, {
-      "$mod+b": (e) => {
-        e.preventDefault(); // prevent FF from opening bookmark menu
-        setVisible(!visible);
-      },
-    });
-  }, [visible, setVisible]);
+    if (isEnabled) {
+      return tinykeys(window, {
+        "$mod+b": (e) => {
+          e.preventDefault(); // prevent FF from opening bookmark menu
+          setVisible(!visible);
+        },
+      });
+    }
+  }, [visible, setVisible, isEnabled]);
 
   useEffect(
     function closeViaPropChange() {
@@ -34,7 +36,7 @@ export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
     [hide, setVisible],
   );
 
-  if (!visible || hide) {
+  if (!visible || hide || !isEnabled) {
     return null;
   }
 

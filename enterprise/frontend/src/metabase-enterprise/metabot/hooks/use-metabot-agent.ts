@@ -21,8 +21,11 @@ import {
   submitInput as submitInputAction,
 } from "../state";
 
+import { useMetabotEnabled } from "./use-metabot-enabled";
+
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
+  const isEnabled = useMetabotEnabled();
   const { prompt, setPrompt, promptInputRef, getChatContext } =
     useMetabotContext();
 
@@ -143,6 +146,7 @@ export const useMetabotAgent = () => {
 
   return {
     isDoingScience,
+    isEnabled,
     prompt,
     setPrompt,
     promptInputRef,

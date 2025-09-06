@@ -14,6 +14,7 @@ import {
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
 import { isEventOverElement } from "metabase/lib/dom";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
 
@@ -52,7 +53,7 @@ export const CodeMirrorEditor = forwardRef<
   {
     query,
     highlightedLineNumbers,
-    placeholder = getPlaceholderText(Lib.engine(query)),
+    placeholder,
     readOnly,
     onChange,
     onRunQuery,
@@ -65,6 +66,12 @@ export const CodeMirrorEditor = forwardRef<
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
   const extensions = useExtensions({ query, onRunQuery });
+  const isMetabotEnabled = PLUGIN_METABOT.useMetabotEnabled();
+
+  const fallbackPlaceholder = getPlaceholderText(
+    Lib.engine(query),
+    isMetabotEnabled,
+  );
 
   useImperativeHandle(ref, () => {
     return {
@@ -141,7 +148,7 @@ export const CodeMirrorEditor = forwardRef<
       onUpdate={handleUpdate}
       autoFocus
       autoCorrect="off"
-      placeholder={placeholder}
+      placeholder={placeholder ?? fallbackPlaceholder}
       highlightRanges={highlightedRanges}
       onFormat={onFormatQuery}
     />

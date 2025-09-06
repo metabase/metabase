@@ -1001,3 +1001,23 @@
                     (request (assoc arguments
                                     :with_fields false
                                     :with_metrics false))))))))))
+
+(deftest tools-api-feature-toggle-test
+  (testing "Tools API endpoints respect metabot feature toggle"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temp-env-var-value! ["MB_METABOT_FEATURE_ENABLED" "false"]
+        (let [session-token (ai-session-token)
+              conversation-id (str (random-uuid))]
+
+          ;; Test a sample of tool endpoints
+          (doseq [[tool-name arguments] [["field-values" {:entity_type "table" :entity_id 1 :field_id "1_4" :limit 10}]
+                                         ["get-current-user" {}]
+                                         ["get-tables" {:database_id 1}]
+                                         ["find-outliers" {:entity_type "table" :entity_id 1 :columns ["id"] :limit 10}]]]
+            (testing (str "Tool: " tool-name " should be disabled")
+              (is (= {:message "Metabot is disabled."}
+                     (mt/user-http-request :rasta :post 403
+                                           (str "ee/metabot-tools/" tool-name)
+                                           {:request-options {:headers {"x-metabase-session" session-token}}}
+                                           {:arguments arguments
+                                            :conversation_id conversation-id}))))))))))

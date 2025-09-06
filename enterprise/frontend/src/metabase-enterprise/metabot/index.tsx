@@ -1,25 +1,25 @@
-import { useMemo } from "react";
 import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { Route } from "metabase/hoc/Title";
-import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
-import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { MetabotAgentSettingsPage } from "./components/MetabotAdmin/MetabotAgentSettingsPage";
+import { MetabotGeneralSettingsPage } from "./components/MetabotAdmin/MetabotGeneralSettingsPage";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
-import { useMetabotAgent } from "./hooks";
+import { useMetabotEnabled, useMetabotPaletteActions } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
 
 if (hasPremiumFeature("metabot_v3")) {
-  PLUGIN_METABOT.isEnabled = () => true;
+  PLUGIN_METABOT.useMetabotEnabled = useMetabotEnabled;
+
   PLUGIN_METABOT.Metabot = Metabot;
 
   PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
@@ -37,8 +37,9 @@ if (hasPremiumFeature("metabot_v3")) {
       path="metabot"
       component={createAdminRouteGuard("metabot")}
     >
-      <IndexRoute component={MetabotAdminPage} />
-      <Route path=":metabotId" component={MetabotAdminPage} />
+      <IndexRoute component={MetabotGeneralSettingsPage} />
+      <Route path="general" component={MetabotGeneralSettingsPage} />
+      <Route path=":metabotId" component={MetabotAgentSettingsPage} />
     </Route>
   );
 
@@ -48,25 +49,7 @@ if (hasPremiumFeature("metabot_v3")) {
   // TODO: make enterprise store + fix type
   PLUGIN_METABOT.getMetabotVisible =
     getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
-  PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
-    const { startNewConversation } = useMetabotAgent();
-
-    return useMemo(() => {
-      const ret: PaletteAction[] = [
-        {
-          id: "initialize_metabot",
-          name: searchText
-            ? t`Ask Metabot, "${searchText}"`
-            : t`Ask me to do something, or ask me a question`,
-          section: "metabot",
-          keywords: searchText,
-          icon: "metabot",
-          perform: () => startNewConversation(searchText),
-        },
-      ];
-      return ret;
-    }, [searchText, startNewConversation]);
-  };
+  PLUGIN_METABOT.useMetabotPalletteActions = useMetabotPaletteActions;
 
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;
 
