@@ -1,3 +1,4 @@
+import { DndContext, pointerWithin } from "@dnd-kit/core";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
@@ -25,14 +26,20 @@ import { CommandExtension } from "./extensions/Command/CommandExtension";
 import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "./extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
+import { FlexContainer } from "./extensions/FlexContainer/FlexContainer";
 import { MentionExtension } from "./extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
 import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
+import { ResizeNode } from "./extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
-import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
+import {
+  useCardEmbedDnD,
+  useCardEmbedsTracking,
+  useQuestionSelection,
+} from "./hooks";
 import type { CardEmbedRef } from "./types";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
@@ -40,6 +47,7 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   MetabotNode.name,
   SmartLink.name,
   Image.name,
+  FlexContainer.name,
   "codeBlock",
 ];
 
@@ -117,6 +125,7 @@ export const Editor: React.FC<EditorProps> = ({
         placeholder: t`Start writing, press "/" to open command palette, or "@" to insert a link...`,
       }),
       CardEmbed,
+      FlexContainer,
       MentionExtension.configure({
         suggestion: {
           allow: ({ state }) => !isMetabotBlock(state),
@@ -139,6 +148,7 @@ export const Editor: React.FC<EditorProps> = ({
           render: createSuggestionRenderer(MetabotMentionSuggestion),
         },
       }),
+      ResizeNode,
     ],
     [siteUrl, getState],
   );
@@ -189,6 +199,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   useCardEmbedsTracking(editor, onCardEmbedsChange);
   useQuestionSelection(editor, onQuestionSelect);
+  const { handleDragEnd } = useCardEmbedDnD(editor);
 
   if (!editor) {
     return null;
@@ -203,44 +214,46 @@ export const Editor: React.FC<EditorProps> = ({
   }
 
   return (
-    <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
-      <Box
-        className={S.editorContent}
-        onClick={(e) => {
-          // Focus editor when clicking on empty space
-          const target = e.target as HTMLElement;
-          if (
-            target.classList.contains(S.editorContent) ||
-            target.classList.contains("ProseMirror")
-          ) {
-            const clickY = e.clientY;
-            const proseMirrorElement = target.querySelector(".ProseMirror");
+    <DndContext onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
+      <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
+        <Box
+          className={S.editorContent}
+          onClick={(e) => {
+            // Focus editor when clicking on empty space
+            const target = e.target as HTMLElement;
+            if (
+              target.classList.contains(S.editorContent) ||
+              target.classList.contains("ProseMirror")
+            ) {
+              const clickY = e.clientY;
+              const proseMirrorElement = target.querySelector(".ProseMirror");
 
-            if (proseMirrorElement) {
-              const proseMirrorRect =
-                proseMirrorElement.getBoundingClientRect();
-              const isClickBelowContent = clickY > proseMirrorRect.bottom;
+              if (proseMirrorElement) {
+                const proseMirrorRect =
+                  proseMirrorElement.getBoundingClientRect();
+                const isClickBelowContent = clickY > proseMirrorRect.bottom;
 
-              if (isClickBelowContent) {
-                // Only move to end if clicking below the actual content
-                editor.commands.focus("end");
+                if (isClickBelowContent) {
+                  // Only move to end if clicking below the actual content
+                  editor.commands.focus("end");
+                } else {
+                  // Just focus without changing cursor position for clicks in padding areas
+                  editor.commands.focus();
+                }
               } else {
-                // Just focus without changing cursor position for clicks in padding areas
+                // Fallback: just focus without position change
                 editor.commands.focus();
               }
-            } else {
-              // Fallback: just focus without position change
-              editor.commands.focus();
             }
-          }
-        }}
-      >
-        <EditorContent data-testid="document-content" editor={editor} />
-        <EditorBubbleMenu
-          editor={editor}
-          disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
-        />
+          }}
+        >
+          <EditorContent data-testid="document-content" editor={editor} />
+          <EditorBubbleMenu
+            editor={editor}
+            disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+          />
+        </Box>
       </Box>
-    </Box>
+    </DndContext>
   );
 };
