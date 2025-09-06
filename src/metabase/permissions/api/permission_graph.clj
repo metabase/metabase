@@ -96,14 +96,26 @@
    [:native {:optional true} Native]
    [:schemas {:optional true} Schemas]])
 
+(defn- strict-perm?
+  [{:keys [native schemas]}]
+  (not (and (= native :write) schemas (not (#{:all :impersonated} schemas)))))
+
+(defn- invalid-db-perms-msg
+  [_ _]
+  (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))
+
 (def StrictDataPerms
   "Data perms that care about how view-data and make-queries are related to one another.
   If you have write access for native queries, you must have data access to all schemas."
   [:and
    DataPerms
-   [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
-    (fn [{:keys [native schemas]}]
-      (not (and (= native :write) schemas (not (#{:all :impersonated} schemas)))))]])
+   [:fn {:error/fn #'invalid-db-perms-msg}
+    #'strict-perm?]])
+
+(defn- strict-graph? [{:keys [create-queries view-data]}]
+  (not (and (= create-queries :query-builder-and-native) (= view-data :blocked))))
+
+(defn- strict-db-graph-message [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))
 
 (def StrictDbGraph
   "like db-graph, but with added validations:
@@ -119,10 +131,8 @@
       [:download {:optional true} "StrictDataPerms"]
       [:data-model {:optional true} "StrictDataPerms"]
       [:details {:optional true} [:enum :yes :no]]]
-     [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
-      (fn [db-entry]
-        (let [{:keys [create-queries view-data]} db-entry]
-          (not (and (= create-queries :query-builder-and-native) (= view-data :blocked)))))]]]])
+     [:fn {:error/fn #'strict-db-graph-message}
+      #'strict-graph?]]]])
 
 (def DataPermissionsGraph
   "Used to transform, and verify data permissions graph"
