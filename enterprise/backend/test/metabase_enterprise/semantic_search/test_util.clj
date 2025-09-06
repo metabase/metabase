@@ -5,17 +5,17 @@
    [environ.core :refer [env]]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.semantic-search.core]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.util :as semantic.util]
-   [metabase.search.engine :as search.engine]
+   [metabase.search.config :as search.config]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -82,6 +82,18 @@
   "Drop, create database dbname on pgvector and redefine datasource accordingly. Not thread safe."
   [db-name & body]
   `(do-with-test-db! ~db-name (fn [] ~@body)))
+
+(defmacro with-weights
+  "Execute `body` overriding search weights with `weight-map`."
+  [weight-map & body]
+  `(mt/with-dynamic-fn-redefs [search.config/weights (constantly ~weight-map)]
+     ~@body))
+
+(defmacro with-only-semantic-weights
+  "Execute `body` with only the semantic search hybrid scorer weights active."
+  [& body]
+  `(with-weights {:rrf 1}
+     ~@body))
 
 (def ^:private init-delay
   (delay
@@ -331,7 +343,9 @@
        (with-open [_# (open-temp-index-and-metadata!)]
          (binding [search.ingestion/*force-sync* true]
            (blocking-index!
-            (search.engine/reindex! :search.engine/semantic {:force-reset true}))
+            (semantic.pgvector-api/gate-updates! (semantic.env/get-pgvector-datasource!)
+                                                 mock-index-metadata
+                                                 (search.ingestion/searchable-documents)))
            ~@body)))))
 
 (defn table-exists-in-db?

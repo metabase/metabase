@@ -88,7 +88,7 @@ export const addScalePadding = (
 ) => {
   const [start, end] = scale.range();
 
-  return scale.range([start + paddingStart, end - paddingEnd]);
+  return scale.copy().range([start + paddingStart, end - paddingEnd]);
 };
 
 const getTickInfo = (
