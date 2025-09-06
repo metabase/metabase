@@ -38,6 +38,8 @@ export function modelToUrl(item: UrlableModel) {
       return collection(item);
     case "document":
       return document(item);
+    case "user":
+      return null;
     default:
       return null;
   }
