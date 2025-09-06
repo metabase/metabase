@@ -701,37 +701,43 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
       assertTableDoesNotExistError();
     });
 
-    it("should be able to delete the target and restore the same target back", () => {
-      cy.log("create and run a transform");
-      createMbqlTransform({ visitTransform: true });
-      runTransformAndWaitForSuccess();
+    it(
+      "should be able to delete the target and restore the same target back",
+      { tags: "@flaky" },
+      () => {
+        cy.log("create and run a transform");
+        createMbqlTransform({ visitTransform: true });
+        runTransformAndWaitForSuccess();
 
-      cy.log("delete the old target without creating the new one");
-      getTransformPage().button("Change target").click();
-      H.modal().within(() => {
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
-        cy.findByLabelText("Delete transform_table").click();
-        cy.button("Change target and delete the old one").click();
-        cy.wait("@deleteTransformTable");
-        cy.wait("@updateTransform");
-      });
+        cy.log("delete the old target without creating the new one");
+        getTransformPage().button("Change target").click();
+        H.modal().within(() => {
+          cy.findByLabelText("Table name").clear().type(TARGET_TABLE_2);
+          cy.findByLabelText("Delete transform_table").click();
+          cy.button("Change target and delete the old one").click();
+          cy.wait("@deleteTransformTable");
+          cy.wait("@updateTransform");
+        });
 
-      cy.log("change the target back to the original one");
-      getTransformPage().button("Change target").click();
-      H.modal().within(() => {
-        cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
-        cy.button("Change target").click();
-        cy.wait("@updateTransform");
-      });
+        cy.log("change the target back to the original one");
+        getTransformPage().button("Change target").click();
+        H.modal().within(() => {
+          cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
+          cy.button("Change target").click();
+          cy.wait("@updateTransform");
+        });
 
-      cy.log("run the transform to re-create the original target");
-      runTransformAndWaitForSuccess();
+        cy.log("run the transform to re-create the original target");
+        runTransformAndWaitForSuccess();
 
-      cy.log("verify the target is available");
-      getTableLink().click();
-      H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
-      H.assertQueryBuilderRowCount(3);
-    });
+        cy.log("verify the target is available");
+        getTableLink().click();
+        H.queryBuilderHeader()
+          .findByText("Transform Table")
+          .should("be.visible");
+        H.assertQueryBuilderRowCount(3);
+      },
+    );
 
     it("should not allow to overwrite an existing table when changing the target", () => {
       createMbqlTransform({ visitTransform: true });

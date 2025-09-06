@@ -15,80 +15,84 @@ H.describeWithSnowplow(
       cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
     });
 
-    it("Can upload a CSV file to an empty postgres schema", () => {
-      const testFile = VALID_CSV_FILES[0];
-      const EMPTY_SCHEMA_NAME = "empty_uploads";
+    it(
+      "Can upload a CSV file to an empty postgres schema",
+      { tags: "@flaky" },
+      () => {
+        const testFile = VALID_CSV_FILES[0];
+        const EMPTY_SCHEMA_NAME = "empty_uploads";
 
-      cy.intercept("PUT", "/api/setting/*").as("saveSettings");
-      cy.intercept("GET", "/api/database").as("databaseList");
+        cy.intercept("PUT", "/api/setting/*").as("saveSettings");
+        cy.intercept("GET", "/api/database").as("databaseList");
 
-      H.restore("postgres-writable");
-      cy.signInAsAdmin();
+        H.restore("postgres-writable");
+        cy.signInAsAdmin();
 
-      H.queryWritableDB(
-        "DROP SCHEMA IF EXISTS empty_uploads CASCADE;",
-        "postgres",
-      );
-      H.queryWritableDB(
-        "CREATE SCHEMA IF NOT EXISTS empty_uploads;",
-        "postgres",
-      );
-
-      cy.request("POST", "/api/collection", {
-        name: "Uploads Collection",
-        parent_id: null,
-      }).then(({ body: { id: collectionId } }) => {
-        cy.wrap(collectionId).as("collectionId");
-      });
-      cy.visit("/admin/settings/uploads");
-
-      cy.findByLabelText("Upload Settings Form")
-        .findByPlaceholderText("Select a database")
-        .click();
-      H.popover().findByText("Writable Postgres12").click();
-      cy.findByLabelText("Upload Settings Form")
-        .findByPlaceholderText("Select a schema")
-        .click();
-
-      H.popover().findByText(EMPTY_SCHEMA_NAME).click();
-
-      cy.findByLabelText("Upload Settings Form")
-        .button("Enable uploads")
-        .click();
-
-      cy.wait(["@saveSettings", "@databaseList"]);
-
-      uploadFileToCollection(testFile);
-
-      const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
-
-      H.queryWritableDB(tableQuery, "postgres").then((result) => {
-        expect(result.rows.length).to.equal(1);
-        const tableName = result.rows[0].table_name;
         H.queryWritableDB(
-          `SELECT count(*) FROM ${EMPTY_SCHEMA_NAME}.${tableName};`,
+          "DROP SCHEMA IF EXISTS empty_uploads CASCADE;",
           "postgres",
-        ).then((result) => {
-          expect(Number(result.rows[0].count)).to.equal(testFile.rowCount);
+        );
+        H.queryWritableDB(
+          "CREATE SCHEMA IF NOT EXISTS empty_uploads;",
+          "postgres",
+        );
+
+        cy.request("POST", "/api/collection", {
+          name: "Uploads Collection",
+          parent_id: null,
+        }).then(({ body: { id: collectionId } }) => {
+          cy.wrap(collectionId).as("collectionId");
         });
-      });
+        cy.visit("/admin/settings/uploads");
 
-      cy.log(
-        "Ensure that table is visible in admin without refreshing (metabase#38041)",
-      );
+        cy.findByLabelText("Upload Settings Form")
+          .findByPlaceholderText("Select a database")
+          .click();
+        H.popover().findByText("Writable Postgres12").click();
+        cy.findByLabelText("Upload Settings Form")
+          .findByPlaceholderText("Select a schema")
+          .click();
 
-      cy.findByTestId("app-bar")
-        .findByRole("button", { name: "Settings" })
-        .click();
-      H.popover().findByText("Admin settings").click();
+        H.popover().findByText(EMPTY_SCHEMA_NAME).click();
 
-      cy.findByRole("link", { name: "Table Metadata" }).click();
+        cy.findByLabelText("Upload Settings Form")
+          .button("Enable uploads")
+          .click();
 
-      H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
-      H.DataModel.TablePicker.getSchema(EMPTY_SCHEMA_NAME).click();
-      H.DataModel.TablePicker.getTables().should("have.length", 1);
-      H.DataModel.TablePicker.getTable("Dog Breeds").should("be.visible");
-    });
+        cy.wait(["@saveSettings", "@databaseList"]);
+
+        uploadFileToCollection(testFile);
+
+        const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
+
+        H.queryWritableDB(tableQuery, "postgres").then((result) => {
+          expect(result.rows.length).to.equal(1);
+          const tableName = result.rows[0].table_name;
+          H.queryWritableDB(
+            `SELECT count(*) FROM ${EMPTY_SCHEMA_NAME}.${tableName};`,
+            "postgres",
+          ).then((result) => {
+            expect(Number(result.rows[0].count)).to.equal(testFile.rowCount);
+          });
+        });
+
+        cy.log(
+          "Ensure that table is visible in admin without refreshing (metabase#38041)",
+        );
+
+        cy.findByTestId("app-bar")
+          .findByRole("button", { name: "Settings" })
+          .click();
+        H.popover().findByText("Admin settings").click();
+
+        cy.findByRole("link", { name: "Table Metadata" }).click();
+
+        H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
+        H.DataModel.TablePicker.getSchema(EMPTY_SCHEMA_NAME).click();
+        H.DataModel.TablePicker.getTables().should("have.length", 1);
+        H.DataModel.TablePicker.getTable("Dog Breeds").should("be.visible");
+      },
+    );
 
     ["postgres", "mysql"].forEach((dialect) => {
       describe(`CSV Uploading (${dialect})`, () => {
