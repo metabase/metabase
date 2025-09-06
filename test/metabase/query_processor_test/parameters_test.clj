@@ -111,7 +111,7 @@
                          :type          :model
                          :dataset-query (mt/native-query {:query "select * from checkins"})}]})
           q   "SELECT * FROM {{#1}} LIMIT 2"
-          tt  (lib-native/extract-template-tags q)
+          tt  (lib-native/extract-template-tags mp q)
           res (qp/process-query
                (lib/query
                 mp

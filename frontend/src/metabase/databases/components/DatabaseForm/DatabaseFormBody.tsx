@@ -1,6 +1,11 @@
 import { useFormikContext } from "formik";
 import { type JSX, useEffect, useMemo } from "react";
+import { match } from "ts-pattern";
 
+import type {
+  DatabaseFormConfig,
+  FormLocation,
+} from "metabase/databases/types";
 import { getVisibleFields } from "metabase/databases/utils/schema";
 import { Box } from "metabase/ui";
 import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
@@ -12,7 +17,7 @@ import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import { DatabaseFormError } from "../DatabaseFormError";
 import { DatabaseNameField } from "../DatabaseNameField";
 
-import { type DatabaseFormConfig, useHasConnectionError } from "./utils";
+import { useHasConnectionError } from "./utils";
 
 interface DatabaseFormBodyProps {
   engine: Engine | undefined;
@@ -22,10 +27,10 @@ interface DatabaseFormBodyProps {
   autofocusFieldName?: string;
   isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
+  setIsDirty?: (isDirty: boolean) => void;
   config: DatabaseFormConfig;
-  setIsDirty?: (dirty: boolean) => void;
   showSampleDatabase?: boolean;
-  location: "admin" | "setup" | "embedding_setup";
+  location: FormLocation;
 }
 
 export const DatabaseFormBody = ({
@@ -36,8 +41,8 @@ export const DatabaseFormBody = ({
   autofocusFieldName,
   isAdvanced,
   onEngineChange,
-  config,
   setIsDirty,
+  config,
   showSampleDatabase = false,
   location,
 }: DatabaseFormBodyProps): JSX.Element => {
@@ -52,14 +57,16 @@ export const DatabaseFormBody = ({
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];
   }, [engine, values, isAdvanced]);
 
+  const px = match(location)
+    .with("setup", () => "sm")
+    .with("embedding_setup", () => "xl")
+    .with("admin", () => "xl")
+    .with("full-page", () => undefined)
+    .exhaustive();
+  const mah = location === "full-page" ? "100%" : "calc(100vh - 20rem)";
+
   return (
-    <Box
-      id="scrollable-database-form-body"
-      mah="calc(100vh - 20rem)"
-      mb="md"
-      px={location === "setup" ? "sm" : "xl"}
-      style={{ overflowY: "auto", position: "relative" }}
-    >
+    <Box mah={mah} style={{ overflowY: "auto" }} px={px} mb="md">
       {engineFieldState !== "hidden" && (
         <>
           <DatabaseEngineField

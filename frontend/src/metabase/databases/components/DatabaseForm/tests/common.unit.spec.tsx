@@ -8,13 +8,6 @@ import * as utils from "../utils";
 
 import { TEST_ENGINES, setup } from "./setup";
 
-jest.mock("../../DatabaseFormError", () => {
-  return {
-    ...jest.requireActual("../../DatabaseFormError"),
-    DatabaseFormError: () => <div data-testid="database-form-error" />,
-  };
-});
-
 describe("DatabaseForm", () => {
   it("should submit default values", async () => {
     const { onSubmit } = setup();
@@ -167,46 +160,34 @@ describe("DatabaseForm with provider name", () => {
     });
   });
 
-  describe("connection error handling", () => {
+  describe("Connection error handling", () => {
+    const errorHandlingSetup = ({ isAdvanced }: { isAdvanced?: boolean }) => {
+      setup({
+        engines: TEST_ENGINES,
+        isAdvanced,
+      });
+    };
+    const errorMessage = /Metabase tried, but couldn't connect/;
+
     beforeEach(() => {
-      jest.spyOn(utils, "useHasConnectionError").mockClear();
-    });
-
-    it("shows error message when there is a connection error", () => {
-      const { unmount } = setup({ engines: TEST_ENGINES });
-      expect(
-        screen.queryByTestId("database-form-error"),
-      ).not.toBeInTheDocument();
-      jest.spyOn(utils, "useHasConnectionError").mockReturnValue(true);
-
-      unmount();
-      setup();
-      expect(screen.getByTestId("database-form-error")).toBeInTheDocument();
+      jest.spyOn(utils, "useHasConnectionError").mockImplementation(() => true);
     });
 
     it("shows error message in the footer if isAdvanced is false (setup page)", () => {
-      jest.spyOn(utils, "useHasConnectionError").mockReturnValue(true);
-
-      setup({ isAdvanced: false, engines: TEST_ENGINES });
-      expect(screen.getByTestId("database-form-error")).toBeInTheDocument();
+      errorHandlingSetup({ isAdvanced: false });
       // Check error is rendered in the footer
       expect(
-        within(screen.getByTestId("form-footer")).getByTestId(
-          "database-form-error",
-        ),
+        within(screen.getByTestId("form-footer")).getByText(errorMessage),
       ).toBeInTheDocument();
     });
 
-    it("shows error message in the footer if isAdvanced is true (admin page)", () => {
-      jest.spyOn(utils, "useHasConnectionError").mockReturnValue(true);
-
-      setup({ isAdvanced: true, engines: TEST_ENGINES });
-      expect(screen.getByTestId("database-form-error")).toBeInTheDocument();
-      // Check error is NOT rendered in the footer
+    it("shows error message outside the footer if isAdvanced is true (admin page)", () => {
+      errorHandlingSetup({ isAdvanced: true });
+      // Check error is rendered
+      expect(screen.getByText(errorMessage)).toBeInTheDocument();
+      // But not in the footer
       expect(
-        within(screen.getByTestId("form-footer")).queryByTestId(
-          "database-form-error",
-        ),
+        within(screen.getByTestId("form-footer")).queryByText(errorMessage),
       ).not.toBeInTheDocument();
     });
   });

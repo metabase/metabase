@@ -5,8 +5,8 @@ import { createMockState } from "metabase-types/store/mocks";
 import { DatabaseFormError } from "./DatabaseFormError";
 import {
   type ErrorVariant,
-  TestFormProvider,
-} from "./test-utils/TestFormProvider";
+  TestFormErrorProvider,
+} from "./test-utils/TestFormErrorProvider";
 import { getHostAndPortSpecificErrorMessage } from "./useDatabaseErrorDetails";
 
 interface SetupOptions {
@@ -24,11 +24,14 @@ const setup = (opts?: SetupOptions) => {
   });
 
   return renderWithProviders(
-    <TestFormProvider errorMessage={errorMessage} errorVariant={errorVariant}>
+    <TestFormErrorProvider
+      errorMessage={errorMessage}
+      errorVariant={errorVariant}
+    >
       <div data-testid="scrollable-database-form-body">
         <DatabaseFormError />
       </div>
-    </TestFormProvider>,
+    </TestFormErrorProvider>,
     {
       storeInitialState: defaultState,
     },

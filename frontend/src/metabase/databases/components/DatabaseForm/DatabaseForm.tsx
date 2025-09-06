@@ -1,22 +1,37 @@
-import { type JSX, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { Form, FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import type { DatabaseData, EngineKey } from "metabase-types/api";
 
 import { getEngines } from "../../selectors";
+import type { FormLocation } from "../../types";
 import { getSubmitValues, getValidationSchema } from "../../utils/schema";
 
 import { DatabaseFormBody } from "./DatabaseFormBody";
 import { DatabaseFormFooter } from "./DatabaseFormFooter";
-import {
-  type ContinueWithoutDataComponent,
-  type DatabaseFormConfig,
-  getEngine,
-  getEngineKey,
-} from "./utils";
+import { getEngine, getEngineKey } from "./utils";
 
-export interface DatabaseFormProps {
+export type EngineFieldState = "default" | "hidden" | "disabled";
+
+export interface DatabaseFormConfig {
+  /** present the form with advanced configuration options */
+  isAdvanced?: boolean;
+  engine?: {
+    /** present the engine field as normal, disabled, or hidden */
+    fieldState?: EngineFieldState | undefined;
+  };
+  name?: {
+    /** present the name field as a slug */
+    isSlug?: boolean;
+  };
+}
+
+type ContinueWithoutDataComponent = (props: {
+  onCancel?: () => void;
+}) => JSX.Element;
+
+interface DatabaseFormProps {
   initialValues?: Partial<DatabaseData>;
   autofocusFieldName?: string;
   onSubmit?: (values: DatabaseData) => void;
@@ -24,7 +39,7 @@ export interface DatabaseFormProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
-  location: "admin" | "setup" | "embedding_setup";
+  location: FormLocation;
   /**
    * Whether to show the sample database indicator in the engine list and change the "I'll add my data later" button to "Continue with sample data"
    */
@@ -86,7 +101,10 @@ export const DatabaseForm = ({
       enableReinitialize
       onSubmit={handleSubmit}
     >
-      <Form data-testid="database-form" pt="md">
+      <Form
+        data-testid="database-form"
+        pt={location === "full-page" ? undefined : "md"}
+      >
         <DatabaseFormBody
           engine={engine}
           // casting won't be needed after migrating all usages of engineKey
@@ -96,16 +114,17 @@ export const DatabaseForm = ({
           autofocusFieldName={autofocusFieldName}
           isAdvanced={isAdvanced}
           onEngineChange={handleEngineChange}
-          config={config}
           setIsDirty={setIsDirty}
+          config={config}
           showSampleDatabase={showSampleDatabase}
           location={location}
         />
         <DatabaseFormFooter
+          ContinueWithoutDataSlot={ContinueWithoutDataSlot}
           isAdvanced={isAdvanced}
+          location={location}
           onCancel={onCancel}
           showSampleDatabase={showSampleDatabase}
-          ContinueWithoutDataSlot={ContinueWithoutDataSlot}
         />
       </Form>
     </FormProvider>

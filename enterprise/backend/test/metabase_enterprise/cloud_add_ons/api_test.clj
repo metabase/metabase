@@ -35,7 +35,7 @@
                                       {:terms_of_service true})))))
     (testing "when all conditions are met"
       (mt/with-temp [:model/User user {:is_superuser true}]
-        (mt/with-premium-features #{:hosting :offer-metabase-ai}
+        (mt/with-premium-features #{:hosting :offer-metabase-ai :audit-app}
           ;; FIXME: With `(mt/with-temporary-setting-values [token-status {:store-users [{:email (:email user)}]}])`,
           ;;  `(premium-features/token-status)` still returns `nil`; thus resort to `with-redefs`:
           (with-redefs [premium-features/token-status (constantly {:store-users [{:email (:email user)}]})]
@@ -64,4 +64,8 @@
                   (is (not-empty @store-api-calls)
                       "Store API was called")
                   (is (not-empty @clear-token-cache-calls)
-                      "Token cache was cleared"))))))))))
+                      "Token cache was cleared")
+                  (testing "audit log entry generated"
+                    (let [{:keys [details user_id]} (mt/latest-audit-log-entry "cloud-add-on-purchase")]
+                      (is (= (:id user) user_id))
+                      (is (= {:add-on {:product-type "metabase-ai"}} details)))))))))))))

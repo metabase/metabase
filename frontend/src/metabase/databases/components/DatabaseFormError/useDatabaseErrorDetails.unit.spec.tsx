@@ -3,16 +3,19 @@ import type { PropsWithChildren } from "react";
 
 import {
   type FormProvidersOptions,
-  TestFormProvider,
-} from "./test-utils/TestFormProvider";
+  TestFormErrorProvider,
+} from "./test-utils/TestFormErrorProvider";
 import { useDatabaseErrorDetails } from "./useDatabaseErrorDetails";
 
 const setup = (opts: FormProvidersOptions) => {
   const { errorVariant, errorMessage } = opts;
   const FormProviderWrapper = ({ children }: PropsWithChildren) => (
-    <TestFormProvider errorVariant={errorVariant} errorMessage={errorMessage}>
+    <TestFormErrorProvider
+      errorVariant={errorVariant}
+      errorMessage={errorMessage}
+    >
       {children}
-    </TestFormProvider>
+    </TestFormErrorProvider>
   );
 
   return renderHook(() => useDatabaseErrorDetails(), {

@@ -4,22 +4,24 @@ import { c, t } from "ttag";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import type {
+  ContinueWithoutDataComponent,
+  FormLocation,
+} from "metabase/databases/types";
 import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
 import { Button, Flex, Text } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
 import { DatabaseFormError } from "../DatabaseFormError";
 
-import {
-  type ContinueWithoutDataComponent,
-  useHasConnectionError,
-} from "./utils";
+import { useHasConnectionError } from "./utils";
 
 interface DatabaseFormFooterProps {
   isAdvanced: boolean;
   onCancel?: () => void;
   showSampleDatabase?: boolean;
   ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
+  location: FormLocation;
 }
 
 export const DatabaseFormFooter = ({
@@ -27,8 +29,9 @@ export const DatabaseFormFooter = ({
   onCancel,
   showSampleDatabase,
   ContinueWithoutDataSlot,
+  location,
 }: DatabaseFormFooterProps) => {
-  const { values, dirty, isSubmitting } = useFormikContext<DatabaseData>();
+  const { values, dirty } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
   const hasConnectionError = useHasConnectionError();
 
@@ -39,7 +42,10 @@ export const DatabaseFormFooter = ({
 
   if (isAdvanced) {
     return (
-      <FormFooter data-testid="form-footer" px="xl">
+      <FormFooter
+        data-testid="form-footer"
+        px={location === "full-page" ? undefined : "xl"}
+      >
         <Flex justify="space-between" align="center" w="100%">
           {isNew ? (
             <ExternalLink
@@ -54,13 +60,11 @@ export const DatabaseFormFooter = ({
           )}
 
           <Flex gap="sm">
-            <Button onClick={onCancel} disabled={isSubmitting}>
-              {t`Cancel`}
-            </Button>
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
-              disabled={!dirty || isSubmitting}
-              variant="filled"
+              disabled={!dirty}
               label={isNew ? t`Save` : t`Save changes`}
+              variant="filled"
             />
           </Flex>
         </Flex>

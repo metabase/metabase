@@ -105,8 +105,6 @@ export interface SetupOpts {
   isAdvanced?: boolean;
 }
 
-export const onSubmitMock = jest.fn();
-
 export const setup = ({
   settings,
   hasEnterprisePlugins,
@@ -122,8 +120,9 @@ export const setup = ({
     setupEnterprisePlugins();
   }
 
-  const onSubmit = onSubmitMock;
-  const { unmount } = renderWithProviders(
+  const onSubmit = jest.fn();
+
+  renderWithProviders(
     <DatabaseForm
       initialValues={{
         engine: "h2",
@@ -138,5 +137,5 @@ export const setup = ({
     },
   );
 
-  return { onSubmit, unmount };
+  return { onSubmit };
 };

@@ -15,7 +15,7 @@ export function defineEmbeddingSdkPackageBuildInfo() {
   window.METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO = {
     version: process.env.VERSION,
     gitBranch: process.env.GIT_BRANCH,
-    gitCommit: process.env.GIT_COMMIT,
+    gitCommitSha: process.env.GIT_COMMIT_SHA,
     buildTime: process.env.BUILD_TIME,
   } satisfies BuildInfo;
 }

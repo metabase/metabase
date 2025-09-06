@@ -2,25 +2,6 @@ import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import { useFormErrorMessage } from "metabase/forms";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
-export type ContinueWithoutDataComponent = (props: {
-  onCancel?: () => void;
-}) => JSX.Element;
-
-export type EngineFieldState = "default" | "hidden" | "disabled";
-
-export interface DatabaseFormConfig {
-  /** present the form with advanced configuration options */
-  isAdvanced?: boolean;
-  engine?: {
-    /** present the engine field as normal, disabled, or hidden */
-    fieldState?: EngineFieldState | undefined;
-  };
-  name?: {
-    /** present the name field as a slug */
-    isSlug?: boolean;
-  };
-}
-
 export const useHasConnectionError = () => {
   const errorMessage = useFormErrorMessage();
   return !!errorMessage;
