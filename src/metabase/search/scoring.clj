@@ -2,9 +2,16 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as mdb]
    [metabase.search.config :as search.config]))
 
 (def ^:private seconds-in-a-day 86400)
+
+(defn- cast-to-text
+  [column]
+  [:cast column (if (= :mysql (mdb/db-type))
+                  :char
+                  :text)])
 
 (defn truthy
   "Prefer it when a (potentially nullable) boolean is true."
@@ -106,7 +113,7 @@
         [:in :search_index.model (mapv (fn [m] [:inline (name m)]) sms)]
         [:= :search_index.model [:inline model-name]])
       [:= (keyword (str table-name ".user_id")) user-id]
-      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :text]]]]))
+      [:= :search_index.model_id (cast-to-text (keyword (str table-name "." model-name "_id")))]]]))
 
 (defn join-bookmarks
   "Add join clause to bookmark tables for :bookmarked scorer."
