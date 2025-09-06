@@ -109,7 +109,7 @@
               (persistent!
                (reduce
                 (fn [acc row]
-                  (let [grouping-key (ensure-consistent-type (perf/mapv #(nth row %) column-indexes))
+                  (let [grouping-key (perf/mapv #(ensure-consistent-type (nth row %)) column-indexes)
                         values (perf/mapv #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})

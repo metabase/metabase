@@ -141,6 +141,8 @@
                                   :description
                                   :entity_id
                                   :created_at]
+ [:NativeQuerySnippet
+  :template_tags]                []
  :Table                          [:name
                                   :display_name
                                   :description

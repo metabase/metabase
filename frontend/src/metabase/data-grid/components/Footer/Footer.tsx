@@ -14,6 +14,7 @@ export interface FooterProps<TData> {
   showRowsCount?: boolean;
   style?: React.CSSProperties;
   className?: string;
+  tableFooterExtraButtons?: React.ReactNode;
 }
 
 export const Footer = <TData,>({
@@ -22,6 +23,7 @@ export const Footer = <TData,>({
   enablePagination,
   className,
   style,
+  tableFooterExtraButtons,
 }: FooterProps<TData>) => {
   const formatNumber = useNumberFormatter();
   const wrapperAttributes = {
@@ -39,6 +41,7 @@ export const Footer = <TData,>({
       Math.min((pagination.pageIndex + 1) * pagination.pageSize, total) - 1;
     return (
       <div {...wrapperAttributes}>
+        {tableFooterExtraButtons}
         <PaginationFooter
           start={start}
           end={end}
@@ -53,6 +56,7 @@ export const Footer = <TData,>({
   if (showRowsCount) {
     return (
       <div {...wrapperAttributes}>
+        {tableFooterExtraButtons}
         <span className={S.rowsCount}>
           {ngettext(
             msgid`${formatNumber(total)} row`,
