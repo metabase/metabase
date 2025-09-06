@@ -382,6 +382,20 @@
   (let [response (apply mt/user-http-request :crowberto :get 200 "ee/transform/run" filters)]
     (filter our-pred (:data response))))
 
+(defn- parse-timestamp
+  ^ZonedDateTime [timestamp-string]
+  (-> timestamp-string
+      LocalDateTime/parse
+      (.atZone (ZoneId/systemDefault))))
+
+(defn- parse-instant
+  [timestamp-string]
+  (-> timestamp-string parse-timestamp .toInstant))
+
+(defn- utc-timestamp
+  [timestamp-string]
+  (-> timestamp-string parse-instant str))
+
 (deftest get-runs-filter-by-multiple-statuses-test
   (testing "GET /api/ee/transform/run - filter by multiple statuses"
     (mt/with-premium-features #{:transforms}
