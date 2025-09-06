@@ -14528,6 +14528,25 @@ redirect_from:
         "tags" : [ "/api/ee/scim/v2" ]
       }
     },
+    "/api/ee/semantic-search/status" : {
+      "get" : {
+        "summary" : "GET /api/ee/semantic-search/status",
+        "description" : "Fetch the indexing status of the currently active semantic search index table.\n\n  Returns a map with keys:\n   :indexed_count <number of indexed items>\n   :total_est     <estimated total number of items to index>\n\n  If no index is active, returns an empty map.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/semantic-search" ]
+      }
+    },
     "/api/ee/serialization/export" : {
       "post" : {
         "summary" : "POST /api/ee/serialization/export",

@@ -401,6 +401,88 @@ Whether or not the default GeoJSON maps are enabled.
 
 Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.
 
+### `MB_EE_EMBEDDING_MODEL`
+
+- Type: string
+- Default: `Snowflake/snowflake-arctic-embed-l-v2.0`
+- [Configuration file name](./config-file.md): `ee-embedding-model`
+
+Set the embedding model for the selected provider.
+
+This feature is experimental.
+
+### `MB_EE_EMBEDDING_MODEL_DIMENSIONS`
+
+- Type: positive-integer
+- Default: `1024`
+- [Configuration file name](./config-file.md): `ee-embedding-model-dimensions`
+
+Set the dimension size for the selected embedding model.
+
+This feature is experimental.
+
+### `MB_EE_EMBEDDING_PROVIDER`
+
+- Type: string
+- Default: `ai-service`
+- [Configuration file name](./config-file.md): `ee-embedding-provider`
+
+The embedding provider to use (:openai, :ollama, or :ai-service).
+
+This feature is experimental.
+
+### `MB_EE_OPENAI_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.openai.com`
+- [Configuration file name](./config-file.md): `ee-openai-api-base-url`
+
+The OpenAI embeddings base URL used in Metabase Enterprise.
+
+This feature is experimental.
+
+### `MB_EE_SEARCH_GATE_MAX_BATCH_SIZE`
+
+- Type: integer
+- Default: `512`
+
+The maximum number of documents that can be sent to `gate-documents!` without causing an error.
+
+### `MB_EE_SEARCH_GATE_WRITE_TIMEOUT`
+
+- Type: integer
+- Default: `5`
+
+Timeout of gate write statements in seconds. Used to determine lag tolerance of the indexer (see the metabase-enterprise.semantic-search.gate/poll) in conjunction with `ee-search-indexer-lag-tolerance-multiplier`.
+
+### `MB_EE_SEARCH_INDEXER_EXIT_EARLY_COLD_DURATION`
+
+- Type: integer
+- Default: `30`
+
+Number of seconds indexer should wait to see new data before yielding back to quartz.
+
+### `MB_EE_SEARCH_INDEXER_LAG_TOLERANCE_MULTIPLIER`
+
+- Type: integer
+- Default: `2`
+
+Multiplier for computation of metabase-enterprise.semantic-search.indexer/lag-tolerance. The formula is `ee-search-gate-write-timeout * ee-search-indexer-lag-tolerance-multiplier`.
+
+### `MB_EE_SEARCH_INDEXER_MAX_RUN_DURATION`
+
+- Type: integer
+- Default: `60`
+
+Number of minutes we expect to run the indexer loop for before yielding to quartz.
+
+### `MB_EE_SEARCH_INDEXER_POLL_LIMIT`
+
+- Type: integer
+- Default: `1000`
+
+Indexer poll limit.
+
 ### `MB_EMAIL_FROM_ADDRESS`
 
 - Type: string
@@ -758,6 +840,15 @@ Options:
 - [Configuration file name](./config-file.md): `humanization-strategy`
 
 To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’.
+
+### `MB_INDEX_UPDATE_THREAD_COUNT`
+
+- Type: integer
+- Default: `2`
+
+Number of threads to use for batched index updates, including embedding requests.
+
+Number of threads to use for batched index updates, including embedding requests
 
 ### `MB_INSTALL_ANALYTICS_DATABASE`
 
@@ -1231,6 +1322,15 @@ If Metabase stops sending notifications like alerts, it may be because long-runn
   queries are clogging the notification queue. You may be able to unclog the queue by
   increasing the size of the thread pool dedicated to notifications.
 
+### `MB_OPENAI_MAX_TOKENS_PER_BATCH`
+
+- Type: integer
+- Default: `4000`
+
+The maximum number of tokens sent in a single embedding API call.
+
+The maximum number of tokens sent in a single embedding API call.
+
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
 - Type: string
@@ -1526,13 +1626,6 @@ Is SCIM currently enabled?
 
 Used for encrypting and checking whether SDK requests are signed.
 
-### `MB_SEARCH_ENGINE`
-
-- Type: keyword
-- Default: `appdb`
-
-Which engine to use when performing search. Supported values are :in-place and :appdb.
-
 ### `MB_SEARCH_LANGUAGE`
 
 - Type: string
@@ -1549,6 +1642,31 @@ When using the appdb engine against postgresql, override the language used for s
 - [Configuration file name](./config-file.md): `search-typeahead-enabled`
 
 Enable typeahead search in the Metabase navbar?
+
+### `MB_SEMANTIC_SEARCH_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.
+
+### `MB_SEMANTIC_SEARCH_MIN_RESULTS_THRESHOLD`
+
+- Type: integer
+- Default: `100`
+
+Minimum number of semantic search results required before falling back to other engines.
+
+Minimum number of semantic search results required before falling back to other engines.
+
+### `MB_SEMANTIC_SEARCH_RESULTS_LIMIT`
+
+- Type: integer
+- Default: `1000`
+
+Maximum number of results to return from a single semantic search query.
+
+Maximum number of results to return from a single semantic search query.
 
 ### `MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE`
 
@@ -1767,6 +1885,15 @@ Fetch size for result sets. We want to ensure that the jdbc ResultSet objects ar
 - [Configuration file name](./config-file.md): `ssh-heartbeat-interval-sec`
 
 Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).
+
+### `MB_STALE_INDEX_RETENTION_HOURS`
+
+- Type: integer
+- Default: `24`
+
+Number of hours to retain stale semantic search indexes before cleanup.
+
+Number of hours to retain stale semantic search indexes before cleanup.
 
 ### `MB_START_OF_WEEK`
 
