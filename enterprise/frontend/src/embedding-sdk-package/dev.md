@@ -1,4 +1,4 @@
-# Docs for development on the sdk
+# Docs for development on the sdk package
 
 These docs are for building the sdk locally, if you just want to use the sdk, please refer to the [sdk documentation](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
 

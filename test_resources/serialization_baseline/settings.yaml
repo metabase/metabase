@@ -14,6 +14,7 @@ custom-formatting: null
 custom-geojson: null
 custom-geojson-enabled: null
 default-maps-enabled: null
+disable-cors-on-localhost: null
 email-max-recipients-per-second: null
 embedding-homepage: null
 enable-embedding: null

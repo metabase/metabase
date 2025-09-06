@@ -340,7 +340,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :name :description :content :archived :collection_id]}))
+         {:select [:id :name :description :content :archived :collection_id :template_tags]}))
 
 (t2/define-after-select :metadata/native-query-snippet
   [snippet]
@@ -358,15 +358,27 @@
                     {})))
   (t2/select-one :metadata/database database-id))
 
+(defn- db-id-key [metadata-type]
+  (case metadata-type
+    :metadata/table                :db_id
+    :metadata/card                 :card/database_id
+    :metadata/native-query-snippet nil
+    :table/db_id))
+
 (defn- metadatas [database-id metadata-type ids]
-  (let [database-id-key (case metadata-type
-                          :metadata/table                :db_id
-                          :metadata/card                 :card/database_id
-                          :metadata/native-query-snippet nil
-                          :table/db_id)]
+  (let [database-id-key (db-id-key metadata-type)]
     (when (seq ids)
       (t2/select metadata-type
                  :id [:in (set ids)]
+                 (if database-id-key
+                   {:where [:= database-id-key database-id]}
+                   {})))))
+
+(defn- metadatas-by-name [database-id metadata-type names]
+  (let [database-id-key (db-id-key metadata-type)]
+    (when (seq names)
+      (t2/select metadata-type
+                 :name [:in (set names)]
                  (if database-id-key
                    {:where [:= database-id-key database-id]}
                    {})))))
@@ -405,6 +417,8 @@
     (database database-id))
   (metadatas [_this metadata-type ids]
     (metadatas database-id metadata-type ids))
+  (metadatas-by-name [_this metadata-type names]
+    (metadatas-by-name database-id metadata-type names))
   (tables [_this]
     (tables database-id))
   (metadatas-for-table [_this metadata-type table-id]
