@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
@@ -30,10 +30,15 @@ export const MetabotChatEmbedding = () => {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
 
-  const resetInput = useCallback(() => {
+  const resetInput = () => {
     handleResetInput();
     setInputExpanded(false);
-  }, [handleResetInput]);
+  };
+
+  const startNewConversation = () => {
+    resetInput();
+    metabot.resetConversation();
+  };
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {
@@ -65,6 +70,9 @@ export const MetabotChatEmbedding = () => {
   useEffect(() => {
     dispatch(resetConversationId());
   }, [dispatch]);
+
+  const isOngoingConversation = metabot.messages.length > 0;
+  const isPromptDefined = metabot.prompt.length > 0;
 
   return (
     <Box className={Styles.container} data-testid="metabot-chat">
@@ -123,7 +131,7 @@ export const MetabotChatEmbedding = () => {
             }
           }}
         />
-        {metabot.isDoingScience ? (
+        {metabot.isDoingScience && (
           <UnstyledButton
             h="1rem"
             data-testid="metabot-cancel-request"
@@ -133,17 +141,40 @@ export const MetabotChatEmbedding = () => {
               <Icon name="stop" c="var(--mb-color-text-primary)" size="1rem" />
             </Tooltip>
           </UnstyledButton>
-        ) : (
-          <UnstyledButton
-            h="1rem"
-            onClick={resetInput}
-            data-testid="metabot-close-chat"
-            style={{
-              visibility: metabot.prompt.length > 0 ? "visible" : "hidden",
-            }}
-          >
-            <Icon name="close" c="var(--mb-color-text-primary)" size="1rem" />
-          </UnstyledButton>
+        )}
+
+        {!metabot.isDoingScience && (
+          <>
+            {isOngoingConversation && !isPromptDefined && (
+              <UnstyledButton
+                h="1rem"
+                onClick={startNewConversation}
+                data-testid="metabot-new-conversation"
+              >
+                <Tooltip label={t`Start new chat`}>
+                  <Icon
+                    name="edit_document_outlined"
+                    c="var(--mb-color-text-primary)"
+                    size="1rem"
+                  />
+                </Tooltip>
+              </UnstyledButton>
+            )}
+
+            {isPromptDefined && (
+              <UnstyledButton
+                h="1rem"
+                onClick={resetInput}
+                data-testid="metabot-close-chat"
+              >
+                <Icon
+                  name="close"
+                  c="var(--mb-color-text-primary)"
+                  size="1rem"
+                />
+              </UnstyledButton>
+            )}
+          </>
         )}
       </Flex>
     </Box>
