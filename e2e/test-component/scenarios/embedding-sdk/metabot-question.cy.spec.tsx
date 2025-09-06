@@ -115,6 +115,32 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     });
   });
 
+  it("should start a new conversation when clicking a `start new conversation` button", () => {
+    setup(metabotResponse);
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+
+      H.mockMetabotResponse({
+        statusCode: 200,
+        body: metabotRetryResponse,
+      });
+
+      cy.findAllByTestId("metabot-chat-message").should("have.length", 2);
+
+      cy.findByTestId("metabot-new-conversation").click();
+
+      cy.findAllByTestId("metabot-chat-message").should("not.exist");
+      cy.findByTestId("metabot-chat-input").should("have.value", "");
+
+      cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+
+      cy.findAllByTestId("metabot-chat-message").should("have.length", 2);
+    });
+  });
+
   it("should set correct metabot_id both for the a new message and when retrying", () => {
     setup(metabotResponse);
 

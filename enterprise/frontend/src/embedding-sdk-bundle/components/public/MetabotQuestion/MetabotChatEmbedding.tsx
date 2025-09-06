@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
@@ -12,7 +12,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
 import {
   useMetabotAgent,
   useMetabotChatHandlers,
@@ -30,10 +29,15 @@ export const MetabotChatEmbedding = () => {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
 
-  const resetInput = useCallback(() => {
+  const resetInput = () => {
     handleResetInput();
     setInputExpanded(false);
-  }, [handleResetInput]);
+  };
+
+  const startNewConversation = () => {
+    resetInput();
+    metabot.resetConversation();
+  };
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {
@@ -66,6 +70,9 @@ export const MetabotChatEmbedding = () => {
     dispatch(resetConversationId());
   }, [dispatch]);
 
+  const isOngoingConversation = metabot.messages.length > 0;
+  const isPromptDefined = metabot.prompt.length > 0;
+
   return (
     <Box className={Styles.container} data-testid="metabot-chat">
       <Flex
@@ -74,20 +81,20 @@ export const MetabotChatEmbedding = () => {
           metabot.isDoingScience && Styles.innerContainerLoading,
           inputExpanded && Styles.innerContainerExpanded,
         )}
-        gap="sm"
       >
         <Flex
-          w="33px"
-          h="24px"
+          w="16px"
+          h="16px"
           style={{
             flexShrink: 0,
           }}
           justify="center"
+          align="center"
         >
           {metabot.isDoingScience ? (
             <Loader size="sm" />
           ) : (
-            <MetabotIcon isLoading={false} />
+            <Icon name="ai" c="var(--mb-color-brand)" size="1rem" />
           )}
         </Flex>
         <Textarea
@@ -123,7 +130,7 @@ export const MetabotChatEmbedding = () => {
             }
           }}
         />
-        {metabot.isDoingScience ? (
+        {metabot.isDoingScience && (
           <UnstyledButton
             h="1rem"
             data-testid="metabot-cancel-request"
@@ -133,17 +140,40 @@ export const MetabotChatEmbedding = () => {
               <Icon name="stop" c="var(--mb-color-text-primary)" size="1rem" />
             </Tooltip>
           </UnstyledButton>
-        ) : (
-          <UnstyledButton
-            h="1rem"
-            onClick={resetInput}
-            data-testid="metabot-close-chat"
-            style={{
-              visibility: metabot.prompt.length > 0 ? "visible" : "hidden",
-            }}
-          >
-            <Icon name="close" c="var(--mb-color-text-primary)" size="1rem" />
-          </UnstyledButton>
+        )}
+
+        {!metabot.isDoingScience && (
+          <>
+            {isOngoingConversation && !isPromptDefined && (
+              <UnstyledButton
+                h="1rem"
+                onClick={startNewConversation}
+                data-testid="metabot-new-conversation"
+              >
+                <Tooltip label={t`Start new chat`}>
+                  <Icon
+                    name="edit_document_outlined"
+                    c="var(--mb-color-text-primary)"
+                    size="1rem"
+                  />
+                </Tooltip>
+              </UnstyledButton>
+            )}
+
+            {isPromptDefined && (
+              <UnstyledButton
+                h="1rem"
+                onClick={resetInput}
+                data-testid="metabot-close-chat"
+              >
+                <Icon
+                  name="close"
+                  c="var(--mb-color-text-primary)"
+                  size="1rem"
+                />
+              </UnstyledButton>
+            )}
+          </>
         )}
       </Flex>
     </Box>

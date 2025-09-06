@@ -30,10 +30,6 @@ describe(
   { numTestsKeptInMemory: 1 },
   () => {
     beforeEach(() => {
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
-
       signInAsAdminAndEnableEmbeddingSdk();
 
       cy.signOut();
@@ -198,6 +194,13 @@ describe(
 
         it("should show a custom loader when the SDK bundle is loading", () => {
           sdkBundleCleanup();
+
+          cy.intercept("GET", "/api/card/*", (request) => {
+            // Delay request for 500ms to avoid flakiness
+            request.continue(
+              () => new Promise((resolve) => setTimeout(resolve, 500)),
+            );
+          });
 
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
