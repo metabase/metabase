@@ -12,7 +12,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
 import {
   useMetabotAgent,
   useMetabotChatHandlers,
@@ -95,7 +94,7 @@ export const MetabotChatEmbedding = () => {
           {metabot.isDoingScience ? (
             <Loader size="sm" />
           ) : (
-            <MetabotIcon isLoading={false} />
+            <Icon name="ai" c="var(--mb-color-brand)" size="1.5rem" />
           )}
         </Flex>
         <Textarea
