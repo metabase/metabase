@@ -396,19 +396,16 @@ describe("issue 52806", () => {
     cy.signInAsNormalUser();
   });
 
-  it(
-    "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
-    { tags: "@flaky" },
-    () => {
-      cy.visit("/");
-      H.newButton("SQL query").click();
-      H.NativeEditor.focus().type("select {{x}}");
-      cy.findByTestId("main-logo-link").click();
-      H.modal().button("Discard changes").click();
-      cy.findByTestId("home-page");
-      cy.location().should((location) => expect(location.search).to.eq(""));
-    },
-  );
+  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
+    cy.visit("/");
+    H.newButton("SQL query").click();
+    H.NativeEditor.focus().type("select {{x}}");
+    cy.location().should((location) => expect(location.search).to.eq("?x="));
+    cy.findByTestId("main-logo-link").click();
+    H.modal().button("Discard changes").click();
+    cy.findByTestId("home-page");
+    cy.location().should((location) => expect(location.search).to.eq(""));
+  });
 });
 
 describe("issue 55951", () => {

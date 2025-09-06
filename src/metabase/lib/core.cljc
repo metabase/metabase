@@ -44,6 +44,7 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
+   [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.util.namespaces :as shared.ns]))
@@ -87,6 +88,7 @@
          lib.stage/keep-me
          lib.swap/keep-me
          lib.table/keep-me
+         lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
          lib.util/keep-me)
 
@@ -327,8 +329,10 @@
   native-extras
   native-query
   raw-native-query
+  recognize-template-tags
   required-native-extras
-  template-tag-card-ids
+  native-query-card-ids
+  native-query-snippet-ids
   template-tags-referenced-cards
   template-tags
   with-different-database
@@ -357,7 +361,7 @@
   can-preview
   can-run
   can-save
-  check-overwrite
+  check-card-overwrite
   preview-query
   query
   query-from-legacy-inner-query
@@ -386,6 +390,9 @@
   has-clauses?]
  [lib.swap
   swap-clauses]
+ [lib.template-tags
+  template-tags->card-ids
+  template-tags->snippet-ids]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval

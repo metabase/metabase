@@ -108,10 +108,10 @@ export interface BrowserEmbedOptions {
   /** Which entities to show on the question's data picker */
   dataPickerEntityTypes?: EmbeddingEntityType[];
 
-  /** Whether to show the "New Exploration" button. Defaults to true. */
+  /** Whether to show the "New exploration" button. Defaults to true. */
   withNewQuestion?: boolean;
 
-  /** Whether to show the "New Dashboard" button. Defaults to true. Only applies when readOnly is false. */
+  /** Whether to show the "New dashboard" button. Defaults to true. Only applies when readOnly is false. */
   withNewDashboard?: boolean;
 
   template?: never;

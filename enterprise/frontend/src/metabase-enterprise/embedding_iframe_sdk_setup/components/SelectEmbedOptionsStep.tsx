@@ -42,7 +42,7 @@ export const SelectEmbedOptionsStep = () => {
         <Stack gap="md">
           {isQuestionOrDashboardEmbed && (
             <Checkbox
-              label={t`Allow users to drill through on data points`}
+              label={t`Allow people to drill through on data points`}
               checked={settings.drills}
               onChange={(e) => updateSettings({ drills: e.target.checked })}
             />

@@ -281,6 +281,7 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
  * @param {boolean=} [options.addToDashboard]
  * @param {boolean=} [options.wrapId]
  * @param {string=} [options.idAlias]
+ * @param {Object=} [pickEntityOptions]
  */
 export function saveQuestion(
   name,

@@ -14,8 +14,8 @@ import {
 import { formatRunMethod } from "metabase-enterprise/transforms/utils";
 import type { TransformRunMethod } from "metabase-types/api";
 
-import { FilterFieldSet } from "../FilterFieldSet";
-import { MIN_WIDTH } from "../constants";
+import { FilterFieldSet } from "../../../../components/FilterFieldSet";
+import { FILTER_WIDGET_MIN_WIDTH } from "../../../../constants";
 
 const RUN_METHODS: TransformRunMethod[] = ["manual", "cron"];
 
@@ -79,7 +79,7 @@ function RunMethodFilterForm({
   };
 
   return (
-    <Box component="form" miw={MIN_WIDTH} onSubmit={handleSubmit}>
+    <Box component="form" miw={FILTER_WIDGET_MIN_WIDTH} onSubmit={handleSubmit}>
       <Checkbox.Group value={runMethods} onChange={handleChange}>
         <Stack p="md">
           {RUN_METHODS.map((method) => (

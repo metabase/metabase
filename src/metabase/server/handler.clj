@@ -47,15 +47,17 @@
 
 (def wrap-reload-dev-mw
   "In dev, reload files on the fly if they've changed. Returns nil in prod."
-  (when (and
-         config/is-dev?
-         (not *compile-files*)
-         ;; [[user/*enable-hot-reload*]] is set to true in `dev.clj` when the `--hot` flag is passed to the `:dev-start` alias
-         (true? @(requiring-resolve 'user/*enable-hot-reload*)))
-    (log/info "Wrap Reload Dev MW Enabled. Outdated namespaces will be recompiled when handling incoming requests")
-    (let [wrap-reload (requiring-resolve 'ring.middleware.reload/wrap-reload)]
-      (fn wrap-reload-dev-mw-fn [handler]
-        (wrap-reload handler {:dirs ["src" "enterprise/backend/src"]})))))
+  (try
+    (when (and
+           config/is-dev?
+           (not *compile-files*)
+           ;; [[user/*enable-hot-reload*]] is set to true in `dev.clj` when the `--hot` flag is passed to the `:dev-start` alias
+           (true? @(requiring-resolve 'user/*enable-hot-reload*)))
+      (log/info "Wrap Reload Dev MW Enabled. Outdated namespaces will be recompiled when handling incoming requests")
+      (let [wrap-reload (requiring-resolve 'ring.middleware.reload/wrap-reload)]
+        (fn wrap-reload-dev-mw-fn [handler]
+          (wrap-reload handler {:dirs ["src" "enterprise/backend/src"]}))))
+    (catch Exception _ nil)))
 
 (def ^:private middleware
   ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM

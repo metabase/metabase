@@ -1,5 +1,6 @@
 {
   "extends": ["stylelint-config-standard", "stylelint-config-css-modules"],
+  "plugins": ["./frontend/lint/stylelint-rules/no-base-colors.js"],
   "rules": {
     "alpha-value-notation": null,
     "color-function-notation": null,
@@ -26,6 +27,7 @@
     "comment-empty-line-before": null,
     "selector-pseudo-element-colon-notation": null,
     "no-empty-source": null,
-    "font-family-no-missing-generic-family-keyword": null
+    "font-family-no-missing-generic-family-keyword": null,
+    "metabase/no-base-colors": true
   }
 }

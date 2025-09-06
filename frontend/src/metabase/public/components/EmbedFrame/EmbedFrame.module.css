@@ -77,20 +77,20 @@ body:where(:global(.mb-wrapper)) {
     var(--mb-color-text-white) 45%,
     transparent
   );
-  --mb-color-bg-light: var(--mb-base-color-orion-70);
+  --mb-color-bg-light: var(--mb-color-bg-darker);
 }
 
 [data-metabase-theme="night"][data-metabase-theme="night"] {
-  --mb-color-text-selected: var(--mb-base-color-white);
-  --mb-color-text-hover: var(--mb-base-color-brand-30);
+  --mb-color-text-selected: var(--mb-color-text-white);
+  --mb-color-text-hover: var(--mb-color-brand-light);
   --mb-color-border: var(--mb-color-text-medium);
   --mb-color-bg-dashboard: var(--mb-color-bg-black);
   --mb-color-background: var(--mb-color-bg-black);
-  --mb-color-background-selected: var(--mb-base-color-brand-60);
-  --mb-color-background-hover: var(--mb-base-color-brand-70);
-  --mb-color-background-disabled: var(--mb-base-color-orion-70);
-  --mb-color-background-brand: var(--mb-base-color-brand-60);
-  --mb-color-switch-off: var(--mb-base-color-orion-70);
+  --mb-color-background-selected: var(--mb-color-brand-dark);
+  --mb-color-background-hover: var(--mb-color-brand-darker);
+  --mb-color-background-disabled: var(--mb-color-text-dark);
+  --mb-color-background-brand: var(--mb-color-brand-dark);
+  --mb-color-switch-off: var(--mb-color-text-dark);
 
   .EmbedFrameHeader,
   .EmbedFrameFooter {

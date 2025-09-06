@@ -28,13 +28,7 @@ import {
 } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls/dashboards";
 import { addUndo } from "metabase/redux/undo";
-import {
-  DashboardSchema,
-  DatabaseSchema,
-  FieldSchema,
-  QuestionSchema,
-  TableSchema,
-} from "metabase/schema";
+import { QueryMetadataSchema } from "metabase/schema";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 const FETCH_METADATA = "metabase/entities/dashboards/FETCH_METADATA";
@@ -181,13 +175,7 @@ const Dashboards = createEntity({
 
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
-      withNormalize({
-        databases: [DatabaseSchema],
-        tables: [TableSchema],
-        fields: [FieldSchema],
-        cards: [QuestionSchema],
-        dashboards: [DashboardSchema],
-      }),
+      withNormalize(QueryMetadataSchema),
     )(
       ({ id, ...params }) =>
         (dispatch) =>
@@ -201,13 +189,7 @@ const Dashboards = createEntity({
 
     fetchXrayMetadata: compose(
       withAction(FETCH_METADATA),
-      withNormalize({
-        databases: [DatabaseSchema],
-        tables: [TableSchema],
-        fields: [FieldSchema],
-        cards: [QuestionSchema],
-        dashboards: [DashboardSchema],
-      }),
+      withNormalize(QueryMetadataSchema),
     )(
       ({ entity, entityId, dashboard_load_id }) =>
         (dispatch) =>

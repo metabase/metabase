@@ -14,3 +14,9 @@ export type RunListParams = {
   endTime?: string;
   runMethods?: TransformRunMethod[];
 };
+
+export type JobListParams = {
+  lastRunStartTime?: string;
+  nextRunStartTime?: string;
+  transformTagIds?: TransformTagId[];
+};

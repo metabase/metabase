@@ -26,7 +26,6 @@
     var(--mb-color-text-white) 45%,
     transparent
   );
-  --mb-color-bg-light: var(--mb-base-color-gray-70);
 
   background-color: var(--mb-color-bg-black);
 }

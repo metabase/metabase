@@ -63,12 +63,6 @@ driver:
     - merge:
       - additional-options
       - placeholder: 'queryTimeout=0'
-    - name: quote-db-name
-      display-name: Quote DB name (to ensure case sensitive matching)
-      default: false
-      type: boolean
-      visible-if:
-        advanced-options: true
     - default-advanced-options
 init:
   - step: load-namespace

@@ -13,12 +13,12 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
+import { TagFilterWidget } from "../../../components/TagFilterWidget";
+import { TimeFilterWidget } from "../../../components/TimeFilterWidget";
 import type { RunListParams } from "../../../types";
 
 import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
 import { StatusFilterWidget } from "./StatusFilterWidget";
-import { TagFilterWidget } from "./TagFilterWidget";
-import { TimeFilterWidget } from "./TimeFilterWidget";
 import { TransformFilterWidget } from "./TransformFilterWidget";
 
 type FilterListProps = {

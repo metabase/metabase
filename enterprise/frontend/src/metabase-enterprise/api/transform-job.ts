@@ -1,5 +1,6 @@
 import type {
   CreateTransformJobRequest,
+  ListTransformJobsRequest,
   Transform,
   TransformJob,
   TransformJobId,
@@ -19,7 +20,7 @@ import {
 
 export const transformJobApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    listTransformJobs: builder.query<TransformJob[], void>({
+    listTransformJobs: builder.query<TransformJob[], ListTransformJobsRequest>({
       query: (params) => ({
         method: "GET",
         url: "/api/ee/transform-job",

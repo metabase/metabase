@@ -8,6 +8,7 @@ import {
 import { match } from "ts-pattern";
 import _ from "underscore";
 
+import { useSearchQuery } from "metabase/api";
 import { useUserSetting } from "metabase/common/hooks";
 
 import { trackEmbedWizardSettingsUpdated } from "../analytics";
@@ -50,6 +51,13 @@ export const SdkIframeEmbedSetupProvider = ({
     isRecentsLoading,
   } = useRecentItems();
 
+  const { data: searchData } = useSearchQuery({
+    limit: 0,
+    models: ["dataset"],
+  });
+
+  const modelCount = searchData?.total ?? 0;
+
   const defaultSettings = useMemo(() => {
     return getDefaultSdkIframeEmbedSettings(
       "dashboard",
@@ -61,7 +69,25 @@ export const SdkIframeEmbedSetupProvider = ({
     "select-embed-experience",
   );
 
-  const settings = rawSettings ?? defaultSettings;
+  const settings = useMemo(() => {
+    const latestSettings = rawSettings ?? defaultSettings;
+
+    // Append entity-types=model if there are more than 2 models in the instance.
+    if (modelCount > 2) {
+      return match(latestSettings)
+        .with({ componentName: "metabase-question" }, (settings) => ({
+          ...settings,
+          entityTypes: ["model" as const],
+        }))
+        .with({ componentName: "metabase-browser" }, (settings) => ({
+          ...settings,
+          dataPickerEntityTypes: ["model" as const],
+        }))
+        .otherwise((settings) => settings);
+    }
+
+    return latestSettings;
+  }, [defaultSettings, modelCount, rawSettings]);
 
   // Which embed experience are we setting up?
   const experience = useMemo(

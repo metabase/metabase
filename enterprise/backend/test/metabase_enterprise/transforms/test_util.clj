@@ -5,7 +5,11 @@
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant LocalDateTime ZonedDateTime ZoneId)))
+
+(set! *warn-on-reflection* true)
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
@@ -47,3 +51,20 @@
            (drop-target! target#))))
     `(mt/with-model-cleanup [:model/Transform]
        ~@body)))
+
+(defn parse-timestamp
+  "Parse a local datetime and convert it to a ZonedDateTime in the default timezone."
+  ^ZonedDateTime [timestamp-string]
+  (-> timestamp-string
+      LocalDateTime/parse
+      (.atZone (ZoneId/systemDefault))))
+
+(defn parse-instant
+  "Parse a local datetime and convert it to an Instant in the default timezone."
+  ^Instant [timestamp-string]
+  (-> timestamp-string parse-timestamp .toInstant))
+
+(defn utc-timestamp
+  "Parse a local datetime and convert it to a string encoding a ZonedDateTime in the default timezone."
+  ^String [timestamp-string]
+  (-> timestamp-string parse-instant str))
