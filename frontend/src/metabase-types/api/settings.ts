@@ -39,6 +39,7 @@ export const engineKeys = [
   "druid-jdbc",
   "druid",
   "mysql",
+  "oceanbase",
   "oracle",
   "postgres",
   "presto-jdbc",

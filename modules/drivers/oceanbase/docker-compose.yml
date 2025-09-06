@@ -1,0 +1,34 @@
+services:
+  oceanbase:
+    image: 'oceanbase/oceanbase-ce:latest'
+    container_name: 'metabase-driver-oceanbase-server'
+    hostname: oceanbase
+    environment:
+      MODE: SLIM
+      OB_DATAFILE_SIZE: 1G
+      OB_SYS_PASSWORD: ${OCEANBASE_PASSWORD:-123456}
+      OB_TENANT_PASSWORD: ${OCEANBASE_PASSWORD:-123456}
+    ports:
+      - '2881:2881'  # MySQL protocol port
+    volumes:
+      - './init.sql:/root/boot/init.d/init.sql'
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'obclient -h127.0.0.1 -P2881 -uroot@test -p123456 -e "SELECT 1;"',
+        ]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+      timeout: 10s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
