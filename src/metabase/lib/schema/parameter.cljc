@@ -261,6 +261,9 @@
             (nil? l) (assoc :type :number/<=, :value [u])))
         param))))
 
+(mr/def ::id
+  ::lib.schema.common/non-blank-string)
+
 (mr/def ::parameter
   [:and
    [:map
@@ -268,7 +271,7 @@
     [:type [:ref ::type]]
     ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
     ;; At some point we need to go fix those tests and then make these keys required
-    [:id       {:optional true} ::lib.schema.common/non-blank-string]
+    [:id       {:optional true} [:ref ::id]]
     [:target   {:optional true} [:ref ::target]]
     ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
     ;; on the [[ParameterType]]

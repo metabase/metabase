@@ -3049,11 +3049,13 @@
                                    :dataset_query (mt/mbql-query products)}
        :model/Card          card2 {:database_id   (mt/id)
                                    :table_id      (mt/id :venues)
-                                   :dataset_query (-> (lib/query mp (lib.metadata/card mp (:id model)))
-                                                      lib.convert/->legacy-MBQL)}
+                                   :dataset_query (lib/query mp (lib.metadata/card mp (:id model)))}
        :model/DashboardCard dashcard {:card_id            (:id card)
                                       :dashboard_id       (:id dashboard)
                                       :parameter_mappings [{:parameter_id "_CATEGORY_"
+                                                            ;; Note this Card ID is different from the one for the
+                                                            ;; DashCard itself... this parameter is meant for the
+                                                            ;; series
                                                             :card_id      (:id card2)
                                                             :target       [:dimension [:field "CATEGORY" {:base-type :type/Text}] {:stage-number 0}]}]}
        :model/DashboardCardSeries _ {:card_id (:id card2)

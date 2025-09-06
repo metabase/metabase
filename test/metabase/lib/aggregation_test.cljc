@@ -497,10 +497,10 @@
                {:short :max
                 :requires-column? true
                 :columns scope-cols}]
-              (lib/selected-aggregation-operators aggregation-operators (second aggregations)))))
+              (lib/selected-aggregation-operators query -1 aggregation-operators (second aggregations)))))
     (testing "selected-aggregation-operators w/ column"
       (let [selected-operators (lib/selected-aggregation-operators
-                                aggregation-operators (first aggregations))]
+                                query -1 aggregation-operators (first aggregations))]
         (is (=? [{:short :count
                   :requires-column? false}
                  {:short :sum
@@ -615,7 +615,7 @@
                     :effective-type :type/Integer
                     :semantic-type :type/Category
                     :lib/source :source/implicitly-joinable}]}]
-                (->> (lib/selected-aggregation-operators aggregation-operators (first aggregations))
+                (->> (lib/selected-aggregation-operators query -1 aggregation-operators (first aggregations))
                      (filterv :selected?))))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
@@ -850,10 +850,10 @@
                   ;; Hawk's =? will think these are predicates and try to run them!
                   true                      (dissoc :display-info)
                   (= (:short op) :distinct) (assoc :selected? true)))
-              (lib/selected-aggregation-operators available (first (lib/aggregations query)))))
+              (lib/selected-aggregation-operators query -1 available (first (lib/aggregations query)))))
       (is (thrown? #?(:clj Exception :cljs js/Error)
                    (with-redefs [lib.util/ref-clause? (constantly true)]
-                     (lib/selected-aggregation-operators available (first (lib/aggregations query)))))))))
+                     (lib/selected-aggregation-operators query -1 available (first (lib/aggregations query)))))))))
 
 (deftest ^:parallel aggregable-columns-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))

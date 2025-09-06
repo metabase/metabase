@@ -98,7 +98,12 @@ function AggregationPopover({
   const operators = useMemo(() => {
     const baseOperators = Lib.availableAggregationOperators(query, stageIndex);
     return isUpdate
-      ? Lib.selectedAggregationOperators(baseOperators, clause)
+      ? Lib.selectedAggregationOperators(
+          query,
+          stageIndex,
+          baseOperators,
+          clause,
+        )
       : baseOperators;
   }, [query, clause, stageIndex, isUpdate]);
 

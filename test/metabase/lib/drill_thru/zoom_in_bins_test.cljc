@@ -7,6 +7,7 @@
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.drill-thru.zoom-in-bins :as zoom-in]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -376,11 +377,10 @@
         (lib/breakout people-orders-query people-orders-column)
 
         people-orders-clicked-column
-        (-> (meta/field-metadata :orders :total)
-            (lib/with-binning {:strategy :num-bins, :min-value 0, :max-value 160, :num-bins 8, :bin-width 20})
-            ;; I have to construct this weird column because I cannot find a way to reproduce
-            ;; the columns that lib/existing-breakouts is being passed
-            (assoc :source-alias "Orders"))
+        (lib/normalize ::lib.schema.metadata/column
+                       (-> (meta/field-metadata :orders :total)
+                           (lib/with-binning {:strategy :num-bins, :min-value 0, :max-value 160, :num-bins 8, :bin-width 20})
+                           (assoc :source-alias "Orders")))
 
         people-orders-ref
         (first (lib/breakouts people-orders-query-breakout))
@@ -393,10 +393,9 @@
                                         :value 80})]
     ;; make sure we're testing the right thing
     (assert (get-in people-orders-ref [1 :join-alias]))
-    (assert (nil? (:metabase.lib.join/join-alias people-orders-clicked-column)))
-    ;; somehow the column (as printed out in console.log) has :source-alias but not :metabase.lib.join/join-alias
-    (assert (:source-alias people-orders-clicked-column))
-
+    ;; `:source-alias` should get renamed to `:metabase.lib.join/join-alias` automatically when normalizing column metadata
+    (assert (nil? (:source-alias people-orders-clicked-column)))
+    (assert (:metabase.lib.join/join-alias people-orders-clicked-column))
     (assert (nil? (get-in orders-people-ref [1 :join-alias])))
     (assert (nil? (:metabase.lib.join/join-alias orders-people-clicked-column)))
     (assert (nil? (:source-alias orders-people-clicked-column)))
@@ -404,4 +403,4 @@
     (testing "zoom-in binning should not depend on join order"
       (is (= orders-people-zoom
              (some-> people-orders-zoom
-                     (update :column dissoc :source-alias)))))))
+                     (update :column dissoc :metabase.lib.join/join-alias)))))))

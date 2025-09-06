@@ -162,10 +162,12 @@
   ([database-id           :- ::lib.schema.id/database
     metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     stages]
-   {:lib/type     :mbql/query
-    :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
-    :database     database-id
-    :stages       stages}))
+   (lib.normalize/normalize
+    ::lib.schema/query
+    {:lib/type     :mbql/query
+     :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
+     :database     database-id
+     :stages       stages})))
 
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]

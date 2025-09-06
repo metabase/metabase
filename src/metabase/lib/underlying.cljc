@@ -10,11 +10,10 @@
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (mu/defn- pop-until-aggregation-or-breakout :- [:tuple [:maybe ::lib.schema/query] [:int {:max -1}]]
   "Strips off any trailing stages that do not contain aggregations or breakouts.
@@ -56,7 +55,7 @@
         (second (pop-until-aggregation-or-breakout query)))
       -1))
 
-(def ^:private TopLevelColumnOptions
+(mr/def ::top-level-column.options
   [:map
    {:closed true}
    [:rename-superflous-options? {:optional true} :boolean]])
@@ -71,12 +70,16 @@
   ([query  :- ::lib.schema/query
     column :- ::lib.schema.metadata/column]
    (top-level-column query column :rename-superflous-options? true))
+
   ([query                                  :- ::lib.schema/query
     column                                 :- ::lib.schema.metadata/column
-    & {:keys [rename-superflous-options?]} :- TopLevelColumnOptions]
+    & {:keys [rename-superflous-options?]} :- [:maybe ::top-level-column.options]]
+   (when (> (count (:stages query)) 1)
+     (assert (not= (:lib/source column) :source/table-defaults)
+             "Column metadata does not appear to be for the last stage... what stage is it from?"))
    (let [top-query (top-level-query query)]
      (if (= query top-query)
-       column ;; Unchanged if this is already a top-level query. That includes keeping the "superfluous" options!
+       column ; Unchanged if this is already a top-level query. That includes keeping the "superfluous" options!
        (loop [query  query
               column column]
          (if (= query top-query)
@@ -86,11 +89,11 @@
              ;; circumstances, you will not need them. On the off chance you do need them, they'll still be available.
              (set/rename-keys {::lib.field/temporal-unit ::temporal-unit
                                ::lib.field/binning       ::binning}))
-           (let [prev-cols (for [col (lib.metadata.calculation/returned-columns query -2 (lib.util/previous-stage query -1))]
+           (let [prev-cols (for [col (lib.metadata.calculation/returned-columns query -2)]
                              (-> col
                                  lib.field.util/update-keys-for-col-from-previous-stage
                                  (assoc ::original col)))
-                 prev-col  (some-> (lib.equality/find-matching-column query -2 (lib.ref/ref column) prev-cols)
+                 prev-col  (some-> (lib.equality/find-matching-column query -2 column prev-cols)
                                    ::original)]
              (when prev-col
                (recur (update query :stages pop) prev-col)))))))))

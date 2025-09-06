@@ -84,11 +84,13 @@
                (:definition_description (t2/hydrate segment-2 :definition_description))))))))
 
 (deftest ^:parallel definition-description-missing-source-table-test
+  ;; kind of a weird test since the Segment itself still is required to have `table_id`
   (testing "Should work if `:definition` does not include `:source-table`"
     (mt/with-temp [:model/Segment segment {:name       "Expensive BBQ Spots"
                                            :definition (mt/$ids venues
                                                          {:filter
-                                                          [:= $price 4]})}]
+                                                          [:= $price 4]})
+                                           :table_id   (mt/id :venues)}]
       (is (= "Filtered by Price is equal to 4"
              (:definition_description (t2/hydrate segment :definition_description)))))))
 

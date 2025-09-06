@@ -15,7 +15,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
-   [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
@@ -27,7 +26,6 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]))
@@ -35,7 +33,7 @@
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
   ;; came from) and then have the `annotate` middleware convert them to something else for QP results purposes. Then
-  ;; we can 'ban' stuff like `:source-alias` and `:source` within Lib itself. See #59772 for some experimental work
+  ;; we can 'ban' stuff like`:source` within Lib itself. See #59772 for some experimental work
   ;; there.
   [:map
    [:source    {:optional true} ::lib.schema.metadata/column.legacy-source]
@@ -129,50 +127,8 @@
      :base-type      base-type
      :effective-type base-type}))
 
-;;; TODO (Cam 6/17/25) -- move this into [[metabase.lib.expression]] or something and have it be part of the mainline
-;;; methods for metadata calculation
-(mu/defn- add-converted-timezone :- [:sequential ::kebab-cased-map]
-  "Add `:converted-timezone` to columns that are from `:convert-timezone` expressions (or expressions wrapping them) --
-  this is used by [[metabase.query-processor.middleware.format-rows/format-rows-xform]]."
-  [query :- ::lib.schema/query
-   cols  :- [:sequential ::kebab-cased-map]]
-  (mapv (fn [col]
-          (let [converted-timezone (when-let [expression-name ((some-fn :lib/expression-name :lib/original-expression-name) col)]
-                                     ;; don't look inside expressions that happened inside of joins,
-                                     ;; `lib.expression/resolve-expression` is unfortunately not smart enough to
-                                     ;; figure out how to find them and will just log a noisy error
-                                     (when-not (:lib/original-join-alias col)
-                                       (when-let [expr (try
-                                                         (lib.expression/resolve-expression query expression-name)
-                                                         (catch #?(:clj Throwable :cljs :default) e
-                                                           (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
-                                                           (log/debugf "In query:\n%s" (u/pprint-to-str query))
-                                                           nil))]
-                                         (lib.util.match/match-one expr
-                                           :convert-timezone
-                                           (let [[_convert-timezone _opts _expr source-tz] &match]
-                                             source-tz)))))]
-            (cond-> col
-              converted-timezone (assoc :converted-timezone converted-timezone))))
-        cols))
-
 (defn- any-join-alias [col]
-  ((some-fn lib.join.util/current-join-alias :source-alias :lib/original-join-alias) col))
-
-(mu/defn- add-source-alias :- [:sequential ::kebab-cased-map]
-  "`:source-alias` (`:source_alias`) is still needed
-  for [[metabase.query-processor.middleware.remove-inactive-field-refs]]
-  and [[metabase.lib.equality/column-join-alias]] to work correctly. Why? Not 100% sure -- we should theoretically be
-  able to use `:metabase.lib.join/join-alias` for this purpose -- but that doesn't seem to work. Until I figure that
-  out, include the `:source-alias` key.
-
-  Note that this is no longer used on the FE -- see QUE-1355"
-  [cols :- [:sequential ::kebab-cased-map]]
-  (for [col cols]
-    (merge
-     (when-let [join-alias (any-join-alias col)]
-       {:source-alias join-alias})
-     col)))
+  ((some-fn lib.join.util/current-join-alias :lib/original-join-alias) col))
 
 (defn- implicit-join-aliases [query stage-number]
   (let [aliases (into #{}
@@ -195,7 +151,7 @@
                                 (= (:lib/source col) :source/joins)
                                 (assoc :lib/source :source/implicitly-joinable)))
         remove-aliases      (fn [col]
-                              (dissoc col :metabase.lib.join/join-alias :lib/original-join-alias :source-alias))
+                              (dissoc col :metabase.lib.join/join-alias :lib/original-join-alias))
         implicitly-joined?  (fn [col]
                               (when-let [join-alias (any-join-alias col)]
                                 (contains? implicit-aliases join-alias)))
@@ -360,9 +316,7 @@
            ((fn [cols]
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))
-           (add-converted-timezone query)
            (remove-implicit-join-aliases query)
-           add-source-alias
            add-legacy-source
            deduplicate-names
            (add-legacy-field-refs query)

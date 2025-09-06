@@ -21,11 +21,12 @@
   ;; legacy result metadata will already include the Join name in the `:display-name`, so simulate that. Make
   ;; sure we're not including it twice.
   (for [col (lib/returned-columns
-             (lib/query meta/metadata-provider legacy-card-query))]
+             (lib/query meta/metadata-provider legacy-card-query))
+        :let [any-join-alias ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias) col)]]
     (cond-> col
-      (:source-alias col)
+      any-join-alias
       (update :display-name (fn [display-name]
-                              (str (:source-alias col) " → " display-name))))))
+                              (str any-join-alias " → " display-name))))))
 
 (defn query-with-legacy-source-card
   "An MLv2 query that has a `:source-card` that has a legacy query, and legacy metadata."

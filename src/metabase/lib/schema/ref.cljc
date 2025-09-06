@@ -115,7 +115,7 @@
 
 (lib.hierarchy/derive :expression ::ref)
 
-(mr/def ::aggregation-options
+(mr/def ::aggregation.options
   [:merge
    ::common/options
    [:map
@@ -126,7 +126,7 @@
 (mbql-clause/define-mbql-clause :aggregation
   [:tuple
    [:= {:decode/normalize common/normalize-keyword} :aggregation]
-   ::aggregation-options
+   ::aggregation.options
    :string])
 
 (defmethod expression/type-of-method :aggregation

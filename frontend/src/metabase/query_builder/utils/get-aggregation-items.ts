@@ -19,6 +19,8 @@ export const getAggregationItems = ({
     const { displayName } = Lib.displayInfo(query, stageIndex, aggregation);
 
     const operators = Lib.selectedAggregationOperators(
+      query,
+      stageIndex,
       Lib.availableAggregationOperators(query, stageIndex),
       aggregation,
     );

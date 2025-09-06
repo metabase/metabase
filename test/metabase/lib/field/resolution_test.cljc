@@ -178,11 +178,12 @@
                      (lib/query metadata-provider)
                      lib/returned-columns
                      (m/index-by :name))
-          query (-> (lib/query metadata-provider (meta/table-metadata :checkins))
+          query (-> (lib/query metadata-provider (meta/table-metadata :users))
                     (lib/join (lib/with-join-alias
                                (lib/join-clause (lib.metadata/card metadata-provider 1)
                                                 [(lib/= (meta/field-metadata :users :id)
-                                                        (lib/ref (get cols "USER_ID")))])
+                                                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Integer}
+                                                         "USER_ID"])])
                                "checkins_by_user"))
                     (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :users :last-login) :month))
                     (lib/aggregate (lib/avg (lib/with-join-alias (lib/ref (get cols "count")) "checkins_by_user"))))]
@@ -420,9 +421,6 @@
                        :lib/original-display-name "Category"
                        :lib/original-name         "CATEGORY"
                        :lib/original-join-alias   "Products"
-                       ;; this key is DEPRECATED (see description in column metadata schema) but still used (FOR
-                       ;; NOW) (QUE-1403)
-                       :source-alias              "Products"
                        :lib/source                :source/card ; or is it supposed to be `:source/table-defaults`
                        :lib/source-uuid           (lib.options/uuid breakout-ref)
                        :lib/type                  :metadata/column
@@ -1469,7 +1467,6 @@
             (is (=? {:display-name                 "ID → Name"
                      :id                           (meta/id :categories :name)
                      :semantic-type                :type/Name
-                     :source-alias                 "J"
                      :lib/deduplicated-name        "NAME_2"
                      :lib/original-fk-field-id    (meta/id :venues :id)
                      :lib/original-join-alias      "J"
@@ -1483,7 +1480,6 @@
             (is (=? {:display-name                 "Category → Name"
                      :id                           (meta/id :categories :name)
                      :semantic-type                :type/Name
-                     :source-alias                 "J"
                      :lib/deduplicated-name        "NAME"
                      :lib/original-fk-field-id     (meta/id :venues :category-id)
                      :lib/original-join-alias      "J"
@@ -1492,3 +1488,34 @@
                      :lib/source-column-alias      "CATEGORIES__via__CATEGORY_ID__NAME"
                      :metabase.lib.join/join-alias "J"}
                     (lib.field.resolution/resolve-field-ref query 0 field-ref)))))))))
+
+(deftest ^:parallel satanic-resolution-of-implicitly-joined-ref-without-source-field-test
+  (testing "Can we resolve the 'ref from hell' from [[metabase.lib.drill-thru.zoom-in-bins-test/zoom-in-bins-available-test]]?"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table (meta/id :orders)
+                              :aggregation  [[:count {:lib/uuid "cfdf2003-e7ca-4d09-b1b6-349afc76e70b"}]]
+                              :breakout     [[:field
+                                              {:lib/uuid "24803786-506f-4029-b298-c85b79cf26e4", :effective-type :type/Text, :base-type :type/Text}
+                                              (meta/id :products :category)]]}]})]
+      (is (=? {:base-type                                :type/Text
+               :display-name                             "Category"
+               :effective-type                           :type/Text
+               :fk-field-id                              (meta/id :orders :product-id)
+               :id                                       (meta/id :products :category)
+               :name                                     "CATEGORY"
+               :semantic-type                            :type/Category
+               :table-id                                 (meta/id :products)
+               :lib/source                               :source/implicitly-joinable
+               :lib/source-column-alias                  "CATEGORY"
+               :lib/source-uuid                          "24803786-506f-4029-b298-c85b79cf26e4"
+               :lib/type                                 :metadata/column
+               ::lib.field.resolution/fallback-metadata? true}
+              (lib.field.resolution/resolve-field-ref
+               query 0
+               [:field
+                {:lib/uuid "24803786-506f-4029-b298-c85b79cf26e4", :effective-type :type/Text, :base-type :type/Text}
+                (meta/id :products :category)]))))))
