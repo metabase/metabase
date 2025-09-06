@@ -5,7 +5,6 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.app-db.core :as mdb]
    [metabase.search.config :as search.config]
    [metabase.test :as mt])
   (:import
@@ -256,76 +255,72 @@
 
 (deftest bookmark-test
   (mt/with-premium-features #{:semantic-search}
-    ;; TODO (BOT-360) enable for :mysql
-    (when-not (= :mysql (mdb/db-type))
-      (let [crowberto (mt/user->id :crowberto)
-            rasta     (mt/user->id :rasta)]
-        (mt/with-temp [:model/Card {c1 :id} {}
-                       :model/Card {c2 :id} {}]
-          (testing "bookmarked items are ranker higher"
-            (with-index-contents!
-              [{:model "card" :id c1 :name "card normal"}
-               {:model "card" :id c2 :name "card crowberto loved"}]
-              (mt/with-temp [:model/CardBookmark _ {:card_id c2 :user_id crowberto}
-                             :model/CardBookmark _ {:card_id c1 :user_id rasta}]
-                (is (= [["card" c2 "card crowberto loved"]
-                        ["card" c1 "card normal"]]
-                       (search-results :bookmarked "card" {:current-user-id crowberto})))))))
+    (let [crowberto (mt/user->id :crowberto)
+          rasta     (mt/user->id :rasta)]
+      (mt/with-temp [:model/Card {c1 :id} {}
+                     :model/Card {c2 :id} {}]
+        (testing "bookmarked items are ranker higher"
+          (with-index-contents!
+            [{:model "card" :id c1 :name "card normal"}
+             {:model "card" :id c2 :name "card crowberto loved"}]
+            (mt/with-temp [:model/CardBookmark _ {:card_id c2 :user_id crowberto}
+                           :model/CardBookmark _ {:card_id c1 :user_id rasta}]
+              (is (= [["card" c2 "card crowberto loved"]
+                      ["card" c1 "card normal"]]
+                     (search-results :bookmarked "card" {:current-user-id crowberto})))))))
 
-        (mt/with-temp [:model/Dashboard {d1 :id} {}
-                       :model/Dashboard {d2 :id} {}]
-          (testing "bookmarked dashboard"
-            (with-index-contents!
-              [{:model "dashboard" :id d1 :name "dashboard normal"}
-               {:model "dashboard" :id d2 :name "dashboard crowberto loved"}]
-              (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id d2 :user_id crowberto}
-                             :model/DashboardBookmark _ {:dashboard_id d1 :user_id rasta}]
-                (is (= [["dashboard" d2 "dashboard crowberto loved"]
-                        ["dashboard" d1 "dashboard normal"]]
-                       (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
+      (mt/with-temp [:model/Dashboard {d1 :id} {}
+                     :model/Dashboard {d2 :id} {}]
+        (testing "bookmarked dashboard"
+          (with-index-contents!
+            [{:model "dashboard" :id d1 :name "dashboard normal"}
+             {:model "dashboard" :id d2 :name "dashboard crowberto loved"}]
+            (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id d2 :user_id crowberto}
+                           :model/DashboardBookmark _ {:dashboard_id d1 :user_id rasta}]
+              (is (= [["dashboard" d2 "dashboard crowberto loved"]
+                      ["dashboard" d1 "dashboard normal"]]
+                     (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
 
-        (mt/with-temp [:model/Collection {c1 :id} {}
-                       :model/Collection {c2 :id} {}]
-          (testing "bookmarked collection"
-            (with-index-contents!
-              [{:model "collection" :id c1 :name "collection normal"}
-               {:model "collection" :id c2 :name "collection crowberto loved"}]
-              (mt/with-temp [:model/CollectionBookmark _ {:collection_id c2 :user_id crowberto}
-                             :model/CollectionBookmark _ {:collection_id c1 :user_id rasta}]
-                (is (= [["collection" c2 "collection crowberto loved"]
-                        ["collection" c1 "collection normal"]]
-                       (search-results :bookmarked "collection" {:current-user-id crowberto})))))))))))
+      (mt/with-temp [:model/Collection {c1 :id} {}
+                     :model/Collection {c2 :id} {}]
+        (testing "bookmarked collection"
+          (with-index-contents!
+            [{:model "collection" :id c1 :name "collection normal"}
+             {:model "collection" :id c2 :name "collection crowberto loved"}]
+            (mt/with-temp [:model/CollectionBookmark _ {:collection_id c2 :user_id crowberto}
+                           :model/CollectionBookmark _ {:collection_id c1 :user_id rasta}]
+              (is (= [["collection" c2 "collection crowberto loved"]
+                      ["collection" c1 "collection normal"]]
+                     (search-results :bookmarked "collection" {:current-user-id crowberto}))))))))))
 
 (deftest user-recency-test
   (mt/with-premium-features #{:semantic-search}
-    ;; TODO (BOT-360) enable for :mysql
-    (when-not (= :mysql (mdb/db-type))
-      (let [user-id     (mt/user->id :crowberto)
-            right-now   (Instant/now)
-            long-ago    (.minus right-now 10 ChronoUnit/DAYS)
-            forever-ago (.minus right-now 30 ChronoUnit/DAYS)
-            recent-view (fn [model-id timestamp]
-                          {:model     "card"
-                           :model_id  model-id
-                           :user_id   user-id
-                           :timestamp timestamp})]
-        (mt/with-temp [:model/Card        {c1 :id} {}
-                       :model/Card        {c2 :id} {}
-                       :model/Card        {c3 :id} {}
-                       :model/Card        {c4 :id} {}
-                       :model/RecentViews _ (recent-view c1 forever-ago)
-                       :model/RecentViews _ (recent-view c2 right-now)
-                       :model/RecentViews _ (recent-view c2 forever-ago)
-                       :model/RecentViews _ (recent-view c4 forever-ago)
-                       :model/RecentViews _ (recent-view c4 long-ago)]
-          (with-index-contents!
-            [{:model "card"    :id c1 :name "card ancient"}
-             {:model "metric"  :id c2 :name "card recent"}
-             {:model "dataset" :id c3 :name "card unseen"}
-             {:model "dataset" :id c4 :name "card old"}]
-            (testing "We prefer results more recently viewed by the current user"
-              (is (= [["metric"  c2 "card recent"]
-                      ["dataset" c4 "card old"]
-                      ["card"    c1 "card ancient"]
-                      ["dataset" c3 "card unseen"]]
-                     (search-results :user-recency "card" {:current-user-id user-id}))))))))))
+    (let [user-id     (mt/user->id :crowberto)
+          right-now   (Instant/now)
+          long-ago    (.minus right-now 10 ChronoUnit/DAYS)
+          forever-ago (.minus right-now 30 ChronoUnit/DAYS)
+          recent-view (fn [model-id timestamp]
+                        {:model     "card"
+                         :model_id  model-id
+                         :user_id   user-id
+                         :timestamp timestamp})]
+      (mt/with-temp [:model/Card        {c1 :id} {}
+                     :model/Card        {c2 :id} {}
+                     :model/Card        {c3 :id} {}
+                     :model/Card        {c4 :id} {}
+                     :model/RecentViews _ (recent-view c1 forever-ago)
+                     :model/RecentViews _ (recent-view c2 right-now)
+                     :model/RecentViews _ (recent-view c2 forever-ago)
+                     :model/RecentViews _ (recent-view c4 forever-ago)
+                     :model/RecentViews _ (recent-view c4 long-ago)]
+        (with-index-contents!
+          [{:model "card"    :id c1 :name "card ancient"}
+           {:model "metric"  :id c2 :name "card recent"}
+           {:model "dataset" :id c3 :name "card unseen"}
+           {:model "dataset" :id c4 :name "card old"}]
+          (testing "We prefer results more recently viewed by the current user"
+            (is (= [["metric"  c2 "card recent"]
+                    ["dataset" c4 "card old"]
+                    ["card"    c1 "card ancient"]
+                    ["dataset" c3 "card unseen"]]
+                   (search-results :user-recency "card" {:current-user-id user-id})))))))))

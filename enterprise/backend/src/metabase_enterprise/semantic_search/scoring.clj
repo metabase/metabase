@@ -78,9 +78,11 @@
     {:rrf        rrf-rank-exp
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy :pinned)
-     :recency    (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at]
-                                                  [:now]
-                                                  search.config/stale-time-in-days)
+     :recency    (search.scoring/inverse-duration
+                  :postgres
+                  [:coalesce :last_viewed_at :model_updated_at]
+                  [:now]
+                  search.config/stale-time-in-days)
      :dashboard  (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
      :model      (search.scoring/model-rank-expr search-ctx)
      :mine       (search.scoring/equal :creator_id (:current-user-id search-ctx))
@@ -134,15 +136,21 @@
 ;; appdb-based scorers: these scorers rely on tables in the appdb
 ;;
 
-(defn- search-doc->values
+(defn- search-doc->select
   [{:keys [id model]}]
-  [[:cast [:inline id] :text] [:inline model]])
+  {:select [[[:inline (str id)]] [[:inline model]]]})
 
 (defn- search-index-query
   [search-results]
   {:with     [[[:search_index {:columns [:model_id :model]}]
-               {:values (map search-doc->values search-results)}]]
-   :select   [[[:cast :search_index.model_id :int] :id]
+               ;; We could use :values here, except MySQL uses a slightly different syntax and I can't seem to get
+               ;; honeysql to generate a valid WITH ... VALUES statement for MySQL, so fallback to UNION + SELECT
+               ;; which works with all supported appdbs. https://dev.mysql.com/doc/refman/8.4/en/values.html
+               {:union (map search-doc->select search-results)}]]
+   :select   [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type))
+                                               :unsigned
+                                               :int)]
+               :id]
               [:search_index.model :model]]
    :from     [:search_index]})
 
@@ -179,11 +187,9 @@
   "The appdb-based scorers for search ranking results. Like `base-scorers`, but for scorers that need to query the appdb."
   [{:keys [limit-int] :as search-ctx}]
   (when-not (and limit-int (zero? limit-int))
-    (when-not (= :mysql (mdb/db-type))
-      ;; The appdb scorers need to be modified to work with mysql / mariadb (BOT-360)
-      {:bookmarked search.scoring/bookmark-score-expr
-       :user-recency (search.scoring/inverse-duration
-                      (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)})))
+    {:bookmarked search.scoring/bookmark-score-expr
+     :user-recency (search.scoring/inverse-duration
+                    (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)}))
 
 (defn with-appdb-scores
   "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.
