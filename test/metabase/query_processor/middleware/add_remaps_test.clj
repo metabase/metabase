@@ -731,10 +731,8 @@
 (deftest ^:parallel multiple-fk-remaps-test-in-joins-e2e-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B in a join"
     (let [mp    (-> meta/metadata-provider
-                    (lib.tu/remap-metadata-provider (meta/id :venues :category-id)
-                                                    (meta/id :categories :name))
-                    (lib.tu/remap-metadata-provider (meta/id :venues :id)
-                                                    (meta/id :categories :name))
+                    (lib.tu/remap-metadata-provider (meta/id :venues :category-id) (meta/id :categories :name)
+                                                    (meta/id :venues :id)          (meta/id :categories :name))
                     ;; mock VENUES.ID being an FK to CATEGORIES.ID (required for implicit joins to work)
                     (lib.tu/merged-mock-metadata-provider
                      {:fields [{:id                 (meta/id :venues :id)
@@ -752,36 +750,22 @@
       (is (=? {:query {:joins  [{:alias        "J"
                                  :source-query {:joins [{:alias "CATEGORIES__via__ID"}
                                                         {:alias "CATEGORIES__via__CATEGORY_ID"}]}
-                                 :fields       [[:field (meta/id :venues :id)          {:join-alias "J"}]
-                                                [:field (meta/id :venues :name)        {:join-alias "J"}]
-                                                [:field (meta/id :venues :category-id) {:join-alias "J"}]
-                                                [:field (meta/id :venues :latitude)    {:join-alias "J"}]
-                                                [:field (meta/id :venues :longitude)   {:join-alias "J"}]
-                                                [:field (meta/id :venues :price)       {:join-alias "J"}]
-                                                ;; we shouldn't use IDs here because they would be ambiguous.
-                                                [:field "NAME_2"        {:join-alias "J"}]
-                                                [:field "NAME_3"        {:join-alias "J"}]
-                                                ;; TODO -- this shouldn't be here! DUPLICATE!
-                                                [:field (meta/id :categories :name) {}]]}
-                                ;; these are in the opposite order as the join source query because `CATEGORY_ID`
-                                ;; appears before `ID` here but the other way around above.
+                                 :fields       :all}
                                 {:alias "CATEGORIES__via__CATEGORY_ID"}
                                 {:alias "CATEGORIES__via__ID"}]
-                       :fields [[:field (meta/id :venues :category-id) {}]
-                                [:field (meta/id :venues :id)          {}]
+                       :fields [[:field (meta/id :venues :category-id) nil]
+                                [:field (meta/id :venues :id)          nil]
                                 [:field (meta/id :venues :name)        nil]
-                                [:field (meta/id :venues :id)          {:join-alias "J"}]
-                                [:field (meta/id :venues :name)        {:join-alias "J"}]
-                                [:field (meta/id :venues :category-id) {:join-alias "J"}]
-                                [:field (meta/id :venues :latitude)    {:join-alias "J"}]
-                                [:field (meta/id :venues :longitude)   {:join-alias "J"}]
-                                [:field (meta/id :venues :price)       {:join-alias "J"}]
-                                [:field "NAME_2"                       {:join-alias "J"}]
-                                [:field "NAME_3"                       {:join-alias "J"}]
-                                [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__CATEGORY_ID"}]
-                                [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__ID"}]
-                                ;; TODO DUPLICATE!!!
-                                [:field (meta/id :categories :name) {:join-alias "J"}]]}}
+                                [:field "ID"          {:join-alias "J"}]
+                                [:field "NAME"        {:join-alias "J"}]
+                                [:field "CATEGORY_ID" {:join-alias "J"}]
+                                [:field "LATITUDE"    {:join-alias "J"}]
+                                [:field "LONGITUDE"   {:join-alias "J"}]
+                                [:field "PRICE"       {:join-alias "J"}]
+                                [:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]
+                                [:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__ID"}]
+                                [:field "CATEGORIES__via__ID__NAME"          {:join-alias "J"}]
+                                [:field "CATEGORIES__via__CATEGORY_ID__NAME" {:join-alias "J"}]]}}
               (-> query
                   qp.preprocess/preprocess
                   lib/->legacy-MBQL))))))

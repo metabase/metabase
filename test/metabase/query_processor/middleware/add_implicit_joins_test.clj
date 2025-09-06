@@ -8,10 +8,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
-   [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.middleware.fetch-source-query]
+   [metabase.query-processor.middleware.update-fields :as qp.update-fields]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
@@ -271,13 +270,13 @@
   (testing "make sure that implicit joins work with an explicit `:source-field-name` and `source-field-join-alias`"
     (is (=? (lib.tu.macros/mbql-query orders
               {:source-query {:source-table $$orders
-                              :joins        [{:source-table $$orders
+                              :joins        [{:source-query {:source-table $$orders}
                                               :alias        "Orders"
-                                              :condition    [:= $product-id  [:field %product-id {:join-alias "Orders"}]]
+                                              :condition    [:= $product-id [:field %product-id {:join-alias "Orders"}]]
                                               :strategy     :left-join}]}
-               :joins        [{:source-query {:joins [{:source-table $$orders
+               :joins        [{:source-query {:joins [{:source-query {:source-table $$orders}
                                                        :alias        "Orders"
-                                                       :condition    [:= $product-id  [:field %product-id {:join-alias "Orders"}]]
+                                                       :condition    [:= $product-id [:field %product-id {:join-alias "Orders"}]]
                                                        :strategy     :left-join
                                                        :fields       :none}]}
                                :alias        "Card"
@@ -353,8 +352,9 @@
                                      [:field %products.category {:source-field            %product-id
                                                                  :source-field-name       "Orders__PRODUCT_ID"
                                                                  :source-field-join-alias "Card"}]]})
-                   qp.add-source-metadata/add-source-metadata-for-source-queries
-                   qp.add-implicit-clauses/add-implicit-clauses)))))))
+                   (->> (lib/query (qp.store/metadata-provider)))
+                   qp.update-fields/update-fields
+                   lib/->legacy-MBQL)))))))
 
 (deftest ^:parallel reuse-existing-joins-test
   (testing "Should reuse existing joins rather than creating new ones"
@@ -496,15 +496,15 @@
   (testing "If we reuse a join, make sure we add Fields to `:fields` to the source query so we can reference them in the parent level"
     (is (=? (lib.tu.macros/mbql-query orders
               {:source-query {:source-table $$orders
-                              :fields       [$id
-                                             $user-id
-                                             $product-id
-                                             $subtotal
-                                             $tax
-                                             $total
-                                             $discount
-                                             $created-at
-                                             $quantity
+                              :fields       [[:field %id {}]
+                                             [:field %user-id {}]
+                                             [:field %product-id {}]
+                                             [:field %subtotal {}]
+                                             [:field %tax {}]
+                                             [:field %total {}]
+                                             [:field %discount {}]
+                                             [:field %created-at {}]
+                                             [:field %quantity {}]
                                              [:field %products.category {:source-field %product-id
                                                                          :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]
                               :filter       [:and
@@ -537,8 +537,10 @@
                      :filter       [:= $product-id->products.category "Doohickey"]
                      :order-by     [[:asc $product-id->products.category]]
                      :limit        5})
-                  qp.add-implicit-clauses/add-implicit-clauses
-                  add-implicit-joins))))))
+                  (->> (lib/query (qp.store/metadata-provider)))
+                  qp.update-fields/update-fields
+                  add-implicit-joins
+                  lib/->legacy-MBQL))))))
 
 (deftest ^:parallel add-fields-for-reused-joins-test-2
   (testing "don't add fields for a native source query."
@@ -609,10 +611,10 @@
     ;; TODO - I'm not sure I understand why we add the JOIN to the outer level in this case. Does it make sense?
     (is (=? (lib.tu.macros/mbql-query checkins
               {:source-query {:source-table $$checkins
-                              :fields       [$id
-                                             $date
-                                             $user-id
-                                             $venue-id]
+                              :fields       [[:field %id {}]
+                                             [:field %date {}]
+                                             [:field %user-id {}]
+                                             [:field %venue-id {}]]
                               :filter       [:> $date "2014-01-01"]}
                :aggregation  [[:count]]
                :breakout     [[:field %venues.price {:source-field %venue-id, :join-alias "VENUES__via__VENUE_ID"}]]
@@ -625,15 +627,17 @@
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id  %venue-id}]})
-            (qp.store/with-metadata-provider meta/metadata-provider
-              (-> (lib.tu.macros/mbql-query checkins
-                    {:source-query {:source-table $$checkins
-                                    :filter       [:> $date "2014-01-01"]}
-                     :aggregation  [[:count]]
-                     :breakout     [$venue-id->venues.price]
-                     :order-by     [[:asc $venue-id->venues.price]]})
-                  qp.add-implicit-clauses/add-implicit-clauses
-                  add-implicit-joins))))))
+            (-> (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query checkins
+                   {:source-query {:source-table $$checkins
+                                   :filter       [:> $date "2014-01-01"]}
+                    :aggregation  [[:count]]
+                    :breakout     [$venue-id->venues.price]
+                    :order-by     [[:asc $venue-id->venues.price]]}))
+                qp.update-fields/update-fields
+                add-implicit-joins
+                lib/->legacy-MBQL)))))
 
 (deftest ^:parallel topologically-sort-joins-test
   (let [parent        (lib/normalize
@@ -990,32 +994,32 @@
       (qp.store/with-metadata-provider mp
         (let [query' (-> query
                          metabase.query-processor.middleware.fetch-source-query/resolve-source-cards
-                         lib/->legacy-MBQL
-                         qp.add-implicit-clauses/add-implicit-clauses)]
+                         qp.update-fields/update-fields
+                         lib/->legacy-MBQL)]
           (testing "sanity check: before add-implicit-joins"
             (is (=? {:source-table (meta/id :orders)
-                     :fields       [[:field (meta/id :orders :id)         nil]
-                                    [:field (meta/id :orders :user-id)    nil]
-                                    [:field (meta/id :orders :product-id) nil]
-                                    [:field (meta/id :orders :subtotal)   nil]
-                                    [:field (meta/id :orders :tax)        nil]
-                                    [:field (meta/id :orders :total)      nil]
-                                    [:field (meta/id :orders :discount)   nil]
-                                    [:field (meta/id :orders :created-at) nil]
-                                    [:field (meta/id :orders :quantity)   nil]]}
+                     :fields       [[:field (meta/id :orders :id)         {}]
+                                    [:field (meta/id :orders :user-id)    {}]
+                                    [:field (meta/id :orders :product-id) {}]
+                                    [:field (meta/id :orders :subtotal)   {}]
+                                    [:field (meta/id :orders :tax)        {}]
+                                    [:field (meta/id :orders :total)      {}]
+                                    [:field (meta/id :orders :discount)   {}]
+                                    [:field (meta/id :orders :created-at) {}]
+                                    [:field (meta/id :orders :quantity)   {}]]}
                     (-> query' :query :source-query))))
           (testing "after add-implicit-joins"
             (let [query'' (lib/->legacy-MBQL (qp.add-implicit-joins/add-implicit-joins (lib/query mp query')))]
               (is (=? {:source-table (meta/id :orders)
-                       :fields       [[:field (meta/id :orders :id)         nil]
-                                      [:field (meta/id :orders :user-id)    nil]
-                                      [:field (meta/id :orders :product-id) nil]
-                                      [:field (meta/id :orders :subtotal)   nil]
-                                      [:field (meta/id :orders :tax)        nil]
-                                      [:field (meta/id :orders :total)      nil]
-                                      [:field (meta/id :orders :discount)   nil]
-                                      [:field (meta/id :orders :created-at) nil]
-                                      [:field (meta/id :orders :quantity)   nil]]}
+                       :fields       [[:field (meta/id :orders :id)         {}]
+                                      [:field (meta/id :orders :user-id)    {}]
+                                      [:field (meta/id :orders :product-id) {}]
+                                      [:field (meta/id :orders :subtotal)   {}]
+                                      [:field (meta/id :orders :tax)        {}]
+                                      [:field (meta/id :orders :total)      {}]
+                                      [:field (meta/id :orders :discount)   {}]
+                                      [:field (meta/id :orders :created-at) {}]
+                                      [:field (meta/id :orders :quantity)   {}]]}
                       (-> query'' :query :source-query))))))))))
 
 (deftest ^:parallel join-against-implicit-join-test
