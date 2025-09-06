@@ -32,7 +32,7 @@ export function getMaxAutoSizeLines(viewHeight: number) {
 
 type GetVisibleLinesCountParams = {
   query?: NativeQuery;
-  viewHeight: number | "full";
+  viewHeight?: number | "full";
 };
 
 function getVisibleLinesCount({
@@ -51,7 +51,7 @@ export function calcInitialEditorHeight({
   query,
   viewHeight,
 }: GetVisibleLinesCountParams) {
-  if (viewHeight === "full") {
+  if (viewHeight === "full" || viewHeight == null) {
     // override for action editor
     return FULL_HEIGHT;
   }

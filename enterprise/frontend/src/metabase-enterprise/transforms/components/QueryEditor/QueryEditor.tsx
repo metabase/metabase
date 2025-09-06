@@ -1,4 +1,4 @@
-import { useHotkeys } from "@mantine/hooks";
+import { useElementSize, useHotkeys } from "@mantine/hooks";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { Center, Flex, Loader } from "metabase/ui";
@@ -43,6 +43,10 @@ export function QueryEditor({
   } = useQueryResults(question);
   const canSave = Lib.canSave(question.query(), question.type());
   const { isNative } = Lib.queryDisplayInfo(question.query());
+  const { data: databases, isLoading } = useListDatabasesQuery({
+    include_analytics: true,
+  });
+  const { ref: containerRef, height: containerHeight } = useElementSize();
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
@@ -62,10 +66,6 @@ export function QueryEditor({
 
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
-  const { data: databases, isLoading } = useListDatabasesQuery({
-    include_analytics: true,
-  });
-
   if (!isInitiallyLoaded || isLoading) {
     return (
       <Center>
@@ -76,6 +76,7 @@ export function QueryEditor({
 
   return (
     <Flex
+      ref={containerRef}
       className={S.root}
       w="100%"
       h="100%"
@@ -92,6 +93,7 @@ export function QueryEditor({
       />
       <EditorBody
         question={question}
+        containerHeight={containerHeight}
         isNative={isNative}
         isRunnable={isRunnable}
         isRunning={isRunning}

@@ -16,10 +16,13 @@ import type { Database as ApiDatabase, RecentItem } from "metabase-types/api";
 import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
 
-const EDITOR_HEIGHT = 400;
+const EDITOR_MIN_HEIGHT = 200;
+const EDITOR_INITIAL_HEIGHT = 400;
+const EDITOR_HEIGHT_OFFSET = 200;
 
 type EditorBodyProps = {
   question: Question;
+  containerHeight: number;
   isNative: boolean;
   isRunnable: boolean;
   isRunning: boolean;
@@ -32,6 +35,7 @@ type EditorBodyProps = {
 
 export function EditorBody({
   question,
+  containerHeight,
   isNative,
   isRunnable,
   isRunning,
@@ -44,15 +48,18 @@ export function EditorBody({
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
 
-  const resizableBoxProps: Partial<ResizableBoxProps> = useMemo(
+  const resizableBoxProps: ResizableBoxProps = useMemo(
     () => ({
-      height: EDITOR_HEIGHT,
+      axis: "y",
+      height: EDITOR_INITIAL_HEIGHT,
       resizeHandles: ["s"],
       style: isResizing ? undefined : { transition: "height 0.25s" },
+      minConstraints: [Infinity, EDITOR_MIN_HEIGHT],
+      maxConstraints: [Infinity, containerHeight - EDITOR_HEIGHT_OFFSET],
       onResizeStart: () => setIsResizing(true),
       onResizeStop: () => setIsResizing(false),
     }),
-    [isResizing],
+    [containerHeight, isResizing],
   );
 
   const handleResize = () => {
@@ -98,12 +105,8 @@ export function EditorBody({
   ) : (
     <ResizableBox
       className={S.root}
-      axis="y"
-      height={EDITOR_HEIGHT}
       handle={<ResizableBoxHandle />}
-      resizeHandles={["s"]}
-      onResizeStart={() => setIsResizing(true)}
-      onResizeStop={() => setIsResizing(false)}
+      {...resizableBoxProps}
     >
       <Box w="100%" style={{ overflowY: isResizing ? "hidden" : "auto" }}>
         <Notebook

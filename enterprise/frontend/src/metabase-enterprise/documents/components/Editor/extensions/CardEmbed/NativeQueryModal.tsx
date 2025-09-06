@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
@@ -176,6 +177,8 @@ export const NativeQueryModal = ({
     }
   }, [isOpen, currentQueryPromise]);
 
+  const { ref: contentRef, height: contentHeight } = useElementSize();
+
   const setDatasetQuery = useCallback(
     async (query: NativeQuery) => {
       if (!modifiedQuestion) {
@@ -288,6 +291,7 @@ export const NativeQueryModal = ({
       <Flex h="100%" direction="column">
         <Flex flex={1} direction="row" mih={0} className={S.mainContent}>
           <Flex
+            ref={contentRef}
             flex={1}
             direction="column"
             mih={0}
@@ -310,7 +314,6 @@ export const NativeQueryModal = ({
                   hasEditingSidebar
                   hasParametersList={false}
                   sidebarFeatures={MODAL_SIDEBAR_FEATURES}
-                  viewHeight={400}
                   isRunnable
                   isRunning={isQueryRunning}
                   isResultDirty={false}
@@ -358,6 +361,11 @@ export const NativeQueryModal = ({
                           EDITOR_HEIGHT_OFFSET,
                       ),
                     ),
+                    minConstraints: [Infinity, EDITOR_MIN_HEIGHT],
+                    maxConstraints: [
+                      Infinity,
+                      contentHeight - EDITOR_HEIGHT_OFFSET,
+                    ],
                     style: {
                       border: "none",
                       width: "100%",

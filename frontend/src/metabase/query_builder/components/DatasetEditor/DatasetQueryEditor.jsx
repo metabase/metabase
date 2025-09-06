@@ -21,11 +21,13 @@ const QueryEditorContainer = ({ isActive, ...props }) => {
 };
 
 const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };
+const EDITOR_HEIGHT_OFFSET = 150;
 
 const propTypes = {
   question: PropTypes.object.isRequired,
   isActive: PropTypes.bool.isRequired, // if QB mode is set to "query"
   height: PropTypes.number.isRequired,
+  viewHeight: PropTypes.number,
   onSetDatabaseId: PropTypes.func,
 };
 
@@ -33,6 +35,7 @@ function DatasetQueryEditor({
   question,
   isActive,
   height,
+  viewHeight,
   onSetDatabaseId,
   ...props
 }) {
@@ -57,6 +60,10 @@ function DatasetQueryEditor({
     const resizableBoxProps = {
       height,
       resizeHandles,
+      maxConstraints: [
+        Infinity,
+        viewHeight != null ? viewHeight - EDITOR_HEIGHT_OFFSET : Infinity,
+      ],
       onResizeStart: () => setResizing(true),
       onResizeStop: () => setResizing(false),
       style,
@@ -69,7 +76,7 @@ function DatasetQueryEditor({
     }
 
     return resizableBoxProps;
-  }, [height, isResizing, isActive]);
+  }, [height, viewHeight, isResizing, isActive]);
 
   return (
     <QueryEditorContainer isActive={isActive}>

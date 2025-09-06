@@ -62,7 +62,7 @@ type OwnProps = {
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
-  viewHeight: number;
+  viewHeight?: number | "full";
   placeholder?: string;
   highlightedLineNumbers?: number[];
 
