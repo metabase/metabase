@@ -37,12 +37,12 @@ import type { Database, DatabaseId } from "metabase-types/api";
 
 export interface DatabaseReplicationFormFields {
   databaseId: DatabaseId;
-  schemaFiltersType: "all" | "include" | "exclude";
+  schemaFiltersType: "all" | "inclusion" | "exclusion";
   schemaFiltersPatterns: string;
 }
 
 const validationSchema = Yup.object({
-  schemaFiltersType: Yup.string().oneOf(["all", "include", "exclude"]),
+  schemaFiltersType: Yup.string().oneOf(["all", "inclusion", "exclusion"]),
   schemaFiltersPatterns: Yup.string(),
 });
 
@@ -174,8 +174,8 @@ export const DatabaseReplicationForm = ({
                 }
                 data={[
                   { value: "all", label: t`All` },
-                  { value: "include", label: t`Only these…` },
-                  { value: "exclude", label: t`All except…` },
+                  { value: "inclusion", label: t`Only these…` },
+                  { value: "exclusion", label: t`All except…` },
                 ]}
               />
 
@@ -184,7 +184,7 @@ export const DatabaseReplicationForm = ({
                   <Text c="text-secondary" fz="sm">{c(
                     "{0} is either NOT or empty string",
                   )
-                    .t`Comma separated names of schemas that should ${values.schemaFiltersType === "exclude" ? "NOT " : ""}be replicated`}</Text>
+                    .t`Comma separated names of schemas that should ${values.schemaFiltersType === "exclusion" ? "NOT " : ""}be replicated`}</Text>
                   <FormTextarea
                     name="schemaFiltersPatterns"
                     placeholder={t`e.g. public, auth`}

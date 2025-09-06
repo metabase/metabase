@@ -242,16 +242,16 @@
                   :breakout     [*price]}))))))))
 
 (defn- query-with-source-card
-  ([card]
-   {:database lib.schema.id/saved-questions-virtual-database-id
+  ([card db-id]
+   {:database db-id
     :type     :query
     :query    {:source-table (str "card__" (u/the-id card))}})
 
-  ([card m]
-   (update (query-with-source-card card) :query #(merge (get m :query m) %)))
+  ([card db-id m]
+   (update (query-with-source-card card db-id) :query #(merge (get m :query m) %)))
 
-  ([card k v & {:as more}]
-   (query-with-source-card card (merge {k v} more))))
+  ([card db-id k v & {:as more}]
+   (query-with-source-card card db-id (merge {k v} more))))
 
 (deftest ^:parallel multilevel-nested-questions-with-joins
   (testing "Multilevel nested questions with joins work (#22859)"
@@ -271,7 +271,7 @@
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
           (is (=? {:status :completed}
-                  (qp/process-query (query-with-source-card 2 :limit 1)))))))))
+                  (qp/process-query (query-with-source-card 2 lib.schema.id/saved-questions-virtual-database-id :limit 1)))))))))
 
 (deftest ^:parallel source-card-id-test
   (testing "Make sure we can run queries using source table `card__id` format."
@@ -286,6 +286,7 @@
                   [int int]
                   (qp/process-query
                    (query-with-source-card 1
+                                           lib.schema.id/saved-questions-virtual-database-id
                                            (mt/mbql-query venues
                                              {:aggregation [:count]
                                               :breakout    [$price]})))))))))))
@@ -309,7 +310,7 @@
                                             :breakout    [[:expression "Price level"]]
                                             :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
                                             :limit       2})])
-        (let [query (query-with-source-card 1)]
+        (let [query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)]
           (mt/with-native-query-testing-context query
             (is (= [["budget"    81]
                     ["expensive" 19]]
@@ -329,9 +330,10 @@
                (mt/format-rows-by
                 [int int]
                 (qp/process-query
-                 (query-with-source-card 1 (mt/mbql-query venues
-                                             {:aggregation [:count]
-                                              :breakout    [*price]})))))))]
+                 (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id
+                                         (mt/mbql-query venues
+                                           {:aggregation [:count]
+                                            :breakout    [*price]})))))))]
       (is (=? (breakout-results :has-source-metadata? false :native-source? true)
               (run-native-query native-sub-query))
           "make sure `card__id`-style queries work with native source queries as well")
@@ -373,7 +375,7 @@
                                         :limit        5})
                                      qp.compile/compile
                                      :query))
-            query              (query-with-source-card 1)]
+            query              (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                           [(mt/native-query {:query native-sub-query})])
           (mt/with-native-query-testing-context query
@@ -595,7 +597,7 @@
                      [:id :name :category_id :latitude :longitude :price])
                 ;; todo: i don't know why the results don't have the information
                 (mt/cols
-                 (qp/process-query (query-with-source-card 1)))))))))
+                 (qp/process-query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)))))))))
 
 (deftest ^:parallel correct-column-metadata-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -607,6 +609,7 @@
                 (mt/cols
                  (qp/process-query
                   (query-with-source-card 1
+                                          lib.schema.id/saved-questions-virtual-database-id
                                           (mt/mbql-query venues
                                             {:aggregation [[:count]]
                                              :breakout    [$price]}))))))))))
@@ -626,9 +629,10 @@
                (qp.test-util/aggregate-col :count)]
               (mt/cols
                (qp/process-query
-                (query-with-source-card 1 (mt/mbql-query checkins
-                                            {:aggregation [[:count]]
-                                             :breakout    [!day.*date]})))))))))
+                (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id
+                                        (mt/mbql-query checkins
+                                          {:aggregation [[:count]]
+                                           :breakout    [!day.*date]})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::breakout-year-test]
   [_driver _feature _database]
@@ -663,7 +667,7 @@
             (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil], :unit :year)
                      (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
                     (mt/cols
-                     (qp/process-query (query-with-source-card 1)))))))))))
+                     (qp/process-query (query-with-source-card 1 lib.schema.id/saved-questions-virtual-database-id)))))))))))
 
 (defn- completed-status [{:keys [status], :as results}]
   (if (= status :completed)
@@ -676,6 +680,7 @@
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                         [(mt/mbql-query checkins)])
         (let [query (query-with-source-card 1
+                                            lib.schema.id/saved-questions-virtual-database-id
                                             (mt/$ids checkins
                                               {:filter [:time-interval *date -30 :day]}))]
           (mt/with-native-query-testing-context query
@@ -689,6 +694,7 @@
                                         [(mt/mbql-query checkins)])
         (is (= :completed
                (-> (query-with-source-card 1
+                                           lib.schema.id/saved-questions-virtual-database-id
                                            (mt/mbql-query checkins
                                              {:aggregation [[:count]]
                                               :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
@@ -703,6 +709,7 @@
                                         [(mt/mbql-query checkins)])
         (is (= :completed
                (-> (query-with-source-card 1
+                                           lib.schema.id/saved-questions-virtual-database-id
                                            (mt/mbql-query checkins
                                              {:aggregation [[:count]]
                                               :breakout    [!week.*date]
@@ -727,6 +734,7 @@
                 [int]
                 (qp/process-query
                  (query-with-source-card 1
+                                         lib.schema.id/saved-questions-virtual-database-id
                                          {:aggregation [:count]})))))))))
 
 (deftest ^:parallel card-perms-test
@@ -736,7 +744,9 @@
                                            (lib.tu/metadata-provider-with-cards-for-queries [{}])
                                            (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))
         (is (= {:paths #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}}
-               (query-perms/required-perms-for-query (query-with-source-card 1 :aggregation [:count]))))))))
+               (query-perms/required-perms-for-query (query-with-source-card 1
+                                                                             lib.schema.id/saved-questions-virtual-database-id
+                                                                             :aggregation [:count]))))))))
 
 (deftest ^:parallel card-perms-test-2
   (testing "perms for a Card with a SQL source query\n"
@@ -745,7 +755,9 @@
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                         [(mt/native-query {:query "SELECT * FROM VENUES"})])
         (is (= {:paths #{(perms/collection-read-path collection/root-collection)}}
-               (query-perms/required-perms-for-query (query-with-source-card 1 :aggregation [:count]))))))))
+               (query-perms/required-perms-for-query (query-with-source-card 1
+                                                                             lib.schema.id/saved-questions-virtual-database-id
+                                                                             :aggregation [:count]))))))))
 
 (deftest card-perms-test-3
   (testing "perms for Card -> Card -> MBQL Source query\n"
@@ -812,7 +824,7 @@
                            :collection_id          (some-> dest-collection-or-id-or-nil u/the-id)
                            :display                "scalar"
                            :visualization_settings {}
-                           :dataset_query          (query-with-source-card card
+                           :dataset_query          (query-with-source-card card (u/the-id db-or-id)
                                                                            :aggregation [:count])})))
 
 (deftest save-card-with-source-query-via-api-test

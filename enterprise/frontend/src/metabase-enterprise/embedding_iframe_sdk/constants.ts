@@ -39,6 +39,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withDownloads",
     "initialSqlParameters",
     "drills",
+    "entityTypes",
   ] satisfies (keyof QuestionEmbedOptions)[],
   exploration: [
     "template",

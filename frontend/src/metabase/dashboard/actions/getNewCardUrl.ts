@@ -32,7 +32,10 @@ export const getNewCardUrl = ({
 }: {
   metadata: Metadata;
   dashboard: Dashboard | StoreDashboard;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
+  parameterValues: Record<
+    ParameterId,
+    ParameterValueOrArray | undefined | null
+  >;
   nextCard: Card | VirtualCard;
   previousCard: Card | VirtualCard;
   dashcard: QuestionDashboardCard;
