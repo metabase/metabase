@@ -7,6 +7,7 @@ import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import type { BuildInfo } from "metabase/embedding-sdk/types/build-info";
 
 import S from "./SdkDebugInfo.module.css";
+import { sdkDebugInfoSchema } from "./SdkDebugInfo.schema";
 
 type BuildTimeData = {
   formattedDate: string;
@@ -88,7 +89,7 @@ const DebugTable = ({
   </table>
 );
 
-export const SdkDebugInfo = (props: HTMLAttributes<HTMLDivElement>) => {
+const SdkDebugInfoInner = (props: HTMLAttributes<HTMLDivElement>) => {
   const sdkPackageDebugInfoData = getDebugInfoData(
     getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO"),
   );
@@ -108,3 +109,7 @@ export const SdkDebugInfo = (props: HTMLAttributes<HTMLDivElement>) => {
     </div>
   );
 };
+
+export const SdkDebugInfo = Object.assign(SdkDebugInfoInner, {
+  schema: sdkDebugInfoSchema,
+});

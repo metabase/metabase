@@ -10,6 +10,8 @@ import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
+import { interactiveDashboardSchema } from "./InteractiveDashboard.schema";
+
 /**
  * @interface
  * @expand
@@ -17,7 +19,7 @@ import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
  */
 export type InteractiveDashboardProps = SdkDashboardProps;
 
-export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
+const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
   const getClickActionMode: ClickActionModeGetter = useCallback(
     ({ question }) =>
       getEmbeddingMode({
@@ -46,3 +48,7 @@ export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
     />
   );
 };
+
+export const InteractiveDashboard = Object.assign(InteractiveDashboardInner, {
+  schema: interactiveDashboardSchema,
+});

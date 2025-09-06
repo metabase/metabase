@@ -11,6 +11,8 @@ import {
   type SdkDashboardProps,
 } from "../SdkDashboard";
 
+import { editableDashboardSchema } from "./EditableDashboard.schema";
+
 /**
  * @interface
  * @expand
@@ -19,7 +21,7 @@ import {
 export type EditableDashboardProps = SdkDashboardProps &
   EditableDashboardOwnProps;
 
-export const EditableDashboard = (props: EditableDashboardProps) => {
+export const EditableDashboardInner = (props: EditableDashboardProps) => {
   const dashboardActions: SdkDashboardInnerProps["dashboardActions"] = ({
     isEditing,
     downloadsEnabled,
@@ -48,3 +50,7 @@ export const EditableDashboard = (props: EditableDashboardProps) => {
     />
   );
 };
+
+export const EditableDashboard = Object.assign(EditableDashboardInner, {
+  schema: editableDashboardSchema,
+});
