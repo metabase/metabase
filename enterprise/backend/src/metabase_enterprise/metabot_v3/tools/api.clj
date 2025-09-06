@@ -683,7 +683,7 @@
                                :last_edited_at   :last-edited-at
                                :entity_types     :entity-types})}]])
 
-(mr/def ::search-table-result
+(mr/def ::search-data-sources-table-result
   "Schema for table/model search results"
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
@@ -694,7 +694,7 @@
    [:database_id {:optional true} [:maybe :int]]
    [:database_schema {:optional true} [:maybe :string]]])
 
-(mr/def ::search-dashboard-result
+(mr/def ::search-data-sources-dashboard-result
   "Schema for dashboard search results"
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
@@ -703,7 +703,7 @@
    [:description {:optional true} [:maybe :string]]
    [:verified {:optional true} :boolean]])
 
-(mr/def ::search-question-result
+(mr/def ::search-data-sources-question-result
   "Schema for question search results"
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
@@ -712,7 +712,7 @@
    [:description {:optional true} [:maybe :string]]
    [:verified {:optional true} :boolean]])
 
-(mr/def ::search-metric-result
+(mr/def ::search-data-sources-metric-result
   "Schema for metric search results"
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
@@ -721,7 +721,7 @@
    [:description {:optional true} [:maybe :string]]
    [:verified {:optional true} :boolean]])
 
-(mr/def ::search-result-item
+(mr/def ::search-data-sources-result-item
   "Union of all search result types.
 
    We use dedicated schemas per entity type because:
@@ -730,17 +730,17 @@
    - Other entities use display names and don't need database fields
    - Type-specific validation ensures correct field usage"
   [:or
-   ::search-table-result
-   ::search-dashboard-result
-   ::search-question-result
-   ::search-metric-result])
+   ::search-data-sources-table-result
+   ::search-data-sources-dashboard-result
+   ::search-data-sources-question-result
+   ::search-data-sources-metric-result])
 
 (mr/def ::search-data-sources-result
   [:or
    [:map
     {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
     [:structured_output [:map
-                         [:data [:sequential ::search-result-item]]
+                         [:data [:sequential ::search-data-sources-result-item]]
                          [:total_count :int]]]]
    [:map [:output :string]]])
 
@@ -1058,7 +1058,114 @@
                 (assoc :conversation_id conversation_id))
         (metabot-v3.context/log :llm.log/be->llm)))))
 
-(api.macros/defendpoint :post "/search" :- [:merge ::search-data-sources-result ::tool-request]
+(mr/def ::search-arguments
+  [:and
+   [:map
+    [:term_queries     {:optional true} [:maybe [:sequential :string]]]
+    [:semantic_queries {:optional true} [:maybe [:sequential :string]]]
+    [:entity_types     {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric" "database"]]]]
+    [:database_id      {:optional true} [:maybe :int]]
+    [:created_at       {:optional true} [:maybe ms/NonBlankString]]
+    [:last_edited_at   {:optional true} [:maybe ms/NonBlankString]]
+    [:limit            {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:term_queries     :term-queries
+                               :semantic_queries :semantic-queries
+                               :database_id      :database-id
+                               :created_at       :created-at
+                               :last_edited_at   :last-edited-at
+                               :entity_types     :entity-types})}]])
+
+(mr/def ::search-table-result
+  "Schema for table/model search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:enum :table :model]]
+   [:name :string]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]
+   [:database_schema {:optional true} [:maybe :string]]
+   [:updated_at {:optional true} [:maybe :string]]
+   [:created_at {:optional true} [:maybe :string]]
+   ;; Additional fields for models only
+   [:last_used_at {:optional true} [:maybe :string]]
+   [:collection {:optional true} [:maybe [:map
+                                          [:name {:optional true} [:maybe :string]]
+                                          [:authority_level {:optional true} [:maybe :string]]]]]])
+
+(mr/def ::search-dashboard-result
+  "Schema for dashboard search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:= :dashboard]]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:verified {:optional true} :boolean]
+   [:updated_at {:optional true} [:maybe :string]]
+   [:last_viewed_at {:optional true} [:maybe :string]]
+   [:created_at {:optional true} [:maybe :string]]
+   [:collection {:optional true} [:maybe [:map
+                                          [:name {:optional true} [:maybe :string]]
+                                          [:authority_level {:optional true} [:maybe :string]]]]]])
+
+(mr/def ::search-question-result
+  "Schema for question search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:= :question]]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:verified {:optional true} :boolean]
+   [:last_used_at {:optional true} [:maybe :string]]
+   [:updated_at {:optional true} [:maybe :string]]
+   [:created_at {:optional true} [:maybe :string]]
+   [:collection {:optional true} [:maybe [:map
+                                          [:name {:optional true} [:maybe :string]]
+                                          [:authority_level {:optional true} [:maybe :string]]]]]])
+
+(mr/def ::search-metric-result
+  "Schema for metric search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:= :metric]]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:verified {:optional true} :boolean]
+   [:last_used_at {:optional true} [:maybe :string]]
+   [:updated_at {:optional true} [:maybe :string]]
+   [:created_at {:optional true} [:maybe :string]]
+   [:collection {:optional true} [:maybe [:map
+                                          [:name {:optional true} [:maybe :string]]
+                                          [:authority_level {:optional true} [:maybe :string]]]]]])
+
+(mr/def ::search-database-result
+  "Schema for database search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:= :database]]
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:updated_at {:optional true} [:maybe :string]]])
+
+(mr/def ::search-result-item
+  [:or
+   ::search-table-result
+   ::search-dashboard-result
+   ::search-question-result
+   ::search-metric-result
+   ::search-database-result])
+
+(mr/def ::search-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:data [:sequential ::search-result-item]]
+                         [:total_count :int]]]]
+   [:map [:output :string]]])
+
+(api.macros/defendpoint :post "/search" :- [:merge ::search-result ::tool-request]
   "Enhanced search with term and semantic queries using Reciprocal Rank Fusion."
   [_route-params
    _query-params
@@ -1076,7 +1183,7 @@
                    (assoc options :metabot-id metabot-id))
           response-data {:data results
                          :total_count (count results)}]
-      (doto (-> (mc/decode ::search-data-sources-result
+      (doto (-> (mc/decode ::search-result
                            {:structured_output response-data}
                            (mtx/transformer {:name :tool-api-response}))
                 (assoc :conversation_id conversation_id))

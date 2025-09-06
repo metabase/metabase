@@ -34,7 +34,10 @@
    - Other entities: name = display name, no database fields"
   [result]
   (let [model (:model result)
-        result-type (search-model->result-type model)]
+        result-type (search-model->result-type model)
+        collection-info (when (:collection result)
+                          {:name (:name (:collection result))
+                           :authority_level (:authority_level (:collection result))})]
     (case model
       "table"
       {:id              (:id result)
@@ -43,7 +46,9 @@
        :display_name    (:name result)
        :description     (:description result)
        :database_id     (:database_id result)
-       :database_schema (:table_schema result)}
+       :database_schema (:table_schema result)
+       :updated_at      (:updated_at result)
+       :created_at      (:created_at result)}
 
       "dataset"
       {:id              (:id result)
@@ -52,15 +57,42 @@
        :display_name    (:name result)
        :description     (:description result)
        :database_id     (:database_id result)
-       :verified        (boolean (:verified result))}
+       :verified        (boolean (:verified result))
+       :last_used_at    (:last_used_at result)
+       :updated_at      (:updated_at result)
+       :created_at      (:created_at result)
+       :collection      collection-info}
 
-      ;; For dashboards, questions, and metrics:
+      "database"
+      {:id              (:id result)
+       :type            result-type
+       :name            (:name result)
+       :description     (:description result)
+       :updated_at      (:updated_at result)}
+
+      "dashboard"
       {:id              (:id result)
        :type            result-type
        :name            (:name result)
        :description     (:description result)
        :verified        (boolean (or (:verified result)
-                                     (= "verified" (:moderated_status result))))})))
+                                     (= "verified" (:moderated_status result))))
+       :updated_at      (:updated_at result)
+       :last_viewed_at  (:last_viewed_at result)
+       :created_at      (:created_at result)
+       :collection      collection-info}
+
+      ;; For questions and metrics:
+      {:id              (:id result)
+       :type            result-type
+       :name            (:name result)
+       :description     (:description result)
+       :verified        (boolean (or (:verified result)
+                                     (= "verified" (:moderated_status result))))
+       :last_used_at    (:last_used_at result)
+       :updated_at      (:updated_at result)
+       :created_at      (:created_at result)
+       :collection      collection-info})))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -94,7 +126,7 @@
                      result-lists)]
     (->> rrf-results
          vals
-         (sort-by :rrf >)  ; Sort by RRF score descending
+         (sort-by :rrf >)
          (map :search-result))))
 
 (defn search
@@ -110,30 +142,30 @@
         use-verified-content? (if metabot-id
                                 (:use_verified_content metabot)
                                 false)
-        ;; Run a search for each query, maintaining result order in list of lists
-        result-lists (map
-                      (fn [query]
-                        (let [search-context (search/search-context
-                                              (merge
-                                               {:search-string query
-                                                :models search-models
-                                                :table-db-id database-id
-                                                :created-at created-at
-                                                :last-edited-at last-edited-at
-                                                :current-user-id api/*current-user-id*
-                                                :is-impersonated-user? (perms/impersonated-user?)
-                                                :is-sandboxed-user? (perms/sandboxed-user?)
-                                                :is-superuser? api/*is-superuser?*
-                                                :current-user-perms @api/*current-user-permissions-set*
-                                                :context :metabot
-                                                :archived false
-                                                :limit (or limit 50)
-                                                :offset 0}
-                                               (when use-verified-content?
-                                                 {:verified true})))
-                              search-results (search/search search-context)]
-                          (:data search-results)))
-                      all-queries)
-        ;; Use RRF to combine and reorder results
-        fused-results (reciprocal-rank-fusion result-lists)]
+        search-fn (fn [query]
+                    (let [search-context (search/search-context
+                                          (merge
+                                           {:search-string query
+                                            :models search-models
+                                            :table-db-id database-id
+                                            :created-at created-at
+                                            :last-edited-at last-edited-at
+                                            :current-user-id api/*current-user-id*
+                                            :is-impersonated-user? (perms/impersonated-user?)
+                                            :is-sandboxed-user? (perms/sandboxed-user?)
+                                            :is-superuser? api/*is-superuser?*
+                                            :current-user-perms @api/*current-user-permissions-set*
+                                            :context :metabot
+                                            :archived false
+                                            :limit (or limit 50)
+                                            :offset 0}
+                                           (when use-verified-content?
+                                             {:verified true})))
+                          search-results (search/search search-context)]
+                      (:data search-results)))
+        ;; Create futures for parallel execution
+        futures (mapv #(future (search-fn %)) all-queries)
+        result-lists (mapv deref futures)
+        fused-results (reciprocal-rank-fusion result-lists)
+        _ (def tsp-fused fused-results)]
     (map transform-search-result fused-results)))
