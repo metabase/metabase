@@ -21,6 +21,7 @@
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
+   [metabase-enterprise.metabot-v3.tools.search-data-sources :as metabot-v3.tools.search-data-sources]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -241,6 +242,23 @@
     [:limit {:optional true} [:maybe :int]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
+(mr/def ::query-datasource-arguments
+  [:and
+   [:map
+    [:table_id {:optional true} :int]
+    [:model_id {:optional true} :int]
+    [:fields {:optional true} [:maybe [:sequential ::field]]]
+    [:filters {:optional true} [:maybe [:sequential ::filter]]]
+    [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
+    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]
+    [:order_by {:optional true} [:maybe [:sequential [:map
+                                                      [:field ::field]
+                                                      [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]]]
+    [:limit {:optional true} [:maybe :int]]]
+   [:fn {:error/message "Exactly one of table_id and model_id required"}
+    #(= (count (select-keys % [:table_id :model_id])) 1)]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
 (mr/def ::count
   [:and
    :int
@@ -402,7 +420,8 @@
   [:merge
    ::basic-metric
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:queryable_dimensions {:optional true} ::columns]]])
+    [:queryable_dimensions {:optional true} ::columns]
+    [:verified {:optional true} :boolean]]])
 
 (mr/def ::find-metric-result
   [:or
@@ -466,7 +485,6 @@
                          [:name :string]
                          [:email_address :string]]]]
    [:map [:output :string]]])
-
 (mr/def ::get-dashboard-details-result
   [:or
    [:map
@@ -475,7 +493,8 @@
                          [:id :int]
                          [:type [:= :dashboard]]
                          [:name :string]
-                         [:description {:optional true} :string]]]]
+                         [:description {:optional true} :string]
+                         [:verified {:optional true} :boolean]]]]
    [:map [:output :string]]])
 
 (mr/def ::get-metric-details-arguments
@@ -530,7 +549,8 @@
                          [:type [:= :question]]
                          [:name :string]
                          [:description {:optional true} [:maybe :string]]
-                         [:result_columns ::columns]]]]
+                         [:result_columns ::columns]
+                         [:verified {:optional true} :boolean]]]]
    [:map [:output :string]]])
 
 (mr/def ::get-document-details-arguments
@@ -604,6 +624,9 @@
    [:id :int]
    [:type [:enum :model :table]]
    [:name :string]
+   [:display_name :string]
+   [:database_id :int]
+   [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
    [:fields ::columns]
    [:description {:optional true} [:maybe :string]]
    [:metrics {:optional true} [:sequential ::basic-metric]]])
@@ -627,6 +650,79 @@
     [:structured_output [:map
                          [:metrics [:sequential ::full-metric]]
                          [:models  [:sequential ::full-table]]]]]
+   [:map [:output :string]]])
+
+(mr/def ::search-data-sources-arguments
+  [:and
+   [:map
+    [:keywords {:optional true} [:maybe [:sequential :string]]]
+    [:description {:optional true} [:maybe :string]]
+    [:database_id {:optional true} [:maybe :int]]
+    [:entity_types {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric"]]]]
+    [:limit {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:database_id :database-id
+                               :entity_types :entity-types})}]])
+
+(mr/def ::search-table-result
+  "Schema for table/model search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:enum :table :model]]
+   [:name :string]                                   ; Table name (technical for tables, display for models)
+   [:display_name {:optional true} [:maybe :string]] ; Display name
+   [:description {:optional true} [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]
+   [:database_schema {:optional true} [:maybe :string]]])
+
+(mr/def ::search-dashboard-result
+  "Schema for dashboard search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:= :dashboard]]
+   [:name :string]                                    ; Display name
+   [:description {:optional true} [:maybe :string]]
+   [:verified {:optional true} :boolean]])
+
+(mr/def ::search-question-result
+  "Schema for question search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:= :question]]
+   [:name :string]                                    ; Display name
+   [:description {:optional true} [:maybe :string]]
+   [:verified {:optional true} :boolean]])
+
+(mr/def ::search-metric-result
+  "Schema for metric search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:= :metric]]
+   [:name :string]                                    ; Display name
+   [:description {:optional true} [:maybe :string]]
+   [:verified {:optional true} :boolean]])
+
+(mr/def ::search-result-item
+  "Union of all search result types.
+
+   We use dedicated schemas per entity type because:
+   - Tables need technical names and database context
+   - Models need display names and database context
+   - Other entities use display names and don't need database fields
+   - Type-specific validation ensures correct field usage"
+  [:or
+   ::search-table-result
+   ::search-dashboard-result
+   ::search-question-result
+   ::search-metric-result])
+
+(mr/def ::search-data-sources-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:data [:sequential ::search-result-item]]
+                         [:total_count :int]]]]
    [:map [:output :string]]])
 
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
@@ -703,10 +799,12 @@
    _query-params
    {:keys [arguments conversation_id] :as body} :- [:merge
                                                     [:map [:arguments [:map [:message :string]]]]
-                                                    ::tool-request]]
+                                                    ::tool-request]
+   request]
   (metabot-v3.context/log (assoc body :api :find-metric) :llm.log/llm->be)
   (doto (-> (mc/decode ::find-metric-result
-                       (metabot-v3.tools.find-metric/find-metric arguments)
+                       (metabot-v3.tools.find-metric/find-metric
+                        (assoc arguments :metabot-id (:metabot-v3/metabot-id request)))
                        (mtx/transformer {:name :tool-api-response}))
             (assoc :conversation_id conversation_id))
     (metabot-v3.context/log :llm.log/be->llm)))
@@ -895,6 +993,51 @@
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
+
+;; TODO tsplude - drop the `/query-model` endpoint and filter logic in favor of this
+(api.macros/defendpoint :post "/query-datasource" :- [:merge ::filtering-result ::tool-request]
+  "Construct a query from a model or table data source."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::query-datasource-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :query-datasource) :llm.log/llm->be)
+  (let [arguments (mc/encode ::query-datasource-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))]
+    (doto (-> (mc/decode ::filtering-result
+                         (metabot-v3.tools.filters/query-datasource arguments)
+                         (mtx/transformer {:name :tool-api-response}))
+              (assoc :conversation_id conversation_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/search-data-sources" :- [:merge ::search-data-sources-result ::tool-request]
+  "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments {:optional true} ::search-data-sources-arguments]]
+                                                    ::tool-request]
+   request]
+  (metabot-v3.context/log (assoc body :api :search-data-sources) :llm.log/llm->be)
+  (try
+    (let [options (mc/encode ::search-data-sources-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))
+          metabot-id (:metabot-v3/metabot-id request)
+          results (metabot-v3.tools.search-data-sources/search-data-sources
+                   (assoc options :metabot-id metabot-id))
+          response-data {:data results
+                         :total_count (count results)}]
+      (doto (-> (mc/decode ::search-data-sources-result
+                           {:structured_output response-data}
+                           (mtx/transformer {:name :tool-api-response}))
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))
+    (catch Exception e
+      (log/error e "Error in search-data-sources")
+      (doto (-> {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))))
 
 (defn- enforce-authentication
   "Middleware that returns a 401 response if no `ai-session` can be found for  `request`."
