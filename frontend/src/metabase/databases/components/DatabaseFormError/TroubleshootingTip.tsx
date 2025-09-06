@@ -20,7 +20,14 @@ export const TroubleshootingTip = (props: TipProps) => {
   const { title, body, noIcon, ...flexProps } = props;
 
   return (
-    <Flex className={S.container} gap="md" px="md" py="lg" {...flexProps}>
+    <Flex
+      className={S.container}
+      gap="md"
+      px="md"
+      py="lg"
+      {...flexProps}
+      data-testid="troubleshooting-tip"
+    >
       {!noIcon && <Icon name="info" mt={2} />}
       <Flex direction="column" gap="xs">
         <Text className={S.title}>{title}</Text>

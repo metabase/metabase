@@ -2,12 +2,12 @@ import { render, screen } from "__support__/ui";
 
 import { TroubleshootingTip } from "./TroubleshootingTip";
 
-describe("TroubleshootingTip", () => {
-  const defaultProps = {
-    title: "Test Title",
-    body: "Test body content",
-  };
+const defaultProps = {
+  title: "Test Title",
+  body: "Test body content",
+};
 
+describe("TroubleshootingTip", () => {
   describe("Basic rendering", () => {
     it("should render title and body", () => {
       render(<TroubleshootingTip {...defaultProps} />);
@@ -18,17 +18,16 @@ describe("TroubleshootingTip", () => {
 
     it("should render with icon by default", () => {
       render(<TroubleshootingTip {...defaultProps} />);
-
-      // The icon is rendered as an SVG with name="info"
-      const container = screen.getByText("Test Title").closest("div");
-      expect(container?.parentElement).toBeInTheDocument();
+      expect(
+        screen.getByRole("img", { name: "info icon" }),
+      ).toBeInTheDocument();
     });
 
     it("should render without icon when noIcon is true", () => {
       render(<TroubleshootingTip {...defaultProps} noIcon />);
-
-      expect(screen.getByText("Test Title")).toBeInTheDocument();
-      expect(screen.getByText("Test body content")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("img", { name: "info icon" }),
+      ).not.toBeInTheDocument();
     });
   });
 

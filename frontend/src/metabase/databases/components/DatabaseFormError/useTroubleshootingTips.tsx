@@ -11,13 +11,28 @@ import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Code } from "metabase/ui";
 import type { State } from "metabase-types/store";
 
-import type { TipProps } from "./TroubleshootingTip";
+import type { TipProps as _TipProps } from "./TroubleshootingTip";
 
-export const useTroubleshootingTips = (count?: number): TipProps[] => {
+type TipKey =
+  | "ip-addresses"
+  | "ssl"
+  | "permissions"
+  | "connection-settings"
+  | "credentials";
+type TipProps = _TipProps & { key: TipKey };
+
+export const useTroubleshootingTips = (
+  isHostAndPortError: boolean,
+  expanded: boolean,
+): TipProps[] => {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const getDocPageUrl = useSelector(docPageUrlGetter);
 
   return useMemo(() => {
+    if (isHostAndPortError && !expanded) {
+      return [];
+    }
+
     const cloudIPLinkContent = renderDocsLinkMaybe(
       // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
       t`Metabase Cloud IP addresses`,
@@ -37,6 +52,7 @@ export const useTroubleshootingTips = (count?: number): TipProps[] => {
 
     return [
       {
+        key: "ip-addresses" as const,
         // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
         title: t`Try allowing Metabase IP addresses`,
         body: (
@@ -55,11 +71,13 @@ export const useTroubleshootingTips = (count?: number): TipProps[] => {
         ),
       },
       {
+        key: "ssl" as const,
         title: t`Try using a secure connection (SSL)`,
         body: c("{0} refers to 'SSL certificate'")
           .jt`You’ll need an ${sslCertLinkContent} to do this.`,
       },
       {
+        key: "permissions" as const,
         // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
         title: t`Check Metabase user permissions`,
         body: // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
@@ -67,15 +85,20 @@ export const useTroubleshootingTips = (count?: number): TipProps[] => {
           .jt`Check that Metabase has the ${permissionsLinkContent} or user role for your database.`,
       },
       {
+        key: "connection-settings" as const,
         title: t`Double-check connection settings`,
         body: t`Make sure the host name, port or database name don’t contain typos.`,
       },
       {
+        key: "credentials" as const,
         title: t`Double-check access credentials`,
         body: t`Is the username and password correct? If possible, copy-paste the values to the form.`,
       },
-    ].slice(0, count);
-  }, [count, getDocPageUrl, showMetabaseLinks]);
+    ].filter((tip) => {
+      const initialTips: TipKey[] = ["ip-addresses", "ssl"];
+      return expanded || initialTips.includes(tip.key);
+    });
+  }, [expanded, getDocPageUrl, showMetabaseLinks, isHostAndPortError]);
 };
 
 /**
@@ -90,7 +113,13 @@ const renderDocsLinkMaybe = (
 
   if (showMetabaseLinks) {
     linkContent = (
-      <Box component={Link} to={docsUrl} fw={600} className={CS.link}>
+      <Box
+        className={CS.link}
+        component={Link}
+        fw={600}
+        key={docsUrl}
+        to={docsUrl}
+      >
         {linkContent}
       </Box>
     );

@@ -9,14 +9,17 @@ export const useDatabaseErrorDetails = () => {
   const originalErrorMessage = useFormErrorMessage();
   const isHostAndPortError =
     typeof errors?.details === "object" &&
-    Object.hasOwn(errors?.details, "host") &&
-    Object.hasOwn(errors?.details, "port");
+    !!(errors?.details?.["host"] || errors?.details?.["port"]);
   const errorMessage = isHostAndPortError
-    ? t`Make sure your Host and Port settings are correct.`
+    ? getHostAndPortSpecificErrorMessage()
     : originalErrorMessage;
 
   return {
     errorMessage,
     isHostAndPortError,
   };
+};
+
+export const getHostAndPortSpecificErrorMessage = () => {
+  return t`Make sure your Host and Port settings are correct.`;
 };

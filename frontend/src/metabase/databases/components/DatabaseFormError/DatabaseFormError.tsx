@@ -1,22 +1,22 @@
 import { Fragment, useRef, useState } from "react";
 import { useMount } from "react-use";
-import slugg from "slugg";
 import { t } from "ttag";
 
 import { Alert, Box, Button, Divider, Icon, Paper } from "metabase/ui";
 
 import { AdditionalHelpButtonGroup } from "./AdditionalHelpButtonGroup";
+import { CheckHostAndPortButton } from "./CheckHostAndPortButton";
 import S from "./DatabaseFormError.module.css";
 import { TroubleshootingTip } from "./TroubleshootingTip";
 import { useDatabaseErrorDetails } from "./useDatabaseErrorDetails";
 import { useTroubleshootingTips } from "./useTroubleshootingTips";
 
 export const DatabaseFormError = () => {
-  const [showMoreTips, setShowMoreTips] = useState<boolean>(false);
+  const [showAllTips, setShowAllTips] = useState<boolean>(false);
   const { isHostAndPortError, errorMessage } = useDatabaseErrorDetails();
-  const initialTipCount = isHostAndPortError ? 0 : 2;
   const troubleshootingTips = useTroubleshootingTips(
-    showMoreTips ? undefined : initialTipCount,
+    isHostAndPortError,
+    showAllTips,
   );
   const ref = useRef<HTMLDivElement>(null);
   const title = isHostAndPortError
@@ -29,20 +29,6 @@ export const DatabaseFormError = () => {
       ref.current.scrollIntoView({ behavior: "smooth" });
     }
   });
-
-  const onCheckHostAndPortClick = () => {
-    // Scroll to the area with errors
-    const scrollableEl = document.getElementById(
-      "scrollable-database-form-body",
-    );
-    const dataErrorEl =
-      scrollableEl?.querySelector<HTMLDivElement>("div[data-error]");
-
-    if (dataErrorEl) {
-      const y = dataErrorEl.offsetTop - 48; // 48px clearance
-      scrollableEl?.scrollTo({ behavior: "smooth", top: y });
-    }
-  };
 
   return (
     <Paper className={S.paper} ref={ref}>
@@ -58,25 +44,17 @@ export const DatabaseFormError = () => {
           {errorMessage}
         </Alert>
         {troubleshootingTips.map((tipProps, _index) => (
-          <Fragment key={slugg(tipProps.title)}>
+          <Fragment key={tipProps.key}>
             {!!_index && <Divider variant="dashed" />}
             <TroubleshootingTip {...tipProps} />
           </Fragment>
         ))}
-        {showMoreTips && <AdditionalHelpButtonGroup />}
+        {showAllTips && <AdditionalHelpButtonGroup />}
       </Box>
       {isHostAndPortError && (
         <>
           <Divider mt="md" />
-          <Button
-            fw={700}
-            fz="md"
-            leftSection={<Icon name="gear" size={12} />}
-            onClick={onCheckHostAndPortClick}
-            variant="subtle"
-          >
-            {t`Check Host and Port settings`}
-          </Button>
+          <CheckHostAndPortButton />
         </>
       )}
       <Divider />
@@ -84,12 +62,12 @@ export const DatabaseFormError = () => {
         fw={700}
         fz="md"
         leftSection={
-          <Icon name={showMoreTips ? "chevronup" : "chevrondown"} size={12} />
+          <Icon name={showAllTips ? "chevronup" : "chevrondown"} size={12} />
         }
-        onClick={() => setShowMoreTips((showMoreTips) => !showMoreTips)}
+        onClick={() => setShowAllTips((showMoreTips) => !showMoreTips)}
         variant="subtle"
       >
-        {showMoreTips ? t`Hide` : t`More troubleshooting tips`}
+        {showAllTips ? t`Hide` : t`More troubleshooting tips`}
       </Button>
     </Paper>
   );
