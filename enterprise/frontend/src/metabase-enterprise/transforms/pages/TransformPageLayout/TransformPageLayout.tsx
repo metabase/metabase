@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { useEffect } from "react";
+import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import {
@@ -8,6 +10,9 @@ import {
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
+import { Box } from "metabase/ui";
+import { MetabotChat } from "metabase-enterprise/metabot/components/MetabotChat";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { getJobListUrl, getRunListUrl, getTransformListUrl } from "../../urls";
 
@@ -25,9 +30,29 @@ export function TransformPageLayout({
   params,
   children,
 }: TransformPageLayoutProps) {
+  const { startNewConversation, visible } = useMetabotAgent();
+
+  useEffect(() => {
+    // Register keyboard shortcut for Shift+M on all transform pages
+    return tinykeys(window, {
+      "Shift+m": (e) => {
+        e.preventDefault();
+        startNewConversation("");
+      },
+    });
+  }, [startNewConversation, params]);
+
+  // Wrapper component for MetabotChat that works in admin layout
+  const MetabotSidebar = visible ? (
+    <Box style={{ width: "30rem", height: "100%" }}>
+      <MetabotChat />
+    </Box>
+  ) : undefined;
+
   return (
     <AdminSettingsLayout
       sidebar={<TransformSidebar params={params} />}
+      rightSidebar={MetabotSidebar}
       maw="60rem"
     >
       {children}

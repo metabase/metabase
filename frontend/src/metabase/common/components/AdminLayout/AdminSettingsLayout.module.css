@@ -5,9 +5,16 @@
   position: relative;
 }
 
+.MainWithRightSidebar {
+  display: flex;
+  height: 100%;
+  flex-direction: row;
+}
+
 .Main {
   display: flex;
   height: 100%;
+  flex: 1;
 }
 
 .Sidebar {
@@ -25,4 +32,10 @@
   padding: 2rem;
   position: relative;
   background-color: var(--mb-color-bg-light);
+}
+
+.RightSidebar {
+  flex-shrink: 0;
+  height: 100%;
+  border-left: 1px solid var(--mb-color-border);
 }

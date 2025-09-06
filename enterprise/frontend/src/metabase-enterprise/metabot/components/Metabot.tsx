@@ -3,6 +3,7 @@ import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSelector } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 
 import { useMetabotAgent } from "../hooks";
@@ -15,6 +16,12 @@ export interface MetabotProps {
 
 export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent();
+  const location = useSelector(getLocation);
+
+  // Don't render the global Metabot on transforms pages - it's handled in AdminSettingsLayout
+  const isOnTransformsPage =
+    location?.pathname?.startsWith("/admin/transforms");
+  const shouldHide = hide || isOnTransformsPage;
 
   useEffect(() => {
     return tinykeys(window, {
@@ -27,14 +34,14 @@ export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
 
   useEffect(
     function closeViaPropChange() {
-      if (hide) {
+      if (shouldHide) {
         setVisible(false);
       }
     },
-    [hide, setVisible],
+    [shouldHide, setVisible],
   );
 
-  if (!visible || hide) {
+  if (!visible || shouldHide) {
     return null;
   }
 

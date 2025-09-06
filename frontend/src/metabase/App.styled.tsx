@@ -11,10 +11,12 @@ export const AppContainer = styled.div`
 
 export const AppContentContainer = styled.div<{
   isAdminApp: boolean;
+  useRowLayout?: boolean;
 }>`
   flex-grow: 1;
   display: flex;
-  flex-direction: ${(props) => (props.isAdminApp ? "column" : "row")};
+  flex-direction: ${(props) =>
+    props.useRowLayout ? "row" : props.isAdminApp ? "column" : "row"};
   position: relative;
   overflow: hidden;
   background-color: ${(props) =>
