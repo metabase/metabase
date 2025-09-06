@@ -453,4 +453,3 @@
           (mt/user-http-request :crowberto :delete 204
                                 (format "ee/metabot-v3/metabot/%d/entities/dataset/%d"
                                         metabot-id 99999)))))))
-

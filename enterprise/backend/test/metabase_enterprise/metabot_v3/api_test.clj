@@ -69,4 +69,3 @@
             (is (= "Metabot is disabled."
                    (mt/user-http-request :rasta :post 403
                                          "ee/metabot-v3/v2/agent-streaming" request-body)))))))))
-
