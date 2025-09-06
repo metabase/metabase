@@ -134,6 +134,13 @@
 (derive :type/Duration :Semantic/*)
 (derive :type/Duration :type/Number)
 
+;; :type/DataMeasure -- represents data sizes in bytes (file sizes, bandwidth, data transfer, storage capacity)
+(derive :type/DataMeasure :Semantic/*)
+(derive :type/DataMeasure :type/Integer)
+(derive :type/Bandwidth :type/DataMeasure)
+(derive :type/DataTransfer :type/DataMeasure)
+(derive :type/StorageCapacity :type/DataMeasure)
+
 ;;; Text Types
 
 (derive :type/Text :type/*)
