@@ -106,7 +106,7 @@
                 (into #{})))))
       (testing "Everything shows up when all perms are given"
         (perms/grant-collection-read-permissions! (perms-group/all-users) (audit/default-audit-collection))
-        (is (= #{:question_overview :dashboard_overview :custom_reports}
+        (is (= #{:question_overview :dashboard_overview :custom_reports :model_overview}
                (->>
                 (mt/user-http-request :rasta :get 200 "/ee/audit-app/user/audit-info")
                 keys
