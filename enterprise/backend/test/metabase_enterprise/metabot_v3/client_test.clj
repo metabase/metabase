@@ -38,9 +38,9 @@
                                     #"Metabot is disabled."
                                     (metabot-v3.client/streaming-request test-request))))))))))
 
-(deftest metric-selection-request-with-feature-toggle-test
-  (testing "metric-selection-request respects metabot feature toggle"
-    (let [test-metrics [{:id 1 :name "Test Metric"}]
+(deftest select-metric-request-with-feature-toggle-test
+  (testing "select-metric-request respects metabot feature toggle"
+    (let [test-metrics [{:id 1 :name "Test Metric" :description "A test metric"}]
           test-query "Select a metric"]
 
       (testing "when metabot is disabled"
@@ -48,7 +48,7 @@
           (testing "should throw metabot disabled error"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Metabot is disabled."
-                                  (metabot-v3.client/metric-selection-request test-metrics test-query)))))))))
+                                  (metabot-v3.client/select-metric-request test-metrics test-query)))))))))
 
 (deftest find-outliers-request-with-feature-toggle-test
   (testing "find-outliers-request respects metabot feature toggle"
@@ -62,15 +62,15 @@
                                   #"Metabot is disabled."
                                   (metabot-v3.client/find-outliers-request test-values)))))))))
 
-(deftest sql-gen-request-with-feature-toggle-test
-  (testing "sql-gen-request respects metabot feature toggle"
-    (let [test-request {:prompt "Generate SQL"
+(deftest generate-sql-with-feature-toggle-test
+  (testing "generate-sql respects metabot feature toggle"
+    (let [test-request {:instructions "Generate SQL"
                         :dialect :h2
-                        :error_message "Syntax error"}]
+                        :tables []}]
 
       (testing "when metabot is disabled"
         (mt/with-temp-env-var-value! ["MB_METABOT_FEATURE_ENABLED" "false"]
           (testing "should throw metabot disabled error"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Metabot is disabled."
-                                  (metabot-v3.client/sql-gen-request test-request)))))))))
+                                  (metabot-v3.client/generate-sql test-request)))))))))

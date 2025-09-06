@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.settings
   (:require
+   [metabase.api.open-api :as open-api]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
@@ -62,11 +63,14 @@
 (defn +require-metabot-enabled
   "Middleware that ensures Metabot feature is enabled before allowing request to proceed."
   [handler]
-  (fn [request respond raise]
-    (if (metabot-feature-enabled)
-      (handler request respond raise)
-      (respond {:status 403
-                :body   {:message (tru "Metabot is disabled.")}}))))
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (if (metabot-feature-enabled)
+       (handler request respond raise)
+       (respond {:status 403
+                 :body   {:message (tru "Metabot is disabled.")}})))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))
 
 (defn assert-metabot-enabled!
   "Throws a 403 error if Metabot feature is disabled. Use this for inline validation."
