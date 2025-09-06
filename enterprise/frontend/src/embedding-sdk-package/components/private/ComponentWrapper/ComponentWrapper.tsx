@@ -102,6 +102,9 @@ const RenderComponentWithValidation = <
     getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.validateFunctionSchema;
   const schema = Component.schema;
 
+  // We validate only initial props currently
+  const propsToValidateRef = useRef(props);
+
   useEffect(() => {
     if (!validateFunctionSchema || !schema) {
       return;
@@ -110,7 +113,9 @@ const RenderComponentWithValidation = <
     const validateAsync = async () => {
       try {
         const { validateParameters } = validateFunctionSchema(schema);
-        const validationResult = validateParameters([props]);
+        const validationResult = validateParameters([
+          propsToValidateRef.current,
+        ]);
 
         if (!validationResult.success) {
           const error = getValidationErrorMessage(
@@ -127,7 +132,7 @@ const RenderComponentWithValidation = <
     };
 
     validateAsync();
-  }, [props, schema, validateFunctionSchema]);
+  }, [schema, validateFunctionSchema]);
 
   return <Component {...props}>{props.children}</Component>;
 };

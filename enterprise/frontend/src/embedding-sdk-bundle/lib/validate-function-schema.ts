@@ -29,13 +29,13 @@ const getErrorMetadata = <
 
         return {
           errorCode: "missing_required_property",
-          data: issue.path[0].toString() ?? "",
+          data: issue.path[0]?.toString() ?? "",
           parameterIndex,
         } as TMetadata;
       case "unrecognized_keys":
         return {
           errorCode: "unrecognized_keys",
-          data: issue.keys[0].toString() ?? "",
+          data: issue.keys[0]?.toString() ?? "",
           parameterIndex,
         } as TMetadata;
     }
@@ -55,7 +55,7 @@ export const validateFunctionSchema = <
   const returnValueSchema = schema.def.output.def;
 
   const validateParameters = (parameters: TParameters) => {
-    for (let i = 0; i < parameters.length; i++) {
+    for (let i = 0; i < parameterSchemas.length; i++) {
       const parameter = parameters[i];
       const parameterSchema = parameterSchemas[i];
 
