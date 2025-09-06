@@ -15,6 +15,7 @@ import { DocumentSchema } from "metabase/schema";
 import { documentApi, useGetDocumentQuery } from "metabase-enterprise/api";
 import type {
   Collection,
+  CollectionId,
   CreateDocumentRequest,
   DeleteDocumentRequest,
   Document,
@@ -103,6 +104,23 @@ const Documents = createEntity({
             typeof pinned === "number" ? pinned : pinned ? 1 : null,
         },
       ),
+    copy:
+      (
+        { id }: Document,
+        overrides: { name: string; collection_id: CollectionId },
+      ) =>
+      async (dispatch: Dispatch) => {
+        const data = (await dispatch(
+          documentApi.endpoints.getDocument.initiate({ id }),
+        )) as { data: Document };
+
+        await dispatch(
+          documentApi.endpoints.createDocument.initiate({
+            document: data.data.document,
+            ...overrides,
+          }),
+        );
+      },
   },
 
   objectSelectors: {

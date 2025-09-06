@@ -830,6 +830,7 @@ export const PLUGIN_DOCUMENTS = {
   shouldShowDocumentInNewItemMenu: () => false,
   getCurrentDocument: (_state: any) => null as Document | null,
   getSidebarOpen: (_state: any) => false,
+  DocumentCopyForm: (_props: any) => null as React.ReactElement | null,
 };
 
 export const PLUGIN_ENTITIES = {

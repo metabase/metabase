@@ -9,12 +9,14 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { documentsReducer } from "./documents.slice";
 import { getRoutes } from "./routes";
 import { getCurrentDocument, getSidebarOpen } from "./selectors";
+import { DocumentCopyForm } from "./components/DocumentCopyForm/DocumentCopyForm";
 
 if (hasPremiumFeature("documents")) {
   PLUGIN_DOCUMENTS.getRoutes = getRoutes;
   PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu = () => true;
   PLUGIN_DOCUMENTS.getCurrentDocument = getCurrentDocument;
   PLUGIN_DOCUMENTS.getSidebarOpen = getSidebarOpen;
+  PLUGIN_DOCUMENTS.DocumentCopyForm = DocumentCopyForm;
 
   PLUGIN_REDUCERS.documents = documentsReducer;
 
