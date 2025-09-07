@@ -310,30 +310,30 @@ export const DocumentPage = ({
 
         const result = await (documentData?.id
           ? updateDocument({ ...newDocumentData, id: documentData.id }).then(
-              (response) => {
-                if (response.data) {
-                  const _document = response.data;
-                  trackDocumentUpdated(_document);
-                  scheduleNavigation(() => {
-                    dispatch(push(`/document/${_document.id}`));
-                  });
-                }
-                return response;
-              },
-            )
-          : createDocument({
-              ...newDocumentData,
-              collection_id: collectionId || undefined,
-            }).then((response) => {
+            (response) => {
               if (response.data) {
                 const _document = response.data;
-                trackDocumentCreated(_document);
+                trackDocumentUpdated(_document);
                 scheduleNavigation(() => {
-                  dispatch(replace(`/document/${_document.id}`));
+                  dispatch(push(`/document/${_document.id}`));
                 });
               }
               return response;
-            }));
+            },
+          )
+          : createDocument({
+            ...newDocumentData,
+            collection_id: collectionId || undefined,
+          }).then((response) => {
+            if (response.data) {
+              const _document = response.data;
+              trackDocumentCreated(_document);
+              scheduleNavigation(() => {
+                dispatch(replace(`/document/${_document.id}`));
+              });
+            }
+            return response;
+          }));
 
         if (result.data) {
           sendToast({

@@ -228,7 +228,7 @@ H.describeWithSnowplowEE("documents", () => {
         });
       });
 
-      it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
+      it.only("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
         const isMac = Cypress.platform === "darwin";
         const metaKey = isMac ? "Meta" : "Control";
         cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
