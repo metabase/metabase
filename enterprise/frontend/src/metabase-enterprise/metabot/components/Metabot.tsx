@@ -18,7 +18,6 @@ export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent();
   const location = useSelector(getLocation);
 
-  // Don't render the global Metabot on transforms pages - it's handled in AdminSettingsLayout
   const isOnTransformsPage =
     location?.pathname?.startsWith("/admin/transforms");
   const shouldHide = hide || isOnTransformsPage;
