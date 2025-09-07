@@ -9,6 +9,7 @@ import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../../constants";
+import { useRegisterTransformMetabotContext } from "../../hooks/use-register-transform-metabot-context";
 
 import { DependenciesSection } from "./DependenciesSection";
 import { HeaderSection } from "./HeaderSection";
@@ -39,6 +40,9 @@ export function TransformPage({ params }: TransformPageProps) {
   } = useGetTransformQuery(transformId ?? skipToken, {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
+
+  // Register the transform context for Metabot - must be called before any returns
+  useRegisterTransformMetabotContext(transform);
 
   if (isPolling !== isPollingNeeded(transform)) {
     setIsPolling(!isPolling);
