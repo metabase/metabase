@@ -243,7 +243,7 @@
     (into (vec existing-columns)
           ;; add implicitly joinable columns if desired
           (when include-implicitly-joinable?
-            (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns)))))
+            (lib.metadata.calculation/implicitly-joinable-columns query existing-columns)))))
 
 (defn- add-cols-from-join
   "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need

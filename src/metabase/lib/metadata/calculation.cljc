@@ -673,7 +673,6 @@
 
   Does not include columns that would be implicitly joinable via multiple hops."
   [query        :- ::lib.schema/query
-   stage-number :- :int
    cols         :- [:sequential ::lib.schema.metadata/column]]
   (let [remap-target-ids (into #{} (keep (comp :field-id :lib/external-remap)) cols)
         existing-table-ids (into #{} (comp (remove (comp remap-target-ids :id))
@@ -697,7 +696,7 @@
     (into []
           (mapcat (fn [{:keys [table-id], ::keys [fk-field-id fk-field-name fk-join-alias]}]
                     (let [table (id->table table-id)]
-                      (for [field (returned-columns query stage-number table)]
+                      (for [field (returned-columns query table)]
                         (m/assoc-some field
                                       :fk-field-id              fk-field-id
                                       :fk-field-name            fk-field-name
