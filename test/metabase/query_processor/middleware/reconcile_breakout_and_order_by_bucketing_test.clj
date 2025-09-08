@@ -49,7 +49,7 @@
              :breakout [[:field 2 {:source-field 1, :temporal-unit :day}]]
              :order-by [[:asc [:field 2 {:source-field 1}]]])))))
 
-(deftest ^:parallel bucket-unbucketed-temporal-fields-test-2
+(deftest ^:parallel bucket-unbucketed-temporal-fields-test-3
   (testing "should also work with original temporal unit"
     (is (=? (mbql-query
              :breakout [[:field 2 {:source-field 1, :temporal-unit :day :original-temporal-unit "month"}]]
