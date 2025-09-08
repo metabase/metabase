@@ -62,11 +62,14 @@ async function baseSetup({
 }: BaseSetupOpts) {
   jest.useFakeTimers();
 
-  const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
+  const databases = hasDataPermissions ? [createSampleDatabase()] : [];
+  const dispatch = jest
+    .fn()
+    .mockReturnValue({ unwrap: () => ({ data: databases }) });
 
   const state = createMockState({
     entities: createMockEntitiesState({
-      databases: hasDataPermissions ? [createSampleDatabase()] : [],
+      databases,
       segments: [SEGMENT],
     }),
     currentUser: user === undefined ? createMockUser() : user,
@@ -559,6 +562,18 @@ describe("QB Actions > initializeQB", () => {
 
           expect(result.uiControls.queryBuilderMode).toBe("dataset");
           expect(result.uiControls.datasetEditorTab).toBe("query");
+        });
+
+        it("sets UI state correctly for /columns route", async () => {
+          const baseUrl = Urls.question(card);
+          const location = getLocationForCard(card, {
+            pathname: `${baseUrl}/columns`,
+          });
+
+          const { result } = await setup({ card, location });
+
+          expect(result.uiControls.queryBuilderMode).toBe("dataset");
+          expect(result.uiControls.datasetEditorTab).toBe("columns");
         });
 
         it("sets UI state correctly for /metadata route", async () => {

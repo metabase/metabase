@@ -280,9 +280,9 @@
         original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
     (if unit
       (-> metadata
-          (assoc ::temporal-unit unit
-                 ::original-effective-type original-effective-type)
-          (m/assoc-some ::original-temporal-unit original-temporal-unit))
+          (assoc ::temporal-unit unit)
+          (m/assoc-some ::original-effective-type original-effective-type
+                        ::original-temporal-unit  original-temporal-unit))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
         original-effective-type (assoc :effective-type original-effective-type)
         original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
@@ -361,8 +361,7 @@
                         (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
                         (and (isa? effective-type :type/Number)
                              (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
-      ;; TODO: Include the time and date binning strategies too;
-      ;; see [[metabase.warehouse-schema.api.table/assoc-field-dimension-options]].
+      ;; TODO: Include the time and date binning strategies too
       (for [strat strategies]
         (cond-> strat
           (or (:lib/original-binning field-metadata) existing) (dissoc :default)

@@ -68,7 +68,8 @@
            query-processor
            search
            settings
-           util}}
+           util
+           warehouses}}
 
   activity-feed
   {:team "UX West"
@@ -302,6 +303,7 @@
            models
            premium-features
            settings
+           store-api
            task
            util}}
 
@@ -514,6 +516,7 @@
            public-sharing
            queries
            query-processor
+           server
            settings
            tiles
            util}}
@@ -588,6 +591,8 @@
            metabase.lib.field
            metabase.lib.field.resolution
            metabase.lib.filter
+           metabase.lib.filter.desugar
+           metabase.lib.filter.desugar.jvm
            metabase.lib.init
            metabase.lib.join.util
            metabase.lib.metadata
@@ -603,6 +608,7 @@
            metabase.lib.schema.actions
            metabase.lib.schema.binning
            metabase.lib.schema.common
+           metabase.lib.schema.constraints
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
            metabase.lib.schema.expression.window
@@ -613,9 +619,11 @@
            metabase.lib.schema.mbql-clause
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
+           metabase.lib.schema.middleware-options
            metabase.lib.schema.order-by
            metabase.lib.schema.parameter
            metabase.lib.schema.ref
+           metabase.lib.schema.settings
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.util
@@ -710,6 +718,7 @@
            metabase.native-query-snippets.core}
    :uses #{api
            collections
+           lib
            models
            permissions
            premium-features
@@ -781,6 +790,7 @@
            collections
            config
            events
+           lib
            models
            premium-features
            request
@@ -947,6 +957,7 @@
            metabase.query-processor.middleware.limit
            metabase.query-processor.middleware.permissions
            metabase.query-processor.middleware.wrap-value-literals
+           metabase.query-processor.parameters.operators
            metabase.query-processor.pipeline
            metabase.query-processor.pivot
            metabase.query-processor.preprocess
@@ -1088,6 +1099,7 @@
    :api  #{metabase.server.core
            metabase.server.init
            metabase.server.middleware.session
+           metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
            api
@@ -1181,6 +1193,14 @@
   {:team "DevEx"
    :api  #{metabase.startup.core}
    :uses #{util}}
+
+  store-api
+  {:team "Cloud"
+   :api  #{metabase.store-api.core
+           metabase.store-api.init}
+   :uses #{config
+           settings
+           util}}
 
   sync
   {:team "Querying"
@@ -1490,6 +1510,7 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
+           legacy-mbql
            lib
            permissions
            premium-features
@@ -1548,6 +1569,7 @@
            app-db
            audit-app
            classloader
+           config
            driver
            lib
            models
@@ -1582,6 +1604,15 @@
            query-processor
            task
            util}}
+
+  enterprise/cloud-add-ons
+  {:team "Cloud"
+   :api  #{metabase-enterprise.cloud-add-ons.api}
+   :uses #{api
+           events
+           premium-features
+           util
+           enterprise/harbormaster}}
 
   enterprise/content-translation
   {:team "UX West"
@@ -1626,6 +1657,7 @@
            metabase-enterprise.database-replication.init}
    :uses #{analytics
            api
+           driver
            premium-features
            settings
            util
@@ -1695,7 +1727,7 @@
   {:team "Cloud"
    :api  #{metabase-enterprise.harbormaster.client}
    :uses #{api
-           cloud-migration
+           store-api
            util}}
 
   enterprise/impersonation
@@ -1829,8 +1861,10 @@
    :api  #{metabase-enterprise.semantic-search.api
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.init}
-   :uses #{analytics
+   :uses #{activity-feed
+           analytics
            api
+           app-db
            config
            connection-pool
            models

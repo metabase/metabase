@@ -5,7 +5,7 @@ import { defer } from "metabase/lib/promise";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe.skip("issue 15860", () => {
+describe("issue 15860", { tags: "@skip" }, () => {
   const q1IdFilter = {
     name: "Q1 ID",
     slug: "q1_id",
@@ -957,24 +957,28 @@ describe("issue 40660", () => {
     });
   });
 
-  it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
-    H.openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
-    });
+  it(
+    "static dashboard content shouldn't overflow its container (metabase#40660)",
+    { tags: "@flaky" },
+    () => {
+      H.openStaticEmbeddingModal({
+        activeTab: "parameters",
+        previewMode: "preview",
+      });
 
-    H.getIframeBody().within(() => {
-      cy.findByTestId("embed-frame").scrollTo("bottom");
+      H.getIframeBody().within(() => {
+        cy.findByTestId("embed-frame").scrollTo("bottom");
 
-      cy.findByRole("link", { name: "Powered by Metabase" }).should(
-        "be.visible",
-      );
-    });
-  });
+        cy.findByRole("link", { name: "Powered by Metabase" }).should(
+          "be.visible",
+        );
+      });
+    },
+  );
 });
 
 // Skipped since it does not make sense when CSP is disabled
-describe.skip("issue 49142", () => {
+describe("issue 49142", { tags: "@skip" }, () => {
   const questionDetails = {
     name: "Products",
     query: { "source-table": PRODUCTS_ID, limit: 2 },

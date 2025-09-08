@@ -129,6 +129,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         <SyncedParametersList
           className={ViewMainContainerS.StyledSyncedParametersList}
           parameters={parameters}
+          dashboardId={question.getDashboardProps().dashboardId}
           setParameterValue={setParameterValue}
           commitImmediately
         />
@@ -137,6 +138,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       <DebouncedFrame
         className={ViewMainContainerS.StyledDebouncedFrame}
         enabled={!isLiveResizable}
+        resetKey={props.isRunning}
       >
         <QueryVisualization
           {...props}

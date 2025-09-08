@@ -4,7 +4,6 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import type { EditorState } from "@tiptap/pm/state";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
 import type React from "react";
 import { useEffect, useMemo } from "react";
@@ -19,11 +18,12 @@ import { getMentionsCache } from "metabase-enterprise/documents/selectors";
 import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
 import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
 
-import styles from "./Editor.module.css";
+import S from "./Editor.module.css";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { CardEmbed } from "./extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "./extensions/Command/CommandExtension";
 import { CommandSuggestion } from "./extensions/Command/CommandSuggestion";
+import { CustomStarterKit } from "./extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
 import { MentionExtension } from "./extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "./extensions/Mention/MentionSuggestion";
@@ -95,11 +95,11 @@ export const Editor: React.FC<EditorProps> = ({
 
   const extensions = useMemo(
     () => [
-      StarterKit,
+      CustomStarterKit,
       Image.configure({
         inline: false,
         HTMLAttributes: {
-          class: styles.img,
+          class: S.img,
         },
       }),
       SmartLink.configure({
@@ -117,10 +117,6 @@ export const Editor: React.FC<EditorProps> = ({
         placeholder: t`Start writing, press "/" to open command palette, or "@" to insert a link...`,
       }),
       CardEmbed,
-      MetabotNode.configure({
-        serializePrompt: getMetabotPromptSerializer(getState),
-      }),
-      DisableMetabotSidebar,
       MentionExtension.configure({
         suggestion: {
           allow: ({ state }) => !isMetabotBlock(state),
@@ -133,6 +129,10 @@ export const Editor: React.FC<EditorProps> = ({
           render: createSuggestionRenderer(CommandSuggestion),
         },
       }),
+      MetabotNode.configure({
+        serializePrompt: getMetabotPromptSerializer(getState),
+      }),
+      DisableMetabotSidebar,
       MetabotMentionExtension.configure({
         suggestion: {
           allow: ({ state }) => isMetabotBlock(state),
@@ -164,7 +164,11 @@ export const Editor: React.FC<EditorProps> = ({
     if (editor && initialContent !== undefined) {
       // Use Promise.resolve() to avoid flushSync warning
       Promise.resolve().then(() => {
-        editor.commands.setContent(initialContent || "");
+        editor
+          .chain()
+          .setMeta("addToHistory", false)
+          .setContent(initialContent || "")
+          .run();
       });
     }
   }, [editor, initialContent]);
@@ -192,21 +196,21 @@ export const Editor: React.FC<EditorProps> = ({
 
   if (isLoading) {
     return (
-      <Box className={cx(styles.editor, DND_IGNORE_CLASS_NAME)}>
-        <Loader />
+      <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
+        <Loader data-testid="editor-loader" />
       </Box>
     );
   }
 
   return (
-    <Box className={cx(styles.editor, DND_IGNORE_CLASS_NAME)}>
+    <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
       <Box
-        className={styles.editorContent}
+        className={S.editorContent}
         onClick={(e) => {
           // Focus editor when clicking on empty space
           const target = e.target as HTMLElement;
           if (
-            target.classList.contains(styles.editorContent) ||
+            target.classList.contains(S.editorContent) ||
             target.classList.contains("ProseMirror")
           ) {
             const clickY = e.clientY;

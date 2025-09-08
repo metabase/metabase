@@ -34,6 +34,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.page]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -43,6 +44,7 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
    [metabase.lib.table :as lib.table]
+   [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.util.namespaces :as shared.ns]))
@@ -77,6 +79,7 @@
          lib.normalize/keep-me
          metabase.lib.options/keep-me
          lib.order-by/keep-me
+         lib.parse/keep-me
          lib.query/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
@@ -85,6 +88,7 @@
          lib.stage/keep-me
          lib.swap/keep-me
          lib.table/keep-me
+         lib.template-tags/keep-me
          lib.temporal-bucket/keep-me
          lib.util/keep-me)
 
@@ -246,6 +250,7 @@
  [metabase.lib.field.util
   update-keys-for-col-from-previous-stage]
  [lib.filter
+  add-filter-to-stage
   filter
   filters
   filterable-columns
@@ -301,7 +306,8 @@
   available-metrics]
  [lib.limit
   current-limit
-  limit]
+  limit
+  max-rows-limit]
  [lib.metadata.calculation
   column-name
   describe-query
@@ -323,8 +329,10 @@
   native-extras
   native-query
   raw-native-query
+  recognize-template-tags
   required-native-extras
-  template-tag-card-ids
+  native-query-card-ids
+  native-query-snippet-ids
   template-tags-referenced-cards
   template-tags
   with-different-database
@@ -343,6 +351,9 @@
   orderable-columns]
  [lib.normalize
   normalize]
+ [metabase.lib.page
+  current-page
+  with-page]
  [lib.parse
   parse]
  [lib.query
@@ -350,7 +361,7 @@
   can-preview
   can-run
   can-save
-  check-overwrite
+  check-card-overwrite
   preview-query
   query
   query-from-legacy-inner-query
@@ -379,6 +390,9 @@
   has-clauses?]
  [lib.swap
   swap-clauses]
+ [lib.template-tags
+  template-tags->card-ids
+  template-tags->snippet-ids]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval
@@ -390,6 +404,7 @@
   with-temporal-bucket]
  [lib.util
   fresh-uuids
+  native-stage?
   normalized-query-type
   previous-stage
   previous-stage-number

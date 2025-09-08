@@ -60,6 +60,7 @@
       (testing "Migration of simultaneous init attempt is blocked"
         (let [original-write-fn @#'semantic.db.migration/write-successful-migration!
               original-migrate-fn @#'semantic.db.connection/do-with-migrate-tx
+              original-maybe-migrate @#'semantic.db.migration/maybe-migrate!
               results (atom {:executed-migrations 0
                              :log []})]
           (with-redefs-fn {;; TODO: why in ci init index won't succeed -- http on embedding
@@ -72,6 +73,12 @@
                                (apply original-migrate-fn args)
                                (swap! results update :log conj [tid :ended (t/local-date-time)]))
                              nil)
+                           ;; add delay into migration function to ensure that thread performing migration
+                           ;; finishes earlier
+                           #'semantic.db.migration/maybe-migrate!
+                           (fn [& args]
+                             (Thread/sleep 200)
+                             (apply original-maybe-migrate args))
                            #'semantic.db.migration/write-successful-migration!
                            (fn [& args]
                              (Thread/sleep 2000)

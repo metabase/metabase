@@ -2,16 +2,19 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
+import { useSetting } from "metabase/common/hooks";
 import {
   formatCronExpressionForUI,
   getScheduleExplanation,
 } from "metabase/lib/cron";
+import { timezoneToUTCOffset } from "metabase/lib/time-dayjs";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Icon, Tooltip } from "metabase/ui";
 import {
   useLazyGetTransformJobQuery,
   useRunTransformJobMutation,
 } from "metabase-enterprise/api";
+import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 
 import { RunButton } from "../../../components/RunButton";
 import { SplitSection } from "../../../components/SplitSection";
@@ -30,6 +33,10 @@ export function ScheduleSection({
     formatCronExpressionForUI(job.schedule),
   );
   const scheduleExplanation = getScheduleExplanation(schedule);
+  const systemTimezone = useSetting("system-timezone") ?? "UTC";
+  const timezoneOffset = timezoneToUTCOffset(systemTimezone);
+  const timezoneExplanation =
+    timezoneOffset === "+00:00" ? "UTC" : `UTC${timezoneOffset}`;
 
   return (
     <SplitSection
@@ -52,7 +59,7 @@ export function ScheduleSection({
         {scheduleExplanation != null && (
           <Group gap="sm" c="text-secondary">
             <Icon name="calendar" />
-            {t`This job will run ${scheduleExplanation}`}
+            {t`This job will run ${scheduleExplanation}, ${timezoneExplanation}`}
           </Group>
         )}
         <RunButtonSection job={job} />
@@ -96,7 +103,14 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
     if (job.id == null) {
       return;
     }
+
+    trackTranformJobTriggerManualRun({
+      jobId: job.id,
+      triggeredFrom: "job-page",
+    });
+
     const { error } = await runJob(job.id);
+
     if (error) {
       sendErrorToast(t`Failed to run job`);
     } else {

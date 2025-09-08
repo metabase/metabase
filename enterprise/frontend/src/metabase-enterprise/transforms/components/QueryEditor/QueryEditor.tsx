@@ -1,5 +1,6 @@
 import { useHotkeys } from "@mantine/hooks";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { Center, Flex, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -61,7 +62,11 @@ export function QueryEditor({
 
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
-  if (!isInitiallyLoaded) {
+  const { data: databases, isLoading } = useListDatabasesQuery({
+    include_analytics: true,
+  });
+
+  if (!isInitiallyLoaded || isLoading) {
     return (
       <Center>
         <Loader />
@@ -94,6 +99,7 @@ export function QueryEditor({
         onChange={handleChange}
         onRunQuery={runQuery}
         onCancelQuery={cancelQuery}
+        databases={databases?.data ?? []}
       />
       <EditorVisualization
         question={question}

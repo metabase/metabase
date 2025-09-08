@@ -7,21 +7,31 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { Icon, type SwitchProps, Tooltip } from "metabase/ui";
-import type { EngineField, EngineFieldOption } from "metabase-types/api";
+import type {
+  Engine,
+  EngineField,
+  EngineFieldOption,
+  EngineKey,
+} from "metabase-types/api";
 
 import { FIELD_OVERRIDES } from "../../constants";
 import type { EngineFieldOverride } from "../../types";
+import { DatabaseHostnameWithProviderField } from "../DatabaseHostnameWithProviderField/DatabaseHostnameWithProviderField";
 import DatabaseInfoField from "../DatabaseInfoField";
 import DatabaseSectionField from "../DatabaseSectionField";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;
   autoFocus?: boolean;
+  engineKey: EngineKey | undefined;
+  engine: Engine | undefined;
 }
 
 const DatabaseDetailField = ({
   field,
   autoFocus,
+  engineKey,
+  engine,
 }: DatabaseDetailFieldProps): JSX.Element | null => {
   const override = FIELD_OVERRIDES[field.name];
   const type = getFieldType(field, override);
@@ -30,6 +40,16 @@ const DatabaseDetailField = ({
     ...getFieldProps(field, override),
   };
 
+  if (field.name === "host" && engineKey === "postgres") {
+    return (
+      <DatabaseHostnameWithProviderField
+        {...props}
+        {...getInputProps(field)}
+        nullable
+        providers={engine?.["extra-info"]?.providers}
+      />
+    );
+  }
   if (typeof type === "function") {
     const Component = type;
     return <Component {...props} />;

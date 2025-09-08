@@ -17,6 +17,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -81,9 +82,11 @@
   (:pending @*indexes*))
 
 (defn gen-table-name
-  "Generate a unique table name to use as a search index table."
-  []
-  (keyword (str/replace (str "search_index__" (u/lower-case-en (u/generate-nano-id))) #"-" "_")))
+  "Generate a unique table name to use as a search index table. If no suffix is provided, none will be used"
+  ([]
+   (gen-table-name ""))
+  ([suffix]
+   (keyword (str (str/replace (str "search_index__" (u/lower-case-en (u/generate-nano-id))) #"-" "_") suffix))))
 
 (defn- table-name [kw]
   (cond-> (name kw)
@@ -369,11 +372,18 @@
   [& body]
   `(if @#'*mocking-tables*
      ~@body
-     (let [table-name# (gen-table-name)]
+     (let [table-name#      (gen-table-name "_temp")
+           version#         (str (string/random-string 8) "-temp")]
        (binding [*mocking-tables* true
                  *indexes*        (atom {:active table-name#})]
          (try
+           (t2/insert! :model/SearchIndexMetadata {:engine     :appdb
+                                                   :version    version#
+                                                   :lang_code  (i18n/site-locale-string)
+                                                   :status     :pending
+                                                   :index_name (name table-name#)})
            (create-table! table-name#)
            ~@body
            (finally
-             (#'drop-table! table-name#)))))))
+             (#'drop-table! table-name#)
+             (t2/delete! :model/SearchIndexMetadata :version version#)))))))

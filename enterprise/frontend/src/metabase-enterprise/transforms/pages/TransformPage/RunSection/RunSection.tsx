@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useSetting } from "metabase/common/hooks";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Anchor, Box, Divider, Group, Icon, Stack } from "metabase/ui";
@@ -13,6 +14,7 @@ import {
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { trackTranformTriggerManualRun } from "metabase-enterprise/transforms/analytics";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
@@ -20,7 +22,7 @@ import { RunErrorInfo } from "../../../components/RunErrorInfo";
 import { SplitSection } from "../../../components/SplitSection";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 import { getRunListUrl } from "../../../urls";
-import { parseLocalTimestamp } from "../../../utils";
+import { parseTimestampWithTimezone } from "../../../utils";
 
 type RunSectionProps = {
   transform: Transform;
@@ -55,6 +57,7 @@ type RunStatusSectionProps = {
 
 function RunStatusSection({ transform }: RunStatusSectionProps) {
   const { id, last_run } = transform;
+  const systemTimezone = useSetting("system-timezone");
 
   if (last_run == null) {
     return (
@@ -66,7 +69,10 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
   }
 
   const { status, end_time, message } = last_run;
-  const endTime = end_time != null ? parseLocalTimestamp(end_time) : null;
+  const endTime =
+    end_time != null
+      ? parseTimestampWithTimezone(end_time, systemTimezone)
+      : null;
   const endTimeText = endTime != null ? endTime.fromNow() : null;
 
   const runsInfo = (
@@ -191,6 +197,10 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
   };
 
   const handleCancel = async () => {
+    trackTranformTriggerManualRun({
+      transformId: transform.id,
+      triggeredFrom: "transform-page",
+    });
     try {
       setIsCanceling(true);
       const { error } = await cancelTransform(transform.id);
@@ -238,7 +248,10 @@ function TagSection({ transform }: TagSectionProps) {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
-  const handleTagListChange = async (tagIds: TransformTagId[]) => {
+  const handleTagListChange = async (
+    tagIds: TransformTagId[],
+    undoable: boolean = false,
+  ) => {
     const { error } = await updateTransform({
       id: transform.id,
       tag_ids: tagIds,
@@ -247,13 +260,15 @@ function TagSection({ transform }: TagSectionProps) {
     if (error) {
       sendErrorToast(t`Failed to update transform tags`);
     } else {
-      sendSuccessToast(t`Transform tags updated`, async () => {
+      const undo = async () => {
         const { error } = await updateTransform({
           id: transform.id,
           tag_ids: transform.tag_ids,
         });
         sendUndoToast(error);
-      });
+      };
+
+      sendSuccessToast(t`Transform tags updated`, undoable ? undo : undefined);
     }
   };
 

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import SelectList from "metabase/common/components/SelectList";
-import { Icon, Popover } from "metabase/ui";
+import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { getJoinStrategyIcon } from "../utils";
@@ -38,20 +38,26 @@ export function JoinStrategyPicker({
   };
 
   return (
-    <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
+    <Popover
+      opened={isOpened}
+      position="bottom-start"
+      onChange={setIsOpened}
+      disabled={isReadOnly}
+    >
       <Popover.Target>
-        <IconButtonWrapper
-          disabled={isReadOnly}
-          aria-label={t`Change join type`}
-          onClick={() => setIsOpened(!isOpened)}
-        >
-          <Icon
-            className={S.JoinStrategyIcon}
-            name={getJoinStrategyIcon(strategyInfo)}
-            tooltip={t`Change join type`}
-            size={32}
-          />
-        </IconButtonWrapper>
+        <Tooltip disabled={isReadOnly} label={t`Change join type`}>
+          <IconButtonWrapper
+            disabled={isReadOnly}
+            aria-label={t`Change join type`}
+            onClick={() => setIsOpened(!isOpened)}
+          >
+            <Icon
+              className={S.JoinStrategyIcon}
+              name={getJoinStrategyIcon(strategyInfo)}
+              size={32}
+            />
+          </IconButtonWrapper>
+        </Tooltip>
       </Popover.Target>
       <Popover.Dropdown>
         <JoinStrategyDropdown

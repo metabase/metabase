@@ -1,4 +1,9 @@
 (ns metabase.driver-api.core
+  {:clj-kondo/config '{:linters
+                       ;; this is actually ok here since this is a drivers namespace
+                       {:discouraged-namespace {metabase.query-processor.store {:level :off}}
+                        ;; this is also ok here since this is a drivers namespace
+                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
   (:refer-clojure :exclude [replace compile require])
   (:require
    [metabase.actions.core :as actions]
@@ -60,7 +65,7 @@
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
+#_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
 (p/import-vars
  actions/cached-database
  actions/cached-database-via-table-id
@@ -68,8 +73,10 @@
  actions/cached-value
  actions/incorrect-value-type
  actions/perform-action!*
+ actions/violate-check-constraint
  actions/violate-foreign-key-constraint
  actions/violate-not-null-constraint
+ actions/violate-permission-constraint
  actions/violate-unique-constraint
  add/add-alias-info
  add/field-reference-mlv2
@@ -137,6 +144,8 @@
  premium-features/is-hosted?
  qp.compile/compile
  qp.debug/debug>
+ ;; TODO (Cam 8/19/25) -- importing dynamic vars doesn't really work because the copies here don't pick up changes to
+ ;; the original value. We need to make these functions instead.
  qp.i/*disable-qp-logging*
  qp.preprocess/preprocess
  qp.reducible/reducible-rows

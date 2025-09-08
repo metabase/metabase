@@ -40,7 +40,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .should("be.checked");
 
     cy.log("drill-through should be enabled in the preview");
@@ -51,7 +51,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("turn off drill-through");
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .click()
       .should("not.be.checked");
 
@@ -146,7 +146,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .should("be.checked");
 
     cy.log("drill-through should be disabled by default in chart preview");
@@ -157,7 +157,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("turn off drill-through");
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .click()
       .should("not.be.checked");
 
@@ -244,7 +244,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("set drills to false");
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .should("be.checked")
       .click()
       .should("not.be.checked");
@@ -322,6 +322,40 @@ H.describeWithSnowplow(suiteTitle, () => {
     codeBlock().should("contain", 'is-save-enabled="true"');
   });
 
+  it("can toggle read-only setting for browser", () => {
+    navigateToEmbedOptionsStep({
+      experience: "browser",
+      resourceName: "First collection",
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow editing dashboards and questions")
+      .should("not.be.checked");
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New dashboard").should("not.exist");
+    });
+
+    cy.log("turn on editing (set read-only to false)");
+    getEmbedSidebar()
+      .findByLabelText("Allow editing dashboards and questions")
+      .click()
+      .should("be.checked");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "readOnly",
+    });
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New dashboard").should("be.visible");
+    });
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", 'read-only="false"');
+  });
+
   it("can change brand color and reset colors", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
@@ -330,7 +364,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("brand color should be visible");
     getEmbedSidebar().within(() => {
-      cy.findByText("Brand Color").should("be.visible");
+      cy.findByText("Brand color").should("be.visible");
     });
 
     cy.log("reset button should not be visible initially");
