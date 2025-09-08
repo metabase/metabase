@@ -1836,17 +1836,13 @@ function assertTableDoesNotExistError({
 }
 
 function assertOptionSelected(name: string) {
-  cy.findByRole("option", { name }).should(
-    "have.attr",
-    "aria-selected",
-    "true",
-  );
+  cy.findByRole("option", { name }).should("have.attr", "data-checked", "true");
 }
 
 function assertOptionNotSelected(name: string) {
   cy.findByRole("option", { name }).should(
     "not.have.attr",
-    "aria-selected",
+    "data-checked",
     "true",
   );
 }
