@@ -3777,6 +3777,92 @@ describe("issue 35852", () => {
   }
 });
 
+describe("issue 47097", () => {
+  const questionDetails = {
+    name: "Products",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const parameterDetails = {
+    id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+    type: "string/=",
+    name: "Category",
+    slug: "category",
+  };
+
+  const dashboardDetails = {
+    name: "Dashboard",
+    parameters: [parameterDetails],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it('should be able to use filters without "create-queries" permissions when coming from a dashboard (metabase#47097)', () => {
+    cy.log("create a dashboard with a parameter mapped to a field with values");
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 12,
+              parameter_mappings: [
+                {
+                  parameter_id: parameterDetails.id,
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                },
+              ],
+            },
+          ],
+        });
+        cy.wrap(dashboard_id).as("dashboardId");
+      },
+    );
+
+    cy.log("verify the field values in a dashboard");
+    cy.signIn("nodata");
+    H.visitDashboard("@dashboardId");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+      cy.findByPlaceholderText("Search the list").type("{esc}");
+    });
+
+    cy.log("drill-thru without filter values and check the dropdown");
+    H.getDashboardCard().findByText("Products").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+      cy.findByPlaceholderText("Search the list").type("{esc}");
+    });
+    H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+    H.getDashboardCard().should("be.visible");
+
+    cy.log("add a filter value, drill-thru, and check the dropdown");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.getDashboardCard().findByText("Products").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.filterWidget().click();
+    H.popover().findByText("Widget").should("be.visible");
+  });
+});
+
 describe("issue 48524", () => {
   const questionDetails = {
     name: "15119",
@@ -5167,6 +5253,111 @@ describe("Issue 46767", () => {
       cy.findByText("Products").should("be.visible");
       cy.findByText("User").should("not.exist");
     });
+  });
+});
+
+describe("issue 46541", () => {
+  const TARGET_FILTER = {
+    name: "Target filter",
+    slug: "target-filter",
+    id: "ffa421da",
+    type: "number/>=",
+    sectionId: "number",
+  };
+
+  const OTHER_FILTER = {
+    name: "Other filter",
+    slug: "other-filter",
+    id: "dfaa3356",
+    type: "number/>=",
+    sectionId: "number",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        query: { "source-table": ORDERS_ID },
+      },
+      dashboardDetails: {
+        name: "Dashboard A",
+      },
+    }).then(({ body }) => {
+      cy.wrap(body.dashboard_id).as("dashboardA");
+
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          query: { "source-table": ORDERS_ID },
+        },
+        dashboardDetails: {
+          name: "Dashboard B",
+          parameters: [TARGET_FILTER, OTHER_FILTER],
+        },
+      }).then(({ body }) => {
+        cy.wrap(body.dashboard_id).as("dashboardB");
+
+        H.updateDashboardCards({
+          dashboard_id: body.dashboard_id,
+          cards: [
+            {
+              card_id: body.card_id,
+              parameter_mappings: [
+                {
+                  parameter_id: TARGET_FILTER.id,
+                  card_id: body.card_id,
+                  target: ["dimension", ["field", ORDERS.TOTAL, null]],
+                },
+                {
+                  parameter_id: OTHER_FILTER.id,
+                  card_id: body.card_id,
+                  target: ["dimension", ["field", ORDERS.SUBTOTAL, null]],
+                },
+              ],
+            },
+          ],
+        });
+
+        cy.log("Set parameter value on Dashboard B");
+        H.visitDashboard("@dashboardB");
+        H.filterWidget(OTHER_FILTER).click();
+        H.popover().within(() => {
+          cy.findByPlaceholderText("Enter a number").type("10");
+          cy.button("Add filter").click();
+        });
+
+        cy.log("Set up click behaviour on Dashboard A");
+        H.visitDashboard("@dashboardA");
+        H.editDashboard();
+
+        H.showDashboardCardActions();
+        cy.findByLabelText("Click behavior").click();
+
+        H.sidebar().within(() => {
+          cy.findByText("Tax").click();
+          cy.findByText("Go to a custom destination").click();
+          cy.findByText("Dashboard").click();
+        });
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Dashboards").click();
+          cy.findByText("Dashboard B").click();
+        });
+
+        H.sidebar().findByText(TARGET_FILTER.name).click();
+        H.popover().findByText("Tax").click();
+        H.saveDashboard();
+      });
+    });
+  });
+
+  it("should reset other filters when coming to a dashboard from a click action with a filter (metabase#46541)", () => {
+    cy.log("Navigate from Dashboard A to Dashboard B with a click action");
+    H.tableInteractiveBody().findByText("2.07").click();
+
+    H.filterWidget(TARGET_FILTER).should("contain", "2.07");
+    H.filterWidget(OTHER_FILTER).should("not.contain", "10");
   });
 });
 

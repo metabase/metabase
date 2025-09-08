@@ -304,15 +304,20 @@ describe("scenarios > table-editing", () => {
           cy.findAllByRole("button").last().click();
         });
 
-        cy.wait("@updateTableData").then(({ response }) => {
+        cy.wait("@updateTableData").then(({ response, request }) => {
           const targetDate = dayjs(
             new Date(2024, 4, day, hour, minute, 0),
           ).format("YYYY-MM-DDTHH:mm:ss");
-          const savedDate = response?.body.outputs[0].row.CREATED_AT;
 
-          expect(response?.body.outputs[0].op).to.equal("updated");
-          // Omit timezone offset
-          expect(savedDate.startsWith(targetDate)).to.be.true;
+          const requestDate = request.body.params.CREATED_AT;
+          const responseDate = response?.body.outputs[0].row.CREATED_AT;
+
+          // Check if request date matches the response date.
+          // In theory FE should preserve the initial input date timezone offset (might be based on the CI environment)
+          expect(requestDate).to.equal(responseDate);
+
+          // Check if date param matches the input date (without timezone offset at offset 19)
+          expect(requestDate.slice(0, 19)).to.equal(targetDate);
         });
 
         H.undoToast().findByText("Successfully updated").should("be.visible");

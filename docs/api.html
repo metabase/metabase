@@ -1829,7 +1829,8 @@ redirect_from:
           },
           "schema" : {
             "anyOf" : [ {
-              "type" : "string"
+              "type" : "string",
+              "minLength" : 1
             }, {
               "type" : "null"
             } ]
@@ -2384,6 +2385,13 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.datetime"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.today"
+        } ]
+      },
+      "metabase.legacy-mbql.schema.Emptyable" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.StringExpressionArg"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
         } ]
       },
       "metabase.legacy-mbql.schema.EqualityComparable" : {
@@ -12749,6 +12757,30 @@ redirect_from:
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "replicationSchemaFilters" : {
+                    "type" : "object",
+                    "properties" : {
+                      "schema-filters-patterns" : {
+                        "type" : "string"
+                      },
+                      "schema-filters-type" : {
+                        "type" : "string",
+                        "enum" : [ "inclusion", "exclusion", "all" ]
+                      }
+                    },
+                    "required" : [ "schema-filters-type", "schema-filters-patterns" ]
+                  }
+                }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/database-replication" ]
       },
       "delete" : {
@@ -12773,6 +12805,58 @@ redirect_from:
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/database-replication" ]
+      }
+    },
+    "/api/ee/database-replication/connection/{database-id}/preview" : {
+      "post" : {
+        "summary" : "POST /api/ee/database-replication/connection/{database-id}/preview",
+        "description" : "Return info about pg-replication connection that is about to be created.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "database-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "replicationSchemaFilters" : {
+                    "type" : "object",
+                    "properties" : {
+                      "schema-filters-patterns" : {
+                        "type" : "string"
+                      },
+                      "schema-filters-type" : {
+                        "type" : "string",
+                        "enum" : [ "inclusion", "exclusion", "all" ]
+                      }
+                    },
+                    "required" : [ "schema-filters-type", "schema-filters-patterns" ]
+                  }
+                }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/database-replication" ]
@@ -14753,6 +14837,9 @@ redirect_from:
                   "metabot_id" : {
                     "type" : "string"
                   },
+                  "profile_id" : {
+                    "type" : "string"
+                  },
                   "state" : {
                     "type" : "object",
                     "properties" : { }
@@ -14804,6 +14891,9 @@ redirect_from:
                     "minLength" : 1
                   },
                   "metabot_id" : {
+                    "type" : "string"
+                  },
+                  "profile_id" : {
                     "type" : "string"
                   },
                   "state" : {
@@ -15774,7 +15864,35 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/ee/transform-job/",
         "description" : "Get all transform jobs.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "last_run_start_time",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "next_run_start_time",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "transform_tag_ids",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -15904,6 +16022,34 @@ redirect_from:
       "post" : {
         "summary" : "POST /api/ee/transform-job/{job-id}/run",
         "description" : "Run a transform job manually.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "job-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transform-job" ]
+      }
+    },
+    "/api/ee/transform-job/{job-id}/transforms" : {
+      "get" : {
+        "summary" : "GET /api/ee/transform-job/{job-id}/transforms",
+        "description" : "Get the transforms of job specified by the job's ID.",
         "parameters" : [ {
           "in" : "path",
           "name" : "job-id",
@@ -16176,6 +16322,33 @@ redirect_from:
               "minimum" : 0
             }
           }
+        }, {
+          "in" : "query",
+          "name" : "start_time",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "end_time",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "run_methods",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "manual", "cron" ]
+            }
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -16316,6 +16489,34 @@ redirect_from:
           "schema" : {
             "type" : "string"
           }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transform" ]
+      }
+    },
+    "/api/ee/transform/{id}/dependencies" : {
+      "get" : {
+        "summary" : "GET /api/ee/transform/{id}/dependencies",
+        "description" : "Get the dependencies of a specific transform.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
         } ],
         "responses" : {
           "2XX" : {

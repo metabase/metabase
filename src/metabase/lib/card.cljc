@@ -144,12 +144,25 @@
   references between one another."
   #{})
 
+(defn- updated-result-metadata
+  "Get `:result-metadata` from Card, but merge in updated values of `:active`."
+  [metadata-providerable card]
+  (when-let [saved-metadata-cols (not-empty (:result-metadata card))]
+    (let [ids                       (into #{} (keep :id) saved-metadata-cols)
+          id->metadata-provider-col (u/index-by :id (lib.metadata/bulk-metadata metadata-providerable :metadata/column ids))]
+      (mapv (fn [saved-metadata-col]
+              (merge
+               saved-metadata-col
+               (when-let [metadata-provider-col (id->metadata-provider-col (:id saved-metadata-col))]
+                 (select-keys metadata-provider-col [:active]))))
+            saved-metadata-cols))))
+
 (mu/defn- card-cols* :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
-  (when-let [cols (or (:fields card)
-                      (:result-metadata card)
-                      (infer-returned-columns metadata-providerable card))]
+  (when-let [cols (or (not-empty (:fields card))
+                      (not-empty (updated-result-metadata metadata-providerable card))
+                      (not-empty (infer-returned-columns metadata-providerable card)))]
     (->card-metadata-columns metadata-providerable card cols)))
 
 (mu/defn- source-model-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]

@@ -1730,8 +1730,48 @@
                                                  :limit       3})}]
         (let [result (card-download card {:export-format :csv :format-rows false :pivot true})]
           ;; Verify we get some actual results, not all empty cells for the pivot values
-          (is (= [["1" "29.46" "" "" "29.46"]
-                  ["2" "" "70.08" "" "70.08"]
-                  ["3" "" "" "35.39" "35.39"]
-                  ["Grand totals" "" "" "" "55.7464"]]
+          (is (= [["1"            "29.46" ""      ""      "29.46"]
+                  ["2"            ""      "70.08" ""      "70.08"]
+                  ["3"            ""      ""      "35.39" "35.39"]
+                  ["Grand totals" ""      "53.98" ""      "55.7464"]]
+                 (rest result))))))
+
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card source-model
+                     {:dataset_query
+                      {:database (mt/id)
+                       :type     :native
+                       :native {:template-tags {}
+                                :query         (str "SELECT 1 as ID, 1 as quarter, 100 as Price FROM DUAL "
+                                                    "UNION "
+                                                    "SELECT 1 as ID, 2 as quarter, 100 as Price FROM DUAL "
+                                                    "UNION "
+                                                    "SELECT 2, 1, 200 FROM DUAL "
+                                                    "UNION "
+                                                    "SELECT 3, 1, 300 FROM DUAL")}}
+                      :result_metadata
+                      (into [] (for [[_ field-name {:keys [base-type]}] [[:field "ID" {:base-type :type/Integer}]
+                                                                         [:field "QUARTER" {:base-type :type/Integer}]
+                                                                         [:field "PRICE" {:base-type :type/Integer}]]]
+                                 {:name         field-name
+                                  :display_name field-name
+                                  :field_ref    [:field field-name {:base-type base-type}]
+                                  :base_type    base-type}))}
+
+                     :model/Card pivot-card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["ID"]
+                                                :columns ["QUARTER"]
+                                                :values  ["avg"]}}
+                      :dataset_query          (mt/mbql-query nil
+                                                {:source-table (str "card__" (:id source-model))
+                                                 :aggregation  [[:avg [:field "PRICE" {:base-type :type/Number}]]]
+                                                 :breakout     [[:field "ID" {:base-type :type/Integer}]
+                                                                [:field "QUARTER" {:base-type :type/Integer}]]})}]
+        (let [result (card-download pivot-card {:export-format :csv :format-rows false :pivot true})]
+          (is (= [["1"            "100.0" "100.0" "100.0"]
+                  ["2"            "200.0" ""      "200.0"]
+                  ["3"            "300.0" ""      "300.0"]
+                  ["Grand totals" "200.0" "100.0" "175.0"]]
                  (rest result))))))))

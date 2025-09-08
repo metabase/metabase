@@ -430,7 +430,7 @@
                                                    [:field (meta/id :checkins :id)
                                                     {:base-type :type/BigInteger, :join-alias "CH"}]]}]
                     :filter       [:=
-                                   [:field (meta/id :venues :price) {:base-type               :type/Text
+                                   [:field (meta/id :venues :price) {:base-type               :type/Integer
                                                                      :source-field            (meta/id :checkins :venue-id)
                                                                      :source-field-join-alias "CH"}]
                                    "1234"]}))]

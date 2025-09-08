@@ -70,7 +70,7 @@
       [:< dt-col end]
 
       (nil? end)
-      [:> dt-col start]
+      [:>= dt-col start]
 
       :else
       [:and [:>= dt-col start] [:< dt-col end]])))

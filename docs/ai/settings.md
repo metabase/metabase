@@ -5,13 +5,13 @@ summary: Configure Metabot settings, including which collections Metabot can acc
 
 # Metabot settings
 
-{% include beta-blockquote.html %}
-
-> For now, [Metabot](https://www.metabase.com/features/metabot-ai) is only available as an add-on for Pro and Enterprise plans on Metabase Cloud.
+{% include beta-blockquote.html
+   message="For now, <a href='https://www.metabase.com/features/metabot-ai'>Metabot</a> is only available as an add-on for Pro and Enterprise plans on Metabase Cloud."
+%}
 
 _Settings > Admin settings > AI_
 
-This page covers admin settings for Metabase's AI assistant, Metabot.
+This page covers admin settings for Metabase's AI assistant, [Metabot](./metabot.md).
 
 ## Configure Metabot
 
@@ -85,3 +85,7 @@ Currently, Metabot will be available to everyone who uses your Metabase.
 Under the hood, Metabase powers Metabot with a variety of generative models. For now, you can't change which generative AI models Metabot uses, as Metabase's AI service handles their selection.
 
 To get the best results, we (the Metabase team) use internal benchmarks to determine which AI models Metabot should use for different tasks. And we are constantly iterating on performance, so Metabot will continue to improve over time.
+
+## We don't collect or store the prompts you send to Metabot
+
+Your questions and conversations remain private to your Metabase. We do collect some metadata to gauge and improve usage, but we can't see your prompt or any of your data.

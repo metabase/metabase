@@ -102,7 +102,9 @@ const DashCardLoadingView = ({
     }
     if (expectedDuration) {
       return jt`This usually takes around ${(
-        <span className={CS.textNoWrap}>{duration(expectedDuration)}</span>
+        <span key="duration" className={CS.textNoWrap}>
+          {duration(expectedDuration)}
+        </span>
       )}.`;
     }
   };
@@ -234,7 +236,6 @@ export function DashCardVisualization({
     cardTitled,
     dashboard,
     dashcardMenu,
-    editingParameter,
     getClickActionMode,
     isEditing = false,
     shouldRenderAsNightMode,
@@ -512,17 +513,13 @@ export function DashCardVisualization({
       return null;
     }
 
-    const effectiveParameters = editingParameter
-      ? inlineParameters.filter((param) => param.id === editingParameter.id)
-      : inlineParameters;
-
     return (
       <Group>
-        {effectiveParameters.length > 0 && (
+        {inlineParameters.length > 0 && (
           <CollapsibleDashboardParameterList
             className={S.InlineParametersList}
             triggerClassName={S.InlineParametersMenuTrigger}
-            parameters={effectiveParameters}
+            parameters={inlineParameters}
             isCollapsed={shouldCollapseList}
             isSortable={false}
             widgetsPopoverPosition="bottom-end"
@@ -549,7 +546,6 @@ export function DashCardVisualization({
     dashcard,
     dashcardMenu,
     isEditing,
-    editingParameter,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
