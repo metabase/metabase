@@ -20,10 +20,11 @@ const DownloadWidgetInner = ({
   ...rest
 }: DownloadWidgetProps &
   Pick<UseDownloadDataParams, "question" | "result">) => {
-  const { withDownloads } = useSdkQuestionContext();
+  const { withDownloads, token } = useSdkQuestionContext();
   const [, handleDownload] = useDownloadData({
     question,
     result,
+    token,
   });
 
   return (

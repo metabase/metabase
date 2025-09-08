@@ -18,6 +18,7 @@ import {
   Image,
   Stack,
 } from "metabase/ui";
+import { SdkIframeStaticEmbeddingStatusBar } from "metabase-enterprise/embedding_iframe_sdk_setup/components/SdkIframeStaticEmbeddingStatusBar";
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -32,6 +33,7 @@ export const SdkIframeEmbedSetupContent = () => {
   const { currentStep, settings } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isStaticEmbedding = !!settings.isStatic;
 
   const { handleNext, handleBack, canGoBack, StepContent } =
     useSdkIframeEmbedNavigation();
@@ -76,9 +78,13 @@ export const SdkIframeEmbedSetupContent = () => {
     <Box className={S.Container}>
       <SidebarResizer>
         <Box className={S.Sidebar} component="aside">
-          <Box className={S.SidebarContent}>
+          <Stack className={S.SidebarContent} gap="md">
+            <Box style={{ flexShrink: 0 }}>
+              <SdkIframeStaticEmbeddingStatusBar />
+            </Box>
+
             <StepContent />
-          </Box>
+          </Stack>
 
           <Group className={S.Navigation} justify="space-between">
             <Button
@@ -96,7 +102,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
       <Box className={S.PreviewPanel}>
         <Stack h="100%">
-          {isSimpleEmbeddingEnabled ? (
+          {isSimpleEmbeddingEnabled || isStaticEmbedding ? (
             <SdkIframeEmbedPreview />
           ) : (
             <Card h="100%">
