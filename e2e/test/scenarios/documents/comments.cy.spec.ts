@@ -472,11 +472,13 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 
-  it("shows other users comments", () => {
-    startNewCommentIn1ParagraphDocument();
+  it("shows other users comments and does not show comments from other nodes", () => {
+    createLoremIpsumDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
       cy.log("resolved 3-comments thread");
+
+      createComment(documentId, HEADING_1_ID, "Test X");
 
       createParagraphComment(documentId, "Test 1").then(
         ({ body: rootComment }) => {
@@ -492,24 +494,43 @@ H.describeWithSnowplowEE("document comments", () => {
           H.visitDocumentComment(documentId, PARAGRAPH_ID, rootComment.id);
         },
       );
-    });
 
-    H.modal().within(() => {
-      Comments.getCommentByText("Test 1")
-        .should("contain.text", "Bobby Tables")
-        .and("contain.text", "BT");
+      H.modal().within(() => {
+        Comments.getCommentByText("Test 1")
+          .should("contain.text", "Bobby Tables")
+          .and("contain.text", "BT");
 
-      Comments.getCommentByText("Test A")
-        .should("contain.text", "Robert Tableton")
-        .and("contain.text", "RT");
+        Comments.getCommentByText("Test A")
+          .should("contain.text", "Robert Tableton")
+          .and("contain.text", "RT");
 
-      Comments.getCommentByText("Test 2")
-        .should("contain.text", "Bobby Tables")
-        .and("contain.text", "BT");
+        Comments.getCommentByText("Test 2")
+          .should("contain.text", "Bobby Tables")
+          .and("contain.text", "BT");
 
-      Comments.getCommentByText("Test B")
-        .should("contain.text", "Robert Tableton")
-        .and("contain.text", "RT");
+        Comments.getCommentByText("Test B")
+          .should("contain.text", "Robert Tableton")
+          .and("contain.text", "RT");
+
+        cy.findByText("Test X").should("not.exist");
+      });
+
+      Comments.getDocumentNodeButton({
+        targetId: documentId,
+        childTargetId: HEADING_1_ID,
+        hasComments: true,
+      })
+        .should("be.visible")
+        .and("contain.text", "1")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByText("Test X").should("be.visible");
+        cy.findByText("Test 1").should("not.exist");
+        cy.findByText("Test 2").should("not.exist");
+        cy.findByText("Test A").should("not.exist");
+        cy.findByText("Test B").should("not.exist");
+      });
     });
   });
 
@@ -747,8 +768,8 @@ function startNewCommentIn1ParagraphDocument() {
   });
 }
 
-function createAndVisitLoremIpsumDocument() {
-  H.createDocument({
+function createLoremIpsumDocument() {
+  return H.createDocument({
     idAlias: "documentId",
     name: "Lorem ipsum",
     document: {
@@ -975,6 +996,10 @@ function createAndVisitLoremIpsumDocument() {
       ],
     },
   });
+}
+
+function createAndVisitLoremIpsumDocument() {
+  createLoremIpsumDocument();
   H.visitDocument("@documentId");
   cy.findByRole("textbox", { name: "Document Title" })
     .should("be.visible")
@@ -1018,10 +1043,19 @@ function createParagraphComment(
   text: string,
   parent_comment_id: CommentId | null = null,
 ) {
+  return createComment(documentId, PARAGRAPH_ID, text, parent_comment_id);
+}
+
+function createComment(
+  documentId: DocumentId,
+  nodeId: string,
+  text: string,
+  parent_comment_id: CommentId | null = null,
+) {
   return H.createComment({
     target_type: "document",
     target_id: documentId,
-    child_target_id: PARAGRAPH_ID,
+    child_target_id: nodeId,
     parent_comment_id,
     content: {
       type: "doc",
