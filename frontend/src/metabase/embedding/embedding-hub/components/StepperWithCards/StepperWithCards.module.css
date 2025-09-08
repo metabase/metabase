@@ -48,8 +48,12 @@
   text-align: left;
 }
 
-.stepCard:not(:first-of-type) {
+.stepCard:not(.optionalStepCard) {
   width: 100%;
+}
+
+.optionalStepCard {
+  max-width: 250px;
 }
 
 .stepCard:hover {

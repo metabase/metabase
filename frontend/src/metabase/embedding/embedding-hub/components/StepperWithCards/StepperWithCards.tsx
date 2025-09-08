@@ -1,4 +1,7 @@
-import { Card, Group, Stack, Stepper, Text } from "metabase/ui";
+import cx from "classnames";
+import { t } from "ttag";
+
+import { Card, Flex, Group, Stack, Stepper, Text } from "metabase/ui";
 
 import S from "./StepperWithCards.module.css";
 
@@ -11,6 +14,9 @@ export interface StepperCards {
   title: string;
   description: string;
   optional?: boolean;
+
+  url?: string;
+  onClick?: string;
 }
 
 export const StepperWithCards = ({ steps }: { steps: StepperSteps[] }) => {
@@ -41,23 +47,42 @@ export const StepperWithCards = ({ steps }: { steps: StepperSteps[] }) => {
           color="var(--mb-color-success-darker)"
           description={
             <Group align="stretch">
-              {step.cards.map((card) => (
-                <Card
-                  className={S.stepCard}
-                  key={card.title}
-                  component="button"
-                >
-                  <Stack gap="xs">
-                    <Text size="lg" fw="bold" c="var(--mb-color-text-dark)">
-                      {card.title}
-                    </Text>
+              {step.cards.map((card) => {
+                return (
+                  <Card
+                    className={cx(S.stepCard, {
+                      [S.optionalStepCard]: card.optional,
+                    })}
+                    key={card.title}
+                    component="button"
+                  >
+                    <Stack justify="space-between" h="100%">
+                      <Stack gap="xs" h="100%">
+                        <Text
+                          size={card.optional ? "md" : "lg"}
+                          fw="bold"
+                          c="var(--mb-color-text-dark)"
+                        >
+                          {card.title}
+                        </Text>
 
-                    <Text c="var(--mb-color-text-medium)" size="sm" lh="lg">
-                      {card.description}
-                    </Text>
-                  </Stack>
-                </Card>
-              ))}
+                        <Text c="var(--mb-color-text-medium)" size="sm" lh="lg">
+                          {card.description}
+                        </Text>
+                      </Stack>
+
+                      {card.optional && (
+                        <Flex justify="flex-end">
+                          <Text
+                            size="sm"
+                            c="var(--mb-color-text-medium)"
+                          >{t`Optional`}</Text>
+                        </Flex>
+                      )}
+                    </Stack>
+                  </Card>
+                );
+              })}
             </Group>
           }
         ></Stepper.Step>

@@ -62,6 +62,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         description: t`Build your own dashboard from scratch.`,
         modal: { type: "new-dashboard" },
         variant: "subtle",
+        optional: true,
       },
     ],
   };
@@ -83,6 +84,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
         docsPath: "permissions/row-and-column-security",
         description: t`Manage permissions to limit what data your users can access.`,
         variant: "outline",
+        optional: true,
       },
     ],
     image: {
