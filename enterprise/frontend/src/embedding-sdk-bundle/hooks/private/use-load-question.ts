@@ -31,6 +31,7 @@ export interface LoadQuestionHookResult {
   question?: Question;
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
+  token?: string | null;
 
   queryResults?: any[];
 
@@ -72,7 +73,7 @@ export function useLoadQuestion({
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
   const [questionState, mergeQuestionState] = useReducer(questionReducer, {});
-  const { question, originalQuestion, queryResults, parameterValues } =
+  const { question, originalQuestion, token, queryResults, parameterValues } =
     questionState;
 
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
@@ -289,6 +290,7 @@ export function useLoadQuestion({
     question,
     originalQuestion,
     parameterValues,
+    token,
 
     queryResults,
 

@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import { Api } from "metabase/api";
+import { provideCollectionTags } from "metabase/api/tags";
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -402,6 +404,21 @@ function setDashboardEndpoints({ base, encodedUuid, encodedToken }) {
   ) => `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
 
   // legacy API
+  Api.injectEndpoints({
+    endpoints: (builder) => ({
+      getCollection: builder.query({
+        query: ({ id, ...params }) => {
+          return {
+            url: prefix,
+            params,
+          };
+        },
+        providesTags: (collection) =>
+          collection ? provideCollectionTags(collection) : [],
+      }),
+    }),
+    overrideExisting: true,
+  });
   DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
     "dashId",
   ]);
