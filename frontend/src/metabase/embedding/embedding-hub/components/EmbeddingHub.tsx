@@ -5,7 +5,7 @@ import { t } from "ttag";
 import MetabotLogo from "metabase/common/components/MetabotLogo";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { Box, Group, Stack, Title } from "metabase/ui";
+import { Box, Group, Stack, Text } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
 import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
@@ -61,13 +61,13 @@ export const EmbeddingHub = () => {
   }, [embeddingSteps, completedSteps]);
 
   return (
-    <Box mih="100%" px="xl" py="xl" bg="bg-white">
-      <Stack maw={800} mx="auto" gap="xl">
+    <Box mih="100%" p="4rem 7rem 2rem" bg="bg-white">
+      <Stack mx="auto" gap="xl">
         <Group align="center">
           <MetabotLogo />
 
-          <Title mb="sm" size="lg" c="var(--mb-color-text-dark)">{t`Get started
-         with Embedded Analytics JS and SDK for React`}</Title>
+          <Text fw="bold" size="lg" c="var(--mb-color-text-dark)">{t`Get started
+         with Embedded Analytics JS and SDK for React`}</Text>
         </Group>
         <StepperWithCards steps={stepperSteps} />
         <AddDataModal
