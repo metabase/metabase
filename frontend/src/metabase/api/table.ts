@@ -1,5 +1,5 @@
 import { updateMetadata } from "metabase/lib/redux/metadata";
-import { QueryMetadataSchema, TableSchema } from "metabase/schema";
+import { TableSchema } from "metabase/schema";
 import type {
   ForeignKey,
   GetTableDataRequest,
@@ -63,7 +63,7 @@ export const tableApi = Api.injectEndpoints({
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
         if (data != null) {
-          dispatch(updateMetadata(data, QueryMetadataSchema));
+          dispatch(updateMetadata(data, TableSchema));
         }
       },
     }),
