@@ -334,7 +334,7 @@
                                                     :aggregation  [[:sum $orders.quantity]]}
                                      :alias        "Orders"
                                      :condition    [:= $id &Orders.orders.product_id]
-                                     ;; we can get title since product_id is remapped to title
+                                     ;; we can get products.title since orders.product_id is remapped to title
                                      :fields       [&Orders.title
                                                     &Orders.*sum/Integer]}]
                          :fields   [$title $category]

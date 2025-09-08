@@ -31,7 +31,6 @@
    [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -283,10 +282,17 @@
     (let [original-join-field-ids               (into #{}
                                                       (keep :id)
                                                       (lib.walk/apply-f-for-stage-at-path
-                                                       lib.join/join-fields-to-add-to-parent-stage
+                                                       lib/join-fields-to-add-to-parent-stage
                                                        original-query path join {:include-remaps? false}))
           original-join-fields-includes-source? (fn [remap-info]
-                                                  (contains? original-join-field-ids (get-in remap-info [:dimension :field-id])))
+                                                  (some (fn [path]
+                                                          (contains? original-join-field-ids (get-in remap-info path)))
+                                                        [[:dimension :field-id]
+                                                         ;; (not sure this is really something we want to support,
+                                                         ;; but [[metabase.query-processor-test.remapping-test/remapped-columns-in-joined-source-queries-test]]
+                                                         ;; alleges that you can include just the remapped column in
+                                                         ;; join `:fields` and it's supposed to work)
+                                                         [:dimension :human-readable-field-id]]))
           join-last-stage-path                  (into (vec path) [:stages (dec (count (:stages join)))])]
       (if-let [last-stage-infos (->> (remap-column-infos updated-query join-last-stage-path)
                                      (filter original-join-fields-includes-source?)
