@@ -171,7 +171,7 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
-(defn- insert-into!-sqls [driver table-name column-names values]
+(defn- insert-into!-sqls [driver table-name column-names values inline?]
   (let [;; We need to partition the insert into multiple statements for both performance and correctness.
         ;;
         ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
@@ -185,6 +185,7 @@
         sqls       (map #(sql/format {:insert-into (keyword table-name)
                                       :columns     (quote-columns driver column-names)
                                       :values      %}
+                                     :inline inline?
                                      :quoted true
                                      :dialect dialect)
                         chunks)]
@@ -193,7 +194,7 @@
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-    (doseq [sql (insert-into!-sqls driver table-name column-names values)]
+    (doseq [sql (insert-into!-sqls driver table-name column-names values false)]
       (jdbc/execute! conn sql))))
 
 (defmethod driver/add-columns! :sql-jdbc
