@@ -71,6 +71,7 @@ export function DiscussionComment({
         id={getCommentNodeId(comment)}
         mt="1.25rem"
         bullet={<Icon name="trash" />}
+        data-testid="discussion-comment-deleted"
       >
         <Text size="md" c="text-disabled" fs="italic">
           {t`This comment was deleted.`}

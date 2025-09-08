@@ -9,6 +9,8 @@ export const Comments = {
   getCommentByText,
   getPlaceholder,
   getEmojiPicker,
+  resolveCommentByText,
+  reopenCommentByText,
 };
 
 function getDocumentNodeButton({
@@ -53,4 +55,26 @@ function getCommentByText(text: string | RegExp) {
 
 function getEmojiPicker() {
   return cy.findByTestId("emoji-picker");
+}
+
+function resolveCommentByText(text: string | RegExp) {
+  return getCommentByText(text)
+    .realHover()
+    .within(() => {
+      cy.findByTestId("comment-action-panel").should("be.visible");
+      cy.findByTestId("comment-action-panel-resolve")
+        .should("be.visible")
+        .click();
+    });
+}
+
+function reopenCommentByText(text: string | RegExp) {
+  return getCommentByText(text)
+    .realHover()
+    .within(() => {
+      cy.findByTestId("comment-action-panel").should("be.visible");
+      cy.findByTestId("comment-action-panel-reopen")
+        .should("be.visible")
+        .click();
+    });
 }

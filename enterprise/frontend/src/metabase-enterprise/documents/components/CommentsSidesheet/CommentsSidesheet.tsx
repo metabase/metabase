@@ -208,8 +208,10 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
           >
             {availableTabs.length > 0 && (
               <Tabs.List px="1.625rem" className={S.tabsList}>
-                <Tabs.Tab value="open">{t`Open`}</Tabs.Tab>
-                <Tabs.Tab value="resolved">
+                <Tabs.Tab value="open" data-testid="comments-open-tab">
+                  {t`Open`}
+                </Tabs.Tab>
+                <Tabs.Tab value="resolved" data-testid="comments-resolved-tab">
                   {t`Resolved (${resolvedComments.length})`}
                 </Tabs.Tab>
               </Tabs.List>
