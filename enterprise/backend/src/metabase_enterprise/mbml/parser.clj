@@ -127,7 +127,7 @@
   Returns:
     Parsed Clojure map or nil if content is blank
 
-  Throws:
+  Raises:
     Exception with structured error details for malformed YAML"
   [yaml-content :- [:maybe :string]]
   (when-not (str/blank? yaml-content)
@@ -152,7 +152,7 @@
   Returns:
     Validated MBML entity map with source code integrated
 
-  Throws:
+  Raises:
     Exception with validation errors if data doesn't match MBML schema"
   [parsed-data :- :map
    source-code :- [:maybe :string]]
