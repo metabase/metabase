@@ -5,6 +5,7 @@ import type {
   DatabaseId,
   FieldId,
   FieldReference,
+  NativeQuerySnippet,
   SchemaId,
   SegmentId,
   SettingKey,
@@ -45,6 +46,7 @@ class Metadata {
   fields: Record<string, Field> = {};
   segments: Record<string, Segment> = {};
   questions: Record<string, Question> = {};
+  snippets: Record<string, NativeQuerySnippet> = {};
   settings?: Settings;
 
   constructor(opts?: MetadataOpts) {

@@ -5,15 +5,13 @@ summary: Metabot is Metabase's AI assistant that helps you analyze data, create 
 
 # Metabot - Metabase's AI assistant
 
-{% include beta-blockquote.html %}
-
-> For now, [Metabot](https://www.metabase.com/features/metabot-ai) is only available as an add-on for Pro and Enterprise plans on Metabase Cloud.
+{% include beta-blockquote.html
+   message="For now, <a href='https://www.metabase.com/features/metabot-ai'>Metabot</a> is only available as an add-on for Pro and Enterprise plans on Metabase Cloud."
+%}
 
 ![Meet Metabot](./images/metabot.png)
 
 Metabot helps you analyze your data by creating charts from natural language, generating SQL queries, fixing query errors, and analyzing existing visualizations.
-
-> Like with all generative AI, you'll always need to double-check results.
 
 To set up Metabot, see [Metabot settings](./settings.md).
 
@@ -21,11 +19,13 @@ To set up Metabot, see [Metabot settings](./settings.md).
 
 Metabot can help you to:
 
-- Create a chart using the [query builder](../questions/query-builder/editor.md) from a natural language query.
-- Generate SQL in the [native editor](../questions/native-editor/writing-sql.md) from natural language.
+- [Create a chart using the query builder](#how-metabot-uses-the-query-builder) from a natural language query.
+- [Generate SQL in the native editor](../questions/native-editor/writing-sql.md) from natural language. (Currently, only SQL is supported.)
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
 - Answer questions from our documentation (as in, the literature you're reading right now).
+
+Like with all generative AI, you'll always need to double-check results.
 
 ## The Metabot chat sidebar
 
@@ -46,13 +46,14 @@ Some tips:
 - Give Metabot as much context as you can. If you know the table or fields you want to query, tell Metabot.
 - Whenever you want Metabot to do something completely different, you should reset the conversation, as Metabot might find that irrelevant historical context to be confusing.
 - Once Metabot creates a question for you, you can follow up with more questions or take over yourself. You can drill through the chart or step into the editor to tweak the query (both in the query builder and the SQL editor).
+- Metabot works best with English prompts. While it might understand other languages, you'll get the most reliable results by asking your questions in English.
 
 ### Metabot response menu
 
 Hover over Metabot's response to:
 
 - Copy the response.
-- Give thumbs-up/thumbs-down feedback on responses.
+- Give thumbs-up/thumbs-down feedback on responses. If you downvote a response, you can optionally contribute a bug report to help us improve Metabot.
 - Re-run the prompt with Metabot. This is useful if you've updated the chart or just want to have Metabot take another pass (since AI responses aren't deterministic, Metabot may give a different response on another run).
 
 ## Analyze charts with Metabot
@@ -64,6 +65,10 @@ When viewing a question, you can click the Metabot icon in the upper right to an
 When viewing a table of results, Metabase won't display the Metabot button, but you can open the chat to ask Metabot to analyze the table, and it will produce an [X-ray](../exploration-and-organization/x-rays.md) of the results.
 
 You can also ask Metabot to tell you about specific tables in your database.
+
+## How Metabot uses the query builder
+
+When you ask Metabot to create a chart from natural language, it first looks for existing questions that might answer your request. If it finds a relevant question, it'll point you to that instead of creating something new. Otherwise, Metabot will use the [query builder](../questions/query-builder/editor.md) to create a new chart for you. Keep in mind that Metabot can only handle basic query builder operations. It's limited to single-level aggregation and grouping, so if you need more complex analysis, you can take over and refine the query yourself, or switch to the native editor.
 
 ## Metabot in the native editor
 

@@ -4,6 +4,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -14,6 +15,7 @@
    [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
                                              quote-table with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.util.honey-sql-2 :as h2x]
@@ -305,3 +307,12 @@
   (if-let [sql-exception (extract-sql-exception e)]
     (impl-table-known-to-not-exist? driver sql-exception)
     false))
+
+(defmethod driver/schema-exists? :sql-jdbc
+  [driver db-id schema]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver db-id {}
+   (fn [^Connection conn]
+     (->> (.getMetaData conn)
+          sql-jdbc.describe-database/all-schemas
+          (m/find-first #(= % schema))))))

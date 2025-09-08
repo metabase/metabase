@@ -18,7 +18,11 @@ function SavedQuestionHeaderButton({
   onSave,
 }: SavedQuestionHeaderButtonProps) {
   return (
-    <Flex align="center" gap="0.25rem">
+    <Flex
+      align="center"
+      gap="0.25rem"
+      className={SavedQuestionHeaderButtonS.HeaderTitleContainer}
+    >
       <EditableText
         className={SavedQuestionHeaderButtonS.HeaderTitle}
         isDisabled={!question.canWrite() || question.isArchived()}
