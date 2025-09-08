@@ -514,7 +514,7 @@ function selectCharactersLeft(count: number) {
 }
 
 function startNewCommentIn1ParagraphDocument() {
-  create1AndVisitParagraphDocument();
+  createAndVisit1ParagraphDocument();
   getParagraph().realHover();
 
   cy.get<DocumentId>("@documentId").then((targetId) => {
@@ -766,7 +766,7 @@ function createAndVisitLoremIpsumDocument() {
     .and("have.value", "Lorem ipsum");
 }
 
-function create1AndVisitParagraphDocument() {
+function create1ParagraphDocument() {
   H.createDocument({
     idAlias: "documentId",
     name: "Lorem ipsum",
@@ -788,6 +788,10 @@ function create1AndVisitParagraphDocument() {
       ],
     },
   });
+}
+
+function createAndVisit1ParagraphDocument() {
+  create1ParagraphDocument();
   H.visitDocument("@documentId");
   cy.findByRole("textbox", { name: "Document Title" })
     .should("be.visible")
