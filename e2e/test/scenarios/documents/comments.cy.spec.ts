@@ -148,7 +148,7 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 
-  it("upgrades existing documents without _id attribute", () => {
+  it("upgrades existing documents without _id attributes in nodes that support comments", () => {
     H.createDocument({
       idAlias: "documentId",
       name: "Lorem ipsum",
