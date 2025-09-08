@@ -1,9 +1,15 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { getError, getPlugins } from "embedding-sdk-bundle/store/selectors";
+import {
+  getError,
+  getIsStaticEmbedding,
+  getPlugins,
+} from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
@@ -33,7 +39,8 @@ export const SdkQuestionContext = createContext<
 const DEFAULT_OPTIONS = {};
 
 export const SdkQuestionProvider = ({
-  questionId,
+  questionId: rawQuestionId,
+  token: rawToken,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -54,6 +61,20 @@ export const SdkQuestionProvider = ({
   navigateToNewCard: userNavigateToNewCard,
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
+  const {
+    entityId: questionId,
+    token,
+    tokenError,
+  } = useExtractEntityIdFromJwtToken({
+    isStaticEmbedding,
+    entityId: rawQuestionId,
+    token: rawToken ?? undefined,
+  });
+
+  const isNewQuestion = questionId === "new";
+
   const error = useSdkSelector(getError);
 
   const handleCreateQuestion = useCreateQuestion();
@@ -113,6 +134,8 @@ export const SdkQuestionProvider = ({
     navigateToNewCard,
   } = useLoadQuestion({
     questionId,
+    isStaticEmbedding,
+    token,
     options,
     deserializedCard,
     initialSqlParameters,
@@ -142,6 +165,7 @@ export const SdkQuestionProvider = ({
 
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
+    token,
     isQuestionLoading,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,
@@ -181,6 +205,16 @@ export const SdkQuestionProvider = ({
   useEffect(() => {
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
+
+  if (isStaticEmbedding && isNewQuestion) {
+    return (
+      <SdkError message={t`You can't save questions in anonymous embedding`} />
+    );
+  }
+
+  if (tokenError) {
+    return <SdkError message={tokenError} />;
+  }
 
   if (error) {
     return <SdkError message={error.message} />;

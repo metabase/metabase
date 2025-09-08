@@ -17,6 +17,7 @@ export const SqlParametersList = () => {
   const {
     question,
     originalQuestion,
+    token,
     parameterValues,
     updateParameterValues,
     hiddenParameters,
@@ -70,6 +71,7 @@ export const SqlParametersList = () => {
       }}
       cardId={question.id()}
       dashboardId={question.dashboardId() ?? undefined}
+      token={token}
       parameters={parameters}
       setParameterValue={setParameterValue}
       enableParameterRequiredBehavior

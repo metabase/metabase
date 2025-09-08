@@ -8,6 +8,7 @@ const propsSchema: Yup.SchemaOf<StaticDashboardProps> = Yup.object({
   children: Yup.mixed().optional(),
   className: Yup.mixed().optional(),
   dashboardId: Yup.mixed().required(),
+  token: Yup.mixed().optional(),
   dataPickerProps: Yup.object({
     entityTypes: Yup.mixed().optional(),
   })

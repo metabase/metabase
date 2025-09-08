@@ -1,7 +1,10 @@
 import { createContext, useContext } from "react";
 
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
-import type { EmbeddingParametersValues } from "metabase/public/lib/types";
+import type {
+  EmbeddingParameters,
+  EmbeddingParametersValues,
+} from "metabase/public/lib/types";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 import type {
@@ -48,9 +51,18 @@ export interface SdkIframeEmbedSetupContextType {
 
   // Parameters for dashboards and questions
   availableParameters: Parameter[];
+  initialEmbeddingParameters: EmbeddingParameters | null;
   parametersValuesById: EmbeddingParametersValues;
+  previewParameterValuesBySlug: EmbeddingParametersValues;
+  embeddingParameters: EmbeddingParameters;
+  onEmbeddingParametersChange: (
+    embeddingParameters: EmbeddingParameters,
+  ) => void;
 
   isEmbedSettingsLoaded: boolean;
+
+  // static embedding
+  staticEmbeddingSignedToken: string | null;
 }
 
 export const SdkIframeEmbedSetupContext =

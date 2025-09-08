@@ -424,11 +424,8 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       const normalizedData = Object.entries(data).reduce(
         (acc, [key, value]) => {
           // Functions are not serializable, so we ignore them.
-          if (typeof value === "function") {
-            return acc;
-          }
-
-          acc[key as keyof typeof acc] = value;
+          acc[key as keyof typeof acc] =
+            typeof value === "function" ? Symbol("function") : value;
 
           return acc;
         },
@@ -535,6 +532,7 @@ function createCustomElement<Arr extends readonly string[]>(
 
 const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "dashboard-id",
+  "token",
   "with-title",
   "with-downloads",
   "drills",
@@ -544,6 +542,7 @@ const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
 
 const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "question-id",
+  "token",
   "with-title",
   "with-downloads",
   "drills",

@@ -44,6 +44,7 @@ export type ParameterValueWidgetProps = {
   parameters?: UiParameter[];
   cardId?: CardId;
   dashboardId?: DashboardId;
+  token?: string | null;
   setParameterValueToDefault?: (parameterId: ParameterId) => void;
   // This means the widget will take care of the default value.
   // Should be used for dashboards and native questions in the parameter bar,
@@ -68,6 +69,7 @@ export const ParameterValueWidget = ({
   placeholder,
   cardId,
   dashboardId,
+  token,
   setParameterValueToDefault,
   setValue,
   value,
@@ -220,6 +222,7 @@ export const ParameterValueWidget = ({
             parameters={parameters}
             cardId={cardId}
             dashboardId={dashboardId}
+            token={token}
             value={value}
             setValue={setValue}
             isEditing={isEditing}
@@ -307,6 +310,7 @@ export const ParameterValueWidget = ({
           parameters={parameters}
           cardId={cardId}
           dashboardId={dashboardId}
+          token={token}
           value={value}
           setValue={setValue}
           isEditing={isEditing}
