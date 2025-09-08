@@ -1059,85 +1059,22 @@
                                :last_edited_at   :last-edited-at
                                :entity_types     :entity-types})}]])
 
-(mr/def ::search-table-result
-  "Schema for table/model search results"
+(mr/def ::search-result-item
+  "Unified schema for search result items."
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:enum :table :model]]
+   [:type [:enum :table :model :dashboard :question :metric :database]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:database_id {:optional true} [:maybe :int]]
    [:database_schema {:optional true} [:maybe :string]]
-   [:updated_at {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe :string]]
-   ;; Additional fields for models only
-   [:last_used_at {:optional true} [:maybe :string]]
-   [:collection {:optional true} [:maybe [:map
-                                          [:name {:optional true} [:maybe :string]]
-                                          [:authority_level {:optional true} [:maybe :string]]]]]])
-
-(mr/def ::search-dashboard-result
-  "Schema for dashboard search results"
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-   [:id :int]
-   [:type [:= :dashboard]]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:verified {:optional true} :boolean]
-   [:updated_at {:optional true} [:maybe :string]]
-   [:last_viewed_at {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe :string]]
-   [:collection {:optional true} [:maybe [:map
-                                          [:name {:optional true} [:maybe :string]]
-                                          [:authority_level {:optional true} [:maybe :string]]]]]])
-
-(mr/def ::search-question-result
-  "Schema for question search results"
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-   [:id :int]
-   [:type [:= :question]]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:verified {:optional true} :boolean]
-   [:last_used_at {:optional true} [:maybe :string]]
+   [:verified {:optional true} [:maybe :boolean]]
    [:updated_at {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe :string]]
    [:collection {:optional true} [:maybe [:map
                                           [:name {:optional true} [:maybe :string]]
                                           [:authority_level {:optional true} [:maybe :string]]]]]])
-
-(mr/def ::search-metric-result
-  "Schema for metric search results"
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-   [:id :int]
-   [:type [:= :metric]]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:verified {:optional true} :boolean]
-   [:last_used_at {:optional true} [:maybe :string]]
-   [:updated_at {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe :string]]
-   [:collection {:optional true} [:maybe [:map
-                                          [:name {:optional true} [:maybe :string]]
-                                          [:authority_level {:optional true} [:maybe :string]]]]]])
-
-(mr/def ::search-database-result
-  "Schema for database search results"
-  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-   [:id :int]
-   [:type [:= :database]]
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:updated_at {:optional true} [:maybe :string]]])
-
-(mr/def ::search-result-item
-  [:or
-   ::search-table-result
-   ::search-dashboard-result
-   ::search-question-result
-   ::search-metric-result
-   ::search-database-result])
 
 (mr/def ::search-result
   [:or
@@ -1160,7 +1097,6 @@
   (try
     (let [options (mc/encode ::search-arguments
                              arguments (mtx/transformer {:name :tool-api-request}))
-          _ (def tsp-options options)
           metabot-id (:metabot-v3/metabot-id request)
           results (metabot-v3.tools.search/search
                    (assoc options :metabot-id metabot-id))

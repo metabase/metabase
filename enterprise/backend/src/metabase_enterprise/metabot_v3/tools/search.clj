@@ -26,73 +26,42 @@
    "dashboard" :dashboard})
 
 (defn- transform-search-result
-  "Transform a single search result to match the appropriate entity-specific schema.
-
-   Field mapping:
-   - Tables: name = technical table name (table_name), include database_id and database_schema
-   - Models: name = display name, include database_id and database_schema
-   - Other entities: name = display name, no database fields"
+  "Transform a single search result to match the appropriate entity-specific schema."
   [result]
   (let [model (:model result)
-        result-type (search-model->result-type model)
+        verified? (when (:verified result)
+                    (boolean (or (:verified result)
+                                 (= "verified" (:moderated_status result)))))
         collection-info (when (:collection result)
                           {:name (:name (:collection result))
-                           :authority_level (:authority_level (:collection result))})]
+                           :authority_level (:authority_level (:collection result))})
+        common-fields {:id           (:id result)
+                       :type         (search-model->result-type model)
+                       :name         (:name result)
+                       :display_name (:name result)
+                       :description  (:description result)
+                       :updated_at   (:updated_at result)
+                       :created_at   (:created_at result)}]
     (case model
-      "table"
-      {:id              (:id result)
-       :type            result-type
-       :name            (:table_name result)
-       :display_name    (:name result)
-       :description     (:description result)
-       :database_id     (:database_id result)
-       :database_schema (:table_schema result)
-       :updated_at      (:updated_at result)
-       :created_at      (:created_at result)}
-
-      "dataset"
-      {:id              (:id result)
-       :type            result-type
-       :name            (:name result)
-       :display_name    (:name result)
-       :description     (:description result)
-       :database_id     (:database_id result)
-       :verified        (boolean (:verified result))
-       :last_used_at    (:last_used_at result)
-       :updated_at      (:updated_at result)
-       :created_at      (:created_at result)
-       :collection      collection-info}
-
       "database"
-      {:id              (:id result)
-       :type            result-type
-       :name            (:name result)
-       :description     (:description result)
-       :updated_at      (:updated_at result)}
+      common-fields
+
+      "table"
+      (merge common-fields
+             {:name            (:table_name result)
+              :database_id     (:database_id result)
+              :database_schema (:table_schema result)})
 
       "dashboard"
-      {:id              (:id result)
-       :type            result-type
-       :name            (:name result)
-       :description     (:description result)
-       :verified        (boolean (or (:verified result)
-                                     (= "verified" (:moderated_status result))))
-       :updated_at      (:updated_at result)
-       :last_viewed_at  (:last_viewed_at result)
-       :created_at      (:created_at result)
-       :collection      collection-info}
+      (merge common-fields
+             {:verified        verified?
+              :collection      collection-info})
 
-      ;; For questions and metrics:
-      {:id              (:id result)
-       :type            result-type
-       :name            (:name result)
-       :description     (:description result)
-       :verified        (boolean (or (:verified result)
-                                     (= "verified" (:moderated_status result))))
-       :last_used_at    (:last_used_at result)
-       :updated_at      (:updated_at result)
-       :created_at      (:created_at result)
-       :collection      collection-info})))
+      ;; Questions, metrics, and datasets
+      (merge common-fields
+             {:database_id     (:database_id result)
+              :verified        verified?
+              :collection      collection-info}))))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -166,6 +135,5 @@
         ;; Create futures for parallel execution
         futures (mapv #(future (search-fn %)) all-queries)
         result-lists (mapv deref futures)
-        fused-results (reciprocal-rank-fusion result-lists)
-        _ (def tsp-fused fused-results)]
+        fused-results (reciprocal-rank-fusion result-lists)]
     (map transform-search-result fused-results)))
