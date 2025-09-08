@@ -151,11 +151,14 @@ function renderEmojiPicker() {
 
       // Close Emoji popup on Esc
       if (e.key === "Escape") {
-        document.removeEventListener("keydown", handlers.get(popup));
+        e.stopPropagation();
+        document.removeEventListener("keydown", handlers.get(popup), {
+          capture: true,
+        });
         handlers.delete(popup);
         popup.remove();
         component.destroy();
-        return true;
+        return false;
       }
     };
   }
@@ -203,7 +206,7 @@ function renderEmojiPicker() {
 
     onKeyDown: (props: SuggestionKeyDownProps) => {
       // Prevent default behavior of Esc key to close popup, but keep focus inside the input.
-      if (props.event.key === "Escape") {
+      if (props.event.key === "Escape" && handlers.has(popup)) {
         props.event.stopImmediatePropagation();
         return true;
       }
