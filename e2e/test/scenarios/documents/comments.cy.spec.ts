@@ -534,6 +534,26 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 
+  it("prevents editing the document when comments are open", () => {
+    create1ParagraphDocument();
+
+    cy.get<DocumentId>("@documentId").then((documentId) => {
+      H.visitDocumentComment(documentId, PARAGRAPH_ID);
+
+      cy.get("main").within(() => {
+        H.documentContent().click();
+
+        cy.realType("test");
+        cy.findByRole("button", { name: "Save" }).should("not.exist");
+
+        H.documentContent()
+          .get('[contenteditable="false"]')
+          .should("be.visible");
+        H.documentFormattingMenu().should("not.exist");
+      });
+    });
+  });
+
   describe("comment editor", () => {
     it("supports basic formatting with markdown", () => {
       startNewCommentIn1ParagraphDocument();
