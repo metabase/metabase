@@ -440,3 +440,33 @@
                   t2 #{t1}
                   t3 #{t2}}
                  (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))
+
+#_(deftest mixed-database-transform-ordering-test
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (testing "Python and query transforms are ordered together correctly, across multiple databases"
+      ;; orders (db-1) -> sql_output (db-1) -> python_output (db-2) -> final_output (db-2)
+        (mt/with-temp [:model/Database db-2    {}
+                       :model/Table    table-1 {:db_id (mt/id),    :schema "public", :name "sql_output"}
+                       :model/Table    table-2 {:db_id (:id db-2), :schema "public", :name "python_output"}
+                       :model/Field    _       {:table_id (:id table-1), :name "foo"}
+                       :model/Field    _       {:table_id (:id table-2), :name "bar"}
+
+                     ;; SQL transform that depends on orders table
+                       :model/Transform {t1 :id} (make-transform
+                                                  {:database (mt/id)
+                                                   :type     "query"
+                                                   :query    {:source-table (mt/id :orders)}}
+                                                  (:name table-1))
+                     ;; Python transform that depends on the SQL transform's output
+                       :model/Transform {t2 :id} (make-python-transform {"sql_output" (:id table-1)} (:name table-2))
+                     ;; Another SQL transform that depends on the Python transform's output
+                       :model/Transform {t3 :id} (make-transform
+                                                  {:database (:id db-2)
+                                                   :type     "query"
+                                                   :query    {:source-table (:id table-2)}}
+                                                  "final_output")]
+          (is (= {t1 #{}
+                  t2 #{t1}
+                  t3 #{t2}}
+
+                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))
