@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-752-integration-branch-for-embedding-hub",
     "hash": "897d98117aa01ffee4f37728519ace28b697fd26"
+  },
+  "upstream": {
+    "branch": "emb-784-add-a-card-based-vertical-stepper-component"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 63271,
+        "gqlID": "PR_kwDOAczgH86neeKi"
+      }
+    }
   }
 }
