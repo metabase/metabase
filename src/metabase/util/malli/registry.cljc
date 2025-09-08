@@ -9,39 +9,104 @@
    [malli.core :as mc]
    [malli.registry]
    [malli.util :as mut]
-   [metabase.util.malli.fn :as mu.fn])
+   [metabase.util.malli.error :as mu.error])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
 
-(def ^:private cachable-fn-set
+(def ^:private cacheable-fn-set
   (into #{} (filter fn?) (keys (mc/default-schemas))))
 
-(defn cachable-fn?
+(defn cacheable-fn?
   "Only the functions installed in the default malli registry should be allowed.
-  All other fn objects are illegal because they may not be cachable."
+  All other fn objects are illegal because they may not be cacheable."
   [f]
-  (contains? cachable-fn-set f))
+  (contains? cacheable-fn-set f))
 
-(defn- schema-cache-key
+;; DEBUG nocommit
+(defonce counter (atom {}))
+(defn add-counter! [form schema ec]
+  (swap! counter update schema
+         (fn [erorrs]
+           (conj (or erorrs []) {:form form :error-context ec}))))
+
+(comment
+  (require '[metabase.util.malli.schema :as ms])
+  (import '(java.sql Connection))
+  (reset! counter {})
+
+  (map second (take 20 (sort-by (fn [[_ v]] (count v))
+                                @counter)))
+
+  (schema-cache-key
+   [:or (ms/InstanceOf :model/Card)])
+
+  (schema-cache-key
+   (ms/InstanceOfClass Integer))
+
+  [(schema-cache-key [:fn #(odd? %)])]
+
+  (schema-cache-key [:or [:fn {:mr/cache-key "my odd"} #(odd? %)]])
+  ;; => [:or "my odd"]
+
+  (schema-cache-key [:or [:fn #(odd? %)]])
+  ;; => :metabase.util.malli.registry/uncachable
+  )
+(defn- schema-cache-key*
   "Make schemas that aren't `=` to identical ones e.g.
 
     [:re #\"\\d{4}\"]
     [:or :int [:re #\"\\d{4}\"]]
 
-  work correctly as cache keys instead of creating new entries every time the code is evaluated."
+  work correctly as cache keys instead of creating new entries every time the code is evaluated.
+
+  Also able to handle certain schemas with functions that are known to be cachable. For example, ms/InstanceOf.
+  "
   [x]
-  (walk/postwalk
-   (fn [form]
-     (when (and (fn? form) (not (cachable-fn? form)))
-       ;; TODO: throw in here once we've cleaned up all the bad fns in our schemas.
-       #_(user/log :cache_fn_problems
-                   (merge {:bad-fn form :schema x}
-                          (when-let [ec mu.fn/*error-context*] {:error-context ec}))))
-     (cond-> form
-       (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
-       str))
-   x))
+  (let [cacheable?* (atom :cache-ok)
+        walked (walk/prewalk
+                (fn [form]
+                  ;;(prn ["saw" form])
+                  (cond
+                    ;; stringify regexes
+                    (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
+                    (str form)
+
+                    ;; some functions are ok, they are in the default schemas:
+                    (and (fn? form) (cacheable-fn? form))
+                    form
+
+                    ;; short circuit if given a cache-key as data
+                    (and (vector? form)
+                         (:mr/cache-key (second form)))
+                    (:mr/cache-key (second form))
+
+                    ;; cache-key lookup in a schema
+                    (and (= :malli.core/schema (type form))
+                         (let [schema-form (mc/form form)]
+                           (and (vector? schema-form)
+                                (:mr/cache-key (second schema-form)))))
+                    ;; TODO: better-cond
+                    [(first (mc/form form))
+                     (:mr/cache-key (second (mc/form form)))]
+
+                    ;; postwalk will never visit functions in schemas with the `mr/key-cache` property.
+                    (and (fn? form) (not (cacheable-fn? form)))
+                    (do
+                      ;;(prn ["wtf" form])
+                      (when config/is-dev?
+                        ;; TODO: throw here
+                        #_(user/log :cache_fn_problems (merge {:bad-fn form :schema x} (when-let [ec mu.error/*context*] {:error-context ec})))
+                        (add-counter! form x mu.error/*context*))
+                      (reset! cacheable?* ::uncachable))
+
+                    :else form))
+                x)]
+    [@cacheable?* walked]))
+
+(defn- schema-cache-key [x]
+  (let [[cacheability the-key] (schema-cache-key* x)]
+    (if (= cacheability ::uncachable) ::uncachable the-key)))
 
 (def ^:dynamic *cache-miss-hook*
   "A hook that is called whenever there is a cache miss, for side effects.
@@ -58,12 +123,16 @@
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
   (let [schema-key (schema-cache-key schema)]
-    (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
-        (let [v (value-thunk)]
-          (when *cache-miss-hook*
-            (*cache-miss-hook* k schema v))
-          (swap! cache assoc-in [k schema-key] v)
-          v))))
+    (if (= schema-key ::uncachable)
+      ;; Do not cache uncachable entities.
+      ;; In dev this should cause a big error.
+      (value-thunk)
+      (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
+          (let [v (value-thunk)]
+            (when *cache-miss-hook*
+              (*cache-miss-hook* k schema v))
+            (swap! cache assoc-in [k schema-key] v)
+            v)))))
 
 (defn validator
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
@@ -101,12 +170,12 @@
             (try
               #_{:clj-kondo/ignore [:discouraged-var]}
               (let [validator* (validator schema)
-                    explainer* (mc/explainer schema)]
+                    explainer* (delay (mc/explainer schema))]
                 ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
                 ;; of calls whose values are valid.
                 (fn schema-explainer [value]
                   (when-not (validator* value)
-                    (explainer* value))))
+                    (@explainer* value))))
               (catch #?(:clj Throwable :cljs :default) e
                 (throw (ex-info (str "Error making explainer for " (pr-str schema) ":" (ex-message e))
                                 {:schema schema}

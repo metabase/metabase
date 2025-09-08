@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [metabase.util.malli.error :as mu.error]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [net.cgrand.macrovich :as macros]))
@@ -177,13 +178,9 @@
   use [[metabase.util.malli/disable-enforcement]] to bind this only in Clojure code."
   true)
 
-(def ^:dynamic *error-context*
-  "Dynamic context map to include in validation errors. Used by [[metabase.util.malli/with-error-context]]."
-  nil)
-
 (defn- validate [error-context schema value error-type]
   (when *enforce*
-    (binding [*error-context* error-context]
+    (binding [mu.error/*context* error-context]
       (when-let [error (mr/explain schema value)]
         (let [humanized (me/humanize error {:wrap (core/fn humanize-include-value
                                                     [{:keys [value message]}]

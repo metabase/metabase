@@ -235,7 +235,8 @@
    (defn- instance-of-class* [& classes]
      [:fn {:error/message (str "instance of "
                                (str/join " or "
-                                         (map #(.getName ^Class %) classes)))}
+                                         (map #(.getName ^Class %) classes)))
+           :mr/cache-key [::instance-of-class (pr-str classes)]}
       (fn [x]
         (some (fn [klass]
                 (instance? klass x))

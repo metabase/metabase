@@ -156,7 +156,7 @@
       :unit – finds a matching date unit and merges date unit operations to the result
       :int-value, :int-value-1 – converts the group value to integer
       :date, :date1, date2 – converts the group value to absolute date"
-  [regex :- [:fn {:error/message "regular expression"} m/regexp?] group-labels]
+  [regex :- [:fn {:error/message "regular expression"} #'m/regexp?] group-labels]
   (fn [param-value]
     (when-let [regex-result (re-matches regex param-value)]
       (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
