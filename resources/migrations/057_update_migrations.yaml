@@ -1100,35 +1100,142 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v57.2025-09-04T10:00:00
+      id: v57.2025-09-05T10:00:00
       author: edpaget
-      comment: Add library_identifier column to transform table
+      comment: Drop foreign key constraint on transform_run.transform_id
       changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: library_identifier
-                  remarks: Unique identifier for transforms within a library
-                  type: varchar(254)
-                  constraints:
-                    nullable: true
+        - dropForeignKeyConstraint:
+            baseTableName: transform_run
+            constraintName: fk_transform_run_transform_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform_run
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_transform_run_transform_id
+            onDelete: CASCADE
 
   - changeSet:
-      id: v57.2025-09-04T10:01:00
+      id: v57.2025-09-05T10:01:00
       author: edpaget
-      comment: Add unique constraint and index on transform.library_identifier
+      comment: Drop foreign key constraint on transform_transform_tag.transform_id
       changes:
-        - addUniqueConstraint:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_transform_tag
+            constraintName: fk_transform_transform_tag_transform_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform_transform_tag
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_transform_transform_tag_transform_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-09-05T10:02:00
+      author: edpaget
+      comment: Modify transform_run.transform_id to varchar(254)
+      changes:
+        - modifyDataType:
+            tableName: transform_run
+            columnName: transform_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: transform_run
+            columnName: transform_id
+            newDataType: int
+
+  - changeSet:
+      id: v57.2025-09-05T10:03:00
+      author: edpaget
+      comment: Modify transform_transform_tag.transform_id to varchar(254)
+      changes:
+        - modifyDataType:
+            tableName: transform_transform_tag
+            columnName: transform_id
+            newDataType: varchar(254)
+      rollback:
+        - modifyDataType:
+            tableName: transform_transform_tag
+            columnName: transform_id
+            newDataType: int
+
+  - changeSet:
+      id: v57.2025-09-05T10:04:00
+      author: edpaget
+      comment: Drop transform table
+      changes:
+        - dropTable:
             tableName: transform
-            columnNames: library_identifier
-            constraintName: unique_transform_library_identifier
-        - createIndex:
+            cascadeConstraints: true
+      rollback:
+        - createTable:
             tableName: transform
-            indexName: idx_transform_library_identifier
+            remarks: The main table for Transform entities
             columns:
               - column:
-                  name: library_identifier
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: Name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: the description of the transform
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source
+                  remarks: JSON of source
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target
+                  remarks: JSON of target
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the transform was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the transform was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_to_source_of_truth
+                  remarks: Whether this transform is synced to the git source of truth
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

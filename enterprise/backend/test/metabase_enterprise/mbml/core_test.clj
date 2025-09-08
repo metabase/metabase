@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+
 ;;; ---------------------------------------- Test Data ------------------------------------------------
 
 (def valid-yaml-content

@@ -53,7 +53,12 @@
   [:maybe [:sequential :string]])
 
 (mr/def ::source
-  "Schema for source code content (SQL or Python). Optional string field."
+  "Schema for source code content (SQL, Python, or MBQL).
+
+  Optionally a string for SQL or Python or a map for MBQL.
+
+  It does not seem like incoming MBQL queries are validating in other imports (ex POST /api/card),
+  so this also does not attempt to validate the query."
   [:maybe [:or :string :map]])
 
 ;;; ------------------------------------------ Transform:v1 Schema -----------------------------------------------

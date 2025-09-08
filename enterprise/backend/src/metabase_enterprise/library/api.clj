@@ -7,7 +7,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase-enterprise.library.core :as library])
   (:import (java.io File)
            (java.nio.file Files)
            (java.nio.file.attribute FileAttribute)))
@@ -49,7 +50,7 @@
     (with-temp-directory dir
       (log/info "Reloading Metabase configuration from source")
       (try
-        (mbml/mbml-files->models
+        (library/index-library!
          (->> (.toString dir)
               (sources/load-source! source)
               io/file

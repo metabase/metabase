@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase-enterprise.library.core :as library]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -76,11 +77,11 @@
   [_route-params
    _query-params]
   (api/check-superuser)
-  (-> (t2/select :model/Transform)
-      (t2/hydrate :last_run :transform_tag_ids)
+  (-> (library/select-all :model/Transform)
+      (t2/hydrate :last_run)
       (->> (map #(update % :last_run transforms.util/localize-run-timestamps)))))
 
-(api.macros/defendpoint :post "/"
+#_(api.macros/defendpoint :post "/"
   "Create a new transform."
   [_route-params
    _query-params
@@ -109,18 +110,19 @@
 (api.macros/defendpoint :get "/:id"
   "Get a specific transform."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ms/NonBlankString]]]
+  (prn "GET_TRANSFORM" id)
   (log/info "get transform" id)
   (api/check-superuser)
-  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
+  (let [{:keys [target] :as transform} (api/check-404 (library/select :model/Transform id))
         database-id (source-database-id transform)
         target-table (transforms.util/target-table database-id target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids)
+        (t2/hydrate :last_run)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table))))
 
-(api.macros/defendpoint :get "/:id/dependencies"
+#_(api.macros/defendpoint :get "/:id/dependencies"
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
@@ -152,7 +154,7 @@
                                        :limit  (request/limit)))
       (update :data #(map transforms.util/localize-run-timestamps %))))
 
-(api.macros/defendpoint :put "/:id"
+#_(api.macros/defendpoint :put "/:id"
     "Update a transform."
     [{:keys [id]} :- [:map
                       [:id ms/PositiveInt]]
@@ -217,10 +219,10 @@
 (api.macros/defendpoint :post "/:id/run"
   "Run a transform."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ms/NonBlankString]]]
   (log/info "run transform" id)
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+  (let [transform (api/check-404 (library/select :model/Transform id))
         start-promise (promise)]
     (u.jvm/in-virtual-thread*
      (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
