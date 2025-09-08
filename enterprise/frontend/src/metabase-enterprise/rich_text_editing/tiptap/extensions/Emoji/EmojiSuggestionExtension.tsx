@@ -125,6 +125,15 @@ function renderEmojiPicker() {
         return;
       }
 
+      // Close Emoji popup on Esc
+      if (e.key === "Escape") {
+        document.removeEventListener("keydown", handlers.get(popup));
+        handlers.delete(popup);
+        popup.remove();
+        component.destroy();
+        return true;
+      }
+
       // When user presses Tab we focus EmojiPicker's hidden input component
       // to allow to pick emoji with keyboard.
       if (e.key !== "Tab" || e.shiftKey) {
@@ -178,6 +187,7 @@ function renderEmojiPicker() {
     },
 
     onKeyDown: (props: SuggestionKeyDownProps) => {
+      // Prevent default behavior of Esc key to close popup, but keep focus inside the input.
       if (props.event.key === "Escape") {
         props.event.stopImmediatePropagation();
         return true;
