@@ -10,7 +10,10 @@ const DEFAULT_VIZ_SETTINGS: VisualizationSettings = {
   "table.pivot": false,
 };
 
-export function useQueryState(initialQuery: DatasetQuery) {
+export function useQueryState(
+  initialQuery: DatasetQuery,
+  proposedQuery?: DatasetQuery,
+) {
   const [query, setQuery] = useState(initialQuery);
   const metadata = useSelector(getMetadata);
 
@@ -24,6 +27,14 @@ export function useQueryState(initialQuery: DatasetQuery) {
     [query, metadata],
   );
 
+  const proposedQuestion = useMemo(
+    () =>
+      proposedQuery
+        ? Question.create({ dataset_query: proposedQuery, metadata })
+        : undefined,
+    [proposedQuery, metadata],
+  );
+
   const isQueryDirty = useMemo(
     () => !Lib.areLegacyQueriesEqual(query, initialQuery),
     [query, initialQuery],
@@ -33,5 +44,5 @@ export function useQueryState(initialQuery: DatasetQuery) {
     setQuery(newQuestion.datasetQuery());
   };
 
-  return { question, isQueryDirty, setQuestion };
+  return { question, proposedQuestion, isQueryDirty, setQuestion };
 }

@@ -30,20 +30,25 @@ import {
 
 type QueryEditorProps = {
   initialQuery: DatasetQuery;
+  proposedQuery?: DatasetQuery;
   isNew?: boolean;
   isSaving?: boolean;
   onSave: (newQuery: DatasetQuery) => void;
   onCancel: () => void;
+  clearProposed?: () => void;
 };
 
 export function QueryEditor({
   initialQuery,
+  proposedQuery,
   isNew = true,
   isSaving = false,
   onSave,
   onCancel,
+  clearProposed,
 }: QueryEditorProps) {
-  const { question, isQueryDirty, setQuestion } = useQueryState(initialQuery);
+  const { question, proposedQuestion, isQueryDirty, setQuestion } =
+    useQueryState(initialQuery, proposedQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -141,6 +146,7 @@ export function QueryEditor({
         <Stack flex="2 1 100%" pos="relative">
           <EditorBody
             question={question}
+            proposedQuestion={proposedQuestion}
             isNative={isNative}
             isRunnable={isRunnable}
             isRunning={isRunning}
@@ -150,6 +156,7 @@ export function QueryEditor({
             onChange={handleChange}
             onRunQuery={runQuery}
             onCancelQuery={cancelQuery}
+            clearProposed={clearProposed}
             databases={databases?.data ?? []}
             onToggleDataReference={handleToggleDataReference}
             onToggleSnippetSidebar={handleToggleSnippetSidebar}

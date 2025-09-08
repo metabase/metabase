@@ -66,6 +66,12 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
     dispatch(push(getTransformListUrl()));
   };
 
+  // TODO: move into redux state
+  const [proposedQuery, setProposedQuery] = useState<DatasetQuery | undefined>(
+    () => getProposedQuery(initialQuery),
+  );
+  const clearProposed = () => setProposedQuery(undefined);
+
   return (
     <>
       <QueryEditor
@@ -73,6 +79,8 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
         isNew
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
+        proposedQuery={proposedQuery}
+        clearProposed={clearProposed}
       />
       {isModalOpened && (
         <CreateTransformModal
@@ -102,4 +110,18 @@ function getInitialQuery(
   return card != null
     ? card.dataset_query
     : Question.create({ type }).datasetQuery();
+}
+
+// TODO: factor in metabot state
+function getProposedQuery(initialQuery: DatasetQuery | undefined) {
+  return Question.create({
+    type: "native",
+    dataset_query: {
+      database: initialQuery?.database ?? null,
+      type: "native",
+      native: {
+        query: "SELECT * FROM ORDERS;",
+      },
+    },
+  }).datasetQuery();
 }
