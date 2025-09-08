@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
 import { trackSchemaEvent } from "metabase/lib/analytics";
@@ -33,6 +33,10 @@ export function useSdkIframeEmbedEventBus({
     null,
   );
 
+  const sendMessage = useCallback((message: SdkIframeEmbedTagMessage) => {
+    window.parent.postMessage(message, "*");
+  }, []);
+
   useEffect(() => {
     const messageHandler: Handler = (event) => {
       if (!isWithinIframe() || !event.data) {
@@ -60,7 +64,7 @@ export function useSdkIframeEmbedEventBus({
     return () => {
       window.removeEventListener("message", messageHandler);
     };
-  }, [onSettingsChanged]);
+  }, [onSettingsChanged, sendMessage]);
 
   useEffect(() => {
     if (embedSettings?.instanceUrl && usageAnalytics) {

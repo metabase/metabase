@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
+  ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP,
   type AllowedEmbedSettingKey,
 } from "metabase-enterprise/embedding_iframe_sdk/constants";
 import type {
@@ -10,6 +11,7 @@ import type {
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import { getVisibleParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/utils/get-visible-parameters";
 
 import type {
   SdkIframeDashboardEmbedSettings,
@@ -26,10 +28,12 @@ export function getEmbedSnippet({
   settings,
   instanceUrl,
   experience,
+  staticEmbeddingSignedToken,
 }: {
   settings: SdkIframeEmbedSetupSettings;
   instanceUrl: string;
   experience: SdkIframeEmbedSetupExperience;
+  staticEmbeddingSignedToken: string | null;
 }): string {
   // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
   return `<script defer src="${instanceUrl}/app/embed.js"></script>
@@ -51,16 +55,21 @@ function defineMetabaseConfig(config) {
 ${getEmbedCustomElementSnippet({
   settings,
   experience,
+  staticEmbeddingSignedToken,
 })}`;
 }
 
 export function getEmbedCustomElementSnippet({
   settings,
   experience,
+  staticEmbeddingSignedToken,
 }: {
   settings: SdkIframeEmbedSetupSettings;
   experience: SdkIframeEmbedSetupExperience;
+  staticEmbeddingSignedToken: string | null;
 }): string {
+  const isStaticEmbedding = !!settings.isStatic;
+
   const elementName = match(experience)
     .with("dashboard", () => "metabase-dashboard")
     .with("chart", () => "metabase-question")
@@ -75,6 +84,13 @@ export function getEmbedCustomElementSnippet({
 
       return {
         ...settings,
+        questionId: !settings.isStatic
+          ? settings.questionId
+          : staticEmbeddingSignedToken,
+        initialSqlParameters: getVisibleParameters(
+          questionSettings.initialSqlParameters,
+          questionSettings.lockedParameters,
+        ),
         hiddenParameters: questionSettings.hiddenParameters?.length
           ? questionSettings.hiddenParameters
           : undefined,
@@ -94,6 +110,13 @@ export function getEmbedCustomElementSnippet({
 
       return {
         ...settings,
+        dashboardId: !settings.isStatic
+          ? settings.dashboardId
+          : staticEmbeddingSignedToken,
+        initialParameters: getVisibleParameters(
+          dashboardSettings.initialParameters,
+          dashboardSettings.lockedParameters,
+        ),
         hiddenParameters: dashboardSettings.hiddenParameters?.length
           ? dashboardSettings.hiddenParameters
           : undefined,
@@ -103,10 +126,19 @@ export function getEmbedCustomElementSnippet({
 
   const attributes = transformEmbedSettingsToAttributes(
     settingsWithOverrides,
-    ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
+    isStaticEmbedding
+      ? ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP[experience]
+      : ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 
-  return `<${elementName}${attributes ? ` ${attributes}` : ""}></${elementName}>`;
+  const customElementSnippetParts = [
+    staticEmbeddingSignedToken
+      ? `<!--\nTHIS IS THE EXAMPLE!\nNEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!\n\nFetch the JWT token from your backend and programmatically pass it to the '${elementName}'.\n-->`
+      : "",
+    `<${elementName}${attributes ? ` ${attributes}` : ""}></${elementName}>`,
+  ].filter(Boolean);
+
+  return customElementSnippetParts.join("\n");
 }
 
 // Convert camelCase keys to lower-dash-case for web components
@@ -156,7 +188,14 @@ export function getMetabaseConfigSnippet({
   settings: Partial<SdkIframeEmbedSetupSettings>;
   instanceUrl: string;
 }): string {
-  const config = _.pick(settings, ALLOWED_EMBED_SETTING_KEYS_MAP.base);
+  const isStaticEmbedding = !!settings.isStatic;
+
+  const config = _.pick(
+    settings,
+    isStaticEmbedding
+      ? ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP.base
+      : ALLOWED_EMBED_SETTING_KEYS_MAP.base,
+  );
 
   const cleanedConfig = {
     ..._.omit(config, ["useExistingUserSession"]),

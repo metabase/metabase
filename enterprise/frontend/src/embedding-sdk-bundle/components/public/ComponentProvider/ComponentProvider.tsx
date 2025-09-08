@@ -8,6 +8,7 @@ import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
   setEventHandlers,
+  setIsStaticEmbedding,
   setLoaderComponent,
   setPlugins,
 } from "embedding-sdk-bundle/store/reducer";
@@ -32,6 +33,7 @@ type ComponentProviderInternalProps = ComponentProviderProps & {
 
 export const ComponentProviderInternal = ({
   children,
+  isStatic,
   authConfig,
   pluginsConfig,
   eventHandlers,
@@ -48,7 +50,11 @@ export const ComponentProviderInternal = ({
   // This call in the ComponentProvider is still needed for:
   // - Storybook stories, where we don't have the MetabaseProvider
   // - Unit tests
-  useInitDataInternal({ reduxStore, authConfig });
+  useInitDataInternal({ reduxStore, isStatic, authConfig });
+
+  useEffect(() => {
+    reduxStore.dispatch(setIsStaticEmbedding(isStatic || false));
+  }, [reduxStore, isStatic]);
 
   useEffect(() => {
     if (fontFamily) {

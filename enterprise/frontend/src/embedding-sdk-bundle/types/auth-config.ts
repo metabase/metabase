@@ -53,10 +53,20 @@ export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
 /**
  * @category MetabaseProvider
  */
+export type MetabaseStaticAuthConfig = BaseMetabaseAuthConfig & {
+  apiKey?: never;
+  preferredAuthMethod?: never;
+  fetchRequestToken?: never;
+};
+
+/**
+ * @category MetabaseProvider
+ */
 export type MetabaseAuthConfig =
   | MetabaseAuthConfigWithApiKey
   | MetabaseAuthConfigWithJwt
-  | MetabaseAuthConfigWithSaml;
+  | MetabaseAuthConfigWithSaml
+  | MetabaseStaticAuthConfig;
 
 export type MetabaseAuthMethod = Exclude<
   MetabaseAuthConfig["preferredAuthMethod"],

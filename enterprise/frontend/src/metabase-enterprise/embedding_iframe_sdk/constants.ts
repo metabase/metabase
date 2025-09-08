@@ -25,6 +25,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "preferredAuthMethod",
     "fetchRequestToken",
     "useExistingUserSession",
+    "isStatic",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
@@ -63,6 +64,32 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof BrowserEmbedOptions)[],
   metabot: ["layout"] satisfies (keyof MetabotEmbedOptions)[],
 } as const;
+export const ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP = {
+  base: [
+    "apiKey",
+    "instanceUrl",
+    "theme",
+    "locale",
+    "isStatic",
+  ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
+  dashboard: [
+    "dashboardId",
+    "withTitle",
+    "withDownloads",
+    "initialParameters",
+    "hiddenParameters",
+  ] satisfies (keyof DashboardEmbedOptions)[],
+  chart: [
+    "questionId",
+    "withTitle",
+    "withDownloads",
+    "entityTypes",
+    "initialSqlParameters",
+    "hiddenParameters",
+  ] satisfies (keyof QuestionEmbedOptions)[],
+  exploration: [] satisfies (keyof ExplorationEmbedOptions)[],
+  browser: [] satisfies (keyof BrowserEmbedOptions)[],
+} as const;
 
 // This file is used by embed.js, so we shouldn't import external dependencies.
 const uniq = <T>(list: T[]): T[] => Array.from(new Set(list));
@@ -84,6 +111,7 @@ export const DISABLE_UPDATE_FOR_KEYS = [
   "instanceUrl",
   "useExistingUserSession",
   "fetchRequestToken",
+  "isStatic",
 ] as const satisfies AllowedEmbedSettingKey[];
 
 export const METABASE_CONFIG_IS_PROXY_FIELD_NAME = "__isProxy";
