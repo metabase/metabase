@@ -316,6 +316,88 @@ H.describeWithSnowplowEE("document comments", () => {
         });
     });
 
+    it("supports basic formatting with keyboard", () => {
+      startNewCommentIn1ParagraphDocument();
+
+      cy.realType("bold italic strike code");
+
+      selectCharactersLeft("code".length);
+      cy.realPress([META_KEY, "E"]);
+
+      cy.realPress("ArrowLeft");
+      cy.realPress("ArrowLeft");
+      selectCharactersLeft("strike".length);
+      cy.realPress(["Shift", META_KEY, "S"]);
+
+      cy.realPress("ArrowLeft");
+      cy.realPress("ArrowLeft");
+      selectCharactersLeft("italic".length);
+      cy.realPress([META_KEY, "I"]);
+
+      cy.realPress("ArrowLeft");
+      cy.realPress("ArrowLeft");
+      selectCharactersLeft("bold".length);
+      cy.realPress([META_KEY, "B"]);
+
+      cy.findByRole("button", { name: "Send" }).click();
+
+      Comments.getCommentInputs()
+        .first()
+        .within(() => {
+          cy.get("strong").should("have.text", "bold");
+          cy.get("em").should("have.text", "italic");
+          cy.get("s").should("have.text", "strike");
+          cy.get("code").should("have.text", "code");
+        });
+    });
+
+    it("supports basic formatting with formatting menu", () => {
+      startNewCommentIn1ParagraphDocument();
+
+      cy.realType("bold italic strike code");
+
+      selectCharactersLeft("code".length);
+      H.documentFormattingMenu()
+        .should("be.visible")
+        .findByRole("button", { name: /format_code/ })
+        .click();
+
+      cy.realPress("ArrowLeft");
+      cy.realPress("ArrowLeft");
+      selectCharactersLeft("strike".length);
+      H.documentFormattingMenu()
+        .should("be.visible")
+        .findByRole("button", { name: /text_strike/ })
+        .click();
+
+      cy.realPress("ArrowLeft");
+      cy.realPress("ArrowLeft");
+      selectCharactersLeft("italic".length);
+      H.documentFormattingMenu()
+        .should("be.visible")
+        .findByRole("button", { name: /text_italic/ })
+        .click();
+
+      cy.realPress("ArrowLeft");
+      cy.realPress("ArrowLeft");
+      selectCharactersLeft("bold".length);
+      H.documentFormattingMenu()
+        .should("be.visible")
+        .findByRole("button", { name: /text_bold/ })
+        .click();
+
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.getCommentInputs()
+        .first()
+        .within(() => {
+          cy.get("strong").should("have.text", "bold");
+          cy.get("em").should("have.text", "italic");
+          cy.get("s").should("have.text", "strike");
+          cy.get("code").should("have.text", "code");
+        });
+    });
+
     it("supports mentions and can mention yourself", () => {
       startNewCommentIn1ParagraphDocument();
 
@@ -424,6 +506,12 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 });
+
+function selectCharactersLeft(count: number) {
+  for (let i = 0; i < count; ++i) {
+    cy.realPress(["Shift", "ArrowLeft"]);
+  }
+}
 
 function startNewCommentIn1ParagraphDocument() {
   create1AndVisitParagraphDocument();
