@@ -1,5 +1,7 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { DocumentId } from "metabase-types/api";
+import { deleteComment } from "e2e/support/helpers";
+import { uuid } from "metabase/lib/uuid";
+import type { CommentId, DocumentId } from "metabase-types/api";
 
 const { H } = cy;
 const { Comments } = H;
@@ -299,6 +301,142 @@ H.describeWithSnowplowEE("document comments", () => {
     H.modal().should("not.exist");
   });
 
+  it("shows comment button with unresolved, undeleted comments count", () => {
+    create1ParagraphDocument();
+
+    cy.get<DocumentId>("@documentId").then((documentId) => {
+      cy.log("3-comments thread with 1st comment deleted");
+      createComment("Test 1").then(({ body: rootComment }) => {
+        createComment("Test 2", rootComment.id);
+        createComment("Test 3", rootComment.id);
+        deleteComment(rootComment.id);
+      });
+
+      cy.log("3-comments thread with 2nd comment deleted");
+      createComment("Test A").then(({ body: rootComment }) => {
+        createComment("Test B", rootComment.id).then(({ body: comment }) => {
+          deleteComment(comment.id);
+        });
+        createComment("Test C", rootComment.id);
+      });
+
+      cy.log("resolved 3-comments thread with 1st comment deleted");
+      createComment("Test I").then(({ body: rootComment }) => {
+        createComment("Test II", rootComment.id);
+        createComment("Test III", rootComment.id);
+        deleteComment(rootComment.id);
+        H.updateComment({ id: rootComment.id, is_resolved: true });
+      });
+
+      cy.log("3-comments thread with all comments deleted");
+      createComment("Test X").then(({ body: rootComment }) => {
+        createComment("Test Y", rootComment.id).then(({ body: comment }) => {
+          deleteComment(comment.id);
+        });
+        createComment("Test Z", rootComment.id).then(({ body: comment }) => {
+          deleteComment(comment.id);
+        });
+        deleteComment(rootComment.id);
+      });
+
+      cy.log("resolved 3-comments thread with all comments deleted");
+      createComment("Test D").then(({ body: rootComment }) => {
+        createComment("Test E", rootComment.id).then(({ body: comment }) => {
+          deleteComment(comment.id);
+        });
+        createComment("Test F", rootComment.id).then(({ body: comment }) => {
+          deleteComment(comment.id);
+        });
+        H.updateComment({ id: rootComment.id, is_resolved: true });
+        deleteComment(rootComment.id);
+      });
+
+      function createComment(
+        text: string,
+        parent_comment_id: CommentId | null = null,
+      ) {
+        return H.createComment({
+          target_type: "document",
+          target_id: documentId,
+          child_target_id: PARAGRAPH_ID,
+          parent_comment_id,
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                attrs: { _id: uuid() },
+                content: [{ type: "text", text }],
+              },
+            ],
+          },
+        });
+      }
+    });
+
+    H.visitDocument("@documentId");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .should("be.visible")
+      .and("have.value", "Lorem ipsum");
+
+    cy.get<DocumentId>("@documentId").then((targetId) => {
+      Comments.getDocumentNodeButton({
+        targetId,
+        childTargetId: PARAGRAPH_ID,
+        hasComments: true,
+      })
+        .should("be.visible")
+        .and("have.text", "4")
+        .click();
+    });
+
+    H.modal().within(() => {
+      cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+
+      cy.findByText("Test 1").should("not.exist");
+      cy.findByText("Test 2").should("be.visible");
+      cy.findByText("Test 3").should("be.visible");
+
+      cy.findByText("Test A").should("be.visible");
+      cy.findByText("Test B").should("not.exist");
+      cy.findByText("Test C").should("be.visible");
+
+      cy.findByText("Test I").should("not.exist");
+      cy.findByText("Test II").should("not.exist");
+      cy.findByText("Test III").should("not.exist");
+
+      cy.findByText("Test X").should("not.exist");
+      cy.findByText("Test Y").should("not.exist");
+      cy.findByText("Test Z").should("not.exist");
+
+      cy.findByText("Test D").should("not.exist");
+      cy.findByText("Test E").should("not.exist");
+      cy.findByText("Test F").should("not.exist");
+
+      cy.findByRole("tab", { name: "Resolved (2)" }).click();
+
+      cy.findByText("Test 1").should("not.exist");
+      cy.findByText("Test 2").should("not.exist");
+      cy.findByText("Test 3").should("not.exist");
+
+      cy.findByText("Test A").should("not.exist");
+      cy.findByText("Test B").should("not.exist");
+      cy.findByText("Test C").should("not.exist");
+
+      cy.findByText("Test I").should("not.exist");
+      cy.findByText("Test II").should("be.visible");
+      cy.findByText("Test III").should("be.visible");
+
+      cy.findByText("Test X").should("not.exist");
+      cy.findByText("Test Y").should("not.exist");
+      cy.findByText("Test Z").should("not.exist");
+
+      cy.findByText("Test D").should("not.exist");
+      cy.findByText("Test E").should("not.exist");
+      cy.findByText("Test F").should("not.exist");
+    });
+  });
+
   describe("comment editor", () => {
     it("supports basic formatting with markdown", () => {
       startNewCommentIn1ParagraphDocument();
@@ -515,6 +653,7 @@ function selectCharactersLeft(count: number) {
 
 function startNewCommentIn1ParagraphDocument() {
   createAndVisit1ParagraphDocument();
+
   getParagraph().realHover();
 
   cy.get<DocumentId>("@documentId").then((targetId) => {
