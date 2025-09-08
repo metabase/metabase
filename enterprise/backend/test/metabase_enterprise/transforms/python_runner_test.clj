@@ -350,7 +350,7 @@
                 (is (true? (t2/exists? :model/Table :name (:name target))))))))))))
 
 (deftest transform-type-roundtrip-test
-  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver}
+  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :clickhouse}
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)
