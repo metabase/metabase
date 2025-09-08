@@ -1146,8 +1146,8 @@
                                      :type     :native
                                      :native   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}})))))]
       (testing "check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific"
-        (is  (= "US/Pacific"
-                (get-timezone-with-report-timezone "US/Pacific"))))
+        (is  (= "America/Los_Angeles"
+                (get-timezone-with-report-timezone "America/Los_Angeles"))))
       (testing "check that we can set it to something else: America/Chicago"
         (is (= "America/Chicago"
                (get-timezone-with-report-timezone "America/Chicago"))))
