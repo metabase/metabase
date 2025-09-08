@@ -186,8 +186,17 @@ jobs:
             const fs = require('fs');
             const oldTimingsPath = "./e2e/support/timings.json";
             const newTimingsPath = "newTimes.json";
-            if (!fs.existsSync(newTimingsPath) || !fs.existsSync(oldTimingsPath)) {
-              throw new Error("new timings not found after cypress run");
+            
+            console.log(`Checking for files:`);
+            console.log(`- ${oldTimingsPath}: ${fs.existsSync(oldTimingsPath)}`);
+            console.log(`- ${newTimingsPath}: ${fs.existsSync(newTimingsPath)}`);
+            
+            if (!fs.existsSync(newTimingsPath)) {
+              throw new Error(`newTimes.json not found - cypress-split may not have generated it`);
+            }
+            
+            if (!fs.existsSync(oldTimingsPath)) {
+              throw new Error(`Original timings file ${oldTimingsPath} not found`);
             }
 
             const oldTimings = fs.existsSync(oldTimingsPath)
