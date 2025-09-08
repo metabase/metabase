@@ -678,6 +678,117 @@ H.describeWithSnowplowEE("document comments", () => {
       });
     });
   });
+
+  describe("resolve / unresolve", () => {
+    it("should resolve / unresolve basic discussion", () => {
+      startNewCommentIn1ParagraphDocument();
+
+      const commentText = "Test resolving";
+
+      cy.realType(commentText);
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.resolveCommentByText(commentText);
+
+      cy.findByTestId("discussion").should("not.exist");
+      cy.findByTestId("comments-resolved-tab").should("be.visible");
+      cy.findByTestId("comments-resolved-tab")
+        .should("contain.text", "Resolved (1)")
+        .click();
+
+      Comments.reopenCommentByText(commentText);
+
+      cy.findByTestId("comments-resolved-tab").should("not.exist");
+    });
+
+    it("only first comment in a thread can be resolved", () => {
+      startNewCommentIn1ParagraphDocument();
+
+      cy.realType("Main comment");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.getCommentInputs().should("have.length", 2).last().click();
+      cy.realType("Reply 1");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.getCommentByText("Reply 1")
+        .realHover()
+        .within(() => {
+          cy.findByTestId("comment-action-panel").should("be.visible");
+          cy.findByTestId("comment-action-panel-resolve").should("not.exist");
+        });
+
+      Comments.getCommentByText("Main comment")
+        .realHover()
+        .within(() => {
+          cy.findByTestId("comment-action-panel").should("be.visible");
+          cy.findByTestId("comment-action-panel-resolve").should("be.visible");
+        });
+    });
+
+    it("does not show resolved tab when there are no resolved comments", () => {
+      startNewCommentIn1ParagraphDocument();
+
+      cy.realType("Main comment");
+      cy.realPress([META_KEY, "Enter"]);
+
+      cy.findByTestId("comments-resolved-tab").should("not.exist");
+    });
+
+    it("resolved threads show all comments in them", () => {
+      startNewCommentIn1ParagraphDocument();
+
+      cy.realType("Main comment");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.getCommentInputs().should("have.length", 2).last().click();
+      cy.realType("Reply 1");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.resolveCommentByText("Main comment");
+      cy.findByTestId("comments-resolved-tab").should("be.visible").click();
+
+      Comments.getCommentByText("Main comment").should("be.visible");
+      Comments.getCommentByText("Reply 1").should("be.visible");
+    });
+
+    it("should be possible to resolve a thread when the first comment is deleted", () => {
+      startNewCommentIn1ParagraphDocument();
+
+      cy.realType("Main comment");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.getCommentInputs().should("have.length", 2).last().click();
+      cy.realType("Reply 1");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.getCommentByText("Main comment")
+        .realHover()
+        .within(() => {
+          cy.findByTestId("comment-action-panel").should("be.visible");
+          cy.findByTestId("comment-action-panel-more-actions")
+            .should("be.visible")
+            .click();
+        });
+
+      cy.findByTestId("comment-action-panel-delete")
+        .should("be.visible")
+        .click();
+
+      cy.findByTestId("discussion-comment-deleted")
+        .should("be.visible")
+        .realHover()
+        .within(() => {
+          cy.findByTestId("comment-action-panel").should("be.visible");
+          cy.findByTestId("comment-action-panel-resolve")
+            .should("be.visible")
+            .click();
+        });
+
+      cy.findByTestId("comments-resolved-tab").should("be.visible");
+      cy.findByTestId("discussion-comment-deleted").should("not.exist");
+    });
+  });
 });
 
 function selectCharactersLeft(count: number) {

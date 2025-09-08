@@ -61,6 +61,7 @@ export function DiscussionActionPanel({
         // [S.visibleOnDiscussionHover]: variant === "discussion",
         [S.visible]: popoverOpened || emojiPickerOpened,
       })}
+      data-testid="comment-action-panel"
       p="0.125rem"
     >
       <Group gap="0">
@@ -89,6 +90,11 @@ export function DiscussionActionPanel({
         {canResolve && (
           <Tooltip label={comment.is_resolved ? t`Re-open` : t`Resolve`}>
             <ActionIcon
+              data-testid={
+                comment.is_resolved
+                  ? "comment-action-panel-reopen"
+                  : "comment-action-panel-resolve"
+              }
               aria-label={comment.is_resolved ? t`Re-open` : t`Resolve`}
               size={ACTION_ICON_SIZE}
               onClick={() =>
@@ -110,6 +116,7 @@ export function DiscussionActionPanel({
             <Popover.Target>
               <Tooltip label={t`More actions`} disabled={popoverOpened}>
                 <ActionIcon
+                  data-testid="comment-action-panel-more-actions"
                   aria-label={t`More actions`}
                   size={ACTION_ICON_SIZE}
                   onClick={() => setPopoverOpened((opened) => !opened)}
@@ -148,6 +155,7 @@ export function DiscussionActionPanel({
                 {onDelete && (
                   <Menu.Item
                     leftSection={<Icon name="trash" />}
+                    data-testid="comment-action-panel-delete"
                     onClick={() => {
                       onDelete?.(comment);
                       setPopoverOpened(false);
