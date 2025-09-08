@@ -935,6 +935,113 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.findByTestId("discussion-comment").should("not.exist");
     });
   });
+
+  describe("links", () => {
+    beforeEach(() => {
+      H.grantClipboardPermissions();
+
+      createLoremIpsumDocument();
+
+      cy.get<DocumentId>("@documentId").then((documentId) => {
+        createComment(documentId, HEADING_1_ID, "Foo").then(
+          ({ body: comment }) => {
+            cy.wrap(comment.id).as("headingCommentId");
+          },
+        );
+
+        createComment(documentId, HEADING_1_ID, "Bar");
+        createComment(documentId, PARAGRAPH_ID, "Paragraph Foo");
+      });
+    });
+
+    it("copies and opens a link to a comment", () => {
+      H.visitDocument("@documentId");
+
+      cy.get<number>("@documentId").then((documentId) => {
+        Comments.getDocumentNodeButton({
+          targetId: documentId,
+          childTargetId: HEADING_1_ID,
+          hasComments: true,
+        }).click();
+      });
+
+      Comments.getCommentByText("Foo").realHover();
+      Comments.getCommentByText("Foo").findByLabelText("More actions").click();
+
+      H.popover().findByText("Copy link").click();
+      H.undoToast().findByText("Copied link").should("be.visible");
+
+      H.readClipboard().then((link) => cy.visit(link));
+
+      cy.get("@documentId").then((documentId) => {
+        cy.get("@headingCommentId").then((commentId) => {
+          cy.url().then((url) => {
+            expect(url).to.match(
+              new RegExp(
+                `/document/${documentId}/comments/${HEADING_1_ID}#comment-${commentId}$`,
+              ),
+            );
+          });
+        });
+      });
+
+      Comments.getCommentByText("Foo").should(
+        "have.attr",
+        "aria-current",
+        "location",
+      );
+    });
+
+    it("opens a comment link in its thread vs. 'All comments'", () => {
+      cy.get<number>("@headingCommentId").then((commentId) => {
+        H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);
+      });
+
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "All comments" }).should("not.exist");
+        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+        cy.findAllByTestId("discussion-comment").should("have.length", 2);
+        Comments.getCommentByText("Foo").should(
+          "have.attr",
+          "aria-current",
+          "location",
+        );
+      });
+    });
+
+    it("opens a link to a resolved comment correctly", () => {
+      cy.get<number>("@headingCommentId").then((commentId) => {
+        cy.request("PUT", `/api/ee/comment/${commentId}`, {
+          is_resolved: true,
+        });
+        H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);
+      });
+
+      H.modal().within(() => {
+        cy.findByTestId("comments-resolved-tab").should("be.visible");
+        cy.findAllByTestId("discussion-comment").should("have.length", 1);
+        Comments.getCommentByText("Foo").should(
+          "have.attr",
+          "aria-current",
+          "location",
+        );
+      });
+    });
+
+    it("changes between open/resolved tabs when resolving/unresolving a linked comment", () => {
+      cy.get<number>("@headingCommentId").then((commentId) => {
+        H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);
+      });
+
+      H.modal().findByTestId("comments-resolved-tab").should("not.exist");
+      Comments.resolveCommentByText("Foo");
+
+      H.modal().findByTestId("comments-resolved-tab").should("be.visible");
+
+      Comments.reopenCommentByText("Foo");
+      H.modal().findByTestId("comments-resolved-tab").should("not.exist");
+    });
+  });
 });
 
 function selectCharactersLeft(count: number) {

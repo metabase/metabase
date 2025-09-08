@@ -71,6 +71,7 @@ export function DiscussionComment({
         id={getCommentNodeId(comment)}
         mt="1.25rem"
         bullet={<Icon name="trash" />}
+        aria-current={isTarget ? "location" : undefined}
         data-testid="discussion-comment-deleted"
       >
         <Text size="md" c="text-disabled" fs="italic">
@@ -93,6 +94,7 @@ export function DiscussionComment({
         [S.target]: isTarget,
       })}
       bullet={<Avatar name={comment.creator?.common_name} />}
+      aria-current={isTarget ? "location" : undefined}
       data-testid="discussion-comment"
       id={getCommentNodeId(comment)}
     >
