@@ -15864,7 +15864,35 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/ee/transform-job/",
         "description" : "Get all transform jobs.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "last_run_start_time",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "next_run_start_time",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "transform_tag_ids",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
