@@ -23,6 +23,7 @@
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.search-data-sources :as metabot-v3.tools.search-data-sources]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.response :as api.response]
@@ -1052,6 +1053,26 @@
         ;; request relying on metabot-id are going to fail
         (handler request respond raise)
         (respond api.response/response-unauthentic)))))
+
+(mr/def ::get-transforms-result
+  [:or
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output :any]]
+   [:map [:output :string]]])
+
+(api.macros/defendpoint :post "/get-transforms" :- [:merge ::get-transforms-result ::tool-request]
+  "Get a list of transforms available in the system."
+  [_route-params
+   _query-params
+   {:keys [conversation_id] :as body} :- ::tool-request]
+  (metabot-v3.context/log (assoc body :api :get-transforms) :llm.log/llm->be)
+  (let [transforms (-> (t2/select :model/Transform)
+                       (t2/hydrate :last_run :transform_tag_ids)
+                       (->> (map #(update % :last_run transforms.util/localize-run-timestamps))))
+        result {:structured_output transforms
+                :conversation_id conversation_id}]
+    (doto result
+      (metabot-v3.context/log :llm.log/be->llm))))
 
 (def ^{:arglists '([handler])} +tool-session
   "Wrap `routes` so they may only be accessed with proper authentication credentials."

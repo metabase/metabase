@@ -1793,7 +1793,8 @@
            util
            warehouse-schema
            warehouses
-           enterprise/documents}}
+           enterprise/documents
+           enterprise/transforms}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -1949,7 +1950,8 @@
   {:team "Querying"
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
-           metabase-enterprise.transforms.init}
+           metabase-enterprise.transforms.init
+           metabase-enterprise.transforms.util}
    :uses #{api
            app-db
            config
