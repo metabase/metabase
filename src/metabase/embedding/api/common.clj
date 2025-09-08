@@ -175,6 +175,16 @@
                        (not-empty v)
                        v)))))
 
+(defn- remove-surrounding-quotes
+  "Remove surrounding double quotes from a string value. If no quotes are found, return the original value."
+  [value]
+  (if (and (string? value)
+           (>= (count value) 2)
+           (str/starts-with? value "\"")
+           (str/ends-with? value "\""))
+    (subs value 1 (dec (count value)))
+    value))
+
 (mu/defn- param-values-merged-params :- [:map-of ms/NonBlankString :any]
   [id->slug slug->id embedding-params token-params id-query-params]
   (let [slug-query-params  (into {}
@@ -187,9 +197,10 @@
                                                          :id-query-params id-query-params})))
                                     v]))
         slug-query-params  (normalize-query-params slug-query-params)
-        merged-slug->value (validate-and-merge-params embedding-params token-params slug-query-params)]
-    (into {} (for [[slug value] merged-slug->value
-                   :when        value]
+        merged-slug->value (validate-and-merge-params embedding-params token-params slug-query-params)
+        unquoted-values    (update-vals merged-slug->value remove-surrounding-quotes)]
+    (into {} (for [[slug value] unquoted-values
+                   :when (not (nil? value))]
                [(get slug->id (name slug)) value]))))
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------

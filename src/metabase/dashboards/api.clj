@@ -4,6 +4,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
@@ -1114,19 +1115,30 @@
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------
 
+(defn- remove-surrounding-quotes
+  "Remove surrounding double quotes from a string value. If no quotes are found, return the original value."
+  [value]
+  (if (and (string? value)
+           (>= (count value) 2)
+           (str/starts-with? value "\"")
+           (str/ends-with? value "\""))
+    (subs value 1 (dec (count value)))
+    value))
+
 (api.macros/defendpoint :get "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
-  restrict these values by passing query parameters like `other-parameter=value` e.g.
+ restrict these values by passing query parameters like `other-parameter=value` e.g.
 
-    ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
-    GET /api/dashboard/1/params/abc/values?def=100"
+   ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
+   GET /api/dashboard/1/params/abc/values?def=100"
   [{:keys [id param-key]}      :- [:map
                                    [:id ms/PositiveInt]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
-    ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
+  (let [dashboard                    (hydrate-dashboard-details (api/read-check :model/Dashboard id))
+        unquoted-constraint-params   (update-vals constraint-param-key->value remove-surrounding-quotes)]
+   ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
-      (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))
+      (parameters.dashboard/param-values dashboard param-key unquoted-constraint-params))))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict

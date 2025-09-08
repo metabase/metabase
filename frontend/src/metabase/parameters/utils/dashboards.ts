@@ -319,7 +319,7 @@ export function getFilteringParameterValuesMap(
   const filteringParameterValues = Object.fromEntries(
     parameters
       .filter((p) => filteringParameters.includes(p.id) && p.value != null)
-      .map((p) => [p.id, p.value]),
+      .map((p) => [p.id, '"' + p.value + '"']),
   );
 
   return filteringParameterValues;

@@ -1,6 +1,7 @@
 (ns metabase.public-sharing.api
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
+   [clojure.string :as str]
    [hiccup.core :as hiccup]
    [medley.core :as m]
    [metabase.actions.core :as actions]
@@ -457,6 +458,16 @@
     (request/as-admin
       (queries/card-param-remapped-value card param-key (codec/url-decode value)))))
 
+(defn- remove-surrounding-quotes
+  "Remove surrounding double quotes from a string value. If no quotes are found, return the original value."
+  [value]
+  (if (and (string? value)
+           (>= (count value) 2)
+           (str/starts-with? value "\"")
+           (str/ends-with? value "\""))
+    (subs value 1 (dec (count value)))
+    value))
+
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
   [{:keys [uuid param-key]} :- [:map
@@ -464,10 +475,11 @@
                                 [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
   (lib.metadata.jvm/with-metadata-provider-cache
-    (let [dashboard (dashboard-with-uuid uuid)]
+    (let [dashboard                    (dashboard-with-uuid uuid)
+          unquoted-constraint-params   (update-vals constraint-param-key->value remove-surrounding-quotes)]
       (request/as-admin
         (binding [qp.perms/*param-values-query* true]
-          (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))))
+          (parameters.dashboard/param-values dashboard param-key unquoted-constraint-params))))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
