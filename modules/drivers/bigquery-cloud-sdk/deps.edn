@@ -16,4 +16,4 @@
   org.apache.arrow/arrow-memory-netty    {:mvn/version "17.0.0"}
   org.apache.arrow/arrow-vector          {:mvn/version "17.0.0"}
   io.netty/netty-common                  {:mvn/version "4.2.4.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.2.4.Final"}}}
+  io.netty/netty-buffer                  {:mvn/version "4.2.5.Final"}}}
