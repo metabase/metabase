@@ -316,7 +316,7 @@ H.describeWithSnowplowEE("document comments", () => {
         });
     });
 
-    it("supports basic formatting with keyboard", () => {
+    it("supports basic formatting with keyboard shortcuts", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("bold italic strike code");
