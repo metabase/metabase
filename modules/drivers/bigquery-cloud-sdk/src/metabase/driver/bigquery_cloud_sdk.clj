@@ -868,12 +868,12 @@
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
-  (let [sql (driver/compile-drop-table table-name)]
+  (let [sql (driver/compile-drop-table driver table-name)]
     (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
 
 (defmethod driver/insert-into! :bigquery-cloud-sdk
   [driver db-id table-name column-names values]
-  (let [sqls (#'driver.sql-jdbc/insert-into!-sqls driver table-name column-names values)]
+  (let [sqls (#'driver.sql-jdbc/insert-into!-sqls driver table-name column-names values true)]
     (driver/execute-raw-queries! driver (t2/select-one :model/Database db-id) sqls)))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
