@@ -56,7 +56,7 @@
   max-width: 250px;
 }
 
-.stepCard:hover {
+.stepCard:not(.doneStepCard):hover {
   border: 1px solid var(--mb-color-focus) !important;
   box-shadow: 0 2px 24px 0 rgba(162, 197, 228, 0.7);
 }
