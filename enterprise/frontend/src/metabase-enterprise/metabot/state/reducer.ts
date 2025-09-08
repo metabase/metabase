@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotHistory } from "metabase-types/api";
+import type { DatasetQuery, MetabotHistory } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -30,6 +30,8 @@ export type MetabotToolCall = {
 
 export type MetabotReactionsState = {
   navigateToPath: string | null;
+  transformQuery: DatasetQuery | null;
+  transformQueryUpdateId: string | null;
 };
 
 export interface MetabotState {
@@ -57,6 +59,8 @@ export const getMetabotInitialState = (): MetabotState => ({
   state: {},
   reactions: {
     navigateToPath: null,
+    transformQuery: null,
+    transformQueryUpdateId: null,
   },
   toolCalls: [],
   experimental: {
@@ -154,6 +158,8 @@ export const metabot = createSlice({
       state.isProcessing = false;
       state.toolCalls = [];
       state.conversationId = uuid();
+      state.reactions.transformQuery = null;
+      state.reactions.transformQueryUpdateId = null;
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -163,6 +169,14 @@ export const metabot = createSlice({
     },
     setNavigateToPath: (state, action: PayloadAction<string>) => {
       state.reactions.navigateToPath = action.payload;
+    },
+    setTransformQuery: (state, action: PayloadAction<DatasetQuery | null>) => {
+      state.reactions.transformQuery = action.payload;
+      state.reactions.transformQueryUpdateId = action.payload ? uuid() : null;
+    },
+    clearTransformQuery: (state) => {
+      state.reactions.transformQuery = null;
+      state.reactions.transformQueryUpdateId = null;
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;

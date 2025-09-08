@@ -44,6 +44,8 @@ export const {
   resetConversationId,
   setIsProcessing,
   setNavigateToPath,
+  setTransformQuery,
+  clearTransformQuery,
   toolCallStart,
   toolCallEnd,
   setProfileOverride,
@@ -227,10 +229,12 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "state" }, (part) => (state = part.value))
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
-
                 if (!isEmbedding) {
                   dispatch(push(part.value) as UnknownAction);
                 }
+              })
+              .with({ type: "transform_query" }, (part) => {
+                dispatch(setTransformQuery(part.value));
               })
               .exhaustive();
           },

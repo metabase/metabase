@@ -35,7 +35,7 @@ export function TransformPageLayout({
   useEffect(() => {
     // Register keyboard shortcut for Shift+M on all transform pages
     return tinykeys(window, {
-      "Shift+m": (e) => {
+      "$mod+b": (e) => {
         e.preventDefault();
         startNewConversation("");
       },

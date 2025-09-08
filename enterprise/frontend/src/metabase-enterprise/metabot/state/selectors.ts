@@ -138,3 +138,13 @@ export const getNavigateToPath = createSelector(
   getMetabotReactionsState,
   (reactionsState) => reactionsState.navigateToPath,
 );
+
+export const getMetabotTransformQuery = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.transformQuery,
+);
+
+export const getMetabotTransformQueryUpdateId = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.transformQueryUpdateId,
+);

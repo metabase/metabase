@@ -41,7 +41,6 @@ export function TransformPage({ params }: TransformPageProps) {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
 
-  // Register the transform context for Metabot - must be called before any returns
   useRegisterTransformMetabotContext(transform);
 
   if (isPolling !== isPollingNeeded(transform)) {

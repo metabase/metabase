@@ -13,6 +13,7 @@ import {
 import type { DatasetQuery, Transform } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
+import { useRegisterTransformMetabotContext } from "../../hooks/use-register-transform-metabot-context";
 import { getTransformUrl } from "../../urls";
 
 type TransformQueryPageParams = {
@@ -52,6 +53,9 @@ export function TransformQueryPageBody({
   const [updateTransform, { isLoading }] = useUpdateTransformMutation();
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+
+  // Register the transform context for Metabot
+  useRegisterTransformMetabotContext(transform);
 
   const handleSave = async (query: DatasetQuery) => {
     const { error } = await updateTransform({
