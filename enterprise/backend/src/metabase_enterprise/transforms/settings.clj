@@ -6,7 +6,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:privatg is-not-prod? (or config/is-dev? config/is-test?))
+(def ^:private is-not-prod? (or config/is-dev? config/is-test?))
 
 (setting/defsetting transform-timeout
   (deferred-tru "The timeout for a transform job, in minutes.")

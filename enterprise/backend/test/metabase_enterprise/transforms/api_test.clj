@@ -360,8 +360,8 @@
                                         :target  (assoc target :database (mt/id))}
                     {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                              original)]
-                (do (test-run transform-id)
-                    (wait-for-table table-name 5000))
+                (test-run transform-id)
+                (wait-for-table table-name 5000)
                 (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
                 (is (= [["Alice" 25] ["Bob" 30]]
                        (transforms.tu/table-rows table-name)))))))))))

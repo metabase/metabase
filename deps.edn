@@ -842,7 +842,6 @@
   ;;    clj -X:dev:ee:ee-dev:driver:test:test/python-transform
   :test/python-transform
   {:exec-args {:only [metabase-enterprise.transforms.api-test
-                      metabase.driver.table-creation-test
                       "enterprise/backend/test/metabase_enterprise/transforms"]}}
 
 ;; test the Query Processor
