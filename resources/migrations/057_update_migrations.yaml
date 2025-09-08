@@ -1097,6 +1097,88 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.MigrateClickHouseDetailsToMultiDB"
 
+  - changeSet:
+      id: v57.2025-09-08T17:50:00
+      author: metamben
+      comment: Drop old dependency table
+      changes:
+        - dropTable:
+            tableName: dependency
+
+  - changeSet:
+      id: v57.2025-09-08T18:00:00
+      author: metamben
+      comment: Create dependency table
+      changes:
+        - createTable:
+            tableName: dependency
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: from_entity_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_id
+                  type: int
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-08T18:10:00
+      author: metamben
+      comment: Unique constraint to prevent duplicate dependencies
+      changes:
+        - addUniqueConstraint:
+            tableName: dependency
+            columnNames: from_entity_type, from_entity_id, to_entity_type, to_entity_id
+            constraintName: idx_unique_dependency
+
+  - changeSet:
+      id: v57.2025-09-08T18:20:00
+      author: metamben
+      comment: Index for finding dependencies FROM a specific entity
+      changes:
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_from
+            columns:
+              - column:
+                  name: from_entity_type
+              - column:
+                  name: from_entity_id
+
+  - changeSet:
+      id: v57.2025-09-08T18:30:00
+      author: metamben
+      comment: Index for finding dependencies TO a specific entity
+      changes:
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_to
+            columns:
+              - column:
+                  name: to_entity_type
+              - column:
+                  name: to_entity_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

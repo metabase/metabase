@@ -1680,6 +1680,15 @@
            warehouse-schema
            warehouses}}
 
+  enterprise/dependencies
+  {:team "Querying"
+   :api  #{metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.init}
+   :uses #{lib
+           lib-be
+           models
+           util}}
+
   enterprise/documents
   {:team "UX West"
    :api  #{metabase-enterprise.documents.api
@@ -1965,13 +1974,6 @@
            sync
            task
            task-history
-           util}}
-
-  enterprise/dependencies
-  {:team "Querying"
-   :api  #{metabase-enterprise.dependencies.core}
-   :uses #{lib
-           lib-be
            util}}
 
   enterprise/upload-management
