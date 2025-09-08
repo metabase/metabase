@@ -1,6 +1,7 @@
 import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import cx from "classnames";
 import dayjs from "dayjs";
 import type { Location } from "history";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
@@ -10,7 +11,6 @@ import { usePrevious, useUnmount } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
 import {
   skipToken,
@@ -310,30 +310,30 @@ export const DocumentPage = ({
 
         const result = await (documentData?.id
           ? updateDocument({ ...newDocumentData, id: documentData.id }).then(
-            (response) => {
+              (response) => {
+                if (response.data) {
+                  const _document = response.data;
+                  trackDocumentUpdated(_document);
+                  scheduleNavigation(() => {
+                    dispatch(push(`/document/${_document.id}`));
+                  });
+                }
+                return response;
+              },
+            )
+          : createDocument({
+              ...newDocumentData,
+              collection_id: collectionId || undefined,
+            }).then((response) => {
               if (response.data) {
                 const _document = response.data;
-                trackDocumentUpdated(_document);
+                trackDocumentCreated(_document);
                 scheduleNavigation(() => {
-                  dispatch(push(`/document/${_document.id}`));
+                  dispatch(replace(`/document/${_document.id}`));
                 });
               }
               return response;
-            },
-          )
-          : createDocument({
-            ...newDocumentData,
-            collection_id: collectionId || undefined,
-          }).then((response) => {
-            if (response.data) {
-              const _document = response.data;
-              trackDocumentCreated(_document);
-              scheduleNavigation(() => {
-                dispatch(replace(`/document/${_document.id}`));
-              });
-            }
-            return response;
-          }));
+            }));
 
         if (result.data) {
           sendToast({
