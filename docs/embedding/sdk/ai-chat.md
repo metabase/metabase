@@ -6,8 +6,6 @@ title: "Embedded analytics SDK - AI chat"
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
-![Metabot question component](../images/metabot-question-component.png)
-
 You can embed an AI chat in your application similar to [Metabot](../embedded-analytics-js.md) in Metabase.
 
 To help embedded Metabot more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.
@@ -16,7 +14,7 @@ If you're embedding the Metabot component in an app, you can specify a different
 
 ## Chat preview
 
-You can check out a [demo of the chat component](https://embedded-analytics-sdk-demo.metabase.com/admin/analytics/new/ask-metabot) on our Shoppy demo site.
+You can check out a [demo of the AI chat component](https://embedded-analytics-sdk-demo.metabase.com/admin/analytics/new/ask-metabot) on our Shoppy demo site.
 
 ## Example
 
