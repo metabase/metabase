@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { P, match } from "ts-pattern";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
@@ -17,6 +17,7 @@ import type { MetabaseAuthConfig } from "embedding-sdk-package";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { createTracker } from "metabase/lib/analytics-untyped";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
+import { setEmbedQuestionEndpoints } from "metabase/services";
 import { Box } from "metabase/ui";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
@@ -43,6 +44,10 @@ export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({
     onSettingsChanged,
   });
+
+  useEffect(() => {
+    setEmbedQuestionEndpoints("abc");
+  }, []);
 
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
