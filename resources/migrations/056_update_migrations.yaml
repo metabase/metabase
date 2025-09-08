@@ -470,7 +470,7 @@ databaseChangeLog:
                     nullable: true
                   remarks: 'Can be null for user messages; {"<model-name>": {"prompt": 1, "completion": 2}}'
               - column:
-                  name: total
+                  name: total_tokens
                   type: int
                   constraints:
                     nullable: false

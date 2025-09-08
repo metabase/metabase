@@ -113,12 +113,13 @@
   (let [usage (-> message :metadata :usage)]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                               (constantly {:user_id api/*current-user-id*}))
+    ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert! :model/MetabotMessage
                 {:conversation_id conversation-id
                  :data            message
                  :usage           usage
                  :role            (:role message)
-                 :total           (->> (vals usage)
+                 :total_tokens    (->> (vals usage)
                                        ;; NOTE: this filter is supporting backward-compatible usage format, can be
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`
                                        (filter map?)
@@ -129,52 +130,6 @@
   (let [message (-> (metabot-v3.u/aisdk-lines->message lines)
                     (u/assoc-default :role :assistant))]
     (store-message! conversation-id message)))
-
-(mu/defn request :- ::metabot-v3.client.schema/ai-service.response
-  "Make a V2 request to the AI Service."
-  [{:keys [context messages profile-id conversation-id session-id state]}
-   :- [:map
-       [:context :map]
-       [:messages ::metabot-v3.client.schema/messages]
-       [:profile-id :string]
-       [:conversation-id :string]
-       [:session-id :string]
-       [:state :map]]]
-  (premium-features/assert-has-feature :metabot-v3 "MetaBot")
-  (try
-    (let [url      (ai-url "/v2/agent")
-          body     (-> {:messages        messages
-                        :context         context
-                        :conversation_id conversation-id
-                        :profile_id      profile-id
-                        :user_id         api/*current-user-id*
-                        :state           state}
-                       (u/deep-kebab->snake-keys))
-          _        (metabot-v3.context/log body :llm.log/be->llm)
-          _        (log/debugf "V2 request to AI Service:\n%s" (u/pprint-to-str body))
-          options  (cond-> {:headers          {"Accept"                    "application/json"
-                                               "Content-Type"              "application/json;charset=UTF-8"
-                                               "x-metabase-instance-token" (premium-features/premium-embedding-token)
-                                               "x-metabase-session-token"  session-id
-                                               "x-metabase-url"            (system/site-url)}
-                            :body             (->json-bytes body)
-                            :throw-exceptions false}
-                     *debug* (assoc :debug true))
-          response (post! url options)]
-      (metabot-v3.context/log (:body response) :llm.log/llm->be)
-      (log/debugf "Response from AI Service:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
-      (if (= (:status response) 200)
-        (u/prog1 (mc/decode ::metabot-v3.client.schema/ai-service.response
-                            (:body response)
-                            (mtx/transformer {:name :api-response}))
-          (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>))
-          ;; FIXME: not sure how to trigger this from the FE to check if it works
-          #_(run! #(store-message! conversation-id %) (:messages <>)))
-        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
-                        {:request (assoc options :body body)
-                         :response response}))))
-    (catch Throwable e
-      (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e)) {} e)))))
 
 (mu/defn streaming-request :- :any
   "Make a streaming V2 request to the AI Service

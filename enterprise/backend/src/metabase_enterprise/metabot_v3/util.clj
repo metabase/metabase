@@ -29,12 +29,12 @@
 
 (def TYPE-PREFIX
   "AI SDK type to prefix"
-  {:text        "0:"
-   :data        "2:"
-   :error       "3:"
-   :finish      "d:"
-   :tool-call   "9:"
-   :tool-result "a:"})
+  {:text           "0:"
+   :data           "2:"
+   :error          "3:"
+   :finish-message "d:"
+   :tool-call      "9:"
+   :tool-result    "a:"})
 
 (def PREFIX-TYPE "AI SDK prefix to type" (set/map-invert TYPE-PREFIX))
 
@@ -46,24 +46,25 @@
                      lines)
         types  (into #{} (map first chunks))
         last-c (nth chunks (dec (count chunks)))]
-    (when-not (set/subset? types #{:text :tool-call :finish})
+    (when-not (set/subset? types #{:text :tool-call :finish-message})
       (log/error "Unhandled chunk types appeared" {:chunk-types types}))
     (u/remove-nils
      {:content    (apply str (for [[type c] chunks
                                    :when    (= type :text)]
                                c))
-      :tool-calls (-> (for [[type c] chunks
+      :tool_calls (-> (for [[type c] chunks
                             :when    (= type :tool-call)]
                         {:id        (:toolCallId c)
                          :name      (:toolName c)
                          :arguments (:args c)})
                       vec
                       not-empty)
-      :data       (merge
-                   (when-let [navigate-to (first (for [[type c] chunks
-                                                       :when    (and (= type :data)
-                                                                     (= (:type c) :navigate_to))]
-                                                   (:value c)))]
-                     {:navigate_to navigate-to}))
-      :metadata   {:usage (when (= (first last-c) :finish)
+      :data (->> (filter #(= (first %) :data) chunks)
+                 (mapv second)) ;; [{:type :navigate_to :value "xxx"}]
+      #_#_:data       (when-let [navigate-to (first (for [[type c] chunks
+                                                          :when    (and (= type :data)
+                                                                        (= (:type c) :navigate_to))]
+                                                      (:value c)))]
+                        {:navigate_to navigate-to})
+      :metadata   {:usage (when (= (first last-c) :finish-message)
                             (:usage (second last-c)))}})))
