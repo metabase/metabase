@@ -5,16 +5,16 @@
 .stepLabel {
   color: var(--mb-color-text-secondary);
   font-weight: bold;
-  margin-top: 6px;
+  margin-top: 0.375rem;
 }
 
 .verticalSeparator {
-  --stepper-outline-thickness: 1px;
+  --stepper-outline-thickness: 0.0625rem;
   --stepper-outline-color: rgba(240, 240, 240, 1);
 }
 
 .stepCompletedIcon > svg {
-  width: 12px !important;
+  width: 0.75rem !important;
 }
 
 .stepIcon:not([data-completed]) {
@@ -24,7 +24,7 @@
 }
 
 .stepWrapper {
-  margin-right: 10px;
+  margin-right: 0.625rem;
 }
 
 .stepBody {
@@ -33,7 +33,7 @@
 }
 
 .stepDescription {
-  padding: 10px 0 20px 0;
+  padding: 0.625rem 0 1.25rem 0;
 }
 
 .stepCard {
@@ -42,9 +42,9 @@
   transition:
     box-shadow 250ms ease,
     border 250ms ease;
-  padding: 15px 20px;
-  height: 140px;
-  max-width: 380px;
+  padding: 0.94rem 1.25rem;
+  height: 8.75rem;
+  max-width: 23.75rem;
   text-align: left;
 }
 
@@ -53,7 +53,7 @@
 }
 
 .optionalStepCard {
-  max-width: 250px;
+  max-width: 15.625rem;
 }
 
 .stepCard:not(.doneStepCard):hover {
