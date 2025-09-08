@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import MetabotLogo from "metabase/common/components/MetabotLogo";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { Box, Group, Title } from "metabase/ui";
+import { Box, Group, Stack, Title } from "metabase/ui";
 
 import { useCompletedEmbeddingHubSteps } from "../hooks";
 import type { EmbeddingHubModalToTrigger } from "../types/embedding-checklist";
@@ -61,12 +62,14 @@ export const EmbeddingHub = () => {
 
   return (
     <Box mih="100%" px="xl" py="xl" bg="bg-white">
-      <Box maw={800} mx="auto">
-        <Group>
+      <Stack maw={800} mx="auto" gap="xl">
+        <Group align="center">
+          <MetabotLogo />
+
           <Title mb="sm" size="lg" c="var(--mb-color-text-dark)">{t`Get started
          with Embedded Analytics JS and SDK for React`}</Title>
         </Group>
-        <StepperWithCards steps={stepperSteps} />;
+        <StepperWithCards steps={stepperSteps} />
         <AddDataModal
           opened={openedModal?.type === "add-data"}
           onClose={closeModal}
@@ -84,7 +87,7 @@ export const EmbeddingHub = () => {
           opened={openedModal?.type === "xray-dashboard"}
           onClose={closeModal}
         />
-      </Box>
+      </Stack>
     </Box>
   );
 };
