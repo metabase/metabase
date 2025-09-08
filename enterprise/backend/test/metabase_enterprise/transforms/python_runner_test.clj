@@ -16,6 +16,7 @@
    [metabase.sync.core :as sync]
    [metabase.task.core :as task]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -353,7 +354,9 @@
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)
-            table-name   (mt/random-name)
+            table-name   (if (= driver :redshift)
+                           (tx/db-qualified-table-name (get-in (mt/db) [:settings :database-source-dataset-name]) (mt/random-name))
+                           (mt/random-name))
             schema-name  (sql.tx/session-schema driver)
             qualified-table-name (if schema-name
                                    (keyword schema-name table-name)
@@ -380,13 +383,15 @@
                                           (mapv :name (:columns table-schema))
                                           {:type :rows :data row-values})
 
-            _ (sync/sync-database! (mt/db))
+            _ (sync/sync-database! (mt/db) {:scan :schema})
+
             transform-code (str "import pandas as pd\n"
                                 "\n"
                                 "def transform(" table-name "):\n"
                                 "    return " table-name)
             result (execute {:code transform-code
                              :tables {table-name (mt/id qualified-table-name)}})
+
             metadata (some-> (:metadata result) json/decode+kw)]
 
         (testing "All expected columns are present"
@@ -405,4 +410,4 @@
                    [name (transforms.util/dtype->base-type dtype)]))))
 
         ;; cleanup
-        (driver/drop-table! driver db-id (:name table-schema))))))
+        (driver/drop-table! driver db-id qualified-table-name)))))
