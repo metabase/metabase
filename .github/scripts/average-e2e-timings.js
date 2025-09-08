@@ -5,7 +5,6 @@ const collectAndAverageTimings = async ({
   github,
   context,
   token,
-  branch = "master",
   daysBack = 7,
   existingTimingsPath = "e2e/support/timings.json",
 }) => {
@@ -20,7 +19,12 @@ const collectAndAverageTimings = async ({
       throw new Error("No timing artifacts found in the specified time range");
     }
 
-    const timingData = await downloadAndExtractArtifacts(artifacts, token);
+    const timingData = await downloadAndExtractArtifacts(
+      artifacts,
+      token,
+      github,
+      context,
+    );
 
     if (timingData.length === 0) {
       throw new Error("No valid timing data extracted from artifacts");
@@ -66,20 +70,23 @@ const findMergedTimingArtifacts = async ({ github, context, daysBack }) => {
         page: page,
       });
 
-      const recentArtifacts = response.data.artifacts.filter(
-        (artifact) =>
-          new Date(artifact.created_at) > cutoffDate && !artifact.expired,
-      );
+      for (const artifact of response.data.artifacts) {
+        if (new Date(artifact.created_at) <= cutoffDate) {
+          hasMorePages = false;
+          break;
+        }
+        if (!artifact.expired) {
+          artifacts.push({
+            name: artifact.name,
+            created_at: artifact.created_at,
+            id: artifact.id,
+          });
+        }
+      }
 
-      artifacts.push(
-        ...recentArtifacts.map((artifact) => ({
-          name: artifact.name,
-          created_at: artifact.created_at,
-          archive_download_url: artifact.archive_download_url,
-        })),
-      );
-
-      hasMorePages = response.data.artifacts.length === 100;
+      if (hasMorePages) {
+        hasMorePages = response.data.artifacts.length === 100;
+      }
       page++;
     } catch (error) {
       console.log(`Error fetching artifacts page ${page}: ${error.message}`);
@@ -91,7 +98,12 @@ const findMergedTimingArtifacts = async ({ github, context, daysBack }) => {
   return artifacts;
 };
 
-const downloadAndExtractArtifacts = async (artifacts, token) => {
+const downloadAndExtractArtifacts = async (
+  artifacts,
+  token,
+  github,
+  context,
+) => {
   const tempDir = "timing-artifacts-temp";
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir);
@@ -107,14 +119,13 @@ const downloadAndExtractArtifacts = async (artifacts, token) => {
       const zipPath = path.join(tempDir, `${artifact.name}.zip`);
       const extractPath = path.join(tempDir, artifact.name);
 
-      const response = await fetch(artifact.archive_download_url, {
-        headers: { Authorization: `token ${token}` },
+      const download = await github.rest.actions.downloadArtifact({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        artifact_id: artifact.id,
+        archive_format: "zip",
       });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      const buffer = await response.arrayBuffer();
-      fs.writeFileSync(zipPath, Buffer.from(buffer));
+      fs.writeFileSync(zipPath, Buffer.from(download.data));
 
       if (!fs.existsSync(extractPath)) {
         fs.mkdirSync(extractPath);
@@ -188,4 +199,4 @@ const averageTimings = (timingDataArray) => {
   return averagedTimings;
 };
 
-module.exports = { collectAndAverageTimings };
+module.exports = { collectAndAverageTimings, averageTimings };
