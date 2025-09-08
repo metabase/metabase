@@ -186,7 +186,7 @@ jobs:
             const fs = require('fs');
             const oldTimingsPath = "./e2e/support/timings.json";
             const newTimingsPath = "newTimes.json";
-            if (!fs.existsSync(newTimingsPath) || !fs.existsSync(oldTimingsPath) {
+            if (!fs.existsSync(newTimingsPath) || !fs.existsSync(oldTimingsPath)) {
               throw new Error("new timings not found after cypress run");
             }
 
