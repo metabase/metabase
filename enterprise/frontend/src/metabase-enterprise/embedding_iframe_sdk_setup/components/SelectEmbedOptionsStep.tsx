@@ -67,6 +67,30 @@ const AuthenticationSection = () => {
     });
   };
 
+  const isJwtEnabled = useSetting("jwt-enabled");
+  const isSamlEnabled = useSetting("saml-enabled");
+  const isJwtConfigured = useSetting("jwt-configured");
+  const isSamlConfigured = useSetting("saml-configured");
+
+  const isSsoEnabledAndConfigured =
+    (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
+
+  const authType = settings.isStatic
+    ? "no-user"
+    : settings.useExistingUserSession
+      ? "user-session"
+      : "sso";
+
+  const handleAuthTypeChange = (value: string) => {
+    const isStatic = value === "no-user";
+    const useExistingUserSession = value === "user-session";
+
+    updateSettings({
+      isStatic,
+      useExistingUserSession,
+    });
+  };
+
   return (
     <Card p="md">
       <Stack gap="md" p="xs">
@@ -188,15 +212,13 @@ const BehaviorSection = () => {
               }
             />
 
-            {!settings.isStatic && (
-              <Checkbox
-                label={t`Allow people to save new questions`}
-                checked={settings.isSaveEnabled}
-                onChange={(e) =>
-                  updateSettings({ isSaveEnabled: e.target.checked })
-                }
-              />
-            )}
+            <Checkbox
+              label={t`Allow people to save new questions`}
+              checked={settings.isSaveEnabled}
+              onChange={(e) =>
+                updateSettings({ isSaveEnabled: e.target.checked })
+              }
+            />
           </Stack>
         ),
       )

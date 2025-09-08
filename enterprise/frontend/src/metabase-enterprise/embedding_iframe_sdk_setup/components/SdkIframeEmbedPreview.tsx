@@ -184,6 +184,10 @@ const SdkIframeEmbedPreviewInner = () => {
             "hidden-parameters": s.hiddenParameters
               ? JSON.stringify(s.hiddenParameters)
               : undefined,
+            ...(!isStaticEmbedding && {
+              drills: s.drills,
+              "is-save-enabled": s.isSaveEnabled,
+            }),
           }),
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
@@ -204,6 +208,9 @@ const SdkIframeEmbedPreviewInner = () => {
             "hidden-parameters": s.hiddenParameters
               ? JSON.stringify(s.hiddenParameters)
               : undefined,
+            ...(!isStaticEmbedding && {
+              drills: s.drills,
+            }),
           }),
         )
         .with({ componentName: "metabase-browser" }, (s) =>

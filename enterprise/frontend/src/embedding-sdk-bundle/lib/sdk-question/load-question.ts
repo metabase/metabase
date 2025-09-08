@@ -44,9 +44,7 @@ export const loadQuestionSdk =
       deserializedCard,
     });
 
-    if (!isStatic) {
-      await dispatch(loadMetadataForCard(card));
-    }
+    await dispatch(loadMetadataForCard(card));
 
     const metadata = getMetadata(getState());
 
