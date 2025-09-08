@@ -11,6 +11,7 @@ export const Comments = {
   getEmojiPicker,
   resolveCommentByText,
   reopenCommentByText,
+  openAllComments,
 };
 
 function getDocumentNodeButton({
@@ -51,6 +52,11 @@ function getPlaceholder() {
 
 function getCommentByText(text: string | RegExp) {
   return cy.findByText(text).closest("[data-testid='discussion-comment']");
+}
+
+function openAllComments() {
+  cy.findByRole("link", { name: "Show all comments" }).click();
+  cy.findByRole("dialog").should("contain.text", "All comments");
 }
 
 function getEmojiPicker() {

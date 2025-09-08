@@ -1042,6 +1042,36 @@ H.describeWithSnowplowEE("document comments", () => {
       H.modal().findByTestId("comments-resolved-tab").should("not.exist");
     });
   });
+
+  describe("all comments sidebar", () => {
+    it("should all threads new to old", () => {
+      startNewCommentIn1ParagraphDocument();
+      cy.realType("thread 1");
+      cy.realPress([META_KEY, "Enter"]);
+
+      H.modal().within(() => {
+        Comments.getNewThreadInput().type("thread 2");
+        cy.realPress([META_KEY, "Enter"]);
+      });
+
+      Comments.openAllComments();
+
+      cy.findAllByTestId("discussion-comment").should((comments) => {
+        expect(comments.eq(0)).to.contain.text("thread 2");
+        expect(comments.eq(1)).to.contain.text("thread 1");
+      });
+    });
+
+    it("does not allow to create new threads", () => {
+      startNewCommentIn1ParagraphDocument();
+      cy.realType("thread 1");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.openAllComments();
+
+      Comments.getNewThreadInput().should("not.exist");
+    });
+  });
 });
 
 function selectCharactersLeft(count: number) {
