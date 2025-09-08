@@ -229,7 +229,7 @@
   ;; ?
   ["Nullable(DateTime64(3))"])
 
-(defmethod driver/type->database-type :bigquery-cloud-sdk
+(defmethod driver/type->database-type :clickhouse
   [_driver base-type]
   (type->database-type base-type))
 
