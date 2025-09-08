@@ -58,44 +58,44 @@
   (when (seq comment-ids)
     (let [;; Get all reactions
           reactions (t2/select :model/CommentReaction
-                              {:where [:in :comment_id comment-ids]
-                               :order-by [[:comment_id :asc] [:emoji :asc] [:created_at :desc]]})
+                               {:where [:in :comment_id comment-ids]
+                                :order-by [[:comment_id :asc] [:created_at :asc] [:emoji :asc]]})
 
           ;; Get unique user IDs and fetch user info
           user-ids (distinct (map :user_id reactions))
           users-map (when (seq user-ids)
-                     (into {}
-                           (map (juxt :id identity))
-                           (t2/select [:model/User :id :first_name :last_name]
-                                     {:where [:in :id user-ids]})))
+                      (into {}
+                            (map (juxt :id identity))
+                            (t2/select [:model/User :id :first_name :last_name]
+                                       {:where [:in :id user-ids]})))
 
           ;; Group by comment_id and emoji with user info
           grouped (reduce (fn [acc reaction]
-                           (let [comment-id (:comment_id reaction)
-                                 emoji (:emoji reaction)
-                                 user-info (get users-map (:user_id reaction))
-                                 user {:id (:user_id reaction)
-                                       :name (if (or (:first_name user-info) (:last_name user-info))
-                                               (str (or (:first_name user-info) "")
-                                                    (when (and (:first_name user-info) (:last_name user-info)) " ")
-                                                    (or (:last_name user-info) ""))
-                                               "Unknown User")}]
-                             (update-in acc [comment-id emoji] (fnil conj []) user)))
-                         {}
-                         reactions)]
+                            (let [comment-id (:comment_id reaction)
+                                  emoji (:emoji reaction)
+                                  user-info (get users-map (:user_id reaction))
+                                  user {:id (:user_id reaction)
+                                        :name (if (or (:first_name user-info) (:last_name user-info))
+                                                (str (or (:first_name user-info) "")
+                                                     (when (and (:first_name user-info) (:last_name user-info)) " ")
+                                                     (or (:last_name user-info) ""))
+                                                "Unknown User")}]
+                              (update-in acc [comment-id emoji] (fnil conj []) user)))
+                          {}
+                          reactions)]
 
       ;; Transform to final format with current user first if they reacted
       (into {}
             (for [[comment-id emoji-map] grouped]
               [comment-id
                (vec (for [[emoji users] emoji-map]
-                     (let [;; Separate current user from other users
-                           current-user-reaction (first (filter #(= (:id %) current-user-id) users))
-                           other-users (remove #(= (:id %) current-user-id) users)
+                      (let [;; Separate current user from other users
+                            current-user-reaction (first (filter #(= (:id %) current-user-id) users))
+                            other-users (remove #(= (:id %) current-user-id) users)
                            ;; Combine with current user first, limit to 10 users
-                           ordered-users (take 10 (if current-user-reaction
-                                                    (cons current-user-reaction other-users)
-                                                    other-users))]
-                       {:emoji emoji
-                        :count (count users)
-                        :users (vec ordered-users)})))])))))
+                            ordered-users (take 10 (if current-user-reaction
+                                                     (cons current-user-reaction other-users)
+                                                     other-users))]
+                        {:emoji emoji
+                         :count (count users)
+                         :users (vec ordered-users)})))])))))
