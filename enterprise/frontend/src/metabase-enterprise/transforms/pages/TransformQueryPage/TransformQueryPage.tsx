@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -10,6 +11,7 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, Transform } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
@@ -74,13 +76,37 @@ export function TransformQueryPageBody({
     dispatch(push(getTransformUrl(transform.id)));
   };
 
+  const initialQuery = transform.source.query;
+  // TODO: move into redux state
+
+  const [proposedQuery, setProposedQuery] = useState<DatasetQuery | undefined>(
+    () => getProposedQuery(initialQuery),
+  );
+  const clearProposed = () => setProposedQuery(undefined);
+
   return (
     <QueryEditor
-      initialQuery={transform.source.query}
+      initialQuery={initialQuery}
       isNew={false}
       isSaving={isLoading}
       onSave={handleSave}
       onCancel={handleCancel}
+      proposedQuery={proposedQuery}
+      clearProposed={clearProposed}
     />
   );
+}
+
+// TODO: factor in metabot state
+function getProposedQuery(initialQuery: DatasetQuery | undefined) {
+  return Question.create({
+    type: "native",
+    dataset_query: {
+      database: initialQuery?.database ?? null,
+      type: "native",
+      native: {
+        query: "SELECT * FROM ORDERS;",
+      },
+    },
+  }).datasetQuery();
 }

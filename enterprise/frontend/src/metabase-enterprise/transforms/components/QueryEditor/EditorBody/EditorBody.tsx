@@ -28,6 +28,8 @@ type EditorBodyProps = {
   onRunQuery: () => Promise<void>;
   onCancelQuery: () => void;
   databases: ApiDatabase[];
+  proposedQuestion?: Question;
+  clearProposed?: () => void;
 };
 
 export function EditorBody({
@@ -40,6 +42,8 @@ export function EditorBody({
   onRunQuery,
   onCancelQuery,
   databases,
+  proposedQuestion,
+  clearProposed,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -94,6 +98,8 @@ export function EditorBody({
         const database = databases.find((database) => database.id === db.id);
         return !doesDatabaseSupportTransforms(database);
       }}
+      proposedQuestion={proposedQuestion}
+      clearProposed={clearProposed}
     />
   ) : (
     <ResizableBox

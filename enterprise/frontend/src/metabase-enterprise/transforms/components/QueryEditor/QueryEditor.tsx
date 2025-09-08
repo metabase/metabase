@@ -17,20 +17,25 @@ import S from "./QueryEditor.module.css";
 
 type QueryEditorProps = {
   initialQuery: DatasetQuery;
+  proposedQuery?: DatasetQuery;
   isNew?: boolean;
   isSaving?: boolean;
   onSave: (newQuery: DatasetQuery) => void;
   onCancel: () => void;
+  clearProposed?: () => void;
 };
 
 export function QueryEditor({
   initialQuery,
+  proposedQuery,
   isNew = true,
   isSaving = false,
   onSave,
   onCancel,
+  clearProposed,
 }: QueryEditorProps) {
-  const { question, isQueryDirty, setQuestion } = useQueryState(initialQuery);
+  const { question, proposedQuestion, isQueryDirty, setQuestion } =
+    useQueryState(initialQuery, proposedQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -92,6 +97,7 @@ export function QueryEditor({
       />
       <EditorBody
         question={question}
+        proposedQuestion={proposedQuestion}
         isNative={isNative}
         isRunnable={isRunnable}
         isRunning={isRunning}
@@ -100,6 +106,7 @@ export function QueryEditor({
         onRunQuery={runQuery}
         onCancelQuery={cancelQuery}
         databases={databases?.data ?? []}
+        clearProposed={clearProposed}
       />
       <EditorVisualization
         question={question}
