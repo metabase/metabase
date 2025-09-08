@@ -554,6 +554,36 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 
+  it("prevents opening comments when document has changes", () => {
+    create1ParagraphDocument();
+
+    cy.get<DocumentId>("@documentId").then((documentId) => {
+      createParagraphComment(documentId, "Test");
+      H.visitDocument("@documentId");
+      cy.findByRole("textbox", { name: "Document Title" })
+        .should("be.visible")
+        .and("have.value", "Lorem ipsum");
+
+      getParagraph().realHover();
+      Comments.getDocumentNodeButton({
+        targetId: documentId,
+        childTargetId: PARAGRAPH_ID,
+        hasComments: true,
+      })
+        .should("be.visible")
+        .and("not.be.disabled");
+
+      H.documentContent().click();
+      cy.realType("xyz");
+
+      getParagraph("Lorem ipsum dolor sit amet.xyz").realHover();
+      cy.findByLabelText("Comments")
+        .should("be.disabled")
+        .click({ force: true });
+      H.modal().should("not.exist");
+    });
+  });
+
   describe("comment editor", () => {
     it("supports basic formatting with markdown", () => {
       startNewCommentIn1ParagraphDocument();
