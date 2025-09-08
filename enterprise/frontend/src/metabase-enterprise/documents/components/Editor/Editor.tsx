@@ -33,6 +33,7 @@ import { MetabotNode, type PromptSerializer } from "./extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "./extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "./extensions/MetabotMention/MetabotSuggestion";
 import { ResizeNode } from "./extensions/ResizeNode/ResizeNode";
+import { ResizeNodeDropCursor } from "./extensions/ResizeNodeDropCursor/ResizeNodeDropCursor";
 import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import {
@@ -40,6 +41,7 @@ import {
   useCardEmbedsTracking,
   useQuestionSelection,
 } from "./hooks";
+import { useResizeNodeDropCursor } from "./hooks/useResizeNodeDropCursor";
 import type { CardEmbedRef } from "./types";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
@@ -149,6 +151,7 @@ export const Editor: React.FC<EditorProps> = ({
         },
       }),
       ResizeNode,
+      ResizeNodeDropCursor,
     ],
     [siteUrl, getState],
   );
@@ -200,6 +203,8 @@ export const Editor: React.FC<EditorProps> = ({
   useCardEmbedsTracking(editor, onCardEmbedsChange);
   useQuestionSelection(editor, onQuestionSelect);
   const { handleDragEnd } = useCardEmbedDnD(editor);
+  const { handleElementDragStart, handleElementDragEnd } =
+    useResizeNodeDropCursor(editor);
 
   if (!editor) {
     return null;
@@ -250,25 +255,30 @@ export const Editor: React.FC<EditorProps> = ({
           editor={editor}
           onElementDragStart={(e) => {
             console.log("onElementDragStart", e);
+
+            // Handle both CardEmbed and ResizeNode drag operations
+            handleElementDragStart(e);
           }}
           onElementDragEnd={(e) => {
             console.log("onElementDragEnd", e);
 
+            // Handle both CardEmbed and ResizeNode drag operations
             handleDragEnd(e);
+            handleElementDragEnd(e);
           }}
-          onNodeChange={(data) => {
-            console.log("onNodeChange", data);
-
-            if (data.node != null) {
-              if (data.node.type.name !== "resizeNode") {
-                console.log("hideDragHandle true");
-                data.editor.state.tr.setMeta("hideDragHandle", true);
-              } else {
-                console.log("hideDragHandle false");
-                data.editor.state.tr.setMeta("hideDragHandle", false);
-              }
-            }
-          }}
+          // onNodeChange={(data) => {
+          //   console.log("onNodeChange", data);
+          //
+          //   if (data.node != null) {
+          //     if (data.node.type.name !== "resizeNode") {
+          //       console.log("hideDragHandle true");
+          //       data.editor.state.tr.setMeta("hideDragHandle", true);
+          //     } else {
+          //       console.log("hideDragHandle false");
+          //       data.editor.state.tr.setMeta("hideDragHandle", false);
+          //     }
+          //   }
+          // }}
         >
           <Icon name="grabber" size={16} color="var(--mb-color-text-medium)" />
         </DragHandle>
