@@ -577,7 +577,13 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.realType("xyz");
 
       getParagraph("Lorem ipsum dolor sit amet.xyz").realHover();
+
       cy.findByLabelText("Comments")
+        .should("be.disabled")
+        .click({ force: true });
+      H.modal().should("not.exist");
+
+      cy.findByLabelText("Show all comments")
         .should("be.disabled")
         .click({ force: true });
       H.modal().should("not.exist");
