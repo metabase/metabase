@@ -91,3 +91,13 @@
   border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-bg-light);
 }
+
+.showOnHover {
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.flexContainer:hover .showOnHover,
+.showOnHover:focus {
+  opacity: 1;
+}

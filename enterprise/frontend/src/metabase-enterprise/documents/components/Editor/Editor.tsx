@@ -38,6 +38,7 @@ import { MetabotMentionExtension } from "metabase-enterprise/rich_text_editing/t
 import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
 import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import { SupportingText } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
 import S from "./Editor.module.css";
@@ -49,7 +50,6 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   MetabotNode.name,
   SmartLink.name,
   Image.name,
-  FlexContainer.name,
   "codeBlock",
 ];
 
@@ -130,6 +130,7 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       CardEmbed,
       FlexContainer,
+      SupportingText,
       MentionExtension.configure({
         suggestion: {
           allow: ({ state }) => !isMetabotBlock(state),
