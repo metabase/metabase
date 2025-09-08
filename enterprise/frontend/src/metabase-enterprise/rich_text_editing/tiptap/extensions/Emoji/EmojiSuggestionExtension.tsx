@@ -102,9 +102,33 @@ function renderEmojiPicker() {
    * Also, it's not possible to pick first available emoji with 'Enter' key press
    * until the search input is focused, so this case is also handled manually.
    */
+  function getSearchInput() {
+    return popup.querySelector("input");
+  }
+
   function getGlobalPopupKeyHandler(props: SuggestionProps) {
     return function (e: KeyboardEvent) {
-      if (e.key === "Enter") {
+      /**
+       * This workaround allows to start popup navigation without explicitly pressing
+       * Tab to focus search input first. It works as intended when user has already
+       * entered 2+ symbols and internal filtering has been triggered.
+       * Unfortunately, if user has entered only 1 symbol, like ':a', 2 arrow presses
+       * would be required, because the first one only focuses first available emoji
+       * in that case (initiating navigation is restricted by 'frimousse's internal
+       * logic, depending on "interaction" type).
+       */
+      if (
+        e.key.includes("Arrow") &&
+        !document.activeElement?.matches("input")
+      ) {
+        const input = getSearchInput();
+        if (input) {
+          input.focus();
+          input.dispatchEvent(new KeyboardEvent("keydown", { key: e.key }));
+        }
+      }
+
+      if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
         e.stopImmediatePropagation();
 
@@ -133,15 +157,6 @@ function renderEmojiPicker() {
         component.destroy();
         return true;
       }
-
-      // When user presses Tab we focus EmojiPicker's hidden input component
-      // to allow to pick emoji with keyboard.
-      if (e.key !== "Tab" || e.shiftKey) {
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      component.element?.querySelector("input")?.focus();
     };
   }
 
