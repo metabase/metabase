@@ -47,6 +47,7 @@
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.validate :as lib.validate]
    [metabase.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
@@ -410,4 +411,6 @@
   previous-stage-number
   query-stage
   source-table-id
-  update-query-stage])
+  update-query-stage]
+ [lib.validate
+  find-bad-refs])

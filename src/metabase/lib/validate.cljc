@@ -7,10 +7,6 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
 
-(defn- ref-clause? [clause]
-  (and (vector? clause)
-       (#{:field :aggregation :expression} (first clause))))
-
 (mu/defn find-bad-refs :- [:maybe [:sequential ::lib.schema.mbql-clause/clause]]
   "Returns a list of bad `:field` refs on this query.
 
@@ -20,7 +16,8 @@
     (lib.walk/walk-clauses
      query (fn [query path-type path clause]
              (when (and (= path-type :lib.walk/stage)
-                        (ref-clause? clause))
+                        (vector? clause)
+                        (= (first clause) :field))
                (let [column (lib.walk/apply-f-for-stage-at-path
                              lib.field.resolution/resolve-field-ref
                              query path clause)]
