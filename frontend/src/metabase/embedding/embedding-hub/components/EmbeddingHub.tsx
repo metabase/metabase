@@ -62,7 +62,7 @@ export const EmbeddingHub = () => {
 
   return (
     <Box mih="100%" p="4rem 7rem 2rem" bg="bg-white">
-      <Stack mx="auto" gap="xl">
+      <Stack mx="auto" gap="xl" maw={800}>
         <Group align="center">
           <MetabotLogo />
 
