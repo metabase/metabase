@@ -2,7 +2,48 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { useCallback } from "react";
 
+const cleanupEmptyResizeNodes = (transaction: any) => {
+  const emptyResizeNodePositions: { pos: number; node: any }[] = [];
+
+  // Find all ResizeNode instances in the document
+  transaction.doc.descendants((node: any, pos: number) => {
+    if (node.type.name === "resizeNode") {
+      // Check if the ResizeNode is empty or contains only whitespace
+      const hasContent =
+        node.content.content?.some((child: any) => {
+          if (child.type.name === "paragraph") {
+            // Check if paragraph has actual text content (not just whitespace)
+            return child.textContent?.trim().length > 0;
+          }
+          // Non-paragraph content (like CardEmbed) is considered meaningful
+          return (
+            child.type.name !== "paragraph" ||
+            child.textContent?.trim().length > 0
+          );
+        }) || false;
+
+      if (!hasContent) {
+        emptyResizeNodePositions.push({ pos, node });
+      }
+    }
+  });
+
+  // Remove empty ResizeNodes in reverse order to maintain positions
+  emptyResizeNodePositions
+    .sort((a, b) => b.pos - a.pos)
+    .forEach(({ pos, node }) => {
+      transaction.delete(pos, pos + node.nodeSize);
+    });
+
+  return transaction;
+};
+
 export const useCardEmbedDnD = (editor: TiptapEditor | null) => {
+  /**
+   * Finds and removes empty ResizeNode containers after a CardEmbed has been moved.
+   * A ResizeNode is considered empty if it contains no content or only whitespace.
+   */
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
@@ -276,7 +317,10 @@ export const useCardEmbedDnD = (editor: TiptapEditor | null) => {
             );
           }
 
-          editor.view.dispatch(tr);
+          // Apply cleanup logic to remove any empty ResizeNodes
+          const cleanedTransaction = cleanupEmptyResizeNodes(tr);
+
+          editor.view.dispatch(cleanedTransaction);
         }
       }
     },
