@@ -5,6 +5,7 @@ export const Comments = {
   getDocumentNodeButtons,
   getNewThreadInput,
   getCommentInput,
+  getCommentInputs,
   getCommentByText,
   getPlaceholder,
   getEmojiPicker,
@@ -36,6 +37,10 @@ function getNewThreadInput() {
 
 function getCommentInput() {
   return cy.findByTestId("comment-editor");
+}
+
+function getCommentInputs() {
+  return cy.findAllByTestId("comment-editor");
 }
 
 function getPlaceholder() {

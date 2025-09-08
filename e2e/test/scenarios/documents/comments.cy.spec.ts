@@ -223,25 +223,31 @@ H.describeWithSnowplowEE("document comments", () => {
         Comments.getNewThreadInput().click();
         cy.realType("1st thread");
         cy.realPress([META_KEY, "Enter"]);
+        cy.findAllByText("a few seconds ago")
+          .should("be.visible")
+          .and("have.length", 1);
 
-        Comments.getCommentInput().click();
+        Comments.getCommentInputs().should("have.length", 2).last().click();
         cy.realType("Reply 1");
         cy.realPress([META_KEY, "Enter"]);
+        cy.findAllByText("a few seconds ago")
+          .should("be.visible")
+          .and("have.length", 2);
 
-        Comments.getCommentInput().click();
+        Comments.getCommentInputs().should("have.length", 3).last().click();
         cy.realType("Reply 2");
         cy.realPress([META_KEY, "Enter"]);
 
         cy.log("allows to start threads and add replies with the button");
         Comments.getNewThreadInput().click();
         cy.realType("2nd thread");
-        cy.findAllByLabelText("Send").should("have.length", 2).eq(1).click();
+        cy.findAllByLabelText("Send").should("have.length", 2).last().click();
 
-        Comments.getCommentInput().eq(1).click();
+        Comments.getCommentInputs().should("have.length", 6).last().click();
         cy.realType("Reply A");
         cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
 
-        Comments.getCommentInput().eq(1).click();
+        Comments.getCommentInputs().should("have.length", 7).last().click();
         cy.realType("Reply B");
         cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
 
@@ -437,7 +443,7 @@ H.describeWithSnowplowEE("document comments", () => {
       H.modal().should("be.visible");
 
       cy.log("can use mouse to select emoji");
-      cy.realType("g");
+      cy.realType("{backspace}{backspace}{backspace}:egg");
       Comments.getEmojiPicker().findByText("🥚").click();
 
       H.modal().within(() => {
