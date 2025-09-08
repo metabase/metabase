@@ -11,7 +11,9 @@
    [malli.util :as mut])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
-(defonce ^:private cache (atom {}))
+(defonce ^{:private true
+           :doc "The entries are {[k schema-key] function}. Where `k` is one of :validator or :explainer."}
+  cache (atom {}))
 
 (defn- schema-cache-key
   "Make schemas that aren't `=` to identical ones e.g.
@@ -43,11 +45,11 @@
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
   (let [schema-key (schema-cache-key schema)]
-    (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
+    (or (get @cache [k schema-key])     ; get-in is terribly inefficient
         (let [v (value-thunk)]
           (when *cache-miss-hook*
             (*cache-miss-hook* k schema v))
-          (swap! cache assoc-in [k schema-key] v)
+          (swap! cache assoc [k schema-key] v)
           v))))
 
 (defn validator
