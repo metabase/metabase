@@ -185,7 +185,7 @@ jobs:
           script: |
             const fs = require('fs');
             const oldTimingsPath = "./e2e/support/timings.json";
-            const newTimingsPath = "newTimes.json";
+            const newTimingsPath = "./e2e/support/newTimes.json";
             
             console.log(`Checking for files:`);
             console.log(`- ${oldTimingsPath}: ${fs.existsSync(oldTimingsPath)}`);
