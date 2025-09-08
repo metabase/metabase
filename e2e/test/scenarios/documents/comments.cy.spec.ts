@@ -390,7 +390,6 @@ H.describeWithSnowplowEE("document comments", () => {
         .and("not.contain.text", "💦");
 
       cy.log("can use arrow keys for navigation within the emoji picker");
-      cy.realPress("Tab"); // TODO: remove this, this is bug #26
       cy.realPress("ArrowDown");
       cy.realPress("ArrowRight");
       cy.realPress("Enter");
