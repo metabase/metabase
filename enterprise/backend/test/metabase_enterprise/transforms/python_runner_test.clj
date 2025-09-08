@@ -397,7 +397,7 @@
           (is (= {"id"           :type/Integer
                   "price"        :type/Float
                   "active"       :type/Boolean
-                  "created_tz"   (if (= driver/*driver* :mysql) :type/DateTime :type/DateTimeWithTZ)
+                  "created_tz"   :type/DateTimeWithTZ
                   "created_at"   :type/DateTime
                   "created_date" :type/Date
                   "description"  :type/Text}
