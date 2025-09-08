@@ -139,6 +139,7 @@ export type SdkQuestionContextType = Omit<
     plugins: SdkQuestionConfig["componentPlugins"] | null;
     mode: QueryClickActionsMode | Mode | null | undefined;
     originalId: SdkQuestionId | null;
+    token: string | null | undefined;
     resetQuestion: () => void;
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;

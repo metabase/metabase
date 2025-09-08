@@ -58,7 +58,10 @@ export const useSdkDashboardParams = ({
   withTitle,
   withCardTitle,
   hiddenParameters,
-}: SdkDashboardDisplayProps) => {
+}: Pick<
+  SdkDashboardDisplayProps,
+  "withDownloads" | "withTitle" | "withCardTitle" | "hiddenParameters"
+>) => {
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;
 
