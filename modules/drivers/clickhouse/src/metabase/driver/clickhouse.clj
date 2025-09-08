@@ -212,6 +212,27 @@
     :metabase.upload/datetime                 "Nullable(DateTime64(3))"
     :metabase.upload/offset-datetime          nil))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for ClickHouse that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/Boolean [_] ["Nullable(Boolean)"])
+(defmethod type->database-type :type/Float [_] ["Nullable(Float64)"])
+(defmethod type->database-type :type/Integer [_] ["Nullable(Int64)"])
+(defmethod type->database-type :type/Number [_] ["Nullable(Int64)"])
+(defmethod type->database-type :type/Text [_] ["Nullable(String)"])
+(defmethod type->database-type :type/TextLike [_] ["Nullable(String)"])
+(defmethod type->database-type :type/Date [_] ["Nullable(Date32)"])
+(defmethod type->database-type :type/DateTime [_] ["Nullable(DateTime64(3))"])
+(defmethod type->database-type :type/DateTimeWithTZ [_]
+  ;; ?
+  ["Nullable(DateTime64(3))"])
+
+(defmethod driver/type->database-type :bigquery-cloud-sdk
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]
   ;; FIXME: This is a lie because you're really limited by a filesystems' limits, because Clickhouse uses
