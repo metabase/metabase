@@ -1,5 +1,8 @@
+import { replace } from "react-router-redux";
+import type { LocationSensorState } from "react-use/lib/useLocation";
 import { match } from "ts-pattern";
 
+import type { DispatchFn } from "metabase/lib/redux";
 import type { Comment, CommentEntityType, EntityId } from "metabase-types/api";
 
 import type { CommentThread } from "./types";
@@ -87,4 +90,19 @@ export function getCommentsUrl({
       return childTargetUrl;
     })
     .exhaustive();
+}
+
+export function deleteNewParamFromURLIfNeeded(
+  location: LocationSensorState,
+  dispatch: DispatchFn,
+) {
+  const search = new URLSearchParams(location.search);
+
+  if (search.get("new") == null) {
+    return;
+  }
+
+  search.delete("new");
+  const newSearch = search.toString();
+  dispatch(replace({ pathname: location.pathname, search: newSearch }));
 }

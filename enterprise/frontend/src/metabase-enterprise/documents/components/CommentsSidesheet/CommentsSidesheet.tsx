@@ -5,7 +5,7 @@ import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
 import Animation from "metabase/css/core/animation.module.css";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Modal, Tabs, rem } from "metabase/ui";
 import {
   useCreateCommentMutation,
@@ -13,7 +13,10 @@ import {
 } from "metabase-enterprise/api";
 import { CommentEditor } from "metabase-enterprise/comments/components";
 import { Discussions } from "metabase-enterprise/comments/components/Discussions";
-import { getCommentNodeId } from "metabase-enterprise/comments/utils";
+import {
+  deleteNewParamFromURLIfNeeded,
+  getCommentNodeId,
+} from "metabase-enterprise/comments/utils";
 import { useDocumentState } from "metabase-enterprise/documents/hooks/use-document-state";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
@@ -41,6 +44,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     getListCommentsQuery(document),
   );
   const comments = commentsData?.comments;
+  const dispatch = useDispatch();
 
   // Check if we should auto-open the new comment form
   const shouldAutoOpenNewComment = useMemo(() => {
@@ -146,18 +150,24 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     }
   });
 
-  const handleSubmit = (doc: DocumentContent) => {
+  const handleSubmit = async (doc: DocumentContent) => {
     if (!childTargetId || !document) {
       return;
     }
 
-    createComment({
-      child_target_id: childTargetId,
-      target_id: document.id,
-      target_type: "document",
-      content: doc,
-      parent_comment_id: null,
-    });
+    try {
+      await createComment({
+        child_target_id: childTargetId,
+        target_id: document.id,
+        target_type: "document",
+        content: doc,
+        parent_comment_id: null,
+      });
+
+      deleteNewParamFromURLIfNeeded(location, dispatch);
+    } catch (error) {
+      console.error("Failed to create comment:", error);
+    }
   };
 
   if (!childTargetId || !document) {
