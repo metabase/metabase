@@ -228,8 +228,7 @@
                    ;; of `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
                    ;; see https://github.com/metabase/metabase/issues/27856
-                   (cond-> (:quote-db-name details)
-                     (update :db quote-name))
+                   (update :db quote-name)
                    (cond-> use-password
                      (dissoc :private-key))
                    ;; password takes precedence if `use-password` is missing
@@ -846,8 +845,3 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :snowflake [_ e]
   (= (sql-jdbc/get-sql-state e) "57014"))
-
-(defmethod driver/set-database-used! :snowflake [_driver conn db]
-  (let [sql (format "USE DATABASE \"%s\"" (db-name db))]
-    (with-open [stmt (.createStatement ^java.sql.Connection conn)]
-      (.execute stmt sql))))
