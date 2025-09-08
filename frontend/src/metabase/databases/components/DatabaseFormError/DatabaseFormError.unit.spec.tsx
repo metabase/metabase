@@ -28,9 +28,7 @@ const setup = (opts?: SetupOptions) => {
       errorMessage={errorMessage}
       errorVariant={errorVariant}
     >
-      <div data-testid="scrollable-database-form-body">
-        <DatabaseFormError />
-      </div>
+      <DatabaseFormError />
     </TestFormErrorProvider>,
     {
       storeInitialState: defaultState,

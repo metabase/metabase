@@ -5,16 +5,9 @@ import { Button, Icon } from "metabase/ui";
 export const CheckHostAndPortButton = () => {
   const onCheckHostAndPortClick = () => {
     // Scroll to the area with errors
-    const scrollableEl = document.getElementById(
-      "scrollable-database-form-body",
-    );
-    const dataErrorEl =
-      scrollableEl?.querySelector<HTMLDivElement>("div[data-error]");
-
-    if (dataErrorEl) {
-      const y = dataErrorEl.offsetTop - 48; // 48px clearance
-      scrollableEl?.scrollTo({ behavior: "smooth", top: y });
-    }
+    document
+      .querySelector<HTMLDivElement>("div[data-error]")
+      ?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (

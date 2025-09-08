@@ -8,6 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getIsHosted } from "metabase/setup";
 import { Box, Code } from "metabase/ui";
 import type { State } from "metabase-types/store";
 
@@ -26,6 +27,7 @@ export const useTroubleshootingTips = (
   expanded: boolean,
 ): TipProps[] => {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const isHosted = useSelector(getIsHosted);
   const getDocPageUrl = useSelector(docPageUrlGetter);
 
   return useMemo(() => {
@@ -80,9 +82,12 @@ export const useTroubleshootingTips = (
         key: "permissions" as const,
         // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
         title: t`Check Metabase user permissions`,
-        body: // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
-        c("{0} refers to 'correct permissions'")
-          .jt`Check that Metabase has the ${permissionsLinkContent} or user role for your database.`,
+        body: (() => {
+          // unchained `c` -> `jt` call to avoid prettier moving no-literal-metabase-strings comment up
+          const ctx = c("{0} refers to 'correct permissions'");
+          // eslint-disable-next-line no-literal-metabase-strings -- Only visible to admins
+          return ctx.jt`Check that Metabase has the ${permissionsLinkContent} or user role for your database.`;
+        })(),
       },
       {
         key: "connection-settings" as const,
@@ -95,10 +100,21 @@ export const useTroubleshootingTips = (
         body: t`Is the username and password correct? If possible, copy-paste the values to the form.`,
       },
     ].filter((tip) => {
+      if (tip.key === "ip-addresses" && !isHosted) {
+        // Only show this tip if the user is using Metabase Cloud
+        return false;
+      }
+
       const initialTips: TipKey[] = ["ip-addresses", "ssl"];
       return expanded || initialTips.includes(tip.key);
     });
-  }, [expanded, getDocPageUrl, showMetabaseLinks, isHostAndPortError]);
+  }, [
+    expanded,
+    getDocPageUrl,
+    showMetabaseLinks,
+    isHostAndPortError,
+    isHosted,
+  ]);
 };
 
 /**

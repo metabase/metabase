@@ -6,11 +6,8 @@ import { CheckHostAndPortButton } from "./CheckHostAndPortButton";
 
 const setup = () => {
   return render(
-    <div
-      data-testid="scrollable-database-form-body"
-      id="scrollable-database-form-body"
-    >
-      <div data-error="Check your host settings">
+    <div>
+      <div data-error="Check your host settings" data-testid="data-error">
         <input />
       </div>
       <CheckHostAndPortButton />
@@ -30,18 +27,17 @@ describe("CheckHostAndPortButton", () => {
     ).toBeInTheDocument();
   });
 
-  it("scrolls scrollable-database-form-body element when clicked", async () => {
+  it("scrolls to element with data-error when clicked", async () => {
     setup();
     const { click } = userEvent.setup();
     const button = screen.getByRole("button", {
       name: /Check Host and Port settings/,
     });
-    const scrollableEl = screen.getByTestId("scrollable-database-form-body");
-    jest.spyOn(scrollableEl, "scrollTo");
+    const targetEl = screen.getByTestId("data-error");
+    jest.spyOn(targetEl, "scrollIntoView");
     await click(button);
-    expect(scrollableEl.scrollTo).toHaveBeenCalledWith({
+    expect(targetEl.scrollIntoView).toHaveBeenCalledWith({
       behavior: "smooth",
-      top: expect.any(Number),
     });
   });
 });
