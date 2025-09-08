@@ -64,7 +64,7 @@ export const cardApi = Api.injectEndpoints({
         providesTags: (cards = []) => provideCardListTags(cards),
         onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
           const { data } = await queryFulfilled;
-          if (typeof data === "object") {
+          if (data != null) {
             dispatch(updateMetadata(data, [QuestionSchema]));
           }
         },
@@ -79,7 +79,7 @@ export const cardApi = Api.injectEndpoints({
         providesTags: (card) => (card ? provideCardTags(card) : []),
         onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
           const { data } = await queryFulfilled;
-          if (typeof data === "object") {
+          if (data != null) {
             dispatch(updateMetadata(data, QuestionSchema));
           }
         },
@@ -93,7 +93,7 @@ export const cardApi = Api.injectEndpoints({
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
         onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
           const { data } = await queryFulfilled;
-          if (typeof data === "object") {
+          if (data != null) {
             dispatch(updateMetadata(data, QueryMetadataSchema));
           }
         },

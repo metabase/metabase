@@ -50,7 +50,7 @@ export const databaseApi = Api.injectEndpoints({
       providesTags: (response) => provideDatabaseListTags(response?.data ?? []),
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, [DatabaseSchema]));
         }
       },
@@ -65,7 +65,7 @@ export const databaseApi = Api.injectEndpoints({
         database ? provideDatabaseTags(database) : [],
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, DatabaseSchema));
         }
       },
@@ -88,7 +88,7 @@ export const databaseApi = Api.injectEndpoints({
         database ? provideDatabaseTags(database) : [],
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, DatabaseSchema));
         }
       },
@@ -141,7 +141,7 @@ export const databaseApi = Api.injectEndpoints({
       ],
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, [TableSchema]));
         }
       },
@@ -161,7 +161,7 @@ export const databaseApi = Api.injectEndpoints({
       ],
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, [TableSchema]));
         }
       },
@@ -175,7 +175,7 @@ export const databaseApi = Api.injectEndpoints({
       providesTags: [listTag("field")],
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, [FieldSchema]));
         }
       },

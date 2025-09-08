@@ -35,7 +35,7 @@ export const tableApi = Api.injectEndpoints({
       providesTags: (tables = []) => provideTableListTags(tables),
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, [TableSchema]));
         }
       },
@@ -48,7 +48,7 @@ export const tableApi = Api.injectEndpoints({
       providesTags: (table) => (table ? provideTableTags(table) : []),
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, TableSchema));
         }
       },
@@ -62,7 +62,7 @@ export const tableApi = Api.injectEndpoints({
       providesTags: (table) => (table ? provideTableTags(table) : []),
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, QueryMetadataSchema));
         }
       },

@@ -67,7 +67,7 @@ export const datasetApi = Api.injectEndpoints({
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, QueryMetadataSchema));
         }
       },

@@ -47,7 +47,7 @@ export const automagicDashboardsApi = Api.injectEndpoints({
       },
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (typeof data === "object") {
+        if (data != null) {
           dispatch(updateMetadata(data, QueryMetadataSchema));
         }
       },
