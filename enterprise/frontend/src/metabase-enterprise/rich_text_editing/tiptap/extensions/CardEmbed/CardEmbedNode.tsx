@@ -1,4 +1,8 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import {
+  Node,
+  findParentNodeClosestToPos,
+  mergeAttributes,
+} from "@tiptap/core";
 import {
   type NodeViewProps,
   NodeViewWrapper,
@@ -85,6 +89,7 @@ interface CardEmbedMenuActions {
   setIsModifyModalOpen: (open: boolean) => void;
   handleReplaceQuestion: () => void;
   handleRemoveNode: () => void;
+  handleAddSupportingText?: () => void;
 }
 
 interface CardEmbedMenuState {
@@ -112,6 +117,7 @@ const CardEmbedMenuDropdown = ({
   setIsModifyModalOpen,
   handleReplaceQuestion,
   handleRemoveNode,
+  handleAddSupportingText,
   // State
   menuView,
   setMenuView,
@@ -151,6 +157,13 @@ const CardEmbedMenuDropdown = ({
           {t`Comment`}
         </Menu.Item>
       )}
+      <Menu.Item
+        onClick={handleAddSupportingText}
+        disabled={!handleAddSupportingText}
+        leftSection={<Icon name="add_list" size={14} />}
+      >
+        {t`Add supporting text`}
+      </Menu.Item>
       <Menu.Item
         onClick={handleEditVisualizationSettings}
         leftSection={<Icon name="palette" size={14} />}
@@ -384,6 +397,69 @@ export const CardEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
+
+    /* TODO: Replace `3`s with constant */
+    /* TODO: Memoize? This component is currently re-rendering a lot (maybe because of a mouseover event?) */
+    const shouldAllowAddingSupportingText = () => {
+      const pos = getPos();
+      if (!pos) {
+        return false;
+      }
+      const resolvedPos = editor.state.doc.resolve(pos);
+      const match = findParentNodeClosestToPos(
+        resolvedPos,
+        (n) => n.type.name === "flexContainer",
+      );
+      if (!match) {
+        return true;
+      }
+      if (match.node.content.childCount >= 3) {
+        return false;
+      }
+      const hasSupportingText = match?.node.content.content.some(
+        (n) => n.type.name === "supportingText",
+      );
+      return !hasSupportingText;
+    };
+
+    const handleAddSupportingText = !shouldAllowAddingSupportingText()
+      ? undefined
+      : async () => {
+          await Promise.resolve(); // Wait for the menu to close. The transaction below may cause this item to disable and the mouseup isn't registered (so the menu stays open).
+          const pos = getPos();
+          if (!pos) {
+            return;
+          }
+          const resolvedPos = editor.state.doc.resolve(pos);
+          const match = findParentNodeClosestToPos(
+            resolvedPos,
+            (n) =>
+              n.type.name === "flexContainer" || n.type.name === "resizeNode",
+          );
+          if (!match) {
+            return;
+          }
+          const { schema, tr } = editor.view.state;
+          const supportingText = schema.nodes.supportingText.create({}, [
+            schema.nodes.paragraph.create({}),
+          ]);
+          if (match.node.type.name === "flexContainer") {
+            tr.insert(match.start, supportingText);
+            editor.view.dispatch(tr);
+            editor.commands.focus(match.start + 1);
+            return;
+          }
+          const flexContainer =
+            editor.view.state.schema.nodes.flexContainer.create(
+              { columnWidths: [100 / 3, 200 / 3] },
+              [supportingText, node],
+            );
+          const endPos = match.start + match.node.nodeSize;
+          tr.replaceWith(match.start, endPos, flexContainer);
+
+          editor.view.dispatch(tr);
+          editor.commands.focus(match.start + 2);
+        };
 
     const displayName = name || card?.name;
     const question = useMemo(
@@ -720,6 +796,7 @@ export const CardEmbedComponent = memo(
                             handleEditVisualizationSettings={
                               handleEditVisualizationSettings
                             }
+                            handleAddSupportingText={handleAddSupportingText}
                             setIsModifyModalOpen={setIsModifyModalOpen}
                             handleReplaceQuestion={handleReplaceQuestion}
                             handleRemoveNode={handleRemoveNode}
