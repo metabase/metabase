@@ -1,4 +1,4 @@
-import type { CreateCommentRequest } from "metabase-types/api";
+import type { Comment, CreateCommentRequest } from "metabase-types/api";
 
 export const createComment = ({
   target_id,
