@@ -1967,6 +1967,11 @@
            task-history
            util}}
 
+  enterprise/dependencies
+  {:team "Querying"
+   :api  #{metabase-enterprise.dependencies.core}
+   :uses #{}}
+
   enterprise/upload-management
   {:team "UX West"
    :api  #{metabase-enterprise.upload-management.api}
