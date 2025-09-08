@@ -16,7 +16,6 @@
     :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
-   [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.search-data-sources :as metabot-v3.tools.search-data-sources]
@@ -769,22 +768,6 @@
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
-
-(api.macros/defendpoint :post "/find-metric" :- [:merge ::find-metric-result ::tool-request]
-  "Find a metric matching a description."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments [:map [:message :string]]]]
-                                                    ::tool-request]
-   request]
-  (metabot-v3.context/log (assoc body :api :find-metric) :llm.log/llm->be)
-  (doto (-> (mc/decode ::find-metric-result
-                       (metabot-v3.tools.find-metric/find-metric
-                        (assoc arguments :metabot-id (:metabot-v3/metabot-id request)))
-                       (mtx/transformer {:name :tool-api-response}))
-            (assoc :conversation_id conversation_id))
-    (metabot-v3.context/log :llm.log/be->llm)))
 
 (api.macros/defendpoint :post "/find-outliers" :- [:merge ::find-outliers-result ::tool-request]
   "Find outliers in the values provided by a data source for a given column."
