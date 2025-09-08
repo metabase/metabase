@@ -2,9 +2,9 @@ import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/Dash
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-import { StaticQuestionSdkMode } from "../../StaticQuestion/mode";
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 import { staticDashboardSchema } from "./StaticDashboard.schema";
@@ -25,7 +25,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
   const getClickActionMode: ClickActionModeGetter = ({ question }) =>
     getEmbeddingMode({
       question,
-      queryMode: StaticQuestionSdkMode,
+      queryMode: EmbeddingSdkStaticMode,
     });
 
   return (

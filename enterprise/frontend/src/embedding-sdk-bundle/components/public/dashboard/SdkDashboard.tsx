@@ -24,7 +24,9 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
+import { isStaticEntityLoadingError } from "embedding-sdk-bundle/lib/is-static-entity-loading-error";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -49,6 +51,7 @@ import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
+import { setEmbedDashboardEndpoints } from "metabase/services";
 import type { CardDisplayType } from "metabase-types/api";
 
 import type {
@@ -149,6 +152,14 @@ const SdkDashboardInner = ({
   dataPickerProps,
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
+  useEffect(() => {
+    if (isStaticEmbedding) {
+      setEmbedDashboardEndpoints(dashboardId.toString());
+    }
+  }, [dashboardId, isStaticEmbedding]);
+
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
     onLoadWithoutCards,
@@ -158,12 +169,10 @@ const SdkDashboardInner = ({
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
 
   const { displayOptions } = useSdkDashboardParams({
-    dashboardId,
     withDownloads,
     withTitle,
     withCardTitle,
     hiddenParameters,
-    initialParameters,
   });
 
   const {
@@ -236,6 +245,14 @@ const SdkDashboardInner = ({
     );
   }
 
+  if (isStaticEntityLoadingError(errorPage)) {
+    return (
+      <SdkDashboardStyledWrapper className={className} style={style}>
+        <SdkError message={errorPage.data ?? t`Something's gone wrong`} />
+      </SdkDashboardStyledWrapper>
+    );
+  }
+
   // Passing an invalid entity ID format results in a 400 Bad Request.
   // We can show this as a generic "not found" error on the frontend.
   const isDashboardNotFound =
@@ -244,7 +261,7 @@ const SdkDashboardInner = ({
   if (!dashboardId || isDashboardNotFound) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
-        <DashboardNotFoundError id={dashboardId} />
+        <DashboardNotFoundError id={dashboardId ?? ""} />
       </SdkDashboardStyledWrapper>
     );
   }
@@ -263,6 +280,7 @@ const SdkDashboardInner = ({
     <DashboardContextProvider
       ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
+      isStaticEmbedding={isStaticEmbedding}
       parameterQueryParams={initialParameters}
       navigateToNewCardFromDashboard={
         navigateToNewCardFromDashboard !== undefined

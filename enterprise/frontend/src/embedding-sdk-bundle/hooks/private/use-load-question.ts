@@ -1,13 +1,16 @@
 import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
+import { isStaticEntityLoadingError } from "embedding-sdk-bundle/lib/is-static-entity-loading-error";
 import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
   runQuestionQuerySdk,
   updateQuestionSdk,
 } from "embedding-sdk-bundle/lib/sdk-question";
-import { useSdkDispatch } from "embedding-sdk-bundle/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { setError } from "embedding-sdk-bundle/store/reducer";
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
@@ -15,6 +18,8 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
 import { type Deferred, defer } from "metabase/lib/promise";
+import { isJWT } from "metabase/lib/utils";
+import { setEmbedQuestionEndpoints } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -27,6 +32,7 @@ export interface LoadQuestionHookResult {
   question?: Question;
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
+  token?: string | null;
 
   queryResults?: any[];
 
@@ -67,8 +73,10 @@ export function useLoadQuestion({
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
   const [questionState, mergeQuestionState] = useReducer(questionReducer, {});
-  const { question, originalQuestion, queryResults, parameterValues } =
+  const { question, originalQuestion, token, queryResults, parameterValues } =
     questionState;
+
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
 
   const deferredRef = useRef<Deferred>();
 
@@ -96,7 +104,18 @@ export function useLoadQuestion({
     if (shouldLoadQuestion) {
       setIsQuestionLoading(true);
     }
+
     try {
+      const token = isJWT(questionId) ? questionId.toString() : null;
+
+      mergeQuestionState({
+        token,
+      });
+
+      if (isStaticEmbedding) {
+        setEmbedQuestionEndpoints(token ?? "");
+      }
+
       const questionState = await dispatch(
         loadQuestionSdk({
           options,
@@ -111,7 +130,9 @@ export function useLoadQuestion({
 
       const results = await runQuestionQuerySdk({
         question: questionState.question,
+        isStaticEmbedding,
         originalQuestion: questionState.originalQuestion,
+        parameterValues: questionState.parameterValues,
         cancelDeferred: deferred(),
       });
 
@@ -124,6 +145,15 @@ export function useLoadQuestion({
       // React simulates unmounting on strict mode, therefore "Question not found" will be shown without this.
       if (isCancelledRequestError(err)) {
         return {};
+      }
+
+      if (isStaticEntityLoadingError(err)) {
+        dispatch(
+          setError({
+            status: err.status,
+            message: err.data,
+          }),
+        );
       }
 
       mergeQuestionState({
@@ -140,8 +170,9 @@ export function useLoadQuestion({
     dispatch,
     options,
     deserializedCard,
-    questionId,
+    isStaticEmbedding,
     sqlParameterKey,
+    questionId,
     targetDashboardId,
   ]);
 
@@ -152,14 +183,22 @@ export function useLoadQuestion({
 
     const state = await runQuestionQuerySdk({
       question,
+      isStaticEmbedding,
       originalQuestion,
+      parameterValues,
       cancelDeferred: deferred(),
     });
 
     mergeQuestionState(state);
 
     return state.question;
-  }, [dispatch, question, originalQuestion]);
+  }, [
+    dispatch,
+    question,
+    isStaticEmbedding,
+    originalQuestion,
+    parameterValues,
+  ]);
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
     async (nextQuestion: Question, options: { run?: boolean }) => {
@@ -180,12 +219,13 @@ export function useLoadQuestion({
             mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: run,
           shouldStartAdHocQuestion: true,
+          isStaticEmbedding,
         }),
       );
 
       mergeQuestionState(state);
     },
-    [dispatch, question, originalQuestion, parameterValues],
+    [dispatch, question, originalQuestion, parameterValues, isStaticEmbedding],
   );
 
   const [updateParameterValuesState, updateParameterValues] = useAsyncFn(
@@ -209,12 +249,13 @@ export function useLoadQuestion({
             mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: true,
           shouldStartAdHocQuestion: false,
+          isStaticEmbedding,
         }),
       );
 
       mergeQuestionState(state);
     },
-    [dispatch, question, originalQuestion, parameterValues],
+    [dispatch, question, originalQuestion, parameterValues, isStaticEmbedding],
   );
 
   const [navigateToNewCardState, navigateToNewCard] = useAsyncFn(
@@ -222,7 +263,9 @@ export function useLoadQuestion({
       const state = await dispatch(
         runQuestionOnNavigateSdk({
           ...params,
+          isStaticEmbedding,
           originalQuestion,
+          parameterValues,
           cancelDeferred: deferred(),
           onQuestionChange: (question) => mergeQuestionState({ question }),
           onClearQueryResults: () =>
@@ -235,7 +278,7 @@ export function useLoadQuestion({
 
       mergeQuestionState(state);
     },
-    [dispatch, originalQuestion],
+    [dispatch, originalQuestion, isStaticEmbedding, parameterValues],
   );
 
   const isQueryRunning =
@@ -251,6 +294,7 @@ export function useLoadQuestion({
     question,
     originalQuestion,
     parameterValues,
+    token,
 
     queryResults,
 

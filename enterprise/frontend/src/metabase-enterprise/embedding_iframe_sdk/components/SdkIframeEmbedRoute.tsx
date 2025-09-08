@@ -71,15 +71,16 @@ export const SdkIframeEmbedRoute = () => {
     return <SdkIframeExistingUserSessionInProductionError />;
   }
 
-  const { theme, locale } = embedSettings;
+  const { isStatic, theme, locale } = embedSettings;
 
-  const authConfig: MetabaseAuthConfig = {
+  const authConfig = {
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
-  };
+  } as MetabaseAuthConfig;
 
   return (
     <ComponentProvider
+      isStatic={isStatic}
       authConfig={authConfig}
       theme={theme}
       locale={locale}
@@ -129,6 +130,11 @@ const SdkIframeEmbedView = ({
         dashboardId: P.nonNullable,
         drills: false,
       },
+      {
+        componentName: "metabase-dashboard",
+        dashboardId: P.nonNullable,
+        isStatic: true,
+      },
       (settings) => (
         <StaticDashboard
           dashboardId={settings.dashboardId}
@@ -144,6 +150,7 @@ const SdkIframeEmbedView = ({
       {
         componentName: "metabase-dashboard",
         dashboardId: P.nonNullable,
+        isStatic: P.optional(false),
         drills: P.optional(true),
       },
       (settings) => (
@@ -170,8 +177,13 @@ const SdkIframeEmbedView = ({
           withDownloads: settings.withDownloads,
           height: "100%",
           initialSqlParameters: settings.initialSqlParameters,
+          hiddenParameters: settings.hiddenParameters,
           title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
         };
+
+        if (settings.isStatic) {
+          return <StaticQuestion {...commonProps} key={rerenderKey} />;
+        }
 
         // note: to create a new question we need to render InteractiveQuestion
         if (settings.drills === false && settings.questionId !== "new") {

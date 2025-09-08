@@ -1,8 +1,9 @@
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 
 import {
   type EditableDashboardOwnProps,
@@ -22,6 +23,8 @@ export type EditableDashboardProps = SdkDashboardProps &
   EditableDashboardOwnProps;
 
 export const EditableDashboardInner = (props: EditableDashboardProps) => {
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
   const dashboardActions: SdkDashboardInnerProps["dashboardActions"] = ({
     isEditing,
     downloadsEnabled,
@@ -37,7 +40,7 @@ export const EditableDashboardInner = (props: EditableDashboardProps) => {
   }) =>
     getEmbeddingMode({
       question,
-      queryMode: EmbeddingSdkMode,
+      isStaticEmbedding,
       plugins: props.drillThroughQuestionProps
         ?.plugins as InternalMetabasePluginsConfig,
     });
