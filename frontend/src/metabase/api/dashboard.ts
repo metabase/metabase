@@ -1,4 +1,6 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
+import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
@@ -83,6 +85,12 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+        onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+          const { data } = await queryFulfilled;
+          if (typeof data === "object") {
+            dispatch(updateMetadata(data, QueryMetadataSchema));
+          }
+        },
       }),
       getRemappedDashboardParameterValue: builder.query<
         FieldValue,
