@@ -131,6 +131,7 @@ function getHighlightedText({
         resourceId: resource.id,
         params: initialPreviewParameters,
         displayOptions,
+        withIframeSnippet: true,
       }).find(({ id }) => id === selectedServerCodeOptionId)?.parametersSource;
 
   const hasAppearanceCodeDiff = !_.isEqual(

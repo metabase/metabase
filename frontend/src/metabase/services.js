@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import { Api } from "metabase/api";
+import { provideCollectionTags } from "metabase/api/tags";
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -91,6 +93,7 @@ export async function runQuestionQuery(
     isDirty = false,
     ignoreCache = false,
     collectionPreview = false,
+    queryParamsOverride = {},
   } = {},
 ) {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
@@ -109,6 +112,7 @@ export async function runQuestionQuery(
       ignore_cache: ignoreCache,
       collection_preview: collectionPreview,
       parameters,
+      ...queryParamsOverride,
     };
 
     return [
@@ -328,22 +332,34 @@ export const UtilApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  setCardEndpoints(`/api/public/card/${encodeURIComponent(uuid)}`);
+  setCardEndpoints({
+    base: "/api/public",
+    encodedToken: encodeURIComponent(uuid),
+  });
 }
 
 export function setPublicDashboardEndpoints(uuid) {
-  setDashboardEndpoints(`/api/public/dashboard/${encodeURIComponent(uuid)}`);
+  setDashboardEndpoints({
+    base: "/api/public",
+    encodedToken: encodeURIComponent(uuid),
+  });
 }
 
+/**
+ * @param token {string}
+ */
 export function setEmbedQuestionEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
-  setCardEndpoints(`${embedBase}/card/${encodedToken}`);
+  setCardEndpoints({ base: embedBase, encodedToken });
   PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
+/**
+ * @param token {string}
+ */
 export function setEmbedDashboardEndpoints(token) {
   const encodedToken = encodeURIComponent(token);
-  setDashboardEndpoints(`${embedBase}/dashboard/${encodedToken}`);
+  setDashboardEndpoints({ base: embedBase, encodedToken });
   PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
@@ -351,12 +367,36 @@ function GET_with(url, omitKeys) {
   return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
 }
 
-function setCardEndpoints(prefix) {
+function setCardEndpoints({ base, encodedToken }) {
+  const prefix = `${base}/card/${encodedToken}`;
+
   // RTK query
   PLUGIN_API.getRemappedCardParameterValueUrl = (_dashboardId, parameterId) =>
     `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
 
   // legacy API
+  Api.injectEndpoints({
+    endpoints: (builder) => ({
+      getCard: builder.query({
+        query: ({ id, ...params }) => ({
+          url: prefix,
+          params,
+        }),
+      }),
+    }),
+    overrideExisting: true,
+  });
+  CardApi.query = GET_with(`${prefix}/query`, [
+    // Params below are not supported by `/api/embed/card/:cardId/query` endpoint
+    "cardId",
+    "ignore_cache",
+    "collection_preview",
+  ]);
+  CardApi.query_pivot = GET_with(`${base}/pivot/card/${encodedToken}/query`, [
+    "cardId",
+    "ignore_cache",
+    "collection_preview",
+  ]);
   CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
     "cardId",
   ]);
@@ -366,7 +406,9 @@ function setCardEndpoints(prefix) {
   );
 }
 
-function setDashboardEndpoints(prefix) {
+function setDashboardEndpoints({ base, encodedToken }) {
+  const prefix = `${base}/dashboard/${encodedToken}`;
+
   // RTK query
   PLUGIN_API.getRemappedDashboardParameterValueUrl = (
     _dashboardId,
@@ -374,6 +416,21 @@ function setDashboardEndpoints(prefix) {
   ) => `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
 
   // legacy API
+  Api.injectEndpoints({
+    endpoints: (builder) => ({
+      getCollection: builder.query({
+        query: ({ id, ...params }) => {
+          return {
+            url: prefix,
+            params,
+          };
+        },
+        providesTags: (collection) =>
+          collection ? provideCollectionTags(collection) : [],
+      }),
+    }),
+    overrideExisting: true,
+  });
   DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
     "dashId",
   ]);

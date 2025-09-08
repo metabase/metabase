@@ -63,6 +63,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
   return {
     ...templateDefaults,
     useExistingUserSession: true,
+    isStatic: false,
   };
 };
 

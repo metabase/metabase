@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
 import { trackSchemaEvent } from "metabase/lib/analytics";
@@ -8,6 +8,7 @@ import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/em
 import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
+  SdkIframeEmbedTagMessage,
 } from "../types/embed";
 
 type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
@@ -21,14 +22,16 @@ export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
 }: {
   onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
-}): {
-  embedSettings: SdkIframeEmbedSettings | null;
-} {
+}) {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
   const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
     null,
   );
+
+  const sendMessage = useCallback((message: SdkIframeEmbedTagMessage) => {
+    window.parent.postMessage(message, "*");
+  }, []);
 
   useEffect(() => {
     const messageHandler: Handler = (event) => {
@@ -52,12 +55,12 @@ export function useSdkIframeEmbedEventBus({
     window.addEventListener("message", messageHandler);
 
     // notify embed.js that the iframe is ready
-    window.parent.postMessage({ type: "metabase.embed.iframeReady" }, "*");
+    sendMessage({ type: "metabase.embed.iframeReady" });
 
     return () => {
       window.removeEventListener("message", messageHandler);
     };
-  }, [onSettingsChanged]);
+  }, [onSettingsChanged, sendMessage]);
 
   useEffect(() => {
     if (embedSettings?.instanceUrl && usageAnalytics) {
@@ -71,7 +74,7 @@ export function useSdkIframeEmbedEventBus({
     }
   }, [embedSettings?.instanceUrl, usageAnalytics]);
 
-  return { embedSettings };
+  return { sendMessage, embedSettings };
 }
 
 export function isMetabaseInstance(instanceUrl: string, embedHostUrl: string) {

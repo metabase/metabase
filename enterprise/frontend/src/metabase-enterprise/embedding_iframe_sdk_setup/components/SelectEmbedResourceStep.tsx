@@ -67,6 +67,7 @@ export const SelectEmbedResourceStep = () => {
         // Clear parameters
         initialParameters: {},
         hiddenParameters: [],
+        lockedParameters: [],
       });
     } else if (experience === "chart") {
       updateSettings({
@@ -75,6 +76,7 @@ export const SelectEmbedResourceStep = () => {
         // Clear parameters
         initialSqlParameters: {},
         hiddenParameters: [],
+        lockedParameters: [],
       });
     } else if (experience === "browser") {
       updateSettings({

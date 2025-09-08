@@ -17,12 +17,14 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
+import { refreshSiteSettings } from "metabase/redux/settings";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
   reduxStore: SdkStore;
+  isStatic?: boolean;
   authConfig: MetabaseAuthConfig;
 }
 
@@ -42,12 +44,14 @@ export const useInitData = () => {
 
   useInitDataInternal({
     reduxStore,
+    isStatic: props.isStatic,
     authConfig,
   });
 };
 
 export const useInitDataInternal = ({
   reduxStore,
+  isStatic,
   authConfig,
 }: InitDataLoaderParameters) => {
   const dispatch = reduxStore.dispatch;
@@ -56,6 +60,7 @@ export const useInitDataInternal = ({
     reduxStore.getState().sdk.loginStatus.status === "uninitialized";
 
   const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
+
   const sdkPackageVersion =
     getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ?? null;
 
@@ -97,7 +102,11 @@ export const useInitDataInternal = ({
   }, [authConfig.fetchRequestToken, fetchRefreshTokenFnFromStore, dispatch]);
 
   useMount(function initializeData() {
-    if (isAuthUninitialized()) {
+    if (isStatic) {
+      dispatch(refreshSiteSettings());
+    }
+
+    if (!isStatic && isAuthUninitialized()) {
       dispatch(initAuth(authConfig));
     }
   });
