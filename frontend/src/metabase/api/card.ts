@@ -1,6 +1,6 @@
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
-import { QueryMetadataSchema } from "metabase/schema";
+import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
 import type {
   Card,
   CardId,
@@ -62,6 +62,12 @@ export const cardApi = Api.injectEndpoints({
           params,
         }),
         providesTags: (cards = []) => provideCardListTags(cards),
+        onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+          const { data } = await queryFulfilled;
+          if (typeof data === "object") {
+            dispatch(updateMetadata(data, [QuestionSchema]));
+          }
+        },
       }),
       getCard: builder.query<Card, GetCardRequest>({
         query: ({ id, ignore_error, ...params }) => ({
@@ -71,6 +77,12 @@ export const cardApi = Api.injectEndpoints({
           noEvent: ignore_error,
         }),
         providesTags: (card) => (card ? provideCardTags(card) : []),
+        onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+          const { data } = await queryFulfilled;
+          if (typeof data === "object") {
+            dispatch(updateMetadata(data, QuestionSchema));
+          }
+        },
       }),
       getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
         query: (id) => ({

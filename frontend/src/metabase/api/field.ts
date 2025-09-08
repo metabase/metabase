@@ -1,3 +1,5 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { FieldSchema } from "metabase/schema";
 import type {
   CreateFieldDimensionRequest,
   Field,
@@ -32,6 +34,12 @@ export const fieldApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (field) => (field ? provideFieldTags(field) : []),
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, FieldSchema));
+        }
+      },
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: (fieldId) => ({

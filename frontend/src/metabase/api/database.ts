@@ -1,3 +1,5 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { DatabaseSchema } from "metabase/schema";
 import type {
   AutocompleteRequest,
   AutocompleteSuggestion,
@@ -46,6 +48,12 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (response) => provideDatabaseListTags(response?.data ?? []),
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, [DatabaseSchema]));
+        }
+      },
     }),
     getDatabase: builder.query<Database, GetDatabaseRequest>({
       query: ({ id, ...params }) => ({
@@ -55,6 +63,12 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (database) =>
         database ? provideDatabaseTags(database) : [],
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, DatabaseSchema));
+        }
+      },
     }),
     getDatabaseHealth: builder.query<GetDatabaseHealthResponse, DatabaseId>({
       query: (id) => ({
@@ -72,6 +86,12 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (database) =>
         database ? provideDatabaseTags(database) : [],
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, DatabaseSchema));
+        }
+      },
     }),
     getDatabaseSettingsAvailable: builder.query<
       GetDatabaseSettingsAvailableResponse,

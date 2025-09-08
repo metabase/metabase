@@ -1,3 +1,5 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { QueryMetadataSchema, TableSchema } from "metabase/schema";
 import type {
   ForeignKey,
   GetTableDataRequest,
@@ -31,6 +33,12 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, [TableSchema]));
+        }
+      },
     }),
     getTable: builder.query<Table, GetTableRequest>({
       query: ({ id }) => ({
@@ -38,6 +46,12 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, TableSchema));
+        }
+      },
     }),
     getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -46,6 +60,12 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, QueryMetadataSchema));
+        }
+      },
     }),
     getTableData: builder.query<TableData, GetTableDataRequest>({
       query: ({ tableId }) => ({
