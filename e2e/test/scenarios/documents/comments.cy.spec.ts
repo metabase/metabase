@@ -322,6 +322,37 @@ H.describeWithSnowplowEE("document comments", () => {
   });
 
   describe("comment editor", () => {
+    it.only("supports basic formatting", () => {
+      create1AndVisitParagraphDocument();
+      getParagraph().realHover();
+
+      cy.get<DocumentId>("@documentId").then((targetId) => {
+        Comments.getDocumentNodeButton({
+          targetId,
+          childTargetId: PARAGRAPH_ID,
+        })
+          .should("be.visible")
+          .click();
+      });
+
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+        Comments.getNewThreadInput().click();
+      });
+
+      cy.realType("**bold** *italic* ~~strike~~ `code`");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.getCommentInputs()
+        .first()
+        .within(() => {
+          cy.get("strong").should("have.text", "bold");
+          cy.get("em").should("have.text", "italic");
+          cy.get("s").should("have.text", "strike");
+          cy.get("code").should("have.text", "code");
+        });
+    });
+
     it("supports mentions and can mention yourself", () => {
       create1AndVisitParagraphDocument();
       getParagraph().realHover();

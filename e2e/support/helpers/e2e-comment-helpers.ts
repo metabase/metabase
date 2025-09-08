@@ -47,7 +47,7 @@ function getPlaceholder() {
   return cy.get("[data-placeholder]");
 }
 
-function getCommentByText(text: string) {
+function getCommentByText(text: string | RegExp) {
   return cy.findByText(text).closest("[data-testid='discussion-comment']");
 }
 
