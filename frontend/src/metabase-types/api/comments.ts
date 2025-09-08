@@ -18,7 +18,7 @@ export interface Comment {
   creator: BaseUser;
   content: DocumentContent;
 
-  deleted_at: boolean;
+  deleted_at: string | null;
   is_resolved: boolean;
 
   created_at: string;
