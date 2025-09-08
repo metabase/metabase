@@ -29,7 +29,7 @@
 (mr/def ::transform-details
   [:map
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
-   [:connection-details :any]
+   [:conn-spec :any]
    [:query :string]
    [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
 
@@ -68,9 +68,11 @@
 
 (defn run-cancelable-transform!
   "Run a compiled transform"
-  [run-id run-transform!]
+  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform!]
   ;; local run is responsible for status, using canceling lifecycle
   (try
+    (when-not (driver/schema-exists? driver db-id output-schema)
+      (driver/create-schema-if-needed! driver conn-spec output-schema))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (let [cancel-chan (a/promise-chan)
           ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
@@ -107,9 +109,11 @@
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
-           transform-details {:transform-type (keyword (:type target))
-                              :connection-details (driver/connection-details driver database)
+           transform-details {:db-id db
+                              :transform-type (keyword (:type target))
+                              :conn-spec (driver/connection-spec driver database)
                               :query (transforms.util/compile-source source)
+                              :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
            opts {:overwrite? true}]
        (when-not (driver.u/supports? driver feature database)
@@ -120,7 +124,7 @@
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
-         (run-cancelable-transform! run-id (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))
+         (run-cancelable-transform! run-id driver transform-details (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))
          (transforms.instrumentation/with-stage-timing [run-id :sync :table-sync]
            (sync-target! target database run-id))))
      (catch Throwable t
@@ -287,13 +291,20 @@
                                                :python      nil
                                                :post-python []}))
             {:keys [target] transform-id :id} transform
-            db (t2/select-one :model/Database (:database target))
+            {driver :engine :as db} (t2/select-one :model/Database (:database target))
             {run-id :id} (try-start-unless-already-running transform-id run-method)]
         (some-> start-promise (deliver [:started run-id]))
         (log! message-log "Executing Python transform")
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
         (let [start-ms (u/start-timer)
-              result   (run-cancelable-transform! run-id (fn [cancel-chan] (run-python-transform! transform db run-id cancel-chan message-log)))]
+              transform-details
+              {:db-id db
+               :transform-type (keyword (:type target))
+               :conn-spec (driver/connection-spec driver db)
+               ;; :query (transforms.util/compile-source source)
+               :output-schema (:schema target)
+               :output-table (transforms.util/qualified-table-name driver target)}
+              result   (run-cancelable-transform! run-id driver transform-details (fn [cancel-chan] (run-python-transform! transform db run-id cancel-chan message-log)))]
           (transforms.instrumentation/with-stage-timing [run-id :sync :table-sync]
             (sync-target! target db run-id))
           (log! message-log (format "Python execution finished in %s" (Duration/ofMillis (u/since-ms start-ms))))

@@ -30,7 +30,7 @@
       :query (into #{}
                    (keep #(clojure.core.match/match %
                             [:source-table source] (when (int? source)
-                                                     source)
+                                                     {:table source})
                             _ nil))
                    (tree-seq coll? seq query)))))
 
@@ -58,6 +58,7 @@
   the transforms in the original list -- if a transform depends on some transform not in the list, the 'extra'
   dependency is ignored. Python transforms have no dependencies and run sequentially."
   [transforms]
+
   (let [{python-transforms true
          sql-transforms false} (group-by transforms.util/python-transform? transforms)
 
@@ -69,6 +70,7 @@
                                          {(get-in transform [:source :query :database]) [transform]}))
                                   (apply merge-with into))
 
+        transform-ids (into #{} (map :id) transforms)
         {:keys [output-tables dependencies]} (->> sql-transforms-by-db
                                                   (map (fn [[db-id db-transforms]]
                                                          (qp.store/with-metadata-provider db-id
@@ -76,7 +78,11 @@
                                                             :dependencies (dependency-map db-transforms)})))
                                                   (apply merge-with merge))
 
-        sql-deps (update-vals dependencies #(into #{} (keep output-tables) %))]
+        sql-deps (update-vals dependencies #(into #{}
+                                                  (keep (fn [{:keys [table transform]}]
+                                                          (or (output-tables table)
+                                                              (transform-ids transform))))
+                                                  %))]
     (merge python-deps sql-deps)))
 
 (defn find-cycle
@@ -123,9 +129,12 @@
                                transforms)
         db-id (get-in to-check [:source :query :database])]
     (qp.store/with-metadata-provider db-id
-      (let [output-tables (output-table-map (filter #(= (get-in % [:source :query :database]) db-id)
-                                                    transforms))
-            node->children #(->> % transforms-by-id transform-deps (keep output-tables))
+      (let [db-transforms (filter #(= (get-in % [:source :query :database]) db-id) transforms)
+            output-tables (output-table-map db-transforms)
+            transform-ids (into #{} (map :id) db-transforms)
+            node->children #(->> % transforms-by-id transform-deps (keep (fn [{:keys [table transform]}]
+                                                                           (or (output-tables table)
+                                                                               (transform-ids transform)))))
             id->name (comp :name transforms-by-id)
             cycle (find-cycle node->children [transform-id])]
         (when cycle

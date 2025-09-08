@@ -78,12 +78,16 @@ describe(
       H.restore("sandboxing-snapshot" as any);
     });
 
-    it("shows all data before sandboxing policy is applied", () => {
-      signInAs(gizmoViewer);
-      assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
-      signInAs(widgetViewer);
-      assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
-    });
+    it(
+      "shows all data before sandboxing policy is applied",
+      { tags: "@flaky" },
+      () => {
+        signInAs(gizmoViewer);
+        assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+        signInAs(widgetViewer);
+        assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+      },
+    );
 
     describe("we can apply a sandbox policy", () => {
       beforeEach(() => {

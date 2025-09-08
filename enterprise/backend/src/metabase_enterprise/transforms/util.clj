@@ -1,17 +1,19 @@
 (ns metabase-enterprise.transforms.util
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
-   (java.time Instant LocalDateTime OffsetDateTime ZonedDateTime ZoneId)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
@@ -108,23 +110,35 @@
   [transform]
   (case (-> transform :target :type)
     "table"             :transforms/table))
-(defn local-timestamp
-  "Convert the timestamp t to a ZonedDateTime instance in the system timezone."
-  [t]
-  (condp instance? t
-    String         (recur (u.date/parse t))
-    Date           (recur (.toInstant ^Date t))
-    Instant        (ZonedDateTime/ofInstant t (ZoneId/systemDefault))
-    LocalDateTime  (ZonedDateTime/of t (ZoneId/systemDefault))
-    OffsetDateTime (.atZoneSameInstant ^OffsetDateTime t (ZoneId/systemDefault))
-    ZonedDateTime  (.withZoneSameInstant ^ZonedDateTime t (ZoneId/systemDefault))
-    (throw (ex-info (str "Cannot convert timestamp " t " of type " (type t) " to a ZonedDateTime")
-                    {:timestamp t}))))
 
-(defn local-timestamp-string
+(defn ->instant
+  "Convert a temporal value `t` to an Instant in the system timezone."
+  ^Instant [t]
+  (when t
+    (condp instance? t
+      Instant        t
+      Date           (.toInstant ^Date t)
+      OffsetDateTime (.toInstant ^OffsetDateTime t)
+      ZonedDateTime  (.toInstant ^ZonedDateTime t)
+      LocalDateTime  (recur (.atZone ^LocalDateTime t (t/zone-id)))
+      String         (recur (u.date/parse t))
+      LocalTime      (recur (.atDate ^LocalTime t (t/local-date)))
+      OffsetTime     (recur (.atDate ^OffsetTime t (t/local-date)))
+      LocalDate      (recur (.atStartOfDay ^LocalDate t))
+      (throw (ex-info (str "Cannot convert temporal " t " of type " (type t) " to an Instant")
+                      {:temporal t})))))
+
+(defn utc-timestamp-string
   "Convert the timestamp t to a string encoding the it in the system timezone."
   [t]
-  (-> t local-timestamp str))
+  (-> t ->instant str))
+
+(defn localize-run-timestamps
+  "Convert the timestamps of a `run` to ISO strings in UTC."
+  [run]
+  (-> run
+      (u/update-some :start_time utc-timestamp-string)
+      (u/update-some :end_time   utc-timestamp-string)))
 
 (mr/def ::column-definition
   [:map

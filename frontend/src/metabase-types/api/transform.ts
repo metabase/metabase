@@ -77,6 +77,7 @@ export type TransformJob = {
   // hydrated fields
   tag_ids?: TransformTagId[];
   last_run?: TransformRun | null;
+  next_run?: { start_time: string } | null;
 };
 
 export type CreateTransformRequest = {
@@ -118,6 +119,12 @@ export type CreateTransformTagRequest = {
 export type UpdateTransformTagRequest = {
   id: TransformJobId;
   name?: string;
+};
+
+export type ListTransformJobsRequest = {
+  last_run_start_time?: string;
+  next_run_start_time?: string;
+  transform_tag_ids?: TransformTagId[];
 };
 
 export type ListTransformRunsRequest = {

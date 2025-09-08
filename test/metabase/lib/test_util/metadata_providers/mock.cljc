@@ -62,6 +62,21 @@
                       (= metadata-type :metadata/table) (dissoc :fields)))))
           (get metadata k))))
 
+(defn- mock-metadatas-by-name [metadata metadata-type names]
+  (let [k   (case metadata-type
+              :metadata/table                :tables
+              :metadata/column               :fields
+              :metadata/card                 :cards
+              :metadata/segment              :segments
+              :metadata/native-query-snippet :native-query-snippets)
+        names (set names)]
+    (into []
+          (keep (fn [object]
+                  (when (contains? names (:name object))
+                    (cond-> (assoc object :lib/type metadata-type)
+                      (= metadata-type :metadata/table) (dissoc :fields)))))
+          (get metadata k))))
+
 (defn- mock-tables [metadata]
   (for [table (:tables metadata)]
     (-> (assoc table :lib/type :metadata/table)
@@ -104,6 +119,8 @@
     (mock-database metadata))
   (metadatas [_this metadata-type ids]
     (mock-metadatas metadata metadata-type ids))
+  (metadatas-by-name [_this metadata-type ids]
+    (mock-metadatas-by-name metadata metadata-type ids))
   (tables [_this]
     (mock-tables metadata))
   (metadatas-for-table [_this metadata-type table-id]

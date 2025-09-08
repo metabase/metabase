@@ -12771,7 +12771,7 @@ redirect_from:
                       },
                       "schema-filters-type" : {
                         "type" : "string",
-                        "enum" : [ "include", "exclude", "all" ]
+                        "enum" : [ "inclusion", "exclusion", "all" ]
                       }
                     },
                     "required" : [ "schema-filters-type", "schema-filters-patterns" ]
@@ -12849,7 +12849,7 @@ redirect_from:
                       },
                       "schema-filters-type" : {
                         "type" : "string",
-                        "enum" : [ "include", "exclude", "all" ]
+                        "enum" : [ "inclusion", "exclusion", "all" ]
                       }
                     },
                     "required" : [ "schema-filters-type", "schema-filters-patterns" ]
@@ -16018,6 +16018,34 @@ redirect_from:
         "tags" : [ "/api/ee/transform-job" ]
       }
     },
+    "/api/ee/transform-job/{job-id}/transforms" : {
+      "get" : {
+        "summary" : "GET /api/ee/transform-job/{job-id}/transforms",
+        "description" : "Get the transforms of job specified by the job's ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "job-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transform-job" ]
+      }
+    },
     "/api/ee/transform-tag/" : {
       "post" : {
         "summary" : "POST /api/ee/transform-tag/",
@@ -16433,6 +16461,34 @@ redirect_from:
           "schema" : {
             "type" : "string"
           }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transform" ]
+      }
+    },
+    "/api/ee/transform/{id}/dependencies" : {
+      "get" : {
+        "summary" : "GET /api/ee/transform/{id}/dependencies",
+        "description" : "Get the dependencies of a specific transform.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
         } ],
         "responses" : {
           "2XX" : {
