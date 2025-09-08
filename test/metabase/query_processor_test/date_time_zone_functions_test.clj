@@ -673,7 +673,7 @@
           (mt/with-report-timezone-id! "UTC"
             (is (= "2022-10-03T14:10:20+07:00"
                    (->> (mt/run-mbql-query times
-                          {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
+                          {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Bangkok" "UTC"]}
                            :fields      [[:expression "expr"]]})
                         mt/rows
                         ffirst)))))))))
@@ -749,9 +749,9 @@
                   "2004-03-19T18:19:09+09:00"] ;; at +09
                  (->> (mt/run-mbql-query
                         times
-                        {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
+                        {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Bangkok" "UTC"]
                                        "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
-                                                      "Asia/Saigon"]}
+                                                      "Asia/Bangkok"]}
                          :filter      [:= $times.index 1]
                          :fields      [$times.dt
                                        [:expression "to-07"]
@@ -812,9 +812,9 @@
                          {:dataset_query
                           (mt/mbql-query
                             times
-                            {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
+                            {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Bangkok" "UTC"]
                                            "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
-                                                          "Asia/Saigon"]}
+                                                          "Asia/Bangkok"]}
                              :filter      [:= $times.index 1]
                              :fields      [$times.dt
                                            [:expression "to-07"]
