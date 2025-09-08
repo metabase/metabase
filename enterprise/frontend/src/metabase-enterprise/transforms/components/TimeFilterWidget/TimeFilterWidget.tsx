@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 
+import type { DatePickerShortcut } from "metabase/querying/filters/types";
 import { SearchFilterDateDisplay } from "metabase/search/components/SearchFilterDateDisplay";
 import { SearchFilterDatePicker } from "metabase/search/components/SearchFilterDatePicker";
 import { Popover } from "metabase/ui";
@@ -10,10 +11,12 @@ export function TimeFilterWidget({
   label,
   value,
   onChange,
+  availableShortcuts,
 }: {
   label: string;
   value: string | undefined;
   onChange: (value: string | undefined) => void;
+  availableShortcuts?: DatePickerShortcut[];
 }) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
@@ -42,7 +45,11 @@ export function TimeFilterWidget({
         />
       </Popover.Target>
       <Popover.Dropdown>
-        <SearchFilterDatePicker value={value ?? null} onChange={handleChange} />
+        <SearchFilterDatePicker
+          value={value ?? null}
+          onChange={handleChange}
+          availableShortcuts={availableShortcuts}
+        />
       </Popover.Dropdown>
     </Popover>
   );

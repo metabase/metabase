@@ -14,7 +14,9 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [potemkin :as p]))
+   [potemkin :as p]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [toucan2.core :as t2]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -116,10 +118,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [connection-details output-table] :as transform-details} {:keys [overwrite?]}]
+  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
   (let [queries (cond->> [(driver/compile-transform driver transform-details)]
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
-    {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -161,35 +163,35 @@
   [_]
   "public")
 
-(defmulti find-table
-  "Finds the table matching a given name and schema.
-
-  Names and schemas are potentially taken from a raw sql query and will be normalized accordingly. Drivers that
-  support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver {:keys [table schema]}])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod find-table :sql
-  [driver {:keys [table schema]}]
+(defn find-table-or-transform
+  "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
+   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
+  [driver tables transforms {:keys [table schema]}]
   (let [normalized-table (normalize-name driver table)
-        normalized-schema (if (seq schema)
-                            (normalize-name driver schema)
-                            (default-schema driver))]
-    (->> (driver-api/metadata-provider)
-         driver-api/tables
-         (some (fn [{db-table :name db-schema :schema id :id}]
-                 (and (= normalized-table db-table)
-                      (= normalized-schema db-schema)
-                      id))))))
+        normalized-schema (or (some->> schema (normalize-name driver))
+                              (default-schema driver))
+        matches? (fn [db-table db-schema]
+                   (and (= normalized-table db-table)
+                        (= normalized-schema db-schema)))]
+    (or (some (fn [{:keys [name schema id]}]
+                (when (matches? name schema)
+                  {:table id}))
+              tables)
+        (some (fn [{:keys [id] {:keys [name schema]} :target}]
+                (when (matches? name schema)
+                  {:transform id}))
+              transforms))))
 
 (defmethod driver/native-query-deps :sql
   [driver query]
-  (->> query
-       macaw/parsed-query
-       macaw/query->components
-       :tables
-       (into #{} (keep #(->> % :component (find-table driver))))))
+  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
+        transforms (t2/select [:model/Transform :id :target])]
+    (->> query
+         macaw/parsed-query
+         macaw/query->components
+         :tables
+         (map :component)
+         (into #{} (keep #(find-table-or-transform driver db-tables transforms %))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

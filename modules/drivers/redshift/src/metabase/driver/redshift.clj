@@ -166,8 +166,8 @@
                             [:= :c.column_name :pk.column_name]]]
                :where [:and
                        [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.table_schema schema-names])
-                       (when table-names [:in :c.table_name table-names])]
+                       (when schema-names [:in :c.table_schema (map u/lower-case-en schema-names)])
+                       (when table-names [:in :c.table_name (map u/lower-case-en table-names)])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
@@ -626,4 +626,6 @@
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :redshift
   [_ e]
-  (= (sql-jdbc/get-sql-state e) "42P01"))
+  ;; https://docs.aws.amazon.com/redshift/latest/mgmt/rsql-query-tool-error-codes.html
+  ;; 42P01: undefined_table, 3F000: invalid_schema_name
+  (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))
