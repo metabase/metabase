@@ -845,7 +845,3 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :snowflake [_ e]
   (= (sql-jdbc/get-sql-state e) "57014"))
-
-(defmethod sql-jdbc/impl-table-known-to-not-exist? :snowflake
-  [_ e]
-  (= (sql-jdbc/get-sql-state e) "42S02"))
