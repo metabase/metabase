@@ -142,6 +142,12 @@ export class Map extends Component {
             },
             value: "markers",
           },
+          {
+            get name() {
+              return t`Clustered markers`;
+            },
+            value: "clustered",
+          },
           // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
           // { name: "Heat", value: "heat" },
           { name: "Grid", value: "grid" },
@@ -154,7 +160,9 @@ export class Map extends Component {
             ? "grid"
             : data.rows.length >= 1000
               ? "tiles"
-              : "markers",
+              : data.rows.length >= 100
+                ? "clustered"
+                : "markers",
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     },
@@ -186,6 +194,36 @@ export class Map extends Component {
         (vizSettings["map.pin_type"] !== "heat" &&
           vizSettings["map.pin_type"] !== "grid"),
     }),
+    "map.cluster_radius": {
+      get title() {
+        return t`Cluster radius`;
+      },
+      widget: "number",
+      props: {
+        min: 10,
+        max: 200,
+        step: 10,
+      },
+      getDefault: () => 50,
+      getHidden: (series, vizSettings) =>
+        !PIN_MAP_TYPES.has(vizSettings["map.type"]) ||
+        vizSettings["map.pin_type"] !== "clustered",
+    },
+    "map.cluster_max_zoom": {
+      get title() {
+        return t`Disable clustering at zoom`;
+      },
+      widget: "number",
+      props: {
+        min: 10,
+        max: 20,
+        step: 1,
+      },
+      getDefault: () => 18,
+      getHidden: (series, vizSettings) =>
+        !PIN_MAP_TYPES.has(vizSettings["map.type"]) ||
+        vizSettings["map.pin_type"] !== "clustered",
+    },
     "map.region": {
       get title() {
         return t`Region map`;
