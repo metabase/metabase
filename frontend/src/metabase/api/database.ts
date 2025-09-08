@@ -1,5 +1,5 @@
 import { updateMetadata } from "metabase/lib/redux/metadata";
-import { DatabaseSchema } from "metabase/schema";
+import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
 import type {
   AutocompleteRequest,
   AutocompleteSuggestion,
@@ -139,6 +139,12 @@ export const databaseApi = Api.injectEndpoints({
         listTag("table"),
         ...tables.map((table) => idTag("table", table.id)),
       ],
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, [TableSchema]));
+        }
+      },
     }),
     listVirtualDatabaseTables: builder.query<
       Table[],
@@ -153,6 +159,12 @@ export const databaseApi = Api.injectEndpoints({
         listTag("table"),
         ...tables.map((table) => idTag("table", table.id)),
       ],
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, [TableSchema]));
+        }
+      },
     }),
     listDatabaseIdFields: builder.query<Field[], ListDatabaseIdFieldsRequest>({
       query: ({ id, ...params }) => ({
@@ -161,6 +173,12 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: [listTag("field")],
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, [FieldSchema]));
+        }
+      },
     }),
     createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
       query: (body) => ({
