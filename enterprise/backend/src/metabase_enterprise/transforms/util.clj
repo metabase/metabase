@@ -177,3 +177,9 @@
         primary-key-opts (select-keys table-schema [:primary-key])]
     (log/infof "Creating table %s with %d columns" table-name (count columns))
     (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))
+
+(defn rename-table!
+  "kename a table in the database."
+  [driver database-id old-table-name new-table-name]
+  (log/infof "Renaming table %s to %s" old-table-name new-table-name)
+  (driver/rename-table! driver database-id old-table-name new-table-name))

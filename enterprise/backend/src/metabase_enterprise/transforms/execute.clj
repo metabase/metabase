@@ -228,7 +228,8 @@
 
 (defn- transfer-file-to-db [driver db {:keys [target] :as transform} metadata temp-file]
   (let [table-name (transforms.util/qualified-table-name driver target)
-        table-schema {:name table-name
+        temp-table-name (str table-name "_temp_" (System/currentTimeMillis))
+        table-schema {:name temp-table-name
                       :columns (mapv (fn [{:keys [name dtype]}]
                                        {:name name
                                         :type (transforms.util/dtype->base-type dtype)
@@ -237,9 +238,21 @@
         data-source {:type :csv-file
                      :file temp-file}]
     ;; TODO: should be transactional, perharps go through driver/run-transform!
-    (transforms.util/delete-target-table! transform)
-    (transforms.util/create-table-from-schema! driver (:id db) table-schema)
-    (driver/insert-from-source! driver (:id db) table-name (mapv :name (:columns table-schema)) data-source)))
+    (try
+      ;; Create temp table with same structure
+      (transforms.util/create-table-from-schema! driver (:id db) table-schema)
+      ;; Insert data into temp table
+      (driver/insert-from-source! driver (:id db) temp-table-name (mapv :name (:columns table-schema)) data-source)
+      ;; Atomic swap: drop old table and rename temp to target
+      (transforms.util/delete-target-table! transform)
+      ;; Rename temp table to target table name
+      (transforms.util/rename-table! driver (:id db) temp-table-name table-name)
+      (catch Exception e
+        ;; Clean up temp table if something goes wrong
+        (try
+          (driver/execute! driver (:id db) [(format "DROP TABLE IF EXISTS %s" temp-table-name)])
+          (catch Exception _))
+        (throw e)))))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
   (with-open [log-thread-ref (open-log-thread! run-id message-log)]

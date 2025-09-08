@@ -1270,6 +1270,14 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti rename-table!
+  "Rename a table from `old-table-name` to `new-table-name`. Table names may be qualified by schema e.g.
+
+    schema.table"
+  {:added "0.57.0", :arglists '([driver db-id old-table-name new-table-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti truncate!
   "Delete the current contents of `table-name`.
   If something like a SQL TRUNCATE statement is supported, we use that, but may otherwise fall back to explicitly
