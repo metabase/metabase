@@ -71,19 +71,20 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     id: "secure-embeds",
     title: t`Security and permissions`,
     icon: "lock",
-
     actions: [
       {
         title: t`Configure SSO`,
         description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
         docsPath: "embedding/securing-embeds",
         variant: "outline",
+        stepId: "secure-embeds",
       },
       {
         title: t`Row and column security`,
         docsPath: "permissions/row-and-column-security",
         description: t`Manage permissions to limit what data your users can access.`,
         variant: "outline",
+        stepId: "configure-row-column-security",
         optional: true,
       },
     ],

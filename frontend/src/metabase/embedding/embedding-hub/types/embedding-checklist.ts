@@ -34,6 +34,8 @@ export type EmbeddingHubInfoAlert =
   | { type: "locked"; message: string };
 
 interface EmbeddingHubAction {
+  stepId?: EmbeddingHubStepId;
+
   title: string;
   description: string;
 

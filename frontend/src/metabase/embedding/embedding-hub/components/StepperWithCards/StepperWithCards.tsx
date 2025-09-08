@@ -1,5 +1,7 @@
 import cx from "classnames";
+import { match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Card, Flex, Group, Stack, Stepper, Text } from "metabase/ui";
 
@@ -13,7 +15,9 @@ export interface StepperSteps {
 export interface StepperCards {
   title: string;
   description: string;
+
   optional?: boolean;
+  done?: boolean;
 
   url?: string;
   onClick?: string;
@@ -24,9 +28,13 @@ export const StepperWithCards = ({ steps }: { steps: StepperSteps[] }) => {
     return null;
   }
 
+  const lastDoneIndex = _.findLastIndex(steps, (step) =>
+    step.cards.some((card) => card.done),
+  );
+
   return (
     <Stepper
-      active={1}
+      active={lastDoneIndex + 1}
       orientation="vertical"
       classNames={{
         step: S.step,
@@ -71,12 +79,20 @@ export const StepperWithCards = ({ steps }: { steps: StepperSteps[] }) => {
                         </Text>
                       </Stack>
 
-                      {card.optional && (
+                      {(card.optional || card.done) && (
                         <Flex justify="flex-end">
-                          <Text
-                            size="sm"
-                            c="var(--mb-color-text-medium)"
-                          >{t`Optional`}</Text>
+                          {match(card)
+                            .with({ done: true }, () => (
+                              <Text size="sm" c="var(--mb-color-success)">
+                                {t`Done`}
+                              </Text>
+                            ))
+                            .with({ optional: true }, () => (
+                              <Text size="sm" c="var(--mb-color-text-medium)">
+                                {t`Optional`}
+                              </Text>
+                            ))
+                            .otherwise(() => null)}
                         </Flex>
                       )}
                     </Stack>

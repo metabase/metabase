@@ -18,6 +18,7 @@ interface EmbeddingHubChecklistProps {
 
 export const EmbeddingHubChecklist = ({
   steps,
+  completedSteps,
 }: EmbeddingHubChecklistProps) => {
   const stepperSteps = useMemo(() => {
     return steps.map((step) => ({
@@ -26,9 +27,10 @@ export const EmbeddingHubChecklist = ({
         title: action.title,
         description: action.description,
         optional: action.optional,
+        done: completedSteps?.[action.stepId ?? step.id] ?? false,
       })),
     }));
-  }, [steps]);
+  }, [steps, completedSteps]);
 
   return <StepperWithCards steps={stepperSteps} />;
 };
