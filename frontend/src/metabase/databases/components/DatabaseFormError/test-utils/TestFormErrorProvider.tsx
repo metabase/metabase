@@ -12,6 +12,9 @@ export interface FormProvidersOptions {
 
 type Props = PropsWithChildren<FormProvidersOptions>;
 
+/**
+ * Used in tests to mock form errors
+ */
 export const TestFormErrorProvider = (props: Props) => {
   const { children, errorVariant, errorMessage } = props;
   const formState: IFormContext = {

@@ -105,7 +105,9 @@ export const useTroubleshootingTips = (
         return false;
       }
 
-      const initialTips: TipKey[] = ["ip-addresses", "ssl"];
+      const initialTips: TipKey[] = isHosted
+        ? ["ip-addresses", "ssl"]
+        : ["ssl", "permissions"];
       return expanded || initialTips.includes(tip.key);
     });
   }, [

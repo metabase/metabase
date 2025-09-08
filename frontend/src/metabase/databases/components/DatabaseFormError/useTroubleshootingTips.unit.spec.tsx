@@ -17,14 +17,16 @@ import { useTroubleshootingTips } from "./useTroubleshootingTips";
 interface SetupOptions {
   isHostAndPortError: boolean;
   expanded: boolean;
+  isHosted?: boolean;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
 const setup = (opts: SetupOptions) => {
   const {
-    isHostAndPortError,
     expanded,
+    isHostAndPortError,
+    isHosted = true,
     showMetabaseLinks,
     tokenFeatures = {},
   } = opts;
@@ -36,6 +38,7 @@ const setup = (opts: SetupOptions) => {
         settings: mockSettings({
           "show-metabase-links": showMetabaseLinks,
           "token-features": createMockTokenFeatures(tokenFeatures),
+          "is-hosted?": isHosted,
         }),
       }),
     },
@@ -45,17 +48,21 @@ const setup = (opts: SetupOptions) => {
 describe("useTroubleshootingTips", () => {
   describe("returns correct tips when", () => {
     it.each`
-      isHostAndPortError | expanded | tipsReturned
-      ${false}           | ${false} | ${["ip-addresses", "ssl"]}
-      ${false}           | ${true}  | ${["ip-addresses", "ssl", "permissions", "connection-settings", "credentials"]}
-      ${true}            | ${false} | ${[]}
-      ${true}            | ${true}  | ${["ip-addresses", "ssl", "permissions", "connection-settings", "credentials"]}
+      isHostAndPortError | expanded | isHosted | tipsReturned
+      ${false}           | ${false} | ${true}  | ${["ip-addresses", "ssl"]}
+      ${false}           | ${false} | ${false} | ${["ssl", "permissions"]}
+      ${false}           | ${true}  | ${true}  | ${["ip-addresses", "ssl", "permissions", "connection-settings", "credentials"]}
+      ${false}           | ${true}  | ${false} | ${["ssl", "permissions", "connection-settings", "credentials"]}
+      ${true}            | ${false} | ${true}  | ${[]}
+      ${true}            | ${true}  | ${true}  | ${["ip-addresses", "ssl", "permissions", "connection-settings", "credentials"]}
+      ${true}            | ${true}  | ${false} | ${["ssl", "permissions", "connection-settings", "credentials"]}
     `(
-      "isHostAndPortError is $isHostAndPortError & expanded is $expanded",
-      ({ isHostAndPortError, expanded, tipsReturned }) => {
+      `isHostAndPortError is $isHostAndPortError & expanded is $expanded & isHosted is $isHosted`,
+      ({ isHostAndPortError, expanded, isHosted, tipsReturned }) => {
         const { result } = setup({
           isHostAndPortError,
           expanded,
+          isHosted,
         });
         expect(result.current.map((tip) => tip.key)).toEqual(tipsReturned);
       },
@@ -68,6 +75,7 @@ describe("useTroubleshootingTips", () => {
         settings: mockSettings({
           "show-metabase-links": showMetabaseLinks,
           "token-features": createMockTokenFeatures({ whitelabel: true }),
+          "is-hosted?": true,
         }),
       });
 

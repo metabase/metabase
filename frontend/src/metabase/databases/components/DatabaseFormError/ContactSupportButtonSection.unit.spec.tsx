@@ -32,10 +32,6 @@ const setup = (params?: SetupParams) => {
 };
 
 describe("ContactSupportButtonSection", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it("should render a troubleshooting tip with correct title and link", () => {
     setup();
     const troubleshootingTip = screen.getByTestId("troubleshooting-tip");
