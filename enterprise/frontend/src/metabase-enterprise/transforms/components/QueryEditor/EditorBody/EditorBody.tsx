@@ -53,6 +53,8 @@ type EditorBodyProps = {
   nativeEditorSelectedText?: string | null;
 
   databases: ApiDatabase[];
+  proposedQuestion?: Question;
+  clearProposed?: () => void;
 };
 
 export function EditorBody({
@@ -73,6 +75,8 @@ export function EditorBody({
   onChangeModalSnippet,
   onChangeNativeEditorSelection,
   nativeEditorSelectedText,
+  proposedQuestion,
+  clearProposed,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -135,6 +139,8 @@ export function EditorBody({
       }}
       setNativeEditorSelectedRange={onChangeNativeEditorSelection}
       nativeEditorSelectedText={nativeEditorSelectedText}
+      proposedQuestion={proposedQuestion}
+      clearProposed={clearProposed}
     />
   ) : (
     <ResizableBox
