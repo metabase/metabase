@@ -1,4 +1,4 @@
-import type { DocumentId } from "metabase-types/api";
+import type { CommentId, DocumentId } from "metabase-types/api";
 
 export const documentContent = () => cy.findByTestId("document-content");
 
@@ -56,12 +56,42 @@ export const openDocumentCardMenu = (name: string) => {
 
 export function visitDocument(documentIdOrAlias: DocumentId | string) {
   if (typeof documentIdOrAlias === "number") {
-    visitDocument(documentIdOrAlias);
+    visitDocumentById(documentIdOrAlias);
   }
 
   if (typeof documentIdOrAlias === "string") {
     cy.get(documentIdOrAlias).then((id) => visitDocumentById(Number(id)));
   }
+}
+
+export function visitDocumentComment(
+  documentIdOrAlias: DocumentId | string,
+  nodeId: string,
+  commentId?: CommentId,
+) {
+  if (typeof documentIdOrAlias === "number") {
+    visitDocumentCommentById(documentIdOrAlias, nodeId, commentId);
+  }
+
+  if (typeof documentIdOrAlias === "string") {
+    cy.get(documentIdOrAlias).then((id) =>
+      visitDocumentCommentById(Number(id), nodeId, commentId),
+    );
+  }
+}
+
+function visitDocumentCommentById(
+  documentId: DocumentId | string,
+  nodeId: string,
+  commentId?: CommentId,
+) {
+  const alias = `documentQuery-${documentId}`;
+  cy.intercept("GET", `/api/ee/document/${documentId}`).as(alias);
+
+  const hash = commentId == null ? "" : `#comment-${commentId}`;
+  cy.visit(`/document/${documentId}/comments/${nodeId}${hash}`);
+
+  cy.wait(`@${alias}`);
 }
 
 const visitDocumentById = (id: DocumentId) => {

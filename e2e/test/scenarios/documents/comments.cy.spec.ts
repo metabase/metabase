@@ -472,6 +472,47 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 
+  it("shows other users comments", () => {
+    startNewCommentIn1ParagraphDocument();
+
+    cy.get<DocumentId>("@documentId").then((documentId) => {
+      cy.log("resolved 3-comments thread");
+
+      createParagraphComment(documentId, "Test 1").then(
+        ({ body: rootComment }) => {
+          cy.signInAsNormalUser();
+          createParagraphComment(documentId, "Test A", rootComment.id);
+
+          cy.signInAsAdmin();
+          createParagraphComment(documentId, "Test 2", rootComment.id);
+
+          cy.signInAsNormalUser();
+          createParagraphComment(documentId, "Test B", rootComment.id);
+
+          H.visitDocumentComment(documentId, PARAGRAPH_ID, rootComment.id);
+        },
+      );
+    });
+
+    H.modal().within(() => {
+      Comments.getCommentByText("Test 1")
+        .should("contain.text", "Bobby Tables")
+        .and("contain.text", "BT");
+
+      Comments.getCommentByText("Test A")
+        .should("contain.text", "Robert Tableton")
+        .and("contain.text", "RT");
+
+      Comments.getCommentByText("Test 2")
+        .should("contain.text", "Bobby Tables")
+        .and("contain.text", "BT");
+
+      Comments.getCommentByText("Test B")
+        .should("contain.text", "Robert Tableton")
+        .and("contain.text", "RT");
+    });
+  });
+
   describe("comment editor", () => {
     it("supports basic formatting with markdown", () => {
       startNewCommentIn1ParagraphDocument();
