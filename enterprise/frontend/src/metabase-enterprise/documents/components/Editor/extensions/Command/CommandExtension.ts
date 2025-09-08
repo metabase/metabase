@@ -64,10 +64,15 @@ export const CommandExtension = Extension.create<CommandOptions>({
               .focus()
               .deleteRange(range)
               .insertContent({
-                type: "cardEmbed",
-                attrs: {
-                  id: props.entityId,
-                },
+                type: "dropContainer",
+                content: [
+                  {
+                    type: "cardEmbed",
+                    attrs: {
+                      id: props.entityId,
+                    },
+                  },
+                ],
               })
               .setTextSelection(range.from + 1)
               .run();

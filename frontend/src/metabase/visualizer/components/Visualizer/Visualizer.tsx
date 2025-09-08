@@ -123,6 +123,7 @@ const VisualizerInner = (props: VisualizerProps) => {
           } as DraggedItem),
         );
       }
+      console.log("getting dragged");
     },
     [dispatch],
   );

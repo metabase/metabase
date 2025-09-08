@@ -1,0 +1,8 @@
+.wrapper {
+  padding-bottom: 1rem;
+  border: 1px solid grey;
+}
+
+.dragOver {
+  border: 1px solid blue;
+}

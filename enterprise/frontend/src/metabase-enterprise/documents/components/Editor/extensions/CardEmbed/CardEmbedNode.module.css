@@ -7,10 +7,10 @@
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
   margin: 1rem 0;
-  user-select: none;
+  /* user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
-  -ms-user-select: none;
+  -ms-user-select: none; */
   cursor: pointer;
   transition: border-color 0.2s ease;
   display: flex;
@@ -23,10 +23,10 @@
 }
 
 .cardEmbed * {
-  user-select: none;
+  /* user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
-  -ms-user-select: none;
+  -ms-user-select: none; */
 }
 
 .questionHeader {

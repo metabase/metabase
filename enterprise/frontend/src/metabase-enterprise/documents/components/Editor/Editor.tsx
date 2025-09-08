@@ -34,6 +34,7 @@ import { SmartLink } from "./extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "./extensions/suggestionRenderer";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
+import { DropContainer } from "./extensions/DropContainer";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   CardEmbed.name,
@@ -139,6 +140,7 @@ export const Editor: React.FC<EditorProps> = ({
           render: createSuggestionRenderer(MetabotMentionSuggestion),
         },
       }),
+      DropContainer,
     ],
     [siteUrl, getState],
   );

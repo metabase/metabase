@@ -1,8 +1,10 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { Plugin } from "prosemirror-state";
 import {
   type NodeViewProps,
   NodeViewWrapper,
   ReactNodeViewRenderer,
+  useReactNodeView,
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -61,7 +63,8 @@ export const CardEmbed: Node<{
   HTMLAttributes: CardEmbedAttributes;
 }> = Node.create({
   name: "cardEmbed",
-  group: "block",
+  group: "inline",
+  inline: true,
   atom: true,
   draggable: true,
   selectable: true,
@@ -96,15 +99,17 @@ export const CardEmbed: Node<{
   renderHTML({ node, HTMLAttributes }) {
     return [
       "div",
-      mergeAttributes(
-        HTMLAttributes,
-        {
-          "data-type": CardEmbed.name,
-          "data-id": node.attrs.id,
-          "data-name": node.attrs.name,
+
+      {
+        ...HTMLAttributes,
+        "data-type": CardEmbed.name,
+        "data-id": node.attrs.id,
+        "data-name": node.attrs.name,
+        style: {
+          padding: "0.5rem",
+          "background-color": "grey",
         },
-        this.options.HTMLAttributes,
-      ),
+      },
       formatCardEmbed(node.attrs as CardEmbedAttributes),
     ];
   },
@@ -328,6 +333,7 @@ export const CardEmbedComponent = memo(
       <NodeViewWrapper
         className={styles.embedWrapper}
         data-testid="document-card-embed"
+        data-drag-handle
       >
         <Box
           className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
