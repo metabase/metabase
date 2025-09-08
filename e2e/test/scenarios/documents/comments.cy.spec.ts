@@ -355,22 +355,7 @@ H.describeWithSnowplowEE("document comments", () => {
         text: string,
         parent_comment_id: CommentId | null = null,
       ) {
-        return H.createComment({
-          target_type: "document",
-          target_id: documentId,
-          child_target_id: PARAGRAPH_ID,
-          parent_comment_id,
-          content: {
-            type: "doc",
-            content: [
-              {
-                type: "paragraph",
-                attrs: { _id: uuid() },
-                content: [{ type: "text", text }],
-              },
-            ],
-          },
-        });
+        return createParagraphComment(documentId, text, parent_comment_id);
       }
     });
 
@@ -434,6 +419,56 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.findByText("Test D").should("not.exist");
       cy.findByText("Test E").should("not.exist");
       cy.findByText("Test F").should("not.exist");
+    });
+  });
+
+  it("does not show comment button when all threads are resolved", () => {
+    create1ParagraphDocument();
+
+    cy.get<DocumentId>("@documentId").then((documentId) => {
+      cy.log("resolved 3-comments thread");
+      createComment("Test 1").then(({ body: rootComment }) => {
+        createComment("Test 2", rootComment.id);
+        createComment("Test 3", rootComment.id);
+        H.updateComment({ id: rootComment.id, is_resolved: true });
+      });
+
+      cy.log("resolved 3-comments thread");
+      createComment("Test I").then(({ body: rootComment }) => {
+        createComment("Test II", rootComment.id);
+        createComment("Test III", rootComment.id);
+        H.updateComment({ id: rootComment.id, is_resolved: true });
+      });
+
+      cy.log("3-comments thread with all comments deleted");
+      createComment("Test X").then(({ body: rootComment }) => {
+        createComment("Test Y", rootComment.id).then(({ body: comment }) => {
+          deleteComment(comment.id);
+        });
+        createComment("Test Z", rootComment.id).then(({ body: comment }) => {
+          deleteComment(comment.id);
+        });
+        deleteComment(rootComment.id);
+      });
+
+      function createComment(
+        text: string,
+        parent_comment_id: CommentId | null = null,
+      ) {
+        return createParagraphComment(documentId, text, parent_comment_id);
+      }
+    });
+
+    H.visitDocument("@documentId");
+    cy.findByRole("textbox", { name: "Document Title" })
+      .should("be.visible")
+      .and("have.value", "Lorem ipsum");
+
+    cy.get<DocumentId>("@documentId").then((targetId) => {
+      Comments.getDocumentNodeButton({
+        targetId,
+        childTargetId: PARAGRAPH_ID,
+      }).should("not.be.visible");
     });
   });
 
@@ -935,6 +970,29 @@ function createAndVisit1ParagraphDocument() {
   cy.findByRole("textbox", { name: "Document Title" })
     .should("be.visible")
     .and("have.value", "Lorem ipsum");
+}
+
+function createParagraphComment(
+  documentId: DocumentId,
+  text: string,
+  parent_comment_id: CommentId | null = null,
+) {
+  return H.createComment({
+    target_type: "document",
+    target_id: documentId,
+    child_target_id: PARAGRAPH_ID,
+    parent_comment_id,
+    content: {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { _id: uuid() },
+          content: [{ type: "text", text }],
+        },
+      ],
+    },
+  });
 }
 
 function getHeading1(name = "Heading 1") {
