@@ -255,6 +255,7 @@ function useExpression({
   availableColumns,
   metadata,
   onChange,
+  initialClause,
 }: EditorProps & {
   metadata: Metadata;
 }) {
@@ -347,7 +348,7 @@ function useExpression({
   useMount(() => {
     // format the source when the component mounts
     formatExpression({
-      initial: true,
+      initial: clause === initialClause,
     });
   });
 
