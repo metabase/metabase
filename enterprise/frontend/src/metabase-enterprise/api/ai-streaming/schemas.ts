@@ -11,6 +11,7 @@ export const knownDataPartTypes = ["state", "navigate_to"];
 export type KnownDataPart =
   | { type: "state"; version: 1; value: Record<string, any> }
   | { type: "navigate_to"; version: 1; value: string };
+// TODO: add transforms stuffs
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),
