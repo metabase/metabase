@@ -82,14 +82,16 @@ export const StepperWithCards = ({ steps }: { steps: StepperSteps[] }) => {
                       {(card.optional || card.done) && (
                         <Flex justify="flex-end">
                           {match(card)
-                            .with({ done: true }, () => (
-                              <Text size="sm" c="var(--mb-color-success)">
-                                {t`Done`}
-                              </Text>
-                            ))
                             .with({ optional: true }, () => (
                               <Text size="sm" c="var(--mb-color-text-medium)">
                                 {t`Optional`}
+                              </Text>
+                            ))
+                            // TODO: prioritize done state when we have
+                            // completion checks for optional steps.
+                            .with({ done: true }, () => (
+                              <Text size="sm" c="var(--mb-color-success)">
+                                {t`Done`}
                               </Text>
                             ))
                             .otherwise(() => null)}
