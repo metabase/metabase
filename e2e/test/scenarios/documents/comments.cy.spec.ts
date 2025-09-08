@@ -850,6 +850,23 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.findByTestId("comments-resolved-tab").should("be.visible");
       cy.findByTestId("discussion-comment-deleted").should("not.exist");
     });
+
+    it("should be possible to resolve a thread created by another user", () => {
+      startNewCommentIn1ParagraphDocument();
+
+      cy.realType("Main comment");
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getCommentByText("Main comment").should("be.visible");
+
+      cy.signInAsNormalUser();
+      H.visitDocument("@documentId");
+      cy.findByLabelText("Show comments").click();
+      Comments.getCommentByText("Main comment").should("be.visible");
+      Comments.resolveCommentByText("Main comment");
+
+      cy.findByTestId("comments-resolved-tab").should("be.visible");
+      cy.findByTestId("discussion-comment").should("not.exist");
+    });
   });
 });
 
