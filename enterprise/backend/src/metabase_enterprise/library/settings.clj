@@ -66,9 +66,9 @@
   :export? false
   :default "main")
 
-(defsetting git-sync-read-only
-  (deferred-tru "Whether the instance is synced to git and read-only")
+(defsetting git-sync-allow-edit
+  (deferred-tru "Whether library content can be edited on this instance")
   :type :boolean
-  :visibility :admin
+  :visibility :authenticated
   :export? false
   :default false)

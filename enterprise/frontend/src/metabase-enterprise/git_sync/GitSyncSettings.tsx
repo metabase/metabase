@@ -5,18 +5,12 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import ActionButton from "metabase/common/components/ActionButton";
 import { useSetting } from "metabase/common/hooks";
-import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
-import { useImportGitMutation } from "metabase-enterprise/api";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 
 export const GitSyncSettings = () => {
-  const [importGit, { isLoading: isImporting }] = useImportGitMutation();
-
-  const isLoading = isImporting;
-
   return (
-    <SettingsPageWrapper title={t`Git sync settings`}>
+    <SettingsPageWrapper title={t`Library configuration`}>
       <SettingsSection
         title={t`Configure git`}
         description={
@@ -44,31 +38,29 @@ export const GitSyncSettings = () => {
         title={t`Sync control`}
         description={t`Manually trigger a git sync to push any local changes to the remote repository and pull down any changes from the remote repository.`}
       >
-        <Flex gap="md" align="end">
-          <AdminSettingInput
-            name="git-sync-import-branch"
-            // eslint-disable-next-line
-            description={t`Metabase will pull in all content from this branch`}
-            title={t`Import branch`}
-            inputType="text"
-            w="20rem"
-          />
-          <ActionButton
-            primary
-            actionFn={() => importGit({}).unwrap()}
-            variant="filled"
-            failedText={t`Sync failed`}
-            activeText={t`Syncing...`}
-            successText={t`Synced`}
-            useLoadingSpinner
-            disabled={isLoading}
-          >
-            <Group align="center" gap="sm">
-              <Icon name="download" />
-              {t`Import`}
-            </Group>
-          </ActionButton>
-        </Flex>
+        <AdminSettingInput
+          name="git-sync-allow-edit"
+          // eslint-disable-next-line
+          description={t`Whether editing library content is allowed from this Metabase instance. We recommend only enabling this on development or staging instances.`}
+          title={t`Allow editing library content`}
+          inputType="boolean"
+        />
+        <AdminSettingInput
+          name="git-sync-import-branch"
+          // eslint-disable-next-line
+          description={t`Metabase will pull library content from this branch`}
+          title={t`Default import branch`}
+          inputType="text"
+          w="20rem"
+        />
+        <AdminSettingInput
+          name="git-sync-export-branch"
+          // eslint-disable-next-line
+          description={t`Metabase will push library content to this branch`}
+          title={t`Default export branch`}
+          inputType="text"
+          w="20rem"
+        />
       </SettingsSection>
     </SettingsPageWrapper>
   );

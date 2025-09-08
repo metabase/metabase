@@ -20,7 +20,6 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { PLUGIN_GIT_SYNC } from "metabase/plugins";
 import {
   ActionIcon,
   Flex,
@@ -246,11 +245,6 @@ export function MainNavbarView({
         </div>
         <div>
           <WhatsNewNotification />
-          <SidebarSection>
-            {PLUGIN_GIT_SYNC.ViewLibraryButton && (
-              <PLUGIN_GIT_SYNC.ViewLibraryButton />
-            )}
-          </SidebarSection>
         </div>
       </SidebarContentRoot>
 
