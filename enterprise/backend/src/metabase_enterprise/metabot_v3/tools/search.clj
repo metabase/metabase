@@ -29,9 +29,10 @@
   "Transform a single search result to match the appropriate entity-specific schema."
   [result]
   (let [model (:model result)
-        verified? (when (:verified result)
-                    (boolean (or (:verified result)
-                                 (= "verified" (:moderated_status result)))))
+        verified? (cond
+                    (contains? result :verified) (boolean (:verified result))
+                    (= "verified" (:moderated_status result)) true
+                    :else nil)
         collection-info (when (:collection result)
                           {:name (:name (:collection result))
                            :authority_level (:authority_level (:collection result))})
