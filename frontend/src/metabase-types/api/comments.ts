@@ -53,7 +53,6 @@ export interface CreateCommentRequest {
 export interface UpdateCommentRequest {
   id: CommentId;
   content?: DocumentContent;
-  deleted_at?: boolean;
   is_resolved?: boolean;
 }
 
