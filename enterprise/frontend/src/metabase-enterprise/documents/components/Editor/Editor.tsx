@@ -1,4 +1,4 @@
-import { DndContext, pointerWithin } from "@dnd-kit/core";
+import DragHandle from "@tiptap/extension-drag-handle-react";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
@@ -14,7 +14,7 @@ import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
 import { useSelector, useStore } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Loader } from "metabase/ui";
+import { Box, Icon, Loader } from "metabase/ui";
 import { getMentionsCache } from "metabase-enterprise/documents/selectors";
 import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
 import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
@@ -214,46 +214,71 @@ export const Editor: React.FC<EditorProps> = ({
   }
 
   return (
-    <DndContext onDragEnd={handleDragEnd} collisionDetection={pointerWithin}>
-      <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
-        <Box
-          className={S.editorContent}
-          onClick={(e) => {
-            // Focus editor when clicking on empty space
-            const target = e.target as HTMLElement;
-            if (
-              target.classList.contains(S.editorContent) ||
-              target.classList.contains("ProseMirror")
-            ) {
-              const clickY = e.clientY;
-              const proseMirrorElement = target.querySelector(".ProseMirror");
+    <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
+      <Box
+        className={S.editorContent}
+        onClick={(e) => {
+          // Focus editor when clicking on empty space
+          const target = e.target as HTMLElement;
+          if (
+            target.classList.contains(S.editorContent) ||
+            target.classList.contains("ProseMirror")
+          ) {
+            const clickY = e.clientY;
+            const proseMirrorElement = target.querySelector(".ProseMirror");
 
-              if (proseMirrorElement) {
-                const proseMirrorRect =
-                  proseMirrorElement.getBoundingClientRect();
-                const isClickBelowContent = clickY > proseMirrorRect.bottom;
+            if (proseMirrorElement) {
+              const proseMirrorRect =
+                proseMirrorElement.getBoundingClientRect();
+              const isClickBelowContent = clickY > proseMirrorRect.bottom;
 
-                if (isClickBelowContent) {
-                  // Only move to end if clicking below the actual content
-                  editor.commands.focus("end");
-                } else {
-                  // Just focus without changing cursor position for clicks in padding areas
-                  editor.commands.focus();
-                }
+              if (isClickBelowContent) {
+                // Only move to end if clicking below the actual content
+                editor.commands.focus("end");
               } else {
-                // Fallback: just focus without position change
+                // Just focus without changing cursor position for clicks in padding areas
                 editor.commands.focus();
+              }
+            } else {
+              // Fallback: just focus without position change
+              editor.commands.focus();
+            }
+          }
+        }}
+      >
+        <DragHandle
+          editor={editor}
+          onElementDragStart={(e) => {
+            console.log("onElementDragStart", e);
+          }}
+          onElementDragEnd={(e) => {
+            console.log("onElementDragEnd", e);
+
+            handleDragEnd(e);
+          }}
+          onNodeChange={(data) => {
+            console.log("onNodeChange", data);
+
+            if (data.node != null) {
+              if (data.node.type.name !== "resizeNode") {
+                console.log("hideDragHandle true");
+                data.editor.state.tr.setMeta("hideDragHandle", true);
+              } else {
+                console.log("hideDragHandle false");
+                data.editor.state.tr.setMeta("hideDragHandle", false);
               }
             }
           }}
         >
-          <EditorContent data-testid="document-content" editor={editor} />
-          <EditorBubbleMenu
-            editor={editor}
-            disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
-          />
-        </Box>
+          <Icon name="grabber" size={16} color="var(--mb-color-text-medium)" />
+        </DragHandle>
+
+        <EditorContent data-testid="document-content" editor={editor} />
+        <EditorBubbleMenu
+          editor={editor}
+          disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+        />
       </Box>
-    </DndContext>
+    </Box>
   );
 };

@@ -1,7 +1,3 @@
-/* eslint-disable no-color-literals */
-// TODO - remove this
-
-import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
   type NodeViewProps,
@@ -39,39 +35,6 @@ import { EDITOR_STYLE_BOUNDARY_CLASS } from "../../constants";
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
-
-interface DropZoneProps {
-  id: string;
-  side: "left" | "right";
-  disabled?: boolean;
-}
-
-const DropZone = ({ id, side, disabled }: DropZoneProps) => {
-  // TODO: disable drop area if card is dragged over itself
-  const { isOver, setNodeRef } = useDroppable({
-    id: `drop-zone-${id}-${side}`,
-    disabled,
-  });
-
-  return (
-    <Box
-      ref={setNodeRef}
-      style={{
-        position: "absolute",
-        top: 0,
-        bottom: 0,
-        width: "0.25rem",
-        [side]: "-0.75rem",
-        borderRadius: "0.125rem",
-        backgroundColor: isOver
-          ? "var(--mb-base-color-blue-30)"
-          : "transparent",
-        zIndex: 10,
-        pointerEvents: "all",
-      }}
-    />
-  );
-};
 
 function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
@@ -160,28 +123,6 @@ export const CardEmbedComponent = memo(
     const { id, name } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
-
-    // Set up draggable functionality
-    const {
-      attributes,
-      listeners,
-      setNodeRef: setDraggableRef,
-      transform,
-      isDragging,
-    } = useDraggable({
-      id: `card-embed-${id}`,
-      disabled: !canWrite,
-    });
-
-    const draggableStyle = transform
-      ? {
-          transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-          opacity: isDragging ? 0.5 : 1,
-          zIndex: isDragging ? 1000 : "auto",
-        }
-      : {};
-
-    const dragHandleRef = useRef<HTMLDivElement>(null);
 
     let embedIndex = -1;
 
@@ -338,30 +279,12 @@ export const CardEmbedComponent = memo(
           style={{ position: "relative" }}
         >
           <Box
-            ref={setDraggableRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
-            style={{
-              ...draggableStyle,
-            }}
           >
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
-                {canWrite && (
-                  <Box
-                    ref={dragHandleRef}
-                    className={styles.dragHandle}
-                    {...attributes}
-                    {...listeners}
-                  >
-                    <Icon
-                      name="grabber"
-                      size={16}
-                      color="var(--mb-color-text-medium)"
-                    />
-                  </Box>
-                )}
                 <Box className={styles.titleContainer}>
                   <Text size="md" color="text-dark" fw={700}>
                     {t`Loading question...`}
@@ -387,30 +310,12 @@ export const CardEmbedComponent = memo(
           style={{ position: "relative" }}
         >
           <Box
-            ref={setDraggableRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
-            style={{
-              ...draggableStyle,
-            }}
           >
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
-                {canWrite && (
-                  <Box
-                    ref={dragHandleRef}
-                    className={styles.dragHandle}
-                    {...attributes}
-                    {...listeners}
-                  >
-                    <Icon
-                      name="grabber"
-                      size={16}
-                      color="var(--mb-color-text-medium)"
-                    />
-                  </Box>
-                )}
                 <Box className={styles.titleContainer}>
                   <Text size="md" color="text-dark" fw={700}>
                     {t`Error loading question`}
@@ -438,38 +343,14 @@ export const CardEmbedComponent = memo(
         data-testid="document-card-embed"
         style={{ position: "relative" }}
       >
-        {canWrite && id && (
-          <>
-            <DropZone id={id.toString()} side="left" disabled={isDragging} />
-            <DropZone id={id.toString()} side="right" disabled={isDragging} />
-          </>
-        )}
         <Box
-          ref={setDraggableRef}
           className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
             [styles.selected]: selected,
           })}
-          style={{
-            ...draggableStyle,
-          }}
         >
           {card && (
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
-                {canWrite && (
-                  <Box
-                    ref={dragHandleRef}
-                    className={styles.dragHandle}
-                    {...attributes}
-                    {...listeners}
-                  >
-                    <Icon
-                      name="grabber"
-                      size={16}
-                      color="var(--mb-color-text-medium)"
-                    />
-                  </Box>
-                )}
                 {isEditingTitle ? (
                   <TextInput
                     ref={titleInputRef}

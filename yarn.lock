@@ -1908,6 +1908,13 @@
   dependencies:
     "@floating-ui/utils" "^0.2.8"
 
+"@floating-ui/core@^1.7.3":
+  version "1.7.3"
+  resolved "https://registry.yarnpkg.com/@floating-ui/core/-/core-1.7.3.tgz#462d722f001e23e46d86fd2bd0d21b7693ccb8b7"
+  integrity sha512-sGnvb5dmrJaKEZ+LDIpguvdX3bDlEllmv4/ClQ9awcmCZrlx5jQyyMWFM5kBI+EyNOCDDiKk8il0zeuX3Zlg/w==
+  dependencies:
+    "@floating-ui/utils" "^0.2.10"
+
 "@floating-ui/dom@^1.0.0":
   version "1.6.12"
   resolved "https://registry.yarnpkg.com/@floating-ui/dom/-/dom-1.6.12.tgz#6333dcb5a8ead3b2bf82f33d6bc410e95f54e556"
@@ -1915,6 +1922,14 @@
   dependencies:
     "@floating-ui/core" "^1.6.0"
     "@floating-ui/utils" "^0.2.8"
+
+"@floating-ui/dom@^1.6.13":
+  version "1.7.4"
+  resolved "https://registry.yarnpkg.com/@floating-ui/dom/-/dom-1.7.4.tgz#ee667549998745c9c3e3e84683b909c31d6c9a77"
+  integrity sha512-OOchDgh4F2CchOX94cRVqhvy7b3AFb+/rQXyswmzmGakRfkMgoWVjfnLWkRirfLEfuD4ysVW16eXzwt3jHIzKA==
+  dependencies:
+    "@floating-ui/core" "^1.7.3"
+    "@floating-ui/utils" "^0.2.10"
 
 "@floating-ui/react-dom@^2.1.2":
   version "2.1.2"
@@ -1931,6 +1946,11 @@
     "@floating-ui/react-dom" "^2.1.2"
     "@floating-ui/utils" "^0.2.8"
     tabbable "^6.0.0"
+
+"@floating-ui/utils@^0.2.10":
+  version "0.2.10"
+  resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.10.tgz#a2a1e3812d14525f725d011a73eceb41fef5bc1c"
+  integrity sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==
 
 "@floating-ui/utils@^0.2.8":
   version "0.2.8"
@@ -4077,10 +4097,27 @@
   resolved "https://registry.yarnpkg.com/@tiptap/extension-code/-/extension-code-3.2.0.tgz#61927a22065d9ec20f590daab8bd9ac23baff638"
   integrity sha512-8eUeWzT0YNxvT9yh6p9mRziUmZjiRqHeQhHbcRYDM7gdFKb0mgsWPxiaonns0sdj7WW1vP6g0M80PC+HYCIO+g==
 
+"@tiptap/extension-collaboration@^3.4.1":
+  version "3.4.1"
+  resolved "https://registry.yarnpkg.com/@tiptap/extension-collaboration/-/extension-collaboration-3.4.1.tgz#49796fe60ccb49d8a082903b950b8c6f578648f1"
+  integrity sha512-3JSVgR4PYdcS/IoRSYH+4XZb+6g9rzEmxqQQn/pkb89rsMz/u13tMjWGqLLaluSnAJhdcVnwKeaDCWzPhEYnjw==
+
 "@tiptap/extension-document@^3.2.0":
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/@tiptap/extension-document/-/extension-document-3.2.0.tgz#94452997aec6d569bc8b37872bce7e9fbc87e5fc"
   integrity sha512-2SQoew2HtOwuORpk8l7NjKDzsCBotMsij9vRSTp4nwoa4ZFGwmlVMsNIaKq/E/GuS7oiejmUUROsiD3w1stPKw==
+
+"@tiptap/extension-drag-handle-react@^3.4.1":
+  version "3.4.1"
+  resolved "https://registry.yarnpkg.com/@tiptap/extension-drag-handle-react/-/extension-drag-handle-react-3.4.1.tgz#c224888b090c35b74f92c54ba771e6cf9c54c210"
+  integrity sha512-r41mP5RteL/RPQRh59/Iq57Z1rgVVtgi+mE3L634nPi6wku07QO/EyT9eU6kughwyOlClugtGtO9a7KADv5maQ==
+
+"@tiptap/extension-drag-handle@^3.4.1":
+  version "3.4.1"
+  resolved "https://registry.yarnpkg.com/@tiptap/extension-drag-handle/-/extension-drag-handle-3.4.1.tgz#843202fa6fc4fc6eeb60d272cd6f9d0127237fc7"
+  integrity sha512-pnn8AUdTbdwbjHjTlZqZT2hjv92EZuIhVvENiHi+3cITP+OAaZ9OaH+QkBS2ecjv5c1IThC5WrpyK4r9VX0Uew==
+  dependencies:
+    "@floating-ui/dom" "^1.6.13"
 
 "@tiptap/extension-dropcursor@^3.2.0":
   version "3.2.0"
@@ -4143,6 +4180,11 @@
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/@tiptap/extension-list/-/extension-list-3.2.0.tgz#cd9251891120a0213f69edfb95fa3b2fbd1aa494"
   integrity sha512-/3ZL9MpgDnEOv8tPwFwW3ct/TBbxZg3r3rN9noLHOR+YgiZKwbpMt9pDSJGu8y++rzT3vIHVmRRp0xFOXBvptQ==
+
+"@tiptap/extension-node-range@^3.4.1":
+  version "3.4.1"
+  resolved "https://registry.yarnpkg.com/@tiptap/extension-node-range/-/extension-node-range-3.4.1.tgz#ad5d7aae316db7a59886ee1734bc7042a5ec50b5"
+  integrity sha512-EeBk8c9uVW4xLjNJwaTFb1nDkO/qxDRK/BEb+XIFz78oIN0KBFBY99FhUUpinu3p1fszjrsZGkkO0CSBuRXPcA==
 
 "@tiptap/extension-ordered-list@^3.2.0":
   version "3.2.0"
@@ -4254,6 +4296,13 @@
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/@tiptap/suggestion/-/suggestion-3.2.0.tgz#414dbd028539054a0ebf9d910b30018a50c783c3"
   integrity sha512-AEkZPsn9Fn3p/3e6LIz8dyF3npU0JjVa2rCGqj/MmmvX9MD2fRYhiTCT1y7q9Q9/4wB4+CiOT7Mt4sWiijEkxw==
+
+"@tiptap/y-tiptap@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@tiptap/y-tiptap/-/y-tiptap-3.0.0.tgz#e2cf46b9346dd4666f0ecceab45bb4bccf85f1ce"
+  integrity sha512-HIeJZCj+KYJde2x6fONzo4o6kd7gW7eonwhQsv2p2VQnUgwNXMVhN+D6Z3AH/2i541Sq33y1PO4U/1ThCPjqbA==
+  dependencies:
+    lib0 "^0.2.100"
 
 "@tokenizer/token@^0.3.0":
   version "0.3.0"
@@ -13353,6 +13402,11 @@ isobject@^4.0.0:
   resolved "https://registry.yarnpkg.com/isobject/-/isobject-4.0.0.tgz#3f1c9155e73b192022a80819bacd0343711697b0"
   integrity sha512-S/2fF5wH8SJA/kmwr6HYhK/RI/OkhD84k8ntalo0iJjZikgq1XFvR5M8NPT1x5F7fBwCG3qHfnzeP/Vh/ZxCUA==
 
+isomorphic.js@^0.2.4:
+  version "0.2.5"
+  resolved "https://registry.yarnpkg.com/isomorphic.js/-/isomorphic.js-0.2.5.tgz#13eecf36f2dba53e85d355e11bf9d4208c6f7f88"
+  integrity sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==
+
 isstream@~0.1.2:
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/isstream/-/isstream-0.1.2.tgz#47e63f7af55afa6f92e1500e690eb8b8529c099a"
@@ -14300,6 +14354,13 @@ levn@^0.4.1:
   dependencies:
     prelude-ls "^1.2.1"
     type-check "~0.4.0"
+
+lib0@^0.2.100, lib0@^0.2.85, lib0@^0.2.99:
+  version "0.2.114"
+  resolved "https://registry.yarnpkg.com/lib0/-/lib0-0.2.114.tgz#0b0e55c3ffa8768fe3d9efca971059f465db4baf"
+  integrity sha512-gcxmNFzA4hv8UYi8j43uPlQ7CGcyMJ2KQb5kZASw6SnAKAf10hK12i2fjrS3Cl/ugZa5Ui6WwIu1/6MIXiHttQ==
+  dependencies:
+    isomorphic.js "^0.2.4"
 
 lighthouse-logger@^1.0.0:
   version "1.4.2"
@@ -22432,6 +22493,13 @@ xxhashjs@~0.2.2:
   dependencies:
     cuint "^0.2.2"
 
+y-protocols@^1.0.6:
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/y-protocols/-/y-protocols-1.0.6.tgz#66dad8a95752623443e8e28c0e923682d2c0d495"
+  integrity sha512-vHRF2L6iT3rwj1jub/K5tYcTT/mEYDUppgNPXwp8fmLpui9f7Yeq3OEtTLVF012j39QnV+KEQpNqoN7CWU7Y9Q==
+  dependencies:
+    lib0 "^0.2.85"
+
 y18n@^4.0.0:
   version "4.0.1"
   resolved "https://registry.yarnpkg.com/y18n/-/y18n-4.0.1.tgz#8db2b83c31c5d75099bb890b23f3094891e247d4"
@@ -22606,6 +22674,13 @@ yauzl@^2.10.0:
   dependencies:
     buffer-crc32 "~0.2.3"
     fd-slicer "~1.1.0"
+
+yjs@^13.6.27:
+  version "13.6.27"
+  resolved "https://registry.yarnpkg.com/yjs/-/yjs-13.6.27.tgz#8899be929d57da05a0aa112d044a5c204393ab7b"
+  integrity sha512-OIDwaflOaq4wC6YlPBy2L6ceKeKuF7DeTxx+jPzv1FHn9tCZ0ZwSRnUBxD05E3yed46fv/FWJbvR+Ud7x0L7zw==
+  dependencies:
+    lib0 "^0.2.99"
 
 yocto-queue@^0.1.0:
   version "0.1.0"
