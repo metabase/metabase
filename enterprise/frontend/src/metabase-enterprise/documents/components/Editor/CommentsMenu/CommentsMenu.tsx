@@ -28,7 +28,7 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
         threads
           .filter((thread) => !thread.comments[0]?.is_resolved)
           .flatMap((thread) =>
-            thread.comments.filter((comment) => !comment.is_deleted),
+            thread.comments.filter((comment) => !comment.deleted_at),
           ).length,
       [threads],
     );

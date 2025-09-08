@@ -33,8 +33,8 @@ export function getCommentThreads(
       return comment.parent_comment_id === parent.id;
     });
     const isActiveThread =
-      !parent.is_deleted ||
-      childComments.some((comment) => !comment.is_deleted);
+      !parent.deleted_at ||
+      childComments.some((comment) => !comment.deleted_at);
     if (isActiveThread) {
       threads.push({
         id: parent.id,
