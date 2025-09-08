@@ -2,6 +2,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
@@ -10,6 +11,7 @@
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -226,33 +228,42 @@
              "======"
              (format "exit code %d" exit-code)]))
 
-(defn- transfer-file-to-db [driver db {:keys [target] :as transform} metadata temp-file]
-  (let [table-name (transforms.util/qualified-table-name driver target)
-        temp-table-name (str table-name "_temp_" (System/currentTimeMillis))
-        table-schema {:name temp-table-name
+(defn- create-table-and-insert-data!
+  "Create a table from metadata and insert data from source."
+  [driver db-id table-name metadata data-source]
+  (let [table-schema {:name (if (keyword? table-name) table-name (keyword table-name))
                       :columns (mapv (fn [{:keys [name dtype]}]
                                        {:name name
                                         :type (transforms.util/dtype->base-type dtype)
                                         :nullable? true})
-                                     (:fields metadata))}
+                                     (:fields metadata))}]
+    (transforms.util/create-table-from-schema! driver db-id table-schema)
+    (driver/insert-from-source! driver db-id table-name (mapv :name (:columns table-schema)) data-source)))
+
+(defn- transfer-file-to-db [driver db {:keys [target] :as transform} metadata temp-file]
+  (let [table-name (transforms.util/qualified-table-name driver target)
+        table-exists? (transforms.util/target-table-exists? transform)
         data-source {:type :csv-file
                      :file temp-file}]
-    ;; TODO: should be transactional, perharps go through driver/run-transform!
-    (try
-      ;; Create temp table with same structure
-      (transforms.util/create-table-from-schema! driver (:id db) table-schema)
-      ;; Insert data into temp table
-      (driver/insert-from-source! driver (:id db) temp-table-name (mapv :name (:columns table-schema)) data-source)
-      ;; Atomic swap: drop old table and rename temp to target
-      (transforms.util/delete-target-table! transform)
-      ;; Rename temp table to target table name
-      (transforms.util/rename-table! driver (:id db) temp-table-name table-name)
-      (catch Exception e
-        ;; Clean up temp table if something goes wrong
+    (if table-exists?
+      ;; Table exists - use temp table + atomic swap pattern
+      (let [temp-table-name (keyword (str (u/qualified-name table-name) "_temp_" (System/currentTimeMillis)))]
+        (log/info "Existing table deletected, Create then swap")
         (try
-          (driver/execute! driver (:id db) [(format "DROP TABLE IF EXISTS %s" temp-table-name)])
-          (catch Exception _))
-        (throw e)))))
+          (create-table-and-insert-data! driver (:id db) temp-table-name metadata data-source)
+          ;; TODO: These operations should be within a transaction for atomicity
+          (transforms.util/drop-table! driver (:id db) table-name)
+          (transforms.util/rename-table! driver (:id db) temp-table-name table-name)
+          (catch Exception e
+            (log/error e "Failed to transfer data to table")
+            (try
+              (transforms.util/drop-table! driver (:id db) temp-table-name)
+              (catch Exception _))
+            (throw e))))
+      ;; Table doesn't exist - create directly with target name
+      (do
+        (log/info "New table")
+        (create-table-and-insert-data! driver (:id db) table-name metadata data-source)))))
 
 (defn- run-python-transform! [{:keys [source] :as transform} db run-id cancel-chan message-log]
   (with-open [log-thread-ref (open-log-thread! run-id message-log)]

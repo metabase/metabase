@@ -167,7 +167,7 @@
 (defmethod driver/rename-table! :sql-jdbc
   [driver db-id old-table-name new-table-name]
   (let [sql (first (sql/format {:alter-table (keyword old-table-name)
-                                :rename-to (keyword new-table-name)}
+                                :rename-table (keyword (name new-table-name))}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]

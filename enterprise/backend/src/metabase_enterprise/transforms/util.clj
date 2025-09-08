@@ -37,11 +37,12 @@
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
-  [{:keys [source target] :as transform}]
-  (when (query-transform? transform)
-    (let [db-id (-> source :query :database)
-          {driver :engine :as database} (t2/select-one :model/Database db-id)]
-      (driver/table-exists? driver database target))))
+  [{:keys [source target] :as _transform}]
+  (let [db-id (or (-> source :query :database)
+                  ;; python transform target
+                  (-> target :database))
+        {driver :engine :as database} (t2/select-one :model/Database db-id)]
+    (driver/table-exists? driver database target)))
 
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."
@@ -183,3 +184,9 @@
   [driver database-id old-table-name new-table-name]
   (log/infof "Renaming table %s to %s" old-table-name new-table-name)
   (driver/rename-table! driver database-id old-table-name new-table-name))
+
+(defn drop-table!
+  "Drop a table in the database."
+  [driver database-id table-name]
+  (log/infof "Dropping table %s" table-name)
+  (driver/drop-table! driver database-id table-name))

@@ -5,7 +5,7 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -244,3 +244,98 @@
             (driver/execute-raw-queries! driver/*driver* spec
                                          [[(format "DROP OWNED BY %s;" no-schema-user)]
                                           [(format "DROP ROLE IF EXISTS %s;" no-schema-user)]])))))))
+
+(deftest atomic-python-transform-swap-test
+  (testing "Python transform execution with atomic table swap"
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
+                                                                     :schema schema
+                                                                     :name   "atomic_python_swap"}]
+              (let [initial-transform {:name   "Python Transform Initial"
+                                       :source {:type  "python"
+                                                :source-tables {}
+                                                :body  (str "import pandas as pd\n"
+                                                            "\n"
+                                                            "def transform():\n"
+                                                            "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
+                                       :target (assoc target :database (mt/id))}]
+                (mt/with-temp [:model/Transform transform initial-transform]
+                  (transforms.execute/execute-python-transform! transform {:run-method :manual})
+                  (wait-for-table table-name 10000)
+
+                  (let [initial-rows (transforms.tu/table-rows table-name)]
+                    (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob")
+
+                    (t2/update! :model/Transform (:id transform)
+                                {:source {:type "python"
+                                          :source-tables {}
+                                          :body (str "import pandas as pd\n"
+                                                     "\n"
+                                                     "def transform():\n"
+                                                     "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
+
+                  ;; Test atomic swap by intercepting drop operation
+                  (let [drop-latch (java.util.concurrent.CountDownLatch. 1)
+                        original-drop-table! transforms.util/drop-table!]
+                    (with-redefs [transforms.util/drop-table! (fn [driver db-id table-name]
+                                                                ;; Wait for latch before proceeding with drop
+                                                                (.await drop-latch)
+                                                                (original-drop-table! driver db-id table-name))]
+                      ;; Start transform in background
+                      (let [transform-future (future
+                                               (transforms.execute/execute-python-transform!
+                                                (t2/select-one :model/Transform (:id transform))
+                                                {:run-method :manual}))]
+                        ;; Give transform time to create temp table and reach the drop operation
+                        (Thread/sleep 1000)
+                        ;; Verify old table is still accessible during transform
+                        (is (= [["Alice" 25] ["Bob" 30]]
+                               (transforms.tu/table-rows table-name))
+                            "Original data should still be accessible during transform")
+                        ;; Release the latch to allow drop and complete transform
+                        (.countDown drop-latch)
+                        ;; Wait for transform to complete
+                        @transform-future
+                        ;; Verify final state
+                        (is (= [["Charlie" 35] ["Diana" 40] ["Eve" 45]]
+                               (transforms.tu/table-rows table-name))
+                            "Table should now contain Charlie, Diana, and Eve")))))))))))))
+
+(deftest python-transform-temp-table-cleanup-test
+  (testing "Python transform cleans up temp tables on success"
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
+                                                                     :schema schema
+                                                                     :name   "python_cleanup_test"}]
+              (let [transform-def {:name   "Python Transform Cleanup"
+                                   :source {:type  "python"
+                                            :source-tables {}
+                                            :body  (str "import pandas as pd\n"
+                                                        "\n"
+                                                        "def transform():\n"
+                                                        "    return pd.DataFrame({'col1': [1, 2, 3], 'col2': ['a', 'b', 'c']})")}
+                                   :target (assoc target :database (mt/id))}]
+                (mt/with-temp [:model/Transform transform transform-def]
+                  ;; Run initial transform
+                  (transforms.execute/execute-python-transform! transform {:run-method :manual})
+                  (wait-for-table table-name 10000)
+
+                  ;; Run again to trigger temp table creation and swap
+                  (transforms.execute/execute-python-transform! transform {:run-method :manual})
+
+                  ;; Check that no temp tables remain
+                  (let [db-id (mt/id)
+                        tables (t2/select :model/Table :db_id db-id :active true)
+                        temp-table-pattern (re-pattern (str ".*" table-name "_temp_.*"))]
+                    (is (not-any? #(re-matches temp-table-pattern (:name %)) tables)
+                        "No temp tables should remain after successful Python transform")
+
+                    ;; Verify the final data is correct
+                    (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))
+                        "Table should contain the expected data after swap")))))))))))
