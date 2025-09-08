@@ -22,7 +22,7 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type { CardId } from "metabase-types/api";
 
-import FieldList from "../FieldList";
+import { FieldList } from "../FieldList";
 import { NodeListTitleText } from "../NodeList";
 
 import S from "./QuestionPane.module.css";
