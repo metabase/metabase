@@ -108,25 +108,15 @@ H.describeWithSnowplowEE("document comments", () => {
   });
 
   it("allows to split a paragraph in two, and then to comment on both paragraphs", () => {
-    create1AndVisitParagraphDocument();
+    startNewCommentIn1ParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((targetId) => {
-      getParagraph().realHover();
-      Comments.getDocumentNodeButton({ targetId, childTargetId: PARAGRAPH_ID })
-        .should("be.visible")
-        .click();
-
-      H.modal().within(() => {
-        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
-
-        Comments.getNewThreadInput().click();
-        cy.realType("Hello");
-        cy.realPress([META_KEY, "Enter"]);
-        Comments.getNewThreadInput().within(() => {
-          Comments.getPlaceholder().should("be.visible");
-        });
-        cy.findByLabelText("Close").click();
+      cy.realType("Hello");
+      cy.realPress([META_KEY, "Enter"]);
+      Comments.getNewThreadInput().within(() => {
+        Comments.getPlaceholder().should("be.visible");
       });
+      cy.findByLabelText("Close").click();
 
       H.documentContent().click();
       cy.realType("{leftarrow}".repeat("lor sit amet.".length));
@@ -200,145 +190,118 @@ H.describeWithSnowplowEE("document comments", () => {
   });
 
   it("allows to create / update / delete comments", () => {
-    create1AndVisitParagraphDocument();
+    startNewCommentIn1ParagraphDocument();
 
-    cy.get<DocumentId>("@documentId").then((targetId) => {
-      getParagraph().realHover();
-      Comments.getDocumentNodeButton({ targetId, childTargetId: PARAGRAPH_ID })
+    H.modal().within(() => {
+      cy.log("does not allow to send empty comments");
+      cy.realPress([META_KEY, "Enter"]);
+      cy.findByLabelText("Send").should("be.disabled");
+      Comments.getCommentInput().should("not.exist");
+
+      cy.log("allows to start threads and add replies with keyboard shortcut");
+      Comments.getNewThreadInput().click();
+      cy.realType("1st thread");
+      cy.realPress([META_KEY, "Enter"]);
+      cy.findAllByText("a few seconds ago")
         .should("be.visible")
-        .click();
+        .and("have.length", 1);
 
-      H.modal().within(() => {
-        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+      Comments.getCommentInputs().should("have.length", 2).last().click();
+      cy.realType("Reply 1");
+      cy.realPress([META_KEY, "Enter"]);
+      cy.findAllByText("a few seconds ago")
+        .should("be.visible")
+        .and("have.length", 2);
 
-        cy.log("does not allow to send empty comments");
-        Comments.getNewThreadInput().click();
-        cy.realPress([META_KEY, "Enter"]);
-        cy.findByLabelText("Send").should("be.disabled");
-        Comments.getCommentInput().should("not.exist");
-
-        cy.log(
-          "allows to start threads and add replies with keyboard shortcut",
-        );
-        Comments.getNewThreadInput().click();
-        cy.realType("1st thread");
-        cy.realPress([META_KEY, "Enter"]);
-        cy.findAllByText("a few seconds ago")
-          .should("be.visible")
-          .and("have.length", 1);
-
-        Comments.getCommentInputs().should("have.length", 2).last().click();
-        cy.realType("Reply 1");
-        cy.realPress([META_KEY, "Enter"]);
-        cy.findAllByText("a few seconds ago")
-          .should("be.visible")
-          .and("have.length", 2);
-
-        Comments.getCommentInputs().should("have.length", 3).last().click();
-        cy.realType("Reply 2");
-        cy.realPress([META_KEY, "Enter"]);
-
-        cy.log("allows to start threads and add replies with the button");
-        Comments.getNewThreadInput().click();
-        cy.realType("2nd thread");
-        cy.findAllByLabelText("Send").should("have.length", 2).last().click();
-
-        Comments.getCommentInputs().should("have.length", 6).last().click();
-        cy.realType("Reply A");
-        cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
-
-        Comments.getCommentInputs().should("have.length", 7).last().click();
-        cy.realType("Reply B");
-        cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
-
-        cy.log("allows to delete a comment");
-        Comments.getCommentByText("Reply A").realHover();
-        Comments.getCommentByText("Reply A")
-          .findByLabelText("More actions")
-          .click();
-      });
-
-      H.popover().findByText("Delete").click();
-
-      H.modal().within(() => {
-        cy.findByText("Reply A").should("not.exist");
-        cy.findByText("This comment was deleted.").should("not.exist");
-
-        cy.log("allows to delete a comment that starts a thread");
-        Comments.getCommentByText("1st thread").realHover();
-        Comments.getCommentByText("1st thread")
-          .findByLabelText("More actions")
-          .click();
-      });
-
-      H.popover().findByText("Delete").click();
-
-      H.modal().within(() => {
-        cy.findByText("1st thread").should("not.exist");
-        cy.findByText("This comment was deleted.").should("be.visible");
-        cy.findByText("Reply 1").should("be.visible");
-        cy.findByText("Reply 2").should("be.visible");
-
-        cy.log("allows to edit a comment");
-        Comments.getCommentByText("Reply 1").realHover();
-        Comments.getCommentByText("Reply 1")
-          .findByLabelText("More actions")
-          .click();
-      });
-
-      H.popover().findByText("Edit").click();
-      cy.log("editor should be autofocused when editing");
-      cy.realType("My ");
+      Comments.getCommentInputs().should("have.length", 3).last().click();
+      cy.realType("Reply 2");
       cy.realPress([META_KEY, "Enter"]);
 
-      H.modal().within(() => {
-        Comments.getCommentByText("My Reply 1").should("be.visible");
-        Comments.getCommentByText("My Reply 1")
-          .findByRole("textbox")
-          .should("have.attr", "contenteditable", "false");
+      cy.log("allows to start threads and add replies with the button");
+      Comments.getNewThreadInput().click();
+      cy.realType("2nd thread");
+      cy.findAllByLabelText("Send").should("have.length", 2).last().click();
 
-        cy.log("allows to cancel editing a comment with Esc");
-        Comments.getCommentByText("Reply 2").realHover();
-        Comments.getCommentByText("Reply 2")
-          .findByLabelText("More actions")
-          .click();
-      });
+      Comments.getCommentInputs().should("have.length", 6).last().click();
+      cy.realType("Reply A");
+      cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
 
-      H.popover().findByText("Edit").click();
-      Comments.getCommentByText("Reply 2")
-        .findByRole("textbox")
-        .should("have.attr", "contenteditable", "true");
+      Comments.getCommentInputs().should("have.length", 7).last().click();
+      cy.realType("Reply B");
+      cy.findAllByLabelText("Send").should("have.length", 3).eq(1).click();
 
-      cy.realPress("Escape");
-      Comments.getCommentByText("Reply 2")
+      cy.log("allows to delete a comment");
+      Comments.getCommentByText("Reply A").realHover();
+      Comments.getCommentByText("Reply A")
+        .findByLabelText("More actions")
+        .click();
+    });
+
+    H.popover().findByText("Delete").click();
+
+    H.modal().within(() => {
+      cy.findByText("Reply A").should("not.exist");
+      cy.findByText("This comment was deleted.").should("not.exist");
+
+      cy.log("allows to delete a comment that starts a thread");
+      Comments.getCommentByText("1st thread").realHover();
+      Comments.getCommentByText("1st thread")
+        .findByLabelText("More actions")
+        .click();
+    });
+
+    H.popover().findByText("Delete").click();
+
+    H.modal().within(() => {
+      cy.findByText("1st thread").should("not.exist");
+      cy.findByText("This comment was deleted.").should("be.visible");
+      cy.findByText("Reply 1").should("be.visible");
+      cy.findByText("Reply 2").should("be.visible");
+
+      cy.log("allows to edit a comment");
+      Comments.getCommentByText("Reply 1").realHover();
+      Comments.getCommentByText("Reply 1")
+        .findByLabelText("More actions")
+        .click();
+    });
+
+    H.popover().findByText("Edit").click();
+    cy.log("editor should be autofocused when editing");
+    cy.realType("My ");
+    cy.realPress([META_KEY, "Enter"]);
+
+    H.modal().within(() => {
+      Comments.getCommentByText("My Reply 1").should("be.visible");
+      Comments.getCommentByText("My Reply 1")
         .findByRole("textbox")
         .should("have.attr", "contenteditable", "false");
-      H.modal().should("be.visible");
 
-      cy.log("subsequent Esc should close the modal");
-      cy.realPress("Escape");
-      H.modal().should("not.exist");
+      cy.log("allows to cancel editing a comment with Esc");
+      Comments.getCommentByText("Reply 2").realHover();
+      Comments.getCommentByText("Reply 2")
+        .findByLabelText("More actions")
+        .click();
     });
+
+    H.popover().findByText("Edit").click();
+    Comments.getCommentByText("Reply 2")
+      .findByRole("textbox")
+      .should("have.attr", "contenteditable", "true");
+
+    cy.realPress("Escape");
+    Comments.getCommentByText("Reply 2")
+      .findByRole("textbox")
+      .should("have.attr", "contenteditable", "false");
+    H.modal().should("be.visible");
+
+    cy.log("subsequent Esc should close the modal");
+    cy.realPress("Escape");
+    H.modal().should("not.exist");
   });
 
   describe("comment editor", () => {
-    it.only("supports basic formatting", () => {
-      create1AndVisitParagraphDocument();
-      getParagraph().realHover();
-
-      cy.get<DocumentId>("@documentId").then((targetId) => {
-        Comments.getDocumentNodeButton({
-          targetId,
-          childTargetId: PARAGRAPH_ID,
-        })
-          .should("be.visible")
-          .click();
-      });
-
-      H.modal().within(() => {
-        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
-        Comments.getNewThreadInput().click();
-      });
+    it("supports basic formatting with markdown", () => {
+      startNewCommentIn1ParagraphDocument();
 
       cy.realType("**bold** *italic* ~~strike~~ `code`");
       cy.realPress([META_KEY, "Enter"]);
@@ -354,22 +317,7 @@ H.describeWithSnowplowEE("document comments", () => {
     });
 
     it("supports mentions and can mention yourself", () => {
-      create1AndVisitParagraphDocument();
-      getParagraph().realHover();
-
-      cy.get<DocumentId>("@documentId").then((targetId) => {
-        Comments.getDocumentNodeButton({
-          targetId,
-          childTargetId: PARAGRAPH_ID,
-        })
-          .should("be.visible")
-          .click();
-      });
-
-      H.modal().within(() => {
-        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
-        Comments.getNewThreadInput().click();
-      });
+      startNewCommentIn1ParagraphDocument();
 
       cy.realType("@");
       H.documentSuggestionDialog().within(() => {
@@ -426,22 +374,7 @@ H.describeWithSnowplowEE("document comments", () => {
     });
 
     it("supports emojis", () => {
-      create1AndVisitParagraphDocument();
-      getParagraph().realHover();
-
-      cy.get<DocumentId>("@documentId").then((targetId) => {
-        Comments.getDocumentNodeButton({
-          targetId,
-          childTargetId: PARAGRAPH_ID,
-        })
-          .should("be.visible")
-          .click();
-      });
-
-      H.modal().within(() => {
-        cy.findByRole("heading", { name: "Comments" }).should("be.visible");
-        Comments.getNewThreadInput().click();
-      });
+      startNewCommentIn1ParagraphDocument();
 
       cy.realType(":s");
       Comments.getEmojiPicker()
@@ -492,6 +425,25 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 });
+
+function startNewCommentIn1ParagraphDocument() {
+  create1AndVisitParagraphDocument();
+  getParagraph().realHover();
+
+  cy.get<DocumentId>("@documentId").then((targetId) => {
+    Comments.getDocumentNodeButton({
+      targetId,
+      childTargetId: PARAGRAPH_ID,
+    })
+      .should("be.visible")
+      .click();
+  });
+
+  H.modal().within(() => {
+    cy.findByRole("heading", { name: "Comments" }).should("be.visible");
+    Comments.getNewThreadInput().click();
+  });
+}
 
 function createAndVisitLoremIpsumDocument() {
   H.createDocument({
