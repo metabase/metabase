@@ -1,4 +1,6 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
+import { QueryMetadataSchema } from "metabase/schema";
 import type {
   Card,
   CardId,
@@ -75,8 +77,14 @@ export const cardApi = Api.injectEndpoints({
           method: "GET",
           url: `/api/card/${id}/query_metadata`,
         }),
-        providesTags: (metadata, error, id) =>
+        providesTags: (metadata, _error, id) =>
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
+        onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+          const { data } = await queryFulfilled;
+          if (typeof data === "object") {
+            dispatch(updateMetadata(data, QueryMetadataSchema));
+          }
+        },
       }),
       getCardQuery: builder.query<Dataset, CardQueryRequest>({
         query: ({ cardId, ...body }) => ({

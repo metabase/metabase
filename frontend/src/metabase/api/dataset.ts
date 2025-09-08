@@ -1,3 +1,5 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CardQueryMetadata,
   Dataset,
@@ -63,6 +65,12 @@ export const datasetApi = Api.injectEndpoints({
       }),
       providesTags: (metadata) =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (typeof data === "object") {
+          dispatch(updateMetadata(data, QueryMetadataSchema));
+        }
+      },
     }),
     getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
       query: (body) => ({
@@ -90,6 +98,7 @@ export const {
   useGetAdhocQueryQuery,
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryMetadataQuery,
+  useLazyGetAdhocQueryMetadataQuery,
   useGetNativeDatasetQuery,
   useGetRemappedParameterValueQuery,
 } = datasetApi;
