@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.search
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.reactions]
    [metabase.api.common :as api]
@@ -7,39 +8,28 @@
    [metabase.search.core :as search]
    [toucan2.core :as t2]))
 
-(def ^:private entity-type->search-model
-  "Maps API entity types to search engine model types"
-  {"database"  "database"
-   "table"     "table"
-   "model"     "dataset"
-   "metric"    "metric"
-   "question"  "card"
-   "dashboard" "dashboard"})
+(def ^:private search-model-mappings
+  "Maps metabot entity types to search engine model types"
+  {"model"    "dataset"
+   "question" "card"})
 
-(def ^:private search-model->result-type
-  "Maps search engine model types to result types"
-  {"database"  :database
-   "table"     :table
-   "dataset"   :model
-   "metric"    :metric
-   "card"      :question
-   "dashboard" :dashboard})
+(defn- entity-type->search-model
+  [entity-type]
+  (get search-model-mappings entity-type entity-type))
+
+(defn- search-model->result-type
+  [search-model]
+  (get (set/map-invert search-model-mappings) search-model search-model))
 
 (defn- transform-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [result]
+  [{:keys [verified moderated_status collection] :as result}]
   (let [model (:model result)
-        verified? (cond
-                    (contains? result :verified) (boolean (:verified result))
-                    (= "verified" (:moderated_status result)) true
-                    :else nil)
-        collection-info (when (:collection result)
-                          {:name (:name (:collection result))
-                           :authority_level (:authority_level (:collection result))})
+        verified? (or (boolean verified) (= moderated_status "verified"))
+        collection-info (select-keys collection [:name :authority_level])
         common-fields {:id           (:id result)
                        :type         (search-model->result-type model)
                        :name         (:name result)
-                       :display_name (:name result)
                        :description  (:description result)
                        :updated_at   (:updated_at result)
                        :created_at   (:created_at result)}]
@@ -50,6 +40,7 @@
       "table"
       (merge common-fields
              {:name            (:table_name result)
+              :display_name    (:name result)
               :database_id     (:database_id result)
               :database_schema (:table_schema result)})
 
@@ -67,7 +58,7 @@
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
   [search-result]
-  [(get search-result :id) (get search-result :model)])
+  (juxt :id :model) search-result)
 
 (defn- reciprocal-rank-fusion
   "Combine multiple ranked search result lists using Reciprocal Rank Fusion (RRF).
@@ -77,27 +68,28 @@
   2. Summing scores for items that appear in multiple lists
   3. Returning items sorted by total RRF score (descending)
 
-  The RRF score is calculated as: 1 / (k + r) where k=60 (typical RRF constant)"
-  [result-lists]
-  (let [k 60
-        rrf-results (reduce
-                     (fn [acc-map result-list]
-                       (reduce-kv
-                        (fn [acc rank search-result]
-                          (let [id (search-result-id search-result)
-                                rrf-score (/ 1.0 (+ k (inc rank)))]
-                            (if (contains? acc id)
-                              (update-in acc [id :rrf] + rrf-score)
-                              (assoc acc id {:search-result search-result
-                                             :rrf rrf-score}))))
-                        acc-map
-                        (vec result-list)))
-                     {}
-                     result-lists)]
-    (->> rrf-results
-         vals
-         (sort-by :rrf >)
-         (map :search-result))))
+  The RRF score is calculated as: 1 / (k + r) where k defaults to 60 (typical RRF constant)"
+  ([result-lists]
+   (reciprocal-rank-fusion result-lists 60))
+  ([result-lists k]
+   (let [rrf-results (reduce
+                      (fn [acc-map result-list]
+                        (reduce-kv
+                         (fn [acc rank search-result]
+                           (let [id (search-result-id search-result)
+                                 rrf-score (/ 1.0 (+ k (inc rank)))]
+                             (if (contains? acc id)
+                               (update-in acc [id :rrf] + rrf-score)
+                               (assoc acc id {:search-result search-result
+                                              :rrf rrf-score}))))
+                         acc-map
+                         (vec result-list)))
+                      {}
+                      result-lists)]
+     (->> rrf-results
+          vals
+          (sort-by :rrf >)
+          (map :search-result)))))
 
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase.

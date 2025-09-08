@@ -97,13 +97,12 @@
 
   (testing "RRF with many lists"
     (let [lists (for [i (range 5)]
-                  [{:id (+ i 1) :model "card" :name (str "Card " (+ i 1))}
+                  [{:id (inc i) :model "card" :name (str "Card " (inc i))}
                    {:id 99 :model "dashboard" :name "Common Dashboard"}
                    {:id (+ i 10) :model "table" :name (str "Table " (+ i 10))}])
           result (#'search/reciprocal-rank-fusion lists)]
       ;; Item 99 appears in all 5 lists at position 2, so should rank very high
-      (let [top-item (first result)]
-        (is (= 99 (:id top-item)))))))
+      (is (= 99 (:id (first result)))))))
 
 (deftest transform-search-result-test
   (testing "table result transformation"
@@ -117,7 +116,7 @@
                   :updated_at "2024-01-01"
                   :created_at "2024-01-01"}
           expected {:id 1
-                    :type :table
+                    :type "table"
                     :name "orders"
                     :display_name "Orders"
                     :description "Order table"
@@ -138,13 +137,12 @@
                   :updated_at "2024-01-02"
                   :created_at "2024-01-02"}
           expected {:id 2
-                    :type :model
+                    :type "model"
                     :name "Sales Model"
-                    :display_name "Sales Model"
                     :description "Model for sales"
                     :database_id 43
                     :verified true
-                    :collection nil
+                    :collection {}
                     :updated_at "2024-01-02"
                     :created_at "2024-01-02"}]
       (is (= expected (#'search/transform-search-result result)))))
@@ -159,9 +157,8 @@
                   :updated_at "2024-01-03"
                   :created_at "2024-01-03"}
           expected {:id 3
-                    :type :dashboard
+                    :type "dashboard"
                     :name "Main Dashboard"
-                    :display_name "Main Dashboard"
                     :description "Dashboard desc"
                     :verified false
                     :collection {:name "Finance" :authority_level "official"}
@@ -179,9 +176,8 @@
                   :updated_at "2024-01-04"
                   :created_at "2024-01-04"}
           expected {:id 4
-                    :type :question
+                    :type "question"
                     :name "Q1"
-                    :display_name "Q1"
                     :description "Question desc"
                     :database_id nil
                     :verified true
@@ -199,13 +195,12 @@
                   :updated_at "2024-01-05"
                   :created_at "2024-01-05"}
           expected {:id 5
-                    :type :metric
+                    :type "metric"
                     :name "Revenue"
-                    :display_name "Revenue"
                     :description "Metric desc"
                     :database_id nil
                     :verified false
-                    :collection nil
+                    :collection {}
                     :updated_at "2024-01-05"
                     :created_at "2024-01-05"}]
       (is (= expected (#'search/transform-search-result result)))))
@@ -218,9 +213,8 @@
                   :updated_at "2024-01-06"
                   :created_at "2024-01-06"}
           expected {:id 6
-                    :type :database
+                    :type "database"
                     :name "Production DB"
-                    :display_name "Production DB"
                     :description "Main database"
                     :updated_at "2024-01-06"
                     :created_at "2024-01-06"}]

@@ -664,24 +664,6 @@
           #(set/rename-keys % {:database_id :database-id
                                :entity_types :entity-types})}]])
 
-(mr/def ::search-arguments
-  [:and
-   [:map
-    [:term_queries     {:optional true} [:maybe [:sequential :string]]]
-    [:semantic_queries {:optional true} [:maybe [:sequential :string]]]
-    [:entity_types     {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric" "database"]]]]
-    [:database_id      {:optional true} [:maybe :int]]
-    [:created_at       {:optional true} [:maybe ms/NonBlankString]]
-    [:last_edited_at   {:optional true} [:maybe ms/NonBlankString]]
-    [:limit            {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
-   [:map {:encode/tool-api-request
-          #(set/rename-keys % {:term_queries     :term-queries
-                               :semantic_queries :semantic-queries
-                               :database_id      :database-id
-                               :created_at       :created-at
-                               :last_edited_at   :last-edited-at
-                               :entity_types     :entity-types})}]])
-
 (mr/def ::search-data-sources-table-result
   "Schema for table/model search results"
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
@@ -1052,12 +1034,7 @@
     [:last_edited_at   {:optional true} [:maybe ms/NonBlankString]]
     [:limit            {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
    [:map {:encode/tool-api-request
-          #(set/rename-keys % {:term_queries     :term-queries
-                               :semantic_queries :semantic-queries
-                               :database_id      :database-id
-                               :created_at       :created-at
-                               :last_edited_at   :last-edited-at
-                               :entity_types     :entity-types})}]])
+          #(update-keys % (comp keyword u/->kebab-case-en))}]])
 
 (mr/def ::search-result-item
   "Unified schema for search result items."
