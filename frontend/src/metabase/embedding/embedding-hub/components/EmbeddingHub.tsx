@@ -51,8 +51,8 @@ export const EmbeddingHub = () => {
           description: action.description,
           optional: action.optional,
 
-          // TODO: add completion check for optional steps
-          done: !action.optional && (completedSteps?.[stepId] ?? false),
+          // TODO: add completion checks for the 'create models' step
+          done: completedSteps?.[stepId] ?? false,
 
           clickAction,
         };
