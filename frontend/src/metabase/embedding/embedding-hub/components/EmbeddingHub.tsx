@@ -36,8 +36,8 @@ export const EmbeddingHub = () => {
   };
 
   return (
-    <Box mih="100%" px="lg" py="xl" bg="bg-white">
-      <Box maw={600} mx="auto">
+    <Box mih="100%" px="xl" py="xl" bg="bg-white">
+      <Box maw={900} mx="auto">
         <Title order={1} mb="sm" c="text-dark">{t`Embedding hub`}</Title>
 
         <Text mb="xl" c="text-medium">

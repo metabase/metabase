@@ -29,7 +29,7 @@ export const EmbeddingHubStepActions = ({
               onClick={() => onModalAction?.(action.modal!)}
               disabled={isLocked}
             >
-              {action.label}
+              {action.title}
             </Button>
           );
         }
@@ -44,7 +44,7 @@ export const EmbeddingHubStepActions = ({
                 utm_content: step.id,
               }}
             >
-              {action.label}
+              {action.title}
             </DocsLink>
           );
         }
@@ -53,7 +53,7 @@ export const EmbeddingHubStepActions = ({
           return (
             <Link key={index} to={action.to}>
               <Button variant={action.variant ?? "outline"} disabled={isLocked}>
-                {action.label}
+                {action.title}
               </Button>
             </Link>
           );

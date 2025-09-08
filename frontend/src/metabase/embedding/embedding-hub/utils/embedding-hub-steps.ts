@@ -5,12 +5,12 @@ import type { EmbeddingHubStep } from "../types";
 export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   const TEST_EMBED: EmbeddingHubStep = {
     id: "create-test-embed",
-    title: t`Create a test embed`,
+    title: t`Create embed`,
     icon: "test_tube",
-    description: t`Test out the capabilities of Embedded Analytics JS by embedding a sample dashboard.`,
     actions: [
       {
-        label: t`Create an embed`,
+        title: t`Create an embed`,
+        description: t`Create an embed by using Embedded Analytics JS, the SDK for React, or Static Embedding.`,
         to: "/embed-js?auth_method=user_session",
         variant: "outline",
       },
@@ -26,8 +26,6 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     id: "add-data",
     title: t`Add your data`,
     icon: "add_data",
-    // eslint-disable-next-line no-literal-metabase-strings -- only shown to admins.
-    description: t`You can connect databases or upload CSVs, and query them directly with the query builder or the Native/SQL editor. Metabase connects to more than 15 popular databases.`,
     image: {
       src: "app/assets/img/onboarding_data_diagram.png",
       srcSet: "app/assets/img/onboarding_data_diagram@2x.png 2x",
@@ -35,7 +33,8 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     },
     actions: [
       {
-        label: t`Add data`,
+        title: t`Add data`,
+        description: t`Connect your own database or upload a CSV and start working with your real data.`,
         modal: { type: "add-data", initialTab: "db" },
         variant: "outline",
       },
@@ -44,10 +43,8 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
 
   const CREATE_DASHBOARD: EmbeddingHubStep = {
     id: "create-dashboard",
-    title: t`Create a dashboard`,
+    title: t`Prepare data`,
     icon: "dashboard",
-    // eslint-disable-next-line no-literal-metabase-strings -- only shown to admins.
-    description: t`Metabase X-rays let you select a table to automatically generate a dashboard populated with charts. Alternatively, you can create a dashboard manually.`,
     video: {
       id: "FOAXF4p1AL0",
       trackingId: "COmu2w0SqGagUoVp",
@@ -55,50 +52,36 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     },
     actions: [
       {
-        label: t`Generate automatic dashboard`,
+        title: t`Generate a dashboard`,
+        description: t`Automatically generate a dashboard from your data using x-rays.`,
         modal: { type: "xray-dashboard" },
         variant: "outline",
       },
       {
-        label: t`Build your own`,
+        title: t`Build a dashboard`,
+        description: t`Build your own dashboard from scratch.`,
         modal: { type: "new-dashboard" },
         variant: "subtle",
       },
     ],
   };
 
-  const CONFIGURE_ROW_COLUMN_SECURITY: EmbeddingHubStep = {
-    id: "configure-row-column-security",
-    title: t`Configure row and column security (optional)`,
-    icon: "permissions_limited",
-    description: t`Manage permissions to limit what data your users can access.`,
-    actions: [
-      {
-        label: t`Read the docs`,
-        docsPath: "permissions/row-and-column-security",
-        variant: "outline",
-      },
-    ],
-    image: {
-      src: "app/assets/img/embedding_hub_row_column_security.png",
-      srcSet: "app/assets/img/embedding_hub_row_column_security@2x.png 2x",
-      alt: t`Screenshot of configuring row and column security`,
-    },
-    infoAlert: {
-      type: "always",
-      message: t`Log in using SSO to create a user with attributes before setting up row and column security.`,
-    },
-  };
-
   const SECURE_EMBEDS: EmbeddingHubStep = {
     id: "secure-embeds",
-    title: t`Secure your embeds`,
+    title: t`Security and permissions`,
     icon: "lock",
-    description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
+
     actions: [
       {
-        label: t`Read the docs`,
+        title: t`Configure SSO`,
+        description: t`Configure JWT or SAML authentication to ensure only authorized users can access your embeds.`,
         docsPath: "embedding/securing-embeds",
+        variant: "outline",
+      },
+      {
+        title: t`Row and column security`,
+        docsPath: "permissions/row-and-column-security",
+        description: t`Manage permissions to limit what data your users can access.`,
         variant: "outline",
       },
     ],
@@ -111,12 +94,12 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
 
   const EMBED_PRODUCTION: EmbeddingHubStep = {
     id: "embed-production",
-    title: t`Embed in production`,
+    title: t`Deployment`,
     icon: "code_block",
-    description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
     actions: [
       {
-        label: t`Create an embed`,
+        title: t`Embed in production`,
+        description: t`Deploy your embedded dashboard to a production environment and share with your users.`,
         to: "/embed-js?auth_method=sso",
         variant: "outline",
       },
@@ -133,11 +116,10 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   };
 
   return [
-    TEST_EMBED,
     ADD_DATA,
     CREATE_DASHBOARD,
+    TEST_EMBED,
     SECURE_EMBEDS,
-    CONFIGURE_ROW_COLUMN_SECURITY,
     EMBED_PRODUCTION,
   ];
 };

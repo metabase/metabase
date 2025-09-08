@@ -1,0 +1,58 @@
+.step {
+  width: 100%;
+}
+
+.stepLabel {
+  color: var(--mb-color-text-secondary);
+  font-weight: bold;
+  margin-top: 6px;
+}
+
+.verticalSeparator {
+  --stepper-outline-thickness: 1px;
+  --stepper-outline-color: rgba(240, 240, 240, 1);
+}
+
+.stepCompletedIcon > svg {
+  width: 12px !important;
+}
+
+.stepIcon:not([data-completed]) {
+  color: var(--mb-color-text-dark);
+  border-color: transparent;
+  background: var(--mb-color-focus);
+}
+
+.stepWrapper {
+  margin-right: 10px;
+}
+
+.stepBody {
+  display: flex;
+  width: 100%;
+}
+
+.stepDescription {
+  padding: 10px 0 20px 0;
+}
+
+.stepCard {
+  border: 1px solid var(--mb-color-border) !important;
+  cursor: pointer;
+  transition:
+    box-shadow 250ms ease,
+    border 250ms ease;
+  padding: 15px 20px;
+  height: 140px;
+  max-width: 380px;
+  text-align: left;
+}
+
+.stepCard:not(:first-of-type) {
+  width: 100%;
+}
+
+.stepCard:hover {
+  border: 1px solid var(--mb-color-focus) !important;
+  box-shadow: 0 2px 24px 0 rgba(162, 197, 228, 0.7);
+}
