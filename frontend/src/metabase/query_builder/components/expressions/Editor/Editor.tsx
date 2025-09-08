@@ -43,6 +43,7 @@ import { hasActiveSnippet, useInitialClause } from "./utils";
 type EditorProps = {
   id?: string;
   clause?: Lib.Expressionable | null;
+  initialClause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
