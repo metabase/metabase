@@ -513,7 +513,18 @@ H.describeWithSnowplowEE("document comments", () => {
           .and("contain.text", "RT");
 
         cy.findByText("Test X").should("not.exist");
+
+        Comments.getCommentByText("Test 1").realHover();
+        Comments.getCommentByText("Test 1")
+          .findByLabelText("More actions")
+          .click();
       });
+
+      cy.log("does not allow to edit or delete other people's comments");
+      H.popover().findByText(/edit/i).should("not.exist");
+      H.popover()
+        .findByText(/delete|remove/i)
+        .should("not.exist");
 
       Comments.getDocumentNodeButton({
         targetId: documentId,
