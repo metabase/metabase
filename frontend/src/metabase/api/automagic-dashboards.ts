@@ -28,6 +28,10 @@ export const automagicDashboardsApi = Api.injectEndpoints({
       }),
       providesTags: (metadata) =>
         metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, QueryMetadataSchema)),
+        ),
     }),
     listDatabaseXrays: builder.query<DatabaseXray[], DatabaseId>({
       query: (id) => `/api/automagic-dashboards/database/${id}/candidates`,
