@@ -1130,7 +1130,7 @@
     (testing "native queries"
       (let [query {:type :native}]
         (testing "pass the legacy schema"
-          (is (mbql.s/valid-query? query)))
+          (is (mr/validate ::mbql.s/Query query)))
         (testing "pass the pMBQL schema after conversion"
           (is (nil? (->> query
                          lib.convert/->pMBQL
@@ -1141,7 +1141,7 @@
     (testing "MBQL queries"
       (let [query {:type :query}]
         (testing "pass the legacy schema"
-          (is (mbql.s/valid-query? query)))
+          (is (mr/validate ::mbql.s/Query query)))
         (testing "pass the pMBQL schema after conversion"
           (is (nil? (->> query
                          lib.convert/->pMBQL
