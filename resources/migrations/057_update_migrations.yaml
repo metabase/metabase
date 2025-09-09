@@ -1101,6 +1101,10 @@ databaseChangeLog:
       id: v57.2025-09-08T17:50:00
       author: metamben
       comment: Drop old dependency table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: dependency
       changes:
         - dropTable:
             tableName: dependency
@@ -1109,6 +1113,11 @@ databaseChangeLog:
       id: v57.2025-09-08T18:00:00
       author: metamben
       comment: Create dependency table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: dependency
       changes:
         - createTable:
             tableName: dependency
@@ -1145,6 +1154,12 @@ databaseChangeLog:
       id: v57.2025-09-08T18:10:00
       author: metamben
       comment: Unique constraint to prevent duplicate dependencies
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: dependency
+                constraintName: idx_unique_dependency
       changes:
         - addUniqueConstraint:
             tableName: dependency
@@ -1155,6 +1170,12 @@ databaseChangeLog:
       id: v57.2025-09-08T18:20:00
       author: metamben
       comment: Index for finding dependencies FROM a specific entity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: dependency
+                indexName: idx_dependency_from
       changes:
         - createIndex:
             tableName: dependency
@@ -1169,6 +1190,12 @@ databaseChangeLog:
       id: v57.2025-09-08T18:30:00
       author: metamben
       comment: Index for finding dependencies TO a specific entity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: dependency
+                indexName: idx_dependency_to
       changes:
         - createIndex:
             tableName: dependency
