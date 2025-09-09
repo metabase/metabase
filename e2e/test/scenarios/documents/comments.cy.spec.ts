@@ -934,6 +934,18 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.findByTestId("comments-resolved-tab").should("be.visible");
       cy.findByTestId("discussion-comment").should("not.exist");
     });
+
+    it("should not allow replies for resolved threads", () => {
+      startNewCommentIn1ParagraphDocument();
+
+      cy.realType("Main comment");
+      cy.realPress([META_KEY, "Enter"]);
+
+      Comments.resolveCommentByText("Main comment");
+      cy.findByTestId("comments-resolved-tab").should("be.visible").click();
+
+      Comments.getCommentInputs().should("have.length", 1); // only the comment content
+    });
   });
 
   describe("links", () => {
