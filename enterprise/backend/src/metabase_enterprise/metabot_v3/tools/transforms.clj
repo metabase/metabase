@@ -1,7 +1,11 @@
 (ns metabase-enterprise.metabot-v3.tools.transforms
   (:require
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase-enterprise.transforms.api :as api.transforms]))
+   [metabase-enterprise.transforms.api :as api.transforms]
+   [metabase.util.malli.registry :as mr]))
+
+(mr/def ::transform-source ::api.transforms/transform-source)
+(mr/def ::transform-target ::api.transforms/transform-target)
 
 (defn- transform-source-type
   [transform]
