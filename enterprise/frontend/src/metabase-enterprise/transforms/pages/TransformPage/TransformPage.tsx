@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
@@ -48,6 +49,12 @@ export function TransformPage({ params }: TransformPageProps) {
   if (isPolling !== isPollingNeeded(transform)) {
     setIsPolling(isPollingNeeded(transform));
   }
+
+  useRegisterMetabotContextProvider(async () => {
+    return transform
+      ? { user_is_viewing: [{ type: "transform", ...transform }] }
+      : {};
+  }, [transform]);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
