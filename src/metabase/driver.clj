@@ -1179,7 +1179,7 @@
   "Gets the table dependencies of a given sql string (or equivalent).
 
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver query])}
+  {:added "0.57.0" :arglists '([driver query] [driver query metadata-provider transforms])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

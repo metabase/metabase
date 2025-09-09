@@ -184,15 +184,18 @@
               transforms))))
 
 (defmethod driver/native-query-deps :sql
-  [driver query]
-  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
-        transforms (t2/select [:model/Transform :id :target])]
-    (->> query
-         macaw/parsed-query
-         macaw/query->components
-         :tables
-         (map :component)
-         (into #{} (keep #(find-table-or-transform driver db-tables transforms %))))))
+  ([driver query]
+   (driver/native-query-deps driver query
+                             (driver-api/metadata-provider)
+                             (t2/select [:model/Transform :id :target])))
+  ([driver query metadata-provider transforms]
+   (let [db-tables (driver-api/tables metadata-provider)]
+     (->> query
+          macaw/parsed-query
+          macaw/query->components
+          :tables
+          (map :component)
+          (into #{} (keep #(find-table-or-transform driver db-tables transforms %)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Transforms                                                        |
