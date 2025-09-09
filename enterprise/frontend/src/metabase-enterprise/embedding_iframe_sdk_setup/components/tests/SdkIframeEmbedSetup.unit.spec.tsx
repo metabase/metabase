@@ -87,4 +87,11 @@ describe("Embed flow > forward and backward navigation", () => {
       screen.queryByText("Select a dashboard to embed"),
     ).not.toBeInTheDocument();
   });
+
+  it("disables next and back buttons when simple embedding is disabled", () => {
+    setup({ simpleEmbeddingEnabled: false });
+
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
+  });
 });
