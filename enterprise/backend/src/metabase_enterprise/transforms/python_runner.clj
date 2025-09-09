@@ -101,23 +101,26 @@
                             :semantic_type  (some-> (effective-semantic-type-i-think col-meta) name)
                             :effective_type (some-> (or (:effective_type col-meta) (:database_type col-meta)) name)
                             ;; TODO get this passed through
-                            #_#_:field_id   (:id col-meta)})
+                            :field_id       (:id col-meta)})
                          cols-meta)
    :table_metadata {:table_id table-id}})
 
 (defn- write-table-data-to-file! [id temp-file cancel-chan]
-  (let [db-id         (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
-        driver        (t2/select-one-fn :engine :model/Database db-id)
+  (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id id)
+        driver      (t2/select-one-fn :engine :model/Database db-id)
+        fields-meta (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
+                               :table_id id
+                               :active true
+                               {:order-by [[:database_position :asc]]})
         ;; TODO: limit
-        query         {:source-table id}
-        manifest-atom (atom nil)]
+        query       {:source-table id}
+        manifest    (generate-manifest  id fields-meta)]
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
-                          (reset! manifest-atom (generate-manifest id cols-meta))
                           (with-open [os (io/output-stream temp-file)]
                             (write-to-stream! os (mapv :name cols-meta) reducible-rows)))
                         cancel-chan)
-    @manifest-atom))
+    manifest))
 
 (defn- maybe-with-endpoint-s3-client [^S3ClientBuilder builder endpoint]
   (let [region (transforms.settings/python-storage-s-3-region)]
