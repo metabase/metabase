@@ -26,7 +26,7 @@
    :attribute_remappings {:foo 1}})
 
 (defmacro ^:private with-gtap-cleanup!
-  "Invokes `body` ensuring any `GroupTableAccessPolicy` created will be removed afterward. Leaving behind a GTAP can
+  "Invokes `body` ensuring any `Sandbox` created will be removed afterward. Leaving behind a GTAP can
   case referential integrity failures for any related `Card` that would be cleaned up as part of a `with-temp*` call"
   [& body]
   `(mt/with-premium-features #{:sandboxes}
