@@ -82,7 +82,7 @@
    (fn [_query _path-type _path stage-or-join]
      (dissoc stage-or-join :qp/stage-is-from-source-card))))
 
-(defn remove-gtapped-table-keys
+(defn remove-sandboxed-table-keys
   "Pre-processing middleware. Removes any instances of the `:query-permissions/sandboxed-table` key which is added by the
   row-level-restriction middleware when sandboxes are resolved in a query. Since we rely on this for permission
   enforcement, we want to disallow users from passing it in themselves (like the functions above)."

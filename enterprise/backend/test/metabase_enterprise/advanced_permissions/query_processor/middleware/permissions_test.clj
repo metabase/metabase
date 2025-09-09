@@ -161,10 +161,10 @@
   (testing "Applying a basic sandbox does not affect the download permissions for a table"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})}
-                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
-                                                      :table_id             (mt/id :checkins)
-                                                      :card_id              card-id
-                                                      :attribute_remappings {}}]
+                     :model/Sandbox _ {:group_id             (u/the-id (perms/all-users-group))
+                                       :table_id             (mt/id :checkins)
+                                       :card_id              card-id
+                                       :attribute_remappings {}}]
         (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :users)      :full
                                                            (mt/id :categories) :none
                                                            (mt/id :venues)     :limited
@@ -182,10 +182,10 @@
   (testing "Applying a advanced sandbox does not affect the download permissions for a table"
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
-                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
-                                                      :table_id             (mt/id :checkins)
-                                                      :card_id              card-id
-                                                      :attribute_remappings {}}]
+                     :model/Sandbox _ {:group_id             (u/the-id (perms/all-users-group))
+                                       :table_id             (mt/id :checkins)
+                                       :card_id              card-id
+                                       :attribute_remappings {}}]
         (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :users)      :full
                                                            (mt/id :categories) :none
                                                            (mt/id :venues)     :limited
@@ -439,10 +439,10 @@
     (mt/with-full-data-perms-for-all-users!
       (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
-                       :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
-                                                        :table_id             (mt/id :checkins)
-                                                        :card_id              card-id
-                                                        :attribute_remappings {}}]
+                       :model/Sandbox _ {:group_id             (u/the-id (perms/all-users-group))
+                                         :table_id             (mt/id :checkins)
+                                         :card_id              card-id
+                                         :attribute_remappings {}}]
           (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :categories) :none
                                                              (mt/id :checkins)   :full}}}
             (streaming-test/do-test!

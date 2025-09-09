@@ -1,11 +1,11 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.sandboxing
   "Apply segmented a.k.a. sandboxing anti-permissions to the query, i.e. replace sandboxed Tables with the
-  appropriate [[metabase-enterprise.sandbox.models.group-table-access-policy]]s (Sandboxes). See dox
+  appropriate [[metabase-enterprise.sandbox.models.sandbox]]s (Sandboxes). See dox
   for [[metabase.permissions.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :as sandbox]
+   [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]

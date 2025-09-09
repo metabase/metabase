@@ -665,7 +665,7 @@
                                                   :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
                                        :checkins {}}
                           :attributes {"venue_id" 1}})
-        (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy
+        (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/Sandbox
                                                     :group_id (:id &group)
                                                     :table_id (mt/id :venues))]
           (is (integer? venues-gtap-card-id))
@@ -705,7 +705,7 @@
                                        :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
                               :checkins {}}
                       :attributes {"venue_id" 1}})
-    (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy
+    (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/Sandbox
                                                 :group_id (:id &group)
                                                 :table_id (mt/id :venues))]
       (is (integer? venues-gtap-card-id))
@@ -991,7 +991,7 @@
   a parameter in order to run the query to get metadata, pass `param-name` and `param-value` template tag parameters
   when running the query."
   [group table-name param-name param-value]
-  (let [card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy
+  (let [card-id (t2/select-one-fn :card_id :model/Sandbox
                                   :group_id (u/the-id group), :table_id (mt/id table-name))
         card (t2/select-one :model/Card :id (u/the-id card-id))
         results (mt/with-test-user :crowberto
@@ -1105,7 +1105,7 @@
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
     (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
       (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
-        (let [card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy :group_id (u/the-id &group))
+        (let [card-id (t2/select-one-fn :card_id :model/Sandbox :group_id (u/the-id &group))
               _ (is (pos-int? card-id))
               query (t2/select-one-fn :dataset_query :model/Card :id card-id)
               run-query (fn []
@@ -1273,7 +1273,7 @@
     (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}
                       :attributes {"cat" 50}}
       (let [sandbox-card-id (t2/select-one-fn :card_id
-                                              :model/GroupTableAccessPolicy
+                                              :model/Sandbox
                                               :group_id (:id &group)
                                               :table_id (mt/id :venues))]
         (is (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id)))

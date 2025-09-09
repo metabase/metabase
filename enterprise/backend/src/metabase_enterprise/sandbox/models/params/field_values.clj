@@ -22,7 +22,7 @@
   "Find the GTAP for current user that apply to table `table-id`."
   [table-id]
   (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
-        sandboxes (t2/select :model/GroupTableAccessPolicy
+        sandboxes (t2/select :model/Sandbox
                              :group_id [:in group-ids]
                              :table_id table-id)]
     (when sandboxes

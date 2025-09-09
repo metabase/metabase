@@ -94,7 +94,7 @@
     :model/UserParameterValue
     :model/UserKeyValue
     :model/ViewLog
-    :model/GroupTableAccessPolicy
+    :model/Sandbox
     :model/ConnectionImpersonation
     :model/CloudMigration})
 

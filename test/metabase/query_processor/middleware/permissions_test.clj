@@ -767,7 +767,7 @@
                #"You do not have permissions to run this query"
                (process-query))))))))
 
-(deftest e2e-ignore-user-supplied-gtapped-tables-test
+(deftest e2e-ignore-user-supplied-sandboxed-tables-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"
     (mt/with-no-data-perms-for-all-users!
       (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
@@ -785,7 +785,7 @@
           (letfn [(process-query []
                     (qp/process-query bad-query))]
             (testing "Testing that we will still throw due to the :query-permissions/perms stripping"
-              (with-redefs [qp.perms/remove-gtapped-table-keys identity]
+              (with-redefs [qp.perms/remove-sandboxed-table-keys identity]
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to run this query"
