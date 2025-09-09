@@ -7,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -336,7 +335,7 @@
                                                     :aggregation  [[:sum $orders.quantity]]}
                                      :alias        "Orders"
                                      :condition    [:= $id &Orders.orders.product_id]
-                                     ;; we can get title since product_id is remapped to title
+                                     ;; we can get products.title since orders.product_id is remapped to title
                                      :fields       [&Orders.title
                                                     &Orders.*sum/Integer]}]
                          :fields   [$title $category]
@@ -553,7 +552,7 @@
                  (map :lib/desired-column-alias
                       (condp = f
                         #'lib/returned-columns
-                        (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true})
+                        (lib/returned-columns query -1 -1 {:include-remaps? true})
 
                         #'qp.preprocess/query->expected-cols
                         (qp.preprocess/query->expected-cols query)))))))
