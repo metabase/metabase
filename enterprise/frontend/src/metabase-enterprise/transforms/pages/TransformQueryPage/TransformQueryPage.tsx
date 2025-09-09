@@ -1,18 +1,20 @@
-import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import Question from "metabase-lib/v1/Question";
+import {
+  getMetabotSuggestedTransform,
+  setTransformQuery,
+} from "metabase-enterprise/metabot/state";
 import type { DatasetQuery, Transform } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
@@ -78,12 +80,12 @@ export function TransformQueryPageBody({
   };
 
   const initialQuery = transform.source.query;
-  // TODO: move into redux state
 
-  const [proposedQuery, setProposedQuery] = useState<DatasetQuery | undefined>(
-    () => getProposedQuery(initialQuery),
-  );
-  const clearProposed = () => setProposedQuery(undefined);
+  const { transformQuery: proposedQuery } = useSelector(
+    getMetabotSuggestedTransform as any,
+  ) as ReturnType<typeof getMetabotSuggestedTransform>;
+
+  const clearProposed = () => dispatch(setTransformQuery(undefined));
 
   return (
     <AdminSettingsLayout fullWidthContent>
@@ -98,18 +100,4 @@ export function TransformQueryPageBody({
       />
     </AdminSettingsLayout>
   );
-}
-
-// TODO: factor in metabot state
-function getProposedQuery(initialQuery: DatasetQuery | undefined) {
-  return Question.create({
-    type: "native",
-    dataset_query: {
-      database: initialQuery?.database ?? null,
-      type: "native",
-      native: {
-        query: "SELECT * FROM ORDERS;",
-      },
-    },
-  }).datasetQuery();
 }
