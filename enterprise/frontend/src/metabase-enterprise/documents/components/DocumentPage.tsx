@@ -133,7 +133,7 @@ export const DocumentPage = ({
   }
 
   const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(documentData || null),
+    getListCommentsQuery(documentData),
   );
   const hasComments =
     !!commentsData?.comments && commentsData.comments.length > 0;
@@ -437,9 +437,11 @@ export const DocumentPage = ({
                 isBookmarked={isBookmarked}
                 onTitleChange={setDocumentTitle}
                 onSave={() => {
-                  isNewDocument
-                    ? setCollectionPickerMode("save")
-                    : handleSave();
+                  if (isNewDocument) {
+                    setCollectionPickerMode("save");
+                  } else {
+                    handleSave();
+                  }
                 }}
                 onMove={() => setCollectionPickerMode("move")}
                 onToggleBookmark={handleToggleBookmark}
