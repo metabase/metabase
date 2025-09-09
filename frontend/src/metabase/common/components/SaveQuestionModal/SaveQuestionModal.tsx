@@ -60,7 +60,11 @@ export const SaveQuestionModal = ({
         <Modal.Content data-testid="save-question-modal">
           <Modal.Header>
             <Modal.Title>
-              <SaveQuestionTitle />
+              {isConfirming ? (
+                PLUGIN_DEPENDENCIES.getConfirmModalTitle()
+              ) : (
+                <SaveQuestionTitle />
+              )}
             </Modal.Title>
             <Flex align="center" justify="flex-end" gap="sm">
               <Modal.CloseButton />
@@ -68,7 +72,7 @@ export const SaveQuestionModal = ({
           </Modal.Header>
           <Modal.Body>
             {analyzeData != null && isConfirming ? (
-              <PLUGIN_DEPENDENCIES.DependencyListForm
+              <PLUGIN_DEPENDENCIES.AnalyzeConfirmForm
                 data={analyzeData}
                 onSave={handleSaveAfterConfirmation}
                 onCancel={onClose}

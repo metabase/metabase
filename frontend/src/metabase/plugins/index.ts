@@ -852,10 +852,11 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 };
 
 type DependenciesPlugin = {
+  AnalyzeConfirmForm: ComponentType<AnalyzeConfirmFormProps>;
   useAnalyzeQuestionUpdate: (
     props: UseAnalyzeQuestionUpdateProps,
   ) => UseAnalyzeQuestionUpdateResult;
-  DependencyListForm: ComponentType<DependencyListFormProps>;
+  getConfirmModalTitle: () => string;
 };
 
 export type UseAnalyzeQuestionUpdateProps = {
@@ -869,17 +870,18 @@ export type UseAnalyzeQuestionUpdateResult = {
   handleSaveAfterConfirmation: () => Promise<void>;
 };
 
-export type DependencyListFormProps = {
+export type AnalyzeConfirmFormProps = {
   data: AnalyzeCardUpdateResponse;
   onSave: () => void;
   onCancel: () => void;
 };
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+  AnalyzeConfirmForm: PluginPlaceholder,
   useAnalyzeQuestionUpdate: ({ onSave }) => ({
     isConfirming: false,
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),
   }),
-  DependencyListForm: PluginPlaceholder,
+  getConfirmModalTitle: () => "",
 };
