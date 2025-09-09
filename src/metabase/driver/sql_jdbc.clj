@@ -167,15 +167,21 @@
 
 (defmethod driver/rename-tables! :sql-jdbc
   [driver db-id rename-map]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-    (doseq [[from-table to-table] (-> rename-map
-                                      (update-vals vector)
-                                      u/topological-sort
-                                      (update-vals first))]
-      (jdbc/execute! conn (first (sql/format {:alter-table (keyword from-table)
-                                              :rename-table (keyword (name to-table))}
-                                             :quoted true
-                                             :dialect (sql.qp/quote-style driver)))))))
+  (let [rename-pairs (-> rename-map
+                         (update-vals vector)
+                         u/topological-sort
+                         (update-vals first))
+        sqls (mapv (fn [[from-table to-table]]
+                     (first (sql/format {:alter-table (keyword from-table)
+                                         :rename-table (keyword (name to-table))}
+                                        :quoted true
+                                        :dialect (sql.qp/quote-style driver))))
+                   rename-pairs)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
+        (doseq [sql sqls]
+          (.addBatch ^java.sql.Statement stmt ^String sql))
+        (.executeBatch ^java.sql.Statement stmt)))))
 
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]

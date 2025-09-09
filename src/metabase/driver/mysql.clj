@@ -1103,7 +1103,7 @@
   [_]
   nil)
 
-(defmethod driver/rename-tables :mysql
+(defmethod driver/rename-tables! :mysql
   [_driver db-id rename-map]
   (let [rename-pairs (-> rename-map
                          (update-vals vector)
