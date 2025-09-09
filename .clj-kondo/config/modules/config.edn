@@ -1614,6 +1614,15 @@
            util
            enterprise/harbormaster}}
 
+  enterprise/comments
+  {:team "UX East"
+   :api  #{metabase-enterprise.comments.api
+           metabase-enterprise.comments.init}
+   :uses #{api
+           events
+           models
+           util}}
+
   enterprise/content-translation
   {:team "UX West"
    :api  #{metabase-enterprise.content-translation.dictionary
@@ -1679,15 +1688,6 @@
            util
            warehouse-schema
            warehouses}}
-
-  enterprise/comments
-  {:team "UX East"
-   :api  #{metabase-enterprise.comments.api
-           metabase-enterprise.comments.init}
-   :uses #{api
-           models
-           util
-           events}}
 
   enterprise/documents
   {:team "UX West"
