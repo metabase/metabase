@@ -866,6 +866,9 @@
   (let [sql (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
     (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
 
+(defmethod driver/rename-table! :bigquery-cloud-sdk [& args]
+  (apply (get-method driver/rename-table! :sql-jdbc) args))
+
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
   (let [sql (driver/compile-drop-table driver table-name)]
