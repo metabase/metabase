@@ -22,17 +22,18 @@ export type Transform = {
   last_run?: TransformRun | null;
 };
 
-export type TransformSource =
-  | {
-      type: "query";
-      query: DatasetQuery;
-    }
-  | {
-      type: "python";
-      body: string;
-      "source-database": number;
-      "source-tables": Record<string, number>; // alias -> table-id mapping
-    };
+export type PythonTransformSource = {
+  type: "python";
+  body: string;
+  "source-database": number;
+  "source-tables": Record<string, number>; // alias -> table-id mapping
+};
+export type QueryTransformSource = {
+  type: "query";
+  query: DatasetQuery;
+};
+
+export type TransformSource = QueryTransformSource | PythonTransformSource;
 
 export type TransformTargetType = "table";
 

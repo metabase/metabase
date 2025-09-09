@@ -3,14 +3,14 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type { PythonTransformSource, Transform } from "metabase-types/api";
 
 import { PythonTransformEditor } from "../../components/PythonTransformEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
 
 import { CreatePythonTransformModal } from "./CreatePythonTransformModal";
 
-const DEFAULT_PYTHON_SOURCE: TransformSource & { type: "python" } = {
+const DEFAULT_PYTHON_SOURCE: PythonTransformSource = {
   type: "python",
   "source-database": 1, // Default to first database, will be updated by user
   "source-tables": {}, // Will be populated when user selects tables
@@ -31,7 +31,7 @@ def transform():
 };
 
 export function NewPythonTransformPage() {
-  const [source, setSource] = useState<TransformSource & { type: "python" }>(
+  const [source, setSource] = useState<PythonTransformSource>(
     DEFAULT_PYTHON_SOURCE,
   );
   const [isModalOpened, { open: openModal, close: closeModal }] =
@@ -42,7 +42,7 @@ export function NewPythonTransformPage() {
     dispatch(push(getTransformUrl(transform.id)));
   };
 
-  const handleSaveClick = (newSource: TransformSource & { type: "python" }) => {
+  const handleSaveClick = (newSource: PythonTransformSource) => {
     setSource(newSource);
     openModal();
   };

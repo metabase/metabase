@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 
 import { Flex } from "metabase/ui";
-import type { TransformSource } from "metabase-types/api";
+import type { PythonTransformSource } from "metabase-types/api";
 
 import { PythonDataPicker } from "../PythonDataPicker";
 import { EditorHeader } from "../QueryEditor/EditorHeader";
 import { PythonEditor } from "../QueryEditor/PythonEditor";
 
 type PythonTransformEditorProps = {
-  initialSource: TransformSource & { type: "python" };
+  initialSource: PythonTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
-  onSave: (newSource: TransformSource & { type: "python" }) => void;
+  onSave: (newSource: PythonTransformSource) => void;
   onCancel: () => void;
-  onSourceChange?: (newSource: TransformSource & { type: "python" }) => void;
+  onSourceChange?: (newSource: PythonTransformSource) => void;
 };
 
 export function PythonTransformEditor({
