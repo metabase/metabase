@@ -8,7 +8,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.util.malli :as mu]))
+   [metabase.lib.util :as lib.util]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- provider-with-updated-cards [base-provider cards]
   (-> base-provider
@@ -36,6 +38,26 @@
             {}
             check-card-ids)))
 
+(defn- upstream-deps:mbql-card [legacy-query]
+  (lib.util/source-tables-and-cards [legacy-query]))
+
+(defn- upstream-deps:native-card [_legacy-query]
+  ;; FIXME: Wire this up with William's SQL parsing when available.
+  {})
+
+(mr/def ::upstream-deps
+  [:map
+   [:metadata/card  {:optional true} [:set ::lib.schema.id/card]]
+   [:metadata/table {:optional true} [:set ::lib.schema.id/table]]])
+
+(mu/defn upstream-deps:card :- ::upstream-deps
+  "Given a Toucan `:model/Card`, return its upstream dependencies as a map from the kind to a set of IDs."
+  [{query :dataset_query :as toucan-card}]
+  (case (:type query)
+    :query  (upstream-deps:mbql-card query)
+    :native (upstream-deps:native-card query)
+    (throw (ex-info "Unhandled kind of card query" {:card toucan-card}))))
+
 (comment
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
   (let [card-ids [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
@@ -46,4 +68,6 @@
         card'    (update-in card [:dataset-query :query :expressions]
                             ;; Replacing the expression Age with Duration - this breaks downstream uses!
                             update-keys (constantly "Duration"))]
-    (check-cards-have-sound-refs base-mp [card'] card-ids)))
+    (check-cards-have-sound-refs base-mp [card'] card-ids))
+
+  (upstream-deps:card (toucan2.core/select-one :model/Card :id 1)))
