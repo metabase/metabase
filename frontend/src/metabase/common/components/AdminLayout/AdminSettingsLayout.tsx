@@ -13,11 +13,15 @@ import S from "./AdminSettingsLayout.module.css";
 export const AdminSettingsLayout = ({
   sidebar,
   children,
-  maw = "50rem",
+  fullWidthContent = false,
+  maw = fullWidthContent ? "100%" : "50rem",
+  padding = fullWidthContent ? "0" : "2rem",
 }: {
   sidebar?: React.ReactNode;
   children?: React.ReactNode;
+  fullWidthContent?: boolean;
   maw?: string;
+  padding?: string;
 }) => {
   const location = useSelector(getLocation);
   const isMetabotEnabledForRoute =
@@ -31,7 +35,11 @@ export const AdminSettingsLayout = ({
             {sidebar}
           </Box>
         )}
-        <Box className={S.Content} data-testid="admin-layout-content">
+        <Box
+          className={S.Content}
+          style={{ padding }}
+          data-testid="admin-layout-content"
+        >
           <Box maw={maw} w="100%">
             <Box pb="2rem">
               <ErrorBoundary>{children ?? <NotFound />}</ErrorBoundary>
