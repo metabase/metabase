@@ -452,6 +452,10 @@ describe("scenarios > table-editing", () => {
       cy.findAllByTestId("row-select-checkbox").eq(15).click();
       cy.findAllByTestId("row-select-checkbox").eq(16).click();
 
+      cy.log("should not show edit icon when rows are selected");
+      cy.findByTestId("row-edit-icon").should("not.exist");
+
+      cy.log("should bulk delete rows");
       cy.findByTestId("toast-card").findByText("Delete").click();
 
       H.modal().within(() => {
@@ -467,6 +471,9 @@ describe("scenarios > table-editing", () => {
       cy.findByTestId("toast-card").should("not.exist");
 
       H.undoToast().findByText("Successfully deleted").should("be.visible");
+
+      cy.log("should show edit icon when no rows are selected");
+      cy.findAllByTestId("row-edit-icon").should("exist");
     });
   });
 });
