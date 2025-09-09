@@ -379,7 +379,7 @@ describe(
 
           cy.findByTestId("sdk-error-container").should(
             "contain.text",
-            "Error loading the Embedding Analytics SDK",
+            "Error loading the Embedded Analytics SDK",
           );
         });
 
@@ -398,7 +398,7 @@ describe(
 
           cy.findByTestId("sdk-error-container").should(
             "contain.text",
-            "Custom error: Error loading the Embedding Analytics SDK",
+            "Custom error: Error loading the Embedded Analytics SDK",
           );
         });
       });
