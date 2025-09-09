@@ -41,6 +41,7 @@ export const Discussion = ({
   const [, setNewComment] = useState<DocumentContent>();
   const parentCommentId = comments[0].id;
   const [sendToast] = useToast();
+  const effectiveChildTargetId = childTargetId || comments[0]?.child_target_id;
 
   const [createComment] = useCreateCommentMutation();
   const [updateComment] = useUpdateCommentMutation();
@@ -48,8 +49,6 @@ export const Discussion = ({
   const [toggleReaction] = useToggleReactionMutation();
 
   const handleSubmit = (doc: DocumentContent) => {
-    const effectiveChildTargetId =
-      childTargetId || comments[0]?.child_target_id;
     createComment({
       child_target_id: effectiveChildTargetId,
       target_id: targetId,
@@ -76,8 +75,6 @@ export const Discussion = ({
   };
 
   const handleCopyLink = (comment: Comment) => {
-    const effectiveChildTargetId =
-      childTargetId || comments[0]?.child_target_id;
     const url = getCommentsUrl({
       childTargetId: effectiveChildTargetId,
       targetId,
