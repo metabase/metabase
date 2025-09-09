@@ -48,6 +48,7 @@ export const {
   toolCallEnd,
   setProfileOverride,
   setMetabotReqIdOverride,
+  setTransformQuery,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -239,6 +240,9 @@ export const sendAgentRequest = createAsyncThunk<
                 if (!isEmbedding) {
                   dispatch(push(part.value) as UnknownAction);
                 }
+              })
+              .with({ type: "transform_query" }, (part) => {
+                dispatch(setTransformQuery(part.value));
               })
               .exhaustive();
           },

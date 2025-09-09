@@ -161,3 +161,11 @@ export const getNavigateToPath = createSelector(
   getMetabotReactionsState,
   (reactionsState) => reactionsState.navigateToPath,
 );
+
+export const getMetabotSuggestedTransform = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => ({
+    transformQueryUpdateId: reactionsState.transformQueryUpdateId,
+    transformQuery: reactionsState.transformQuery,
+  }),
+);

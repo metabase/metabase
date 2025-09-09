@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotHistory } from "metabase-types/api";
+import type { DatasetQuery, MetabotHistory } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -30,6 +30,8 @@ export type MetabotToolCall = {
 
 export type MetabotReactionsState = {
   navigateToPath: string | null;
+  transformQuery: DatasetQuery | undefined;
+  transformQueryUpdateId: string | undefined;
 };
 
 export interface MetabotState {
@@ -58,6 +60,8 @@ export const getMetabotInitialState = (): MetabotState => ({
   state: {},
   reactions: {
     navigateToPath: null,
+    transformQuery: undefined,
+    transformQueryUpdateId: undefined,
   },
   toolCalls: [],
   experimental: {
@@ -156,6 +160,8 @@ export const metabot = createSlice({
       state.isProcessing = false;
       state.toolCalls = [];
       state.conversationId = uuid();
+      state.reactions.transformQuery = undefined;
+      state.reactions.transformQueryUpdateId = undefined;
       state.experimental.metabotReqIdOverride = undefined;
     },
     resetConversationId: (state) => {
@@ -166,6 +172,16 @@ export const metabot = createSlice({
     },
     setNavigateToPath: (state, action: PayloadAction<string>) => {
       state.reactions.navigateToPath = action.payload;
+    },
+    setTransformQuery: (
+      state,
+      action: PayloadAction<DatasetQuery | undefined>,
+    ) => {
+      // @ts-expect-error -- TODO: look into why TS type is infinitely deep...
+      state.reactions.transformQuery = action.payload;
+      state.reactions.transformQueryUpdateId = action.payload
+        ? uuid()
+        : undefined;
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;

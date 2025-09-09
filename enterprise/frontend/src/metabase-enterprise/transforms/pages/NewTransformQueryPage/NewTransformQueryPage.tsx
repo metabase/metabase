@@ -5,8 +5,12 @@ import { push } from "react-router-redux";
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import {
+  getMetabotSuggestedTransform,
+  setTransformQuery,
+} from "metabase-enterprise/metabot/state";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery, Transform } from "metabase-types/api";
 
@@ -67,11 +71,11 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
     dispatch(push(getTransformListUrl()));
   };
 
-  // TODO: move into redux state
-  const [proposedQuery, setProposedQuery] = useState<DatasetQuery | undefined>(
-    () => getProposedQuery(initialQuery),
-  );
-  const clearProposed = () => setProposedQuery(undefined);
+  const { transformQuery: proposedQuery } = useSelector(
+    getMetabotSuggestedTransform as any,
+  ) as ReturnType<typeof getMetabotSuggestedTransform>;
+
+  const clearProposed = () => dispatch(setTransformQuery(undefined));
 
   return (
     <AdminSettingsLayout fullWidthContent>
@@ -111,18 +115,4 @@ function getInitialQuery(
   return card != null
     ? card.dataset_query
     : Question.create({ type }).datasetQuery();
-}
-
-// TODO: factor in metabot state
-function getProposedQuery(initialQuery: DatasetQuery | undefined) {
-  return Question.create({
-    type: "native",
-    dataset_query: {
-      database: initialQuery?.database ?? null,
-      type: "native",
-      native: {
-        query: "SELECT * FROM ORDERS;",
-      },
-    },
-  }).datasetQuery();
 }
