@@ -1177,7 +1177,7 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-09-08T18:00:00
       author: metamben
-      comment: Create dependency table
+      comment: Create dependency table to track dependencies in a general way
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -1186,6 +1186,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: dependency
+            remarks: A table to track dependencies between Metabase entities
             columns:
               - column:
                   name: id
@@ -1197,21 +1198,25 @@ databaseChangeLog:
               - column:
                   name: from_entity_type
                   type: varchar(20)
+                  remarks: The type of the dependent entity
                   constraints:
                     nullable: false
               - column:
                   name: from_entity_id
                   type: int
+                  remarks: The ID of the dependent entity
                   constraints:
                     nullable: false
               - column:
                   name: to_entity_type
                   type: varchar(20)
+                  remarks: The type of the entity depended on
                   constraints:
                     nullable: false
               - column:
                   name: to_entity_id
                   type: int
+                  remarks: The ID of the entity depended on
                   constraints:
                     nullable: false
 
