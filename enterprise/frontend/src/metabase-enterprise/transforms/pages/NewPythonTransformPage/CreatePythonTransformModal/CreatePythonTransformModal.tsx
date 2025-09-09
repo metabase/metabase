@@ -4,7 +4,7 @@ import * as Yup from "yup";
 
 import { Button, Group, Modal, Stack, TextInput } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type { PythonTransformSource, Transform } from "metabase-types/api";
 
 type PythonTransformApiSource = {
   type: "python";
@@ -14,7 +14,7 @@ type PythonTransformApiSource = {
 };
 
 type CreatePythonTransformModalProps = {
-  source: TransformSource & { type: "python" };
+  source: PythonTransformSource;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };

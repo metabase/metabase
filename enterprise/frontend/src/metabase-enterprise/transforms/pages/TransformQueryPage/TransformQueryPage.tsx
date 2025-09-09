@@ -13,8 +13,8 @@ import {
 import { PythonTransformEditor } from "metabase-enterprise/transforms/components/PythonTransformEditor";
 import type {
   DatasetQuery,
+  PythonTransformSource,
   Transform,
-  TransformSource,
 } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
@@ -75,9 +75,7 @@ export function TransformQueryPageBody({
     }
   };
 
-  const handlePythonSave = async (
-    source: TransformSource & { type: "python" },
-  ) => {
+  const handlePythonSave = async (source: PythonTransformSource) => {
     const { error } = await updateTransform({
       id: transform.id,
       source: source,
