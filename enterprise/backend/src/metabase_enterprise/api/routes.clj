@@ -19,6 +19,7 @@
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
+   [metabase-enterprise.dependencies.api]
    [metabase-enterprise.documents.api]
    [metabase-enterprise.email.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
@@ -49,6 +50,7 @@
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
+   :dependencies               (deferred-tru "Dependency Tracking")
    :documents                  (deferred-tru "Documents")
    :etl-connections            (deferred-tru "ETL Connections")
    :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
@@ -98,6 +100,7 @@
                                        (premium-handler :etl-connections)
                                        (premium-handler :etl-connections-pg))
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
+   "/dependencies"                 (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
    "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.

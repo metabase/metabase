@@ -1970,8 +1970,11 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.core}
-   :uses #{lib
+   :uses #{api
+           lib
            lib-be
+           models
+           queries
            util}}
 
   enterprise/upload-management
