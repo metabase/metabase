@@ -91,4 +91,9 @@ function Disclaimer() {
   );
 }
 
+/**
+ * @interface
+ * @expand
+ * @category MetabotQuestion
+ */
 export const MetabotQuestion = withPublicComponentWrapper(MetabotQuestionInner);
