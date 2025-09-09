@@ -7,6 +7,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
@@ -239,7 +240,7 @@
     (when-let [optimized ((get-method optimize-filter :=) query path filter-clause)]
       (lib/negate-boolean-expression optimized))))
 
-(mu/defn- optimize-comparison-filter :- [:maybe [:or :mbql.clause/< :mbql.clause/>=]]
+(mu/defn- optimize-comparison-filter :- [:maybe ::lib.schema.mbql-clause/clause]
   [query path optimize-temporal-value-fn [tag opts field temporal-value] new-filter-type :- [:enum :< :>=]]
   (b/cond
     (date-field-with-day-bucketing? query path field)
