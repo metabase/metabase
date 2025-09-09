@@ -1115,6 +1115,7 @@ databaseChangeLog:
                   name: id
                   type: int
                   autoIncrement: true
+                  remarks: Primary key for comment table
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -1165,20 +1166,29 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: Timestamp when comment was created
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
+                  remarks: Timestamp when comment was last updated
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: deleted_at
                   type: ${timestamp_type}
+                  remarks: Soft delete timestamp (null if not deleted)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v57.2025-08-24T10:01:00
+      author: kulyk
+      comment: Add foreign key constraint for comment creator
+      changes:
         - addForeignKeyConstraint:
             baseTableName: comment
             baseColumnNames: creator_id
@@ -1186,6 +1196,12 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_comment_creator_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-24T10:02:00
+      author: kulyk
+      comment: Add foreign key constraint for comment threading
+      changes:
         - addForeignKeyConstraint:
             baseTableName: comment
             baseColumnNames: parent_comment_id
@@ -1193,6 +1209,12 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_comment_parent_comment_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-24T10:03:00
+      author: kulyk
+      comment: Add index for comment entity lookups
+      changes:
         - createIndex:
             tableName: comment
             indexName: idx_comment_entity
@@ -1201,12 +1223,24 @@ databaseChangeLog:
                   name: target_type
               - column:
                   name: target_id
+
+  - changeSet:
+      id: v57.2025-08-24T10:04:00
+      author: kulyk
+      comment: Add index for comment creator lookups
+      changes:
         - createIndex:
             tableName: comment
             indexName: idx_comment_creator_id
             columns:
               - column:
                   name: creator_id
+
+  - changeSet:
+      id: v57.2025-08-24T10:05:00
+      author: kulyk
+      comment: Add index for comment threading
+      changes:
         - createIndex:
             tableName: comment
             indexName: idx_comment_parent_comment_id
@@ -1216,7 +1250,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v57.2025-09-01T17:15:00
-      author: anton
+      author: kulyk
       comment: Create comment_reaction table for comment reactions feature
       preConditions:
         - onFail: MARK_RAN
@@ -1232,6 +1266,7 @@ databaseChangeLog:
                   name: id
                   type: int
                   autoIncrement: true
+                  remarks: Primary key for comment_reaction table
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -1256,9 +1291,16 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: Timestamp when reaction was added
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v57.2025-09-01T17:16:00
+      author: kulyk
+      comment: Add foreign key constraint for comment reactions to comments
+      changes:
         - addForeignKeyConstraint:
             baseTableName: comment_reaction
             baseColumnNames: comment_id
@@ -1266,6 +1308,12 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_comment_reaction_comment_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-09-01T17:17:00
+      author: kulyk
+      comment: Add foreign key constraint for comment reactions to users
+      changes:
         - addForeignKeyConstraint:
             baseTableName: comment_reaction
             baseColumnNames: user_id
@@ -1273,10 +1321,22 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_comment_reaction_user_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-09-01T17:18:00
+      author: kulyk
+      comment: Add unique constraint to prevent duplicate reactions
+      changes:
         - addUniqueConstraint:
             tableName: comment_reaction
             columnNames: comment_id, user_id, emoji
             constraintName: unique_user_comment_emoji
+
+  - changeSet:
+      id: v57.2025-09-01T17:19:00
+      author: kulyk
+      comment: Add index for comment reaction lookups
+      changes:
         - createIndex:
             tableName: comment_reaction
             indexName: idx_comment_reaction_comment_id
