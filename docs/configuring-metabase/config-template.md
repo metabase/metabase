@@ -238,7 +238,6 @@ config:
     saml-user-provisioning-enabled: true
     scim-enabled: null
     sdk-encryption-validation-key: null
-    search-engine: appdb
     search-language: null
     search-typeahead-enabled: true
     send-email-on-first-login-from-new-device: true

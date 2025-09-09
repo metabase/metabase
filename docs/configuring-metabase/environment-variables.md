@@ -1526,13 +1526,6 @@ Is SCIM currently enabled?
 
 Used for encrypting and checking whether SDK requests are signed.
 
-### `MB_SEARCH_ENGINE`
-
-- Type: keyword
-- Default: `appdb`
-
-Which engine to use when performing search. Supported values are :in-place and :appdb.
-
 ### `MB_SEARCH_LANGUAGE`
 
 - Type: string
