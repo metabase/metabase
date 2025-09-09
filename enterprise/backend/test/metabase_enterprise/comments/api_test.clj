@@ -2,6 +2,7 @@
   "Tests for /api/ee/comment/ endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -90,7 +91,11 @@
                (mt/user-http-request :rasta :delete 204 (str "ee/comment/" c1))))
         (testing "comment is marked as deleted in database"
           (let [comment (t2/select-one :model/Comment :id c1)]
-            (is (some? (:deleted_at comment))))))
+            (is (some? (:deleted_at comment)))))
+        (testing "deleting a comment twice leaves sour taste in the mouth"
+          ;; NOTE: maybe it's fine and we should just noop here rather than return an error?
+          (is (= "Comment is already deleted"
+                 (mt/user-http-request :rasta :delete 400 (str "ee/comment/" c1))))))
 
       (testing "deleting parent comment still leaves it in a response"
         (is (= nil
@@ -130,3 +135,39 @@
                 (mt/user-http-request :rasta :get 200 "ee/comment/"
                                       :target_type "document"
                                       :target_id doc-id)))))))
+
+(deftest comments-permissions-test
+  (testing "Comment permissions - users without document access cannot read or write comments"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {restricted-col :id}        {:name "Restricted Collection"}
+                     :model/Document   {restricted-doc-id :id}     {:collection_id restricted-col
+                                                                    :name "Restricted Document"}
+                     :model/Comment    {restricted-comment-id :id} {:target_id restricted-doc-id}]
+
+        (mt/with-model-cleanup [:model/Comment]
+          (testing "GET /api/ee/comment/ - users without document read permissions cannot see comments"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :get 403 "ee/comment/"
+                                         :target_type "document"
+                                         :target_id restricted-doc-id))))
+
+          (testing "POST /api/ee/comment/ - users without document read permissions cannot create comments"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :post 403 "ee/comment/"
+                                         {:target_type "document"
+                                          :target_id   restricted-doc-id
+                                          :content     {:text "Comment by lucky"}}))))
+
+          (testing "PUT /api/ee/comment/:id - users without document access cannot update comments"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :put 403 (str "ee/comment/" restricted-comment-id)
+                                         {:content {:text "Updated by lucky"}}))))
+
+          (testing "DELETE /api/ee/comment/:id - users without document access cannot delete comments"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :delete 403 (str "ee/comment/" restricted-comment-id)))))
+
+          (testing "POST /api/ee/comment/:id/reaction - users without document access cannot react to comments"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :post 403 (str "ee/comment/" restricted-comment-id "/reaction")
+                                         {:emoji "👍"})))))))))
