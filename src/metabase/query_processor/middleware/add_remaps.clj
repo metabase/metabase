@@ -28,7 +28,6 @@
   (:require
    [clojure.data :as data]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -227,7 +226,13 @@
 
 (mr/def ::query-and-remaps
   [:map
-   [:remaps [:maybe (helpers/distinct [:sequential ::external-remapping])]]
+   [:remaps [:maybe [:and
+                     [:sequential ::external-remapping]
+                     [:fn
+                      {:error/message "empty or distinct"}
+                      (fn [remappings]
+                        (or (empty? remappings)
+                            (apply distinct? remappings)))]]]]
    [:query  ::lib.schema/query]])
 
 (mu/defn- add-fk-remaps-to-fields :- [:maybe ::lib.schema/fields]

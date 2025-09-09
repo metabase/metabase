@@ -538,7 +538,10 @@
 (mu/defn negate-filter-clause :- mbql.s/Filter
   "Return the logical compliment of an MBQL filter clause, generally without using `:not` (except for the string
   filter clause types). Useful for generating highly optimized filter clauses and for drivers that do not support
-  top-level `:not` filter clauses."
+  top-level `:not` filter clauses.
+
+  DEPRECATED -- use [[metabase.lib.filter.negate/negate-boolean-expression]] going forward."
+  {:deprecated "0.57.0"}
   [filter-clause :- mbql.s/Filter]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))

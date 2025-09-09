@@ -51,6 +51,7 @@
          (and (map? opts)
               (contains? opts :lib/uuid)))))
 
+;;; TODO (Cam 9/8/25) -- some overlap with [[metabase.lib.dispatch/mbql-clause-type]]
 (defn clause-of-type?
   "Returns true if this is a clause."
   [clause clause-type]
