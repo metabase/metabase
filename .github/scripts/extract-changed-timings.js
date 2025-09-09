@@ -1,5 +1,3 @@
-const fs = require("fs");
-
 const extractChangedTimings = ({ oldTimings, newTimings }) => {
   const oldTimingMap = {};
   oldTimings.durations?.forEach((item) => {
@@ -16,11 +14,15 @@ const extractChangedTimings = ({ oldTimings, newTimings }) => {
         return;
       }
 
-      const oldDuration = oldTimingMap[item.spec];
+      const newSpec = convertPathFormat(item.spec);
+      const oldDuration = oldTimingMap[newSpec] || oldTimingMap[item.spec];
 
-      // Include if it's a new spec of the duration has changed
+      // Include if it's a new spec or the duration has changed
       if (oldDuration === undefined || oldDuration !== item.duration) {
-        changedTimings.durations.push(item);
+        changedTimings.durations.push({
+          spec: newSpec,
+          duration: item.duration,
+        });
       }
     });
   }
@@ -30,5 +32,13 @@ const extractChangedTimings = ({ oldTimings, newTimings }) => {
     hasChanges: changedTimings.durations.length > 0,
   };
 };
+
+// Convert cypress-split path format to timings.json path format
+// from "e2e/test/scenarios/..." to "../test/scenarios/..."
+function convertPathFormat(specPath) {
+  return specPath.startsWith("e2e/test/")
+    ? specPath.replace("e2e/test/", "../test/")
+    : specPath;
+}
 
 module.exports = { extractChangedTimings };

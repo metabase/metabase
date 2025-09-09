@@ -147,4 +147,49 @@ describe("extractChangedTimings", () => {
     });
     expect(result.hasChanges).toBe(true);
   });
+
+  it("should convert cypress-split paths to relative paths", () => {
+    const oldTimings = {
+      durations: [
+        {
+          spec: "../test/scenarios/dashboard/dashboard.cy.spec.js",
+          duration: 1000,
+        },
+        {
+          spec: "../test/scenarios/admin/databases.cy.spec.js",
+          duration: 2000,
+        },
+      ],
+    };
+
+    const newTimings = {
+      durations: [
+        {
+          spec: "e2e/test/scenarios/dashboard/dashboard.cy.spec.js",
+          duration: 1200,
+        },
+        {
+          spec: "e2e/test/scenarios/admin/databases.cy.spec.js",
+          duration: 2000,
+        },
+        {
+          spec: "e2e/test/scenarios/collections/collections.cy.spec.js",
+          duration: 1500,
+        },
+      ],
+    };
+
+    const result = extractChangedTimings({ oldTimings, newTimings });
+
+    expect(result.changedTimings.durations).toHaveLength(2);
+    expect(result.changedTimings.durations).toContainEqual({
+      spec: "../test/scenarios/dashboard/dashboard.cy.spec.js",
+      duration: 1200,
+    });
+    expect(result.changedTimings.durations).toContainEqual({
+      spec: "../test/scenarios/collections/collections.cy.spec.js",
+      duration: 1500,
+    });
+    expect(result.hasChanges).toBe(true);
+  });
 });
