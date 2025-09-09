@@ -2354,6 +2354,55 @@ describe("issue 52451", () => {
   });
 });
 
+describe("issue 56602", () => {
+  const productsModelDetails = {
+    name: "M1",
+    type: "model",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const ordersModelDetails = {
+    name: "M2",
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  const expressionName = "awesome stuff";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use expressions when joining models (metabase#56602)", () => {
+    H.createQuestion(productsModelDetails);
+    H.createQuestion(ordersModelDetails);
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(productsModelDetails.name).click();
+    });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText(ordersModelDetails.name).click();
+    });
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      name: expressionName,
+      formula: `coalesce([User -> Birth Date], [${ordersModelDetails.name} -> Created At])`,
+    });
+    H.popover().button("Done").click();
+    H.visualize();
+    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().should("contain", expressionName);
+  });
+});
+
 describe("issue 61010", () => {
   const CUSTOM_COLUMN_NAME = "Foo";
   const AGGREGATION_NAME = "New count";
@@ -2409,5 +2458,104 @@ describe("issue 61010", () => {
     H.popover()
       .findByText("Unknown Aggregation or Metric: New count")
       .should("be.visible");
+  });
+});
+
+describe("issue 62987", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        query: { "source-table": ORDERS_ID },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+  });
+
+  it("should be possible to complete non-aggregation functions in custom aggregation (metabase#62987)", () => {
+    H.CustomExpressionEditor.type("Coun");
+    H.CustomExpressionEditor.completion("CountIf").should("be.visible").click();
+
+    H.CustomExpressionEditor.type("notEm", { focus: false });
+    H.CustomExpressionEditor.completion("notEmpty")
+      .should("be.visible")
+      .click();
+
+    H.CustomExpressionEditor.value().should("eq", "CountIf(notEmpty(column))");
+
+    H.expressionEditorWidget().button("Function browser").click();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByText("CountIf").should("be.visible");
+      cy.findByText("notEmpty").should("be.visible");
+    });
+  });
+});
+
+describe("issue 63180", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Foo: ["+", 1, 2],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+  });
+
+  it("should not be possible to close the custom expression editor when creating a new expression from a combine or extract shortcut (metabase#63180)", () => {
+    function testCombineColumns() {
+      H.getNotebookStep("expression").icon("add").click();
+      H.expressionEditorWidget().within(() => {
+        cy.findByText("Combine columns").click();
+        cy.button("Done").scrollIntoView().click();
+      });
+
+      cy.log("clicking outside the editor should not close it");
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("be.visible");
+      H.modal().should("not.exist");
+
+      cy.log("clearing the expression should allow clicking outside to work");
+      H.CustomExpressionEditor.clear();
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("not.exist");
+      H.modal().should("not.exist");
+    }
+
+    function testExtractColumns() {
+      H.getNotebookStep("expression").icon("add").click();
+      H.expressionEditorWidget().within(() => {
+        cy.findByText("Extract columns").click();
+        cy.findByText("Email").click();
+        cy.findByText("Domain").click();
+      });
+
+      cy.log("clicking outside the editor should not close it");
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("be.visible");
+      H.modal().should("not.exist");
+
+      cy.log("clearing the expression should allow clicking outside to work");
+      H.CustomExpressionEditor.clear();
+      H.getNotebookStep("data").click();
+      H.expressionEditorWidget().should("not.exist");
+      H.modal().should("not.exist");
+    }
+
+    testCombineColumns();
+    testExtractColumns();
   });
 });

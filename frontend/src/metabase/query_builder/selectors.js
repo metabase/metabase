@@ -341,7 +341,7 @@ export const getTableForeignKeys = createSelector(
 export const getPKColumnIndex = createSelector(
   [getFirstQueryResult, getTableId],
   (result, tableId) => {
-    if (!result) {
+    if (!result || !result.data) {
       return;
     }
     const { cols } = result.data;
@@ -359,7 +359,7 @@ export const getPKColumnIndex = createSelector(
 export const getPKRowIndexMap = createSelector(
   [getFirstQueryResult, getPKColumnIndex],
   (result, PKColumnIndex) => {
-    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+    if (!result || !result.data || !Number.isSafeInteger(PKColumnIndex)) {
       return {};
     }
     const { rows } = result.data;
@@ -493,7 +493,7 @@ export const getIsResultDirty = createSelector(
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
-      question && Lib.queryDisplayInfo(question.query()).isEditable;
+      !!question && Lib.queryDisplayInfo(question.query()).isEditable;
 
     return (
       haveParametersChanged ||
@@ -510,7 +510,7 @@ export const getIsResultDirty = createSelector(
 
 export const getZoomedObjectId = (state) => state.qb.zoomedRowObjectId;
 
-const getZoomedObjectRowIndex = createSelector(
+export const getZoomedObjectRowIndex = createSelector(
   [getPKRowIndexMap, getZoomedObjectId],
   (PKRowIndexMap, objectId) => {
     if (!PKRowIndexMap) {
@@ -938,7 +938,9 @@ export const getIsVisualized = createSelector(
   (question, settings) =>
     question &&
     // table is the default
-    ((question.display() !== "table" && question.display() !== "pivot") ||
+    ((question.display() !== "table" &&
+      question.display() !== "pivot" &&
+      question.display() !== "list") ||
       (settings != null && settings["table.pivot"])),
 );
 
@@ -1089,3 +1091,8 @@ export const getIsNotebookNativePreviewShown = (state) =>
 
 export const getNotebookNativePreviewSidebarWidth = (state) =>
   getSetting(state, "notebook-native-preview-sidebar-width");
+
+export const getIsListViewConfigurationShown = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls.isShowingListViewConfiguration,
+);

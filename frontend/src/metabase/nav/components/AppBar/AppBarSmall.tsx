@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
 
+import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
+import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
@@ -22,6 +24,7 @@ import {
 import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarSmallProps {
+  detailView: DetailViewState | null;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
@@ -36,6 +39,7 @@ export interface AppBarSmallProps {
 }
 
 const AppBarSmall = ({
+  detailView,
   isNavBarOpen,
   isNavBarEnabled,
   isLogoVisible,
@@ -109,7 +113,12 @@ const AppBarSmall = ({
       )}
       {isSubheaderVisible && (
         <AppBarSubheader isNavBarOpen={isNavBarVisible}>
-          {isQuestionLineageVisible ? (
+          {detailView ? (
+            <DetailViewNav
+              rowName={detailView.rowName}
+              table={detailView.table}
+            />
+          ) : isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />

@@ -107,8 +107,10 @@ const FeedbackButton = ({
 interface AgentMessageProps extends BaseMessageProps {
   onRetry: (messageId: string) => void;
   onCopy: (messageId: string) => void;
+  showFeedbackButtons: boolean;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
+  onInternalLinkClick?: (link: string) => void;
 }
 
 export const AgentMessage = ({
@@ -116,13 +118,21 @@ export const AgentMessage = ({
   className,
   onCopy,
   onRetry,
+  showFeedbackButtons,
   setFeedbackMessage,
   submittedFeedback,
+  onInternalLinkClick,
   hideActions,
   ...props
 }: AgentMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
-    <AIMarkdown className={Styles.message}>{message.message}</AIMarkdown>
+    <AIMarkdown
+      className={Styles.message}
+      onInternalLinkClick={onInternalLinkClick}
+    >
+      {message.message}
+    </AIMarkdown>
+
     <Flex className={Styles.messageActions}>
       {!hideActions && (
         <>
@@ -133,7 +143,7 @@ export const AgentMessage = ({
           >
             <Icon name="copy" size="1rem" />
           </ActionIcon>
-          {setFeedbackMessage && (
+          {showFeedbackButtons && setFeedbackMessage && (
             <>
               <FeedbackButton
                 data-testid="metabot-chat-message-thumbs-up"
@@ -161,6 +171,7 @@ export const AgentMessage = ({
               />
             </>
           )}
+
           <ActionIcon
             onClick={() => onRetry(message.id)}
             h="sm"
@@ -228,11 +239,15 @@ export const Messages = ({
   errorMessages,
   onRetryMessage,
   isDoingScience,
+  showFeedbackButtons,
+  onInternalLinkClick,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
   onRetryMessage: (messageId: string) => void;
   isDoingScience: boolean;
+  showFeedbackButtons: boolean;
+  onInternalLinkClick?: (navigateToPath: string) => void;
 }) => {
   const clipboard = useClipboard();
   const [sendToast] = useToast();
@@ -270,9 +285,13 @@ export const Messages = ({
 
   const setFeedbackModal = useCallback(
     (data: { messageId: string; positive: boolean } | undefined) => {
+      if (!showFeedbackButtons) {
+        return;
+      }
+
       setFeedbackState((prev) => ({ ...prev, modal: data }));
     },
-    [],
+    [showFeedbackButtons],
   );
 
   return (
@@ -285,9 +304,11 @@ export const Messages = ({
             message={message}
             onRetry={onRetryMessage}
             onCopy={onAgentMessageCopy}
+            showFeedbackButtons={showFeedbackButtons}
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={messages[index + 1]?.role === "agent"}
+            onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
           <UserMessage

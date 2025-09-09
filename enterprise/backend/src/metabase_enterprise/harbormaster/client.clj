@@ -2,6 +2,7 @@
   "API client for interfacing with Harbormaster on store-api-url."
   (:require
    [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [martian.clj-http :as martian-http]
    [martian.core :as martian]
@@ -135,7 +136,8 @@
    {:headers {"Authorization" (str "Bearer " api-key)}}))
 
 (def ^:private create-client-memo
-  (memoize create-client))
+  (memoize/ttl create-client
+               :ttl/threshold (m.util/minutes->ms 5)))
 
 (defn- client []
   (let [store-api-url (store-api/store-api-url)
@@ -156,8 +158,14 @@
   [& args]
   (apply martian/explore (client) args))
 
+(defn- maybe-decode [x]
+  (try
+    (json/decode+kw x)
+    (catch Exception _
+      x)))
+
 (defn call
-  "Call the API, using Martian. Will throw on non 2xx.
+  "Call the API, using Martian. Will throw on non 2xx, and you can get the failure body (if any) using ex-data.
   e.g.
     ;; call the :foo endpoint with {:some-id id}
     ;; use (explore :list-connections) for params, if any, and pass them in a map
@@ -166,8 +174,10 @@
   (try
     (:body (martian/response-for (client) operation-id args))
     (catch Exception e
-      (log/errorf e "Error on Harbormaster operation call %s" operation-id)
-      (throw e))))
+      (let [resp-body (some-> e ex-data :body maybe-decode)
+            msg (format "Error on Harbormaster operation call %s" operation-id)]
+        (log/error msg (or resp-body e))
+        (throw (ex-info msg (if (map? resp-body) resp-body {})))))))
 
 (defn request
   "Same as call, but return the request that will be performed.

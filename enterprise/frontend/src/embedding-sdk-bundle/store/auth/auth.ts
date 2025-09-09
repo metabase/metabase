@@ -1,3 +1,4 @@
+import { EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
 import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
@@ -6,14 +7,11 @@ import {
   validateSessionToken,
 } from "embedding/auth-common";
 import * as MetabaseError from "embedding-sdk-bundle/errors";
-import {
-  EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
-  getEmbeddingSdkPackageBuildData,
-} from "embedding-sdk-bundle/lib/get-embedding-sdk-package-build-data";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/is-localhost";
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
+import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -154,7 +152,7 @@ export function getSdkRequestHeaders(hash?: string): Record<string, string> {
     "X-Metabase-Client": "embedding-sdk-react",
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     "X-Metabase-Client-Version":
-      getEmbeddingSdkPackageBuildData()?.version ??
+      getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ??
       EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),

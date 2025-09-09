@@ -50,6 +50,7 @@ export const FormDateInput = forwardRef(function FormDateInput(
   return (
     <DateInput
       fw="bold"
+      onChange={handleChange}
       {...props}
       id={id}
       ref={ref}
@@ -57,7 +58,6 @@ export const FormDateInput = forwardRef(function FormDateInput(
       name={name}
       value={dayjs(date).toDate()}
       error={touched && error != null}
-      onChange={handleChange}
       onBlur={onBlur}
     />
   );

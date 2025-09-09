@@ -86,39 +86,6 @@
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
-(def ^:private unconverted-property?
-  (some-fn #{:info} qualified-keyword?))
-
-(defn- copy-unconverted-properties
-  [to from]
-  (reduce-kv (fn [m k v]
-               (cond-> m
-                 (unconverted-property? k) (assoc k v)))
-             to
-             from))
-
-;;; TODO -- this is broken and disables enforcement inside the middleware itself -- see QUE-1346
-(defn- ensure-mbql5-for-unclean-query
-  [middleware-fn]
-  (-> (fn [query]
-        (as-> query query
-          ;; convert to MBQL 5 as needed
-          (letfn [(convert [query]
-                    (lib/without-cleaning
-                     (^:once fn* []
-                       (mu/disable-enforcement
-                         (lib/query (qp.store/metadata-provider) query)))))]
-            (-> (cond->> query
-                  (not (:lib/type query)) convert)
-                (copy-unconverted-properties query)))
-          ;; apply the middleware WITH MALLI ENFORCEMENT ENABLED!
-          (middleware-fn query)
-          ;; now convert back to legacy without cleaning
-          (mu/disable-enforcement
-            (lib/without-cleaning
-             (^:once fn* [] (->legacy query))))))
-      (with-meta (meta middleware-fn))))
-
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 
@@ -141,7 +108,7 @@
    (ensure-mbql5 #'qp.resolve-source-table/resolve-source-tables)
    (ensure-mbql5 #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
    (ensure-mbql5 #'ensure-joins-use-source-query/ensure-joins-use-source-query)
-   (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
+   (ensure-mbql5 #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-mbql5 #'qp.middleware.enterprise/apply-impersonation)
    (ensure-mbql5 #'qp.middleware.enterprise/attach-destination-db-middleware)
@@ -164,14 +131,14 @@
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
-   (ensure-legacy #'qp.wrap-value-literals/wrap-value-literals)
-   (ensure-mbql5-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
-   (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
+   (ensure-mbql5 #'qp.wrap-value-literals/wrap-value-literals)
+   (ensure-mbql5 #'auto-parse-filter-values/auto-parse-filter-values)
+   (ensure-mbql5 #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-mbql5 #'limit/add-default-limit)
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)
-   ;; return pMBQL at the end
+   ;; return MBQL 5 at the end
    (ensure-mbql5 identity)])
 
 (defn- middleware-fn-name [middleware-fn]

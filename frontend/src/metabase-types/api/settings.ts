@@ -36,9 +36,8 @@ export const engineKeys = [
   "bigquery-cloud-sdk",
   "clickhouse",
   "databricks",
-  "druid",
   "druid-jdbc",
-  "databricks",
+  "druid",
   "mysql",
   "oracle",
   "postgres",
@@ -52,6 +51,29 @@ export const engineKeys = [
   "vertica",
 ] as const;
 
+export const providerNames = [
+  "Aiven",
+  "Amazon RDS",
+  "Azure",
+  "Crunchy Data",
+  "DigitalOcean",
+  "Fly.io",
+  "Neon",
+  "PlanetScale",
+  "Railway",
+  "Render",
+  "Scaleway",
+  "Supabase",
+  "Timescale",
+] as const;
+
+export type DatabaseProviderName = (typeof providerNames)[number];
+
+export type DatabaseProvider = {
+  name: DatabaseProviderName;
+  pattern: string;
+};
+
 export type EngineKey = (typeof engineKeys)[number];
 
 export interface Engine {
@@ -63,6 +85,7 @@ export interface Engine {
     "db-routing-info": {
       text: string;
     };
+    providers?: DatabaseProvider[];
   } | null;
 }
 
@@ -293,6 +316,7 @@ export const tokenFeatures = [
   "development_mode",
   "etl_connections",
   "etl_connections_pg",
+  "table_data_editing",
   "documents",
   "semantic_search",
   "transforms",
@@ -406,6 +430,7 @@ interface AdminSettings {
   "active-users-count"?: number;
   "custom-geojson-enabled": boolean;
   "deprecation-notice-version"?: string;
+  "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
   "redirect-all-requests-to-https": boolean;
   "query-caching-min-ttl": number;
@@ -421,6 +446,7 @@ interface AdminSettings {
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
   "show-simple-embed-terms": boolean | null;
+  "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;

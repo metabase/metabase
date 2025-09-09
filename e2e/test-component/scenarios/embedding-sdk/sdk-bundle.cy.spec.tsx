@@ -15,6 +15,8 @@ import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embeddin
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
+const { H } = cy;
+
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
   delete window.METABASE_EMBEDDING_SDK_BUNDLE;
@@ -28,10 +30,6 @@ describe(
   { numTestsKeptInMemory: 1 },
   () => {
     beforeEach(() => {
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
-
       signInAsAdminAndEnableEmbeddingSdk();
 
       cy.signOut();
@@ -197,6 +195,13 @@ describe(
         it("should show a custom loader when the SDK bundle is loading", () => {
           sdkBundleCleanup();
 
+          cy.intercept("GET", "/api/card/*", (request) => {
+            // Delay request for 500ms to avoid flakiness
+            request.continue(
+              () => new Promise((resolve) => setTimeout(resolve, 500)),
+            );
+          });
+
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             {
@@ -320,17 +325,19 @@ describe(
       });
     });
 
-    describe("Error handling", () => {
+    describe("Error handling", { retries: 3 }, () => {
       beforeEach(() => {
+        H.clearBrowserCache();
+
         sdkBundleCleanup();
+
+        cy.intercept("GET", "**/app/embedding-sdk.js", {
+          statusCode: 404,
+        });
       });
 
       describe("when the SDK bundle can't be loaded", () => {
         it("should show an error", () => {
-          cy.intercept("GET", "**/app/embedding-sdk.js", {
-            statusCode: 404,
-          });
-
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             {
@@ -345,15 +352,11 @@ describe(
         });
 
         it("should show a custom error", () => {
-          cy.intercept("GET", "**/app/embedding-sdk.js", {
-            statusCode: 404,
-          });
-
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             {
               sdkProviderProps: {
-                errorComponent: ({ message }) => (
+                errorComponent: ({ message }: { message: string }) => (
                   <div>Custom error: {message}</div>
                 ),
               },

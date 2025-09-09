@@ -74,6 +74,7 @@
              ((some-fn keyword? string?) (first x)))
     (keyword (first x))))
 
+;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.util/clause-of-type?]]
 (mu/defn is-clause?
   "Whether `x` is a (possibly not-yet-normalized) MBQL clause with `tag`. Does not check that the clause is valid."
   [tag :- :keyword x]
