@@ -1,3 +1,5 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { SegmentSchema } from "metabase/schema";
 import type {
   CreateSegmentRequest,
   DeleteSegmentRequest,
@@ -24,6 +26,12 @@ export const segmentApi = Api.injectEndpoints({
         url: "/api/segment",
       }),
       providesTags: (segments = []) => provideSegmentListTags(segments),
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (data != null) {
+          dispatch(updateMetadata(data, [SegmentSchema]));
+        }
+      },
     }),
     getSegment: builder.query<Segment, SegmentId>({
       query: (id) => ({
@@ -31,6 +39,12 @@ export const segmentApi = Api.injectEndpoints({
         url: `/api/segment/${id}`,
       }),
       providesTags: (segment) => (segment ? provideSegmentTags(segment) : []),
+      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
+        const { data } = await queryFulfilled;
+        if (data != null) {
+          dispatch(updateMetadata(data, SegmentSchema));
+        }
+      },
     }),
     createSegment: builder.mutation<Segment, CreateSegmentRequest>({
       query: (body) => ({
