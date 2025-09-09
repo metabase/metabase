@@ -2180,3 +2180,28 @@ describe("issue 53370", () => {
     //
   });
 });
+
+describe("issue 63176", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not be possible to save a dashboard with an empty name and the correct error should be displayed (metabase#63176)", () => {
+    cy.visit("/");
+    H.newButton().click();
+    H.popover().findByText("Dashboard").click();
+    H.modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your dashboard?").type(" ");
+      cy.button("Create").click();
+
+      cy.findByText("value must be a non-blank string.").should("be.visible");
+      cy.findByPlaceholderText("What is the name of your dashboard?").should(
+        "have.attr",
+        "aria-invalid",
+        "true",
+      );
+      cy.button("Failed").should("be.visible");
+    });
+  });
+});

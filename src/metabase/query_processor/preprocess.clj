@@ -108,7 +108,7 @@
    (ensure-mbql5 #'qp.resolve-source-table/resolve-source-tables)
    (ensure-mbql5 #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
    (ensure-mbql5 #'ensure-joins-use-source-query/ensure-joins-use-source-query)
-   (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
+   (ensure-mbql5 #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-mbql5 #'qp.middleware.enterprise/apply-impersonation)
    (ensure-mbql5 #'qp.middleware.enterprise/attach-destination-db-middleware)
