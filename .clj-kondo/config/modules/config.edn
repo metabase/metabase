@@ -1686,7 +1686,8 @@
            metabase-enterprise.comments.init}
    :uses #{api
            models
-           util}}
+           util
+           events}}
 
   enterprise/documents
   {:team "UX West"

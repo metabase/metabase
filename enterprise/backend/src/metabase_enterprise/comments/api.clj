@@ -1,10 +1,12 @@
 (ns metabase-enterprise.comments.api
   "`/api/ee/comment/` routes"
   (:require
-   [metabase-enterprise.comments.models.comment-reaction :as m.comment-reaction]
+   [clojure.string :as str]
+   [metabase-enterprise.comments.models.comment-reaction :as comment-reaction]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -19,6 +21,44 @@
   [entity]
   (case (t2/model entity)
     :model/Document (:archived entity)))
+
+(defn- urlpath-for
+  "Generate an URL to an entity"
+  [entity]
+  (case (t2/model entity)
+    :model/Document (str "/document/" (:id entity))))
+
+(defn- content->str [content]
+  (or (:text content)
+      (pr-str content)))
+
+;;; schemas
+
+(def CommentContent
+  "Validation for comment content - expects JSON"
+  (mu/with-api-error-message
+   [:and
+    {:error/message "Comment content must be valid JSON"
+     :json-schema   {:type "object"}}
+    [:map]]
+   (deferred-tru "Comment content must be valid JSON.")))
+
+(def CreateComment
+  "Schema for creating a new comment"
+  [:map
+   [:target_type [:enum "document"]]
+   [:target_id   ms/PositiveInt]
+   [:content     CommentContent]
+   [:child_target_id {:optional true} [:maybe :string]]
+   [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
+
+(def UpdateComment
+  "Schema for updating a comment"
+  [:map
+   [:content {:optional true} CommentContent]
+   [:is_resolved {:optional true} :boolean]])
+
+;;; routes
 
 (defn- render-comments
   "Process comments to prepare them for the world:
@@ -55,42 +95,14 @@
                      (t2/hydrate :creator :reactions))]
     {:comments (render-comments comments)}))
 
-;;; schemas
-
-(def CommentContent
-  "Validation for comment content - expects JSON"
-  (mu/with-api-error-message
-   [:and
-    {:error/message "Comment content must be valid JSON"
-     :json-schema   {:type "object"}}
-    [:map]]
-   (deferred-tru "Comment content must be valid JSON.")))
-
-(def CreateComment
-  "Schema for creating a new comment"
-  [:map
-   [:target_type [:enum "document"]]
-   [:target_id   ms/PositiveInt]
-   [:content     CommentContent]
-   [:child_target_id {:optional true} [:maybe :string]]
-   [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
-
-(def UpdateComment
-  "Schema for updating a comment"
-  [:map
-   [:content {:optional true} CommentContent]
-   [:is_resolved {:optional true} :boolean]])
-
-;;; routes
-
 (api.macros/defendpoint :post "/"
   "Create a new comment"
   [_route-params
    _query-params
    {:keys [target_type target_id child_target_id parent_comment_id content]} :- CreateComment]
-  (let [_entity (-> (api/read-check (TYPE->MODEL target_type) target_id)
-                    (u/prog1 (api/check-400 (not (entity-archived? <>))
-                                            "Cannot comment on archived entities")))]
+  (let [entity (-> (api/read-check (TYPE->MODEL target_type) target_id)
+                   (u/prog1 (api/check-400 (not (entity-archived? <>))
+                                           "Cannot comment on archived entities")))]
 
     ;; If this is a reply, validate the parent comment exists and belongs to same entity
     (when parent_comment_id
@@ -100,17 +112,35 @@
                             (= (:child_target_id parent) child_target_id))
                        "Parent comment doesn't belong to the same entity")))
 
-    (let [comment (t2/insert-returning-instance! :model/Comment
-                                                 {:target_type       target_type
-                                                  :target_id         target_id
-                                                  :child_target_id   child_target_id
-                                                  :parent_comment_id parent_comment_id
-                                                  :content           content
-                                                  :creator_id        api/*current-user-id*})]
-      (-> comment
-          (t2/hydrate :creator)
-          ;; New comments always have empty reactions map
-          (assoc :reactions [])))))
+    (let [comment    (-> (t2/insert-returning-instance! :model/Comment
+                                                        {:target_type       target_type
+                                                         :target_id         target_id
+                                                         :child_target_id   child_target_id
+                                                         :parent_comment_id parent_comment_id
+                                                         :content           content
+                                                         :creator_id        api/*current-user-id*})
+                         (t2/hydrate :creator)
+                         ;; New comments always have empty reactions map
+                         (assoc :reactions []))
+          clause     (if parent_comment_id
+                       {:where [:in :id {:from   [:comment]
+                                         :select [:creator_id]
+                                         :where  [:or
+                                                  [:= :id parent_comment_id]
+                                                  [:= :parent_comment_id parent_comment_id]]}]}
+                       ;; FIXME: add dispatch on different entity types
+                       {:where [:= :id (:creator_id entity)]})
+          recipients (-> (t2/select-fn-set :email [:model/User :email] #p clause)
+                         (disj (:email @api/*current-user*)))
+          payload    {:entity_type  target_type
+                      :entity_title (:name entity)
+                      :path         (urlpath-for entity)
+                      :author       (:common_name @api/*current-user*)
+                      :comment      (content->str content)
+                      :created_at   (:created_at comment)}]
+      (doseq [email recipients]
+        (events/publish-event! :event/comment-created (assoc payload :email email)))
+      comment)))
 
 (api.macros/defendpoint :put "/:comment-id"
   "Update a comment"
@@ -176,7 +206,7 @@
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot react to comments on archived entities")))
 
-    (m.comment-reaction/toggle-reaction comment-id api/*current-user-id* emoji)))
+    (comment-reaction/toggle-reaction comment-id api/*current-user-id* emoji)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/comment/` routes."

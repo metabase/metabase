@@ -1,0 +1,16 @@
+{{> metabase/channel/email/_header.hbs }}
+  <div style="padding-bottom: 2em; padding-top: 1em; text-align: center;">
+    <img width="32" height="40" src="{{context.application_logo_url}}"/>
+  </div>
+  <div style="text-align: center; margin: 0 auto; max-width: 500px">
+    <div style="text-align: left">
+      <h2 style="font-weight: normal; color: #4C545B; line-height: 34px;">New comment on {{payload.event_info.entity_type}}: {{payload.event_info.entity_title}}</h2>
+      <p style="line-height: 22px; margin-bottom: 20px"><strong>{{payload.event_info.author}}</strong> commented:</p>
+      <div style="background-color: #F8F9FA; border-left: 4px solid #509EE3; padding: 16px; margin-bottom: 20px; border-radius: 4px;">
+        <p style="line-height: 22px; margin: 0; color: #4C545B;">{{payload.event_info.comment}}</p>
+      </div>
+      <p style="line-height: 22px; margin-bottom: 40px; color: #74838F; font-size: 14px;">Posted on {{payload.event_info.created_at}}</p>
+    </div>
+    <a style="{{context.style.button}}" href="{{context.site_url}}{{payload.event_info.path}}">View {{payload.event_info.entity_type}}</a>
+  </div>
+{{> metabase/channel/email/_footer.hbs }}

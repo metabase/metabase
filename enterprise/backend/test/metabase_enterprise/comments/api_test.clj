@@ -2,68 +2,91 @@
   "Tests for /api/ee/comment/ endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(defn- relaxed-re [s]
+  (re-pattern (str "(?s).*" s ".*")))
+
 (deftest basic-comments-test
   (testing "GET /api/ee/comment/"
-    (mt/with-temp [:model/Document {doc-id :id doc :document} {}]
+    (mt/with-temp [:model/Document {doc-id :id doc :document} {:name       "New Document"
+                                                               :creator_id (mt/user->id :lucky)}]
       (mt/with-model-cleanup [:model/CommentReaction
                               :model/Comment]
-        (testing "returns empty comments list for entity with no comments"
-          (is (= {:comments []}
-                 (mt/user-http-request :rasta :get 200 "ee/comment/"
-                                       :target_type "document"
-                                       :target_id doc-id))))
+        (mt/with-fake-inbox
+          (is (= [:event/user-invited :event/notification-create :event/slack-token-invalid :event/comment-created]
+                 (t2/select-fn-vec :event_name :model/NotificationSubscription)))
+          (testing "returns empty comments list for entity with no comments"
+            (is (= {:comments []}
+                   (mt/user-http-request :rasta :get 200 "ee/comment/"
+                                         :target_type "document"
+                                         :target_id doc-id))))
+          (testing "creates and returns comments for entity"
+            (let [created   (mt/user-http-request :rasta :post 200 "ee/comment/"
+                                                  {:target_type "document"
+                                                   :target_id   doc-id
+                                                   :content     {:text "New comment"}})
+                  expected1 {:id          int?
+                             :content     {:text "New comment"}
+                             :target_type "document"
+                             :target_id   doc-id
+                             :creator     {:id (mt/user->id :rasta)}
+                             :reactions   []}]
+              (is (=? expected1 created))
+              (is (=? {:comments [expected1]}
+                      (mt/user-http-request :rasta :get 200 "ee/comment/"
+                                            :target_type "document"
+                                            :target_id doc-id)))
+              (testing "document creator receives notifications for top-level comments"
+                (is (=? {(:email (mt/fetch-user :lucky))
+                         [{:to      [(:email (mt/fetch-user :lucky))]
+                           :subject "Comment on New Document"
+                           :body    [{:content (relaxed-re (str "http://localhost:3000/document/" doc-id))}]}]}
+                        (first (swap-vals! mt/inbox empty)))))
 
-        (testing "creates and returns comments for entity"
-          (let [created  (mt/user-http-request :rasta :post 200 "ee/comment/"
-                                               {:target_type "document"
-                                                :target_id   doc-id
-                                                :content     {:text "New comment"}})
-                expected {:id          int?
-                          :content     {:text "New comment"}
-                          :target_type "document"
-                          :target_id   doc-id
-                          :creator     {:id (mt/user->id :rasta)}
-                          :reactions   []}]
-            (is (=? expected created))
-            (is (=? {:comments [expected]}
-                    (mt/user-http-request :rasta :get 200 "ee/comment/"
-                                          :target_type "document"
-                                          :target_id doc-id)))
+              (testing "creates a reply to an existing comment"
+                (let [child     (mt/user-http-request :crowberto :post 200 "ee/comment/"
+                                                      {:target_type       "document"
+                                                       :target_id         doc-id
+                                                       :parent_comment_id (:id created)
+                                                       :content           {:text "Other comment"}})
+                      expected2 {:id                int?
+                                 :content           {:text "Other comment"}
+                                 :target_type       "document"
+                                 :target_id         doc-id
+                                 :creator           {:id (mt/user->id :crowberto)}
+                                 :parent_comment_id (:id created)
+                                 :reactions         []}]
+                  (is (=? expected2 child))
+                  (is (=? {:comments [expected1 expected2]}
+                          (mt/user-http-request :rasta :get 200 "ee/comment/"
+                                                :target_type "document"
+                                                :target_id doc-id)))
+                  (testing "participants in the thread receive notifications for new replies"
+                    (is (=? {"rasta@metabase.com" [{:subject "Comment on New Document"}]}
+                            (first (swap-vals! mt/inbox empty)))))))))
 
-            (testing "creates a reply to an existing comment"
-              (let [created (mt/user-http-request :rasta :post 200 "ee/comment/"
-                                                  {:target_type       "document"
-                                                   :target_id         doc-id
-                                                   :parent_comment_id (:id created)
-                                                   :content           {:text "Other comment"}})
-                    child   (assoc-in expected [:content :text] "Other comment")]
-                (is (=? child created))
-                (is (=? {:comments [expected child]}
-                        (mt/user-http-request :rasta :get 200 "ee/comment/"
-                                              :target_type "document"
-                                              :target_id doc-id)))))))
-
-        (testing "creates a comment for part of an entity"
-          (let [part-id (-> doc :content first :attrs :_id)
-                created (mt/user-http-request :rasta :post 200 "ee/comment/"
-                                              {:target_type     "document"
-                                               :target_id       doc-id
-                                               :child_target_id part-id
-                                               :content         {:text "Part comment"}})]
-            (is (=? {:id              int?
-                     :content         {:text "Part comment"}
-                     :target_type     "document"
-                     :target_id       doc-id
-                     :child_target_id part-id
-                     :creator         {:id (mt/user->id :rasta)}
-                     :reactions       []}
-                    created))))))))
+          (testing "creates a comment for part of an entity"
+            (let [part-id (-> doc :content first :attrs :_id)
+                  created (mt/user-http-request :rasta :post 200 "ee/comment/"
+                                                {:target_type     "document"
+                                                 :target_id       doc-id
+                                                 :child_target_id part-id
+                                                 :content         {:text "Part comment"}})]
+              (is (=? {:id              int?
+                       :content         {:text "Part comment"}
+                       :target_type     "document"
+                       :target_id       doc-id
+                       :child_target_id part-id
+                       :creator         {:id (mt/user->id :rasta)}
+                       :reactions       []}
+                      created))
+              (testing "Comments on concrete paragraphs are also sent as notifications"
+                (is (=? {"lucky@metabase.com" [{:subject "Comment on New Document"}]}
+                        (first (swap-vals! mt/inbox empty))))))))))))
 
 (deftest update-comment-test
   (testing "PUT /api/ee/comment/:comment-id"
