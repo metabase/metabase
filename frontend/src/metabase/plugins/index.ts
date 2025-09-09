@@ -856,7 +856,7 @@ type DependenciesPlugin = {
   useAnalyzeQuestionUpdate: (
     props: UseAnalyzeQuestionUpdateProps,
   ) => UseAnalyzeQuestionUpdateResult;
-  getConfirmModalTitle: () => string;
+  getAnalyzeConfirmTitle: () => string;
 };
 
 export type UseAnalyzeQuestionUpdateProps = {
@@ -883,5 +883,5 @@ export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
     handleInitialSave: onSave,
     handleSaveAfterConfirmation: () => Promise.resolve(),
   }),
-  getConfirmModalTitle: () => "",
+  getAnalyzeConfirmTitle: () => "",
 };

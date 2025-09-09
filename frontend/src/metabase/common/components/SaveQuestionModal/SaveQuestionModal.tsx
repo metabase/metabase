@@ -61,7 +61,7 @@ export const SaveQuestionModal = ({
           <Modal.Header>
             <Modal.Title>
               {isConfirming ? (
-                PLUGIN_DEPENDENCIES.getConfirmModalTitle()
+                PLUGIN_DEPENDENCIES.getAnalyzeConfirmTitle()
               ) : (
                 <SaveQuestionTitle />
               )}
