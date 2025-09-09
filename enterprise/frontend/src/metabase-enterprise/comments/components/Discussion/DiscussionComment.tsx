@@ -8,7 +8,10 @@ import { t } from "ttag";
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
-import { getCommentNodeId } from "metabase-enterprise/comments/utils";
+import {
+  formatCommentDate,
+  getCommentNodeId,
+} from "metabase-enterprise/comments/utils";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
@@ -147,18 +150,4 @@ export function DiscussionComment({
       </Box>
     </Timeline.Item>
   );
-}
-
-function formatCommentDate(dateStr: string) {
-  const date = new Date(dateStr);
-  const now = new Date();
-
-  const oneDay = 24 * 60 * 60 * 1000;
-  const is24hAgo = now.getTime() - date.getTime() < oneDay;
-
-  if (is24hAgo) {
-    return dayjs(date).fromNow();
-  }
-
-  return dayjs(date).format("MMM D");
 }

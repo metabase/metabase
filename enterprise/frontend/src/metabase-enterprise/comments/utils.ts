@@ -98,6 +98,20 @@ export function getCommentsUrl({
     .exhaustive();
 }
 
+export function formatCommentDate(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+
+  const oneDay = 24 * 60 * 60 * 1000;
+  const is24hAgo = now.getTime() - date.getTime() < oneDay;
+
+  if (is24hAgo) {
+    return dayjs(date).fromNow();
+  }
+
+  return dayjs(date).format("MMM D");
+}
+
 export function deleteNewParamFromURLIfNeeded(
   location: LocationSensorState,
   dispatch: DispatchFn,
