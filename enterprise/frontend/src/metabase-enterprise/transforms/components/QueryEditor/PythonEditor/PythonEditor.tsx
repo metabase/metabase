@@ -1,14 +1,19 @@
 import { useState } from "react";
+import { ResizableBox } from "react-resizable";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { color } from "metabase/lib/colors";
-import { Alert, Box, Button, Group, Loader, Stack, Text } from "metabase/ui";
+import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
+import { Alert, Box, Flex, Stack, Text } from "metabase/ui";
 
 import {
   useCancelPythonMutation,
   useExecutePythonMutation,
 } from "../../../api/python-runner";
+import { ResizableBoxHandle } from "../EditorBody/ResizableBoxHandle";
+
+import S from "./PythonEditor.module.css";
 
 type PythonEditorProps = {
   script: string;
@@ -27,6 +32,8 @@ interface ExecutionResult {
   stderr?: string;
   error?: string;
 }
+
+const EDITOR_HEIGHT = 400;
 
 function parseCSV(csv: string): { headers: string[]; rows: string[][] } {
   if (!csv || !csv.trim()) {
@@ -128,17 +135,35 @@ export function PythonEditor({
   const { headers, rows } = parseCSV(executionResult?.output || "");
 
   return (
-    <Stack h="100%" gap={0}>
-      {/* Python Script Editor */}
-      <Box h="100%">
-        <CodeEditor
-          value={script}
-          onChange={handleScriptChange}
-          language="python"
-        />
-      </Box>
+    <Stack h="100%" w="100%" gap={0}>
+      <ResizableBox
+        className={S.root}
+        axis="y"
+        height={EDITOR_HEIGHT}
+        handle={<ResizableBoxHandle />}
+        resizeHandles={["s"]}
+      >
+        <Flex h="100%" align="end" bg="bg-light">
+          <CodeEditor
+            className={S.editor}
+            value={script}
+            onChange={handleScriptChange}
+            language="python"
+          />
 
-      {/* Results Section - positioned between editor and buttons */}
+          <Box p="md">
+            <RunButtonWithTooltip
+              disabled={!isRunnable}
+              isRunning={isRunning}
+              isDirty={_isResultDirty}
+              onRun={handleRunScript}
+              onCancel={handleCancelScript}
+              getTooltip={() => t`Run Python script`}
+            />
+          </Box>
+        </Flex>
+      </ResizableBox>
+
       {(executionResult || isRunning) && (
         <Box
           mt="md"
@@ -164,7 +189,10 @@ export function PythonEditor({
                 >
                   <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
                   <Box
-                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                    style={{
+                      fontFamily: "monospace",
+                      whiteSpace: "pre-wrap",
+                    }}
                   >
                     {executionResult.stdout}
                   </Box>
@@ -179,7 +207,10 @@ export function PythonEditor({
                 >
                   <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
                   <Box
-                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                    style={{
+                      fontFamily: "monospace",
+                      whiteSpace: "pre-wrap",
+                    }}
                   >
                     {executionResult.stderr}
                   </Box>
@@ -200,7 +231,10 @@ export function PythonEditor({
                 >
                   <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
                   <Box
-                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                    style={{
+                      fontFamily: "monospace",
+                      whiteSpace: "pre-wrap",
+                    }}
                   >
                     {executionResult.stdout}
                   </Box>
@@ -215,7 +249,10 @@ export function PythonEditor({
                 >
                   <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
                   <Box
-                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                    style={{
+                      fontFamily: "monospace",
+                      whiteSpace: "pre-wrap",
+                    }}
                   >
                     {executionResult.stderr}
                   </Box>
@@ -233,7 +270,10 @@ export function PythonEditor({
                 >
                   <Text fw="bold" mb="xs">{t`Standard Output:`}</Text>
                   <Box
-                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                    style={{
+                      fontFamily: "monospace",
+                      whiteSpace: "pre-wrap",
+                    }}
                   >
                     {executionResult.stdout}
                   </Box>
@@ -248,7 +288,10 @@ export function PythonEditor({
                 >
                   <Text fw="bold" mb="xs">{t`Standard Error:`}</Text>
                   <Box
-                    style={{ fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+                    style={{
+                      fontFamily: "monospace",
+                      whiteSpace: "pre-wrap",
+                    }}
                   >
                     {executionResult.stderr}
                   </Box>
@@ -283,7 +326,9 @@ export function PythonEditor({
                     {rows.map((row, rowIndex) => (
                       <tr
                         key={rowIndex}
-                        style={{ borderBottom: `1px solid ${color("border")}` }}
+                        style={{
+                          borderBottom: `1px solid ${color("border")}`,
+                        }}
                       >
                         {row.map((cell, cellIndex) => (
                           <td key={cellIndex} style={{ padding: "8px" }}>
@@ -299,26 +344,6 @@ export function PythonEditor({
           )}
         </Box>
       )}
-
-      {/* Action Buttons */}
-      <Box mt="md" style={{ flex: "0 0 auto" }}>
-        <Group gap="sm">
-          <Button
-            variant="filled"
-            style={
-              isRunning
-                ? { backgroundColor: color("error"), color: color("white") }
-                : undefined
-            }
-            leftSection={isRunning ? undefined : <span>▶</span>}
-            onClick={isRunning ? handleCancelScript : handleRunScript}
-            disabled={!isRunnable && !isRunning}
-          >
-            {isRunning ? t`Cancel` : t`Run Python Script`}
-          </Button>
-          {isRunning && <Loader size="sm" />}
-        </Group>
-      </Box>
     </Stack>
   );
 }
