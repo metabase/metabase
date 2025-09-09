@@ -46,21 +46,15 @@
 
 (defn- upstream-deps:native-card [metadata-provider card]
   (let [engine (:engine (lib.metadata/database metadata-provider))
-        deps   (deps.native/native-query-deps engine metadata-provider (:dataset_query card))
-        ;; The deps are in #{{:table 7} ...} form and need conversion to ::upstream-deps form.
-        deps   (u/group-by ffirst (comp second first) conj #{} deps)]
-    (set/rename-keys deps {:table     :metadata/table
-                           :card      :metadata/card
-                           :snippet   :metadata/native-query-snippet})))
-
-(comment
-  (let [f (fn [deps] (u/group-by ffirst (comp second first) conj #{} deps))]
-    (f #{{:table 7} {:table 8} {:card 3} {:snippet 1}})))
+        deps   (deps.native/native-query-deps engine metadata-provider (:dataset_query card))]
+    ;; The deps are in #{{:table 7} ...} form and need conversion to ::upstream-deps form.
+    (u/group-by ffirst (comp second first) conj #{} deps)))
 
 (mr/def ::upstream-deps
   [:map
-   [:metadata/card  {:optional true} [:set ::lib.schema.id/card]]
-   [:metadata/table {:optional true} [:set ::lib.schema.id/table]]])
+   [:card    {:optional true} [:set ::lib.schema.id/card]]
+   [:table   {:optional true} [:set ::lib.schema.id/table]]
+   [:snippet {:optional true} [:set ::lib.schema.id/snippet]]])
 
 (mu/defn upstream-deps:card :- ::upstream-deps
   "Given a Toucan `:model/Card`, return its upstream dependencies as a map from the kind to a set of IDs."
@@ -83,4 +77,6 @@
                             update-keys (constantly "Duration"))]
     (check-cards-have-sound-refs base-mp [card'] card-ids))
 
-  (upstream-deps:card (toucan2.core/select-one :model/Card :id 1)))
+  (let [card (toucan2.core/select-one :model/Card :id 121)
+        mp   (metabase.lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))]
+    (upstream-deps:card mp card)))
