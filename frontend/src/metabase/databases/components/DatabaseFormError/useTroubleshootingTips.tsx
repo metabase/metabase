@@ -136,6 +136,7 @@ const renderDocsLinkMaybe = (
         component={Link}
         fw={600}
         key={docsUrl}
+        target="_blank"
         to={docsUrl}
       >
         {linkContent}

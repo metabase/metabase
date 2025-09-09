@@ -26,6 +26,7 @@ export const ContactSupportButtonSection = () => {
             component={Link}
             radius="md"
             size="md"
+            target="_blank"
             to={helpUrl}
             variant="default"
           >

@@ -25,6 +25,7 @@ export const AdditionalHelpButtonGroup = () => {
             className={CS.link}
             component={Link}
             leftSection={<Icon name="reference" />}
+            target="_blank"
             to={docsUrl}
             variant="subtle"
           >

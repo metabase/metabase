@@ -109,11 +109,13 @@ describe("useTroubleshootingTips", () => {
       /correct permissions/,
     ];
 
-    it("should render links when showMetabaseLinks is true", () => {
+    it("should render external doc links when showMetabaseLinks is true", () => {
       linksSetup(true);
 
       for (const name of expectedLinks) {
-        expect(screen.getByRole("link", { name })).toBeInTheDocument();
+        const linkEl = screen.getByRole("link", { name });
+        expect(linkEl).toBeInTheDocument();
+        expect(linkEl).toHaveAttribute("target", "_blank");
       }
     });
 
