@@ -147,11 +147,11 @@ export const DocumentHeader = ({
                 </ActionIcon>
               )}
 
-              {!showSaveButton && (
+              {!showSaveButton && document && (
                 <ActionIcon
                   className={S.commentsIcon}
                   component={Link}
-                  to={`/document/${document?.id}/comments/all`}
+                  to={`/document/${document.id}/comments/all`}
                   variant="subtle"
                   size="md"
                   aria-label={t`Show all comments`}
