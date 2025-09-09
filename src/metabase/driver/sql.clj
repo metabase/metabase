@@ -117,11 +117,32 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- qualified-table-name
+  "Return the name of the target table of a transform as a possibly qualified symbol."
+  [_driver {:keys [schema name]}]
+  (if schema
+    (keyword schema name)
+    (keyword name)))
+
+;; TODO(rileythomp, 2025-09-09): This probably doesn't need to be a driver multi-method
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
-  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
-                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
-    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
+  [driver {:keys [db-id query target conn-spec]}]
+  (let [output-table (qualified-table-name driver target)]
+    (if (driver/table-exists? driver db-id target)
+      (let [table-name (:name target)
+            schema (:schema target)
+            tmp-name "t_new"
+            tmp-table (keyword schema tmp-name)
+            table-renamed "transformed_table_renamed"
+            create-and-rename-queries [(driver/compile-transform driver tmp-table query)
+                                       (driver/compile-rename-table driver output-table table-renamed)
+                                       (driver/compile-rename-table driver tmp-table table-name)]
+            rows-affected (first (driver/execute-raw-queries! driver conn-spec create-and-rename-queries))
+            drop-renamed-query [(driver/compile-drop-table driver "transformed_table_renamed")]]
+        (driver/execute-raw-queries! driver conn-spec drop-renamed-query)
+        {:rows-affected rows-affected})
+      (let [queries [(driver/compile-transform driver output-table query)]]
+        {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."

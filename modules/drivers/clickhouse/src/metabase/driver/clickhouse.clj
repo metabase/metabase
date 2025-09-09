@@ -309,7 +309,7 @@
         (str/starts-with? msg "Code: 81"))))
 
 (defmethod driver/compile-transform :clickhouse
-  [driver {:keys [query output-table]}]
+  [driver output-table query]
   (let [pieces [(sql.qp/format-honeysql driver {:create-table output-table})
                 ;; TODO(rileythomp, 2025-08-22): Is there a better way to do this?
                 ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?

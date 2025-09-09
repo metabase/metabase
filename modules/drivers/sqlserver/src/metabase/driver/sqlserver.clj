@@ -942,7 +942,7 @@
   (= (sql-jdbc/get-sql-state e) "S0002"))
 
 (defmethod driver/compile-transform :sqlserver
-  [driver {:keys [query output-table]}]
+  [driver output-table query]
   (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
         ^Select parsed-query (macaw/parsed-query query)
         ^PlainSelect select-body (.getSelectBody parsed-query)]

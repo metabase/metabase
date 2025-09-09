@@ -1132,13 +1132,19 @@
 
 (defmulti compile-transform
   "Compiles the sql for a transform statement, given an inner sql query and a destination."
-  {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
+  {:added "0.57.0", :arglists '([driver output-table query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti compile-drop-table
   "Compiles the sql for a drop table statement for a given table."
   {:added "0.57.0", :arglists '([driver table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-rename-table
+  "Compiles the sql for an `ALTER TABLE ... RENAME TO ...` statement"
+  {:added "0.57.0", :arglists '([driver old-name new-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1157,10 +1163,8 @@
   Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
   types."
   {:added "0.57.0",
-   :arglists '([driver
-                {:keys [transform-type conn-spec query output-table] :as _transform-details}
-                {:keys [overwrite?] :as _opts}])}
-  (fn [driver transform-details _opts]
+   :arglists '([driver {:keys [transform-type conn-spec query output-table] :as _transform-details}])}
+  (fn [driver transform-details]
     [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
   :hierarchy #'hierarchy)
 

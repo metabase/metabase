@@ -17,14 +17,11 @@
 
 (mr/def ::transform-details
   [:map
+   [:db-id :int]
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
-   [:conn-spec :any]
    [:query :string]
-   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
-
-(mr/def ::transform-opts
-  [:map
-   [:overwrite? :boolean]])
+   [:target :any]
+   [:conn-spec :any]])
 
 (defn- sync-target!
   ([transform-id run-id]
@@ -39,15 +36,16 @@
 
 (defn run-transform!
   "Run a compiled transform"
-  [run-id driver {:keys [db-id conn-spec output-schema] :as transform-details} opts]
+  [run-id driver {:keys [db-id target conn-spec] :as transform-details}]
   ;; local run is responsible for status
   (try
-    (when-not (driver/schema-exists? driver db-id output-schema)
-      (driver/create-schema-if-needed! driver conn-spec output-schema))
+    (let [schema (:schema target)]
+      (when-not (driver/schema-exists? driver db-id schema)
+        (driver/create-schema-if-needed! driver conn-spec schema)))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
       (canceling/chan-start-run! run-id qp.pipeline/*canceled-chan*)
-      (driver/run-transform! driver transform-details opts))
+      (driver/run-transform! driver transform-details))
     (transform-run/succeed-started-run! run-id)
     (catch Throwable t
       (transform-run/fail-started-run! run-id {:message (.getMessage t)})
@@ -69,11 +67,9 @@
            feature (transforms.util/required-database-feature transform)
            transform-details {:db-id db
                               :transform-type (keyword (:type target))
-                              :conn-spec (driver/connection-spec driver database)
                               :query (transforms.util/compile-source source)
-                              :output-schema (:schema target)
-                              :output-table (transforms.util/qualified-table-name driver target)}
-           opts {:overwrite? true}]
+                              :target target
+                              :conn-spec (driver/connection-spec driver database)}]
        (when-not (driver.u/supports? driver feature database)
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :feature feature})))
@@ -90,7 +86,7 @@
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
-         (run-transform! run-id driver transform-details opts)
+         (run-transform! run-id driver transform-details)
          (sync-target! target database run-id)))
      (catch Throwable t
        (log/error t "Error executing transform")
