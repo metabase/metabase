@@ -11,7 +11,11 @@ import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/ut
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Database as ApiDatabase, RecentItem } from "metabase-types/api";
+import type {
+  Database as ApiDatabase,
+  NativeQuerySnippet,
+  RecentItem,
+} from "metabase-types/api";
 
 import S from "./EditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
@@ -40,6 +44,11 @@ type EditorBodyProps = {
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
   onCancelQuery: () => void;
+
+  modalSnippet?: NativeQuerySnippet | null;
+  onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
+  onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
+
   databases: ApiDatabase[];
 };
 
@@ -57,6 +66,9 @@ export function EditorBody({
   onToggleDataReference,
   onToggleSnippetSidebar,
   databases,
+  modalSnippet,
+  onChangeModalSnippet,
+  onChangeNativeEditorSelection,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -111,10 +123,13 @@ export function EditorBody({
       sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
       toggleDataReference={onToggleDataReference}
       toggleSnippetSidebar={onToggleSnippetSidebar}
+      modalSnippet={modalSnippet}
+      closeSnippetModal={() => onChangeModalSnippet(null)}
       databaseIsDisabled={(db: Database) => {
         const database = databases.find((database) => database.id === db.id);
         return !doesDatabaseSupportTransforms(database);
       }}
+      setNativeEditorSelectedRange={onChangeNativeEditorSelection}
     />
   ) : (
     <ResizableBox

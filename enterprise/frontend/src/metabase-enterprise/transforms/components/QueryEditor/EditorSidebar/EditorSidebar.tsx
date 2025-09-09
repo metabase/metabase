@@ -5,6 +5,7 @@ import DataReference from "metabase/query_builder/components/dataref/DataReferen
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import type { NativeQuerySnippet } from "metabase-types/api";
 
 import S from "./EditorSidebar.module.css";
 
@@ -15,6 +16,8 @@ type EditorSidebarProps = {
   isDataReferenceOpen?: boolean;
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
+  onChangeModalSnippet: (snippet: NativeQuerySnippet) => void;
+  insertSnippet: (snippet: NativeQuerySnippet) => void;
 };
 
 export function EditorSidebar(props: EditorSidebarProps) {
@@ -26,11 +29,31 @@ export function EditorSidebar(props: EditorSidebarProps) {
 }
 
 function NativeQueryEditorSidebar({
-  question,
   isSnippetSidebarOpen,
   isDataReferenceOpen,
+  ...props
+}: EditorSidebarProps) {
+  if (!isSnippetSidebarOpen && !isDataReferenceOpen) {
+    return null;
+  }
+
+  return (
+    <Box className={S.sidebar} h="100%" w="40%">
+      {match({ isSnippetSidebarOpen, isDataReferenceOpen })
+        .with({ isSnippetSidebarOpen: true }, () => (
+          <EditorSnippetSidebar {...props} />
+        ))
+        .with({ isDataReferenceOpen: true }, () => (
+          <EditorDataReferenceSidebar {...props} />
+        ))
+        .otherwise(() => null)}
+    </Box>
+  );
+}
+
+function EditorDataReferenceSidebar({
+  question,
   onToggleDataReference,
-  onToggleSnippetSidebar,
 }: EditorSidebarProps) {
   const [dataReferenceStack, setDataReferenceStack] = useState<any[]>([]);
 
@@ -42,10 +65,6 @@ function NativeQueryEditorSidebar({
     setDataReferenceStack(dataReferenceStack.slice(0, -1));
   };
 
-  if (!isSnippetSidebarOpen && !isDataReferenceOpen) {
-    return null;
-  }
-
   const toggleDataReference = () => {
     const databaseId = question.databaseId();
     if (dataReferenceStack.length === 0 && databaseId !== null) {
@@ -55,20 +74,27 @@ function NativeQueryEditorSidebar({
   };
 
   return (
-    <Box className={S.sidebar} h="100%" w="40%">
-      {match({ isSnippetSidebarOpen, isDataReferenceOpen })
-        .with({ isSnippetSidebarOpen: true }, () => (
-          <SnippetSidebar onClose={onToggleSnippetSidebar} />
-        ))
-        .with({ isDataReferenceOpen: true }, () => (
-          <DataReference
-            dataReferenceStack={dataReferenceStack}
-            popDataReferenceStack={popDataReferenceStack}
-            pushDataReferenceStack={pushDataReferenceStack}
-            onClose={toggleDataReference}
-          />
-        ))
-        .otherwise(() => null)}
-    </Box>
+    <DataReference
+      dataReferenceStack={dataReferenceStack}
+      popDataReferenceStack={popDataReferenceStack}
+      pushDataReferenceStack={pushDataReferenceStack}
+      onClose={toggleDataReference}
+    />
+  );
+}
+
+function EditorSnippetSidebar({
+  onToggleSnippetSidebar,
+  onChangeModalSnippet,
+  insertSnippet,
+}: EditorSidebarProps) {
+  return (
+    <SnippetSidebar
+      onClose={onToggleSnippetSidebar}
+      setModalSnippet={onChangeModalSnippet}
+      openSnippetModalWithSelectedText={onChangeModalSnippet}
+      snippetCollectionId={null}
+      insertSnippet={insertSnippet}
+    />
   );
 }

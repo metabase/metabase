@@ -1,10 +1,12 @@
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
+import { useState } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
+import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import { Center, Flex, Loader, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetQuery } from "metabase-types/api";
+import type { DatasetQuery, NativeQuerySnippet } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
 import { useQueryResults } from "../../hooks/use-query-results";
@@ -15,6 +17,7 @@ import { EditorHeader } from "./EditorHeader";
 import { EditorSidebar } from "./EditorSidebar";
 import { EditorVisualization } from "./EditorVisualization";
 import S from "./QueryEditor.module.css";
+import { locationToPosition } from "./util";
 
 type QueryEditorProps = {
   initialQuery: DatasetQuery;
@@ -82,6 +85,40 @@ export function QueryEditor({
     toggleSnippetSidebar();
   };
 
+  const [selectionRange, setSelectionRange] = useState<SelectionRange[]>([
+    { start: { row: 0, column: 0 }, end: { row: 0, column: 0 } },
+  ]);
+
+  const handleInsertSnippet = (snippet: NativeQuerySnippet) => {
+    const query = question.legacyNativeQuery();
+    if (!query) {
+      throw new Error("No query found");
+    }
+
+    const range = selectionRange[0];
+    const text = query.queryText();
+    if (!range) {
+      throw new Error("No selection range found");
+    }
+
+    const { start, end } = range;
+
+    const selectionStart = locationToPosition(text, start);
+    const selectionEnd = locationToPosition(text, end);
+
+    const newText =
+      text.slice(0, selectionStart) +
+      `{{snippet: ${snippet.name}}}` +
+      text.slice(selectionEnd);
+
+    const datasetQuery = query.setQueryText(newText).datasetQuery();
+    handleChange(question.setDatasetQuery(datasetQuery));
+  };
+
+  const [modalSnippet, setModalSnippet] = useState<NativeQuerySnippet | null>(
+    null,
+  );
+
   const { data: databases, isLoading } = useListDatabasesQuery({
     include_analytics: true,
   });
@@ -126,6 +163,9 @@ export function QueryEditor({
             databases={databases?.data ?? []}
             onToggleDataReference={handleToggleDataReference}
             onToggleSnippetSidebar={handleToggleSnippetSidebar}
+            modalSnippet={modalSnippet}
+            onChangeModalSnippet={setModalSnippet}
+            onChangeNativeEditorSelection={setSelectionRange}
           />
           <EditorVisualization
             question={question}
@@ -146,6 +186,8 @@ export function QueryEditor({
           isSnippetSidebarOpen={isSnippetSidebarOpen}
           onToggleDataReference={toggleDataReference}
           onToggleSnippetSidebar={toggleSnippetSidebar}
+          onChangeModalSnippet={setModalSnippet}
+          insertSnippet={handleInsertSnippet}
         />
       </Flex>
     </Stack>
