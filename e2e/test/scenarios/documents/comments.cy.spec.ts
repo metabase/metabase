@@ -1197,6 +1197,17 @@ H.describeWithSnowplowEE("document comments", () => {
       });
     });
   });
+
+  it("should remove ?new=true from the url after creating a comment", () => {
+    startNewCommentIn1ParagraphDocument();
+
+    cy.url().should("include", "?new=true");
+
+    cy.realType("Test");
+    cy.realPress([META_KEY, "Enter"]);
+
+    cy.url().should("not.include", "?new=true");
+  });
 });
 
 function selectCharactersLeft(count: number) {
