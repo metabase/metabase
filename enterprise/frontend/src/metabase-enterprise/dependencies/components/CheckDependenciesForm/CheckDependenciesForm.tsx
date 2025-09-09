@@ -79,8 +79,8 @@ function DependencyItemLink({ item }: DependencyItemLinkProps) {
       withBorder
     >
       <Group gap="sm">
-        <Icon name={getItemIcon(item)} />
-        <Text>{getItemName(item)}</Text>
+        <Icon c="brand" name={getItemIcon(item)} />
+        <Box fw="bold">{getItemName(item)}</Box>
       </Group>
     </Card>
   );
