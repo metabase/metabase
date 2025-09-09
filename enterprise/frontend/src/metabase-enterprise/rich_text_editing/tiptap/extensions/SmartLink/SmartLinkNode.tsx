@@ -25,6 +25,7 @@ import { type UrlableModel, modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { extractEntityId } from "metabase/lib/urls/utils";
 import { Icon } from "metabase/ui";
 import { useGetDocumentQuery } from "metabase-enterprise/api";
+import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
 import type {
   Card,
@@ -37,8 +38,6 @@ import type {
   User,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
-
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 
 import styles from "./SmartLinkNode.module.css";
 

@@ -7,15 +7,14 @@ import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
-
 import {
   createDraftCard,
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase-enterprise/documents/documents.slice";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
 
 import S from "./ModifyQuestionModal.module.css";
 

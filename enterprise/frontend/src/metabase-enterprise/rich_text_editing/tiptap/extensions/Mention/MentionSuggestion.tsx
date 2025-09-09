@@ -3,14 +3,14 @@ import { forwardRef, useCallback, useImperativeHandle } from "react";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
-import type { SearchResult } from "metabase-types/api";
-
 import {
   LoadingSuggestionPaper,
   SuggestionPaper,
 } from "metabase-enterprise/documents/components/Editor/shared/SuggestionPaper";
 import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
+import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
+import type { SearchResult } from "metabase-types/api";
+
 import { EntitySearchSection } from "../shared/EntitySearchSection";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 

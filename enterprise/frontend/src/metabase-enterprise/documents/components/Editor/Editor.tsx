@@ -17,8 +17,6 @@ import { getMentionsCache } from "metabase-enterprise/documents/selectors";
 import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
 import { isMetabotBlock } from "metabase-enterprise/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
-
-import S from "./Editor.module.css";
 import { EditorBubbleMenu } from "metabase-enterprise/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
 import { CardEmbed } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandExtension";
@@ -35,6 +33,8 @@ import { MetabotMentionExtension } from "metabase-enterprise/rich_text_editing/t
 import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
+
+import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [

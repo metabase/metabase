@@ -3,13 +3,12 @@ import { t } from "ttag";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { Box, Divider, Text } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
-
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
 import {
   MenuItemComponent,
   SearchResultsFooter,
 } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
+import type { SearchResult } from "metabase-types/api";
 
 interface EntitySearchSectionProps {
   menuItems: MenuItem[];

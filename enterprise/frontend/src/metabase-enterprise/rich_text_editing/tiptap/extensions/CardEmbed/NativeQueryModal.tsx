@@ -13,15 +13,14 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import NoResultsView from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView";
-import Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
-
 import {
   createDraftCard,
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase-enterprise/documents/documents.slice";
+import Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
 
 import S from "./NativeQueryModal.module.css";
 

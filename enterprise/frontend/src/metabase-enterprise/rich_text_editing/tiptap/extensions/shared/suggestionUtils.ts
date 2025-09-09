@@ -1,14 +1,13 @@
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
+import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
+import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import type {
   Database,
   RecentItem,
   SearchResult,
   User,
 } from "metabase-types/api";
-
-import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 
 export const filterRecents = (item: RecentItem, models: SuggestionModel[]) =>
   models.includes(item.model);
