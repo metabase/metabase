@@ -117,45 +117,30 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- qualified-table-name
-  "Return the name of the target table of a transform as a possibly qualified symbol."
-  [_driver {:keys [schema name]}]
-  (if schema
-    (keyword schema name)
-    (keyword name)))
-
 ;; TODO(rileythomp, 2025-09-09): This probably doesn't need to be a driver multi-method
 (defmethod driver/run-transform! [:sql :table]
   [driver {:keys [db-id query target conn-spec]}]
-  (let [output-table (qualified-table-name driver target)]
-    (if (driver/table-exists? driver db-id target)
-      (let [table-name (:name target)
-            schema (:schema target)
-            tmp-name "t_new"
-            tmp-table (keyword schema tmp-name)
-            table-renamed "transformed_table_renamed"
+  (let [db (driver-api/with-metadata-provider db-id (driver-api/database (driver-api/metadata-provider)))
+        {schema :schema table-name :name} target
+        output-table (keyword schema table-name)]
+    (if (driver/table-exists? driver db target)
+      (let [tmp-table (keyword schema (str table-name "__metabase_transform_tmp_name"))
+            renamed-table (str table-name "__metabase_transform_renamed")
             create-and-rename-queries [(driver/compile-transform driver tmp-table query)
-                                       (driver/compile-rename-table driver output-table table-renamed)
+                                       (driver/compile-rename-table driver output-table renamed-table)
                                        (driver/compile-rename-table driver tmp-table table-name)]
             rows-affected (first (driver/execute-raw-queries! driver conn-spec create-and-rename-queries))
-            drop-renamed-query [(driver/compile-drop-table driver "transformed_table_renamed")]]
+            drop-renamed-query [(driver/compile-drop-table driver renamed-table)]]
         (driver/execute-raw-queries! driver conn-spec drop-renamed-query)
         {:rows-affected rows-affected})
       (let [queries [(driver/compile-transform driver output-table query)]]
         {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))))
 
-(defn qualified-name
-  "Return the name of the target table of a transform as a possibly qualified symbol."
-  [{schema :schema, table-name :name}]
-  (if schema
-    (keyword schema table-name)
-    (keyword table-name)))
-
 (defmethod driver/drop-transform-target! [:sql :table]
-  [driver database target]
+  [driver database {:keys [schema name]}]
   ;; driver/drop-table! takes table-name as a string, but the :sql-jdbc implementation uses
   ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
-  (driver/drop-table! driver (:id database) (qualified-name target)))
+  (driver/drop-table! driver (:id database) (keyword schema name)))
 
 (defn normalize-name
   "Normalizes the (primarily table/column) name passed in.

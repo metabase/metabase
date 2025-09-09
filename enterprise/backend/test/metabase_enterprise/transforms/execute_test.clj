@@ -41,7 +41,7 @@
       (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
           (recur)))))
 
-(deftest execute-test
+(deftest run-mbql-transform-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
@@ -78,7 +78,7 @@
                            (map #(select-keys % [:name])
                                 (mt/cols query-result))))))))))))))
 
-(deftest execute-test-aggregation-query
+(deftest run-mbql-transform-join-aggregation-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :left-join]})
     (mt/dataset transforms-dataset/transforms-test
       (let [target-type "table"
@@ -130,7 +130,7 @@
                           ["2024-01-23T00:00:00Z" 14.99]]
                          query-result)))))))))))
 
-(deftest transform-schema-created-if-needed-test
+(deftest run-mbql-transform-created-schema-if-needed-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
     (mt/dataset transforms-dataset/transforms-test
       (with-transform-cleanup! [target-table {:type   "table"
