@@ -1,6 +1,3 @@
-exports.isConventionalTitle = isConventionalTitle;
-exports.updateCommentForEmbedding = updateCommentForEmbedding;
-
 const TYPES = new Set([
   "feat",
   "fix",
@@ -107,3 +104,6 @@ function getExistingConventionalCommitReminderComment(comments) {
     }
   }
 }
+
+exports.isConventionalTitle = isConventionalTitle;
+exports.updateCommentForEmbedding = updateCommentForEmbedding;
