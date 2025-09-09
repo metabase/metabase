@@ -50,8 +50,8 @@ export const databaseApi = Api.injectEndpoints({
       providesTags: (response) => provideDatabaseListTags(response?.data ?? []),
       onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
         const { data } = await queryFulfilled;
-        if (data != null) {
-          dispatch(updateMetadata(data, [DatabaseSchema]));
+        if (data?.data != null) {
+          dispatch(updateMetadata(data.data, [DatabaseSchema]));
         }
       },
     }),
