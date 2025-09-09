@@ -5,7 +5,7 @@ import type {
   UseCheckCardDependenciesProps,
   UseCheckCardDependenciesResult,
 } from "metabase/plugins";
-import { useLazyCheckCardUpdateQuery } from "metabase-enterprise/api";
+import { useLazyCheckCardDependenciesQuery } from "metabase-enterprise/api";
 import type Question from "metabase-lib/v1/Question";
 
 export function useCheckCardDependencies({
@@ -15,7 +15,7 @@ export function useCheckCardDependencies({
   const store = useStore();
   const [question, setQuestion] = useState<Question | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [checkCard, { data }] = useLazyCheckCardUpdateQuery();
+  const [checkCard, { data }] = useLazyCheckCardDependenciesQuery();
 
   const handleInitialSave = useCallback(
     async (question: Question) => {

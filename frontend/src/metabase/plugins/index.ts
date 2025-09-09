@@ -60,7 +60,7 @@ import type {
   CacheableDashboard,
   CacheableModel,
   Card,
-  CheckCardUpdateResponse,
+  CheckCardDependenciesResponse,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
@@ -877,7 +877,7 @@ export type UseCheckCardDependenciesProps = {
 };
 
 export type UseCheckCardDependenciesResult = {
-  checkData?: CheckCardUpdateResponse;
+  checkData?: CheckCardDependenciesResponse;
   isConfirming: boolean;
   handleInitialSave: (question: Question) => Promise<void>;
   handleSaveAfterConfirmation: () => Promise<void>;

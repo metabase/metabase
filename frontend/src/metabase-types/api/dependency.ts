@@ -1,11 +1,11 @@
 import type { Card } from "./card";
 
-export type CheckCardUpdateRequest = Pick<
+export type CheckCardDependenciesRequest = Pick<
   Card,
   "id" | "dataset_query" | "result_metadata"
 >;
 
-export type CheckCardUpdateResponse = {
+export type CheckCardDependenciesResponse = {
   success: boolean;
   bad_cards: Card[];
 };
