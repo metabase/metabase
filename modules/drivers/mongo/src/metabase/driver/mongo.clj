@@ -553,6 +553,82 @@
       (log/debugf e "Query:\n%s" native-form)
       native-form)))
 
+(defmethod driver/create-table! :mongo
+  [_driver database-id table-name _column-definitions & {:keys [primary-key]}]
+  ;; MongoDB collections are created implicitly when first document is inserted
+  ;; We can create an empty collection explicitly if needed
+  (mongo.connection/with-mongo-database [^MongoDatabase db database-id]
+    (.createCollection db (name table-name))
+    ;; Create indexes for any primary key fields
+    (when primary-key
+      (doseq [pk-field primary-key]
+        (mongo.util/create-index
+         (mongo.util/collection db (name table-name))
+         {pk-field 1})))))
+
+(defmethod driver/drop-table! :mongo
+  [_driver db-id table-name]
+  (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
+    (some-> (mongo.util/collection db (name table-name))
+            .drop)))
+
+(defmethod driver/rename-table! :mongo
+  [_driver db-id old-table-name new-table-name]
+  (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
+    (let [old-collection (mongo.util/collection db (name old-table-name))]
+      (.renameCollection old-collection
+                         (com.mongodb.MongoNamespace.
+                          (.getName db)
+                          (name new-table-name))))))
+
+;; Insert documents into a collection
+(defmethod driver/insert-into! :mongo
+  [_driver db-id table-name column-names values]
+  (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
+    (let [collection (mongo.util/collection db (name table-name))
+          documents (map (fn [row]
+                           (zipmap (map keyword column-names) row))
+                         values)]
+      (if (> (count documents) 1)
+        (mongo.util/insert-many collection documents)
+        (mongo.util/insert-one collection (first documents))))))
+
+(defmethod driver/drop-transform-target! [:mongo :table]
+  [driver database target]
+  (driver/drop-table! driver (:id database) (:name target)))
+
+(defmethod driver/connection-spec :mongo
+  [_driver database]
+  (:details database))
+
+(defmethod driver/type->database-type :mongo
+  [_driver base-type]
+  (case base-type
+    :type/TextLike "string"
+    :type/Text "string"
+    :type/Number "long"
+    :type/Integer "int"
+    :type/BigInteger "long"
+    :type/Float "double"
+    :type/Decimal "decimal"
+    :type/Boolean "bool"
+    :type/Date "date"
+    :type/DateTime "date"
+    :type/DateTimeWithTZ "date"
+    :type/Time "date"
+    :type/TimeWithTZ "date"
+    :type/Instant "date"
+    :type/UUID "uuid"
+    :type/JSON "object"
+    :type/SerializedJSON "string"
+    :type/Array "array"
+    :type/Dictionary "object"
+    :type/MongoBSONID "objectId"
+    :type/MongoBinData "binData"
+    :type/IPAddress "string"
+    ;; Default fallback
+    "object"))
+
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
 ;; for ssl experiments.
 #_(comment
